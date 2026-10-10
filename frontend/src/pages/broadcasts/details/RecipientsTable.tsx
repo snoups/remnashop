@@ -16,7 +16,14 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 
 const ROW_GRID_CLASS = "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,0.9fr)] items-center gap-3";
-const STOPPED_ERROR = "stopped";
+// the backend stores these as fixed English markers (broadcasts/repository.py)
+const REASON_KEYS: Record<string, ParseKeys> = {
+  stopped: "broadcasts.details.stopped",
+  "no telegram": "broadcasts.details.reasons.noTelegram",
+  "opted out": "broadcasts.details.reasons.optedOut",
+  blocked: "broadcasts.details.reasons.blocked",
+};
+const RECALL_FAILED_PREFIX = "recall failed: ";
 
 type TabKey = "all" | BroadcastRecipientStatus;
 
@@ -87,7 +94,14 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
   }, [refreshKey, broadcast.status, reload]);
 
   const details = (r: BroadcastRecipient): string => {
-    if (r.error) return r.error === STOPPED_ERROR ? t("broadcasts.details.stopped") : r.error;
+    if (r.error) {
+      const key = REASON_KEYS[r.error];
+      if (key) return t(key);
+      if (r.error.startsWith(RECALL_FAILED_PREFIX)) {
+        return t("broadcasts.details.reasons.recallFailed", { reason: r.error.slice(RECALL_FAILED_PREFIX.length) });
+      }
+      return r.error;
+    }
     return r.status === "SENT" ? t("broadcasts.details.messageSent") : t("common.none");
   };
 

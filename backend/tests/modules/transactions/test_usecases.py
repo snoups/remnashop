@@ -52,13 +52,17 @@ from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import GetAccessSettingsUseCase
-from app.modules.settings.dto import UpdateAccessSettingsDto, UpdateShopSettingsDto
+from app.modules.settings.dto import (
+    UpdateAccessSettingsDto,
+    UpdateShopSettingsDto,
+)
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions import (
     CreateSubscriptionDto,
     SubscriptionRepository,
 )
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
+from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
@@ -69,6 +73,7 @@ from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_eligibility, make_plan_snapshot
 
 _SHOP_FIELDS: Final[set[str]] = {field.name for field in dataclasses.fields(UpdateShopSettingsDto)}
@@ -377,7 +382,8 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
                     **{
                         **shop_before.model_dump(include=_SHOP_FIELDS),
                         "max_active_subscriptions": 1,
-                    }
+                    },
+                    fields_set=SHOP_SETTINGS_FIELDS,
                 )
             )
             buyer = await UserRepository(setup).create(
@@ -438,7 +444,10 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
                 await cleanup.execute(delete(model))
             if ShopSettings not in empty_before:
                 await SettingsRepository(AsyncSession(bind=cleanup)).update_shop_settings(
-                    UpdateShopSettingsDto(**shop_before.model_dump(include=_SHOP_FIELDS))
+                    UpdateShopSettingsDto(
+                        **shop_before.model_dump(include=_SHOP_FIELDS),
+                        fields_set=SHOP_SETTINGS_FIELDS,
+                    )
                 )
 
 
@@ -465,6 +474,7 @@ async def test_a_provisioned_order_awaiting_its_link_is_not_counted_twice(
                 device_all_reset_cooldown_hours=0,
                 link_reset_enabled=True,
                 link_reset_cooldown_hours=0,
+                fields_set=SHOP_SETTINGS_FIELDS,
             )
         )
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
@@ -484,8 +494,8 @@ async def test_a_provisioned_order_awaiting_its_link_is_not_counted_twice(
         subscription_id = await _seed_subscription(
             subscription_repository, user_id=actor.id, remnawave_user_id=820_000, plan_id=plan.id
         )
-        await idempotency_repository.claim(key, stale_before=datetime_now())
-        await idempotency_repository.link(key, subscription_id)
+        token = await idempotency_repository.claim(key, stale_after=STALE_CLAIM_AFTER)
+        await idempotency_repository.link(key, subscription_id, token)
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=0))
 
     result = await create_checkout_use_case(actor, checkout)

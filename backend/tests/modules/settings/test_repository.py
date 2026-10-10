@@ -12,6 +12,7 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
 )
 from app.modules.settings.repository import SettingsRepository
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 
 
 async def test_get_bot_settings_defaults_to_unconfigured(
@@ -416,6 +417,7 @@ async def test_update_shop_settings_to_unlimited(
             device_all_reset_cooldown_hours=0,
             link_reset_enabled=True,
             link_reset_cooldown_hours=0,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
 
@@ -435,6 +437,7 @@ async def test_update_shop_settings_to_a_specific_cap(
             device_all_reset_cooldown_hours=0,
             link_reset_enabled=True,
             link_reset_cooldown_hours=0,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
 
@@ -457,6 +460,7 @@ async def test_shop_settings_round_trips_reset_cooldowns(
             device_all_reset_cooldown_hours=24,
             link_reset_enabled=True,
             link_reset_cooldown_hours=6,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
 
@@ -464,3 +468,17 @@ async def test_shop_settings_round_trips_reset_cooldowns(
     assert updated.device_single_reset_cooldown_hours == 12
     assert updated.device_all_reset_cooldown_hours == 24
     assert updated.link_reset_cooldown_hours == 6
+
+
+async def test_update_shop_settings_writes_nothing_without_fields_set(
+    settings_repository: SettingsRepository,
+) -> None:
+    before = await settings_repository.get_shop_settings()
+
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(max_active_subscriptions=before.max_active_subscriptions + 5)
+    )
+
+    after = await settings_repository.get_shop_settings()
+    assert after.max_active_subscriptions == before.max_active_subscriptions
+    assert after.device_single_reset_enabled == before.device_single_reset_enabled

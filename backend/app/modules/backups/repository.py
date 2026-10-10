@@ -21,6 +21,8 @@ from app.modules.backups.dto import (
 )
 
 _SINGLETON_ID: Final[int] = 1
+# one key per backup kind, so two worker runs of one kind decide one at a time
+_BACKUP_KIND_LOCK_KEY: Final[int] = 8221942
 
 
 class BackupRepository:
@@ -69,20 +71,33 @@ class BackupRepository:
         await self.session.refresh(row)
         return self._to_run_dto(row)
 
+    async def lock_kind(self, kind: BackupKind) -> None:
+        await self.session.execute(
+            select(func.pg_advisory_xact_lock(_BACKUP_KIND_LOCK_KEY, list(BackupKind).index(kind)))
+        )
+
     async def has_active(
         self,
         kind: BackupKind,
         *,
         started_after: datetime,
         exclude_run_id: Optional[int] = None,
+        pending: bool = True,
     ) -> bool:
-        # PENDING counts too: a new run waits there for the worker, and a
-        # second click meanwhile must not pass. exclude_run_id lets run_backup()
-        # skip its own PENDING row. Older rows were stranded by a killed worker;
-        # updated_at is when a RUNNING row started, not when it was queued.
+        # PENDING counts for a click: a new run waits there for the worker, and a
+        # second click meanwhile must not pass. The worker counts only RUNNING,
+        # under lock_kind(), so queued siblings take turns instead of refusing
+        # each other. exclude_run_id lets run_backup() skip its own row. Older
+        # rows were stranded by a killed worker; updated_at is when a RUNNING
+        # row started, not when it was queued.
+        statuses = (
+            (BackupRunStatus.PENDING, BackupRunStatus.RUNNING)
+            if pending
+            else (BackupRunStatus.RUNNING,)
+        )
         conditions = [
             BackupRun.kind == kind,
-            BackupRun.status.in_((BackupRunStatus.PENDING, BackupRunStatus.RUNNING)),
+            BackupRun.status.in_(statuses),
             BackupRun.updated_at >= started_after,
         ]
         if exclude_run_id is not None:
@@ -108,12 +123,14 @@ class BackupRepository:
         )
         return list(rows)
 
-    async def mark_running(self, run_id: int) -> BackupRunDto:
+    async def mark_running(self, run_id: int) -> bool:
+        # a redelivered message for a finished run must not start it again
         row = await self._get_row(run_id)
+        if row.status is not BackupRunStatus.PENDING:
+            return False
         row.status = BackupRunStatus.RUNNING
         await self.session.flush()
-        await self.session.refresh(row)
-        return self._to_run_dto(row)
+        return True
 
     async def mark_completed(
         self, run_id: int, *, file_path: str, size_bytes: int, checksum_sha256: str

@@ -20,6 +20,7 @@ from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
 from app.modules.transactions.dto import CreateTransactionDto, ReconcilePaidTransactionsDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import (
@@ -239,8 +240,8 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
                 plan_snapshot=make_plan_snapshot(),
             )
         )
-        await idempotency_repository.claim("recon-linked", stale_before=datetime_now())
-        await idempotency_repository.link("recon-linked", subscription.id)
+        token = await idempotency_repository.claim("recon-linked", stale_after=STALE_CLAIM_AFTER)
+        await idempotency_repository.link("recon-linked", subscription.id, token)
 
     dispatch = RecordingDispatch()
 
@@ -304,8 +305,8 @@ async def _create_linked_paid_order(
             )
         )
         idempotency = PurchaseIdempotencyRepository(subscription_repository.session)
-        await idempotency.claim(idempotency_key, stale_before=datetime_now())
-        await idempotency.link(idempotency_key, subscription.id)
+        token = await idempotency.claim(idempotency_key, stale_after=STALE_CLAIM_AFTER)
+        await idempotency.link(idempotency_key, subscription.id, token)
     return order
 
 

@@ -16,7 +16,8 @@ from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
 from app.modules.referrals.dispatch import BonusRenewalDispatch
 from app.modules.referrals.dto import BonusDaysRedemptionDto, RedeemBonusDaysDto
-from app.modules.referrals.events import BonusDaysRedeemedEvent
+from app.modules.referrals.events import BonusDaysRedeemedEvent, BonusDaysRenewalStuckEvent
+from app.modules.referrals.usecases.resume_bonus_renewal import is_infrastructure_error
 from app.modules.subscriptions import (
     PurchaseIdempotencyRepository,
     PurchaseSubscriptionDto,
@@ -101,7 +102,20 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
                 subscription = await self._purchase_subscription_use_case(
                     actor, replace(renewal, refuse_disabled_target=False)
                 )
-            except Exception:
+            except Exception as error:
+                if not is_infrastructure_error(error):
+                    # retrying won't help, and the date may be on the panel, so no refund either
+                    async with self._uow:
+                        await self._event_publisher.publish(
+                            BonusDaysRenewalStuckEvent(
+                                user_id=actor.id,
+                                subscription_id=target.id,
+                                days=data.days,
+                                idempotency_key=key,
+                                error=str(error)[:255],
+                            )
+                        )
+                    raise
                 logger.exception(
                     f"{actor.log} Bonus days renewal '{key}' failed again, handing it to the worker"
                 )

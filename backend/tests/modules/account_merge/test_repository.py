@@ -326,3 +326,24 @@ async def test_reassign_breaks_a_referral_cycle_through_the_target(
         seen.add(current)
         current = parents[current]
     assert parents == {middle.id: target.id}
+
+
+async def test_reassign_keeps_a_real_referrer_over_a_deleted_one(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source, target, referrer = [
+        await user_repository.create(CreateUserDto(name=n)) for n in ("s", "t", "r")
+    ]
+    # target's inviter was deleted: its row stays with referrer_id NULL
+    session.add_all(
+        [
+            Referral(referrer_id=None, referred_id=target.id, level=1),
+            Referral(referrer_id=referrer.id, referred_id=source.id, level=1),
+        ]
+    )
+    await session.flush()
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    [referral] = (await session.scalars(select(Referral))).all()
+    assert (referral.referrer_id, referral.referred_id) == (referrer.id, target.id)

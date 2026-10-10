@@ -8,6 +8,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BroadcastRecipientStatus
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dispatch import RecallBroadcastDispatch
 from app.modules.broadcasts.dto import SentRecipientDto
 from app.modules.broadcasts.repository import BroadcastRepository
@@ -106,6 +107,10 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
                 await self._broadcast_repository.update_fields(data, channel_message_id=None)
             await self._broadcast_repository.refresh_counts(data)
             if not last_page and authorized:
+                # the repeat window counts from the chain's last batch, not from the click
+                await self._broadcast_repository.update_fields(
+                    data, recall_requested_at=datetime_now()
+                )
                 await self._uow.after_commit(lambda: self._recall_dispatch.kiq(broadcast_id=data))
         if not authorized:
             logger.warning(f"Broadcast '{data}' recall stopped: the bot token was rejected")

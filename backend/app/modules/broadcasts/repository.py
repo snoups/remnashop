@@ -316,6 +316,21 @@ class BroadcastRepository:
             .values(error=f"{RECALL_FAILED_ERROR}: {error}"[:255])
         )
 
+    async def count_recallable(self, broadcast_id: int) -> int:
+        # recall failures count too: a repeat clears them first
+        count = await self.session.scalar(
+            select(func.count())
+            .select_from(BroadcastRecipient)
+            .join(User, User.id == BroadcastRecipient.user_id)
+            .where(
+                BroadcastRecipient.broadcast_id == broadcast_id,
+                BroadcastRecipient.status == BroadcastRecipientStatus.SENT,
+                BroadcastRecipient.telegram_message_id.is_not(None),
+                User.telegram_id.is_not(None),
+            )
+        )
+        return count or 0
+
     async def clear_recall_failures(self, broadcast_id: int) -> None:
         await self.session.execute(
             update(BroadcastRecipient)

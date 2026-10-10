@@ -6,12 +6,19 @@ from taskiq import TaskiqEvents, TaskiqScheduler, TaskiqState
 from taskiq.schedule_sources import LabelScheduleSource
 
 from app.core.config import AppConfig
+from app.core.logger import setup_logger
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.worker.broker import broker, retry_schedule_source
 
 scheduler = TaskiqScheduler(
     broker=broker, sources=[LabelScheduleSource(broker), retry_schedule_source]
 )
+
+
+@broker.on_event(TaskiqEvents.CLIENT_STARTUP)
+async def _setup_logging(state: TaskiqState) -> None:
+    # its own file: two processes rotating one file clobber each other
+    setup_logger(AppConfig.get(), "scheduler")
 
 
 # `taskiq scheduler` never imports app.worker.lifespan, and its broker.startup()

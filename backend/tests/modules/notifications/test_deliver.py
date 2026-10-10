@@ -15,6 +15,7 @@ from app.modules.users.repository import UserRepository
 FTL = (
     "ntf-login-failed = Wrong password for { $login }\n    .title = Login failed\n"
     "ntf-suppressed = { $count } more not sent.\n"
+    "ntf-sources-merged = Sources merged.\n"
 )
 BLOCKED_CHAT: int = 403
 BROKEN_CHAT: int = 500
@@ -233,3 +234,22 @@ async def test_suppressed_count_is_appended_to_the_body(
 
     message = next(m for user_id, m in push.sent if user_id == owner.id)
     assert message.body == "Wrong password for x\n3 more not sent."
+
+
+async def test_a_merged_window_says_so_in_the_body(
+    user_repository: UserRepository, uow: UnitOfWork, telegram_calls: list[tuple[int, str]]
+) -> None:
+    owner = await _user(user_repository, uow, "owner", Role.OWNER)
+    push = FakePush()
+    data = DeliverNotificationDto(
+        event_type="LoginFailedEvent",
+        payload={"login": "x"},
+        actor_id=None,
+        ip_address=None,
+        sources_merged=True,
+    )
+
+    await _use_case(user_repository, uow, push, None).system(data)
+
+    message = next(m for user_id, m in push.sent if user_id == owner.id)
+    assert message.body == "Wrong password for x\nSources merged."

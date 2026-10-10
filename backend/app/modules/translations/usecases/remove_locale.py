@@ -28,6 +28,7 @@ class RemoveLocaleUseCase(UseCase[Locale, ActiveLocalesDto]):
 
     async def _execute(self, actor: Actor, data: Locale) -> ActiveLocalesDto:
         async with self._uow:
+            await self._translation_repository.lock_active_locales()
             # the default locale is the TranslatorHub's root_locale; without it
             # read_translator_hub() fails and the telegram process crashes on start
             if data == await self._translation_repository.get_default_locale():

@@ -35,6 +35,11 @@ class TranslationRepository:
         result = await self.session.execute(select(ActiveLocale.locale))
         return list(result.scalars())
 
+    async def lock_active_locales(self) -> None:
+        # set-default and remove both read then write this set; without the lock they
+        # can interleave and leave no row flagged as the default
+        await self.session.execute(select(ActiveLocale.id).with_for_update())
+
     async def add_active_locale(self, locale: Locale) -> None:
         self.session.add(ActiveLocale(locale=locale))
         try:
@@ -54,12 +59,15 @@ class TranslationRepository:
             active=await self.list_active_locales(), default=await self.get_default_locale()
         )
 
-    async def get_default_locale(self) -> Locale:
+    async def find_default_locale(self) -> Optional[Locale]:
         result = await self.session.execute(
             select(ActiveLocale.locale).where(ActiveLocale.is_default)
         )
+        return result.scalar_one_or_none()
+
+    async def get_default_locale(self) -> Locale:
         # nothing flagged until ensure_translations_seeded() has run
-        return result.scalar_one_or_none() or Locale.EN
+        return await self.find_default_locale() or Locale.EN
 
     async def set_default_locale(self, locale: Locale) -> None:
         # cleared first: the partial unique index allows one flagged row per statement

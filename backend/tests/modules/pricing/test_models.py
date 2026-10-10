@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import CurrencyRate, PricingSettings
@@ -25,6 +25,8 @@ async def test_currency_rate_roundtrip(session: AsyncSession) -> None:
 
 
 async def test_pricing_settings_singleton(session: AsyncSession) -> None:
+    # a row committed by an earlier session would collide on id 1
+    await session.execute(delete(PricingSettings))
     session.add(PricingSettings(id=1, anchor_currency=Currency.USD))
     await session.flush()
     row = await session.get(PricingSettings, 1)

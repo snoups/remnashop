@@ -46,6 +46,22 @@ def _staff_side(source: UserDto, target: UserDto) -> Optional[MergeSide]:
     return None
 
 
+def referrer_candidates(
+    source: UserDto, target: UserDto, links: MergeLinksDto
+) -> dict[MergeSide, int]:
+    # a link to the other side is deleted, not chosen; a shared referrer counts once
+    candidates: dict[MergeSide, int] = {}
+    if links.target_referrer_id is not None and links.target_referrer_id != source.id:
+        candidates["target"] = links.target_referrer_id
+    if (
+        links.source_referrer_id is not None
+        and links.source_referrer_id != target.id
+        and links.source_referrer_id != candidates.get("target")
+    ):
+        candidates["source"] = links.source_referrer_id
+    return candidates
+
+
 def compute_conflicts(
     source: UserDto, target: UserDto, links: MergeLinksDto
 ) -> list[MergeConflictDto]:
@@ -63,19 +79,13 @@ def compute_conflicts(
                 )
             )
 
-    # a link to the other side is deleted, not chosen
-    source_referrer = None if links.source_referrer_id == target.id else links.source_referrer_id
-    target_referrer = None if links.target_referrer_id == source.id else links.target_referrer_id
-    if (
-        source_referrer is not None
-        and target_referrer is not None
-        and source_referrer != target_referrer
-    ):
+    referrers = referrer_candidates(source, target, links)
+    if len(referrers) == 2:
         conflicts.append(
             MergeConflictDto(
                 key=REFERRED_BY,
-                source_value=_label(source_referrer),
-                target_value=_label(target_referrer),
+                source_value=_label(referrers["source"]),
+                target_value=_label(referrers["target"]),
             )
         )
 

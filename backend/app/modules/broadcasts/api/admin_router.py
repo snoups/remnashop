@@ -8,8 +8,11 @@ from fastapi import APIRouter, Body, Depends, Query, Request, status
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.constants import BROADCAST_MEDIA_MAX_BYTES
 from app.core.enums import BroadcastRecipientStatus, BroadcastStatus
+from app.core.exceptions import PermissionDeniedError
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.modules.broadcasts.api.schemas import (
     AudiencePreviewResponse,
     BroadcastListResponse,
@@ -32,6 +35,7 @@ from app.modules.broadcasts.dto import (
     SetBroadcastMediaDto,
     UpdateBroadcastDto,
 )
+from app.modules.broadcasts.storage import upload_path
 from app.modules.broadcasts.usecases import (
     CancelBroadcastUseCase,
     CreateBroadcastUseCase,
@@ -49,6 +53,7 @@ from app.modules.broadcasts.usecases import (
     SetBroadcastMediaUseCase,
     UpdateBroadcastUseCase,
 )
+from app.modules.broadcasts.usecases.set_broadcast_media import MEDIA_CONTENT_TYPES
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/broadcasts", tags=["broadcasts"])
@@ -217,27 +222,47 @@ async def delete_broadcast(
     "/{broadcast_id:int}/media",
     response_model=BroadcastResponse,
     responses=error_responses(404, 409, 422),
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                content_type: {"schema": {"type": "string", "format": "binary"}}
+                for content_type in MEDIA_CONTENT_TYPES
+            },
+        }
+    },
 )
 @inject
 async def upload_broadcast_media(
     broadcast_id: int,
     request: Request,
     use_case: FromDishka[SetBroadcastMediaUseCase],
+    config: FromDishka[AppConfig],
     actor: Actor = Depends(require_admin),
 ) -> BroadcastResponse:
-    # raw body, no File()/Form(): FastAPI would parse a form before require_admin runs
-    data = bytearray()
-    async for chunk in request.stream():
-        data += chunk
-        if len(data) > BROADCAST_MEDIA_MAX_BYTES:
-            break  # one byte over is enough for the usecase to reject it
-    content_type = request.headers.get("content-type", "").split(";")[0].strip()
-    result = await use_case(
-        actor,
-        SetBroadcastMediaDto(
-            broadcast_id=broadcast_id, content_type=content_type, data=bytes(data)
-        ),
-    )
+    # raw body, no File()/Form(): FastAPI would parse a form before require_admin runs;
+    # the permission is checked before the body too, so a refused caller uploads nothing
+    if not PermissionPolicy.has_permission(actor, Permission.BROADCASTS_MEDIA_SET):
+        raise PermissionDeniedError
+    source = upload_path(config.media_dir)
+    source.parent.mkdir(parents=True, exist_ok=True)
+    size = 0
+    try:
+        with source.open("wb") as file:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > BROADCAST_MEDIA_MAX_BYTES:
+                    break  # one byte over is enough for the usecase to reject it
+                file.write(chunk)
+        content_type = request.headers.get("content-type", "").split(";")[0].strip()
+        result = await use_case(
+            actor,
+            SetBroadcastMediaDto(
+                broadcast_id=broadcast_id, content_type=content_type, source=source, size=size
+            ),
+        )
+    finally:
+        source.unlink(missing_ok=True)  # already moved on success
     return BroadcastResponse.model_validate(result, from_attributes=True)
 
 

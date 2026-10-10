@@ -87,3 +87,10 @@ async def test_fetch_source_reads_a_file_with_a_byte_order_mark(monkeypatch) -> 
     monkeypatch.setattr(fetch, "_download", _download)
     parsed = await fetch.fetch_source("https://feed.example/list.txt")
     assert parsed.telegram_ids == [123, 456]
+
+
+def test_parse_source_text_strips_quotes_from_csv_fields() -> None:
+    parsed = parse_source_text('"123","spam"\n\'456\';x\n"a@b.co"\n')
+
+    assert parsed.telegram_ids == [123, 456]
+    assert parsed.emails == ["a@b.co"]

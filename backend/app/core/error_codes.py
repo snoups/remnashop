@@ -50,6 +50,7 @@ class ErrorCode(UpperStrEnum):
     BROADCAST_TEST_NO_TELEGRAM = auto()
     BROADCAST_TEST_FAILED = auto()
     BROADCAST_RECALL_EXPIRED = auto()
+    BROADCAST_RECALL_IN_PROGRESS = auto()
     BROADCAST_TITLE_TOO_LONG = auto()
     BANNER_NAME_INVALID = auto()
     BANNER_NOT_FOUND = auto()

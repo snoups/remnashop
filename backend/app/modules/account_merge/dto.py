@@ -34,10 +34,18 @@ class MergeLinksDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class MergeReferrerCycleDto:
+    # keeping this side's referrer would loop through the merged pair, so the merge drops it
+    side: MergeSide
+    referrer_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class MergePreviewDto:
     source: UserDto
     target: UserDto
     conflicts: list[MergeConflictDto]
+    referrer_cycles: list[MergeReferrerCycleDto]
     source_counts: MergeCountsDto
     fingerprint: str
 

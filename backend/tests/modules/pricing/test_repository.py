@@ -99,3 +99,32 @@ async def test_get_rate_table_survives_concurrent_seeding(engine: AsyncEngine) -
             await cleanup.execute(delete(CurrencyRate))
             await cleanup.execute(delete(PricingSettings))
             await cleanup.commit()
+
+
+async def test_update_rate_takes_the_settings_lock_first(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = PricingRepository(session)
+    await repo.get_rate_table()
+    calls: list[str] = []
+    real_lock = repo.lock_settings
+
+    async def _recording_lock() -> None:
+        calls.append("lock")
+        await real_lock()
+
+    monkeypatch.setattr(repo, "lock_settings", _recording_lock)
+    table = await repo.get_rate_table()
+    other = next(c for c in table.rows if c is not table.anchor)
+
+    await repo.update_rate(
+        UpdateCurrencyRateDto(
+            currency=other,
+            rate=Decimal("2"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("1"),
+        )
+    )
+
+    assert calls == ["lock"]

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -191,16 +193,47 @@ async def test_remove_locale_publishes_locale_deactivated_event(
     assert row.payload["locale"] == Locale.RU
 
 
+class _RecordingSignals:
+    def __init__(self) -> None:
+        self.restarts = 0
+
+    async def restart(self) -> None:
+        self.restarts += 1
+
+    async def dialogs_changed(self) -> None: ...
+
+    async def translation_changed(
+        self, locale: Locale, message_id: str, attribute_id: str, value: str
+    ) -> None: ...
+
+
+class _RecordingBanner:
+    def __init__(self) -> None:
+        self.seeded: list[Locale] = []
+
+    async def ensure(self, locale: Locale) -> None:
+        self.seeded.append(locale)
+
+
 def _locale_use_cases(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    signals: Optional[_RecordingSignals] = None,
+    banner: Optional[_RecordingBanner] = None,
 ) -> tuple[AddLocaleUseCase, RemoveLocaleUseCase, SetDefaultLocaleUseCase]:
     bot_commands = make_bot_commands_sync(translation_repository.session, uow)
     return (
         AddLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
         RemoveLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
-        SetDefaultLocaleUseCase(translation_repository, uow, event_publisher, bot_commands),
+        SetDefaultLocaleUseCase(
+            translation_repository,
+            uow,
+            event_publisher,
+            bot_commands,
+            signals or _RecordingSignals(),
+            banner or _RecordingBanner(),
+        ),
     )
 
 
@@ -282,3 +315,61 @@ async def test_regular_user_cannot_add_locale(
 
     with pytest.raises(PermissionDeniedError):
         await add_use_case(REGULAR_USER, Locale.RU)
+
+
+async def test_default_locale_changes_lock_the_active_locales_first(
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    add, remove, set_default = _locale_use_cases(translation_repository, uow, event_publisher)
+    await add(OWNER, Locale.EN)
+    await add(OWNER, Locale.RU)
+    await translation_repository.set_default_locale(Locale.EN)
+    calls: list[str] = []
+
+    def record(name: str, label: str) -> None:
+        real = getattr(translation_repository, name)
+
+        async def wrapper(*args: object) -> object:
+            calls.append(label)
+            return await real(*args)
+
+        monkeypatch.setattr(translation_repository, name, wrapper)
+
+    record("lock_active_locales", "lock")
+    record("get_locales", "read")
+    record("get_default_locale", "read")
+
+    await set_default(OWNER, Locale.RU)
+    assert calls[0] == "lock"
+
+    calls.clear()
+    await set_default(OWNER, Locale.EN)
+    calls.clear()
+    await remove(OWNER, Locale.RU)
+    assert calls[0] == "lock"
+
+
+async def test_changing_the_default_locale_restarts_the_bot_and_seeds_its_banner(
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    signals, banner = _RecordingSignals(), _RecordingBanner()
+    add, _, set_default = _locale_use_cases(
+        translation_repository, uow, event_publisher, signals, banner
+    )
+    await add(OWNER, Locale.EN)
+    await add(OWNER, Locale.RU)
+    await translation_repository.set_default_locale(Locale.EN)
+
+    await set_default(OWNER, Locale.RU)
+    assert signals.restarts == 1
+    assert banner.seeded == [Locale.RU]
+
+    # already the default: nothing to tell the bot
+    await set_default(OWNER, Locale.RU)
+    assert signals.restarts == 1
+    assert banner.seeded == [Locale.RU]

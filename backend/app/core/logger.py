@@ -19,6 +19,9 @@ LOG_ENCODING: Final[str] = "utf-8"
 # Bot API calls carry the token in the URL path, and httpx logs every request URL at INFO
 _BOT_TOKEN_IN_URL: Final[re.Pattern[str]] = re.compile(r"/bot\d+:[\w-]+")
 _BOT_TOKEN_MASK: Final[str] = "/bot<redacted>"
+# payment status checks sign their query; the hash lets a weak password be guessed offline
+_SIGNATURE_IN_QUERY: Final[re.Pattern[str]] = re.compile(r"(?i)([?&]signature=)[^&\s]+")
+_SIGNATURE_MASK: Final[str] = r"\1<redacted>"
 LOG_FORMAT: Final[str] = (
     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
     "<level>{level: <8}</level> | "
@@ -59,6 +62,7 @@ class InterceptHandler(logging.Handler):
             depth += 1
 
         message = _BOT_TOKEN_IN_URL.sub(_BOT_TOKEN_MASK, record.getMessage())
+        message = _SIGNATURE_IN_QUERY.sub(_SIGNATURE_MASK, message)
         logger.opt(depth=depth, exception=record.exc_info).log(level, message)
 
 

@@ -88,7 +88,13 @@ class SettingsRepository:
         return self._to_shop_dto(row)
 
     async def update_shop_settings(self, data: UpdateShopSettingsDto) -> ShopSettingsDto:
-        row = await self._get_or_create_singleton(ShopSettings)
+        # a fresh row starts at the cap a missing row reads as, not NULL (unlimited)
+        row = await get_or_create_singleton(
+            self.session,
+            ShopSettings,
+            _SINGLETON_ID,
+            max_active_subscriptions=ShopSettingsDto().max_active_subscriptions,
+        )
         for name in data.fields_set:
             setattr(row, name, getattr(data, name))
 
@@ -138,6 +144,19 @@ class SettingsRepository:
 
     async def get_oauth_settings(self) -> OAuthSettingsDto:
         row = await self.session.get(OAuthSettings, _SINGLETON_ID)
+        return self._to_oauth_dto(row)
+
+    async def lock_oauth_settings(self, *, exclusive: bool) -> OAuthSettingsDto:
+        # the issuer is read and acted on under one lock: a save and a callback can't interleave
+        await self._get_or_create_singleton(OAuthSettings)
+        stmt = (
+            select(OAuthSettings)
+            .where(OAuthSettings.id == _SINGLETON_ID)
+            .execution_options(populate_existing=True)
+        )
+        row = await self.session.scalar(
+            stmt.with_for_update() if exclusive else stmt.with_for_update(read=True)
+        )
         return self._to_oauth_dto(row)
 
     async def update_oauth_settings(self, data: UpdateOAuthSettingsDto) -> OAuthSettingsDto:

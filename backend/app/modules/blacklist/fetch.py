@@ -24,8 +24,8 @@ def parse_source_text(text: str) -> ParsedSourceList:
         token = line.split("#", 1)[0].strip()
         if not token:
             continue
-        # first CSV/`;` field: "123,spam,2024-01-01" is id 123 plus metadata
-        token = _FIELD_SEPARATOR_RE.split(token.split()[0], maxsplit=1)[0]
+        # first CSV/`;` field, quotes stripped: "123","spam" is id 123 plus metadata
+        token = _FIELD_SEPARATOR_RE.split(token.split()[0], maxsplit=1)[0].strip("\"'")
         if "@" in token:
             email = normalize_identity(BlacklistKind.EMAIL, token)
             if email is not None:

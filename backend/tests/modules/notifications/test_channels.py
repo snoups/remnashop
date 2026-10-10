@@ -51,7 +51,7 @@ def test_stored_matrix_overrides_defaults_and_drops_unknown_channels(owner: User
 def test_bell_event_types_follow_the_bell_column(owner: UserDto) -> None:
     matrix = {group: [] for group in NOTIFICATION_GROUPS} | {"failures": ["bell"]}
     user = owner.model_copy(update={"notification_channels": matrix})
-    assert bell_event_types(user) == {"BackupFailedEvent"}
+    assert bell_event_types(user) == {"BackupFailedEvent", "BonusDaysRenewalStuckEvent"}
 
 
 def test_group_of_maps_event_types() -> None:

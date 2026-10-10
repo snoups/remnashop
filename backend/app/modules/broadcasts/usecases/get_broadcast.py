@@ -15,4 +15,6 @@ class GetBroadcastUseCase(UseCase[int, BroadcastDto]):
 
     async def _execute(self, actor: Actor, data: int) -> BroadcastDto:
         async with self._uow:
-            return await self._broadcast_repository.get_or_raise(data)
+            broadcast = await self._broadcast_repository.get_or_raise(data)
+            left = await self._broadcast_repository.count_recallable(data)
+        return broadcast.model_copy(update={"recallable_count": left})

@@ -14,6 +14,12 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.subscriptions.dto import PlanSnapshot
 
+
+class SupersededError(ValidationError):
+    """A concurrent purchase committed first and now owns the panel identity
+    this one reconfigured; reverting it would overwrite the winner's config."""
+
+
 # a subscription that still holds a panel identity and counts as owned
 OWNED_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
     SubscriptionStatus.ACTIVE,
@@ -123,15 +129,16 @@ class SubscriptionState:
         assert_transition(self.status, target)
         return replace(self, status=target, expire_at=new_expire_at)
 
-    def add_renewal_credit(self, paid: Decimal, days: int) -> SubscriptionState:
+    def add_renewal_credit(
+        self, paid: Decimal, days: int, *, restart: bool = False
+    ) -> SubscriptionState:
         snap = self.plan_snapshot
+        # a lapsed term's money was used up; the new term starts its own credit
+        base_paid = Decimal(0) if restart else snap.effective_credit_paid
+        base_days = 0 if restart else snap.effective_credit_days
         return replace(
             self,
-            plan_snapshot=replace(
-                snap,
-                credit_paid=snap.effective_credit_paid + paid,
-                credit_days=snap.effective_credit_days + days,
-            ),
+            plan_snapshot=replace(snap, credit_paid=base_paid + paid, credit_days=base_days + days),
         )
 
     def mark_deleted(self) -> SubscriptionState:

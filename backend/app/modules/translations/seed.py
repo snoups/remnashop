@@ -96,5 +96,9 @@ async def ensure_translations_seeded(
         translation_repository, active_locales - shipped_locales, en_entries
     )
 
-    if first_boot:
-        await translation_repository.set_default_locale(Locale.EN)
+    # also a database that predates the flag, or whose flagged row was lost
+    if await translation_repository.find_default_locale() is None:
+        active = await translation_repository.list_active_locales()
+        if active:
+            fallback = Locale.EN if Locale.EN in active else min(active, key=lambda x: x.value)
+            await translation_repository.set_default_locale(fallback)

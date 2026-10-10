@@ -46,6 +46,9 @@ export interface Broadcast {
   post_to_channel: boolean;
   has_channel_post: boolean;
   recall_requested: boolean;
+  recall_requested_at: string | null;
+  // only on single-broadcast reads
+  recallable_count?: number | null;
   media_type: BroadcastMediaType | null;
   media_size_bytes: number | null;
   scheduled_at: string | null;
@@ -118,6 +121,8 @@ export const DEFAULT_PAGE_SIZE = 50;
 
 // Telegram deletes bot messages only within 48 hours
 export const RECALL_WINDOW_MS = 48 * 3600 * 1000;
+// matches RECALL_REPEAT_AFTER on the backend
+export const RECALL_REPEAT_AFTER_MS = 5 * 60 * 1000;
 
 export const BROADCAST_VARIABLES: VariableOption[] = [
   { name: "name", category: "user" },

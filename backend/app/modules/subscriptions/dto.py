@@ -204,6 +204,8 @@ class PurchaseSubscriptionDto:
     purchase_type: PurchaseType
     target_subscription_id: Optional[int] = None
     idempotency_key: Optional[str] = None
+    # set by PurchaseSubscriptionUseCase from its own claim of idempotency_key
+    claim_token: Optional[datetime] = None
     # False for a paid checkout order: the cap was enforced at checkout, and
     # refusing after the charge leaves the customer paid with nothing. A free
     # order keeps it.

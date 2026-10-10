@@ -78,7 +78,7 @@ async def test_sends_rendered_text_and_reports_finished_ids(
         )
     )
 
-    assert sent == [(7001, "Back!"), (7003, "Back!"), (7005, "Back!")]
+    assert sorted(sent) == [(7001, "Back!"), (7003, "Back!"), (7005, "Back!")]
     # blocking the bot is permanent: no point keeping them for the next broadcast
     assert done == {ok.id, no_tg.id, blocked.id, bot_blocked.id, 999_999}
 

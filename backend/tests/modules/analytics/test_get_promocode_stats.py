@@ -146,9 +146,13 @@ async def test_promocode_stats_discount_and_free_reward_conversion(
     await promocode_repository.create(
         CreatePromocodeDto(code="UNUSED", reward_type=PromocodeRewardType.TRAFFIC, reward=5)
     )
-    await _activate(promocode_repository, session, free.id, converts.id, now - timedelta(hours=3))
-    await _activate(promocode_repository, session, free.id, idle.id, now - timedelta(hours=3))
-    await _activate(promocode_repository, session, discount.id, payer.id, now - timedelta(hours=3))
+    await _activate(
+        promocode_repository, session, free.id, converts.id, now - timedelta(seconds=30)
+    )
+    await _activate(promocode_repository, session, free.id, idle.id, now - timedelta(seconds=30))
+    await _activate(
+        promocode_repository, session, discount.id, payer.id, now - timedelta(seconds=30)
+    )
     await _pay(
         transaction_repository,
         session,
@@ -159,7 +163,7 @@ async def test_promocode_stats_discount_and_free_reward_conversion(
         final="750",
         discount_percent=25,
         key="pc-1",
-        at=now - timedelta(hours=2),
+        at=now - timedelta(seconds=20),
     )
     await _pay(
         transaction_repository,
@@ -171,7 +175,7 @@ async def test_promocode_stats_discount_and_free_reward_conversion(
         final="400",
         discount_percent=0,
         key="pc-2",
-        at=now - timedelta(hours=1),
+        at=now - timedelta(seconds=10),
     )
 
     stats = await _use_case(session, promocode_repository, pricing_repository, uow)(

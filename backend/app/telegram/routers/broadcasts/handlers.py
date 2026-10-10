@@ -84,7 +84,7 @@ async def _open_promocode(
     return True
 
 
-@router.message(CommandStart(deep_link=True, magic=F.args.regexp(rf"^{START_PREFIX}\d+$")))
+@router.message(CommandStart(deep_link=True, magic=F.args.regexp(rf"^{START_PREFIX}[0-9]+$")))
 async def on_start_broadcast(
     message: Message,
     dialog_manager: DialogManager,

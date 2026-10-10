@@ -19,6 +19,8 @@ from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.usecases.cancel_broadcast import cancel_sending
 
 RECALL_WINDOW: Final[timedelta] = timedelta(hours=48)
+# since the chain's last batch: a repeat while it works would delete the same rows twice
+RECALL_REPEAT_AFTER: Final[timedelta] = timedelta(minutes=5)
 _RECALLABLE: Final[frozenset[BroadcastStatus]] = frozenset(
     {BroadcastStatus.SENDING, BroadcastStatus.COMPLETED, BroadcastStatus.CANCELED}
 )
@@ -43,17 +45,24 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
         now = datetime_now()
         async with self._uow:
             broadcast = await self._broadcast_repository.lock_for_update(data)
-            nothing_left = broadcast.sent_count == 0 and broadcast.channel_message_id is None
-            if (
-                broadcast.status not in _RECALLABLE
-                or broadcast.started_at is None
-                # a repeat picks up deletes Telegram didn't confirm the first time
-                or (broadcast.recall_requested_at is not None and nothing_left)
-            ):
+            if broadcast.status not in _RECALLABLE or broadcast.started_at is None:
                 raise ConflictError(
                     f"Broadcast '{data}' is {broadcast.status}",
                     code=ErrorCode.BROADCAST_INVALID_STATUS,
                 )
+            # a repeat picks up deletes Telegram didn't confirm the first time
+            if broadcast.recall_requested_at is not None:
+                if now - broadcast.recall_requested_at < RECALL_REPEAT_AFTER:
+                    raise ConflictError(
+                        f"Broadcast '{data}' recall is still running",
+                        code=ErrorCode.BROADCAST_RECALL_IN_PROGRESS,
+                    )
+                left = await self._broadcast_repository.count_recallable(data)
+                if left == 0 and broadcast.channel_message_id is None:
+                    raise ConflictError(
+                        f"Broadcast '{data}' has nothing left to recall",
+                        code=ErrorCode.BROADCAST_INVALID_STATUS,
+                    )
             if now - broadcast.started_at > RECALL_WINDOW:
                 raise ValidationError(
                     "Recall window has passed", code=ErrorCode.BROADCAST_RECALL_EXPIRED
@@ -67,5 +76,8 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
             )
             await self._uow.after_commit(lambda: self._recall_dispatch.kiq(broadcast_id=data))
             result = await self._broadcast_repository.get_or_raise(data)
+            result = result.model_copy(
+                update={"recallable_count": await self._broadcast_repository.count_recallable(data)}
+            )
         logger.info(f"{actor.log} Recalling broadcast '{data}'")
         return result

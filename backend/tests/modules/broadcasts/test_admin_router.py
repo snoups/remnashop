@@ -318,3 +318,60 @@ async def test_list_accepts_repeated_status_and_search(
     assert response.json()["items"][0]["created_by_name"] == "bcowner"
     none = await client.get("/api/v1/broadcasts?status=FAILED", headers=admin_headers)
     assert none.json()["total"] == 0
+
+
+async def test_media_upload_without_the_permission_reads_no_body(
+    config: AppConfig,
+    test_container: AsyncContainer,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="bcnomedia",
+                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
+                name="bcnomedia",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_revokes=["BROADCASTS_MEDIA_SET"],
+            )
+        )
+        await uow.commit()
+    token = await _issue_token(admin.id, session_repository, config)
+    app = get_app(config)
+    setup_dishka(test_container, app)
+    pulled: list[int] = []
+
+    async def counting(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        async def counted_receive():  # type: ignore[no-untyped-def]
+            message = await receive()
+            if message["type"] == "http.request":
+                pulled.append(len(message.get("body", b"")))
+            return message
+
+        await app(scope, counted_receive, send)
+
+    transport = httpx.ASGITransport(app=counting)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.put(
+            "/api/v1/broadcasts/1/media",
+            content=b"\x00" * (12 * 1024 * 1024),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "video/mp4"},
+        )
+    assert response.status_code == 403
+    assert pulled == []
+
+
+async def test_rejected_media_upload_leaves_no_temp_file(
+    client: httpx.AsyncClient, admin_headers: dict[str, str], config: AppConfig
+) -> None:
+    created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
+    response = await client.put(
+        f"/api/v1/broadcasts/{created.json()['id']}/media",
+        content=b"\x00" * (12 * 1024 * 1024),
+        headers={**admin_headers, "Content-Type": "image/png"},
+    )
+    assert response.status_code == 400
+    assert list((config.media_dir / "broadcasts").glob("*.part")) == []

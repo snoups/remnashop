@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 from datetime import timedelta
 from pathlib import Path
 
@@ -130,12 +132,25 @@ async def _make(
     return await repository.get_or_raise(created.id)
 
 
-def _photo(broadcast_id: int, size: int = 100) -> SetBroadcastMediaDto:
+def _upload(data: bytes) -> Path:
+    # what the router leaves for the usecase: the streamed body in a temp file
+    fd, name = tempfile.mkstemp(suffix=".part")
+    os.write(fd, data)
+    os.close(fd)
+    return Path(name)
+
+
+def _media(broadcast_id: int, content_type: str, data: bytes) -> SetBroadcastMediaDto:
     return SetBroadcastMediaDto(
         broadcast_id=broadcast_id,
-        content_type="image/jpeg",
-        data=b"\xff" * size,
+        content_type=content_type,
+        source=_upload(data),
+        size=len(data),
     )
+
+
+def _photo(broadcast_id: int, size: int = 100) -> SetBroadcastMediaDto:
+    return _media(broadcast_id, "image/jpeg", b"\xff" * size)
 
 
 async def test_create_stores_draft_with_creator(
@@ -253,11 +268,7 @@ async def test_media_rejects_unknown_content_type(
     with pytest.raises(ValidationError) as error:
         await media_use_case(
             admin,
-            SetBroadcastMediaDto(
-                broadcast_id=broadcast.id,
-                content_type="application/x-msdownload",
-                data=b"x",
-            ),
+            _media(broadcast.id, "application/x-msdownload", b"x"),
         )
     assert error.value.code is ErrorCode.BROADCAST_MEDIA_INVALID
 
@@ -283,7 +294,7 @@ async def test_replacing_media_with_other_type_removes_old_file(
     await media_use_case(admin, _photo(broadcast.id))
     updated = await media_use_case(
         admin,
-        SetBroadcastMediaDto(broadcast_id=broadcast.id, content_type="video/mp4", data=b"v"),
+        _media(broadcast.id, "video/mp4", b"v"),
     )
     assert updated.media_type is BroadcastMediaType.VIDEO
     assert not media_path(media_config.media_dir, broadcast.id, 1, "jpg").exists()
@@ -1109,7 +1120,7 @@ async def test_second_recall_refused(
     await recall_use_case(admin, done.id)
     with pytest.raises(ConflictError) as caught:
         await recall_use_case(admin, done.id)
-    assert caught.value.code == ErrorCode.BROADCAST_INVALID_STATUS
+    assert caught.value.code == ErrorCode.BROADCAST_RECALL_IN_PROGRESS
     assert len(recall_dispatch.messages) == 1
 
 
@@ -1132,3 +1143,33 @@ async def test_create_rejects_too_long_title(
     with pytest.raises(ValidationError) as caught:
         await create_use_case(admin, save_dto(title="x" * 121))
     assert caught.value.code == ErrorCode.BROADCAST_TITLE_TOO_LONG
+
+
+async def test_media_moves_the_uploaded_file_into_place(
+    media_use_case: SetBroadcastMediaUseCase,
+    broadcast_repository: BroadcastRepository,
+    media_config: AppConfig,
+    admin: UserDto,
+) -> None:
+    broadcast = await _make(broadcast_repository)
+    data = _photo(broadcast.id)
+
+    await media_use_case(admin, data)
+
+    assert not data.source.exists()
+    assert media_path(media_config.media_dir, broadcast.id, 1, "jpg").read_bytes() == b"\xff" * 100
+
+
+async def test_rejected_media_leaves_the_upload_for_the_caller_to_remove(
+    media_use_case: SetBroadcastMediaUseCase,
+    broadcast_repository: BroadcastRepository,
+    admin: UserDto,
+) -> None:
+    broadcast = await _make(broadcast_repository)
+    data = _media(broadcast.id, "application/x-msdownload", b"x")
+
+    with pytest.raises(ValidationError):
+        await media_use_case(admin, data)
+
+    assert data.source.exists()
+    data.source.unlink()

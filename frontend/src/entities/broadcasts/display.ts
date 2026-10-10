@@ -1,6 +1,6 @@
 import type { ParseKeys, TFunction } from "i18next";
 
-import { RECALL_WINDOW_MS } from "@entities/broadcasts/api";
+import { RECALL_REPEAT_AFTER_MS, RECALL_WINDOW_MS } from "@entities/broadcasts/api";
 import type {
   Broadcast,
   BroadcastAudience,
@@ -113,8 +113,14 @@ export function isEditable(b: Broadcast): boolean {
   return (b.status === "DRAFT" || b.status === "SCHEDULED") && !b.started_at;
 }
 
+export function isRecallRunning(b: Broadcast, now: number): boolean {
+  return !!b.recall_requested_at && now - new Date(b.recall_requested_at).getTime() < RECALL_REPEAT_AFTER_MS;
+}
+
 export function canRecall(b: Broadcast, now: number): boolean {
+  if (isRecallRunning(b, now)) return false;
   if (!b.started_at || now - new Date(b.started_at).getTime() >= RECALL_WINDOW_MS) return false;
-  if (b.sent_count === 0 && !b.has_channel_post) return false;
+  const left = b.recallable_count ?? b.sent_count;
+  if (left === 0 && !b.has_channel_post) return false;
   return b.status === "SENDING" || b.status === "COMPLETED" || b.status === "CANCELED";
 }

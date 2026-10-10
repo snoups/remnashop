@@ -19,6 +19,7 @@ from app.modules.subscriptions.usecases.reissue_subscription import ReissueSubsc
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -138,6 +139,7 @@ async def test_rejects_when_disabled(
             device_all_reset_cooldown_hours=current.device_all_reset_cooldown_hours,
             link_reset_enabled=current.link_reset_enabled,
             link_reset_cooldown_hours=current.link_reset_cooldown_hours,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
     use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository, uow)
@@ -166,6 +168,7 @@ async def test_rejects_within_cooldown(
             device_all_reset_cooldown_hours=current.device_all_reset_cooldown_hours,
             link_reset_enabled=current.link_reset_enabled,
             link_reset_cooldown_hours=current.link_reset_cooldown_hours,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
     remnawave_hwid_store[7004] = []

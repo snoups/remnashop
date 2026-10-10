@@ -8,7 +8,6 @@ from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserRespo
 
 from app.core.constants import GB_TO_BYTES
 from app.core.enums import SubscriptionStatus
-from app.core.exceptions import ValidationError
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     PlanSnapshot,
@@ -17,11 +16,6 @@ from app.modules.subscriptions.dto import (
 )
 
 _PANEL_USERNAME_PREFIX: Final[str] = "rs_"
-
-
-class SupersededError(ValidationError):
-    """A concurrent purchase committed first and now owns the panel identity
-    this one reconfigured; reverting it would overwrite the winner's config."""
 
 
 def new_panel_user(user_id: int, plan: PlanSnapshot, expire_at: datetime) -> CreateUserRequestDto:

@@ -10,7 +10,7 @@ from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import DATETIME_FILE_FORMAT
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BackupKind
+from app.core.enums import BackupKind, BackupRunStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -59,9 +59,17 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
         for stale_id in stale:
             logger.warning(f"Backup run '{stale_id}' ('{kind.value}') was stranded, failed it")
 
-        if await self._backup_repository.has_active(
-            kind, started_after=started_after, exclude_run_id=run_id
-        ):
+        async with self._uow:
+            await self._backup_repository.lock_kind(kind)
+            # a redelivered message for a run that already ran must leave it as it is
+            run = await self._backup_repository.get_run(run_id)
+            pending = run.status is BackupRunStatus.PENDING
+            # only a run that already started blocks this one; queued siblings take turns
+            busy = pending and await self._backup_repository.has_active(
+                kind, started_after=started_after, exclude_run_id=run_id, pending=False
+            )
+            started = pending and not busy and await self._backup_repository.mark_running(run_id)
+        if busy:
             error = f"A '{kind.value}' backup is already running"
             async with self._uow:
                 await self._backup_repository.mark_failed(run_id, error=error)
@@ -70,9 +78,9 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
                 )
             logger.warning(f"Backup run '{run_id}' rejected: '{kind.value}' already running")
             return
-
-        async with self._uow:
-            await self._backup_repository.mark_running(run_id)
+        if not started:
+            logger.info(f"Backup run '{run_id}' is no longer pending, skipped")
+            return
 
         backup_dir = self._config.media_dir / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)

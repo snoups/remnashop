@@ -2,9 +2,10 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db.models import OAuthIdentity, User
+from app.core.db.models import OAuthIdentity, Referral, User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider, Role
 from app.core.error_codes import ErrorCode
@@ -268,3 +269,60 @@ async def test_preview_into_staff_does_not_count_dropped_credentials(
     result = await preview(owner, GetMergePreviewDto(target_id=owner.id, source_id=customer.id))
 
     assert result.source_counts.oauth_identities == 0
+
+
+async def test_preview_flags_a_referrer_that_would_loop_and_merge_drops_it(
+    preview, merge, session: AsyncSession, user_repository, owner
+) -> None:
+    source, target, middle = [
+        await user_repository.create(CreateUserDto(name=n)) for n in ("s", "t", "x")
+    ]
+    # target -> middle -> source: keeping source's referrer would loop through target
+    session.add_all(
+        [
+            Referral(referrer_id=target.id, referred_id=middle.id, level=1),
+            Referral(referrer_id=middle.id, referred_id=source.id, level=1),
+        ]
+    )
+    await session.flush()
+
+    result = await preview(owner, GetMergePreviewDto(target_id=target.id, source_id=source.id))
+
+    assert [(c.side, c.referrer_id) for c in result.referrer_cycles] == [("source", middle.id)]
+    await merge(
+        owner,
+        MergeAccountsDto(
+            target_id=target.id,
+            source_id=source.id,
+            choices={"name": "target"},
+            fingerprint=result.fingerprint,
+        ),
+    )
+    assert await session.scalar(select(Referral).where(Referral.referred_id == target.id)) is None
+
+
+async def test_preview_reports_no_cycle_for_plain_or_mutual_referrers(
+    preview, session: AsyncSession, user_repository, owner
+) -> None:
+    source, target, shared, other = [
+        await user_repository.create(CreateUserDto(name=n)) for n in ("s", "t", "r", "o")
+    ]
+    session.add_all(
+        [
+            Referral(referrer_id=shared.id, referred_id=source.id, level=1),
+            Referral(referrer_id=shared.id, referred_id=target.id, level=1),
+            Referral(referrer_id=target.id, referred_id=other.id, level=1),
+        ]
+    )
+    await session.flush()
+
+    shared_result = await preview(
+        owner, GetMergePreviewDto(target_id=target.id, source_id=source.id)
+    )
+    # target invited other: that link is mutual for this pair, not a loop
+    mutual_result = await preview(
+        owner, GetMergePreviewDto(target_id=other.id, source_id=target.id)
+    )
+
+    assert shared_result.referrer_cycles == []
+    assert mutual_result.referrer_cycles == []

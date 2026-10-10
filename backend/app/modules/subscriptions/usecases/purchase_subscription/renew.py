@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Callable
+from typing import Callable, Optional
 
 from loguru import logger
 from remnapy import RemnawaveSDK
@@ -83,12 +83,12 @@ class RenewPurchase:
             expire_at = panel_user.expire_at
         else:
             expire_at = await self._apply_pinned_renewal(
-                target, data.idempotency_key, data.duration_days, keep_key
+                target, data.idempotency_key, data.claim_token, data.duration_days, keep_key
             )
 
         async with self._uow:
             if data.idempotency_key is not None:
-                finished_id = await self._idempotency.lock(data.idempotency_key)
+                finished_id = await self._idempotency.lock(data.idempotency_key, data.claim_token)
                 if finished_id is not None:
                     return await self._subscription_repository.get_by_id(finished_id)
             locked = await self._subscription_repository.get_by_id_for_update(target.id)
@@ -108,7 +108,9 @@ class RenewPurchase:
                 locked.id, expire_at, paid=paid, days=data.duration_days
             )
             if data.idempotency_key is not None:
-                await self._idempotency.link(data.idempotency_key, subscription.id)
+                await self._idempotency.link(
+                    data.idempotency_key, subscription.id, data.claim_token
+                )
             await self._event_publisher.publish(
                 SubscriptionRenewedEvent(
                     user=actor,
@@ -140,6 +142,7 @@ class RenewPurchase:
         self,
         target: SubscriptionDto,
         key: str,
+        token: Optional[datetime],
         duration_days: int,
         keep_key: Callable[[], None],
     ) -> datetime:
@@ -158,7 +161,7 @@ class RenewPurchase:
             # ms-truncated so the pinned value compares equal to the panel's
             pinned = truncate_to_ms(base + timedelta(days=duration_days))
             async with self._uow:
-                await self._idempotency.pin_renew_expire_at(key, pinned)
+                await self._idempotency.pin_renew_expire_at(key, pinned, token)
             keep_key()
         else:
             keep_key()

@@ -218,6 +218,8 @@ class UserRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         if cast(CursorResult, result).rowcount == 0:
+            if await self.session.get(User, user_id) is None:
+                raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
             if amount < 0:
                 raise ValidationError(
                     f"Adjustment would take user '{user_id}' points below zero",

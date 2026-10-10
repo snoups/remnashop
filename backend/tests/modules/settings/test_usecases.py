@@ -59,7 +59,7 @@ from app.modules.settings.usecases import (
 )
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
-from tests.modules.settings.factories import make_bot_commands_sync
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS, make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
@@ -268,6 +268,7 @@ async def test_owner_can_view_and_update_shop_settings(
             device_all_reset_cooldown_hours=0,
             link_reset_enabled=True,
             link_reset_cooldown_hours=0,
+            fields_set=SHOP_SETTINGS_FIELDS,
         ),
     )
     assert updated.max_active_subscriptions is None
@@ -299,6 +300,7 @@ async def test_regular_user_cannot_update_shop_settings(
                 device_all_reset_cooldown_hours=0,
                 link_reset_enabled=True,
                 link_reset_cooldown_hours=0,
+                fields_set=SHOP_SETTINGS_FIELDS,
             ),
         )
 
@@ -319,6 +321,7 @@ async def test_update_shop_settings_rejects_non_positive_cap(
                 device_all_reset_cooldown_hours=0,
                 link_reset_enabled=True,
                 link_reset_cooldown_hours=0,
+                fields_set=SHOP_SETTINGS_FIELDS,
             ),
         )
 

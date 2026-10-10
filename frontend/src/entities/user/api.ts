@@ -150,6 +150,8 @@ export interface MergePreview {
   source: UserListItem;
   target: UserListItem;
   conflicts: MergeConflict[];
+  /** keeping this side's inviter would loop, so the merge drops the link */
+  referrer_cycles: { side: MergeSide; referrer_id: number }[];
   fingerprint: string;
   source_counts: {
     subscriptions: number;

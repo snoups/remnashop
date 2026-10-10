@@ -1,5 +1,5 @@
 import type { ParseKeys } from "i18next";
-import { ArrowLeftRight, GitMerge, Mail, Send, ShieldAlert, Swords, UserRound, Users } from "lucide-react";
+import { ArrowLeftRight, GitMerge, Mail, Send, ShieldAlert, Swords, TriangleAlert, UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -157,6 +157,11 @@ function MergePreviewStep({
   const [staleData, setStaleData] = useState<typeof data>(null);
   const isReloading = data !== null && data === staleData;
   const isComplete = data !== null && data.conflicts.every((c) => c.forced !== null || choices[c.key] !== undefined);
+  // with a referred_by conflict, only the chosen side's inviter is kept
+  const hasReferrerChoice = data?.conflicts.some((c) => c.key === "referred_by") ?? false;
+  const droppedReferrers = data
+    ? data.referrer_cycles.filter((cycle) => !hasReferrerChoice || choices.referred_by === cycle.side)
+    : [];
 
   const conflictLabel = (key: string): string => {
     if (!key.startsWith("oauth:")) return t(`users.merge.conflict.${key}` as ParseKeys);
@@ -250,6 +255,16 @@ function MergePreviewStep({
                 ))}
               </Card>
             )}
+
+            {droppedReferrers.map((cycle) => (
+              <p
+                key={cycle.side}
+                className="flex items-start gap-2 rounded-2xl bg-warning/10 px-3 py-2.5 text-[12.5px] text-warning"
+              >
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+                {t("users.merge.referrerCycle", { id: cycle.referrer_id })}
+              </p>
+            ))}
 
             <div className="flex items-center gap-2 rounded-2xl border border-error/30 bg-error/10 px-3.5 py-3 text-[13px] text-error">
               <ShieldAlert className="size-4 shrink-0" />

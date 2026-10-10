@@ -11,13 +11,13 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
+from app.modules.subscriptions.domain import SupersededError
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.events import SubscriptionPurchasedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.panel import (
-    SupersededError,
     configure_for_plan,
     new_panel_user,
     reset_traffic_if_paid,
@@ -81,16 +81,29 @@ class NewPurchase:
             new_panel_user(data.user_id, plan, expire_at)
         )
 
+        late_trials: list[SubscriptionDto] = []
         try:
             async with self._uow:
                 await self._assert_not_provisioned(data)
+                # Must come before the count-check below: FOR UPDATE on
+                # get_active_by_user_for_update only locks rows that already
+                # exist, so without this advisory lock two concurrent calls
+                # here could both observe the same under-cap count and both
+                # insert, silently exceeding the cap. A trial activation takes
+                # it too, so the late-trial check sees a settled state.
+                await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
+                if not data.plan_snapshot.is_trial:
+                    # a trial activated while this purchase was in flight gives way to it
+                    late_trials = [
+                        sub
+                        for sub in await self._subscription_repository.get_active_by_user(
+                            data.user_id
+                        )
+                        if sub.is_trial
+                    ]
+                    for trial in late_trials:
+                        await self._subscription_repository.mark_deleted(trial.id)
                 if data.enforce_subscription_cap:
-                    # Must come before the count-check below: FOR UPDATE on
-                    # get_active_by_user_for_update only locks rows that already
-                    # exist, so without this advisory lock two concurrent calls
-                    # here could both observe the same under-cap count and both
-                    # insert, silently exceeding the cap.
-                    await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
                     await self._eligibility.assert_below_cap(
                         data.user_id, lock=True, pending=await self._open_orders(data)
                     )
@@ -110,16 +123,33 @@ class NewPurchase:
                 await self._remnawave_sdk.users.disable_user(panel_user.id)
             raise
 
+        await self._disable_retired_trials(actor, late_trials, subscription)
         logger.info(
             f"{actor.log} Purchased subscription '{subscription.id}' (plan '{plan.plan_id}', NEW)"
         )
         return subscription
 
+    async def _disable_retired_trials(
+        self, actor: Actor, trials: list[SubscriptionDto], subscription: SubscriptionDto
+    ) -> None:
+        for trial in trials:
+            logger.info(
+                f"{actor.log} Retired trial subscription '{trial.id}' of user "
+                f"'{subscription.user_id}' in favor of subscription '{subscription.id}'"
+            )
+            try:
+                await self._remnawave_sdk.users.disable_user(trial.remnawave_user_id)
+            except Exception as error:
+                logger.warning(
+                    f"Panel user '{trial.remnawave_user_id}' of retired trial '{trial.id}' "
+                    f"was not disabled: {error}"
+                )
+
     async def _assert_not_provisioned(self, data: PurchaseSubscriptionDto) -> None:
         # a stale claim can be reclaimed; the attempt that reclaimed it may already have finished
         if data.idempotency_key is None:
             return
-        finished_id = await self._idempotency.lock(data.idempotency_key)
+        finished_id = await self._idempotency.lock(data.idempotency_key, data.claim_token)
         if finished_id is not None:
             raise _AlreadyProvisionedError(finished_id)
 
@@ -185,7 +215,7 @@ class NewPurchase:
         self, actor: Actor, data: PurchaseSubscriptionDto, subscription: SubscriptionDto
     ) -> None:
         if data.idempotency_key is not None:
-            await self._idempotency.link(data.idempotency_key, subscription.id)
+            await self._idempotency.link(data.idempotency_key, subscription.id, data.claim_token)
         if not data.publish_event:
             return
         await self._event_publisher.publish(

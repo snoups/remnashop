@@ -8,20 +8,19 @@ from remnapy import RemnawaveSDK
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import SubscriptionStatus
+from app.core.enums import Currency, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
-from app.modules.subscriptions.domain import calculate_proration_credit
+from app.modules.subscriptions.domain import SupersededError, calculate_proration_credit
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionChangedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.panel import (
-    SupersededError,
     configure_for_plan,
     reset_traffic_if_paid,
     restore,
@@ -91,6 +90,16 @@ class ChangePurchase:
         if data.keep_expire_at:
             credit_days = 0
             final_expire_at = old.expire_at
+            # the term didn't change, so neither did the money paid for it
+            plan = replace(
+                plan,
+                credit_paid=await self._convert(
+                    old.plan_snapshot.effective_credit_paid,
+                    old.plan_snapshot.currency,
+                    plan.currency,
+                ),
+                credit_days=old.plan_snapshot.effective_credit_days,
+            )
         else:
             now = datetime_now()
             credit, credit_days = await self._credit(old, data, now)
@@ -135,7 +144,7 @@ class ChangePurchase:
                     )
                 )
                 if data.idempotency_key is not None:
-                    await self._idempotency.link(data.idempotency_key, updated.id)
+                    await self._idempotency.link(data.idempotency_key, updated.id, data.claim_token)
                 if data.publish_event:
                     await self._event_publisher.publish(
                         SubscriptionChangedEvent(
@@ -180,14 +189,7 @@ class ChangePurchase:
             traffic_limit_strategy=old.traffic_limit_strategy,
             used_traffic_bytes=int(panel_user.used_traffic_bytes),
         )
-        if old.plan_snapshot.currency is not data.currency:
-            async with self._uow:
-                rates = await self._pricing_repository.get_rate_table()
-            credit = (
-                credit
-                / rates.for_currency(old.plan_snapshot.currency).rate
-                * rates.for_currency(data.currency).rate
-            )
+        credit = await self._convert(credit, old.plan_snapshot.currency, data.currency)
         # divided by the list price (data.base_price): at the discounted rate a
         # 90%-off checkout would buy 10x the credit days
         proration_denominator = data.base_price if data.base_price is not None else data.price_paid
@@ -195,3 +197,10 @@ class ChangePurchase:
         if daily_rate_new <= 0:
             return Decimal(0), 0
         return credit, int(credit / daily_rate_new)
+
+    async def _convert(self, amount: Decimal, source: Currency, target: Currency) -> Decimal:
+        if source is target:
+            return amount
+        async with self._uow:
+            rates = await self._pricing_repository.get_rate_table()
+        return amount / rates.for_currency(source).rate * rates.for_currency(target).rate

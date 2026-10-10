@@ -221,6 +221,15 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
     ) -> bool:
         try:
             async with self._uow:
+                status = await self._transaction_repository.lock_status_by_idempotency_key(
+                    data.payment_key
+                )
+                if status is not TransactionStatus.PAID:
+                    logger.info(
+                        f"Referral reward for payment '{data.payment_key}' skipped: order is "
+                        f"{status.value if status else 'gone'} now"
+                    )
+                    return False
                 await self._referral_repository.create_reward(
                     referral_id=hop.referral_id,
                     referrer_id=hop.referrer_id,

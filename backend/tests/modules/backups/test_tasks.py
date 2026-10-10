@@ -73,6 +73,31 @@ async def test_run_backup_rejects_second_concurrent_run(
     assert "already running" in (failed.error or "")
 
 
+async def test_run_backup_runs_one_of_two_queued_runs(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+
+    async def _fake_dump(cfg, dest: Path) -> None:
+        dest.write_bytes(b"dump")
+
+    async with uow:
+        first = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=first.id)
+        )
+
+    assert (await backup_repository.get_run(first.id)).status == BackupRunStatus.COMPLETED
+
+
 async def test_run_backup_completes_and_signs_database_dump(
     backup_repository: BackupRepository,
     uow: UnitOfWork,
@@ -436,3 +461,31 @@ async def test_run_backup_keeps_a_run_that_started_late_after_queueing(
 
     assert (await backup_repository.get_run(queued.id)).status == BackupRunStatus.RUNNING
     assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.FAILED
+
+
+async def test_run_backup_ignores_a_run_that_already_finished(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    config,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    event_publisher,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+    dump = AsyncMock()
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.mark_completed(
+            run.id, file_path="/x/done.dump", size_bytes=1, checksum_sha256="a" * 64
+        )
+        # a sibling running at redelivery time must not get the finished run failed as busy
+        sibling = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.mark_running(sibling.id)
+
+    with patch("app.modules.backups.usecases.run_backup.create_database_dump", dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+        )
+
+    dump.assert_not_called()
+    assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.COMPLETED

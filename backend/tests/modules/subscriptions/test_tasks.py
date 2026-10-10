@@ -55,6 +55,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -212,6 +213,7 @@ async def test_a_free_order_over_the_cap_fails_instead_of_provisioning(
             device_all_reset_cooldown_hours=0,
             link_reset_enabled=True,
             link_reset_cooldown_hours=0,
+            fields_set=SHOP_SETTINGS_FIELDS,
         )
     )
     snapshot = make_plan_snapshot(plan_id=plan.id, price_paid=Decimal(0), currency=Currency.RUB)

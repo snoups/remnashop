@@ -82,6 +82,17 @@ class AccountMergeRepository:
             select(Referral.referrer_id).where(Referral.referred_id == user_id)
         )
 
+    async def reaches(self, start: int, user_ids: set[int]) -> bool:
+        # walks start's upline, as the merge's own loop check does
+        current: Optional[int] = start
+        for _ in range(_MAX_CHAIN_WALK):
+            if current is None:
+                return False
+            if current in user_ids:
+                return True
+            current = await self._referrer_of(current)
+        return False
+
     async def _oauth_labels(self, user_id: int) -> dict[str, str]:
         rows = await self.session.execute(
             select(
@@ -201,11 +212,20 @@ class AccountMergeRepository:
                 )
             )
         )
-        both_invited = (
-            await self.session.scalar(select(func.count()).where(Referral.referred_id.in_((s, t))))
-        ) == 2
-        if both_invited:
-            loser = t if sides.get("referred_by") == "source" else s
+        rows = await self.session.execute(
+            select(Referral.referred_id, Referral.referrer_id).where(
+                Referral.referred_id.in_((s, t))
+            )
+        )
+        referrers = dict(rows.tuples().all())
+        if len(referrers) == 2:
+            # a row whose referrer was deleted (NULL) gives way to a real one
+            if referrers[t] is None:
+                loser = t
+            elif referrers[s] is None:
+                loser = s
+            else:
+                loser = t if sides.get("referred_by") == "source" else s
             await self.session.execute(delete(Referral).where(Referral.referred_id == loser))
         await self.session.execute(
             update(Referral).where(Referral.referred_id == s).values(referred_id=t)

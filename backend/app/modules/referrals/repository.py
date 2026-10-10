@@ -64,6 +64,11 @@ def _search_users(search: str, search_staff: bool) -> Select[tuple[int]]:
     return query if search_staff else query.where(User.role == Role.USER)
 
 
+def _visible_downline(column: ColumnElement[int], viewer_id: int) -> ColumnElement[bool]:
+    # same rule as visible_user: staff rows are hidden, the viewer's own row is not
+    return or_(column.in_(select(User.id).where(User.role == Role.USER)), column == viewer_id)
+
+
 class ReferralRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -172,9 +177,13 @@ class ReferralRepository:
             ).where(child.referrer_id == downline.c.referred_id, downline.c.depth < _MAX_DEPTH)
         )
 
-    async def count_by_level(self, referrer_id: int) -> dict[int, int]:
+    async def count_by_level(
+        self, referrer_id: int, *, hide_staff_from: Optional[int] = None
+    ) -> dict[int, int]:
         downline = self._downline(referrer_id)
         stmt = select(downline.c.depth, func.count()).group_by(downline.c.depth)
+        if hide_staff_from is not None:
+            stmt = stmt.where(_visible_downline(downline.c.referred_id, hide_staff_from))
         rows = await self.session.execute(stmt)
         return {int(depth): int(count) for depth, count in rows.all()}
 
@@ -185,11 +194,14 @@ class ReferralRepository:
         depth: Optional[int] = None,
         search: Optional[str] = None,
         search_staff: bool = True,
+        hide_staff_from: Optional[int] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[DownlineEntryDto], int]:
         downline = self._downline(referrer_id)
         filters: list[ColumnElement[bool]] = []
+        if hide_staff_from is not None:
+            filters.append(_visible_downline(downline.c.referred_id, hide_staff_from))
         if depth is not None:
             filters.append(downline.c.depth == depth)
         if search:
@@ -217,9 +229,14 @@ class ReferralRepository:
         ]
         return entries, int(total or 0)
 
-    async def downline_user_ids(self, referrer_id: int) -> list[int]:
+    async def downline_user_ids(
+        self, referrer_id: int, *, hide_staff_from: Optional[int] = None
+    ) -> list[int]:
         downline = self._downline(referrer_id)
-        return list((await self.session.scalars(select(downline.c.referred_id))).all())
+        stmt = select(downline.c.referred_id)
+        if hide_staff_from is not None:
+            stmt = stmt.where(_visible_downline(downline.c.referred_id, hide_staff_from))
+        return list((await self.session.scalars(stmt)).all())
 
     async def downline_depths(self, referrer_id: int, user_ids: list[int]) -> dict[int, int]:
         if not user_ids:

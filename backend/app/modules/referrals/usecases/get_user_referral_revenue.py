@@ -2,13 +2,12 @@ from decimal import Decimal
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository
 from app.modules.referrals.dto import ReferralRevenueDto
 from app.modules.referrals.repository import ReferralRepository
+from app.modules.referrals.usecases.target import get_visible_target
 from app.modules.transactions import TransactionRepository
 from app.modules.users import UserRepository
 
@@ -32,9 +31,11 @@ class GetUserReferralRevenueUseCase(UseCase[int, ReferralRevenueDto]):
 
     async def _execute(self, actor: Actor, data: int) -> ReferralRevenueDto:
         async with self._uow:
-            if await self._user_repository.get_by_id(data) is None:
-                raise NotFoundError(f"User '{data}' not found", code=ErrorCode.USER_NOT_FOUND)
-            downline = await self._referral_repository.downline_user_ids(data)
+            await get_visible_target(self._user_repository, actor, data)
+            sees_staff = PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
+            downline = await self._referral_repository.downline_user_ids(
+                data, hide_staff_from=None if sees_staff else actor.id
+            )
             paid = await self._transaction_repository.sum_paid_anchor_amount_per_user(downline)
             rate_table = await self._pricing_repository.get_rate_table()
         amount = sum(paid.values(), start=Decimal(0))

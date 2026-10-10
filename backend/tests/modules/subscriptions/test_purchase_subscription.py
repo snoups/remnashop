@@ -2927,6 +2927,127 @@ async def test_releasing_a_key_keeps_it_once_a_subscription_is_linked(
 
     # a reclaiming attempt that fails afterwards must not erase the finished one's link
     async with uow:
-        await idempotency_repository.release("linked-key")
+        await idempotency_repository.release("linked-key", datetime_now())
 
     assert await idempotency_repository.get_subscription_id("linked-key") == finished.id
+
+
+async def test_a_trial_activated_mid_purchase_is_retired_by_the_paid_subscription(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _create_buyer(user_repository, 434)
+    plan = await _create_plan(plan_repository, "late-trial")
+    real_create = remnawave_sdk.users.create_user
+    trials: list[SubscriptionDto] = []
+
+    async def _create_then_trial(request: object) -> object:
+        created = await real_create(request)
+        if not trials:
+            # a trial activation that commits while this purchase is in flight
+            trials.append(
+                await subscription_repository.create(
+                    CreateSubscriptionDto(
+                        user_id=buyer.id,
+                        remnawave_user_id=987_434,
+                        status=SubscriptionStatus.ACTIVE,
+                        is_trial=True,
+                        traffic_limit=100,
+                        device_limit=3,
+                        expire_at=datetime_now() + timedelta(days=3),
+                        url="https://example.com/sub/987434",
+                        plan_snapshot=make_plan_snapshot(is_trial=True),
+                    )
+                )
+            )
+        return created
+
+    disabled: list[object] = []
+    real_disable = remnawave_sdk.users.disable_user
+
+    async def _tracking_disable(user_id: object) -> None:
+        disabled.append(user_id)
+        with contextlib.suppress(Exception):
+            await real_disable(user_id)
+
+    monkeypatch.setattr(remnawave_sdk.users, "create_user", _create_then_trial)
+    monkeypatch.setattr(remnawave_sdk.users, "disable_user", _tracking_disable)
+
+    paid = await purchase_subscription_use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("100.00"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("100.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            enforce_subscription_cap=False,
+        ),
+    )
+
+    active = await subscription_repository.get_active_by_user(buyer.id)
+    assert [s.id for s in active] == [paid.id]
+    assert (await subscription_repository.get_by_id(trials[0].id)).status is (
+        SubscriptionStatus.DELETED
+    )
+    assert disabled == [987_434]
+
+
+async def test_a_late_trial_does_not_count_against_a_free_orders_cap(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _create_buyer(user_repository, 435)
+    plan = await _create_plan(plan_repository, "late-trial-free")
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1, fields_set=frozenset({"max_active_subscriptions"})
+        )
+    )
+    real_create = remnawave_sdk.users.create_user
+
+    async def _create_then_trial(request: object) -> object:
+        created = await real_create(request)
+        await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=buyer.id,
+                remnawave_user_id=987_435,
+                status=SubscriptionStatus.ACTIVE,
+                is_trial=True,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now() + timedelta(days=3),
+                url="https://example.com/sub/987435",
+                plan_snapshot=make_plan_snapshot(is_trial=True),
+            )
+        )
+        return created
+
+    monkeypatch.setattr(remnawave_sdk.users, "create_user", _create_then_trial)
+
+    paid = await purchase_subscription_use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(plan),
+            duration_days=30,
+            price_paid=Decimal("0"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+        ),
+    )
+
+    active = await subscription_repository.get_active_by_user(buyer.id)
+    assert [s.id for s in active] == [paid.id]

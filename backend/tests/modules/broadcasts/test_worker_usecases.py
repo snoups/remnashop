@@ -17,6 +17,7 @@ from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.db.models.broadcast import Broadcast, BroadcastRecipient
 from app.core.db.models.promocode import Promocode
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     BroadcastButtonKind,
@@ -25,6 +26,7 @@ from app.core.enums import (
     BroadcastStatus,
     PromocodeRewardType,
 )
+from app.core.error_codes import ErrorCode
 from app.core.events import BaseEvent
 from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
@@ -40,10 +42,11 @@ from app.modules.broadcasts.events import (
     BroadcastStartedEvent,
 )
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.storage import save_media
+from app.modules.broadcasts.storage import media_path
 from app.modules.broadcasts.telegram_api import get_bot_username
 from app.modules.broadcasts.usecases import (
     DeliverBroadcastBatchUseCase,
+    GetBroadcastUseCase,
     PruneBroadcastRecipientsUseCase,
     RecallBroadcastBatchUseCase,
     RecallBroadcastUseCase,
@@ -64,6 +67,12 @@ from tests.modules.broadcasts.factories import MockTelegram, make_customer, ok_r
 from tests.modules.broadcasts.test_repository import save_dto
 
 Responder = Callable[[httpx.Request], httpx.Response]
+
+
+def _store_jpeg(media_dir: Path, broadcast_id: int) -> None:
+    path = media_path(media_dir, broadcast_id, 0, "jpg")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"jpeg")
 
 
 class RecordingPublisher:
@@ -519,7 +528,7 @@ async def test_deliver_uploads_media_once(
     ids = await _customers(session, user_repository, 9690, 3)
     broadcast = await _sending(broadcast_repository, ids)
     await _photo(broadcast_repository, broadcast.id)
-    save_media(media_config.media_dir, broadcast.id, 0, "jpg", b"jpeg")
+    _store_jpeg(media_config.media_dir, broadcast.id)
 
     def respond(request: httpx.Request) -> httpx.Response:
         if request.headers["content-type"].startswith("multipart/form-data"):
@@ -634,7 +643,7 @@ async def test_recall_during_send_rekicks_after_in_flight_group(
     broadcast = await _sending(broadcast_repository, ids)
     if with_media:
         await _photo(broadcast_repository, broadcast.id)
-        save_media(media_config.media_dir, broadcast.id, 0, "jpg", b"jpeg")
+        _store_jpeg(media_config.media_dir, broadcast.id)
     deliver = make_deliver(MockTelegram(ok_response))
     recall = RecallBroadcastUseCase(broadcast_repository, recall_dispatch, uow, publisher)
     record = deliver._record
@@ -1124,7 +1133,7 @@ async def test_deliver_reacquires_a_lapsed_lock_before_upload(
     ids = await _customers(session, user_repository, 9870 + 10 * taken, 2)
     broadcast = await _sending(broadcast_repository, ids)
     await _photo(broadcast_repository, broadcast.id)
-    save_media(media_config.media_dir, broadcast.id, 0, "jpg", b"jpeg")
+    _store_jpeg(media_config.media_dir, broadcast.id)
     key = _deliver_lock_key(broadcast.id)
     lapsed = [True]
 
@@ -1353,7 +1362,9 @@ async def test_recall_can_be_requested_again_while_messages_remain(
     await broadcast_repository.mark_recipient(first.id, BroadcastRecipientStatus.RECALLED)
     await broadcast_repository.mark_recall_failed(second.id, "err")
     await broadcast_repository.update_fields(
-        broadcast_id, recall_requested_at=datetime_now(), channel_message_id=None
+        broadcast_id,
+        recall_requested_at=datetime_now() - timedelta(minutes=10),
+        channel_message_id=None,
     )
     await broadcast_repository.refresh_counts(broadcast_id)
     recall = RecallBroadcastUseCase(broadcast_repository, recall_dispatch, uow, publisher)
@@ -1366,6 +1377,95 @@ async def test_recall_can_be_requested_again_while_messages_remain(
     ]
 
     await broadcast_repository.mark_recipient(second.id, BroadcastRecipientStatus.RECALLED)
+    await broadcast_repository.update_fields(
+        broadcast_id, recall_requested_at=datetime_now() - timedelta(minutes=10)
+    )
     await broadcast_repository.refresh_counts(broadcast_id)
     with pytest.raises(ConflictError):
         await recall.system(broadcast_id)
+
+
+async def test_recall_repeat_is_refused_while_the_last_one_runs(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    publisher: RecordingPublisher,
+) -> None:
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9790, 1)
+    await broadcast_repository.update_fields(broadcast_id, recall_requested_at=datetime_now())
+    recall = RecallBroadcastUseCase(broadcast_repository, recall_dispatch, uow, publisher)
+
+    with pytest.raises(ConflictError) as error:
+        await recall.system(broadcast_id)
+
+    assert error.value.code is ErrorCode.BROADCAST_RECALL_IN_PROGRESS
+    assert recall_dispatch.messages == []
+
+
+async def test_recall_repeat_is_refused_when_no_row_can_be_recalled(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    publisher: RecordingPublisher,
+) -> None:
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9795, 1)
+    [recipient] = await _recipients(session, broadcast_id)
+    # the customer lost their Telegram account (e.g. merged away)
+    await session.execute(update(User).where(User.id == recipient.user_id).values(telegram_id=None))
+    await broadcast_repository.update_fields(
+        broadcast_id,
+        recall_requested_at=datetime_now() - timedelta(minutes=10),
+        channel_message_id=None,
+    )
+    await broadcast_repository.refresh_counts(broadcast_id)
+    recall = RecallBroadcastUseCase(broadcast_repository, recall_dispatch, uow, publisher)
+
+    with pytest.raises(ConflictError) as error:
+        await recall.system(broadcast_id)
+
+    assert error.value.code is ErrorCode.BROADCAST_INVALID_STATUS
+
+
+async def test_get_broadcast_reports_how_many_rows_can_be_recalled(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    uow: UnitOfWork,
+) -> None:
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9798, 2)
+    first, _ = await _recipients(session, broadcast_id)
+    await broadcast_repository.mark_recipient(first.id, BroadcastRecipientStatus.RECALLED)
+
+    broadcast = await GetBroadcastUseCase(broadcast_repository, uow).system(broadcast_id)
+
+    assert broadcast.recallable_count == 1
+
+
+async def test_a_running_recall_chain_keeps_its_repeat_window_fresh(
+    monkeypatch: pytest.MonkeyPatch,
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    recall_dispatch: RecordingDispatch,
+    with_token: None,
+) -> None:
+    monkeypatch.setattr(recall_module, "BATCH_SIZE", 1)
+    broadcast_id = await _sent_broadcast(session, user_repository, broadcast_repository, 9800, 2)
+    requested = datetime_now() - timedelta(minutes=10)
+    await broadcast_repository.update_fields(broadcast_id, recall_requested_at=requested)
+    recall = RecallBroadcastBatchUseCase(
+        broadcast_repository, settings_repository, MockTelegram(ok_response), recall_dispatch, uow
+    )
+
+    # a full page means more is coming, so the chain is still running
+    await recall.system(broadcast_id)
+
+    refreshed = await broadcast_repository.get_or_raise(broadcast_id)
+    assert refreshed.recall_requested_at is not None
+    assert refreshed.recall_requested_at > requested + timedelta(minutes=5)

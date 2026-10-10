@@ -7,6 +7,7 @@ from remnapy import RemnawaveSDK
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Locale, Role, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
@@ -378,3 +379,39 @@ async def test_update_reverts_panel_to_effective_limits_when_db_write_fails(
         )
 
     assert remnawave_store[9506]["trafficLimitBytes"] == 110 * GB_TO_BYTES
+
+
+async def test_squads_edit_refused_when_the_subscription_was_deleted_meanwhile(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=206))
+    _seed_panel_user(remnawave_store, 6006)
+    created = await subscription_repository.create(_create_dto(user.id, 6006))
+    real_update = remnawave_sdk.users.update_user
+
+    async def _update_then_delete(request: object) -> object:
+        result = await real_update(request)
+        await subscription_repository.mark_deleted(created.id)
+        return result
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", _update_then_delete)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            UpdateSubscriptionSquadsDto(
+                subscription_id=created.id, internal_squads=[uuid4()], external_squad=None
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert (await subscription_repository.get_by_id(created.id)).internal_squads == []

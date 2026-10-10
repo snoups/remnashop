@@ -37,3 +37,12 @@ async def restore_default_banner(
         )
     )
     save_banner_file(config.media_dir, DEFAULT_BANNER_NAME, default_locale, _EXTENSION, data)
+
+
+class DefaultBannerSeeder:
+    def __init__(self, banner_repository: BannerRepository, config: AppConfig) -> None:
+        self._banner_repository = banner_repository
+        self._config = config
+
+    async def ensure(self, locale: Locale) -> None:
+        await ensure_default_banner_seeded(self._banner_repository, self._config, locale)

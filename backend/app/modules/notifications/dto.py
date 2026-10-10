@@ -31,7 +31,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "OAuthLoginFailedEvent",
         }
     ),
-    "failures": frozenset({"BackupFailedEvent"}),
+    "failures": frozenset({"BackupFailedEvent", "BonusDaysRenewalStuckEvent"}),
     "broadcasts": frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
     "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
     "money": frozenset(
@@ -156,6 +156,8 @@ class DeliverNotificationDto:
     actor_id: Optional[int]
     ip_address: Optional[str]
     suppressed: int = 0
+    # the shared overflow window: the payload shown is only the last source's
+    sources_merged: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

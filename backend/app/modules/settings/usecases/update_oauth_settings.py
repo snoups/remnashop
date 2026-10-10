@@ -31,12 +31,10 @@ class UpdateOAuthSettingsUseCase(UseCase[UpdateOAuthSettingsDto, OAuthSettingsDt
             await assert_public_https_host(data.oidc_issuer_url)
 
         async with self._uow:
-            current = await self._settings_repository.get_oauth_settings()
+            current = await self._settings_repository.lock_oauth_settings(exclusive=True)
             issuer_changed = (
                 data.oidc_issuer_url is not None and data.oidc_issuer_url != current.oidc_issuer_url
             )
-
-        async with self._uow:
             settings = await self._settings_repository.update_oauth_settings(data)
             if issuer_changed:
                 # a new issuer's `sub` could collide with an old identity's

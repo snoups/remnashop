@@ -30,6 +30,29 @@ def test_intercept_handler_masks_bot_token_in_url() -> None:
     assert messages == ["HTTP Request: POST https://api.telegram.org/bot<redacted>/setMyCommands\n"]
 
 
+def test_intercept_handler_masks_a_payment_signature_in_url() -> None:
+    messages: list[str] = []
+    sink_id = logger.add(messages.append, format="{message}")
+    url = "https://auth.robokassa.ru/Merchant/WebService/Service.asmx/OpStateExt"
+    try:
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="HTTP Request: %s %s",
+            args=("GET", f"{url}?MerchantLogin=shop&InvoiceID=7&Signature=0123abcd"),
+            exc_info=None,
+        )
+        InterceptHandler().emit(record)
+    finally:
+        logger.remove(sink_id)
+
+    assert messages == [
+        f"HTTP Request: GET {url}?MerchantLogin=shop&InvoiceID=7&Signature=<redacted>\n"
+    ]
+
+
 def test_each_process_writes_its_own_log_file(
     config: AppConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

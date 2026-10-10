@@ -25,6 +25,7 @@ from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import (
     MAX_BONUS_DAYS,
+    AdjustUserBonusDaysDto,
     AdjustUserPointsDto,
     ListInvitedUsersDto,
     ListReferralsDto,
@@ -33,6 +34,7 @@ from app.modules.referrals.dto import (
 )
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
 from app.modules.referrals.repository import ReferralRepository
+from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonusDaysUseCase
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
@@ -472,10 +474,11 @@ async def test_list_invited_users_hides_staff_from_an_admin(
     admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
     data = ListInvitedUsersDto(user_id=root.id)
 
-    items, _ = await use_case(admin, data)
-    by_depth = {i.depth: i for i in items}
-    assert by_depth[1].user is None
-    assert by_depth[2].user is not None and by_depth[2].via is None
+    items, total = await use_case(admin, data)
+    # hidden staff leave the list entirely; a customer they invited stays, without "via"
+    assert [(i.depth, i.user.id if i.user else None) for i in items] == [(2, child.id)]
+    assert total == 1
+    assert items[0].via is None
 
     items, _ = await use_case(OWNER, data)
     by_depth = {i.depth: i for i in items}
@@ -517,10 +520,13 @@ async def test_get_user_referral_stats_hides_staff_from_an_admin(
     admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
 
     stats = await use_case(admin, target.id)
-    assert stats.referrer is None and stats.rewards[0].buyer is None
+    # the staff buyer leaves the counts and the rewards, as it leaves the invited list
+    assert stats.referrer is None
+    assert stats.counts_by_level == {} and stats.rewards == []
 
     stats = await use_case(OWNER, target.id)
     assert stats.referrer is not None and stats.rewards[0].buyer is not None
+    assert stats.counts_by_level == {1: 1}
 
 
 async def test_reset_referral_code_issues_a_new_code_and_logs_it(
@@ -673,3 +679,116 @@ async def test_adjust_user_points_above_the_column_limit_raises_validation_error
     assert error.value.code is ErrorCode.POINTS_LIMIT_EXCEEDED
     unchanged = await user_repository.get_by_id(target.id)
     assert unchanged.points == Decimal(10**12 - 2)
+
+
+_PER_USER_CALLS = [
+    "stats",
+    "revenue",
+    "invited",
+    "links",
+    "adjust_points",
+    "adjust_days",
+    "reset_code",
+]
+
+
+def _per_user_call(
+    name, referral_repository, user_repository, uow, event_publisher, session, config
+):  # type: ignore[no-untyped-def]
+    def call(actor: UserDto, user_id: int):  # type: ignore[no-untyped-def]
+        if name == "stats":
+            return GetUserReferralStatsUseCase(referral_repository, user_repository, uow)(
+                actor, user_id
+            )
+        if name == "revenue":
+            return GetUserReferralRevenueUseCase(
+                referral_repository,
+                user_repository,
+                TransactionRepository(session),
+                PricingRepository(session),
+                uow,
+            )(actor, user_id)
+        if name == "invited":
+            return ListInvitedUsersUseCase(referral_repository, user_repository, uow)(
+                actor, ListInvitedUsersDto(user_id=user_id)
+            )
+        if name == "links":
+            return GetUserReferralLinksUseCase(
+                user_repository, SettingsRepository(session), config, uow
+            )(actor, user_id)
+        if name == "adjust_points":
+            return AdjustUserPointsUseCase(user_repository, uow, event_publisher)(
+                actor, AdjustUserPointsDto(user_id=user_id, delta=Decimal("1"))
+            )
+        if name == "adjust_days":
+            return AdjustUserBonusDaysUseCase(user_repository, uow, event_publisher)(
+                actor, AdjustUserBonusDaysDto(user_id=user_id, delta=1)
+            )
+        return ResetReferralCodeUseCase(user_repository, uow, event_publisher)(actor, user_id)
+
+    return call
+
+
+@pytest.mark.parametrize("name", _PER_USER_CALLS)
+async def test_per_user_referral_routes_hide_staff_without_admins_manage(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher,
+    session: AsyncSession,
+    config,
+    name: str,
+) -> None:
+    index = _PER_USER_CALLS.index(name)
+    # committed: the refused call rolls its own transaction back
+    async with uow:
+        staff = await user_repository.create(
+            CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=6200 + index)
+        )
+        # an admin with default permissions: no ADMINS_MANAGE
+        admin = await user_repository.create(
+            CreateUserDto(name="plain-admin", role=Role.ADMIN, telegram_id=6300 + index)
+        )
+    call = _per_user_call(
+        name, referral_repository, user_repository, uow, event_publisher, session, config
+    )
+
+    with pytest.raises(NotFoundError) as error:
+        await call(admin, staff.id)
+
+    assert error.value.code is ErrorCode.USER_NOT_FOUND
+    unchanged = await user_repository.get_by_id(staff.id)
+    assert unchanged is not None and unchanged.referral_code == staff.referral_code
+    await call(OWNER, staff.id)
+
+
+async def test_get_user_referral_revenue_leaves_out_hidden_staff(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    root = await _create_user(user_repository, 6021)
+    child = await _create_user(user_repository, 6022)
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", role=Role.ADMIN, telegram_id=6023)
+    )
+    for referred in (child, staff):
+        await referral_repository.create_referral(
+            referrer_id=root.id, referred_id=referred.id, level=1
+        )
+    for user, key in ((child, "rev-staff-1"), (staff, "rev-staff-2")):
+        async with uow:
+            order = await transaction_repository.create(
+                _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=key)
+            )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    use_case = GetUserReferralRevenueUseCase(
+        referral_repository, user_repository, transaction_repository, pricing_repository, uow
+    )
+    admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    assert (await use_case(admin, root.id)).paying_count == 1
+    assert (await use_case(OWNER, root.id)).paying_count == 2

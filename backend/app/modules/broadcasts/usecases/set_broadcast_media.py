@@ -15,7 +15,7 @@ from app.core.usecase import UseCase
 from app.modules.broadcasts.dto import BroadcastDto, SetBroadcastMediaDto
 from app.modules.broadcasts.events import BroadcastChangedEvent
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.storage import delete_media, save_media
+from app.modules.broadcasts.storage import delete_media, place_media
 from app.modules.broadcasts.usecases.editable import lock_editable
 from app.modules.broadcasts.validation import validate_text_lengths
 
@@ -29,6 +29,7 @@ _TYPES: Final[dict[str, tuple[BroadcastMediaType, str, int]]] = {
     "application/pdf": (BroadcastMediaType.DOCUMENT, "pdf", BROADCAST_MEDIA_MAX_BYTES),
     "application/zip": (BroadcastMediaType.DOCUMENT, "zip", BROADCAST_MEDIA_MAX_BYTES),
 }
+MEDIA_CONTENT_TYPES: Final[tuple[str, ...]] = tuple(_TYPES)
 
 
 class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
@@ -54,7 +55,7 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
                 code=ErrorCode.BROADCAST_MEDIA_INVALID,
             )
         media_type, extension, limit = spec
-        if not data.data or len(data.data) > limit:
+        if data.size <= 0 or data.size > limit:
             raise ValidationError(
                 f"Media size must be between 1 byte and {limit} bytes",
                 code=ErrorCode.BROADCAST_MEDIA_INVALID,
@@ -70,7 +71,7 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
                 media_content_type=data.content_type,
                 media_extension=extension,
                 media_version=version,
-                media_size_bytes=len(data.data),
+                media_size_bytes=data.size,
                 media_file_id=None,
                 status=BroadcastStatus.DRAFT,
                 scheduled_at=None,
@@ -80,7 +81,7 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
                 BroadcastChangedEvent(user=actor, action="set_media", broadcast_id=current.id)
             )
         # the file changes only after the row commits
-        save_media(self._config.media_dir, current.id, version, extension, data.data)
+        place_media(self._config.media_dir, current.id, version, extension, data.source)
         if current.media_extension is not None:
             delete_media(
                 self._config.media_dir, current.id, current.media_version, current.media_extension

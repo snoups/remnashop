@@ -310,6 +310,7 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
         await referral_repository.create_referral(referrer_id=top, referred_id=middle, level=1)
         await referral_repository.create_referral(referrer_id=middle, referred_id=buyer, level=2)
         subscription_id = await _create_active_subscription(subscription_repository, buyer, 4012)
+        await _paid_order(referral_repository.session, buyer, "order-1")
 
     real_credit_points = user_repository.credit_points
 
@@ -320,7 +321,6 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
 
     monkeypatch.setattr(user_repository, "credit_points", _failing_credit_points)
 
-    await _paid_order(referral_repository.session, buyer, "order-1")
     with pytest.raises(RuntimeError):
         await assign_rewards.system(
             AssignReferralRewardsDto(
@@ -1307,3 +1307,51 @@ async def test_first_payment_rewards_the_earlier_of_two_paid_subscriptions(
         select(ReferralReward.subscription_id).where(ReferralReward.referrer_id == referrer_id)
     )
     assert rewarded.all() == [first]
+
+
+async def test_assign_referral_rewards_skips_an_order_refunded_while_assigning(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            max_level=1,
+            accrual_strategy=ReferralAccrualStrategy.FIRST_PAYMENT,
+            reward_type=ReferralRewardType.POINTS,
+            reward_amounts={1: Decimal("10")},
+        )
+    )
+    inviter = await _create_user(user_repository, 4060)
+    buyer = await _create_user(user_repository, 4061)
+    await referral_repository.create_referral(referrer_id=inviter, referred_id=buyer, level=1)
+    subscription_id = await _create_active_subscription(subscription_repository, buyer, 4061)
+    session = referral_repository.session
+    await _paid_order(session, buyer, "order-refunded-midway")
+    order = await TransactionRepository(session).get_by_idempotency_key("order-refunded-midway")
+    real_walk = assign_rewards._walk_chain
+
+    async def _walk_then_refund(*args: object) -> object:
+        chain = await real_walk(*args)
+        # the refund webhook lands after the first PAID check
+        await _set_status(session, order.id, TransactionStatus.REFUNDED)
+        return chain
+
+    monkeypatch.setattr(assign_rewards, "_walk_chain", _walk_then_refund)
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-refunded-midway",
+        )
+    )
+
+    assert (await user_repository.get_by_id(inviter)).points == Decimal("0")
+    assert (
+        await session.scalar(select(ReferralReward).where(ReferralReward.referrer_id == inviter))
+    ) is None

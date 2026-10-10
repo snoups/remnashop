@@ -624,6 +624,7 @@
       "TransactionPartiallyRefundedEvent": "Transaction partially refunded",
       "TransactionFulfilledManuallyEvent": "Subscription issued manually",
       "BackupFailedEvent": "Backup failed",
+      "BonusDaysRenewalStuckEvent": "Bonus days not applied",
       "BroadcastChangedEvent": "Broadcast changed",
       "BroadcastScheduledEvent": "Broadcast scheduled",
       "BroadcastStartedEvent": "Broadcast started",
@@ -900,6 +901,7 @@
         "oauth": "{{provider}} login"
       },
       "warning": "This can’t be undone. The merged-in account is deleted.",
+      "referrerCycle": "The link to inviter #{{id}} will be removed: they were themselves invited through one of these accounts.",
       "confirm": "Merge",
       "done": "Accounts merged.",
       "error": "Failed to merge accounts."
@@ -3140,6 +3142,7 @@
     "BROADCAST_TEST_NO_TELEGRAM": "Link Telegram to your account to receive a test message.",
     "BROADCAST_TEST_FAILED": "Telegram rejected the test message.",
     "BROADCAST_RECALL_EXPIRED": "Telegram only allows deleting messages within 48 hours.",
+    "BROADCAST_RECALL_IN_PROGRESS": "The recall is still running. Try again in a few minutes.",
     "BROADCAST_TITLE_TOO_LONG": "The title is too long.",
     "BANNER_NAME_INVALID": "Invalid banner name.",
     "BANNER_NOT_FOUND": "Banner not found.",
@@ -3654,6 +3657,12 @@
       "idLabel": "id {{id}}",
       "messageSent": "Message sent",
       "stopped": "Broadcast was stopped",
+      "reasons": {
+        "noTelegram": "No Telegram account",
+        "optedOut": "Opted out of promotions",
+        "blocked": "Blocked in the shop",
+        "recallFailed": "Recall failed: {{reason}}"
+      },
       "params": {
         "title": "Parameters",
         "category": "Category",
@@ -3690,6 +3699,7 @@
         "recall": {
           "button": "Recall",
           "unavailable": "Messages can be recalled within 48 hours of the start, if something was delivered.",
+          "running": "The recall is running. You can repeat it in a few minutes if some messages remain.",
           "title": "Recall the broadcast?",
           "message": "Delivered messages are deleted from customers’ chats and the channel post is removed. This can’t be undone.",
           "confirm": "Recall",

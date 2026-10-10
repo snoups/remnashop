@@ -1,5 +1,6 @@
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.ports import EventPublisher
@@ -73,6 +74,13 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
                 )
 
         async with self._uow:
+            if data.provider is OAuthProvider.OIDC:
+                current = await self._settings_repository.lock_oauth_settings(exclusive=False)
+                # the identity was fetched from an issuer that is no longer configured
+                if current.oidc_issuer_url != settings.oidc_issuer_url:
+                    raise AuthenticationError(
+                        "OAuth settings changed during sign-in", code=ErrorCode.OAUTH_STATE_INVALID
+                    )
             identity = await self._oauth_identity_repository.create(
                 CreateOAuthIdentityDto(
                     user_id=actor.id,

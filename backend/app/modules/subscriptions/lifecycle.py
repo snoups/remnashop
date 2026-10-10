@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.core.enums import SubscriptionStatus
+from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import SubscriptionState
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -54,5 +55,8 @@ class SubscriptionLifecycleService:
     ) -> SubscriptionDto:
         dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
         state = _dto_to_state(dto)
-        new_state = state.reactivate_on_renew(new_expire_at).add_renewal_credit(paid, days)
+        lapsed = state.expire_at <= datetime_now()
+        new_state = state.reactivate_on_renew(new_expire_at).add_renewal_credit(
+            paid, days, restart=lapsed
+        )
         return await self._subscription_repository.apply_state(new_state)

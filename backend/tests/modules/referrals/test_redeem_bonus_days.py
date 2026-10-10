@@ -10,7 +10,11 @@ from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PlanType, PurchaseType, SubscriptionStatus
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.exceptions import (
+    RemnawavePanelUnavailableError,
+    RetryableTaskError,
+    ValidationError,
+)
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
@@ -450,6 +454,7 @@ async def test_redeem_hands_a_stuck_pinned_renewal_to_the_worker(
     subscription_repository: SubscriptionRepository,
     idempotency_repository: PurchaseIdempotencyRepository,
     uow: UnitOfWork,
+    event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async with uow:
@@ -487,7 +492,11 @@ async def test_redeem_hands_a_stuck_pinned_renewal_to_the_worker(
     }
 
     resume = ResumeBonusRenewalUseCase(
-        user_repository, subscription_repository, purchase_subscription_use_case, uow
+        user_repository,
+        subscription_repository,
+        purchase_subscription_use_case,
+        uow,
+        event_publisher,
     )
     # a redelivered task finds the key linked and applies nothing twice
     for _ in range(2):
@@ -498,3 +507,123 @@ async def test_redeem_hands_a_stuck_pinned_renewal_to_the_worker(
     assert abs(renewed.expire_at - expected) < timedelta(milliseconds=1)
     assert await idempotency_repository.get_subscription_id(key) == subscription.id
     assert await _bonus_days(user_repository, user.id) == 3
+
+
+async def _stuck_events(session) -> list[dict[str, object]]:
+    rows = await session.scalars(
+        select(EventOutboxEntry).where(EventOutboxEntry.event_type == "BonusDaysRenewalStuckEvent")
+    )
+    return [row.payload for row in rows]
+
+
+@pytest.mark.parametrize(
+    ("telegram_id", "error", "final_attempt", "retried"),
+    [
+        (940_020, RuntimeError("panel 502"), False, True),
+        (940_021, RuntimeError("panel 502"), True, False),
+        (940_022, RemnawavePanelUnavailableError("down"), False, True),
+        (940_023, ValidationError("deleted", code=ErrorCode.SUBSCRIPTION_DELETED), False, False),
+    ],
+)
+async def test_resume_retries_infrastructure_errors_and_flags_the_rest(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    telegram_id: int,
+    error: Exception,
+    final_attempt: bool,
+    retried: bool,
+) -> None:
+    async with uow:
+        plan = await _plan(plan_repository)
+        user = await _user_with_days(user_repository, telegram_id, 8)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    async def _failing_purchase(actor: object, data: object) -> SubscriptionDto:
+        raise error
+
+    resume = ResumeBonusRenewalUseCase(
+        user_repository, subscription_repository, _failing_purchase, uow, event_publisher
+    )
+    dto = ResumeBonusRenewalDto(
+        user_id=user.id,
+        subscription_id=subscription.id,
+        days=5,
+        idempotency_key="stuck-key",
+        final_attempt=final_attempt,
+    )
+
+    if retried:
+        with pytest.raises(RetryableTaskError):
+            await resume.system(dto)
+        assert await _stuck_events(user_repository.session) == []
+    else:
+        await resume.system(dto)
+        [payload] = await _stuck_events(user_repository.session)
+        assert payload["days"] == 5 and payload["idempotency_key"] == "stuck-key"
+        assert payload["subscription_id"] == subscription.id
+
+
+async def test_redeem_flags_a_pinned_renewal_that_fails_for_good(
+    redeem: RedeemBonusDaysUseCase,
+    bonus_renewal_dispatch: RecordingDispatch,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with uow:
+        plan = await _plan(plan_repository)
+        user = await _user_with_days(user_repository, 940_030, 8)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    # the date is pinned and the panel written, then the local step fails, then a refusal
+    lifecycle = purchase_subscription_use_case._renew._lifecycle_service
+    failures = [
+        ValidationError("deleted", code=ErrorCode.SUBSCRIPTION_DELETED),
+        RuntimeError("commit lost"),
+    ]
+
+    async def _renew_failing(subscription_id: int, expire_at: object, **credit: object) -> None:
+        raise failures.pop()
+
+    monkeypatch.setattr(lifecycle, "renew", _renew_failing)
+
+    with pytest.raises(ValidationError):
+        await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=5))
+
+    assert bonus_renewal_dispatch.messages == []
+    [payload] = await _stuck_events(user_repository.session)
+    assert payload["days"] == 5 and payload["subscription_id"] == subscription.id
+    assert await _bonus_days(user_repository, user.id) == 3
+
+
+async def test_resume_flags_a_renewal_whose_subscription_is_gone(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    async with uow:
+        user = await _user_with_days(user_repository, 940_040, 8)
+    resume = ResumeBonusRenewalUseCase(
+        user_repository,
+        subscription_repository,
+        purchase_subscription_use_case,
+        uow,
+        event_publisher,
+    )
+
+    await resume.system(
+        ResumeBonusRenewalDto(
+            user_id=user.id, subscription_id=999_999_999, days=5, idempotency_key="gone-key"
+        )
+    )
+
+    [payload] = await _stuck_events(user_repository.session)
+    assert payload["subscription_id"] == 999_999_999

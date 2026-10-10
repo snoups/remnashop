@@ -16,7 +16,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
-from app.core.exceptions import ConflictError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
@@ -694,3 +694,10 @@ async def test_get_for_update_returns_fresh_row(
 
     assert fresh is not None and fresh.name == "after"
     assert await user_repository.get_for_update(user.id + 100000) is None
+
+
+async def test_credit_points_reports_a_missing_user(user_repository: UserRepository) -> None:
+    with pytest.raises(NotFoundError) as caught:
+        await user_repository.credit_points(999_999_999, Decimal("5"))
+
+    assert caught.value.code is ErrorCode.USER_NOT_FOUND

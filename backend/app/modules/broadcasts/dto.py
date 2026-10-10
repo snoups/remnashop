@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Final, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -78,6 +79,8 @@ class BroadcastDto(BaseDto, TimestampMixin):
     failed_count: int = 0
     blocked_count: int = 0
     recalled_count: int = 0
+    # filled on single-broadcast reads only: a count query per row would be wasted on lists
+    recallable_count: Optional[int] = None
 
     @property
     def has_media(self) -> bool:
@@ -185,7 +188,9 @@ class AudiencePreviewDto:
 class SetBroadcastMediaDto:
     broadcast_id: int
     content_type: str
-    data: bytes
+    # the streamed upload; moved into place on success, removed by the caller otherwise
+    source: Path
+    size: int
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from app.core.events import ActorTargetEvent, EventCategory, UserEvent
+from app.core.events import ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -68,3 +68,14 @@ class ReferralRewardReversedEvent(UserEvent):
     amount: str
     reward_type: str
     payment_key: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class BonusDaysRenewalStuckEvent(SystemEvent):
+    # the days are debited and the date may already be on the panel; an admin finishes it
+    category: ClassVar[EventCategory] = EventCategory.REFERRAL
+    user_id: int
+    subscription_id: int
+    days: int
+    idempotency_key: str
+    error: str

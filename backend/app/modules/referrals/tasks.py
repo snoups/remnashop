@@ -1,4 +1,7 @@
+from typing import Final
+
 from dishka.integrations.taskiq import FromDishka, inject
+from taskiq import Context, TaskiqDepends
 
 from app.modules.referrals.dto import (
     AssignReferralRewardsDto,
@@ -11,6 +14,8 @@ from app.modules.referrals.usecases.assign_referral_rewards import AssignReferra
 from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
 from app.modules.referrals.usecases.reverse_referral_rewards import ReverseReferralRewardsUseCase
 from app.worker.broker import broker
+
+_RESUME_MAX_RETRIES: Final[int] = 10
 
 
 @broker.task(retry_on_error=True, max_retries=3)
@@ -50,7 +55,7 @@ async def reverse_referral_rewards_task(
     await use_case.system(ReverseReferralRewardsDto(payment_key=payment_key))
 
 
-@broker.task(retry_on_error=True, max_retries=10)
+@broker.task(retry_on_error=True, max_retries=_RESUME_MAX_RETRIES)
 @inject(patch_module=True)
 async def resume_bonus_renewal_task(
     user_id: int,
@@ -58,12 +63,16 @@ async def resume_bonus_renewal_task(
     days: int,
     idempotency_key: str,
     use_case: FromDishka[ResumeBonusRenewalUseCase],
+    context: Context = TaskiqDepends(),
 ) -> None:
+    # SmartRetryMiddleware stops once _retries + 1 reaches max_retries
+    attempt = int(context.message.labels.get("_retries", 0)) + 1
     await use_case.system(
         ResumeBonusRenewalDto(
             user_id=user_id,
             subscription_id=subscription_id,
             days=days,
             idempotency_key=idempotency_key,
+            final_attempt=attempt >= _RESUME_MAX_RETRIES,
         )
     )

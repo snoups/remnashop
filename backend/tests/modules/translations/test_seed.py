@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.db.models.active_locale import ActiveLocale
 from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale
 from app.modules.settings.repository import SettingsRepository
@@ -125,3 +126,25 @@ async def test_seeding_fills_new_keys_into_a_dashboard_added_locale(
     kept = await translation_repository.get(Locale.DE, "command", "menu")
     assert added is not None and added.value == "Get help"
     assert kept is not None and kept.value == "Hauptmenü"
+
+
+async def test_seeding_flags_a_default_when_none_is_flagged(
+    tmp_path: Path,
+    config: AppConfig,
+    translation_repository: TranslationRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    seed_config = _seed_config(config, tmp_path)
+    await ensure_translations_seeded(seed_config, translation_repository)
+    session = translation_repository.session
+
+    # a database whose flag was lost: EN stays active, so it becomes the default again
+    await session.execute(update(ActiveLocale).values(is_default=False))
+    await ensure_translations_seeded(seed_config, translation_repository)
+    assert await translation_repository.find_default_locale() is Locale.EN
+
+    # without EN, the first remaining active locale takes the flag
+    await session.execute(update(ActiveLocale).values(is_default=False))
+    await translation_repository.remove_active_locale(Locale.EN)
+    await ensure_translations_seeded(seed_config, translation_repository)
+    assert await translation_repository.find_default_locale() is Locale.RU

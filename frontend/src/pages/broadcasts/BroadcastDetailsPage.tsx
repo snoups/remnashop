@@ -17,6 +17,7 @@ import {
   BROADCAST_STATUS_TONE,
   broadcastTitle,
   canRecall,
+  isRecallRunning,
   isEditable,
   processedCount,
 } from "@entities/broadcasts/display";
@@ -56,7 +57,12 @@ const ACTION_REQUEST: Record<Exclude<Action, "delete">, (id: number) => Promise<
 
 function isPolling(b: Broadcast | null, now: number): boolean {
   if (!b) return false;
-  return b.status === "SENDING" || (b.status === "SCHEDULED" && !!b.scheduled_at && new Date(b.scheduled_at).getTime() <= now);
+  // a running recall moves rows to RECALLED, and the button comes back once it may repeat
+  return (
+    b.status === "SENDING" ||
+    (b.status === "SCHEDULED" && !!b.scheduled_at && new Date(b.scheduled_at).getTime() <= now) ||
+    isRecallRunning(b, now)
+  );
 }
 
 export function BroadcastDetailsPage() {
@@ -217,7 +223,16 @@ function BroadcastDetails({ id }: { id: number }) {
               <Button variant="danger" disabled={isBusy || !recallable} onClick={() => setPending("recall")}>
                 {t("broadcasts.details.actions.recall.button")}
               </Button>
-              {!recallable && <Tooltip side="bottom" text={t("broadcasts.details.actions.recall.unavailable")} />}
+              {!recallable && (
+                <Tooltip
+                  side="bottom"
+                  text={
+                    isRecallRunning(b, now)
+                      ? t("broadcasts.details.actions.recall.running")
+                      : t("broadcasts.details.actions.recall.unavailable")
+                  }
+                />
+              )}
             </span>
           )}
         </div>

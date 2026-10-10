@@ -78,8 +78,17 @@ class OAuthLoginCallbackUseCase:
             ) from error
 
         async with self._uow:
-            identity = await self._oauth_identity_repository.get_by_provider_external_id(
-                provider, external_id
+            replaced = False
+            if provider is OAuthProvider.OIDC:
+                current = await self._settings_repository.lock_oauth_settings(exclusive=False)
+                # the sub was fetched from an issuer that is no longer configured
+                replaced = current.oidc_issuer_url != settings.oidc_issuer_url
+            identity = (
+                None
+                if replaced
+                else await self._oauth_identity_repository.get_by_provider_external_id(
+                    provider, external_id
+                )
             )
         if identity is None:
             async with self._uow:

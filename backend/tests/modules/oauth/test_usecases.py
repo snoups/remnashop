@@ -6,6 +6,7 @@ from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, OAuthProvider, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.auth import BootstrapOwnerUseCase, SessionIssuer, SessionRepository
@@ -710,3 +711,133 @@ async def test_registry_returns_oidc_client_when_configured_and_enabled(
 
     assert isinstance(client, OIDCOAuthClient)
     assert client.requires_pkce
+
+
+class _IssuerSwappingClient(_StubOAuthClient):
+    """The OIDC issuer is changed while the code exchange is in flight."""
+
+    def __init__(self, settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
+        self._settings_repository = settings_repository
+        self._uow = uow
+        self.after_swap: list[object] = []
+
+    async def fetch_identity(
+        self, redirect_uri: str, code: str, code_verifier: object
+    ) -> tuple[str, str]:
+        async with self._uow:
+            await self._settings_repository.update_oauth_settings(
+                UpdateOAuthSettingsDto(oidc_issuer_url="https://issuer-b.example")
+            )
+        for hook in self.after_swap:
+            await hook()  # type: ignore[operator]
+        return "external-123", "octocat"
+
+
+async def _with_issuer(settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
+    async with uow:
+        await settings_repository.update_oauth_settings(
+            UpdateOAuthSettingsDto(oidc_issuer_url="https://issuer-a.example")
+        )
+
+
+async def test_connect_callback_refuses_an_identity_from_a_replaced_oidc_issuer(
+    monkeypatch: pytest.MonkeyPatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    oauth_identity_repository: OAuthIdentityRepository,
+    session_repository: SessionRepository,
+) -> None:
+    await _with_issuer(settings_repository, uow)
+    client = _IssuerSwappingClient(settings_repository, uow)
+    monkeypatch.setattr(
+        oauth_connect_callback, "get_oauth_client", lambda provider, settings: client
+    )
+    owner = await _bootstrap_owner(
+        user_repository, uow, config, event_publisher, session_repository
+    )
+    state = await oauth_state_store.create(
+        provider=OAuthProvider.OIDC,
+        purpose=OAuthFlowPurpose.CONNECT,
+        user_id=owner.id,
+        code_verifier=None,
+    )
+    interactor = OAuthConnectCallbackUseCase(
+        settings_repository,
+        oauth_state_store,
+        oauth_identity_repository,
+        uow,
+        config,
+        event_publisher,
+    )
+
+    with pytest.raises(AuthenticationError) as error:
+        await interactor(
+            owner,
+            OAuthCallbackDto(
+                provider=OAuthProvider.OIDC, code="code", state=state, client_ip=CLIENT_IP
+            ),
+        )
+
+    assert error.value.code is ErrorCode.OAUTH_STATE_INVALID
+    assert await oauth_identity_repository.list_by_user(owner.id) == []
+
+
+async def test_login_callback_refuses_a_sub_fetched_from_a_replaced_oidc_issuer(
+    monkeypatch: pytest.MonkeyPatch,
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    oauth_identity_repository: OAuthIdentityRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+) -> None:
+    await _with_issuer(settings_repository, uow)
+    owner = await _bootstrap_owner(
+        user_repository, uow, config, event_publisher, session_repository
+    )
+    client = _IssuerSwappingClient(settings_repository, uow)
+
+    async def _new_issuer_links_the_same_sub() -> None:
+        async with uow:
+            await oauth_identity_repository.create(
+                CreateOAuthIdentityDto(
+                    user_id=owner.id,
+                    provider=OAuthProvider.OIDC,
+                    external_id="external-123",
+                    external_login="octocat",
+                )
+            )
+
+    client.after_swap.append(_new_issuer_links_the_same_sub)
+    monkeypatch.setattr(oauth_login_callback, "get_oauth_client", lambda *_: client)
+    state = await oauth_state_store.create(
+        provider=OAuthProvider.OIDC,
+        purpose=OAuthFlowPurpose.LOGIN,
+        user_id=None,
+        code_verifier=None,
+    )
+    use_case = _oauth_login_callback_use_case(
+        settings_repository,
+        oauth_state_store,
+        oauth_identity_repository,
+        user_repository,
+        uow,
+        config,
+        event_publisher,
+        session_repository,
+    )
+
+    with pytest.raises(AuthenticationError):
+        await use_case.execute(
+            OAuthProvider.OIDC,
+            code="code",
+            state=state,
+            client_ip=CLIENT_IP,
+            user_agent=USER_AGENT,
+        )

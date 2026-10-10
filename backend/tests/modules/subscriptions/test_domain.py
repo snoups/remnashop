@@ -227,3 +227,15 @@ def test_proration_credit_is_capped_at_what_was_paid(
     )
 
     assert credit == expected
+
+
+def test_renewal_credit_restarts_after_a_lapsed_term() -> None:
+    state = _state(plan_snapshot=_snapshot(credit_paid=Decimal("500"), credit_days=60))
+
+    restarted = state.add_renewal_credit(Decimal("100"), 30, restart=True)
+    accumulated = state.add_renewal_credit(Decimal("100"), 30)
+
+    assert restarted.plan_snapshot.credit_paid == Decimal("100")
+    assert restarted.plan_snapshot.credit_days == 30
+    assert accumulated.plan_snapshot.credit_paid == Decimal("600")
+    assert accumulated.plan_snapshot.credit_days == 90

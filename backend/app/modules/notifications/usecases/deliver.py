@@ -38,10 +38,16 @@ def _wanted_channels(
     return channels_for(user, group) - {NotificationChannel.BELL}
 
 
-def _suppressed_note(renderer: NotificationRenderer, user: UserDto, count: int) -> str:
-    if not count:
-        return ""
-    return "\n" + renderer.render_message(user.language, "ntf-suppressed", {"count": count})
+def _coalescing_notes(
+    renderer: NotificationRenderer, user: UserDto, data: DeliverNotificationDto
+) -> str:
+    notes = ""
+    if data.suppressed:
+        count: dict[str, str | int] = {"count": data.suppressed}
+        notes += "\n" + renderer.render_message(user.language, "ntf-suppressed", count)
+    if data.sources_merged:
+        notes += "\n" + renderer.render_message(user.language, "ntf-sources-merged", {})
+    return notes
 
 
 class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
@@ -83,7 +89,7 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
             title, body = renderer.render(user.language, data.event_type, args)
             if len(body) > MAX_BODY_LENGTH:
                 body = body[: MAX_BODY_LENGTH - 1] + "…"
-            body += _suppressed_note(renderer, user, data.suppressed)
+            body += _coalescing_notes(renderer, user, data)
             if NotificationChannel.PUSH in channels:
                 try:
                     await self._push_sender.send(

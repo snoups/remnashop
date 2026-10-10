@@ -10,6 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import AdjustUserPointsDto
 from app.modules.referrals.events import UserPointsAdjustedEvent
+from app.modules.referrals.usecases.target import get_visible_target
 from app.modules.users import UserDto, UserRepository
 
 
@@ -25,11 +26,7 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: AdjustUserPointsDto) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_by_id(data.user_id)
-            if target is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
+            target = await get_visible_target(self._user_repository, actor, data.user_id)
 
             # Belt-and-braces: the authoritative floor lives in credit_points' own
             # UPDATE predicate (two concurrent debits would both pass a check made

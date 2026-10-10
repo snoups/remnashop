@@ -1,5 +1,6 @@
 from contextlib import suppress
-from datetime import timedelta
+from dataclasses import replace
+from datetime import datetime, timedelta
 from typing import Final, Optional
 
 from remnapy import RemnawaveSDK
@@ -12,7 +13,6 @@ from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import PurchaseEligibility
@@ -75,11 +75,12 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             raise PermissionDeniedError
 
         if data.idempotency_key is not None:
-            existing = await self._claim_or_return_existing(
+            token, existing = await self._claim_or_return_existing(
                 data.idempotency_key, data.purchase_type
             )
             if existing is not None:
                 return existing
+            data = replace(data, claim_token=token)
 
         # Releasing the key lets a retry (taskiq's own, or the reconcile sweep)
         # start over from scratch. A RENEW keeps its key once its target
@@ -103,35 +104,38 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             raise NotImplementedError(f"purchase_type '{data.purchase_type}' not yet implemented")
         except BaseException:
             if not keep_key:
-                await self._release_idempotency_key_best_effort(data.idempotency_key)
+                await self._release_idempotency_key_best_effort(
+                    data.idempotency_key, data.claim_token
+                )
             raise
 
     async def _claim_or_return_existing(
         self, key: str, purchase_type: PurchaseType
-    ) -> Optional[SubscriptionDto]:
+    ) -> tuple[Optional[datetime], Optional[SubscriptionDto]]:
         async with self._uow:
-            claimed = await self._idempotency.claim(
-                key, stale_before=datetime_now() - STALE_CLAIM_AFTER
-            )
+            token = await self._idempotency.claim(key, stale_after=STALE_CLAIM_AFTER)
         async with self._uow:
-            if claimed:
-                return None
+            if token is not None:
+                return token, None
             existing_id = await self._idempotency.get_subscription_id(key)
             if existing_id is not None:
-                return await self._subscription_repository.get_by_id(existing_id)
+                return None, await self._subscription_repository.get_by_id(existing_id)
             if (
                 purchase_type is PurchaseType.RENEW
                 and await self._idempotency.get_pending_renew_expire_at(key) is not None
             ):
-                return None  # resume: the renewal re-applies the pinned expire_at
+                # resume: the renewal re-applies the pinned expire_at
+                return await self._idempotency.get_claim_token(key), None
             raise ValidationError(
                 f"Purchase with idempotency_key '{key}' is already in progress",
                 code=ErrorCode.PURCHASE_IN_PROGRESS,
             )
 
-    async def _release_idempotency_key_best_effort(self, key: Optional[str]) -> None:
-        if key is None:
+    async def _release_idempotency_key_best_effort(
+        self, key: Optional[str], token: Optional[datetime]
+    ) -> None:
+        if key is None or token is None:
             return
         with suppress(Exception):
             async with self._uow:
-                await self._idempotency.release(key)
+                await self._idempotency.release(key, token)

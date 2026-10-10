@@ -44,7 +44,12 @@ class UnitOfWork:
             await callback()
 
     async def commit(self) -> None:
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except BaseException:
+            # a failed commit leaves the session unusable until it is rolled back
+            await self.rollback()
+            raise
         logger.debug("SQL transaction committed")
         callbacks, self._after_commit = self._after_commit, []
         for callback in callbacks:

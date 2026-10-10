@@ -253,6 +253,13 @@ class TransactionRepository:
             )
         )
 
+    async def lock_status_by_idempotency_key(self, key: str) -> Optional[TransactionStatus]:
+        # serializes with a refund's status write, so a reward can't land after it
+        status: Optional[TransactionStatus] = await self.session.scalar(
+            select(Transaction.status).where(Transaction.idempotency_key == key).with_for_update()
+        )
+        return status
+
     async def count_open_new_orders(
         self, user_id: int, now: datetime, *, exclude_key: Optional[str] = None
     ) -> int:

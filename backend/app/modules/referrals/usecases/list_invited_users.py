@@ -1,11 +1,10 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import InvitedUserDto, ListInvitedUsersDto
 from app.modules.referrals.repository import ReferralRepository
+from app.modules.referrals.usecases.target import get_visible_target
 from app.modules.users import UserRepository, visible_user
 
 
@@ -26,15 +25,14 @@ class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUse
         self, actor: Actor, data: ListInvitedUsersDto
     ) -> tuple[list[InvitedUserDto], int]:
         async with self._uow:
-            if await self._user_repository.get_by_id(data.user_id) is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
+            await get_visible_target(self._user_repository, actor, data.user_id)
+            sees_staff = PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
             entries, total = await self._referral_repository.list_downline(
                 data.user_id,
                 depth=data.level,
                 search=data.search,
-                search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
+                search_staff=sees_staff,
+                hide_staff_from=None if sees_staff else actor.id,
                 page=data.page,
                 page_size=data.page_size,
             )

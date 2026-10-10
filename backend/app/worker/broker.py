@@ -47,7 +47,8 @@ broker.add_middlewares(
         # so a retry is safe. A real transport error may hide a POST/PATCH that
         # landed, and retrying it would orphan panel users in NewPurchase and
         # double the keyless extend_user in RenewPurchase.
-        # RetryableTaskError: raised by a task only before it did anything
+        # RetryableTaskError: raised by a task only when a repeat is safe (nothing done yet,
+        # or a pinned, keyed write that a repeat re-applies as is)
         types_of_exceptions=(RemnawavePanelUnavailableError, RetryableTaskError),
     ),
     TaskMetricsMiddleware(),

@@ -12,6 +12,11 @@ class MergeConflictResponse(BaseModel):
     forced: Optional[Literal["source", "target"]]
 
 
+class MergeReferrerCycleResponse(BaseModel):
+    side: Literal["source", "target"]
+    referrer_id: int
+
+
 class MergeCountsResponse(BaseModel):
     subscriptions: int
     transactions: int
@@ -24,6 +29,7 @@ class MergePreviewResponse(BaseModel):
     source: UserResponse
     target: UserResponse
     conflicts: list[MergeConflictResponse]
+    referrer_cycles: list[MergeReferrerCycleResponse]
     source_counts: MergeCountsResponse
     fingerprint: str
 

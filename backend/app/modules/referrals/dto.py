@@ -231,6 +231,8 @@ class ResumeBonusRenewalDto:
     subscription_id: int
     days: int
     idempotency_key: str
+    # the worker's last try: a failure now is flagged instead of retried
+    final_attempt: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

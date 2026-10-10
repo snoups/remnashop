@@ -1,13 +1,16 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 from remnapy import RemnawaveSDK
-from sqlalchemy import select
+from remnapy.models import UpdateUserRequestDto
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import EventOutboxEntry
+from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Locale, PlanType, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -59,6 +62,7 @@ from app.modules.subscriptions.usecases import (
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeHwidStore, FakeUserStore
+from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_eligibility
 
 OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -175,6 +179,7 @@ async def test_grant_ignores_the_active_subscription_cap(
                 device_all_reset_cooldown_hours=0,
                 link_reset_enabled=True,
                 link_reset_cooldown_hours=0,
+                fields_set=SHOP_SETTINGS_FIELDS,
             )
         )
     data = GrantSubscriptionDto(user_id=recipient.id, plan_id=plan.id, duration_days=30)
@@ -622,3 +627,141 @@ async def test_squads_keep_db_unchanged_when_panel_fails(
 
     current = await subscription_repository.get_by_id(granted.id)
     assert current.internal_squads == granted.internal_squads
+
+
+async def test_change_plan_keeping_expiry_carries_the_paid_credit(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    old = await _granted(grant_use_case, user_repository, plan_repository, 9410, "credit-a")
+    # as if the customer had paid for this term
+    paid = replace(
+        old.plan_snapshot,
+        price_paid=Decimal("300"),
+        duration_days=30,
+        credit_paid=None,
+        credit_days=None,
+    )
+    await subscription_repository.session.execute(
+        update(Subscription).where(Subscription.id == old.id).values(plan_snapshot=paid.to_json())
+    )
+    new_plan = await _plan(plan_repository, "credit-b")
+
+    changed = await change_plan_use_case(
+        OWNER,
+        ChangeSubscriptionPlanDto(subscription_id=old.id, plan_id=new_plan.id, duration_days=None),
+    )
+
+    assert changed.expire_at == old.expire_at
+    assert changed.plan_snapshot.effective_credit_paid == Decimal("300")
+    assert changed.plan_snapshot.effective_credit_days == 30
+
+
+async def test_squads_are_restored_in_the_panel_when_deleted_mid_edit(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9804, "sq-del")
+    panel_before = dict(remnawave_store[granted.remnawave_user_id])
+    real_update_user = remnawave_sdk.users.update_user
+    calls = 0
+
+    async def update_then_delete(request: object) -> object:
+        nonlocal calls
+        calls += 1
+        result = await real_update_user(request)
+        if calls == 1:
+            async with uow:
+                await subscription_repository.mark_deleted(granted.id)
+        return result
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_delete)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            UpdateSubscriptionSquadsDto(
+                subscription_id=granted.id, internal_squads=[uuid4()], external_squad=None
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert calls == 2
+    restored = dict(remnawave_store[granted.remnawave_user_id])
+    # the fake panel stamps updatedAt on every write
+    restored.pop("updatedAt")
+    panel_before.pop("updatedAt")
+    assert restored == panel_before
+
+
+async def test_squads_rollback_follows_the_plan_change_that_superseded_the_row(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9805, "sq-succ")
+    new_plan = await _plan(plan_repository, "sq-succ-new")
+    successor_squad = uuid4()
+    real_update_user = remnawave_sdk.users.update_user
+    sent: list[UpdateUserRequestDto] = []
+    successor_id = 0
+
+    async def update_then_change(request: UpdateUserRequestDto) -> object:
+        nonlocal successor_id
+        sent.append(request)
+        result = await real_update_user(request)
+        if len(sent) == 1:
+            # a plan change lands while the squads edit is in flight; it keeps the panel user
+            successor = await change_plan_use_case(
+                OWNER,
+                ChangeSubscriptionPlanDto(
+                    subscription_id=granted.id, plan_id=new_plan.id, duration_days=None
+                ),
+            )
+            successor_id = successor.id
+            async with uow:
+                await subscription_repository.update_squads(
+                    UpdateSubscriptionSquadsDto(
+                        subscription_id=successor.id,
+                        internal_squads=[successor_squad],
+                        external_squad=None,
+                    )
+                )
+        return result
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_change)
+    use_case = UpdateSubscriptionSquadsUseCase(
+        subscription_repository, remnawave_sdk, event_publisher, uow
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            UpdateSubscriptionSquadsDto(
+                subscription_id=granted.id, internal_squads=[uuid4()], external_squad=None
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert successor_id != 0
+    # the panel user now belongs to the successor: its squads win, not the deleted row's
+    assert sent[-1].active_internal_squads == [successor_squad]

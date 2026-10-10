@@ -44,6 +44,8 @@ class BroadcastResponse(BaseModel):
     post_to_channel: bool
     has_channel_post: bool
     recall_requested: bool
+    recall_requested_at: Optional[datetime] = None
+    recallable_count: Optional[int] = None
     media_type: Optional[BroadcastMediaType] = None
     media_size_bytes: Optional[int] = None
     scheduled_at: Optional[datetime] = None
