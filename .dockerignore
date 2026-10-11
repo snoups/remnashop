@@ -1,17 +1,19 @@
-.venv
-__pycache__
-*.pyc
-*.pyo
-*.pyd
+**/.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
 .git
-.env
-.env.*
+**/.env
+**/.env.*
 .idea
 .vscode
 .worktrees/
 
 logs/
 backups/
+backend/logs/
+backend/media/
 
 tests/
 
@@ -24,9 +26,9 @@ Makefile
 .dockerignore
 *.md
 
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
 .coverage
 htmlcov/
 

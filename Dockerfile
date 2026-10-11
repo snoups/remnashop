@@ -1,11 +1,11 @@
-FROM node:22-alpine AS frontend-builder
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS frontend-builder
 WORKDIR /opt/frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY frontend/ ./
 RUN npm run build
 
-FROM ghcr.io/astral-sh/uv:python3.12-alpine AS backend-builder
+FROM ghcr.io/astral-sh/uv:python3.12-alpine@sha256:7fb7cdfb345b596cf096f713fafb78fd814bb594a0d4136d32f6fdcc73ad5a00 AS backend-builder
 WORKDIR /opt/remnashop
 ARG UV_EXTRA=""
 COPY backend/pyproject.toml backend/uv.lock ./
@@ -18,7 +18,7 @@ RUN if [ -n "$UV_EXTRA" ]; then \
               .venv/lib/python3.12/site-packages/setuptools* \
               .venv/lib/python3.12/site-packages/wheel*
 
-FROM python:3.12-alpine AS final
+FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4 AS final
 WORKDIR /opt/remnashop
 
 ARG BUILD_TIME
