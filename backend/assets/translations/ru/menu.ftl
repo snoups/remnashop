@@ -107,3 +107,12 @@ btn-requirements =
     .accept = Принимаю
     .subscribe = Подписаться
     .check = Я подписался
+
+ntf-cabinet-login =
+    .confirmed = Вход подтверждён. Вернитесь в браузер.
+    .expired = Ссылка для входа устарела. Запросите новую в кабинете.
+
+ntf-cabinet-login-ask = Войти в веб-кабинет? Запрос с IP { $ip }, { $agent }. Если это не вы, проигнорируйте сообщение.
+
+btn-cabinet-login =
+    .confirm = Подтвердить

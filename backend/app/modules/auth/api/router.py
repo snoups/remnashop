@@ -1,5 +1,3 @@
-import hmac
-
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -11,7 +9,6 @@ from app.core.config import AppConfig
 from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, TIME_1M
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
-from app.core.security import derive_csrf_token
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
     BootstrapOwnerUseCase,
@@ -26,7 +23,12 @@ from app.modules.auth.api.schemas import (
     RefreshResponse,
     StatusResponse,
 )
-from app.modules.auth.session_response import AuthResponse, set_session_cookies, to_auth_response
+from app.modules.auth.session_response import (
+    AuthResponse,
+    set_session_cookies,
+    to_auth_response,
+    verify_csrf,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,21 +36,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _clear_session_cookies(response: Response) -> None:
     response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
-
-
-def _verify_csrf(refresh_token: str, request: Request, jwt_secret: str) -> None:
-    # both must equal the signed value, not just each other (see
-    # derive_csrf_token in core/security/session_token.py)
-    cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
-    header_value = request.headers.get("x-csrf-token")
-    expected = derive_csrf_token(refresh_token, jwt_secret)
-    if (
-        not cookie_value
-        or not header_value
-        or not hmac.compare_digest(cookie_value, expected)
-        or not hmac.compare_digest(header_value, expected)
-    ):
-        raise ApiError(status.HTTP_403_FORBIDDEN, "CSRF check failed", code=ErrorCode.CSRF_FAILED)
 
 
 @router.get(
@@ -140,7 +127,7 @@ async def refresh_session(
         raise ApiError(
             status.HTTP_401_UNAUTHORIZED, "No refresh token", code=ErrorCode.REFRESH_TOKEN_MISSING
         )
-    _verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
+    verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
 
     try:
         issued = await use_case.execute(
@@ -173,6 +160,6 @@ async def logout(
 ) -> None:
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
     if refresh_token:
-        _verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
+        verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
         await use_case.execute(refresh_token=refresh_token)
     _clear_session_cookies(response)

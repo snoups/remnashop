@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Final, Optional, Protocol
 
 import httpx
@@ -17,6 +18,21 @@ OAUTH_EXCHANGE_ERRORS: Final[tuple[type[Exception], ...]] = (
     ValidationError,
 )
 
+# no dashboard enable flag; usable only for cabinet sign-in
+CABINET_ONLY_PROVIDERS: Final[frozenset[OAuthProvider]] = frozenset(
+    {OAuthProvider.GOOGLE, OAuthProvider.YANDEX}
+)
+
+
+@dataclass(frozen=True)
+class OAuthProfile:
+    external_id: str
+    login: Optional[str]
+    name: Optional[str] = None
+    email: Optional[str] = None
+    email_verified: bool = False
+    language: Optional[str] = None
+
 
 class OAuthProviderClient(Protocol):
     requires_pkce: bool
@@ -27,8 +43,12 @@ class OAuthProviderClient(Protocol):
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
-    ) -> tuple[str, Optional[str]]: ...
+    ) -> OAuthProfile: ...
 
 
 def build_redirect_uri(domain: str, provider: OAuthProvider) -> str:
     return f"https://{domain}/oauth2/callback/{provider.value.lower()}"
+
+
+def build_cabinet_redirect_uri(cabinet_url: str, provider: OAuthProvider) -> str:
+    return f"{cabinet_url.rstrip('/')}/login/callback/{provider.value.lower()}"

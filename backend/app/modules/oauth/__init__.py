@@ -5,6 +5,14 @@ from app.modules.oauth.dto import (
     OAuthDisconnectDto,
     OAuthIdentityDto,
 )
+from app.modules.oauth.providers.base import (
+    OAUTH_EXCHANGE_ERRORS,
+    OAuthProfile,
+    build_cabinet_redirect_uri,
+    build_redirect_uri,
+)
+from app.modules.oauth.providers.registry import get_oauth_client
+from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
@@ -16,6 +24,7 @@ from app.modules.oauth.usecases import (
 )
 
 __all__ = [
+    "OAUTH_EXCHANGE_ERRORS",
     "CreateOAuthIdentityDto",
     "ListOAuthIdentitiesUseCase",
     "OAuthCallbackDto",
@@ -23,9 +32,15 @@ __all__ = [
     "OAuthConnectCallbackUseCase",
     "OAuthDisconnectDto",
     "OAuthDisconnectUseCase",
+    "OAuthFlowPurpose",
     "OAuthIdentityDto",
     "OAuthIdentityRepository",
     "OAuthLoginAuthorizeUseCase",
     "OAuthLoginCallbackUseCase",
+    "OAuthProfile",
+    "OAuthStateStore",
+    "build_cabinet_redirect_uri",
+    "build_redirect_uri",
+    "get_oauth_client",
     "get_oauth_providers",
 ]

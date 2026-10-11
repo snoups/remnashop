@@ -2,6 +2,8 @@ from typing import Final, Optional, cast
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
+from app.modules.oauth.providers.base import OAuthProfile
+
 _AUTHORIZE_ENDPOINT: Final[str] = "https://github.com/login/oauth/authorize"
 _TOKEN_ENDPOINT: Final[str] = "https://github.com/login/oauth/access_token"
 _USER_ENDPOINT: Final[str] = "https://api.github.com/user"
@@ -31,7 +33,7 @@ class GitHubOAuthClient:
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
-    ) -> tuple[str, Optional[str]]:
+    ) -> OAuthProfile:
         async with AsyncOAuth2Client(
             self._client_id,
             self._client_secret,
@@ -41,4 +43,4 @@ class GitHubOAuthClient:
             response = await client.get(_USER_ENDPOINT)
             response.raise_for_status()
             data = response.json()
-            return str(data["id"]), data.get("login")
+            return OAuthProfile(external_id=str(data["id"]), login=data.get("login"))

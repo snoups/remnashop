@@ -11,7 +11,7 @@ from app.modules.subscriptions import (
     SubscriptionRenewedEvent,
 )
 from app.modules.transactions import TransactionRefundedEvent
-from app.modules.users import TelegramUserRegisteredEvent
+from app.modules.users import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
 
 
 async def _kick_rewards(entry: StoredEvent, *, is_new_purchase: bool) -> None:
@@ -35,7 +35,7 @@ async def _on_subscription_renewed_or_changed(entry: StoredEvent) -> None:
     await _kick_rewards(entry, is_new_purchase=False)
 
 
-async def _on_telegram_user_registered(entry: StoredEvent) -> None:
+async def _on_user_registered(entry: StoredEvent) -> None:
     referral_code = entry.payload.get("referral_code")
     if not referral_code:
         return
@@ -54,7 +54,8 @@ async def _on_transaction_refunded(entry: StoredEvent) -> None:
 
 
 def register_subscribers(bus: EventBus) -> None:
-    bus.subscribe(TelegramUserRegisteredEvent, _on_telegram_user_registered)
+    bus.subscribe(TelegramUserRegisteredEvent, _on_user_registered)
+    bus.subscribe(CabinetUserRegisteredEvent, _on_user_registered)
     bus.subscribe(SubscriptionPurchasedEvent, _on_subscription_purchased)
     bus.subscribe(SubscriptionRenewedEvent, _on_subscription_renewed_or_changed)
     bus.subscribe(SubscriptionChangedEvent, _on_subscription_renewed_or_changed)

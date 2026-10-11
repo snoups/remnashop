@@ -8,6 +8,7 @@ from redis.asyncio import Redis as RedisClient
 from app.api.dependencies.rate_limit import (
     _enforce,
     _resolve_rate_limit_identity,
+    failure_rate_limit,
     global_rate_limit,
 )
 from app.core.config import AppConfig
@@ -139,3 +140,26 @@ async def test_enforce_increments_the_counter_only_on_the_rejecting_call(
     assert after == before + 1
 
     await redis.delete(redis_key)
+
+
+async def test_failure_limit_rejects_after_limit_failures_without_counting_checks(
+    redis: RedisClient,
+) -> None:
+    dependency = failure_rate_limit(key="t_fail", limit=3, window_seconds=60)
+    request = _make_request(client_host="2001:db8:1:2:aaaa::1")
+
+    for _ in range(25):  # checks alone never consume
+        guard = await dependency.__dishka_orig_func__(request, redis)
+    for _ in range(3):
+        guard = await dependency.__dishka_orig_func__(request, redis)
+        await guard.record_failure()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency.__dishka_orig_func__(request, redis)
+    assert exc_info.value.status_code == 429
+
+    same_64 = _make_request(client_host="2001:db8:1:2:bbbb::7")
+    with pytest.raises(HTTPException):
+        await dependency.__dishka_orig_func__(same_64, redis)
+    other_64 = _make_request(client_host="2001:db8:1:3::1")
+    await dependency.__dishka_orig_func__(other_64, redis)

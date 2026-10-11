@@ -4,6 +4,7 @@ import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.utils.http import assert_public_https_host
+from app.modules.oauth.providers.base import OAuthProfile
 
 _DISCOVERY_PATH: Final[str] = "/.well-known/openid-configuration"
 
@@ -53,7 +54,7 @@ class OIDCOAuthClient:
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
-    ) -> tuple[str, Optional[str]]:
+    ) -> OAuthProfile:
         metadata = await self._discover()
         # server-side requests carrying client_secret or the access token
         # (unlike authorization_endpoint, a browser redirect), so a malicious
@@ -69,4 +70,7 @@ class OIDCOAuthClient:
             response = await client.get(metadata["userinfo_endpoint"])
             response.raise_for_status()
             data = response.json()
-            return str(data["sub"]), data.get("preferred_username") or data.get("email")
+            return OAuthProfile(
+                external_id=str(data["sub"]),
+                login=data.get("preferred_username") or data.get("email"),
+            )

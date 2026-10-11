@@ -14,6 +14,8 @@ from app.modules.settings.api.schemas import (
     BotRequirementsResponse,
     BotSettingsResponse,
     BotStatusResponse,
+    CabinetAuthSettingsResponse,
+    EmailSettingsResponse,
     OAuthSettingsResponse,
     SetBotProxyRequest,
     ShopSettingsResponse,
@@ -23,6 +25,8 @@ from app.modules.settings.api.schemas import (
     UpdateBotCommandsResponse,
     UpdateBotRequirementsRequest,
     UpdateBotSettingsRequest,
+    UpdateCabinetAuthSettingsRequest,
+    UpdateEmailSettingsRequest,
     UpdateOAuthSettingsRequest,
     UpdateShopSettingsRequest,
 )
@@ -31,6 +35,8 @@ from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
     UpdateBotRequirementsDto,
     UpdateBotSettingsDto,
+    UpdateCabinetAuthSettingsDto,
+    UpdateEmailSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
     UploadAppearanceImageDto,
@@ -44,6 +50,8 @@ from app.modules.settings.usecases import (
     GetBotRequirementsUseCase,
     GetBotSettingsUseCase,
     GetBotStatusUseCase,
+    GetCabinetAuthSettingsUseCase,
+    GetEmailSettingsUseCase,
     GetOAuthSettingsUseCase,
     GetShopSettingsUseCase,
     RemoveBotProxyUseCase,
@@ -55,6 +63,8 @@ from app.modules.settings.usecases import (
     UpdateBotCommandsUseCase,
     UpdateBotRequirementsUseCase,
     UpdateBotSettingsUseCase,
+    UpdateCabinetAuthSettingsUseCase,
+    UpdateEmailSettingsUseCase,
     UpdateOAuthSettingsUseCase,
     UpdateShopSettingsUseCase,
     UploadAppearanceFaviconUseCase,
@@ -195,6 +205,52 @@ async def update_access_settings(
     return AccessSettingsResponse.model_validate(settings, from_attributes=True)
 
 
+@router.get("/email", response_model=EmailSettingsResponse)
+@inject
+async def get_email_settings(
+    use_case: FromDishka[GetEmailSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> EmailSettingsResponse:
+    settings = await use_case(actor)
+    return EmailSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.patch("/email", response_model=EmailSettingsResponse)
+@inject
+async def update_email_settings(
+    payload: UpdateEmailSettingsRequest,
+    use_case: FromDishka[UpdateEmailSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> EmailSettingsResponse:
+    settings = await use_case(actor, UpdateEmailSettingsDto(**payload.model_dump()))
+    return EmailSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.get("/cabinet-auth", response_model=CabinetAuthSettingsResponse)
+@inject
+async def get_cabinet_auth_settings(
+    use_case: FromDishka[GetCabinetAuthSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> CabinetAuthSettingsResponse:
+    settings = await use_case(actor)
+    return CabinetAuthSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.patch(
+    "/cabinet-auth",
+    response_model=CabinetAuthSettingsResponse,
+    responses=error_responses(400),
+)
+@inject
+async def update_cabinet_auth_settings(
+    payload: UpdateCabinetAuthSettingsRequest,
+    use_case: FromDishka[UpdateCabinetAuthSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> CabinetAuthSettingsResponse:
+    settings = await use_case(actor, UpdateCabinetAuthSettingsDto(**payload.model_dump()))
+    return CabinetAuthSettingsResponse.model_validate(settings, from_attributes=True)
+
+
 @router.get("/shop", response_model=ShopSettingsResponse)
 @inject
 async def get_shop_settings(
@@ -277,6 +333,8 @@ async def get_oauth_settings(
         is_github_enabled=settings.github_enabled,
         is_telegram_configured=settings.is_telegram_configured,
         is_telegram_enabled=settings.telegram_enabled,
+        is_google_configured=settings.is_google_configured,
+        is_yandex_configured=settings.is_yandex_configured,
         is_oidc_configured=settings.is_oidc_configured,
         is_oidc_enabled=settings.oidc_enabled,
         oidc_display_name=settings.oidc_display_name,
@@ -304,6 +362,10 @@ async def update_oauth_settings(
             telegram_client_id=payload.telegram_client_id,
             telegram_client_secret=payload.telegram_client_secret,
             telegram_enabled=payload.telegram_enabled,
+            google_client_id=payload.google_client_id,
+            google_client_secret=payload.google_client_secret,
+            yandex_client_id=payload.yandex_client_id,
+            yandex_client_secret=payload.yandex_client_secret,
             oidc_issuer_url=payload.oidc_issuer_url,
             oidc_client_id=payload.oidc_client_id,
             oidc_client_secret=payload.oidc_client_secret,
@@ -320,6 +382,8 @@ async def update_oauth_settings(
         is_github_enabled=settings.github_enabled,
         is_telegram_configured=settings.is_telegram_configured,
         is_telegram_enabled=settings.telegram_enabled,
+        is_google_configured=settings.is_google_configured,
+        is_yandex_configured=settings.is_yandex_configured,
         is_oidc_configured=settings.is_oidc_configured,
         is_oidc_enabled=settings.oidc_enabled,
         oidc_display_name=settings.oidc_display_name,

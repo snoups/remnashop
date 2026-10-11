@@ -42,6 +42,7 @@ export function getInitiator(entry: EventLogEntry): UserSnapshot | undefined {
 export const ANONYMOUS_EVENT_TYPES: ReadonlySet<string> = new Set([
   "LoginFailedEvent",
   "OAuthLoginFailedEvent",
+  "EmailCodeAttemptsExhaustedEvent",
   "PasskeyLoginFailedEvent",
   "BootstrapConflictEvent",
   "SessionTheftDetectedEvent",

@@ -77,6 +77,7 @@ async def test_refresh_rejects_a_missing_csrf_header(auth_client: httpx.AsyncCli
     response = await auth_client.post(f"{API_V1}/auth/refresh")
 
     assert response.status_code == 403
+    assert response.json()["code"] == "CSRF_FAILED"
 
 
 async def test_refresh_rejects_a_forged_cookie_mirrored_into_the_header(

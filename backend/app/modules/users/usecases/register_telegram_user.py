@@ -2,15 +2,20 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
+from app.core.enums import AdLinkChannel, CabinetSignInMethod, Role
 from app.core.error_codes import ErrorCode
+from app.core.events import UserEvent
 from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.display_name import clean_telegram_name
 from app.modules.users.dto import CreateUserDto, RegisterTelegramUserDto, UserDto
-from app.modules.users.events import TelegramRegistrationBlockedEvent, TelegramUserRegisteredEvent
+from app.modules.users.events import (
+    CabinetUserRegisteredEvent,
+    TelegramRegistrationBlockedEvent,
+    TelegramUserRegisteredEvent,
+)
 from app.modules.users.repository import UserRepository
 
 
@@ -55,13 +60,21 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                 if is_blocked:
                     await self._event_publisher.publish(TelegramRegistrationBlockedEvent(user=user))
                     return user
-                await self._event_publisher.publish(
-                    TelegramUserRegisteredEvent(
+                event: UserEvent = (
+                    CabinetUserRegisteredEvent(
+                        user=user,
+                        method=CabinetSignInMethod.TELEGRAM.value,
+                        ad_link_code=data.ad_link_code,
+                        referral_code=data.referral_code,
+                    )
+                    if data.channel is AdLinkChannel.WEBCABINET
+                    else TelegramUserRegisteredEvent(
                         user=user,
                         ad_link_code=data.ad_link_code,
                         referral_code=data.referral_code,
                     )
                 )
+                await self._event_publisher.publish(event)
         except ConflictError as error:
             if error.code is not ErrorCode.TELEGRAM_ID_TAKEN:
                 raise

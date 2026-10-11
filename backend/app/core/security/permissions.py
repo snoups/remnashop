@@ -42,6 +42,11 @@ class Permission(UpperStrEnum):
     PAYMENT_WAITLIST_VIEW = auto()
     OAUTH_SETTINGS_VIEW = auto()
     OAUTH_SETTINGS_MANAGE = auto()
+    EMAIL_SETTINGS_VIEW = auto()
+    EMAIL_SETTINGS_MANAGE = auto()
+    EMAIL_SETTINGS_TEST = auto()
+    CABINET_AUTH_SETTINGS_VIEW = auto()
+    CABINET_AUTH_SETTINGS_MANAGE = auto()
     BANNERS_IMAGE_VIEW = auto()
     BANNERS_UPLOAD = auto()
     BANNERS_DELETE = auto()
@@ -246,6 +251,15 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PAYMENT_WAITLIST_VIEW: PermissionMeta(resource="access_settings", kind="read"),
     Permission.OAUTH_SETTINGS_VIEW: PermissionMeta(resource="oauth_settings", kind="read"),
     Permission.OAUTH_SETTINGS_MANAGE: PermissionMeta(resource="oauth_settings", kind="write"),
+    Permission.EMAIL_SETTINGS_VIEW: PermissionMeta(resource="email_settings", kind="read"),
+    Permission.EMAIL_SETTINGS_MANAGE: PermissionMeta(resource="email_settings", kind="write"),
+    Permission.EMAIL_SETTINGS_TEST: PermissionMeta(resource="email_settings", kind="write"),
+    Permission.CABINET_AUTH_SETTINGS_VIEW: PermissionMeta(
+        resource="cabinet_auth_settings", kind="read"
+    ),
+    Permission.CABINET_AUTH_SETTINGS_MANAGE: PermissionMeta(
+        resource="cabinet_auth_settings", kind="write"
+    ),
     Permission.BANNERS_IMAGE_VIEW: PermissionMeta(resource="banners", kind="read"),
     Permission.BANNERS_UPLOAD: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_DELETE: PermissionMeta(resource="banners", kind="write"),
@@ -442,6 +456,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
     {
         # login methods: an issuer of one's own logs in as any linked identity
         Permission.OAUTH_SETTINGS_MANAGE,
+        # SMTP credentials and the server login codes are mailed through
+        Permission.EMAIL_SETTINGS_MANAGE,
         # bot token and the proxy every Telegram call (token in its URL) goes through
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_PROXY_SET,
@@ -543,6 +559,10 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.EMOJI_PACKS_IMPORT,
         Permission.EMOJI_PACKS_DELETE,
         Permission.OAUTH_SETTINGS_VIEW,
+        Permission.EMAIL_SETTINGS_VIEW,
+        Permission.EMAIL_SETTINGS_TEST,
+        Permission.CABINET_AUTH_SETTINGS_VIEW,
+        Permission.CABINET_AUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,

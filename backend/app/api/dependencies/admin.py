@@ -1,18 +1,27 @@
-from fastapi import Depends, status
+from fastapi import Depends, Request, status
 from loguru import logger
 
 from app.api.dependencies.public import get_current_actor, require_user_account
 from app.api.errors import ApiError
 from app.core.actor import Actor
+from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.modules.users import UserDto
 
 
-async def require_admin(actor: Actor = Depends(get_current_actor)) -> Actor:
+async def require_admin(request: Request, actor: Actor = Depends(get_current_actor)) -> Actor:
     if not actor.is_privileged:
         logger.warning(f"Non-privileged actor {actor.log} denied admin access")
         raise ApiError(
             status.HTTP_403_FORBIDDEN, "Admin access required", code=ErrorCode.ADMIN_REQUIRED
+        )
+    # a cabinet session belongs to the customer UI even for a staff member
+    if getattr(request.state, "session_audience", None) is SessionAudience.CABINET:
+        logger.warning(f"Cabinet session of {actor.log} denied admin access")
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "Admin access requires a dashboard session",
+            code=ErrorCode.SESSION_AUDIENCE_MISMATCH,
         )
     return actor
 

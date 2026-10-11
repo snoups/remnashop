@@ -13,6 +13,14 @@ class TelegramUserRegisteredEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class CabinetUserRegisteredEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    method: str
+    ad_link_code: Optional[str] = None
+    referral_code: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class AdminCreatedEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.ADMIN_MANAGEMENT
 
@@ -62,6 +70,11 @@ class UserUnblockedEvent(ActorTargetEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class TelegramRegistrationBlockedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+
+
+@dataclass(frozen=True, kw_only=True)
+class CabinetRegistrationBlockedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
 
 

@@ -8,6 +8,8 @@ from app.core.db.models.appearance_settings import AppearanceSettings
 from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_requirements import BotRequirements
 from app.core.db.models.bot_settings import BotSettings
+from app.core.db.models.cabinet_auth_settings import CabinetAuthSettings
+from app.core.db.models.email_settings import EmailSettings
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
@@ -19,12 +21,16 @@ from app.modules.settings.dto import (
     BotCommandDto,
     BotRequirementsDto,
     BotSettingsDto,
+    CabinetAuthSettingsDto,
+    EmailSettingsDto,
     OAuthSettingsDto,
     ShopSettingsDto,
     UpdateAccessSettingsDto,
     UpdateAppearanceSettingsDto,
     UpdateBotRequirementsDto,
     UpdateBotSettingsDto,
+    UpdateCabinetAuthSettingsDto,
+    UpdateEmailSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
 )
@@ -43,6 +49,8 @@ _SingletonRow = TypeVar(
     ShopSettings,
     AccessSettings,
     BotRequirements,
+    EmailSettings,
+    CabinetAuthSettings,
 )
 
 
@@ -136,6 +144,42 @@ class SettingsRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_access_dto(row)
+
+    def _to_email_dto(self, row: Optional[EmailSettings]) -> EmailSettingsDto:
+        if row is None:
+            return EmailSettingsDto()
+        return EmailSettingsDto.model_validate(row, from_attributes=True)
+
+    async def get_email_settings(self) -> EmailSettingsDto:
+        row = await self.session.get(EmailSettings, _SINGLETON_ID)
+        return self._to_email_dto(row)
+
+    async def update_email_settings(self, data: UpdateEmailSettingsDto) -> EmailSettingsDto:
+        row = await self._get_or_create_singleton(EmailSettings)
+        apply_partial_update(row, data)
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_email_dto(row)
+
+    def _to_cabinet_auth_dto(self, row: Optional[CabinetAuthSettings]) -> CabinetAuthSettingsDto:
+        if row is None:
+            return CabinetAuthSettingsDto()
+        return CabinetAuthSettingsDto.model_validate(row, from_attributes=True)
+
+    async def get_cabinet_auth_settings(self) -> CabinetAuthSettingsDto:
+        row = await self.session.get(CabinetAuthSettings, _SINGLETON_ID)
+        return self._to_cabinet_auth_dto(row)
+
+    async def update_cabinet_auth_settings(
+        self, data: UpdateCabinetAuthSettingsDto
+    ) -> CabinetAuthSettingsDto:
+        row = await self._get_or_create_singleton(CabinetAuthSettings)
+        apply_partial_update(row, data)
+
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_cabinet_auth_dto(row)
 
     def _to_oauth_dto(self, row: Optional[OAuthSettings]) -> OAuthSettingsDto:
         if row is None:

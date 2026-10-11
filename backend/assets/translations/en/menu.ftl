@@ -107,3 +107,12 @@ btn-requirements =
     .accept = I accept
     .subscribe = Subscribe
     .check = I've subscribed
+
+ntf-cabinet-login =
+    .confirmed = Sign-in confirmed. Go back to the browser.
+    .expired = This sign-in link has expired. Request a new one in the cabinet.
+
+ntf-cabinet-login-ask = Sign in to the web cabinet? Request from IP { $ip }, { $agent }. If it wasn't you, ignore this message.
+
+btn-cabinet-login =
+    .confirm = Confirm

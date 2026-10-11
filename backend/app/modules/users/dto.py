@@ -5,7 +5,7 @@ from typing import Final, Literal, Optional
 
 from app.core.constants import REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import BlacklistKind, Locale, Role
+from app.core.enums import AdLinkChannel, BlacklistKind, CabinetSignInMethod, Locale, Role
 from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
 from app.modules.blacklist import BlacklistOriginDto
@@ -288,6 +288,17 @@ class RegisterTelegramUserDto:
     # deployment default; only then may it overwrite a stored one
     sync_language: bool = False
     # raw deep-link payloads; advertising and referrals resolve them
+    ad_link_code: Optional[str] = None
+    referral_code: Optional[str] = None
+    channel: AdLinkChannel = AdLinkChannel.BOT
+
+
+@dataclass(frozen=True, kw_only=True)
+class RegisterCabinetUserDto:
+    name: str
+    language: Locale
+    method: CabinetSignInMethod
+    email: Optional[str] = None
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
 

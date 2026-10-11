@@ -7,7 +7,11 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
+from app.modules.oauth.providers.base import (
+    CABINET_ONLY_PROVIDERS,
+    OAUTH_EXCHANGE_ERRORS,
+    build_redirect_uri,
+)
 from app.modules.oauth.providers.registry import get_oauth_client
 from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
 from app.modules.settings import SettingsRepository
@@ -30,6 +34,11 @@ class OAuthConnectAuthorizeUseCase(UseCase[OAuthProvider, str, UserDto]):
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: OAuthProvider) -> str:
+        if data in CABINET_ONLY_PROVIDERS:
+            raise AuthenticationError(
+                "Provider is not available for dashboard sign-in",
+                code=ErrorCode.OAUTH_PROVIDER_UNSUPPORTED,
+            )
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
             client = get_oauth_client(data, settings)

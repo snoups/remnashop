@@ -178,6 +178,10 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.EMOJI_PACKS_IMPORT,
         Permission.EMOJI_PACKS_DELETE,
         Permission.OAUTH_SETTINGS_VIEW,
+        Permission.EMAIL_SETTINGS_VIEW,
+        Permission.EMAIL_SETTINGS_TEST,
+        Permission.CABINET_AUTH_SETTINGS_VIEW,
+        Permission.CABINET_AUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,
         Permission.LOCALES_ADD,
         Permission.LOCALES_REMOVE,
@@ -451,6 +455,7 @@ def test_token_cannot_take_over_login_bot_or_payments() -> None:
     # still delegable to an admin, never to a bearer string in a script
     for permission in (
         Permission.OAUTH_SETTINGS_MANAGE,
+        Permission.EMAIL_SETTINGS_MANAGE,
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_PROXY_SET,
         Permission.GATEWAYS_UPDATE,
@@ -591,5 +596,8 @@ def test_irreversible_subscription_actions_are_not_token_grantable() -> None:
 
 def test_oauth_settings_manage_is_owner_only_by_default() -> None:
     assert Permission.OAUTH_SETTINGS_MANAGE not in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.EMAIL_SETTINGS_MANAGE not in ROLE_PERMISSIONS[Role.ADMIN]
+    assert Permission.EMAIL_SETTINGS_MANAGE in ROLE_PERMISSIONS[Role.OWNER]
+    assert Permission.EMAIL_SETTINGS_MANAGE in GRANTABLE_PERMISSIONS
     assert Permission.OAUTH_SETTINGS_MANAGE in ROLE_PERMISSIONS[Role.OWNER]
     assert Permission.OAUTH_SETTINGS_MANAGE in GRANTABLE_PERMISSIONS

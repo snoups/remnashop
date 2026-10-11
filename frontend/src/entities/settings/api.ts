@@ -80,6 +80,8 @@ export interface OAuthSettings {
   is_github_enabled: boolean;
   is_telegram_configured: boolean;
   is_telegram_enabled: boolean;
+  is_google_configured: boolean;
+  is_yandex_configured: boolean;
   is_oidc_configured: boolean;
   is_oidc_enabled: boolean;
   oidc_display_name: string | null;
@@ -97,6 +99,10 @@ export interface UpdateOAuthSettingsPayload {
   telegram_client_id?: string;
   telegram_client_secret?: string;
   telegram_enabled?: boolean;
+  google_client_id?: string;
+  google_client_secret?: string;
+  yandex_client_id?: string;
+  yandex_client_secret?: string;
   oidc_issuer_url?: string;
   oidc_client_id?: string;
   oidc_client_secret?: string;
@@ -114,6 +120,52 @@ export function getOAuthSettings(signal?: AbortSignal): Promise<OAuthSettings> {
 
 export function updateOAuthSettings(payload: UpdateOAuthSettingsPayload): Promise<OAuthSettings> {
   return apiPatch<OAuthSettings, UpdateOAuthSettingsPayload>("/settings/oauth", payload);
+}
+
+export type SmtpSecurity = "STARTTLS" | "TLS" | "NONE";
+
+export interface EmailSettings {
+  host: string | null;
+  port: number;
+  security: SmtpSecurity;
+  username: string | null;
+  is_password_set: boolean;
+  from_address: string | null;
+  from_name: string | null;
+  is_configured: boolean;
+}
+
+export type UpdateEmailSettingsPayload = Partial<
+  Omit<EmailSettings, "is_password_set" | "is_configured"> & { password: string }
+>;
+
+export function getEmailSettings(signal?: AbortSignal): Promise<EmailSettings> {
+  return apiGet<EmailSettings>("/settings/email", signal);
+}
+
+export function updateEmailSettings(payload: UpdateEmailSettingsPayload): Promise<EmailSettings> {
+  return apiPatch<EmailSettings, UpdateEmailSettingsPayload>("/settings/email", payload);
+}
+
+export function sendTestEmail(): Promise<null> {
+  return apiPost<null, Record<string, never>>("/settings/email/actions/test", {});
+}
+
+export interface CabinetAuthSettings {
+  telegram_enabled: boolean;
+  google_enabled: boolean;
+  yandex_enabled: boolean;
+  email_enabled: boolean;
+}
+
+export function getCabinetAuthSettings(signal?: AbortSignal): Promise<CabinetAuthSettings> {
+  return apiGet<CabinetAuthSettings>("/settings/cabinet-auth", signal);
+}
+
+export function updateCabinetAuthSettings(
+  payload: Partial<CabinetAuthSettings>,
+): Promise<CabinetAuthSettings> {
+  return apiPatch<CabinetAuthSettings, Partial<CabinetAuthSettings>>("/settings/cabinet-auth", payload);
 }
 
 export interface ShopSettings {

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import OAuthIdentity, Referral, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import OAuthProvider, Role
+from app.core.enums import OAuthProvider, Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
@@ -229,6 +229,7 @@ async def test_merge_into_own_account_keeps_actor_sessions(
                 ip_address="10.0.0.1",
                 user_agent=None,
                 expires_at=datetime_now() + timedelta(days=1),
+                audience=SessionAudience.DASHBOARD,
             )
         )
 

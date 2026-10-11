@@ -5,6 +5,7 @@ from loguru import logger
 
 _AD_LINK_PREFIX: Final[str] = "ad_"
 _REFERRAL_PREFIX: Final[str] = "ref_"
+_WEBAUTH_PREFIX: Final[str] = "webauth_"
 
 
 def _parse_start_code(event: TelegramObject, prefix: str) -> Optional[str]:
@@ -33,3 +34,7 @@ def parse_ad_link_code(event: TelegramObject) -> Optional[str]:
 
 def parse_referral_code(event: TelegramObject) -> Optional[str]:
     return _parse_start_code(event, _REFERRAL_PREFIX)
+
+
+def parse_webauth_token(event: TelegramObject) -> Optional[str]:
+    return _parse_start_code(event, _WEBAUTH_PREFIX)

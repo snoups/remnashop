@@ -5,6 +5,7 @@ from typing import Optional
 from app.core.config import AppConfig
 from app.core.constants import TTL_30D
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.security import (
@@ -35,14 +36,18 @@ class SessionIssuer:
         self._config = config
 
     async def issue(
-        self, user_id: int, ip_address: str, user_agent: Optional[str]
+        self,
+        user_id: int,
+        ip_address: str,
+        user_agent: Optional[str],
+        audience: SessionAudience = SessionAudience.DASHBOARD,
     ) -> IssuedSession:
         refresh_token = generate_refresh_token()
         expires_at = datetime_now() + timedelta(seconds=TTL_30D)
 
         async with self._uow:
             await self._session_repository.revoke_active_by_fingerprint(
-                user_id, ip_address, user_agent
+                user_id, ip_address, user_agent, audience
             )
             session = await self._session_repository.create(
                 CreateSessionDto(
@@ -51,6 +56,7 @@ class SessionIssuer:
                     ip_address=ip_address,
                     user_agent=user_agent,
                     expires_at=expires_at,
+                    audience=audience,
                 )
             )
 

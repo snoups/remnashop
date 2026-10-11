@@ -20,6 +20,7 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
+from app.modules.users import repository as user_repository_module
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -73,6 +74,7 @@ async def test_create_and_get_by_id(user_repository: UserRepository, uow: UnitOf
     [
         ({"login": "taken"}, {"login": "taken"}, ErrorCode.LOGIN_TAKEN),
         ({"telegram_id": 4242}, {"telegram_id": 4242}, ErrorCode.TELEGRAM_ID_TAKEN),
+        ({"email": "a@example.com"}, {"email": "A@example.com"}, ErrorCode.EMAIL_TAKEN),
         ({"role": Role.OWNER}, {"role": Role.OWNER}, ErrorCode.OWNER_ALREADY_EXISTS),
     ],
 )
@@ -92,8 +94,9 @@ async def test_create_maps_unique_violation_to_conflict(
 
 
 async def test_create_leaves_unmapped_violation_unmasked(
-    user_repository: UserRepository, uow: UnitOfWork
+    user_repository: UserRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.delitem(user_repository_module._UNIQUE_VIOLATIONS, "ix_users_email")
     await _create_user(user_repository, uow, email="a@example.com")
 
     with pytest.raises(IntegrityError):

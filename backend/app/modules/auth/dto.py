@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import OAuthProvider
+from app.core.enums import OAuthProvider, SessionAudience
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -21,6 +21,7 @@ class SessionDto(BaseDto, TimestampMixin):
     user_agent: Optional[str] = None
     last_used_at: datetime
     expires_at: datetime
+    audience: SessionAudience = SessionAudience.DASHBOARD
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -30,6 +31,7 @@ class CreateSessionDto:
     ip_address: str
     user_agent: Optional[str]
     expires_at: datetime
+    audience: SessionAudience
 
 
 @dataclass(frozen=True, kw_only=True)

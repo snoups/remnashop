@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Optional
 
 import pytest
@@ -6,6 +7,7 @@ from fastapi import HTTPException, Request
 from app.core.exceptions import ValidationError
 from app.core.utils.http import (
     assert_public_https_host,
+    ip_rate_bucket,
     is_ip_allowed,
     read_bounded_body,
     resolve_client_ip,
@@ -28,6 +30,53 @@ def _make_request(
         "headers": [(k.lower().encode(), v.encode()) for k, v in pairs],
     }
     return Request(scope)
+
+
+def _cabinet_request(peer: str, secret: Optional[str], headers: dict[str, str]) -> Request:
+    app = SimpleNamespace(state=SimpleNamespace(cabinet_proxy_secret=secret))
+    scope = {
+        "type": "http",
+        "client": (peer, 1234),
+        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+        "app": app,
+    }
+    return Request(scope)
+
+
+def test_resolve_client_ip_trusts_cabinet_header_with_secret() -> None:
+    request = _cabinet_request(
+        "198.51.100.9",
+        "s3cret",
+        {"x-cabinet-client-ip": "203.0.113.77", "x-cabinet-proxy-secret": "s3cret"},
+    )
+    assert resolve_client_ip(request) == "203.0.113.77"
+
+
+def test_resolve_client_ip_ignores_cabinet_header_with_wrong_secret() -> None:
+    request = _cabinet_request(
+        "198.51.100.9",
+        "s3cret",
+        {"x-cabinet-client-ip": "203.0.113.77", "x-cabinet-proxy-secret": "nope"},
+    )
+    assert resolve_client_ip(request) == "198.51.100.9"
+
+
+def test_resolve_client_ip_ignores_cabinet_header_when_secret_unset() -> None:
+    request = _cabinet_request(
+        "198.51.100.9",
+        None,
+        {"x-cabinet-client-ip": "203.0.113.77", "x-cabinet-proxy-secret": ""},
+    )
+    assert resolve_client_ip(request) == "198.51.100.9"
+
+
+def test_resolve_client_ip_rejects_non_address_in_cabinet_header() -> None:
+    request = _cabinet_request(
+        "198.51.100.9",
+        "s3cret",
+        {"x-cabinet-client-ip": "evil", "x-cabinet-proxy-secret": "s3cret"},
+    )
+    assert resolve_client_ip(request) == "198.51.100.9"
 
 
 def test_is_ip_allowed_exact_match() -> None:
@@ -165,3 +214,21 @@ async def test_read_bounded_body_rejects_oversize_without_content_length() -> No
     with pytest.raises(HTTPException) as error:
         await read_bounded_body(request, 16)
     assert error.value.status_code == 413
+
+
+@pytest.mark.parametrize(
+    ("ip", "bucket"),
+    [
+        ("203.0.113.5", "203.0.113.5"),
+        ("::ffff:203.0.113.5", "203.0.113.5"),
+        ("2001:db8:1:2:aaaa::1", "2001:db8:1:2::/64"),
+        ("2001:db8:1:2:bbbb::9", "2001:db8:1:2::/64"),
+        ("garbage", "garbage"),
+    ],
+)
+def test_ip_rate_bucket(ip: str, bucket: str) -> None:
+    assert ip_rate_bucket(ip) == bucket
+
+
+def test_ip_rate_bucket_separates_different_64s() -> None:
+    assert ip_rate_bucket("2001:db8:1:2::1") != ip_rate_bucket("2001:db8:1:3::1")

@@ -12,7 +12,7 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
@@ -67,6 +67,7 @@ async def _issue_token(
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.DASHBOARD,
         )
     )
     return create_access_token(user_id, session.id, config.jwt_secret.get_secret_value())
@@ -142,6 +143,7 @@ async def test_revoke_user_session_rejects_higher_privileged_target(
                 ip_address="127.0.0.1",
                 user_agent=None,
                 expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+                audience=SessionAudience.DASHBOARD,
             )
         )
     ).id

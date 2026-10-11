@@ -8,6 +8,8 @@ from app.modules.settings.usecases.get_bot_logs import GetBotLogsUseCase
 from app.modules.settings.usecases.get_bot_requirements import GetBotRequirementsUseCase
 from app.modules.settings.usecases.get_bot_settings import GetBotSettingsUseCase
 from app.modules.settings.usecases.get_bot_status import GetBotStatusUseCase
+from app.modules.settings.usecases.get_cabinet_auth_settings import GetCabinetAuthSettingsUseCase
+from app.modules.settings.usecases.get_email_settings import GetEmailSettingsUseCase
 from app.modules.settings.usecases.get_oauth_settings import GetOAuthSettingsUseCase
 from app.modules.settings.usecases.get_public_appearance import GetPublicAppearanceUseCase
 from app.modules.settings.usecases.get_public_appearance_image import (
@@ -23,6 +25,10 @@ from app.modules.settings.usecases.update_appearance_settings import UpdateAppea
 from app.modules.settings.usecases.update_bot_commands import UpdateBotCommandsUseCase
 from app.modules.settings.usecases.update_bot_requirements import UpdateBotRequirementsUseCase
 from app.modules.settings.usecases.update_bot_settings import UpdateBotSettingsUseCase
+from app.modules.settings.usecases.update_cabinet_auth_settings import (
+    UpdateCabinetAuthSettingsUseCase,
+)
+from app.modules.settings.usecases.update_email_settings import UpdateEmailSettingsUseCase
 from app.modules.settings.usecases.update_oauth_settings import UpdateOAuthSettingsUseCase
 from app.modules.settings.usecases.update_shop_settings import UpdateShopSettingsUseCase
 from app.modules.settings.usecases.upload_appearance_image import (
@@ -39,6 +45,8 @@ __all__ = [
     "GetBotRequirementsUseCase",
     "GetBotSettingsUseCase",
     "GetBotStatusUseCase",
+    "GetCabinetAuthSettingsUseCase",
+    "GetEmailSettingsUseCase",
     "GetOAuthSettingsUseCase",
     "GetPublicAppearanceImageUseCase",
     "GetPublicAppearanceUseCase",
@@ -52,6 +60,8 @@ __all__ = [
     "UpdateBotCommandsUseCase",
     "UpdateBotRequirementsUseCase",
     "UpdateBotSettingsUseCase",
+    "UpdateCabinetAuthSettingsUseCase",
+    "UpdateEmailSettingsUseCase",
     "UpdateOAuthSettingsUseCase",
     "UpdateShopSettingsUseCase",
     "UploadAppearanceFaviconUseCase",

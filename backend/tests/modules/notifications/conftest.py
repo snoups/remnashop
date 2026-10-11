@@ -4,6 +4,7 @@ from typing import Awaitable, Callable
 
 import pytest
 
+from app.core.enums import SessionAudience
 from app.core.security import hash_refresh_token
 from app.core.utils.time import datetime_now
 from app.modules.auth.dto import CreateSessionDto
@@ -23,6 +24,7 @@ def new_session(session_repository: SessionRepository) -> NewSession:
                 ip_address="127.0.0.1",
                 user_agent=None,
                 expires_at=datetime_now() + timedelta(days=30),
+                audience=SessionAudience.DASHBOARD,
             )
         )
         return created.id

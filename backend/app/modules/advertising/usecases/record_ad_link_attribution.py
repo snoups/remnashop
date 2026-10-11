@@ -32,7 +32,7 @@ class RecordAdLinkAttributionUseCase(UseCase[RecordAdLinkAttributionDto, None]):
                     ad_link_id=ad_link.id, user_id=data.user_id, channel=data.channel
                 )
         except ConflictError:
-            # TelegramUserRegisteredEvent fires once per user; the UNIQUE
+            # a registration event fires once per user; the UNIQUE
             # constraint on user_id is the backstop
             logger.debug(f"User '{data.user_id}' already attributed to an ad link, skipping")
             return

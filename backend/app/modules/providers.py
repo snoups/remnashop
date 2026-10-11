@@ -11,7 +11,9 @@ from app.modules.backups import get_backups_providers
 from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.broadcasts import get_broadcasts_providers
+from app.modules.cabinet_auth import get_cabinet_auth_providers
 from app.modules.dialogs import get_dialogs_providers
+from app.modules.email import get_email_providers
 from app.modules.emoji_packs import get_emoji_packs_providers
 from app.modules.event_log import get_event_log_providers
 from app.modules.gateways import get_gateways_providers
@@ -37,6 +39,7 @@ def get_module_providers() -> list[Provider]:
     return [
         *get_users_providers(),
         *get_auth_providers(),
+        *get_cabinet_auth_providers(),
         *get_oauth_providers(),
         *get_passkeys_providers(),
         *get_settings_providers(),
@@ -63,5 +66,6 @@ def get_module_providers() -> list[Provider]:
         *get_analytics_providers(),
         *get_overview_providers(),
         *get_announcements_providers(),
+        *get_email_providers(),
         *get_broadcasts_providers(),
     ]

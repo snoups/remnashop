@@ -19,6 +19,10 @@ class OAuthSettings(BaseSql, TimestampMixin):
     github_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
     telegram_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
     telegram_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    google_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    google_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    yandex_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    yandex_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
     oidc_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
     oidc_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
 

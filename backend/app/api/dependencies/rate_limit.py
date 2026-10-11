@@ -1,3 +1,4 @@
+import hashlib
 from typing import Callable, Coroutine, Final
 
 from dishka import FromDishka
@@ -13,7 +14,7 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token
-from app.core.utils.http import resolve_client_ip
+from app.core.utils.http import ip_rate_bucket, resolve_client_ip
 from app.core.utils.rate_counter import hit_counter
 from app.modules.users import UserDto
 
@@ -62,9 +63,66 @@ def rate_limit(
 ) -> Callable[[Request, Redis], Coroutine[None, None, None]]:
     @inject
     async def dependency(request: Request, redis: FromDishka[Redis]) -> None:
-        client_ip = resolve_client_ip(request)
+        client_ip = ip_rate_bucket(resolve_client_ip(request))
         redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{client_ip}"
         await _enforce(redis, redis_key, limit, window_seconds, key, f"'{key}' by IP '{client_ip}'")
+
+    return dependency
+
+
+class FailureLimit:
+    def __init__(self, redis: Redis, redis_key: str, window_seconds: int) -> None:
+        self._redis = redis
+        self._redis_key = redis_key
+        self._window_seconds = window_seconds
+
+    async def record_failure(self) -> None:
+        await hit_counter(self._redis, self._redis_key, self._window_seconds)
+
+
+def failure_rate_limit(
+    *,
+    key: str,
+    limit: int,
+    window_seconds: int,
+) -> Callable[[Request, Redis], Coroutine[None, None, FailureLimit]]:
+    # Counts only attempts the route reports through record_failure(): hundreds
+    # of customers share one VPN exit IP, and their successful sign-ins must
+    # not eat the budget of the next one.
+    @inject
+    async def dependency(request: Request, redis: FromDishka[Redis]) -> FailureLimit:
+        client_ip = ip_rate_bucket(resolve_client_ip(request))
+        redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{client_ip}"
+        if int(await redis.get(redis_key) or 0) >= limit:
+            RATE_LIMIT_HITS.labels(key=key).inc()
+            logger.warning(f"Rate limit exceeded: '{key}' by IP '{client_ip}'")
+            raise ApiError(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many requests, try again later",
+                code=ErrorCode.RATE_LIMITED,
+            )
+        return FailureLimit(redis, redis_key, window_seconds)
+
+    return dependency
+
+
+def cookie_rate_limit(
+    *,
+    key: str,
+    cookie: str,
+    limit: int,
+    window_seconds: int,
+) -> Callable[[Request, Redis], Coroutine[None, None, None]]:
+    # Per cookie value, so clients behind one shared IP each get their own
+    # budget; a request without the cookie is the route's own business.
+    @inject
+    async def dependency(request: Request, redis: FromDishka[Redis]) -> None:
+        value = request.cookies.get(cookie)
+        if not value:
+            return
+        digest = hashlib.sha256(value.encode()).hexdigest()
+        redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{digest}"
+        await _enforce(redis, redis_key, limit, window_seconds, key, f"'{key}' by cookie")
 
     return dependency
 
@@ -97,7 +155,7 @@ def _resolve_rate_limit_identity(request: Request, jwt_secret: str) -> str:
             pass
         else:
             return f"user:{payload.get('sub')}"
-    return f"ip:{resolve_client_ip(request)}"
+    return f"ip:{ip_rate_bucket(resolve_client_ip(request))}"
 
 
 @inject

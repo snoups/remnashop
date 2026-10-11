@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cli.reset_owner_access import reset_owner_access
 from app.core.config import AppConfig
-from app.core.enums import Locale, OAuthProvider, Role
+from app.core.enums import Locale, OAuthProvider, Role, SessionAudience
 from app.core.security import verify_password
 from app.core.utils.time import datetime_now
 from app.modules.auth import SessionRepository
@@ -41,6 +41,7 @@ async def test_reset_owner_access_resets_password_allowlist_and_sessions(
             ip_address="10.0.0.1",
             user_agent=None,
             expires_at=datetime_now() + timedelta(days=1),
+            audience=SessionAudience.DASHBOARD,
         )
     )
 
@@ -93,3 +94,23 @@ async def test_reset_owner_access_removes_planted_passkeys_and_oauth_identities(
 
     assert await passkeys.get_by_credential_id("planted") is None
     assert await identities.list_by_user(owner.id) == []
+
+
+async def test_reset_owner_access_unlinks_telegram(
+    session: AsyncSession, config: AppConfig, user_repository: UserRepository
+) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(
+            login="owner",
+            password_hash="x:y",
+            name="owner",
+            role=Role.OWNER,
+            language=Locale.EN,
+            telegram_id=777,
+        )
+    )
+
+    assert await reset_owner_access(session, config.crypt_key.get_secret_value()) is not None
+
+    after = await user_repository.get_by_id(owner.id)
+    assert after is not None and after.telegram_id is None

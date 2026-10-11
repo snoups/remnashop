@@ -1,4 +1,4 @@
-import { ChevronDown, FingerprintPattern, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
+import { ChevronDown, FingerprintPattern, Globe, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +42,10 @@ export function OAuthSettingsForm() {
   const [githubClientSecret, setGithubClientSecret] = useState("");
   const [telegramClientId, setTelegramClientId] = useState("");
   const [telegramClientSecret, setTelegramClientSecret] = useState("");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [yandexClientId, setYandexClientId] = useState("");
+  const [yandexClientSecret, setYandexClientSecret] = useState("");
   const [oidcDisplayName, setOidcDisplayName] = useState("");
   const [oidcIssuerUrl, setOidcIssuerUrl] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
@@ -58,6 +62,10 @@ export function OAuthSettingsForm() {
       !githubClientSecret &&
       !telegramClientId &&
       !telegramClientSecret &&
+      !googleClientId &&
+      !googleClientSecret &&
+      !yandexClientId &&
+      !yandexClientSecret &&
       !oidcDisplayName &&
       !oidcIssuerUrl &&
       !oidcClientId &&
@@ -76,6 +84,10 @@ export function OAuthSettingsForm() {
         github_client_secret: githubClientSecret || undefined,
         telegram_client_id: telegramClientId || undefined,
         telegram_client_secret: telegramClientSecret || undefined,
+        google_client_id: googleClientId || undefined,
+        google_client_secret: googleClientSecret || undefined,
+        yandex_client_id: yandexClientId || undefined,
+        yandex_client_secret: yandexClientSecret || undefined,
         oidc_display_name: oidcDisplayName || undefined,
         oidc_issuer_url: oidcIssuerUrl || undefined,
         oidc_client_id: oidcClientId || undefined,
@@ -88,6 +100,10 @@ export function OAuthSettingsForm() {
       setGithubClientSecret("");
       setTelegramClientId("");
       setTelegramClientSecret("");
+      setGoogleClientId("");
+      setGoogleClientSecret("");
+      setYandexClientId("");
+      setYandexClientSecret("");
       setOidcDisplayName("");
       setOidcIssuerUrl("");
       setOidcClientId("");
@@ -162,6 +178,46 @@ export function OAuthSettingsForm() {
                   label: t("settings.oauth.clientSecretLabel"),
                   value: telegramClientSecret,
                   onChange: setTelegramClientSecret,
+                },
+              ]}
+            />
+            <ProviderPanel
+              icon={Globe}
+              label={t("profile.oauthAccounts.google")}
+              isConfigured={state.data.is_google_configured}
+              hint={t("settings.oauth.redirectHint", { path: "/login/callback/google" })}
+              fields={[
+                {
+                  key: "google_client_id",
+                  label: t("settings.oauth.clientIdLabel"),
+                  value: googleClientId,
+                  onChange: setGoogleClientId,
+                },
+                {
+                  key: "google_client_secret",
+                  label: t("settings.oauth.clientSecretLabel"),
+                  value: googleClientSecret,
+                  onChange: setGoogleClientSecret,
+                },
+              ]}
+            />
+            <ProviderPanel
+              icon={Globe}
+              label={t("profile.oauthAccounts.yandex")}
+              isConfigured={state.data.is_yandex_configured}
+              hint={t("settings.oauth.redirectHint", { path: "/login/callback/yandex" })}
+              fields={[
+                {
+                  key: "yandex_client_id",
+                  label: t("settings.oauth.clientIdLabel"),
+                  value: yandexClientId,
+                  onChange: setYandexClientId,
+                },
+                {
+                  key: "yandex_client_secret",
+                  label: t("settings.oauth.clientSecretLabel"),
+                  value: yandexClientSecret,
+                  onChange: setYandexClientSecret,
                 },
               ]}
             />
@@ -242,12 +298,14 @@ interface ProviderField {
 }
 
 interface ProviderPanelProps {
-  provider: Provider;
+  /** absent for a credentials-only provider: no dashboard sign-in, so no switch */
+  provider?: Provider;
   icon: ComponentType<{ className?: string }>;
   label: string;
   isConfigured: boolean;
-  isEnabled: boolean;
-  onToggled: (settings: OAuthSettings) => void;
+  isEnabled?: boolean;
+  onToggled?: (settings: OAuthSettings) => void;
+  hint?: string;
   guide?: ReactNode;
   fields: ProviderField[];
 }
@@ -259,6 +317,7 @@ function ProviderPanel({
   isConfigured,
   isEnabled,
   onToggled,
+  hint,
   guide,
   fields,
 }: ProviderPanelProps) {
@@ -268,6 +327,7 @@ function ProviderPanel({
   const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = async (next: boolean) => {
+    if (!provider || !onToggled) return;
     setIsToggling(true);
     try {
       const payload: UpdateOAuthSettingsPayload =
@@ -317,13 +377,15 @@ function ProviderPanel({
           />
         </span>
         {guide}
-        <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
-          <Switch
-            checked={isEnabled}
-            onChange={(value) => void handleToggle(value)}
-            disabled={!canManage || isToggling || !isConfigured}
-          />
-        </div>
+        {provider && (
+          <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
+            <Switch
+              checked={isEnabled ?? false}
+              onChange={(value) => void handleToggle(value)}
+              disabled={!canManage || isToggling || !isConfigured}
+            />
+          </div>
+        )}
       </motion.div>
 
       <AnimatePresence initial={false}>
@@ -336,6 +398,7 @@ function ProviderPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
+              {hint && <p className="text-[12px] text-muted-foreground">{hint}</p>}
               {fields.map((field) => (
                 <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
                   {field.key.endsWith("_client_secret") ? (

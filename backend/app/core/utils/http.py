@@ -1,11 +1,13 @@
 import asyncio
+import hmac
 import ipaddress
 import socket
-from typing import Final, Union
+from typing import Final, Optional, Union
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request, status
 
+from app.core.constants import CABINET_CLIENT_IP_HEADER, CABINET_PROXY_SECRET_HEADER
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
@@ -26,7 +28,27 @@ def _is_trusted_proxy(peer: str) -> bool:
     return any(address in network for network in _TRUSTED_PROXY_NETWORKS)
 
 
+def _cabinet_client_ip(request: Request) -> Optional[str]:
+    # the cabinet's nginx overwrites both headers; the secret proves the hop is
+    # that proxy, however many reverse proxies sit between it and us
+    app = request.scope.get("app")
+    expected = getattr(getattr(app, "state", None), "cabinet_proxy_secret", None)
+    presented = request.headers.get(CABINET_PROXY_SECRET_HEADER)
+    if not expected or not presented:
+        return None
+    if not hmac.compare_digest(presented.encode(), expected.encode()):
+        return None
+    try:
+        return str(ipaddress.ip_address(request.headers.get(CABINET_CLIENT_IP_HEADER, "")))
+    except ValueError:
+        return None
+
+
 def resolve_client_ip(request: Request) -> str:
+    cabinet_ip = _cabinet_client_ip(request)
+    if cabinet_ip is not None:
+        return cabinet_ip
+
     # X-Forwarded-For is trusted only from a loopback or RFC1918 peer: every
     # compose file binds `api` to 127.0.0.1, so only a same-host reverse proxy
     # or a container on the docker bridge can reach it. Exposed publicly, the
@@ -54,6 +76,19 @@ def resolve_client_ip(request: Request) -> str:
             # or an allowlist comparison.
             pass
     return direct_peer or "unknown"
+
+
+def ip_rate_bucket(ip: str) -> str:
+    # an IPv6 user controls a whole /64, so per-address buckets are free to dodge
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            return str(address.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+    return str(address)
 
 
 async def read_bounded_body(request: Request, limit: int) -> bytes:

@@ -1,9 +1,10 @@
-from typing import Any
+from typing import Any, Optional
 
 from aiogram.enums import ChatType
 from aiogram.types import Chat, Message
 from aiogram.types import User as AiogramUser
 from fluentogram import TranslatorHub
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from app.core.ports import EventPublisher
 from app.modules.access import CheckRegistrationAccessUseCase
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.blacklist import BlacklistRepository
+from app.modules.cabinet_auth import DeeplinkStore, InviteCodesDto
 from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.users import CreateUserDto
@@ -46,7 +48,9 @@ class _FakeContainer:
         ad_link_repository: AdLinkRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        deeplink_store: Optional[DeeplinkStore] = None,
     ) -> None:
+        self._deeplink_store = deeplink_store
         self._user_repository = user_repository
         self._blacklist_repository = blacklist_repository
         self._settings_repository = settings_repository
@@ -57,6 +61,8 @@ class _FakeContainer:
     async def get(self, dependency_type: type) -> Any:
         if dependency_type is TranslatorHub:
             return _FakeHub()
+        if dependency_type is DeeplinkStore:
+            return self._deeplink_store
         if dependency_type is CheckRegistrationAccessUseCase:
             return CheckRegistrationAccessUseCase(
                 GetAccessSettingsUseCase(self._settings_repository, self._uow),
@@ -327,3 +333,39 @@ async def test_invite_only_registers_a_newcomer_with_a_referral_code(
 
     assert handler_called is True
     assert await user_repository.get_by_telegram_id(6363) is not None
+
+
+async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    settings_repository: SettingsRepository,
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+    session: AsyncSession,
+    redis: Redis,
+) -> None:
+    store = DeeplinkStore(redis)
+    token, _ = await store.create(InviteCodesDto(referral_code="abc"), "203.0.113.1", "ua")
+    container = _FakeContainer(
+        user_repository,
+        blacklist_repository,
+        settings_repository,
+        ad_link_repository,
+        uow,
+        event_publisher,
+        store,
+    )
+
+    await _run_start(f"/start webauth_{token}", 6464, container, config, [])
+
+    rows = (
+        await session.scalars(
+            select(EventOutboxEntry).where(
+                EventOutboxEntry.event_type == "CabinetUserRegisteredEvent"
+            )
+        )
+    ).all()
+    assert len(rows) == 1
+    assert rows[0].payload["referral_code"] == "abc"

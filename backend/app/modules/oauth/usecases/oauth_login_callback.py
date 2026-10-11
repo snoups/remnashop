@@ -65,9 +65,7 @@ class OAuthLoginCallbackUseCase:
             client = get_oauth_client(provider, settings)
             redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), provider)
         try:
-            external_id, _ = await client.fetch_identity(
-                redirect_uri, code, state_data.code_verifier
-            )
+            profile = await client.fetch_identity(redirect_uri, code, state_data.code_verifier)
         except OAUTH_EXCHANGE_ERRORS as error:
             async with self._uow:
                 await self._event_publisher.publish(
@@ -77,33 +75,30 @@ class OAuthLoginCallbackUseCase:
                 "Failed to exchange OAuth code", code=ErrorCode.OAUTH_CODE_EXCHANGE_FAILED
             ) from error
 
-        async with self._uow:
-            replaced = False
-            if provider is OAuthProvider.OIDC:
-                current = await self._settings_repository.lock_oauth_settings(exclusive=False)
-                # the sub was fetched from an issuer that is no longer configured
-                replaced = current.oidc_issuer_url != settings.oidc_issuer_url
-            identity = (
-                None
-                if replaced
-                else await self._oauth_identity_repository.get_by_provider_external_id(
-                    provider, external_id
-                )
-            )
-        if identity is None:
+        external_id = profile.external_id
+        user: Optional[UserDto] = None
+        if provider is OAuthProvider.TELEGRAM:
             async with self._uow:
-                await self._event_publisher.publish(
-                    OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)
+                user = await self._user_repository.get_by_telegram_id(int(external_id))
+        else:
+            async with self._uow:
+                replaced = False
+                if provider is OAuthProvider.OIDC:
+                    current = await self._settings_repository.lock_oauth_settings(exclusive=False)
+                    # the sub was fetched from an issuer that is no longer configured
+                    replaced = current.oidc_issuer_url != settings.oidc_issuer_url
+                identity = (
+                    None
+                    if replaced
+                    else await self._oauth_identity_repository.get_by_provider_external_id(
+                        provider, external_id
+                    )
                 )
-            raise AuthenticationError(
-                "This account is not linked to any user", code=ErrorCode.OAUTH_ACCOUNT_NOT_LINKED
-            )
-
-        async with self._uow:
-            user = await self._user_repository.get_by_id(identity.user_id)
-        # one message for a missing user and a blocked one, so an
+                if identity is not None:
+                    user = await self._user_repository.get_by_id(identity.user_id)
+        # one message for a missing, blocked or non-staff user, so an
         # unauthenticated caller can't learn blocked-status (as in LoginUseCase)
-        if user is None or user.is_blocked:
+        if user is None or user.is_blocked or not user.is_privileged:
             async with self._uow:
                 await self._event_publisher.publish(
                     OAuthLoginFailedEvent(provider=provider, ip_address=client_ip)

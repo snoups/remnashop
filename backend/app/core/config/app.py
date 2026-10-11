@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Self
+from typing import Optional, Self
 
 from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
@@ -32,6 +32,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     origins: StringList = StringList("")
     secure_cookies: bool = True
     web_cabinet_url: str = ""
+    cabinet_proxy_secret: Optional[SecretStr] = None
 
     bot: BotConfig = Field(default_factory=BotConfig)
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)

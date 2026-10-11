@@ -158,10 +158,28 @@ class AccessMode(UpperStrEnum):
     RESTRICTED = auto()
 
 
+class SmtpSecurity(UpperStrEnum):
+    STARTTLS = auto()
+    TLS = auto()
+    NONE = auto()
+
+
 class AccessDenial(UpperStrEnum):
     RESTRICTED = auto()
     REGISTRATION_DISABLED = auto()
     INVITE_ONLY = auto()
+
+
+class SessionAudience(UpperStrEnum):
+    DASHBOARD = auto()
+    CABINET = auto()
+
+
+class CabinetSignInMethod(UpperStrEnum):
+    TELEGRAM = auto()
+    EMAIL = auto()
+    GOOGLE = auto()
+    YANDEX = auto()
 
 
 class TransactionStatus(UpperStrEnum):
@@ -236,6 +254,8 @@ class OAuthProvider(UpperStrEnum):
     GITHUB = auto()
     TELEGRAM = auto()
     OIDC = auto()
+    GOOGLE = auto()
+    YANDEX = auto()
 
     @classmethod
     def _missing_(cls, value: object) -> Optional["OAuthProvider"]:

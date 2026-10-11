@@ -15,6 +15,7 @@ async def test_lists_users_with_their_origins(
 ) -> None:
     await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "100")
     await blacklist_repository.add_entry(BlacklistKind.EMAIL, "bad@example.com")
+    await blacklist_repository.add_entry(BlacklistKind.EMAIL, "staff@example.com")
     source = await blacklist_repository.add_source(
         AddBlacklistSourceDto(url="https://s.example/l.txt", name="Feed")
     )
@@ -36,7 +37,7 @@ async def test_lists_users_with_their_origins(
     await user_repository.create(CreateUserDto(telegram_id=300, name="disabled-only"))
     await user_repository.create(CreateUserDto(telegram_id=400, name="clean"))
     await user_repository.create(
-        CreateUserDto(telegram_id=500, email="bad@example.com", name="staff", role=Role.ADMIN)
+        CreateUserDto(telegram_id=500, email="staff@example.com", name="staff", role=Role.ADMIN)
     )
 
     owner = UserDto(id=1, telegram_id=1, name="o", role=Role.OWNER)
@@ -54,7 +55,7 @@ async def test_lists_users_with_their_origins(
     assert tg_hit.kind is BlacklistKind.TELEGRAM_ID
     assert [o.source_id for o in tg_hit.origins] == [None, source.id]
     assert email_hit.kind is BlacklistKind.EMAIL
-    assert email_hit.value == "Bad@Example.com"
+    assert email_hit.value == "bad@example.com"
     assert [o.source_id for o in email_hit.origins] == [None]
 
     (hit,) = by_id[from_source.id].hits

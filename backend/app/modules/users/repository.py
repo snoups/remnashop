@@ -21,6 +21,7 @@ from app.core.db.user_search import user_search_filter
 from app.core.enums import Locale, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.utils.email import normalize_email
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import (
     DEFAULT_PAGE_SIZE,
@@ -56,6 +57,7 @@ _UNIQUE_VIOLATIONS: Final[dict[str, tuple[str, ErrorCode]]] = {
     "ux_users_single_owner": ("Owner already exists", ErrorCode.OWNER_ALREADY_EXISTS),
     "ix_users_login": ("Login already taken", ErrorCode.LOGIN_TAKEN),
     "ix_users_telegram_id": ("Telegram account already registered", ErrorCode.TELEGRAM_ID_TAKEN),
+    "ix_users_email": ("Email already in use", ErrorCode.EMAIL_TAKEN),
 }
 
 
@@ -112,7 +114,7 @@ class UserRepository:
             is_blocked=data.is_blocked,
             telegram_id=data.telegram_id,
             username=data.username,
-            email=data.email,
+            email=(data.email and normalize_email(data.email)) or None,
             login=data.login,
             password_hash=data.password_hash,
             password_change_required=data.password_change_required,
@@ -183,9 +185,19 @@ class UserRepository:
         return self._convert_to_dto(db_user) if db_user else None
 
     async def get_by_email(self, email: str) -> Optional[UserDto]:
-        stmt = select(User).where(User.email == email)
+        stmt = select(User).where(User.email == normalize_email(email))
         db_user = await self.session.scalar(stmt)
         return self._convert_to_dto(db_user) if db_user else None
+
+    async def clear_telegram_id(self, user_id: int) -> UserDto:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.telegram_id = None
+        db_user.username = None
+        await self.session.flush()
+        await self.session.refresh(db_user)
+        return self._convert_to_dto(db_user)
 
     async def get_by_login(self, login: str) -> Optional[UserDto]:
         stmt = select(User).where(User.login == login)

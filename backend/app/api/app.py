@@ -146,6 +146,9 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
         generate_unique_id_function=_operation_id,
         responses=GLOBAL_ERROR_RESPONSES,
     )
+    app.state.cabinet_proxy_secret = (
+        config.cabinet_proxy_secret.get_secret_value() if config.cabinet_proxy_secret else None
+    )
     app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     cors_origins, allow_credentials = resolve_cors(list(config.origins))

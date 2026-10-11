@@ -5,6 +5,7 @@ from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user_session import UserSession
+from app.core.enums import SessionAudience
 from app.core.utils.time import datetime_now
 from app.modules.auth.dto import CreateSessionDto, SessionDto
 
@@ -31,6 +32,7 @@ class SessionRepository:
             user_agent=data.user_agent,
             last_used_at=now,
             expires_at=data.expires_at,
+            audience=data.audience,
         )
         self.session.add(row)
         await self.session.flush()
@@ -110,7 +112,11 @@ class SessionRepository:
             await self.session.flush()
 
     async def revoke_active_by_fingerprint(
-        self, user_id: int, ip_address: str, user_agent: Optional[str]
+        self,
+        user_id: int,
+        ip_address: str,
+        user_agent: Optional[str],
+        audience: SessionAudience,
     ) -> None:
         # logging in again from the same device replaces the old session; with
         # no device id, ip_address + user_agent is the fingerprint
@@ -125,6 +131,7 @@ class SessionRepository:
             .where(
                 UserSession.user_id == user_id,
                 UserSession.ip_address == ip_address,
+                UserSession.audience == audience,
                 user_agent_clause,
                 *self._active_clause(),
             )

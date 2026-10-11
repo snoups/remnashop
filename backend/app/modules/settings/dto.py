@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, SecretStr
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AccessMode
+from app.core.enums import AccessMode, SmtpSecurity
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -93,6 +93,10 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
     telegram_client_id: Optional[str] = None
     telegram_client_secret: Optional[SecretStr] = None
     telegram_enabled: bool = False
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[SecretStr] = None
+    yandex_client_id: Optional[str] = None
+    yandex_client_secret: Optional[SecretStr] = None
     oidc_issuer_url: Optional[str] = None
     oidc_client_id: Optional[str] = None
     oidc_client_secret: Optional[SecretStr] = None
@@ -110,6 +114,14 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
     @property
     def is_telegram_configured(self) -> bool:
         return self.telegram_client_id is not None and self.telegram_client_secret is not None
+
+    @property
+    def is_google_configured(self) -> bool:
+        return self.google_client_id is not None and self.google_client_secret is not None
+
+    @property
+    def is_yandex_configured(self) -> bool:
+        return self.yandex_client_id is not None and self.yandex_client_secret is not None
 
     @property
     def is_github_usable(self) -> bool:
@@ -150,6 +162,10 @@ class UpdateOAuthSettingsDto:
     telegram_client_id: Optional[str] = None
     telegram_client_secret: Optional[str] = None
     telegram_enabled: Optional[bool] = None
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    yandex_client_id: Optional[str] = None
+    yandex_client_secret: Optional[str] = None
     oidc_issuer_url: Optional[str] = None
     oidc_client_id: Optional[str] = None
     oidc_client_secret: Optional[str] = None
@@ -195,6 +211,50 @@ class UpdateAccessSettingsDto:
     mode: Optional[AccessMode] = None
     registration_enabled: Optional[bool] = None
     payments_enabled: Optional[bool] = None
+
+
+class EmailSettingsDto(BaseDto, TimestampMixin):
+    host: Optional[str] = None
+    port: int = 587
+    security: SmtpSecurity = SmtpSecurity.STARTTLS
+    username: Optional[str] = None
+    password: Optional[SecretStr] = None
+    from_address: Optional[str] = None
+    from_name: Optional[str] = None
+
+    @property
+    def is_configured(self) -> bool:
+        return self.host is not None and self.from_address is not None
+
+    @property
+    def is_password_set(self) -> bool:
+        return self.password is not None
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateEmailSettingsDto:
+    host: Optional[str] = None
+    port: Optional[int] = None
+    security: Optional[SmtpSecurity] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    from_address: Optional[str] = None
+    from_name: Optional[str] = None
+
+
+class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
+    telegram_enabled: bool = False
+    google_enabled: bool = False
+    yandex_enabled: bool = False
+    email_enabled: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateCabinetAuthSettingsDto:
+    telegram_enabled: Optional[bool] = None
+    google_enabled: Optional[bool] = None
+    yandex_enabled: Optional[bool] = None
+    email_enabled: Optional[bool] = None
 
 
 class BotRequirementsDto(BaseDto, TimestampMixin):

@@ -32,6 +32,8 @@ def test_oauth_settings_response_carries_oidc_fields() -> None:
         is_github_configured=False,
         is_github_enabled=False,
         is_telegram_configured=False,
+        is_google_configured=False,
+        is_yandex_configured=False,
         is_telegram_enabled=False,
         is_oidc_configured=True,
         is_oidc_enabled=True,

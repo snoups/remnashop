@@ -1,4 +1,5 @@
 from app.core.db.uow import UnitOfWork
+from app.core.enums import OAuthProvider
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.oauth.dto import OAuthIdentityDto
@@ -19,4 +20,14 @@ class ListOAuthIdentitiesUseCase(UseCase[None, list[OAuthIdentityDto], UserDto])
 
     async def _execute(self, actor: UserDto, data: None) -> list[OAuthIdentityDto]:
         async with self._uow:
-            return await self._oauth_identity_repository.list_by_user(actor.id)
+            identities = await self._oauth_identity_repository.list_by_user(actor.id)
+        if actor.telegram_id is not None:
+            identities.append(
+                OAuthIdentityDto(
+                    user_id=actor.id,
+                    provider=OAuthProvider.TELEGRAM,
+                    external_id=str(actor.telegram_id),
+                    external_login=actor.username,
+                )
+            )
+        return identities

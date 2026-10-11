@@ -14,7 +14,10 @@ from app.modules.backups.api import admin_router as backups_admin_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.blacklist.api import admin_router as blacklist_admin_router
 from app.modules.broadcasts.api import admin_router as broadcasts_admin_router
+from app.modules.cabinet_auth.api import public_router as cabinet_public_router
+from app.modules.cabinet_auth.api import router as cabinet_auth_router
 from app.modules.dialogs.api import admin_router as dialogs_admin_router
+from app.modules.email.api import admin_router as email_admin_router
 from app.modules.emoji_packs.api import admin_router as emoji_packs_admin_router
 from app.modules.emoji_packs.api import public_router as emoji_packs_public_router
 from app.modules.event_log.api import admin_router as event_log_admin_router
@@ -52,6 +55,8 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_router,
     auth_sessions_router,
     auth_user_sessions_router,
+    cabinet_auth_router,
+    cabinet_public_router,
     oauth_router,
     oauth_admin_router,
     passkeys_router,
@@ -82,6 +87,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     notifications_admin_router,
     notifications_settings_router,
     announcements_admin_router,
+    email_admin_router,
     gateways_admin_router,
     transactions_admin_router,
     transactions_public_router,

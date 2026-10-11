@@ -11,7 +11,7 @@ from app.api.errors import ApiError
 from app.core.actor import Actor, SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
+from app.core.enums import Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token, hash_refresh_token
 from app.core.security.permissions import expand_token_scopes
@@ -109,6 +109,7 @@ async def get_current_actor(
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "User is blocked", code=ErrorCode.USER_BLOCKED)
 
     request.state.session_id = session_id
+    request.state.session_audience = session.audience
 
     if actor.ip_allowlist and not is_ip_allowed(client_ip, actor.ip_allowlist):
         logger.warning(f"Actor {actor.log} denied access from disallowed IP '{client_ip}'")
@@ -149,6 +150,17 @@ async def get_current_user(
             status.HTTP_403_FORBIDDEN,
             "The service is temporarily closed",
             code=ErrorCode.ACCESS_RESTRICTED,
+        )
+    return user
+
+
+def get_cabinet_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
+    """Cabinet routes: a customer session, never a dashboard one."""
+    if getattr(request.state, "session_audience", None) is not SessionAudience.CABINET:
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "This endpoint requires a cabinet session",
+            code=ErrorCode.SESSION_AUDIENCE_MISMATCH,
         )
     return user
 

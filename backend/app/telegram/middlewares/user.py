@@ -8,8 +8,13 @@ from fluentogram import TranslatorHub
 from app.core.constants import CONTAINER_KEY, USER_KEY
 from app.core.enums import AdLinkChannel, Locale, MiddlewareEventType
 from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAccessUseCase
+from app.modules.cabinet_auth import DeeplinkStore
 from app.modules.users import RegisterTelegramUserDto, RegisterTelegramUserUseCase
-from app.telegram.middlewares._codes import parse_ad_link_code, parse_referral_code
+from app.telegram.middlewares._codes import (
+    parse_ad_link_code,
+    parse_referral_code,
+    parse_webauth_token,
+)
 from app.telegram.middlewares.base import EventTypedMiddleware
 
 
@@ -45,11 +50,19 @@ class UserMiddleware(EventTypedMiddleware):
         language = telegram_language or Locale(hub.root_locale)
         referral_code = parse_referral_code(event)
         ad_link_code = parse_ad_link_code(event)
+        channel = AdLinkChannel.BOT
+        # a newcomer arriving from the cabinet button registers with the cabinet's invite
+        if webauth_token := parse_webauth_token(event):
+            pending = await (await container.get(DeeplinkStore)).peek(webauth_token)
+            if pending is not None:
+                referral_code = pending.codes.referral_code
+                ad_link_code = pending.codes.ad_link_code
+                channel = AdLinkChannel.WEBCABINET
 
         check_access = await container.get(CheckRegistrationAccessUseCase)
         denial = await check_access.system(
             CheckRegistrationAccessDto(
-                channel=AdLinkChannel.BOT,
+                channel=channel,
                 telegram_id=aiogram_user.id,
                 referral_code=referral_code,
                 ad_link_code=ad_link_code,
@@ -74,6 +87,7 @@ class UserMiddleware(EventTypedMiddleware):
                 sync_language=telegram_language is not None,
                 ad_link_code=ad_link_code,
                 referral_code=referral_code,
+                channel=channel,
             )
         )
         return await handler(event, data)

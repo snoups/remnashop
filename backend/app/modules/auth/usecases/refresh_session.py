@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
@@ -24,12 +25,18 @@ class RefreshSessionUseCase:
         self._event_publisher = event_publisher
 
     async def execute(
-        self, refresh_token: str, ip_address: str, user_agent: Optional[str]
+        self,
+        refresh_token: str,
+        ip_address: str,
+        user_agent: Optional[str],
+        audience: SessionAudience = SessionAudience.DASHBOARD,
     ) -> IssuedSession:
         async with self._uow:
             presented_hash = hash_refresh_token(refresh_token)
 
             current_session = await self._session_repository.get_by_current_hash(presented_hash)
+        if current_session is not None and current_session.audience is not audience:
+            current_session = None
         if current_session is not None:
             new_refresh_token = self._session_issuer.generate_new_refresh_token()
             async with self._uow:
@@ -46,6 +53,8 @@ class RefreshSessionUseCase:
             graced_session = await self._session_repository.get_by_previous_hash_in_grace(
                 presented_hash
             )
+        if graced_session is not None and graced_session.audience is not audience:
+            graced_session = None
         if graced_session is not None:
             new_refresh_token = self._session_issuer.generate_new_refresh_token()
             async with self._uow:
@@ -62,6 +71,8 @@ class RefreshSessionUseCase:
             theft_session = await self._session_repository.get_by_expired_previous_hash(
                 presented_hash
             )
+        if theft_session is not None and theft_session.audience is not audience:
+            theft_session = None
         if theft_session is not None:
             async with self._uow:
                 await self._session_repository.revoke_by_id(theft_session.id)

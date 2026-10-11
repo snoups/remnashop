@@ -4,7 +4,7 @@ from typing import Annotated, Final, Optional
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 from app.core.constants import INT64_MAX
-from app.core.enums import AccessMode
+from app.core.enums import AccessMode, SmtpSecurity
 
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 
@@ -93,6 +93,8 @@ class OAuthSettingsResponse(BaseModel):
     is_github_enabled: bool
     is_telegram_configured: bool
     is_telegram_enabled: bool
+    is_google_configured: bool
+    is_yandex_configured: bool
     is_oidc_configured: bool
     is_oidc_enabled: bool
     oidc_display_name: Optional[str] = None
@@ -110,6 +112,10 @@ class UpdateOAuthSettingsRequest(BaseModel):
     telegram_client_id: Optional[str] = Field(default=None, min_length=1)
     telegram_client_secret: Optional[str] = Field(default=None, min_length=1)
     telegram_enabled: Optional[bool] = None
+    google_client_id: Optional[str] = Field(default=None, min_length=1)
+    google_client_secret: Optional[str] = Field(default=None, min_length=1)
+    yandex_client_id: Optional[str] = Field(default=None, min_length=1)
+    yandex_client_secret: Optional[str] = Field(default=None, min_length=1)
     oidc_issuer_url: Optional[str] = Field(default=None, pattern=r"^https://.+", max_length=512)
     oidc_client_id: Optional[str] = Field(default=None, min_length=1)
     oidc_client_secret: Optional[str] = Field(default=None, min_length=1)
@@ -149,6 +155,43 @@ class UpdateAccessSettingsRequest(BaseModel):
     mode: Optional[AccessMode] = None
     registration_enabled: Optional[bool] = None
     payments_enabled: Optional[bool] = None
+
+
+class EmailSettingsResponse(BaseModel):
+    host: Optional[str]
+    port: int
+    security: SmtpSecurity
+    username: Optional[str]
+    is_password_set: bool
+    from_address: Optional[str]
+    from_name: Optional[str]
+    is_configured: bool
+
+
+class UpdateEmailSettingsRequest(BaseModel):
+    host: Optional[str] = Field(None, min_length=1, max_length=255)
+    port: Optional[int] = Field(None, ge=1, le=65535)
+    security: Optional[SmtpSecurity] = None
+    username: Optional[str] = Field(None, max_length=255)
+    password: Optional[str] = Field(None, max_length=1024)
+    from_address: Optional[str] = Field(
+        None, min_length=1, max_length=255, pattern=r"^[^@\s]+@[^@\s]+$"
+    )
+    from_name: Optional[str] = Field(None, max_length=100)
+
+
+class CabinetAuthSettingsResponse(BaseModel):
+    telegram_enabled: bool
+    google_enabled: bool
+    yandex_enabled: bool
+    email_enabled: bool
+
+
+class UpdateCabinetAuthSettingsRequest(BaseModel):
+    telegram_enabled: Optional[bool] = None
+    google_enabled: Optional[bool] = None
+    yandex_enabled: Optional[bool] = None
+    email_enabled: Optional[bool] = None
 
 
 class BotRequirementsResponse(BaseModel):

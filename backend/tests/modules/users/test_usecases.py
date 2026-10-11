@@ -9,7 +9,7 @@ from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BlacklistKind, Locale, Role
+from app.core.enums import BlacklistKind, Locale, Role, SessionAudience
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import hash_password
@@ -1908,6 +1908,7 @@ async def test_demote_admin_revokes_sessions_and_passkeys(
                 ip_address="203.0.113.1",
                 user_agent="pytest",
                 expires_at=datetime_now() + timedelta(days=30),
+                audience=SessionAudience.DASHBOARD,
             )
         )
         await passkey_repository.create(
@@ -1954,6 +1955,7 @@ async def test_block_user_demotes_an_admin_before_blocking(
                 ip_address="203.0.113.1",
                 user_agent="pytest",
                 expires_at=datetime_now() + timedelta(days=30),
+                audience=SessionAudience.DASHBOARD,
             )
         )
         await passkey_repository.create(

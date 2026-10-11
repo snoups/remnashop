@@ -15,6 +15,7 @@ _KEY_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}oauth:state:"
 class OAuthFlowPurpose(UpperStrEnum):
     LOGIN = auto()
     CONNECT = auto()
+    CABINET_LOGIN = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -23,6 +24,9 @@ class OAuthState:
     purpose: OAuthFlowPurpose
     user_id: Optional[int]
     code_verifier: Optional[str]
+    binding_hash: Optional[str] = None
+    referral_code: Optional[str] = None
+    ad_link_code: Optional[str] = None
 
 
 class OAuthStateStore:
@@ -35,10 +39,19 @@ class OAuthStateStore:
         purpose: OAuthFlowPurpose,
         user_id: Optional[int],
         code_verifier: Optional[str],
+        binding_hash: Optional[str] = None,
+        referral_code: Optional[str] = None,
+        ad_link_code: Optional[str] = None,
     ) -> str:
         state = secrets.token_urlsafe(32)
         oauth_state = OAuthState(
-            provider=provider, purpose=purpose, user_id=user_id, code_verifier=code_verifier
+            provider=provider,
+            purpose=purpose,
+            user_id=user_id,
+            code_verifier=code_verifier,
+            binding_hash=binding_hash,
+            referral_code=referral_code,
+            ad_link_code=ad_link_code,
         )
         payload = json.dumps(asdict(oauth_state))
         await self._redis.set(f"{_KEY_PREFIX}{state}", payload, ex=TTL_10M)

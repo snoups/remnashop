@@ -4,7 +4,7 @@ from sqlalchemy import update
 
 from app.core.db.models.user_session import UserSession
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto, SessionDto
 from app.modules.auth.repository import SessionRepository
@@ -35,6 +35,7 @@ async def _create_session(
             ip_address="203.0.113.1",
             user_agent="pytest",
             expires_at=_future(30 * 24 * 3600),
+            audience=SessionAudience.DASHBOARD,
         )
     )
 
@@ -72,7 +73,8 @@ async def test_get_active_by_id_excludes_expired(
             refresh_token_hash=hash_refresh_token("expired-token"),
             ip_address="203.0.113.1",
             user_agent=None,
-            expires_at=_future(-60),  # already expired
+            expires_at=_future(-60),  # already expired,
+            audience=SessionAudience.DASHBOARD,
         )
     )
 

@@ -12,7 +12,7 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import BlacklistKind, Locale, Role
+from app.core.enums import BlacklistKind, Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
@@ -79,6 +79,7 @@ async def _issue_token(
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.DASHBOARD,
         )
     )
     return create_access_token(user_id, session.id, config.jwt_secret.get_secret_value())

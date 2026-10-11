@@ -1,12 +1,13 @@
 from app.modules.users.di import get_users_providers
 from app.modules.users.dto import (
     CreateUserDto,
+    RegisterCabinetUserDto,
     RegisterTelegramUserDto,
     SetUserDiscountDto,
     UpdateUserDto,
     UserDto,
 )
-from app.modules.users.events import TelegramUserRegisteredEvent
+from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import UserResponse
 from app.modules.users.stats_repository import UserStatsRepository
@@ -15,6 +16,7 @@ from app.modules.users.usecases import (
     BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     GetCurrentUserUseCase,
+    RegisterCabinetUserUseCase,
     RegisterTelegramUserUseCase,
     SetMarketingOptOutUseCase,
     SetUserDiscountUseCase,
@@ -27,8 +29,11 @@ __all__ = [
     "AcceptRulesUseCase",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",
+    "CabinetUserRegisteredEvent",
     "CreateUserDto",
     "GetCurrentUserUseCase",
+    "RegisterCabinetUserDto",
+    "RegisterCabinetUserUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
     "SetMarketingOptOutUseCase",

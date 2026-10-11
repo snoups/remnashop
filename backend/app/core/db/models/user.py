@@ -37,6 +37,7 @@ class User(BaseSql, TimestampMixin):
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'",
             name="ck_users_login_charset",
         ),
+        CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
         CheckConstraint(
             "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
         ),

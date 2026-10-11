@@ -11,7 +11,7 @@ from app.api.dependencies.public import get_current_actor
 from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_refresh_token
 from app.core.security.permissions import Permission
 from app.modules.api_tokens.dto import CreateApiTokenDto
@@ -48,6 +48,7 @@ async def _create_user_and_session(
             ip_address="203.0.113.1",
             user_agent=None,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.DASHBOARD,
         )
     )
     return user.id, session.id

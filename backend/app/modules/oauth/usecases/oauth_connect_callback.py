@@ -13,7 +13,7 @@ from app.modules.oauth.providers.registry import get_oauth_client
 from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import SettingsRepository
-from app.modules.users import UserDto
+from app.modules.users import UserDto, UserRepository
 
 
 class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, UserDto]):
@@ -24,6 +24,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
         settings_repository: SettingsRepository,
         state_store: OAuthStateStore,
         oauth_identity_repository: OAuthIdentityRepository,
+        user_repository: UserRepository,
         uow: UnitOfWork,
         config: AppConfig,
         event_publisher: EventPublisher,
@@ -31,6 +32,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
         self._settings_repository = settings_repository
         self._state_store = state_store
         self._oauth_identity_repository = oauth_identity_repository
+        self._user_repository = user_repository
         self._uow = uow
         self._config = config
         self._event_publisher = event_publisher
@@ -53,7 +55,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
             client = get_oauth_client(data.provider, settings)
             redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), data.provider)
         try:
-            external_id, external_login = await client.fetch_identity(
+            profile = await client.fetch_identity(
                 redirect_uri,
                 data.code,
                 state_data.code_verifier,
@@ -62,6 +64,23 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
             raise AuthenticationError(
                 "Failed to exchange OAuth code", code=ErrorCode.OAUTH_CODE_EXCHANGE_FAILED
             ) from error
+
+        external_id = profile.external_id
+        external_login = profile.login
+        if data.provider is OAuthProvider.TELEGRAM:
+            async with self._uow:
+                updated = await self._user_repository.set_telegram_id(actor.id, int(external_id))
+                await self._event_publisher.publish(
+                    OAuthIdentityConnectedEvent(
+                        user=actor, provider=data.provider, ip_address=data.client_ip
+                    )
+                )
+            return OAuthIdentityDto(
+                user_id=updated.id,
+                provider=OAuthProvider.TELEGRAM,
+                external_id=external_id,
+                external_login=external_login,
+            )
 
         async with self._uow:
             existing = await self._oauth_identity_repository.get_by_provider_external_id(

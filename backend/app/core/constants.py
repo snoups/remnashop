@@ -71,6 +71,12 @@ REFRESH_COOKIE_PATH: Final[str] = "/api/v1/auth"
 DOCS_PATH: Final[str] = "/api/v1/docs"
 DOCS_COOKIE_NAME: Final[str] = "docs_access"
 
+CABINET_API_PREFIX: Final[str] = "/cabinet"
+
+# Set by the web cabinet's nginx, which overwrites both on every request.
+CABINET_CLIENT_IP_HEADER: Final[str] = "x-cabinet-client-ip"
+CABINET_PROXY_SECRET_HEADER: Final[str] = "x-cabinet-proxy-secret"
+
 MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
 CONFIG_KEY: Final[str] = "config"

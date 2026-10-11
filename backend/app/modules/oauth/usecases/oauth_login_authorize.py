@@ -5,7 +5,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
-from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
+from app.modules.oauth.providers.base import (
+    CABINET_ONLY_PROVIDERS,
+    OAUTH_EXCHANGE_ERRORS,
+    build_redirect_uri,
+)
 from app.modules.oauth.providers.registry import get_oauth_client
 from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
 from app.modules.settings import SettingsRepository
@@ -25,6 +29,11 @@ class OAuthLoginAuthorizeUseCase:
         self._uow = uow
 
     async def execute(self, provider: OAuthProvider) -> str:
+        if provider in CABINET_ONLY_PROVIDERS:
+            raise AuthenticationError(
+                "Provider is not available for dashboard sign-in",
+                code=ErrorCode.OAUTH_PROVIDER_UNSUPPORTED,
+            )
         async with self._uow:
             settings = await self._settings_repository.get_oauth_settings()
             client = get_oauth_client(provider, settings)

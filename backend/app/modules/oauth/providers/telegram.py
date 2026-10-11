@@ -4,6 +4,8 @@ from typing import Any, Final, Optional, cast
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
+from app.modules.oauth.providers.base import OAuthProfile
+
 _AUTHORIZE_ENDPOINT: Final[str] = "https://oauth.telegram.org/auth"
 _TOKEN_ENDPOINT: Final[str] = "https://oauth.telegram.org/token"
 
@@ -41,7 +43,7 @@ class TelegramOAuthClient:
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
-    ) -> tuple[str, Optional[str]]:
+    ) -> OAuthProfile:
         async with AsyncOAuth2Client(
             self._client_id,
             self._client_secret,
@@ -53,4 +55,9 @@ class TelegramOAuthClient:
                 code_verifier=code_verifier,
             )
             payload = _decode_id_token_payload(token["id_token"])
-            return str(payload["id"]), payload.get("username")
+            return OAuthProfile(
+                external_id=str(payload["id"]),
+                login=payload.get("username"),
+                name=payload.get("name"),
+                language=payload.get("locale"),
+            )

@@ -66,6 +66,7 @@ export function ConnectedAccountsForm() {
   const [state, reload] = useAsyncResource(loadConnectedAccountsData);
   // a successful connect keeps it set: the page is navigating away to the provider
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(null);
+  const [confirmTelegram, setConfirmTelegram] = useState(false);
 
   const handleConnect = async (provider: OAuthProvider) => {
     setPendingProvider(provider);
@@ -85,6 +86,7 @@ export function ConnectedAccountsForm() {
   };
 
   const handleDisconnect = async (provider: OAuthProvider) => {
+    setConfirmTelegram(false);
     setPendingProvider(provider);
     try {
       await disconnectOAuth(provider);
@@ -148,9 +150,11 @@ export function ConnectedAccountsForm() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    void (identity ? handleDisconnect(provider) : handleConnect(provider))
-                  }
+                  onClick={() => {
+                    if (!identity) void handleConnect(provider);
+                    else if (provider === "telegram") setConfirmTelegram(true);
+                    else void handleDisconnect(provider);
+                  }}
                   disabled={pendingProvider !== null}
                 >
                   {pendingProvider === provider && <Loader2 className="size-3.5 animate-spin" />}
@@ -161,6 +165,17 @@ export function ConnectedAccountsForm() {
           })}
         {state.kind === "ready" && <PasskeyRow passkeys={state.data.passkeys} onChange={reload} />}
       </div>
+      {confirmTelegram && (
+        <ConfirmDialog
+          title={t("profile.oauthAccounts.disconnectTelegramTitle")}
+          message={t("profile.oauthAccounts.disconnectTelegramWarning")}
+          confirmLabel={t("profile.oauthAccounts.disconnect")}
+          cancelLabel={t("common.cancel")}
+          danger
+          onConfirm={() => void handleDisconnect("telegram")}
+          onCancel={() => setConfirmTelegram(false)}
+        />
+      )}
     </Card>
   );
 }

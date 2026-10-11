@@ -12,6 +12,7 @@ from app.core.ports import EventPublisher
 from app.modules.auth import BootstrapOwnerUseCase, SessionIssuer, SessionRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.events import OAuthLoginFailedEvent
+from app.modules.oauth.providers.base import OAuthProfile
 from app.modules.oauth.providers.oidc import OIDCOAuthClient
 from app.modules.oauth.providers.registry import get_oauth_client
 from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
@@ -107,14 +108,14 @@ class _StubOAuthClient:
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: object
-    ) -> tuple[str, str]:
-        return "external-123", "octocat"
+    ) -> OAuthProfile:
+        return OAuthProfile(external_id="external-123", login="octocat")
 
 
 class _FailingOAuthClient(_StubOAuthClient):
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: object
-    ) -> tuple[str, str]:
+    ) -> OAuthProfile:
         raise KeyError("id")
 
 
@@ -425,6 +426,7 @@ async def test_connect_callback_links_identity_to_actor(
         settings_repository,
         oauth_state_store,
         oauth_identity_repository,
+        user_repository,
         uow,
         config,
         event_publisher,
@@ -469,6 +471,7 @@ async def test_connect_callback_reports_provider_exchange_failure(
         settings_repository,
         oauth_state_store,
         oauth_identity_repository,
+        user_repository,
         uow,
         config,
         event_publisher,
@@ -512,6 +515,7 @@ async def test_connect_callback_rejects_state_bound_to_different_actor(
         settings_repository,
         oauth_state_store,
         oauth_identity_repository,
+        user_repository,
         uow,
         config,
         event_publisher,
@@ -569,6 +573,7 @@ async def test_connect_callback_rejects_identity_already_linked_to_another_user(
         settings_repository,
         oauth_state_store,
         oauth_identity_repository,
+        user_repository,
         uow,
         config,
         event_publisher,
@@ -602,7 +607,9 @@ async def test_disconnect_removes_identity(
             external_login=None,
         )
     )
-    interactor = OAuthDisconnectUseCase(oauth_identity_repository, uow, event_publisher)
+    interactor = OAuthDisconnectUseCase(
+        oauth_identity_repository, user_repository, uow, event_publisher
+    )
 
     await interactor(owner, OAuthDisconnectDto(provider=OAuthProvider.GITHUB, client_ip=CLIENT_IP))
 
@@ -621,7 +628,9 @@ async def test_disconnect_is_idempotent_when_nothing_linked(
     owner = await _bootstrap_owner(
         user_repository, uow, config, event_publisher, session_repository
     )
-    interactor = OAuthDisconnectUseCase(oauth_identity_repository, uow, event_publisher)
+    interactor = OAuthDisconnectUseCase(
+        oauth_identity_repository, user_repository, uow, event_publisher
+    )
 
     await interactor(owner, OAuthDisconnectDto(provider=OAuthProvider.GITHUB, client_ip=CLIENT_IP))
 
@@ -723,14 +732,14 @@ class _IssuerSwappingClient(_StubOAuthClient):
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: object
-    ) -> tuple[str, str]:
+    ) -> OAuthProfile:
         async with self._uow:
             await self._settings_repository.update_oauth_settings(
                 UpdateOAuthSettingsDto(oidc_issuer_url="https://issuer-b.example")
             )
         for hook in self.after_swap:
             await hook()  # type: ignore[operator]
-        return "external-123", "octocat"
+        return OAuthProfile(external_id="external-123", login="octocat")
 
 
 async def _with_issuer(settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
@@ -769,6 +778,7 @@ async def test_connect_callback_refuses_an_identity_from_a_replaced_oidc_issuer(
         settings_repository,
         oauth_state_store,
         oauth_identity_repository,
+        user_repository,
         uow,
         config,
         event_publisher,

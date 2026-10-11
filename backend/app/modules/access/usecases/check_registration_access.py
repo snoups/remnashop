@@ -40,6 +40,9 @@ class CheckRegistrationAccessUseCase(UseCase[CheckRegistrationAccessDto, Optiona
                 existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
                 if existing is not None:
                     return None
+            if data.email is not None:
+                if await self._user_repository.get_by_email(data.email) is not None:
+                    return None
 
             if settings.mode is AccessMode.RESTRICTED:
                 denial: Optional[AccessDenial] = AccessDenial.RESTRICTED

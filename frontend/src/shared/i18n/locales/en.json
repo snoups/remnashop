@@ -567,6 +567,7 @@
       "BootstrapConflictEvent": "Owner creation attempt",
       "OAuthLoginSucceededEvent": "OAuth login",
       "OAuthLoginFailedEvent": "OAuth login failed",
+      "EmailCodeAttemptsExhaustedEvent": "Email code attempts exhausted",
       "OAuthIdentityConnectedEvent": "OAuth account linked",
       "OAuthIdentityDisconnectedEvent": "OAuth account unlinked",
       "SessionRevokedEvent": "Session revoked",
@@ -579,6 +580,7 @@
       "AdminDeletedEvent": "Admin deleted",
       "TelegramIdBoundEvent": "Telegram ID bound",
       "UserDeletedEvent": "User deleted",
+      "CabinetUserRegisteredEvent": "Cabinet sign-up",
       "TelegramUserRegisteredEvent": "Telegram sign-up",
       "LocaleActivatedEvent": "Locale added",
       "LocaleDeactivatedEvent": "Locale removed",
@@ -612,6 +614,7 @@
       "SubscriptionRenewedEvent": "Subscription renewed",
       "SubscriptionStatusSyncedEvent": "Subscription synced",
       "TelegramRegistrationBlockedEvent": "Sign-up blocked",
+      "CabinetRegistrationBlockedEvent": "Blocked cabinet sign-up",
       "AccountsMergedEvent": "Accounts merged",
       "UserBlockedEvent": "User blocked",
       "UserPointsAdjustedEvent": "Points adjusted",
@@ -645,7 +648,9 @@
       "AccessSettingsChangedEvent": "Access settings changed",
       "BotRequirementsChangedEvent": "Bot requirements changed",
       "ShopSettingsChangedEvent": "Shop settings changed",
-      "UserRulesAcceptedEvent": "Rules accepted"
+      "UserRulesAcceptedEvent": "Rules accepted",
+      "EmailSettingsChangedEvent": "Email settings changed",
+      "CabinetAuthSettingsChangedEvent": "Cabinet sign-in settings changed"
     }
   },
   "sidebar": {
@@ -1134,7 +1139,8 @@
         "rescueCommandLabel": "Command",
         "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
         "rescueNote": "After it starts, choose “Enable password authentication”."
-      }
+      },
+      "redirectHint": "Redirect URI: your cabinet address followed by {{path}}"
     },
     "shop": {
       "title": "Shop",
@@ -1272,6 +1278,39 @@
       "channelId": "Channel ID",
       "channelUrl": "Channel link",
       "loadError": "Failed to load requirements."
+    },
+    "email": {
+      "title": "Email",
+      "description": "SMTP server for cabinet sign-in codes and notifications",
+      "loadError": "Failed to load email settings.",
+      "hostLabel": "SMTP host",
+      "portLabel": "Port",
+      "securityLabel": "Encryption",
+      "security": {
+        "STARTTLS": "STARTTLS",
+        "TLS": "TLS",
+        "NONE": "None"
+      },
+      "usernameLabel": "Username",
+      "passwordLabel": "Password",
+      "passwordSet": "Set — leave blank to keep",
+      "passwordUnset": "Not set",
+      "fromAddressLabel": "From address",
+      "fromNameLabel": "From name",
+      "testButton": "Send test email",
+      "testSending": "Sending…",
+      "testSent": "Test email sent."
+    },
+    "cabinetAuth": {
+      "title": "Cabinet sign-in",
+      "description": "Methods customers can use to sign in to the web cabinet",
+      "loadError": "Failed to load cabinet sign-in settings.",
+      "methods": {
+        "telegram": "Telegram",
+        "google": "Google",
+        "yandex": "Yandex",
+        "email": "Email code"
+      }
     }
   },
   "apiTokens": {
@@ -1338,7 +1377,11 @@
       "connectedAs": "Connected as {{login}}",
       "notConnected": "Not connected",
       "connect": "Connect",
-      "disconnect": "Disconnect"
+      "disconnect": "Disconnect",
+      "google": "Google",
+      "yandex": "Yandex",
+      "disconnectTelegramTitle": "Disconnect Telegram",
+      "disconnectTelegramWarning": "This also unlinks your Telegram from the bot: your bot account will no longer be tied to this profile."
     },
     "passkeys": {
       "title": "Passkeys",
@@ -1462,6 +1505,11 @@
     "SHOP_SETTINGS_MANAGE": "Edit shop settings",
     "OAUTH_SETTINGS_VIEW": "View OAuth settings",
     "OAUTH_SETTINGS_MANAGE": "Edit OAuth settings",
+    "EMAIL_SETTINGS_VIEW": "View email settings",
+    "EMAIL_SETTINGS_MANAGE": "Manage email settings",
+    "EMAIL_SETTINGS_TEST": "Send a test email",
+    "CABINET_AUTH_SETTINGS_VIEW": "View cabinet sign-in methods",
+    "CABINET_AUTH_SETTINGS_MANAGE": "Manage cabinet sign-in methods",
     "BANNERS_IMAGE_VIEW": "View banner image",
     "BANNERS_UPLOAD": "Upload banners",
     "BANNERS_DELETE": "Delete banners",
@@ -3198,6 +3246,12 @@
     "DURATION_NOT_POSITIVE": "The duration must be positive.",
     "EMOJI_MEDIA_NOT_FOUND": "Emoji image not found.",
     "EMOJI_PACK_BOT_TOKEN_MISSING": "Set the bot token before importing an emoji pack.",
+    "EMAIL_CODE_EXPIRED": "The code has expired. Request a new one.",
+    "DEEPLINK_EXPIRED": "The sign-in link has expired. Try again.",
+    "EMAIL_CODE_INVALID": "Wrong code.",
+    "EMAIL_NOT_CONFIGURED": "Set up SMTP first.",
+    "EMAIL_SEND_FAILED": "Failed to send the email. Check the SMTP settings.",
+    "EMAIL_TAKEN": "This email is already in use.",
     "EMOJI_PACK_FETCH_FAILED": "Failed to load the emoji pack from Telegram.",
     "EMOJI_PACK_NAME_INVALID": "Invalid emoji pack link or name.",
     "EMOJI_PACK_NOT_FOUND": "Emoji pack not found.",
@@ -3223,6 +3277,7 @@
     "IMAGE_UNREADABLE": "The image file is corrupted or unreadable.",
     "IMAGE_UNSUPPORTED_TYPE": "Unsupported image type.",
     "INVALID_CREDENTIALS": "Invalid login or password.",
+    "INVALID_INIT_DATA": "Couldn't verify Telegram data. Reopen the app.",
     "IP_ALLOWLIST_LOCKOUT": "Your current IP isn't in the list — you would lock yourself out.",
     "IP_NOT_ALLOWED": "Access from this IP address is not allowed.",
     "LINK_RESET_DISABLED": "Subscription link reset is disabled.",
@@ -3312,11 +3367,14 @@
     "REFERRER_ALREADY_SET": "The user already has a referrer.",
     "REFRESH_TOKEN_INVALID": "Your session expired — sign in again.",
     "REFRESH_TOKEN_MISSING": "Your session expired — sign in again.",
+    "REGISTRATION_CLOSED": "Sign-ups are closed right now.",
+    "REGISTRATION_INVITE_ONLY": "Sign-up is by invitation only.",
     "REMNAWAVE_UNAVAILABLE": "The Remnawave panel is temporarily unavailable.",
     "RENEW_PLAN_MISMATCH": "Renewing to a different plan is a plan change.",
     "REQUEST_INVALID": "Some fields are filled in incorrectly.",
     "ROLE_INVALID": "Unknown role.",
     "SESSIONS_TARGET_TOO_PRIVILEGED": "You can't manage sessions of an equal or higher role.",
+    "SESSION_AUDIENCE_MISMATCH": "This session can't be used here. Sign in again.",
     "SESSION_NOT_FOUND": "Session not found.",
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "The limit must be positive, or empty for unlimited.",
     "SUBSCRIPTION_DELETED": "The subscription has been deleted.",

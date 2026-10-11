@@ -86,6 +86,7 @@ def upgrade() -> None:
             ),
             nullable=False,
         ),
+        sa.Column("is_default", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -98,7 +99,6 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.Column("is_default", sa.Boolean(), server_default="false", nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("locale", name="ux_active_locales_locale"),
     )
@@ -455,6 +455,27 @@ def upgrade() -> None:
         ),
     )
     op.create_table(
+        "cabinet_auth_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("telegram_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("google_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("yandex_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("email_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "currency_rates",
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column("rate", sa.Numeric(precision=12, scale=6), nullable=False),
@@ -510,6 +531,35 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key", name="ux_dialog_windows_key"),
         sa.UniqueConstraint("slot", name="ux_dialog_windows_slot"),
+    )
+    op.create_table(
+        "email_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("host", sa.String(length=255), nullable=True),
+        sa.Column("port", sa.Integer(), server_default="587", nullable=False),
+        sa.Column(
+            "security",
+            sa.Enum("STARTTLS", "TLS", "NONE", name="smtpsecurity"),
+            server_default="STARTTLS",
+            nullable=False,
+        ),
+        sa.Column("username", sa.String(length=255), nullable=True),
+        sa.Column("password", app.core.db.encrypted_string.EncryptedString(), nullable=True),
+        sa.Column("from_address", sa.String(length=255), nullable=True),
+        sa.Column("from_name", sa.String(length=100), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "emoji_packs",
@@ -587,6 +637,18 @@ def upgrade() -> None:
         ),
         sa.Column(
             "telegram_client_secret", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
+        sa.Column(
+            "google_client_id", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
+        sa.Column(
+            "google_client_secret", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
+        sa.Column(
+            "yandex_client_id", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
+        sa.Column(
+            "yandex_client_secret", app.core.db.encrypted_string.EncryptedString(), nullable=True
         ),
         sa.Column("oidc_client_id", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column(
@@ -1088,6 +1150,7 @@ def upgrade() -> None:
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'", name="ck_users_login_charset"
         ),
         sa.CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
+        sa.CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
         sa.CheckConstraint(
             "loyalty_discount BETWEEN 0 AND 100", name="ck_users_loyalty_discount_range"
         ),
@@ -1384,7 +1447,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column(
-            "provider", sa.Enum("GITHUB", "TELEGRAM", "OIDC", name="oauth_provider"), nullable=False
+            "provider",
+            sa.Enum("GITHUB", "TELEGRAM", "OIDC", "GOOGLE", "YANDEX", name="oauth_provider"),
+            nullable=False,
         ),
         sa.Column("external_id", sa.String(length=255), nullable=False),
         sa.Column("external_login", sa.String(length=255), nullable=True),
@@ -1559,6 +1624,12 @@ def upgrade() -> None:
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "audience",
+            sa.Enum("DASHBOARD", "CABINET", name="sessionaudience"),
+            server_default="DASHBOARD",
+            nullable=False,
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1920,12 +1991,12 @@ def upgrade() -> None:
             server_default="NONE",
             nullable=False,
         ),
+        sa.Column("discount_from_promocode", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("plan_discount_percent", sa.Integer(), server_default="0", nullable=False),
         sa.Column("final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_base_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("discount_promocode_id", sa.Integer(), nullable=True),
-        sa.Column("discount_from_promocode", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("customer_email", sa.String(length=255), nullable=True),
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
@@ -2108,8 +2179,10 @@ def downgrade() -> None:
     op.drop_table("notification_settings")
     op.drop_table("loyalty_settings")
     op.drop_table("emoji_packs")
+    op.drop_table("email_settings")
     op.drop_table("dialog_windows")
     op.drop_table("currency_rates")
+    op.drop_table("cabinet_auth_settings")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
     op.drop_table("bot_requirements")

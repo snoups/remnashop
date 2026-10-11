@@ -2,7 +2,12 @@ from app.modules.auth.di import get_auth_providers
 from app.modules.auth.dto import AuthStatusDto, RevokeSessionDto, RevokeUserSessionDto, SessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
-from app.modules.auth.session_response import AuthResponse, set_session_cookies, to_auth_response
+from app.modules.auth.session_response import (
+    AuthResponse,
+    set_session_cookies,
+    to_auth_response,
+    verify_csrf,
+)
 from app.modules.auth.usecases import (
     BootstrapOwnerUseCase,
     GetAuthStatusUseCase,
@@ -36,4 +41,5 @@ __all__ = [
     "get_auth_providers",
     "set_session_cookies",
     "to_auth_response",
+    "verify_csrf",
 ]

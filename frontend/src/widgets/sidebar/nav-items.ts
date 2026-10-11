@@ -67,7 +67,7 @@ export interface SettingsTab {
 }
 
 export const SETTINGS_TABS: SettingsTab[] = [
-  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW"] },
+  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW", "CABINET_AUTH_SETTINGS_VIEW"] },
   { key: "access", to: "access", icon: ShieldCheck, anyOf: ["ACCESS_SETTINGS_VIEW"] },
   {
     key: "bot",

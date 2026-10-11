@@ -1,0 +1,236 @@
+import pytest
+from dishka import AsyncContainer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db.models.event_outbox import EventOutboxEntry
+from app.core.db.uow import UnitOfWork
+from app.core.enums import (
+    AccessMode,
+    BlacklistKind,
+    CabinetSignInMethod,
+    Locale,
+    SessionAudience,
+)
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import PermissionDeniedError
+from app.modules.auth.repository import SessionRepository
+from app.modules.blacklist import BlacklistRepository
+from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
+from app.modules.cabinet_auth.sign_in import CabinetSignIn
+from app.modules.settings.dto import UpdateAccessSettingsDto
+from app.modules.settings.repository import SettingsRepository
+from app.modules.users.dto import CreateUserDto, RegisterCabinetUserDto
+from app.modules.users.repository import UserRepository
+from app.modules.users.usecases import RegisterCabinetUserUseCase
+
+_IP = "203.0.113.1"
+
+
+async def _set_access(
+    settings_repository: SettingsRepository, uow: UnitOfWork, data: UpdateAccessSettingsDto
+) -> None:
+    async with uow:
+        await settings_repository.update_access_settings(data)
+
+
+async def _outbox(session: AsyncSession, event_type: str) -> list[EventOutboxEntry]:
+    return list(
+        await session.scalars(
+            select(EventOutboxEntry).where(EventOutboxEntry.event_type == event_type)
+        )
+    )
+
+
+async def test_telegram_creates_client_and_cabinet_session(
+    sign_in: CabinetSignIn, session_repository: SessionRepository, session: AsyncSession
+) -> None:
+    user, issued = await sign_in.telegram(
+        TelegramProfileDto(telegram_id=9001, name="Ann", username="ann", language="ru"),
+        InviteCodesDto(),
+        _IP,
+        "ua",
+    )
+    assert user.telegram_id == 9001 and user.language is Locale.RU
+    assert issued.access_token
+    [cabinet_session] = await session_repository.list_active_by_user(user.id)
+    assert cabinet_session.audience is SessionAudience.CABINET
+    [event] = await _outbox(session, "CabinetUserRegisteredEvent")
+    assert event.payload["method"] == "TELEGRAM"
+    assert await _outbox(session, "TelegramUserRegisteredEvent") == []
+
+
+async def test_telegram_unknown_language_falls_back_to_english(sign_in: CabinetSignIn) -> None:
+    user, _ = await sign_in.telegram(
+        TelegramProfileDto(telegram_id=9003, name="Bo", username=None, language="xx"),
+        InviteCodesDto(),
+        _IP,
+        None,
+    )
+    assert user.language is Locale.EN
+
+
+async def test_telegram_existing_bot_user_reused(
+    sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="Bot user", telegram_id=9002))
+
+    user, _ = await sign_in.telegram(
+        TelegramProfileDto(telegram_id=9002, name="Bot user", username=None, language=None),
+        InviteCodesDto(),
+        _IP,
+        None,
+    )
+    assert user.id == existing.id
+
+
+async def test_blocked_user_gets_user_blocked(
+    sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(name="Blocked", email="blocked@mail.ru", is_blocked=True)
+        )
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.email("blocked@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+    assert error.value.code is ErrorCode.USER_BLOCKED
+
+
+async def test_closed_registration(
+    sign_in: CabinetSignIn,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="Old", email="old@mail.ru"))
+    await _set_access(settings_repository, uow, UpdateAccessSettingsDto(registration_enabled=False))
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.email("new@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+    assert error.value.code is ErrorCode.REGISTRATION_CLOSED
+
+    user, _ = await sign_in.email("Old@Mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+    assert user.id == existing.id
+
+
+async def test_invite_only_accepts_referral(
+    sign_in: CabinetSignIn,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        referrer = await user_repository.create(CreateUserDto(name="Referrer", telegram_id=9100))
+    await _set_access(settings_repository, uow, UpdateAccessSettingsDto(mode=AccessMode.INVITED))
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.email("guest@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+    assert error.value.code is ErrorCode.REGISTRATION_INVITE_ONLY
+
+    user, _ = await sign_in.email(
+        "guest@mail.ru",
+        Locale.EN,
+        InviteCodesDto(referral_code=referrer.referral_code),
+        _IP,
+        None,
+    )
+    assert user.email == "guest@mail.ru"
+
+
+async def test_restricted_mode(
+    sign_in: CabinetSignIn, settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    await _set_access(settings_repository, uow, UpdateAccessSettingsDto(mode=AccessMode.RESTRICTED))
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.telegram(
+            TelegramProfileDto(telegram_id=9200, name="Late", username=None, language=None),
+            InviteCodesDto(),
+            _IP,
+            None,
+        )
+    assert error.value.code is ErrorCode.ACCESS_RESTRICTED
+
+
+async def test_email_registration_publishes_event(
+    sign_in: CabinetSignIn, session: AsyncSession
+) -> None:
+    user, _ = await sign_in.email(
+        "New@Mail.ru", Locale.EN, InviteCodesDto(referral_code="abc"), _IP, None
+    )
+    assert user.email == "new@mail.ru" and user.name == "new"
+    [event] = await _outbox(session, "CabinetUserRegisteredEvent")
+    assert event.payload["method"] == "EMAIL"
+    assert event.payload["referral_code"] == "abc"
+    assert event.payload["user"]["id"] == user.id
+
+
+async def test_blacklisted_email_blocked(
+    sign_in: CabinetSignIn,
+    blacklist_repository: BlacklistRepository,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        await blacklist_repository.add_entry(BlacklistKind.EMAIL, "spam@mail.ru")
+    # the blacklist wins over the access mode
+    await _set_access(settings_repository, uow, UpdateAccessSettingsDto(registration_enabled=False))
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.email("spam@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+    assert error.value.code is ErrorCode.USER_BLOCKED
+    blocked = await user_repository.get_by_email("spam@mail.ru")
+    assert blocked is not None and blocked.is_blocked
+    assert await _outbox(session, "CabinetUserRegisteredEvent") == []
+    [event] = await _outbox(session, "CabinetRegistrationBlockedEvent")
+    assert event.payload["user"]["id"] == blocked.id
+
+
+async def test_blacklisted_telegram_id_blocked(
+    sign_in: CabinetSignIn,
+    blacklist_repository: BlacklistRepository,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        await blacklist_repository.add_entry(BlacklistKind.TELEGRAM_ID, "9400")
+    await _set_access(settings_repository, uow, UpdateAccessSettingsDto(registration_enabled=False))
+
+    with pytest.raises(PermissionDeniedError) as error:
+        await sign_in.telegram(
+            TelegramProfileDto(telegram_id=9400, name="Spam", username=None, language=None),
+            InviteCodesDto(),
+            _IP,
+            None,
+        )
+    assert error.value.code is ErrorCode.USER_BLOCKED
+    blocked = await user_repository.get_by_telegram_id(9400)
+    assert blocked is not None and blocked.is_blocked
+    [event] = await _outbox(session, "TelegramRegistrationBlockedEvent")
+    assert event.payload["user"]["id"] == blocked.id
+
+
+async def test_register_cabinet_user_returns_race_winner(
+    container: AsyncContainer, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        winner = await user_repository.create(CreateUserDto(name="Winner", email="race@mail.ru"))
+
+    async with container() as request_container:
+        use_case = await request_container.get(RegisterCabinetUserUseCase)
+        user = await use_case.system(
+            RegisterCabinetUserDto(
+                name="race",
+                language=Locale.EN,
+                method=CabinetSignInMethod.EMAIL,
+                email="race@mail.ru",
+            )
+        )
+    assert user.id == winner.id
