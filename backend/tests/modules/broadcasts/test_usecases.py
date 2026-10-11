@@ -1128,13 +1128,13 @@ async def test_summary_requires_its_permission_and_reports_statuses(
     broadcast_repository: BroadcastRepository, uow: UnitOfWork, admin: UserDto
 ) -> None:
     await _make(broadcast_repository, BroadcastStatus.FAILED)
-    summary = await GetBroadcastSummaryUseCase(broadcast_repository, uow)(admin, None)
+    summary = await GetBroadcastSummaryUseCase(broadcast_repository, uow)(admin)
     assert summary.by_status[BroadcastStatus.FAILED] == 1
     user = SyntheticActor(
         id=0, role=Role.USER, name="t", is_privileged=True, log="[t]", permission_grants=[]
     )
     with pytest.raises(PermissionDeniedError):
-        await GetBroadcastSummaryUseCase(broadcast_repository, uow)(user, None)
+        await GetBroadcastSummaryUseCase(broadcast_repository, uow)(user)
 
 
 async def test_create_rejects_too_long_title(

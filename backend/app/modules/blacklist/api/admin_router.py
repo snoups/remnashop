@@ -113,7 +113,7 @@ async def add_blacklist_source(
     return BlacklistSourceResponse.model_validate(source, from_attributes=True)
 
 
-@router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/sources/{source_id:int}", status_code=status.HTTP_204_NO_CONTENT)
 @inject
 async def remove_blacklist_source(
     source_id: int,
@@ -124,7 +124,9 @@ async def remove_blacklist_source(
 
 
 @router.patch(
-    "/sources/{source_id}", response_model=BlacklistSourceResponse, responses=error_responses(404)
+    "/sources/{source_id:int}",
+    response_model=BlacklistSourceResponse,
+    responses=error_responses(404),
 )
 @inject
 async def update_blacklist_source(

@@ -68,7 +68,7 @@ async def verify_registration(
     return PasskeyResponse.model_validate(created, from_attributes=True)
 
 
-@router.patch("/{passkey_id}", response_model=PasskeyResponse, responses=error_responses(404))
+@router.patch("/{passkey_id:int}", response_model=PasskeyResponse, responses=error_responses(404))
 @inject
 async def rename_passkey(
     passkey_id: int,
@@ -81,7 +81,7 @@ async def rename_passkey(
 
 
 @router.delete(
-    "/{passkey_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/{passkey_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
 )
 @inject
 async def delete_passkey(

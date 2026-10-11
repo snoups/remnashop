@@ -1204,7 +1204,7 @@ async def test_admin_with_upload_permission_cannot_delete(
     )
 
     with pytest.raises(PermissionDeniedError):
-        await delete_use_case(upload_only_admin, None)
+        await delete_use_case(upload_only_admin)
 
 
 async def test_admin_with_only_favicon_permission_cannot_upload_logo(

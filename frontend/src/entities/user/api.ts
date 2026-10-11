@@ -115,7 +115,7 @@ export function getUser(userId: number, signal?: AbortSignal): Promise<UserListI
 }
 
 export function getUserListStats(includeStaff: boolean, signal?: AbortSignal): Promise<UserListStats> {
-  return apiGet<UserListStats>(`/users/stats${includeStaff ? "?include_staff=true" : ""}`, signal);
+  return apiGet<UserListStats>(`/users/summary${includeStaff ? "?include_staff=true" : ""}`, signal);
 }
 
 export function deleteUser(userId: number): Promise<void> {

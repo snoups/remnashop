@@ -34,7 +34,7 @@ async def test_unblocks_matches_and_drops_their_manual_entries(
     use_case = UnblockBlacklistMatchesUseCase(
         UserBlacklistRepository(user_repository.session), blacklist_repository, uow, event_publisher
     )
-    assert await use_case(owner, None) == 2
+    assert await use_case(owner) == 2
 
     for user, blocked in ((manual, False), (listed, False), (other, True)):
         fetched = await user_repository.get_by_id(user.id)

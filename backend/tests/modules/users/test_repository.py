@@ -395,21 +395,6 @@ async def test_count_new_since_excludes_users_created_before_cutoff(
     assert count == 1
 
 
-async def test_count_registrations_by_day_groups_and_excludes_before_since(
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    user_stats_repository: UserStatsRepository,
-) -> None:
-    since = datetime_now() - timedelta(days=1)
-    await _create_user(user_repository, uow, telegram_id=810_201, role=Role.USER)
-    await _create_user(user_repository, uow, telegram_id=810_202, role=Role.USER)
-    await _create_user(user_repository, uow, login="admin-810-2", role=Role.ADMIN)
-
-    rows = await user_stats_repository.count_registrations_by_day(since, Role.USER)
-
-    assert sum(count for _day, count in rows) == 2
-
-
 async def test_block_matching_handles_more_ids_than_bind_param_cap(
     user_repository: UserRepository,
     uow: UnitOfWork,

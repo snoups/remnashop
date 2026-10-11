@@ -178,7 +178,7 @@ async def test_withdraw_points_rejects_amount_above_points(
 ) -> None:
     _, headers = actor
     response = await client.post(
-        f"{API_V1}/referrals/actions/withdraw",
+        f"{API_V1}/referrals/me/actions/withdraw",
         json={"amount": "10.00"},
         headers=headers,
     )
@@ -206,7 +206,7 @@ async def test_withdraw_points_is_rate_limited_per_user(
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             responses.append(
                 await client.post(
-                    f"{API_V1}/referrals/actions/withdraw",
+                    f"{API_V1}/referrals/me/actions/withdraw",
                     json={"amount": "10.00"},
                     headers=headers,
                 )
@@ -241,7 +241,7 @@ async def test_api_token_cannot_use_customer_endpoints(
         )
 
     response = await client.post(
-        f"{API_V1}/referrals/actions/withdraw",
+        f"{API_V1}/referrals/me/actions/withdraw",
         json={"amount": "1"},
         headers={"Authorization": f"Bearer {secret}"},
     )

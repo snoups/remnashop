@@ -96,12 +96,6 @@ class RevenueChartResponse(BaseModel):
     daily: list[DailyAmountResponse]
 
 
-class RegistrationsChartResponse(BaseModel):
-    days: int
-    granularity: Literal["day", "month"]
-    daily: list[DailyCountResponse]
-
-
 class OnlineChartResponse(BaseModel):
     days: int
     granularity: Literal["day", "month"]

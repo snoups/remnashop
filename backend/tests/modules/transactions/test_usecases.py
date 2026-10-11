@@ -189,7 +189,6 @@ async def test_create_checkout_creates_a_pending_order_and_returns_confirmation_
     result = await create_checkout_use_case(
         actor,
         CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,
@@ -217,7 +216,6 @@ async def test_create_checkout_with_100_percent_discount_skips_the_gateway(
     result = await create_checkout_use_case(
         actor,
         CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,
@@ -233,23 +231,6 @@ async def test_create_checkout_with_100_percent_discount_skips_the_gateway(
     assert purchase_dispatch.messages[0]["plan_snapshot"]["plan_id"] == plan.id
     assert purchase_dispatch.messages[0]["price_paid"] == "0.00"
     assert purchase_dispatch.messages[0]["idempotency_key"]
-
-
-async def test_create_checkout_rejects_purchasing_for_another_user_without_privilege(
-    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
-) -> None:
-    with pytest.raises(PermissionDeniedError):
-        await create_checkout_use_case(
-            actor,
-            CreateCheckoutDto(
-                user_id=actor.id + 1,
-                plan_id=plan.id,
-                duration_days=30,
-                currency=Currency.RUB,
-                purchase_type=PurchaseType.NEW,
-                gateway_type=PaymentGatewayType.YOOKASSA,
-            ),
-        )
 
 
 async def _seed_subscription(
@@ -302,7 +283,6 @@ async def test_create_checkout_rejects_a_new_purchase_at_the_subscription_cap(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -344,7 +324,6 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
             await use_case(
                 buyer,
                 CreateCheckoutDto(
-                    user_id=buyer.id,
                     plan_id=plan_id,
                     duration_days=30,
                     currency=Currency.RUB,
@@ -479,7 +458,6 @@ async def test_a_provisioned_order_awaiting_its_link_is_not_counted_twice(
         )
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
     checkout = CreateCheckoutDto(
-        user_id=actor.id,
         plan_id=plan.id,
         duration_days=30,
         currency=Currency.RUB,
@@ -519,7 +497,6 @@ async def test_an_open_order_counts_as_history_for_a_new_only_plan(
         )
     )
     checkout = CreateCheckoutDto(
-        user_id=actor.id,
         plan_id=plan.id,
         duration_days=30,
         currency=Currency.RUB,
@@ -555,7 +532,6 @@ async def test_create_checkout_link_plan_requires_its_code(
 
     def checkout(code: Optional[str]) -> CreateCheckoutDto:
         return CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,
@@ -592,7 +568,6 @@ async def test_create_checkout_rejects_an_existing_availability_plan_for_a_fresh
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -629,7 +604,6 @@ async def test_create_checkout_invited_plan_requires_a_referrer(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -646,7 +620,6 @@ async def test_create_checkout_invited_plan_requires_a_referrer(
     result = await create_checkout_use_case(
         actor,
         CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,
@@ -671,7 +644,6 @@ async def test_create_checkout_rejects_an_inactive_plan(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -701,7 +673,6 @@ async def test_create_checkout_renew_rejects_a_target_belonging_to_another_user(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -728,7 +699,6 @@ async def test_checkout_asks_for_an_email_when_the_gateway_needs_a_receipt(
 
     def _dto(email: Optional[str]) -> CreateCheckoutDto:
         return CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,
@@ -757,7 +727,6 @@ async def test_checkout_rejects_an_unimplemented_gateway(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -774,7 +743,6 @@ async def test_checkout_rejects_telegram_stars_from_the_web(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.XTR,
@@ -791,7 +759,6 @@ async def test_checkout_rejects_an_inactive_gateway(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -808,7 +775,6 @@ async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.USD,
@@ -871,7 +837,6 @@ async def test_test_payment_rejects_an_unconfigured_gateway(
 
 def _checkout_dto(actor: UserDto, plan: PlanDto) -> CreateCheckoutDto:
     return CreateCheckoutDto(
-        user_id=actor.id,
         plan_id=plan.id,
         duration_days=30,
         currency=Currency.RUB,
@@ -1095,7 +1060,6 @@ async def test_create_checkout_renew_refuses_a_disabled_subscription(
         await create_checkout_use_case(
             actor,
             CreateCheckoutDto(
-                user_id=actor.id,
                 plan_id=plan.id,
                 duration_days=30,
                 currency=Currency.RUB,
@@ -1126,7 +1090,6 @@ async def test_checkout_with_payments_off_refuses_and_waitlists_the_buyer(
             await create_checkout_use_case(
                 actor,
                 CreateCheckoutDto(
-                    user_id=actor.id,
                     plan_id=plan.id,
                     duration_days=30,
                     currency=Currency.RUB,
@@ -1135,38 +1098,6 @@ async def test_checkout_with_payments_off_refuses_and_waitlists_the_buyer(
                 ),
             )
         assert error.value.code is ErrorCode.PAYMENTS_DISABLED
-
-    async with uow:
-        assert await waitlist_repository.claim_batch(100, set()) == [actor.id]
-
-
-async def test_admin_checkout_with_payments_off_waitlists_the_customer(
-    create_checkout_use_case: CreateCheckoutUseCase,
-    settings_repository: SettingsRepository,
-    waitlist_repository: WaitlistRepository,
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    actor: UserDto,
-    plan: PlanDto,
-) -> None:
-    admin = await user_repository.create(CreateUserDto(name="admin", role=Role.OWNER))
-    async with uow:
-        await settings_repository.update_access_settings(
-            UpdateAccessSettingsDto(payments_enabled=False)
-        )
-
-    with pytest.raises(PermissionDeniedError):
-        await create_checkout_use_case(
-            admin,
-            CreateCheckoutDto(
-                user_id=actor.id,
-                plan_id=plan.id,
-                duration_days=30,
-                currency=Currency.RUB,
-                purchase_type=PurchaseType.NEW,
-                gateway_type=PaymentGatewayType.YOOKASSA,
-            ),
-        )
 
     async with uow:
         assert await waitlist_repository.claim_batch(100, set()) == [actor.id]

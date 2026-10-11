@@ -58,7 +58,7 @@ async def test_get_catalog_usecase_sees_full_catalog_from_metadata_alone(
     register_all_flow_metadata()
     await ensure_dialogs_seeded(dialog_repository, translation_repository)
 
-    result = await GetDialogCatalogUseCase(dialog_repository, uow)(OWNER, None)
+    result = await GetDialogCatalogUseCase(dialog_repository, uow)(OWNER)
 
     assert {
         "get_trial",

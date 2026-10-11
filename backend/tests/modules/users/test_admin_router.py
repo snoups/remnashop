@@ -180,6 +180,35 @@ async def test_list_admins_endpoint(
     assert "ADMINS_MANAGE" in owner_row["role_permissions"]
 
 
+async def test_list_admins_skips_overrides_of_removed_permissions(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(
+                login="staleadmin",
+                name="stale",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_grants=["REMOVED_PERMISSION", Permission.USERS_VIEW.value],
+                permission_revokes=["REMOVED_PERMISSION"],
+            )
+        )
+        await uow.commit()
+
+    response = await client.get("/api/v1/admins", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    row = next(a for a in response.json()["items"] if a["login"] == "staleadmin")
+    assert row["permission_grants"] == ["USERS_VIEW"]
+    assert row["permission_revokes"] == []
+
+
 async def test_update_own_security_settings_rejects_self_lockout(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -528,34 +557,6 @@ async def test_block_user_endpoint_returns_404_for_unknown_user(
     assert response.status_code == 404
 
 
-async def test_unblock_all_endpoint_requires_unblock_all_permission(
-    client: httpx.AsyncClient,
-    user_repository: UserRepository,
-    session_repository: SessionRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-) -> None:
-    async with uow:
-        admin = await user_repository.create(
-            CreateUserDto(
-                login="blockonlyadmin",
-                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
-                name="blockonlyadmin",
-                role=Role.ADMIN,
-                language=Locale.EN,
-                permission_grants=[Permission.USERS_BLOCK],
-            )
-        )
-        await uow.commit()
-    token = await _issue_token(admin.id, session_repository, config)
-
-    response = await client.post(
-        "/api/v1/users/bulk/all/unblock", headers={"Authorization": f"Bearer {token}"}
-    )
-
-    assert response.status_code == 403
-
-
 async def test_list_users_endpoint_applies_date_and_trial_filters(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -643,7 +644,7 @@ async def test_unblock_blacklist_matches_endpoint(
 
     # must not be captured by POST /users/{user_id}/actions/unblock
     response = await client.post(
-        "/api/v1/users/bulk/blacklist-matches/unblock",
+        "/api/v1/users/bulk/unblock-blacklist-matches",
         headers={"Authorization": f"Bearer {token}"},
     )
 

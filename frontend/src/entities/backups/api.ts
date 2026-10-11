@@ -76,7 +76,7 @@ export interface BackupStats {
 }
 
 export function getBackupStats(signal?: AbortSignal): Promise<BackupStats> {
-  return apiGet<BackupStats>("/backups/stats", signal);
+  return apiGet<BackupStats>("/backups/summary", signal);
 }
 
 export function createBackupRun(kind: BackupKind): Promise<BackupRun> {

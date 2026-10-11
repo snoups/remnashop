@@ -17,7 +17,6 @@ from app.modules.translations.api.schemas import (
     UpdateTranslationRequest,
 )
 from app.modules.translations.dto import (
-    ActiveLocalesDto,
     ResetTranslationDto,
     TranslationsImportDto,
     TranslationTextExportDto,
@@ -147,21 +146,13 @@ async def reset_translation(
     return TranslationEntryItem.model_validate(entry, from_attributes=True)
 
 
-def _to_response(locales: ActiveLocalesDto) -> ActiveLocalesResponse:
-    return ActiveLocalesResponse(
-        active=locales.active,
-        available=[locale for locale in Locale if locale not in locales.active],
-        default=locales.default,
-    )
-
-
 @locales_router.get("", response_model=ActiveLocalesResponse)
 @inject
 async def list_locales(
     use_case: FromDishka[ListActiveLocalesUseCase],
     actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    return _to_response(await use_case(actor))
+    return ActiveLocalesResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @locales_router.patch("", response_model=ActiveLocalesResponse, responses=error_responses(400))
@@ -171,7 +162,9 @@ async def update_locales(
     use_case: FromDishka[SetDefaultLocaleUseCase],
     actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    return _to_response(await use_case(actor, payload.default))
+    return ActiveLocalesResponse.model_validate(
+        await use_case(actor, payload.default), from_attributes=True
+    )
 
 
 @locales_router.put("/{locale}", response_model=ActiveLocalesResponse)
@@ -181,7 +174,7 @@ async def add_locale(
     use_case: FromDishka[AddLocaleUseCase],
     actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    return _to_response(await use_case(actor, locale))
+    return ActiveLocalesResponse.model_validate(await use_case(actor, locale), from_attributes=True)
 
 
 @locales_router.delete(
@@ -193,4 +186,4 @@ async def remove_locale(
     use_case: FromDishka[RemoveLocaleUseCase],
     actor: Actor = Depends(require_admin),
 ) -> ActiveLocalesResponse:
-    return _to_response(await use_case(actor, locale))
+    return ActiveLocalesResponse.model_validate(await use_case(actor, locale), from_attributes=True)

@@ -104,7 +104,7 @@ async def get_analytics_ltv_breakdown(
     use_case: FromDishka[GetLtvBreakdownUseCase],
     actor: Actor = Depends(require_admin),
 ) -> LtvBreakdownResponse:
-    return LtvBreakdownResponse.model_validate(await use_case(actor, None), from_attributes=True)
+    return LtvBreakdownResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("/revenue", response_model=RevenueResponse, responses=error_responses(400))
@@ -140,7 +140,7 @@ async def get_analytics_retention(
     use_case: FromDishka[GetRetentionUseCase],
     actor: Actor = Depends(require_admin),
 ) -> RetentionResponse:
-    return RetentionResponse.model_validate(await use_case(actor, None), from_attributes=True)
+    return RetentionResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("/sources", response_model=SourcesResponse, responses=error_responses(400))

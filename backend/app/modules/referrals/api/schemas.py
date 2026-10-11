@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Optional, TypeAlias
 
-from pydantic import BaseModel, Field
+from pydantic import AliasPath, BaseModel, Field
 
 from app.core.enums import (
     Currency,
@@ -75,19 +75,16 @@ class ReferralStatsResponse(BaseModel):
     referrer: Optional[ReferralUserResponse] = None
 
 
-class ReferralLinksResponse(BaseModel):
-    bot_url: Optional[str]
-    webcabinet_url: Optional[str]
-
-
 class ReferralListItemResponse(BaseModel):
-    id: int
-    level: int
-    created_at: Optional[datetime]
+    id: int = Field(validation_alias=AliasPath("referral", "id"))
+    level: int = Field(validation_alias=AliasPath("referral", "level"))
+    created_at: Optional[datetime] = Field(validation_alias=AliasPath("referral", "created_at"))
     referred: Optional[ReferralUserResponse]
     referrer: Optional[ReferralUserResponse]
-    reward_count: int
-    reward_amounts: dict[ReferralRewardType, Decimal]
+    reward_count: int = Field(validation_alias=AliasPath("rewards", "count"))
+    reward_amounts: dict[ReferralRewardType, Decimal] = Field(
+        validation_alias=AliasPath("rewards", "amounts")
+    )
 
 
 class ReferralPageResponse(BaseModel):
@@ -130,7 +127,7 @@ class RedeemBonusDaysResponse(BaseModel):
 class InvitedUserResponse(BaseModel):
     user: Optional[ReferralUserResponse]
     via: Optional[ReferralUserResponse]
-    level: int
+    level: int = Field(validation_alias="depth")
     created_at: Optional[datetime]
     reward_amounts: dict[ReferralRewardType, Decimal]
 

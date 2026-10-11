@@ -2,9 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
+from app.modules.subscriptions import PlanSnapshot
 
 
 class CreateCheckoutRequest(BaseModel):
@@ -56,6 +57,11 @@ class TransactionResponse(BaseModel):
     fulfilled_subscription_id: Optional[int]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
+
+    @field_validator("plan_snapshot", mode="before")
+    @classmethod
+    def _snapshot_as_json(cls, value: Any) -> Any:
+        return value.to_json() if isinstance(value, PlanSnapshot) else value
 
 
 class TransactionPageResponse(BaseModel):

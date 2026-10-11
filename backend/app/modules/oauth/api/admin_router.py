@@ -1,5 +1,3 @@
-from typing import Optional
-
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, status
@@ -27,10 +25,6 @@ from app.modules.users import UserDto
 router = APIRouter(prefix="/auth/oauth", tags=["auth"])
 
 
-def _to_response(provider: OAuthProvider, external_login: Optional[str]) -> OAuthIdentityResponse:
-    return OAuthIdentityResponse(provider=str(provider), external_login=external_login)
-
-
 @router.get("", response_model=OAuthIdentityListResponse)
 @inject
 async def list_connected_accounts(
@@ -38,7 +32,10 @@ async def list_connected_accounts(
     actor: UserDto = Depends(require_admin_user),
 ) -> OAuthIdentityListResponse:
     identities = await use_case(actor)
-    items = [_to_response(identity.provider, identity.external_login) for identity in identities]
+    items = [
+        OAuthIdentityResponse.model_validate(identity, from_attributes=True)
+        for identity in identities
+    ]
     return OAuthIdentityListResponse(items=items, total=len(items))
 
 
@@ -82,7 +79,7 @@ async def oauth_connect_callback(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return _to_response(identity.provider, identity.external_login)
+    return OAuthIdentityResponse.model_validate(identity, from_attributes=True)
 
 
 @router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)

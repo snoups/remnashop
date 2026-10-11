@@ -18,7 +18,6 @@ from app.modules.plans.api.schemas import (
     PriceBookResponse,
     PricingDiffResponse,
     PricingSettingsResponse,
-    ReorderAddOnsRequest,
     ReorderPlansRequest,
     SetAddOnBasePriceRequest,
     SetAddOnPriceOverrideRequest,
@@ -33,15 +32,12 @@ from app.modules.plans.api.schemas import (
     UpdatePlanRequest,
     UpdatePlanSquadsRequest,
     UpdatePricingSettingsRequest,
-    to_diff_response,
-    to_price_book_response,
 )
 from app.modules.plans.dto import (
     AdjustBasePricesDto,
     CreateAddOnDto,
     CreatePlanDto,
     PricingChangePreviewDto,
-    ReorderAddOnsDto,
     ReorderPlansDto,
     SetAddOnBasePriceDto,
     SetAddOnPriceOverrideDto,
@@ -68,7 +64,6 @@ from app.modules.plans.usecases import (
     ListAddOnsUseCase,
     ListPlansUseCase,
     PreviewPricingChangeUseCase,
-    ReorderAddOnsUseCase,
     ReorderPlansUseCase,
     SetAddOnBasePriceUseCase,
     SetAddOnPriceOverrideUseCase,
@@ -147,7 +142,7 @@ async def reorder_plans(
     return PlanListResponse(items=items, total=len(items))
 
 
-@router.patch("/{plan_id}", response_model=PlanResponse, responses=error_responses(404, 409))
+@router.patch("/{plan_id:int}", response_model=PlanResponse, responses=error_responses(404, 409))
 @inject
 async def update_plan(
     plan_id: int,
@@ -176,7 +171,7 @@ async def update_plan(
 
 
 @router.delete(
-    "/{plan_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+    "/{plan_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
 )
 @inject
 async def delete_plan(
@@ -188,7 +183,7 @@ async def delete_plan(
 
 
 @router.put(
-    "/{plan_id}/durations", response_model=PlanResponse, responses=error_responses(400, 404)
+    "/{plan_id:int}/durations", response_model=PlanResponse, responses=error_responses(400, 404)
 )
 @inject
 async def set_plan_durations(
@@ -215,7 +210,7 @@ async def set_plan_durations(
 
 
 @router.put(
-    "/{plan_id}/durations/{days}/override/{currency}",
+    "/{plan_id:int}/durations/{days:int}/override/{currency}",
     response_model=PlanResponse,
     responses=error_responses(400, 404),
 )
@@ -241,7 +236,7 @@ async def set_plan_price_override(
 
 
 @router.put(
-    "/{plan_id}/durations/{days}/base-price",
+    "/{plan_id:int}/durations/{days:int}/base-price",
     response_model=PlanResponse,
     responses=error_responses(400, 404),
 )
@@ -260,7 +255,9 @@ async def set_plan_duration_base_price(
     return PlanResponse.model_validate(plan, from_attributes=True)
 
 
-@router.put("/{plan_id}/access", response_model=PlanResponse, responses=error_responses(400, 404))
+@router.put(
+    "/{plan_id:int}/access", response_model=PlanResponse, responses=error_responses(400, 404)
+)
 @inject
 async def update_plan_access(
     plan_id: int,
@@ -280,7 +277,7 @@ async def update_plan_access(
     return PlanResponse.model_validate(plan, from_attributes=True)
 
 
-@router.put("/{plan_id}/squads", response_model=PlanResponse, responses=error_responses(404))
+@router.put("/{plan_id:int}/squads", response_model=PlanResponse, responses=error_responses(404))
 @inject
 async def update_plan_squads(
     plan_id: int,
@@ -299,7 +296,9 @@ async def update_plan_squads(
     return PlanResponse.model_validate(plan, from_attributes=True)
 
 
-@router.put("/{plan_id}/discount", response_model=PlanResponse, responses=error_responses(400, 404))
+@router.put(
+    "/{plan_id:int}/discount", response_model=PlanResponse, responses=error_responses(400, 404)
+)
 @inject
 async def update_plan_discount(
     plan_id: int,
@@ -364,22 +363,8 @@ async def create_addon(
     return AddOnResponse.model_validate(addon, from_attributes=True)
 
 
-@addons_router.post(
-    "/actions/reorder", response_model=AddOnListResponse, responses=error_responses(400)
-)
-@inject
-async def reorder_addons(
-    payload: ReorderAddOnsRequest,
-    use_case: FromDishka[ReorderAddOnsUseCase],
-    actor: Actor = Depends(require_admin),
-) -> AddOnListResponse:
-    addons = await use_case(actor, ReorderAddOnsDto(addon_ids=payload.addon_ids))
-    items = [AddOnResponse.model_validate(addon, from_attributes=True) for addon in addons]
-    return AddOnListResponse(items=items, total=len(items))
-
-
 @addons_router.patch(
-    "/{addon_id}", response_model=AddOnResponse, responses=error_responses(404, 409)
+    "/{addon_id:int}", response_model=AddOnResponse, responses=error_responses(404, 409)
 )
 @inject
 async def update_addon(
@@ -402,7 +387,7 @@ async def update_addon(
 
 
 @addons_router.delete(
-    "/{addon_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+    "/{addon_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
 )
 @inject
 async def delete_addon(
@@ -414,7 +399,7 @@ async def delete_addon(
 
 
 @addons_router.put(
-    "/{addon_id}/base-price", response_model=AddOnResponse, responses=error_responses(404)
+    "/{addon_id:int}/base-price", response_model=AddOnResponse, responses=error_responses(404)
 )
 @inject
 async def set_addon_base_price(
@@ -430,7 +415,7 @@ async def set_addon_base_price(
 
 
 @addons_router.put(
-    "/{addon_id}/override/{currency}",
+    "/{addon_id:int}/override/{currency}",
     response_model=AddOnResponse,
     responses=error_responses(400, 404),
 )
@@ -470,7 +455,7 @@ async def get_price_book(
     actor: Actor = Depends(require_admin),
 ) -> PriceBookResponse:
     book = await use_case(actor)
-    return to_price_book_response(book)
+    return PriceBookResponse.model_validate(book, from_attributes=True)
 
 
 @pricing_router.put(
@@ -495,7 +480,7 @@ async def update_currency_rate(
         ),
     )
     book = await price_book_use_case(actor)
-    return to_price_book_response(book)
+    return PriceBookResponse.model_validate(book, from_attributes=True)
 
 
 @pricing_router.patch("/settings", response_model=PricingSettingsResponse)
@@ -524,7 +509,7 @@ async def switch_anchor_currency(
     actor: Actor = Depends(require_admin),
 ) -> PriceBookResponse:
     book = await use_case(actor, SwitchAnchorCurrencyDto(new_anchor=payload.new_anchor))
-    return to_price_book_response(book)
+    return PriceBookResponse.model_validate(book, from_attributes=True)
 
 
 @pricing_router.post(
@@ -556,7 +541,7 @@ async def preview_pricing_change(
     diff = await use_case(
         actor, PricingChangePreviewDto(rate=rate, anchor=payload.anchor, adjust=adjust)
     )
-    return to_diff_response(diff)
+    return PricingDiffResponse.model_validate(diff, from_attributes=True)
 
 
 @pricing_router.post("/actions/adjust-base-prices", response_model=PriceBookResponse)
@@ -575,4 +560,4 @@ async def adjust_base_prices(
             addon_ids=payload.addon_ids,
         ),
     )
-    return to_price_book_response(book)
+    return PriceBookResponse.model_validate(book, from_attributes=True)

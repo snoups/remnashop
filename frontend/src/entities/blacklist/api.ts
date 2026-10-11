@@ -125,5 +125,5 @@ export function listBlacklistMatches(
 
 // Drops the matched users' manual entries too; source-list matches are re-blocked on the next reconcile.
 export function unblockBlacklistMatches(): Promise<{ unblocked: number }> {
-  return apiPost<{ unblocked: number }, Record<string, never>>("/users/bulk/blacklist-matches/unblock", {});
+  return apiPost<{ unblocked: number }, Record<string, never>>("/users/bulk/unblock-blacklist-matches", {});
 }

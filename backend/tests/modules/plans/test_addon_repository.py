@@ -4,11 +4,10 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.core.enums import AddOnType, Currency
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreateAddOnDto,
-    ReorderAddOnsDto,
     SetAddOnBasePriceDto,
     SetAddOnPriceOverrideDto,
     UpdateAddOnDto,
@@ -110,23 +109,6 @@ async def test_set_price_override_upserts_and_unpins(addon_repository: AddOnRepo
         SetAddOnPriceOverrideDto(addon_id=created.id, currency=Currency.RUB, price=None)
     )
     assert unpinned.overrides == []
-
-
-async def test_reorder_applies_new_order(addon_repository: AddOnRepository) -> None:
-    first = await addon_repository.create(_create_dto("a"))
-    second = await addon_repository.create(_create_dto("b"))
-
-    reordered = await addon_repository.reorder(ReorderAddOnsDto(addon_ids=[second.id, first.id]))
-
-    assert [addon.id for addon in reordered] == [second.id, first.id]
-
-
-async def test_reorder_rejects_incomplete_id_set(addon_repository: AddOnRepository) -> None:
-    first = await addon_repository.create(_create_dto("a"))
-    await addon_repository.create(_create_dto("b"))
-
-    with pytest.raises(ValidationError):
-        await addon_repository.reorder(ReorderAddOnsDto(addon_ids=[first.id]))
 
 
 async def test_get_by_id_returns_addon(addon_repository: AddOnRepository) -> None:

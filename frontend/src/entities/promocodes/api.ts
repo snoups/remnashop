@@ -69,7 +69,7 @@ export interface UserPromocodeActivation {
 }
 
 export function listUserPromocodeActivations(userId: number, signal?: AbortSignal): Promise<UserPromocodeActivation[]> {
-  return apiGet<ListResponse<UserPromocodeActivation>>(`/promocodes/activations?user_id=${userId}`, signal).then(
+  return apiGet<ListResponse<UserPromocodeActivation>>(`/users/${userId}/promocode-activations`, signal).then(
     (response) => response.items,
   );
 }

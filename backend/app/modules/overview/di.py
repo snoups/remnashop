@@ -7,7 +7,6 @@ from app.modules.overview.usecases import (
     GetNodesOverviewUseCase,
     GetOnlineChartUseCase,
     GetOverviewUseCase,
-    GetRegistrationsChartUseCase,
     GetRevenueChartUseCase,
     SampleRemnawaveOnlineUseCase,
 )
@@ -22,7 +21,6 @@ class OverviewProvider(Provider):
         GetNodesOverviewUseCase,
         GetClientAppsUseCase,
         GetRevenueChartUseCase,
-        GetRegistrationsChartUseCase,
         GetOnlineChartUseCase,
         GetHourlyOnlineUseCase,
         SampleRemnawaveOnlineUseCase,

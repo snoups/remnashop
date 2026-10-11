@@ -14,14 +14,12 @@ from app.modules.referrals.api.schemas import (
     AdjustPointsRequest,
     InvitedUserPageResponse,
     InvitedUserResponse,
-    ReferralLinksResponse,
     ReferralListItemResponse,
     ReferralPageResponse,
     ReferralRevenueResponse,
     ReferralSettingsResponse,
     ReferralStatsResponse,
     ReferralSummaryResponse,
-    ReferralUserResponse,
     UpdateReferralSettingsRequest,
 )
 from app.modules.referrals.dto import (
@@ -32,7 +30,6 @@ from app.modules.referrals.dto import (
     GetReferralSummaryDto,
     ListInvitedUsersDto,
     ListReferralsDto,
-    ReferralListItemDto,
     ReferralSettingsDto,
     UpdateReferralSettingsDto,
 )
@@ -40,7 +37,6 @@ from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonu
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_referral_summary import GetReferralSummaryUseCase
-from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
@@ -48,31 +44,12 @@ from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
-from app.modules.users import UserDto
 
 router = APIRouter(tags=["referrals"])
 
 
 def _settings_to_response(dto: ReferralSettingsDto) -> ReferralSettingsResponse:
     return ReferralSettingsResponse.model_validate(dto, from_attributes=True)
-
-
-def _user_to_response(user: Optional[UserDto]) -> Optional[ReferralUserResponse]:
-    if user is None:
-        return None
-    return ReferralUserResponse.model_validate(user, from_attributes=True)
-
-
-def _list_item_to_response(item: ReferralListItemDto) -> ReferralListItemResponse:
-    return ReferralListItemResponse(
-        id=item.referral.id,
-        level=item.referral.level,
-        created_at=item.referral.created_at,
-        referred=_user_to_response(item.referred),
-        referrer=_user_to_response(item.referrer),
-        reward_count=item.rewards.count,
-        reward_amounts=item.rewards.amounts,
-    )
 
 
 @router.get("/referrals", response_model=ReferralPageResponse)
@@ -102,7 +79,12 @@ async def list_referrals(
             page_size=page_size,
         ),
     )
-    return ReferralPageResponse(items=[_list_item_to_response(item) for item in items], total=total)
+    return ReferralPageResponse(
+        items=[
+            ReferralListItemResponse.model_validate(item, from_attributes=True) for item in items
+        ],
+        total=total,
+    )
 
 
 @router.get("/referrals/summary", response_model=ReferralSummaryResponse)
@@ -176,7 +158,7 @@ async def reset_referral_settings(
 
 
 @router.get(
-    "/users/{user_id}/referrals",
+    "/users/{user_id:int}/referrals",
     response_model=ReferralStatsResponse,
     responses=error_responses(404),
 )
@@ -191,7 +173,7 @@ async def get_user_referral_stats(
 
 
 @router.post(
-    "/users/{user_id}/actions/adjust-points",
+    "/users/{user_id:int}/actions/adjust-points",
     response_model=ReferralStatsResponse,
     responses=error_responses(400, 404),
 )
@@ -209,7 +191,7 @@ async def adjust_user_points(
 
 
 @router.post(
-    "/users/{user_id}/actions/adjust-bonus-days",
+    "/users/{user_id:int}/actions/adjust-bonus-days",
     response_model=ReferralStatsResponse,
     responses=error_responses(400, 404),
 )
@@ -227,7 +209,7 @@ async def adjust_user_bonus_days(
 
 
 @router.get(
-    "/users/{user_id}/referrals/revenue",
+    "/users/{user_id:int}/referrals/revenue",
     response_model=ReferralRevenueResponse,
     responses=error_responses(404),
 )
@@ -242,7 +224,7 @@ async def get_user_referral_revenue(
 
 
 @router.get(
-    "/users/{user_id}/referrals/invited",
+    "/users/{user_id:int}/referrals/invited",
     response_model=InvitedUserPageResponse,
     responses=error_responses(404),
 )
@@ -263,37 +245,13 @@ async def list_invited_users(
         ),
     )
     return InvitedUserPageResponse(
-        items=[
-            InvitedUserResponse(
-                user=_user_to_response(item.user),
-                via=_user_to_response(item.via),
-                level=item.depth,
-                created_at=item.created_at,
-                reward_amounts=item.reward_amounts,
-            )
-            for item in items
-        ],
+        items=[InvitedUserResponse.model_validate(item, from_attributes=True) for item in items],
         total=total,
     )
 
 
-@router.get(
-    "/users/{user_id}/referral-links",
-    response_model=ReferralLinksResponse,
-    responses=error_responses(404),
-)
-@inject
-async def get_user_referral_links(
-    user_id: int,
-    use_case: FromDishka[GetUserReferralLinksUseCase],
-    actor: Actor = Depends(require_admin),
-) -> ReferralLinksResponse:
-    links = await use_case(actor, user_id)
-    return ReferralLinksResponse.model_validate(links, from_attributes=True)
-
-
 @router.post(
-    "/users/{user_id}/referral-code/actions/reset",
+    "/users/{user_id:int}/referral-code/actions/reset",
     response_model=ReferralStatsResponse,
     responses=error_responses(404),
 )

@@ -56,11 +56,11 @@ async def test_generate_keys_wipes_subscriptions_and_configures_push(
             user_agent=None,
         )
     use_case = GenerateVapidKeysUseCase(notification_repository, uow, event_publisher)
-    result = await use_case(owner, None)
+    result = await use_case(owner)
 
     assert result.is_push_configured
     assert await notification_repository.list_push_subscriptions(owner.id) == []
-    settings = await GetNotificationSettingsUseCase(notification_repository, uow)(owner, None)
+    settings = await GetNotificationSettingsUseCase(notification_repository, uow)(owner)
     assert settings.vapid_public_key == result.vapid_public_key
 
 
@@ -80,7 +80,7 @@ async def test_admin_cannot_generate_keys(
 ) -> None:
     use_case = GenerateVapidKeysUseCase(notification_repository, uow, event_publisher)
     with pytest.raises(PermissionDeniedError):
-        await use_case(ADMIN, None)
+        await use_case(ADMIN)
 
 
 @pytest.mark.parametrize(

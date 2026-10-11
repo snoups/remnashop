@@ -7,30 +7,10 @@ from app.modules.notifications.dto import (
     NOTIFICATION_GROUPS,
     NotificationChannel,
     NotificationChannelsDto,
-    effective_matrix,
 )
 from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.usecases._channels import to_channels_dto
 from app.modules.users import UserDto, UserRepository
-
-
-async def _to_dto(user: UserDto, repository: NotificationRepository) -> NotificationChannelsDto:
-    return NotificationChannelsDto(
-        channels=effective_matrix(user),
-        push_configured=await repository.is_push_configured(),
-        telegram_available=user.telegram_id is not None,
-    )
-
-
-class GetNotificationChannelsUseCase(UseCase[None, NotificationChannelsDto, UserDto]):
-    required_permission = Permission.OWN_ACCOUNT_MANAGE
-
-    def __init__(self, notification_repository: NotificationRepository, uow: UnitOfWork) -> None:
-        self._notification_repository = notification_repository
-        self._uow = uow
-
-    async def _execute(self, actor: UserDto, data: None) -> NotificationChannelsDto:
-        async with self._uow:
-            return await _to_dto(actor, self._notification_repository)
 
 
 class UpdateNotificationChannelsUseCase(
@@ -63,4 +43,4 @@ class UpdateNotificationChannelsUseCase(
         async with self._uow:
             await self._user_repository.set_notification_channels(actor.id, matrix)
             updated = actor.model_copy(update={"notification_channels": matrix})
-            return await _to_dto(updated, self._notification_repository)
+            return await to_channels_dto(updated, self._notification_repository)

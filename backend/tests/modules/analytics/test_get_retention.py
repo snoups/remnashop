@@ -86,7 +86,7 @@ async def test_actor_without_retention_view_is_denied(
     actor = OWNER.model_copy(update={"role": Role.USER})
 
     with pytest.raises(PermissionDeniedError):
-        await _use_case(session, pricing_repository, uow)(actor, None)
+        await _use_case(session, pricing_repository, uow)(actor)
 
 
 async def _pay(
@@ -155,7 +155,7 @@ async def test_retention_expiring_blocks(
                 now - timedelta(days=40 - i * 10), PurchaseType.RENEW,
             )  # fmt: skip
 
-    result = await _use_case(session, pricing_repository, uow)(OWNER, None)
+    result = await _use_case(session, pricing_repository, uow)(OWNER)
 
     assert result.expiring_paid == 2 and result.expiring_trials == 1
     weeks = {w.key: w.count for w in result.expiring_weeks}

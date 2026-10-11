@@ -27,7 +27,6 @@ from app.modules.users.usecases import (
     RegisterTelegramUserUseCase,
     SetMarketingOptOutUseCase,
     SetUserDiscountUseCase,
-    UnblockAllUsersUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminUseCase,
@@ -67,7 +66,6 @@ class UsersProvider(Provider):
         BindTelegramIdUseCase,
         BlockUserUseCase,
         UnblockUserUseCase,
-        UnblockAllUsersUseCase,
         UnblockBlacklistMatchesUseCase,
         BlockBlacklistMatchesUseCase,
     )

@@ -8,7 +8,6 @@ from app.core.exceptions import PermissionDeniedError
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreateAddOnDto,
-    ReorderAddOnsDto,
     SetAddOnBasePriceDto,
     UpdateAddOnDto,
 )
@@ -16,7 +15,6 @@ from app.modules.plans.usecases import (
     CreateAddOnUseCase,
     DeleteAddOnUseCase,
     ListAddOnsUseCase,
-    ReorderAddOnsUseCase,
     SetAddOnBasePriceUseCase,
     UpdateAddOnUseCase,
 )
@@ -137,25 +135,3 @@ async def test_regular_user_cannot_set_addon_base_price(
         await use_case(
             REGULAR_USER, SetAddOnBasePriceDto(addon_id=created.id, base_price=Decimal("2.49"))
         )
-
-
-async def test_owner_can_reorder_addons(
-    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
-) -> None:
-    first = await addon_repository.create(_create_dto("a"))
-    second = await addon_repository.create(_create_dto("b"))
-    use_case = ReorderAddOnsUseCase(addon_repository, event_publisher, uow)
-
-    reordered = await use_case(OWNER, ReorderAddOnsDto(addon_ids=[second.id, first.id]))
-
-    assert [addon.id for addon in reordered] == [second.id, first.id]
-
-
-async def test_regular_user_cannot_reorder_addons(
-    addon_repository: AddOnRepository, uow: UnitOfWork, event_publisher
-) -> None:
-    created = await addon_repository.create(_create_dto())
-    use_case = ReorderAddOnsUseCase(addon_repository, event_publisher, uow)
-
-    with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER, ReorderAddOnsDto(addon_ids=[created.id]))

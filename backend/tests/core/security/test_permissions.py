@@ -144,7 +144,6 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.API_TOKENS_MANAGE,
         Permission.PRICING_RATES_MANAGE,
         Permission.PRICING_ANCHOR_MANAGE,
-        Permission.USERS_UNBLOCK_ALL,
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
         Permission.BACKUPS_RUN_DOWNLOAD,
         Permission.NOTIFICATION_VAPID_KEYS_GENERATE,
@@ -240,7 +239,6 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
         Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
-        Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
         Permission.PROMOCODES_DETAIL_VIEW,
         Permission.PROMOCODES_CREATE,
@@ -276,7 +274,6 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.TRANSACTIONS_FULFILL,
         Permission.REFERRALS_VIEW,
-        Permission.REFERRALS_LINKS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,
         Permission.REFERRALS_REVENUE_VIEW,
         Permission.REFERRALS_LIST,
@@ -411,7 +408,6 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
         Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
-        Permission.ADDONS_REORDER,
     ):
         assert permission in admin_default
         assert permission in PERMISSION_METADATA
@@ -420,7 +416,6 @@ def test_subscriptions_permissions_granted_to_admin_by_default() -> None:
 def test_admin_role_has_all_referrals_permissions() -> None:
     admin_perms = ROLE_PERMISSIONS[Role.ADMIN]
     assert Permission.REFERRALS_VIEW in admin_perms
-    assert Permission.REFERRALS_LINKS_VIEW in admin_perms
     assert Permission.REFERRALS_INVITED_VIEW in admin_perms
     assert Permission.REFERRALS_REVENUE_VIEW in admin_perms
     assert Permission.REFERRALS_LIST in admin_perms
@@ -513,15 +508,14 @@ def test_blacklist_permissions_are_owner_only_by_default() -> None:
         Permission.BLACKLIST_MATCHES_VIEW,
         Permission.USERS_BLOCK,
         Permission.USERS_UNBLOCK,
-        Permission.USERS_UNBLOCK_ALL,
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
     ):
         assert perm in ROLE_PERMISSIONS[Role.OWNER]
         assert perm not in ROLE_PERMISSIONS[Role.ADMIN]
 
 
-def test_unblock_all_is_not_grantable() -> None:
-    assert Permission.USERS_UNBLOCK_ALL not in GRANTABLE_PERMISSIONS
+def test_unblock_blacklist_matches_is_not_grantable() -> None:
+    assert Permission.USERS_UNBLOCK_BLACKLIST_MATCHES not in GRANTABLE_PERMISSIONS
     assert Permission.BLACKLIST_ENTRY_ADD in GRANTABLE_PERMISSIONS
 
 

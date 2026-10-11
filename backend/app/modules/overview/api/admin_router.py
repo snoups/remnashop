@@ -14,7 +14,6 @@ from app.modules.overview.api.schemas import (
     NodesOverviewResponse,
     OnlineChartResponse,
     OverviewResponse,
-    RegistrationsChartResponse,
     RevenueChartResponse,
 )
 from app.modules.overview.dto import GetOverviewChartDto, OverviewDays
@@ -25,7 +24,6 @@ from app.modules.overview.usecases import (
     GetNodesOverviewUseCase,
     GetOnlineChartUseCase,
     GetOverviewUseCase,
-    GetRegistrationsChartUseCase,
     GetRevenueChartUseCase,
 )
 
@@ -64,17 +62,6 @@ async def get_overview_revenue(
 ) -> RevenueChartResponse:
     chart = await use_case(actor, _chart_dto(days))
     return RevenueChartResponse.model_validate(chart, from_attributes=True)
-
-
-@router.get("/registrations", response_model=RegistrationsChartResponse)
-@inject
-async def get_overview_registrations(
-    use_case: FromDishka[GetRegistrationsChartUseCase],
-    actor: Actor = Depends(require_admin_user),
-    days: OverviewPeriodDays = OverviewPeriodDays.SEVEN,
-) -> RegistrationsChartResponse:
-    chart = await use_case(actor, _chart_dto(days))
-    return RegistrationsChartResponse.model_validate(chart, from_attributes=True)
 
 
 @router.get("/online", response_model=OnlineChartResponse)

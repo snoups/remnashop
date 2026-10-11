@@ -7,7 +7,6 @@ from app.modules.referrals.usecases.attach_referral_on_registration import (
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
 from app.modules.referrals.usecases.get_referral_summary import GetReferralSummaryUseCase
-from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
@@ -28,7 +27,6 @@ __all__ = [
     "GetOwnReferralStatsUseCase",
     "GetReferralSettingsUseCase",
     "GetReferralSummaryUseCase",
-    "GetUserReferralLinksUseCase",
     "GetUserReferralRevenueUseCase",
     "GetUserReferralStatsUseCase",
     "ListInvitedUsersUseCase",

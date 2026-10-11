@@ -143,7 +143,6 @@ class Permission(UpperStrEnum):
     ADDONS_DELETE = auto()
     ADDONS_PRICES_MANAGE = auto()
     ADDONS_PRICE_OVERRIDE_MANAGE = auto()
-    ADDONS_REORDER = auto()
     PROMOCODES_VIEW = auto()
     PROMOCODES_DETAIL_VIEW = auto()
     PROMOCODES_CREATE = auto()
@@ -174,7 +173,6 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_GATEWAYS_VIEW = auto()
     TRANSACTIONS_FULFILL = auto()
     REFERRALS_VIEW = auto()
-    REFERRALS_LINKS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
     REFERRALS_REVENUE_VIEW = auto()
     REFERRALS_LIST = auto()
@@ -208,7 +206,6 @@ class Permission(UpperStrEnum):
     BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
     USERS_UNBLOCK = auto()
-    USERS_UNBLOCK_ALL = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     USERS_MERGE_PREVIEW = auto()
     USERS_MERGE = auto()
@@ -356,7 +353,6 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ADDONS_DELETE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_PRICES_MANAGE: PermissionMeta(resource="addons", kind="write"),
     Permission.ADDONS_PRICE_OVERRIDE_MANAGE: PermissionMeta(resource="addons", kind="write"),
-    Permission.ADDONS_REORDER: PermissionMeta(resource="addons", kind="write"),
     Permission.PROMOCODES_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_DETAIL_VIEW: PermissionMeta(resource="promocodes", kind="read"),
     Permission.PROMOCODES_ACTIVATIONS_VIEW: PermissionMeta(resource="promocodes", kind="read"),
@@ -387,7 +383,6 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
-    Permission.REFERRALS_LINKS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_REVENUE_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_LIST: PermissionMeta(resource="referrals", kind="read"),
@@ -621,7 +616,6 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.ADDONS_DELETE,
         Permission.ADDONS_PRICES_MANAGE,
         Permission.ADDONS_PRICE_OVERRIDE_MANAGE,
-        Permission.ADDONS_REORDER,
         Permission.PROMOCODES_VIEW,
         Permission.PROMOCODES_DETAIL_VIEW,
         Permission.PROMOCODES_CREATE,
@@ -657,7 +651,6 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.TRANSACTIONS_FULFILL,
         Permission.REFERRALS_VIEW,
-        Permission.REFERRALS_LINKS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,
         Permission.REFERRALS_REVENUE_VIEW,
         Permission.REFERRALS_LIST,

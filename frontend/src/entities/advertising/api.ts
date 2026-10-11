@@ -175,7 +175,7 @@ export interface UserAdAttribution {
 }
 
 export function getUserAdAttribution(userId: number, signal?: AbortSignal): Promise<UserAdAttribution | null> {
-  return apiGet<UserAdAttribution | null>(`/advertising/users/${userId}/attribution`, signal);
+  return apiGet<UserAdAttribution | null>(`/users/${userId}/ad-attribution`, signal);
 }
 
 // null = channel not allowed on the link, or its base URL isn't configured

@@ -9,12 +9,11 @@ from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_price_override import AddOnPriceOverride
 from app.core.db.partial_update import apply_partial_update
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.plans.dto import (
     AddOnDto,
     AddOnPriceOverrideDto,
     CreateAddOnDto,
-    ReorderAddOnsDto,
     SetAddOnBasePriceDto,
     SetAddOnPriceOverrideDto,
     UpdateAddOnDto,
@@ -176,19 +175,3 @@ class AddOnRepository:
                 raise NotFoundError(f"AddOn '{addon_id}' not found", code=ErrorCode.ADDON_NOT_FOUND)
             row.base_price = base_price
         await self.session.flush()
-
-    async def reorder(self, data: ReorderAddOnsDto) -> list[AddOnDto]:
-        result = await self.session.execute(select(AddOn))
-        rows = {row.id: row for row in result.scalars()}
-
-        if set(data.addon_ids) != set(rows):
-            raise ValidationError(
-                "Reorder must include every existing addon id exactly once",
-                code=ErrorCode.ADDON_REORDER_INCOMPLETE,
-            )
-
-        for index, addon_id in enumerate(data.addon_ids):
-            rows[addon_id].order_index = index
-
-        await self.session.flush()
-        return await self.list_all()

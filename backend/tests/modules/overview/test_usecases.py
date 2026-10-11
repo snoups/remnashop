@@ -29,7 +29,6 @@ from app.modules.overview.dto import GetOverviewChartDto
 from app.modules.overview.usecases import (
     GetOnlineChartUseCase,
     GetOverviewUseCase,
-    GetRegistrationsChartUseCase,
     GetRevenueChartUseCase,
 )
 from app.modules.pricing.repository import PricingRepository
@@ -270,7 +269,12 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
         .values(created_at=datetime_now() - timedelta(days=200))
     )
 
-    use_case = GetRegistrationsChartUseCase(UserStatsRepository(user_repository.session), uow)
+    use_case = GetRevenueChartUseCase(
+        UserStatsRepository(user_repository.session),
+        transaction_repository,
+        pricing_repository,
+        uow,
+    )
     chart = await use_case(OWNER, GetOverviewChartDto(days=0))
 
     assert chart.granularity == "month"
@@ -280,7 +284,6 @@ async def test_all_time_period_starts_at_first_registration_and_buckets_by_month
     # dense: every bucket is the first of the month after the previous one
     for earlier, later in zip(month_starts, month_starts[1:]):
         assert later == (earlier.replace(day=28) + timedelta(days=4)).replace(day=1)
-    assert sum(entry.count for entry in chart.daily) >= 1
 
 
 async def test_runtime_lists_only_processes_with_a_live_heartbeat(

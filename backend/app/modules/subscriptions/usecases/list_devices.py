@@ -30,12 +30,5 @@ class ListDevicesUseCase(UseCase[None, list[DeviceDto], UserDto]):
             )
         response = await self._remnawave_sdk.hwid.get_hwid_user(subscription.remnawave_user_id)
         return [
-            DeviceDto(
-                hwid=device.hwid,
-                platform=device.platform,
-                device_model=device.device_model,
-                user_agent=device.user_agent,
-                created_at=device.created_at,
-            )
-            for device in response.devices
+            DeviceDto.model_validate(device, from_attributes=True) for device in response.devices
         ]

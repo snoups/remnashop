@@ -9,7 +9,6 @@ from app.modules.plans.usecases.get_price_book import GetPriceBookUseCase
 from app.modules.plans.usecases.list_addons import ListAddOnsUseCase
 from app.modules.plans.usecases.list_plans import ListPlansUseCase
 from app.modules.plans.usecases.preview_pricing_change import PreviewPricingChangeUseCase
-from app.modules.plans.usecases.reorder_addons import ReorderAddOnsUseCase
 from app.modules.plans.usecases.reorder_plans import ReorderPlansUseCase
 from app.modules.plans.usecases.set_addon_base_price import SetAddOnBasePriceUseCase
 from app.modules.plans.usecases.set_addon_price_override import SetAddOnPriceOverrideUseCase
@@ -35,7 +34,6 @@ __all__ = [
     "ListAddOnsUseCase",
     "ListPlansUseCase",
     "PreviewPricingChangeUseCase",
-    "ReorderAddOnsUseCase",
     "ReorderPlansUseCase",
     "SetAddOnBasePriceUseCase",
     "SetAddOnPriceOverrideUseCase",

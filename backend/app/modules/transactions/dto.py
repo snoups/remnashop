@@ -97,7 +97,6 @@ class CreateTransactionDto:
 
 @dataclass(frozen=True, kw_only=True)
 class CreateCheckoutDto:
-    user_id: int
     plan_id: int
     duration_days: int
     currency: Currency

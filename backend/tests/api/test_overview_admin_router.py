@@ -123,7 +123,7 @@ async def test_owner_can_get_a_chart_with_valid_days(
 ) -> None:
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
-    for chart in ("revenue", "registrations", "online"):
+    for chart in ("revenue", "online"):
         response = await client.get(f"{API_V1}/overview/{chart}?days=30", headers=headers)
 
         assert response.status_code == 200

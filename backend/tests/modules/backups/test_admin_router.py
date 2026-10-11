@@ -290,7 +290,7 @@ async def test_owner_can_get_stats(
     await client.post(f"{API_V1}/backups/runs", json={"kind": "DATABASE"}, headers=owner_headers)
     await client.patch(f"{API_V1}/backups/settings", json={"enabled": True}, headers=owner_headers)
 
-    response = await client.get(f"{API_V1}/backups/stats", headers=owner_headers)
+    response = await client.get(f"{API_V1}/backups/summary", headers=owner_headers)
     assert response.status_code == 200
     body = response.json()
     assert body["completed_count"] == 0  # the run is still PENDING

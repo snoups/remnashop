@@ -17,7 +17,6 @@ from app.modules.users.usecases.register_cabinet_user import RegisterCabinetUser
 from app.modules.users.usecases.register_telegram_user import RegisterTelegramUserUseCase
 from app.modules.users.usecases.set_marketing_opt_out import SetMarketingOptOutUseCase
 from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
-from app.modules.users.usecases.unblock_all_users import UnblockAllUsersUseCase
 from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
 from app.modules.users.usecases.unblock_user import UnblockUserUseCase
 from app.modules.users.usecases.update_admin import UpdateAdminUseCase
@@ -46,7 +45,6 @@ __all__ = [
     "SetMarketingOptOutUseCase",
     "SetUserDiscountDto",
     "SetUserDiscountUseCase",
-    "UnblockAllUsersUseCase",
     "UnblockBlacklistMatchesUseCase",
     "UnblockUserUseCase",
     "UpdateAdminUseCase",

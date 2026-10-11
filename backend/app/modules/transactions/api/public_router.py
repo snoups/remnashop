@@ -27,7 +27,6 @@ async def create_checkout(
     result = await use_case(
         actor,
         CreateCheckoutDto(
-            user_id=actor.id,
             plan_id=payload.plan_id,
             duration_days=payload.duration_days,
             currency=payload.currency,

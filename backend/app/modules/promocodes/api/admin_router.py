@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from typing import Optional
 
 from dishka import FromDishka
@@ -44,6 +43,7 @@ from app.modules.promocodes.usecases import (
 )
 
 router = APIRouter(prefix="/promocodes", tags=["promocodes"])
+user_router = APIRouter(prefix="/users", tags=["promocodes"])
 
 
 @router.get("", response_model=PromocodePageResponse)
@@ -75,7 +75,9 @@ async def list_promocodes(
     )
 
 
-@router.get("/activations", response_model=UserPromocodeActivationListResponse)
+@user_router.get(
+    "/{user_id:int}/promocode-activations", response_model=UserPromocodeActivationListResponse
+)
 @inject
 async def list_user_promocode_activations(
     user_id: int,
@@ -83,7 +85,10 @@ async def list_user_promocode_activations(
     actor: Actor = Depends(require_admin),
 ) -> UserPromocodeActivationListResponse:
     activations = await use_case(actor, user_id)
-    items = [UserPromocodeActivationResponse(**asdict(item)) for item in activations]
+    items = [
+        UserPromocodeActivationResponse.model_validate(item, from_attributes=True)
+        for item in activations
+    ]
     return UserPromocodeActivationListResponse(items=items, total=len(items))
 
 
@@ -93,11 +98,11 @@ async def get_promocode_summary(
     use_case: FromDishka[GetPromocodeSummaryUseCase],
     actor: Actor = Depends(require_admin),
 ) -> PromocodeSummaryResponse:
-    return PromocodeSummaryResponse(**asdict(await use_case(actor)))
+    return PromocodeSummaryResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get(
-    "/{promocode_id}/users",
+    "/{promocode_id:int}/users",
     response_model=PromocodeActivatedUserPageResponse,
     responses=error_responses(404),
 )
@@ -114,7 +119,11 @@ async def list_promocode_activated_users(
         ListPromocodeActivatedUsersDto(promocode_id=promocode_id, page=page, page_size=page_size),
     )
     return PromocodeActivatedUserPageResponse(
-        items=[PromocodeActivatedUserResponse(**asdict(user)) for user in users], total=total
+        items=[
+            PromocodeActivatedUserResponse.model_validate(user, from_attributes=True)
+            for user in users
+        ],
+        total=total,
     )
 
 
@@ -154,7 +163,7 @@ async def create_promocode(
 
 
 @router.patch(
-    "/{promocode_id}", response_model=PromocodeResponse, responses=error_responses(400, 404)
+    "/{promocode_id:int}", response_model=PromocodeResponse, responses=error_responses(400, 404)
 )
 @inject
 async def update_promocode(
@@ -180,7 +189,7 @@ async def update_promocode(
 
 
 @router.delete(
-    "/{promocode_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/{promocode_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
 )
 @inject
 async def delete_promocode(

@@ -485,7 +485,7 @@ async def test_reset_all_restores_every_seed_window(
         uow,
         RedisBotSignals(redis),
     )
-    await use_case(OWNER, None)
+    await use_case(OWNER)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     assert [b.text_key for b in window.buttons] == ["btn-menu.trial"]
 
@@ -532,7 +532,7 @@ async def test_reset_all_restores_an_edited_button_label(
         uow,
         RedisBotSignals(redis),
     )
-    await use_case(OWNER, None)
+    await use_case(OWNER)
 
     restored = await translation_repository.get(Locale.EN, "btn-menu", "trial")
     assert restored is not None
@@ -914,7 +914,7 @@ async def test_reset_all_removes_custom_windows(
         config,
         uow,
         RedisBotSignals(redis),
-    )(OWNER, None)
+    )(OWNER)
 
     assert await dialog_repository.list_custom_keys() == set()
     with pytest.raises(NotFoundError):

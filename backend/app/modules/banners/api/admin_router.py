@@ -66,9 +66,9 @@ async def get_banner_image(
 
 @router.post("/actions/reset-default", status_code=status.HTTP_204_NO_CONTENT)
 @inject
-async def restore_default_banner(
+async def reset_default_banner(
     use_case: FromDishka[RestoreDefaultBannerUseCase],
     actor: Actor = Depends(require_admin),
 ) -> Response:
-    await use_case(actor, None)
+    await use_case(actor)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

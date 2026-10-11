@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -39,16 +41,16 @@ from app.modules.notifications.usecases import (
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
-settings_router = APIRouter(prefix="/settings/notifications", tags=["notifications"])
+settings_router = APIRouter(prefix="/notifications/settings", tags=["notifications"])
 
 
 def _channels_response(dto: NotificationChannelsDto) -> NotificationChannelsResponse:
-    return NotificationChannelsResponse(
-        channels=dto.channels,
-        available_groups=list(NOTIFICATION_GROUPS),
-        available_channels=[c.value for c in NotificationChannel],
-        push_configured=dto.push_configured,
-        telegram_available=dto.telegram_available,
+    return NotificationChannelsResponse.model_validate(
+        {
+            **asdict(dto),
+            "available_groups": list(NOTIFICATION_GROUPS),
+            "available_channels": [c.value for c in NotificationChannel],
+        }
     )
 
 
@@ -58,7 +60,7 @@ async def get_notification_channels(
     use_case: FromDishka[GetNotificationChannelsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> NotificationChannelsResponse:
-    return _channels_response(await use_case(actor, None))
+    return _channels_response(await use_case(actor))
 
 
 @router.put(
@@ -79,7 +81,7 @@ async def get_push_public_key(
     use_case: FromDishka[GetPushPublicKeyUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> PushPublicKeyResponse:
-    return PushPublicKeyResponse(public_key=await use_case(actor, None))
+    return PushPublicKeyResponse(public_key=await use_case(actor))
 
 
 @router.get("/push-subscriptions", response_model=PushSubscriptionListResponse)
@@ -88,7 +90,7 @@ async def list_push_subscriptions(
     use_case: FromDishka[ListPushSubscriptionsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> PushSubscriptionListResponse:
-    items = await use_case(actor, None)
+    items = await use_case(actor)
     return PushSubscriptionListResponse(
         items=[PushSubscriptionResponse.model_validate(i, from_attributes=True) for i in items],
         total=len(items),
@@ -149,7 +151,7 @@ async def send_test_push(
     use_case: FromDishka[SendTestPushUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> TestPushResponse:
-    return TestPushResponse(delivered=await use_case(actor, None))
+    return TestPushResponse(delivered=await use_case(actor))
 
 
 @settings_router.get("", response_model=NotificationSettingsResponse)
@@ -158,9 +160,7 @@ async def get_notification_settings(
     use_case: FromDishka[GetNotificationSettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> NotificationSettingsResponse:
-    return NotificationSettingsResponse.model_validate(
-        await use_case(actor, None), from_attributes=True
-    )
+    return NotificationSettingsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @settings_router.patch(
@@ -184,6 +184,4 @@ async def generate_vapid_keys(
     use_case: FromDishka[GenerateVapidKeysUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> NotificationSettingsResponse:
-    return NotificationSettingsResponse.model_validate(
-        await use_case(actor, None), from_attributes=True
-    )
+    return NotificationSettingsResponse.model_validate(await use_case(actor), from_attributes=True)

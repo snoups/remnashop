@@ -123,13 +123,6 @@ class ReferralSummaryDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class ReferralLinksDto:
-    # None = the bot isn't configured / no web cabinet URL is set
-    bot_url: Optional[str] = None
-    webcabinet_url: Optional[str] = None
-
-
-@dataclass(frozen=True, kw_only=True)
 class DownlineEntryDto:
     referred_id: int
     parent_id: int

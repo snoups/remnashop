@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.modules.account_merge.api import admin_router as account_merge_admin_router
 from app.modules.advertising.api import admin_router as advertising_admin_router
+from app.modules.advertising.api import user_router as advertising_user_router
 from app.modules.analytics.api import admin_router as analytics_admin_router
 from app.modules.announcements.api import admin_router as announcements_admin_router
 from app.modules.api_tokens.api import admin_router as api_tokens_admin_router
@@ -35,6 +36,7 @@ from app.modules.plans.api import admin_router as plans_admin_router
 from app.modules.plans.api import pricing_router as plans_pricing_router
 from app.modules.promocodes.api import admin_router as promocodes_admin_router
 from app.modules.promocodes.api import public_router as promocodes_public_router
+from app.modules.promocodes.api import user_router as promocodes_user_router
 from app.modules.referrals.api import admin_router as referrals_admin_router
 from app.modules.referrals.api import public_router as referrals_public_router
 from app.modules.settings.api import admin_router as settings_admin_router
@@ -71,6 +73,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     plans_pricing_router,
     promocodes_admin_router,
     promocodes_public_router,
+    promocodes_user_router,
     referrals_admin_router,
     referrals_public_router,
     loyalty_admin_router,
@@ -97,6 +100,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     translations_locales_router,
     dialogs_admin_router,
     advertising_admin_router,
+    advertising_user_router,
     analytics_admin_router,
     overview_admin_router,
 )

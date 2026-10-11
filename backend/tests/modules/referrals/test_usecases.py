@@ -38,7 +38,6 @@ from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonu
 from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
 from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
 from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
-from app.modules.referrals.usecases.get_user_referral_links import GetUserReferralLinksUseCase
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
@@ -47,7 +46,6 @@ from app.modules.referrals.usecases.request_points_withdrawal import RequestPoin
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
-from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -559,22 +557,6 @@ async def test_reset_referral_code_unknown_user_raises(
         await ResetReferralCodeUseCase(user_repository, uow, event_publisher)(OWNER, 999_999)
 
 
-async def test_get_user_referral_links_builds_the_webcabinet_url(
-    user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession, config
-) -> None:
-    user = await _create_user(user_repository, 6102)
-    use_case = GetUserReferralLinksUseCase(
-        user_repository,
-        SettingsRepository(session),
-        config.model_copy(update={"web_cabinet_url": "https://cab.test/"}),
-        uow,
-    )
-
-    links = await use_case(OWNER, user.id)
-
-    assert links.webcabinet_url == f"https://cab.test/?ref={user.referral_code}"
-
-
 async def test_reset_referral_settings_restores_defaults(
     referral_repository: ReferralRepository, uow: UnitOfWork, event_publisher
 ) -> None:
@@ -685,16 +667,13 @@ _PER_USER_CALLS = [
     "stats",
     "revenue",
     "invited",
-    "links",
     "adjust_points",
     "adjust_days",
     "reset_code",
 ]
 
 
-def _per_user_call(
-    name, referral_repository, user_repository, uow, event_publisher, session, config
-):  # type: ignore[no-untyped-def]
+def _per_user_call(name, referral_repository, user_repository, uow, event_publisher, session):  # type: ignore[no-untyped-def]
     def call(actor: UserDto, user_id: int):  # type: ignore[no-untyped-def]
         if name == "stats":
             return GetUserReferralStatsUseCase(referral_repository, user_repository, uow)(
@@ -712,10 +691,6 @@ def _per_user_call(
             return ListInvitedUsersUseCase(referral_repository, user_repository, uow)(
                 actor, ListInvitedUsersDto(user_id=user_id)
             )
-        if name == "links":
-            return GetUserReferralLinksUseCase(
-                user_repository, SettingsRepository(session), config, uow
-            )(actor, user_id)
         if name == "adjust_points":
             return AdjustUserPointsUseCase(user_repository, uow, event_publisher)(
                 actor, AdjustUserPointsDto(user_id=user_id, delta=Decimal("1"))
@@ -736,7 +711,6 @@ async def test_per_user_referral_routes_hide_staff_without_admins_manage(
     uow: UnitOfWork,
     event_publisher,
     session: AsyncSession,
-    config,
     name: str,
 ) -> None:
     index = _PER_USER_CALLS.index(name)
@@ -749,9 +723,7 @@ async def test_per_user_referral_routes_hide_staff_without_admins_manage(
         admin = await user_repository.create(
             CreateUserDto(name="plain-admin", role=Role.ADMIN, telegram_id=6300 + index)
         )
-    call = _per_user_call(
-        name, referral_repository, user_repository, uow, event_publisher, session, config
-    )
+    call = _per_user_call(name, referral_repository, user_repository, uow, event_publisher, session)
 
     with pytest.raises(NotFoundError) as error:
         await call(admin, staff.id)

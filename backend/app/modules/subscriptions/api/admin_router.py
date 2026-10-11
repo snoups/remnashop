@@ -96,7 +96,9 @@ async def grant_subscription(
 
 
 @router.patch(
-    "/{subscription_id}", response_model=SubscriptionResponse, responses=error_responses(404, 503)
+    "/{subscription_id:int}",
+    response_model=SubscriptionResponse,
+    responses=error_responses(404, 503),
 )
 @inject
 async def update_subscription(
@@ -120,7 +122,7 @@ async def update_subscription(
 
 
 @router.put(
-    "/{subscription_id}/squads",
+    "/{subscription_id:int}/squads",
     response_model=SubscriptionResponse,
     responses=error_responses(404, 503),
 )
@@ -143,7 +145,7 @@ async def update_subscription_squads(
 
 
 @router.delete(
-    "/{subscription_id}",
+    "/{subscription_id:int}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=error_responses(404, 503),
 )

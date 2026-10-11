@@ -71,7 +71,7 @@ async def issue_docs_ott(
 
 
 @router.delete(
-    "/{token_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/{token_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
 )
 @inject
 async def revoke_api_token(

@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from datetime import datetime
 from typing import Optional
 
@@ -19,7 +18,6 @@ from app.modules.transactions.api.schemas import (
     TransactionPageResponse,
     TransactionResponse,
     TransactionSummaryResponse,
-    TransactionUserResponse,
 )
 from app.modules.transactions.dto import (
     DEFAULT_PAGE_SIZE,
@@ -44,33 +42,8 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 def _to_response(item: TransactionWithUserDto) -> TransactionResponse:
-    order, user = item.order, item.user
-    return TransactionResponse(
-        id=order.id,
-        user_id=order.user_id,
-        user=TransactionUserResponse.model_validate(user, from_attributes=True)
-        if user is not None
-        else None,
-        plan_id=order.plan_id,
-        plan_snapshot=order.plan_snapshot.to_json(),
-        duration_days=order.duration_days,
-        currency=order.currency.value,
-        purchase_type=order.purchase_type.value,
-        target_subscription_id=order.target_subscription_id,
-        gateway_type=order.gateway_type.value,
-        external_payment_id=order.external_payment_id,
-        status=order.status.value,
-        base_price=order.base_price,
-        discount_percent=order.discount_percent,
-        discount_source=order.discount_source.value,
-        plan_discount_percent=order.plan_discount_percent,
-        final_price=order.final_price,
-        customer_email=order.customer_email,
-        idempotency_key=order.idempotency_key,
-        expires_at=order.expires_at,
-        fulfilled_subscription_id=order.fulfilled_subscription_id,
-        created_at=order.created_at,
-        updated_at=order.updated_at,
+    return TransactionResponse.model_validate(
+        {**dict(item.order), "user": item.user}, from_attributes=True
     )
 
 
@@ -132,7 +105,7 @@ async def get_transaction_summary(
             user_id=user_id,
         ),
     )
-    return TransactionSummaryResponse(**asdict(summary))
+    return TransactionSummaryResponse.model_validate(summary, from_attributes=True)
 
 
 @router.get("/waitlist", response_model=PaymentWaitlistCountResponse)
@@ -150,7 +123,7 @@ async def list_transaction_gateways(
     use_case: FromDishka[ListTransactionGatewaysUseCase],
     actor: Actor = Depends(require_admin),
 ) -> TransactionGatewayListResponse:
-    items = await use_case(actor, None)
+    items = await use_case(actor)
     return TransactionGatewayListResponse(items=items, total=len(items))
 
 

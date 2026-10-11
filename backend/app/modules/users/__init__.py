@@ -20,7 +20,6 @@ from app.modules.users.usecases import (
     RegisterTelegramUserUseCase,
     SetMarketingOptOutUseCase,
     SetUserDiscountUseCase,
-    UnblockAllUsersUseCase,
     UnblockUserUseCase,
 )
 from app.modules.users.visibility import visible_user
@@ -40,7 +39,6 @@ __all__ = [
     "SetUserDiscountDto",
     "SetUserDiscountUseCase",
     "TelegramUserRegisteredEvent",
-    "UnblockAllUsersUseCase",
     "UnblockUserUseCase",
     "UpdateUserDto",
     "UserDto",

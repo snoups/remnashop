@@ -20,6 +20,11 @@ def _validate_login_charset(value: str) -> str:
     return value
 
 
+def _enum_as_name(value: object) -> str:
+    # Role's value is its rank; the API speaks its name
+    return str(value)
+
+
 class CurrentUserResponse(BaseModel):
     id: int
     login: Optional[str]
@@ -28,6 +33,8 @@ class CurrentUserResponse(BaseModel):
     effective_permissions: list[Permission]
     password_change_required: bool
     language: str
+
+    _role_and_language_as_name = field_validator("role", "language", mode="before")(_enum_as_name)
 
 
 class AdminResponse(BaseModel):
@@ -51,6 +58,14 @@ class AdminResponse(BaseModel):
     permission_revokes: list[Permission]
     role_permissions: list[Permission]
     effective_permissions: list[Permission]
+
+    _role_and_language_as_name = field_validator("role", "language", mode="before")(_enum_as_name)
+
+    @field_validator("permission_grants", "permission_revokes", mode="before")
+    @classmethod
+    def _known_permissions(cls, value: Optional[list[str]]) -> list[str]:
+        # a stored override can outlive its permission
+        return [p for p in value or [] if p in Permission]
 
 
 class AdminWithPasswordResponse(BaseModel):

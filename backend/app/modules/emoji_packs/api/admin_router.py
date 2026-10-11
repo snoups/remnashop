@@ -6,12 +6,10 @@ from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.modules.emoji_packs.api.schemas import (
-    EmojiPackItemResponse,
     EmojiPackListResponse,
     EmojiPackResponse,
     ImportEmojiPackRequest,
 )
-from app.modules.emoji_packs.dto import EmojiPackDto
 from app.modules.emoji_packs.usecases import (
     DeleteEmojiPackUseCase,
     ImportEmojiPackUseCase,
@@ -21,23 +19,16 @@ from app.modules.emoji_packs.usecases import (
 router = APIRouter(prefix="/emoji-packs", tags=["emoji-packs"])
 
 
-def _to_response(pack: EmojiPackDto) -> EmojiPackResponse:
-    return EmojiPackResponse(
-        set_name=pack.set_name,
-        title=pack.title,
-        items=[
-            EmojiPackItemResponse.model_validate(item, from_attributes=True) for item in pack.items
-        ],
-    )
-
-
 @router.get("", response_model=EmojiPackListResponse)
 @inject
 async def list_emoji_packs(
     use_case: FromDishka[ListEmojiPacksUseCase],
     actor: Actor = Depends(require_admin),
 ) -> EmojiPackListResponse:
-    items = [_to_response(pack) for pack in await use_case(actor)]
+    items = [
+        EmojiPackResponse.model_validate(pack, from_attributes=True)
+        for pack in await use_case(actor)
+    ]
     return EmojiPackListResponse(items=items, total=len(items))
 
 
@@ -53,7 +44,9 @@ async def import_emoji_pack(
     use_case: FromDishka[ImportEmojiPackUseCase],
     actor: Actor = Depends(require_admin),
 ) -> EmojiPackResponse:
-    return _to_response(await use_case(actor, payload.link))
+    return EmojiPackResponse.model_validate(
+        await use_case(actor, payload.link), from_attributes=True
+    )
 
 
 @router.delete("/{set_name}", status_code=status.HTTP_204_NO_CONTENT)

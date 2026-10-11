@@ -72,19 +72,6 @@ class UserStatsRepository:
         )
         return cast(Optional[date], earliest)
 
-    async def count_registrations_by_day(
-        self, since: datetime, role: Role
-    ) -> list[tuple[date, int]]:
-        day_col = func.date(func.timezone("UTC", User.created_at))
-        stmt = (
-            select(day_col, func.count())
-            .where(User.role == role, User.created_at >= since)
-            .group_by(day_col)
-            .order_by(day_col)
-        )
-        rows = (await self.session.execute(stmt)).tuples()
-        return list(rows.all())
-
     async def list_registrations(
         self, start: datetime, end: datetime, role: Role
     ) -> list[tuple[int, datetime]]:

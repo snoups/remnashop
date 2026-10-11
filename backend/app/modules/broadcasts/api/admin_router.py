@@ -141,9 +141,7 @@ async def get_broadcast_summary(
     use_case: FromDishka[GetBroadcastSummaryUseCase],
     actor: Actor = Depends(require_admin),
 ) -> BroadcastSummaryResponse:
-    return BroadcastSummaryResponse.model_validate(
-        await use_case(actor, None), from_attributes=True
-    )
+    return BroadcastSummaryResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("/{broadcast_id:int}", response_model=BroadcastResponse, responses=error_responses(404))

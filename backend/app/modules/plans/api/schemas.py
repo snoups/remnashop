@@ -14,8 +14,6 @@ from app.core.enums import (
     PriceAdjustScope,
     RoundingMode,
 )
-from app.modules.plans.dto import PriceBookDto, PricingDiffDto
-from app.modules.plans.dto import PriceBookRow as PriceBookRowDto
 
 
 class PlanPriceItem(BaseModel):
@@ -159,10 +157,6 @@ class SetAddOnPriceOverrideRequest(BaseModel):
     price: Optional[Decimal] = Field(default=None, gt=0)
 
 
-class ReorderAddOnsRequest(BaseModel):
-    addon_ids: list[int]
-
-
 class AddOnListResponse(BaseModel):
     items: list[AddOnResponse]
     total: int
@@ -203,33 +197,6 @@ class PriceBookResponse(BaseModel):
     settings: PricingSettingsResponse
     plans: list[PriceBookRowItem]
     addons: list[PriceBookRowItem]
-
-
-def _to_row_item(row: PriceBookRowDto) -> PriceBookRowItem:
-    return PriceBookRowItem(
-        kind=row.kind,
-        ref_id=row.ref_id,
-        plan_id=row.plan_id,
-        name=row.name,
-        days=row.days,
-        base_price=row.base_price,
-        cells=[PriceBookCellItem.model_validate(cell, from_attributes=True) for cell in row.cells],
-    )
-
-
-def to_price_book_response(book: PriceBookDto) -> PriceBookResponse:
-    return PriceBookResponse(
-        rate_table=[
-            CurrencyRateItem.model_validate(row, from_attributes=True) for row in book.rate_table
-        ],
-        settings=PricingSettingsResponse(
-            anchor_currency=book.settings.anchor_currency,
-            price_per_day=book.settings.price_per_day,
-            price_per_gb=book.settings.price_per_gb,
-        ),
-        plans=[_to_row_item(row) for row in book.plans],
-        addons=[_to_row_item(row) for row in book.addons],
-    )
 
 
 class UpdateCurrencyRateRequest(BaseModel):
@@ -280,12 +247,3 @@ class PricingDiffRowItem(BaseModel):
 class PricingDiffResponse(BaseModel):
     changes: list[PricingDiffRowItem]
     affected_count: int
-
-
-def to_diff_response(diff: PricingDiffDto) -> PricingDiffResponse:
-    return PricingDiffResponse(
-        changes=[
-            PricingDiffRowItem.model_validate(row, from_attributes=True) for row in diff.changes
-        ],
-        affected_count=diff.affected_count,
-    )

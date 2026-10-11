@@ -34,7 +34,7 @@ async def get_my_referral_stats(
 
 
 @router.post(
-    "/actions/withdraw",
+    "/me/actions/withdraw",
     status_code=status.HTTP_204_NO_CONTENT,
     # each request is an audit-log row an admin works through by hand
     dependencies=[Depends(user_rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],

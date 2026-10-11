@@ -97,7 +97,7 @@ async def test_actor_without_ltv_view_is_denied(
     actor = OWNER.model_copy(update={"role": Role.USER})
 
     with pytest.raises(PermissionDeniedError):
-        await _use_case(session, pricing_repository, uow)(actor, None)
+        await _use_case(session, pricing_repository, uow)(actor)
 
 
 async def test_breakdown_groups_by_first_plan_and_source_and_ranks_top_payers(
@@ -183,7 +183,7 @@ async def test_breakdown_groups_by_first_plan_and_source_and_ranks_top_payers(
             )
         )
 
-    result = await _use_case(session, pricing_repository, uow)(OWNER, None)
+    result = await _use_case(session, pricing_repository, uow)(OWNER)
 
     assert [(g.key, g.source, g.customers, g.avg_ltv) for g in result.by_first_plan] == [
         ("Basic", None, 1, Decimal("400.00")),
@@ -232,7 +232,7 @@ async def test_ad_link_named_like_a_source_stays_a_separate_group(
             at=now - timedelta(days=2),
         )
 
-    result = await _use_case(session, pricing_repository, uow)(OWNER, None)
+    result = await _use_case(session, pricing_repository, uow)(OWNER)
 
     assert [(g.key, g.source, g.customers, g.avg_ltv) for g in result.by_source] == [
         ("organic", SourceKind.AD_LINK, 1, Decimal("300.00")),

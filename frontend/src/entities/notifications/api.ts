@@ -59,16 +59,16 @@ export function sendTestPush(): Promise<{ delivered: number }> {
 }
 
 export function getNotificationSettings(signal?: AbortSignal): Promise<NotificationSettings> {
-  return apiGet<NotificationSettings>("/settings/notifications", signal);
+  return apiGet<NotificationSettings>("/notifications/settings", signal);
 }
 
 export function updateNotificationSettings(body: { vapid_contact: string }): Promise<NotificationSettings> {
-  return apiPatch<NotificationSettings, { vapid_contact: string }>("/settings/notifications", body);
+  return apiPatch<NotificationSettings, { vapid_contact: string }>("/notifications/settings", body);
 }
 
 export function generateVapidKeys(): Promise<NotificationSettings> {
   return apiPost<NotificationSettings, Record<string, never>>(
-    "/settings/notifications/actions/generate-vapid-keys",
+    "/notifications/settings/actions/generate-vapid-keys",
     {},
   );
 }

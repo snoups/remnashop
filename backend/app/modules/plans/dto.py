@@ -190,11 +190,6 @@ class SetAddOnPriceOverrideDto:
     price: Optional[Decimal]
 
 
-@dataclass(frozen=True, kw_only=True)
-class ReorderAddOnsDto:
-    addon_ids: list[int]
-
-
 class PriceBookCell(BaseDto):
     currency: Currency
     amount: Decimal

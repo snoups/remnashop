@@ -1,11 +1,9 @@
 from app.modules.subscriptions.usecases.activate_trial_subscription import (
     ActivateTrialSubscriptionUseCase,
 )
-from app.modules.subscriptions.usecases.admin_devices import (
-    AdminDeleteAllDevicesUseCase,
-    AdminDeleteDeviceUseCase,
-    AdminListDevicesUseCase,
-)
+from app.modules.subscriptions.usecases.admin_delete_all_devices import AdminDeleteAllDevicesUseCase
+from app.modules.subscriptions.usecases.admin_delete_device import AdminDeleteDeviceUseCase
+from app.modules.subscriptions.usecases.admin_list_devices import AdminListDevicesUseCase
 from app.modules.subscriptions.usecases.admin_reissue_subscription import (
     AdminReissueSubscriptionUseCase,
 )

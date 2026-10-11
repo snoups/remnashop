@@ -8,16 +8,13 @@ from app.core.actor import Actor
 from app.modules.loyalty.api.schemas import (
     LoyaltySettingsRequest,
     LoyaltySettingsResponse,
-    LoyaltyTierSchema,
     UserLoyaltyRequest,
     UserLoyaltyResponse,
 )
 from app.modules.loyalty.dto import (
-    LoyaltySettingsDto,
     LoyaltyTierDto,
     SetUserLoyaltyExcludedDto,
     UpdateLoyaltySettingsDto,
-    UserLoyaltyDto,
 )
 from app.modules.loyalty.usecases import (
     GetLoyaltySettingsUseCase,
@@ -29,35 +26,13 @@ from app.modules.loyalty.usecases import (
 router = APIRouter(tags=["loyalty"])
 
 
-def _settings_response(settings: LoyaltySettingsDto) -> LoyaltySettingsResponse:
-    return LoyaltySettingsResponse(
-        enabled=settings.enabled,
-        window_months=settings.window_months,
-        tiers=[LoyaltyTierSchema(threshold=t.threshold, percent=t.percent) for t in settings.tiers],
-        currency=settings.anchor_currency,
-    )
-
-
-def _user_response(loyalty: UserLoyaltyDto) -> UserLoyaltyResponse:
-    tier = loyalty.next_tier
-    return UserLoyaltyResponse(
-        discount=loyalty.discount,
-        excluded=loyalty.excluded,
-        spent=loyalty.spent,
-        next_tier=(
-            LoyaltyTierSchema(threshold=tier.threshold, percent=tier.percent) if tier else None
-        ),
-        currency=loyalty.currency,
-    )
-
-
 @router.get("/loyalty/settings", response_model=LoyaltySettingsResponse)
 @inject
 async def get_loyalty_settings(
     use_case: FromDishka[GetLoyaltySettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> LoyaltySettingsResponse:
-    return _settings_response(await use_case(actor))
+    return LoyaltySettingsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.put(
@@ -77,7 +52,7 @@ async def update_loyalty_settings(
             tiers=[LoyaltyTierDto(threshold=t.threshold, percent=t.percent) for t in payload.tiers],
         ),
     )
-    return _settings_response(saved)
+    return LoyaltySettingsResponse.model_validate(saved, from_attributes=True)
 
 
 @router.get(
@@ -91,7 +66,7 @@ async def get_user_loyalty(
     use_case: FromDishka[GetUserLoyaltyUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserLoyaltyResponse:
-    return _user_response(await use_case(actor, user_id))
+    return UserLoyaltyResponse.model_validate(await use_case(actor, user_id), from_attributes=True)
 
 
 @router.patch(
@@ -109,4 +84,4 @@ async def update_user_loyalty(
     result = await use_case(
         actor, SetUserLoyaltyExcludedDto(user_id=user_id, excluded=payload.excluded)
     )
-    return _user_response(result)
+    return UserLoyaltyResponse.model_validate(result, from_attributes=True)

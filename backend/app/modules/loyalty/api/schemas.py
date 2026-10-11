@@ -19,7 +19,7 @@ class LoyaltySettingsResponse(BaseModel):
     enabled: bool
     window_months: Optional[int]
     tiers: list[LoyaltyTierSchema]
-    currency: Optional[str]
+    currency: Optional[str] = Field(validation_alias="anchor_currency")
 
 
 class UserLoyaltyRequest(BaseModel):

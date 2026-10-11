@@ -17,6 +17,10 @@ class ActiveLocalesDto:
     active: list[Locale]
     default: Locale
 
+    @property
+    def available(self) -> list[Locale]:
+        return [locale for locale in Locale if locale not in self.active]
+
 
 @dataclass(frozen=True, kw_only=True)
 class TranslationTextExportDto:

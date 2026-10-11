@@ -12,7 +12,6 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.api.schemas import (
     CreateCustomWindowRequest,
     DialogButtonInput,
-    DialogButtonItem,
     DialogCatalogResponse,
     DialogExportPayload,
     DialogTextExportItem,
@@ -55,19 +54,9 @@ _KEY_PATH: Final[Any] = Path(pattern=r"^[a-z0-9._-]+$", max_length=128)
 
 
 def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
-    return DialogWindowResponse(
-        key=window.key,
-        kind=window.kind,
-        flow=window.flow,
-        banner_name=window.banner_name,
-        name=window.name,
-        is_enabled=window.is_enabled,
-        position=window.position,
-        text_keys=list(catalog.window_text_keys(window.key)),
-        buttons=[
-            DialogButtonItem.model_validate(button, from_attributes=True)
-            for button in window.buttons
-        ],
+    return DialogWindowResponse.model_validate(
+        {**dict(window), "text_keys": list(catalog.window_text_keys(window.key))},
+        from_attributes=True,
     )
 
 

@@ -68,9 +68,9 @@ async def reset_backup_settings(
     return BackupSettingsResponse.model_validate(settings, from_attributes=True)
 
 
-@router.get("/stats", response_model=BackupStatsResponse)
+@router.get("/summary", response_model=BackupStatsResponse)
 @inject
-async def get_backup_stats(
+async def get_backup_summary(
     use_case: FromDishka[GetBackupStatsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> BackupStatsResponse:
@@ -115,7 +115,7 @@ async def list_backup_runs(
     )
 
 
-@router.get("/runs/{run_id}", response_model=BackupRunResponse, responses=error_responses(404))
+@router.get("/runs/{run_id:int}", response_model=BackupRunResponse, responses=error_responses(404))
 @inject
 async def get_backup_run(
     run_id: int,
@@ -126,7 +126,7 @@ async def get_backup_run(
     return BackupRunResponse.model_validate(run, from_attributes=True)
 
 
-@router.get("/runs/{run_id}/download", responses=error_responses(404))
+@router.get("/runs/{run_id:int}/download", responses=error_responses(404))
 @inject
 async def download_backup_run(
     run_id: int,
@@ -138,7 +138,7 @@ async def download_backup_run(
 
 
 @router.delete(
-    "/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/runs/{run_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
 )
 @inject
 async def delete_backup_run(

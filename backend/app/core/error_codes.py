@@ -9,7 +9,6 @@ class ErrorCode(UpperStrEnum):
     ACCESS_RESTRICTED = auto()
     ADDON_NAME_TAKEN = auto()
     ADDON_NOT_FOUND = auto()
-    ADDON_REORDER_INCOMPLETE = auto()
     ADDON_USED_BY_PROMOCODE = auto()
     ADMIN_NOT_FOUND = auto()
     ADMIN_NOT_MANAGEABLE = auto()

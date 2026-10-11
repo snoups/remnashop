@@ -157,7 +157,6 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     result = await create_checkout(
         user,
         CreateCheckoutDto(
-            user_id=user.id,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,

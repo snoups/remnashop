@@ -71,7 +71,6 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminUseCase,
     SetUserDiscountUseCase,
-    UnblockAllUsersUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminUseCase,
@@ -92,28 +91,23 @@ def _parse_role(value: Optional[str]) -> Optional[Role]:
         raise ValidationError(f"Invalid role: {value}", code=ErrorCode.ROLE_INVALID) from None
 
 
+def _effective_permissions(user: UserDto) -> list[str]:
+    return sorted(p.value for p in PermissionPolicy.effective_permissions(user))
+
+
+def _to_current_user_response(user: UserDto) -> CurrentUserResponse:
+    return CurrentUserResponse.model_validate(
+        {**dict(user), "effective_permissions": _effective_permissions(user)}
+    )
+
+
 def _to_admin_response(user: UserDto) -> AdminResponse:
-    return AdminResponse(
-        id=user.id,
-        login=user.login,
-        name=user.name,
-        role=str(user.role),
-        telegram_id=user.telegram_id,
-        username=user.username,
-        email=user.email,
-        language=str(user.language),
-        is_blocked=user.is_blocked,
-        personal_discount=user.personal_discount,
-        purchase_discount=user.purchase_discount,
-        loyalty_discount=user.loyalty_discount,
-        points=user.points,
-        bonus_days=user.bonus_days,
-        is_trial_available=user.is_trial_available,
-        created_at=user.created_at,
-        permission_grants=list(user.permission_grants or []),
-        permission_revokes=list(user.permission_revokes or []),
-        role_permissions=sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, set())),
-        effective_permissions=sorted(p.value for p in PermissionPolicy.effective_permissions(user)),
+    return AdminResponse.model_validate(
+        {
+            **dict(user),
+            "role_permissions": sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, set())),
+            "effective_permissions": _effective_permissions(user),
+        }
     )
 
 
@@ -124,17 +118,7 @@ async def get_me(
     actor: UserDto = Depends(require_admin_user),
 ) -> CurrentUserResponse:
     current_user = await use_case(actor)
-    return CurrentUserResponse(
-        id=current_user.id,
-        login=current_user.login,
-        name=current_user.name,
-        role=str(current_user.role),
-        effective_permissions=sorted(
-            p.value for p in PermissionPolicy.effective_permissions(current_user)
-        ),
-        password_change_required=current_user.password_change_required,
-        language=str(current_user.language),
-    )
+    return _to_current_user_response(current_user)
 
 
 @router.patch("/me", response_model=CurrentUserResponse, responses=error_responses(400))
@@ -153,17 +137,7 @@ async def update_me(
             language=payload.language,
         ),
     )
-    return CurrentUserResponse(
-        id=updated.id,
-        login=updated.login,
-        name=updated.name,
-        role=str(updated.role),
-        effective_permissions=sorted(
-            p.value for p in PermissionPolicy.effective_permissions(updated)
-        ),
-        password_change_required=updated.password_change_required,
-        language=str(updated.language),
-    )
+    return _to_current_user_response(updated)
 
 
 @router.get("/me/security", response_model=SecurityResponse)
@@ -251,9 +225,9 @@ async def get_user(
     return UserListItemResponse.model_validate(user, from_attributes=True)
 
 
-@router.get("/stats", response_model=UserListStatsResponse)
+@router.get("/summary", response_model=UserListStatsResponse)
 @inject
-async def get_user_list_stats(
+async def get_user_summary(
     use_case: FromDishka[GetUserListStatsUseCase],
     actor: Actor = Depends(require_admin),
     include_staff: bool = False,
@@ -284,7 +258,7 @@ async def list_blacklist_matches(
     return BlacklistMatchPageResponse.model_validate(result, from_attributes=True)
 
 
-@router.post("/bulk/blacklist-matches/unblock", response_model=UnblockAllResponse)
+@router.post("/bulk/unblock-blacklist-matches", response_model=UnblockAllResponse)
 @inject
 async def unblock_blacklist_matches(
     use_case: FromDishka[UnblockBlacklistMatchesUseCase],
@@ -295,7 +269,7 @@ async def unblock_blacklist_matches(
 
 
 @router.patch(
-    "/{user_id}/discount", response_model=UserResponse, responses=error_responses(400, 404)
+    "/{user_id:int}/discount", response_model=UserResponse, responses=error_responses(400, 404)
 )
 @inject
 async def set_user_discount(
@@ -316,7 +290,7 @@ async def set_user_discount(
 
 
 @router.put(
-    "/{user_id}/telegram", response_model=UserResponse, responses=error_responses(400, 404, 409)
+    "/{user_id:int}/telegram", response_model=UserResponse, responses=error_responses(400, 404, 409)
 )
 @inject
 async def bind_user_telegram(
@@ -332,7 +306,7 @@ async def bind_user_telegram(
 
 
 @router.post(
-    "/{user_id}/actions/block", response_model=UserResponse, responses=error_responses(404)
+    "/{user_id:int}/actions/block", response_model=UserResponse, responses=error_responses(404)
 )
 @inject
 async def block_user(
@@ -345,7 +319,7 @@ async def block_user(
 
 
 @router.post(
-    "/{user_id}/actions/unblock", response_model=UserResponse, responses=error_responses(404)
+    "/{user_id:int}/actions/unblock", response_model=UserResponse, responses=error_responses(404)
 )
 @inject
 async def unblock_user(
@@ -357,18 +331,8 @@ async def unblock_user(
     return UserResponse.model_validate(updated, from_attributes=True)
 
 
-@router.post("/bulk/all/unblock", response_model=UnblockAllResponse)
-@inject
-async def unblock_all_users(
-    use_case: FromDishka[UnblockAllUsersUseCase],
-    actor: Actor = Depends(require_admin),
-) -> UnblockAllResponse:
-    count = await use_case(actor)
-    return UnblockAllResponse(unblocked=count)
-
-
 @router.delete(
-    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+    "/{user_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
 )
 @inject
 async def delete_user(
@@ -445,7 +409,7 @@ async def promote_admin(
 
 
 @admins_router.patch(
-    "/{user_id}", response_model=AdminResponse, responses=error_responses(400, 404, 409)
+    "/{user_id:int}", response_model=AdminResponse, responses=error_responses(400, 404, 409)
 )
 @inject
 async def update_admin(
@@ -468,7 +432,9 @@ async def update_admin(
 
 
 @admins_router.post(
-    "/{user_id}/actions/demote", response_model=AdminResponse, responses=error_responses(404, 409)
+    "/{user_id:int}/actions/demote",
+    response_model=AdminResponse,
+    responses=error_responses(404, 409),
 )
 @inject
 async def demote_admin(
@@ -484,7 +450,7 @@ async def demote_admin(
 
 
 @admins_router.delete(
-    "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
+    "/{user_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404, 409)
 )
 @inject
 async def delete_admin(

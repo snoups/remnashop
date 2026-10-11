@@ -135,4 +135,4 @@ async def test_test_push_text_is_rendered_inside_the_usecase(
     )
     # input is no longer a ready message: the usecase builds it after its checks
     with pytest.raises(ValidationError):
-        await use_case(admin, None)
+        await use_case(admin)

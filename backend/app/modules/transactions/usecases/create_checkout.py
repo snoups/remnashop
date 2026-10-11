@@ -103,21 +103,18 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         return customer_email
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
-        if data.user_id != actor.id and not actor.is_privileged:
-            raise PermissionDeniedError
-
         if not (await self._get_access_settings.system()).payments_enabled:
             # own transaction, so the refusal below doesn't roll it back
             async with self._uow:
-                await self._waitlist_repository.add(data.user_id)
+                await self._waitlist_repository.add(actor.id)
             raise PermissionDeniedError("Payments are disabled", code=ErrorCode.PAYMENTS_DISABLED)
 
         async with self._uow:
             gateway_settings = await self._load_gateway_settings(data)
-            plan, user = await self._load_purchasable_plan(data)
+            plan, user = await self._load_purchasable_plan(actor.id, data)
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
-        await self._validate_provisioning_preconditions(data)
+        await self._validate_provisioning_preconditions(actor.id, data)
         user = await self._drop_dead_promocode_discounts(user)
 
         async with self._uow:
@@ -131,9 +128,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         async with self._uow:
             # rechecked under the per-user lock, counting orders not yet
             # provisioned, so concurrent checkouts can't all pass the reads above
-            await self._eligibility.lock_user(data.user_id)
+            await self._eligibility.lock_user(actor.id)
             open_orders = await self._transaction_repository.count_open_new_orders(
-                data.user_id, datetime_now()
+                actor.id, datetime_now()
             )
             if not await self._eligibility.is_purchasable(
                 plan, user, has_open_order=open_orders > 0
@@ -142,13 +139,11 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
                 )
             if data.purchase_type is PurchaseType.NEW:
-                await self._eligibility.assert_below_cap(
-                    data.user_id, lock=True, pending=open_orders
-                )
+                await self._eligibility.assert_below_cap(actor.id, lock=True, pending=open_orders)
             # the one-shot discount is spent in the same transaction as the
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
-            order = await self._create_order(data, plan, quote, customer_email)
+            order = await self._create_order(actor.id, data, plan, quote, customer_email)
 
             if is_free:
                 order = await self._transaction_repository.mark_status(
@@ -207,11 +202,13 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
         return gateway_settings
 
-    async def _load_purchasable_plan(self, data: CreateCheckoutDto) -> tuple[PlanDto, UserDto]:
+    async def _load_purchasable_plan(
+        self, user_id: int, data: CreateCheckoutDto
+    ) -> tuple[PlanDto, UserDto]:
         plan = await self._plan_repository.get_by_id(data.plan_id)
-        user = await self._user_repository.get_by_id(data.user_id)
+        user = await self._user_repository.get_by_id(user_id)
         if user is None:
-            raise NotFoundError(f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
 
         if not await self._eligibility.is_purchasable(plan, user) or not _link_code_matches(
             plan, data.plan_code
@@ -223,6 +220,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
     async def _create_order(
         self,
+        user_id: int,
         data: CreateCheckoutDto,
         plan: PlanDto,
         quote: PriceQuote,
@@ -230,7 +228,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
     ) -> TransactionDto:
         return await self._transaction_repository.create(
             CreateTransactionDto(
-                user_id=data.user_id,
+                user_id=user_id,
                 plan_id=data.plan_id,
                 plan_snapshot=PlanSnapshot.from_plan(
                     plan,
@@ -300,7 +298,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     code=ErrorCode.GATEWAY_NOT_AVAILABLE,
                 )
 
-    async def _validate_provisioning_preconditions(self, data: CreateCheckoutDto) -> None:
+    async def _validate_provisioning_preconditions(
+        self, user_id: int, data: CreateCheckoutDto
+    ) -> None:
         # PurchaseSubscriptionUseCase re-checks the target subscription under
         # its own lock. A paid order is provisioned even if the cap filled up
         # meanwhile; only a free one is refused at fulfilment.
@@ -311,12 +311,12 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                         "target_subscription_id is forbidden for a NEW purchase",
                         code=ErrorCode.TARGET_SUBSCRIPTION_FORBIDDEN,
                     )
-                await self._eligibility.assert_below_cap(data.user_id)
+                await self._eligibility.assert_below_cap(user_id)
                 return
 
-        await self._validate_target_subscription(data)
+        await self._validate_target_subscription(user_id, data)
 
-    async def _validate_target_subscription(self, data: CreateCheckoutDto) -> None:
+    async def _validate_target_subscription(self, user_id: int, data: CreateCheckoutDto) -> None:
         async with self._uow:
             if data.target_subscription_id is None:
                 raise ValidationError(
@@ -325,7 +325,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
 
             target = await get_owned_target(
-                self._subscription_repository, data.target_subscription_id, data.user_id
+                self._subscription_repository, data.target_subscription_id, user_id
             )
             if target.status is SubscriptionStatus.DELETED:
                 raise ValidationError(

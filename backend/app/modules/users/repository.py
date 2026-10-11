@@ -609,11 +609,6 @@ class UserRepository:
         db_user.notification_channels = channels
         await self.session.flush()
 
-    async def unblock_all(self) -> int:
-        stmt = update(User).where(User.is_blocked.is_(True)).values(is_blocked=False)
-        result = await self.session.execute(stmt)
-        return cast(CursorResult, result).rowcount
-
     async def anonymize(self, user_id: int) -> Optional[UserDto]:
         # Soft delete: transactions, subscriptions and referrals keep pointing at
         # this row, so revenue and referral history survive. What identifies

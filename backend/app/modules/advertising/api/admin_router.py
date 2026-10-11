@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from datetime import datetime
 from typing import Optional
 
@@ -51,6 +50,7 @@ from app.modules.advertising.usecases import (
 )
 
 router = APIRouter(prefix="/advertising", tags=["advertising"])
+user_router = APIRouter(prefix="/users", tags=["advertising"])
 
 
 @router.get("/links", response_model=AdLinkPageResponse)
@@ -100,7 +100,7 @@ async def create_ad_link(
 
 
 @router.patch(
-    "/links/{ad_link_id}", response_model=AdLinkResponse, responses=error_responses(400, 404)
+    "/links/{ad_link_id:int}", response_model=AdLinkResponse, responses=error_responses(400, 404)
 )
 @inject
 async def update_ad_link(
@@ -126,7 +126,7 @@ async def update_ad_link(
 
 
 @router.delete(
-    "/links/{ad_link_id}",
+    "/links/{ad_link_id:int}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=error_responses(400, 404),
 )
@@ -149,7 +149,9 @@ async def generate_ad_link_code(
 
 
 @router.get(
-    "/links/{ad_link_id}/stats", response_model=AdLinkStatsResponse, responses=error_responses(404)
+    "/links/{ad_link_id:int}/stats",
+    response_model=AdLinkStatsResponse,
+    responses=error_responses(404),
 )
 @inject
 async def get_ad_link_stats(
@@ -173,7 +175,7 @@ async def get_ad_link_stats(
 
 
 @router.get(
-    "/links/{ad_link_id}/share",
+    "/links/{ad_link_id:int}/share",
     response_model=AdLinkShareUrlsResponse,
     responses=error_responses(404),
 )
@@ -187,7 +189,7 @@ async def get_ad_link_share_urls(
     return AdLinkShareUrlsResponse.model_validate(urls, from_attributes=True)
 
 
-@router.get("/links/{ad_link_id}/qr", response_class=Response, responses=error_responses(404))
+@router.get("/links/{ad_link_id:int}/qr", response_class=Response, responses=error_responses(404))
 @inject
 async def get_ad_link_qr(
     ad_link_id: int,
@@ -225,7 +227,7 @@ async def get_advertising_summary(
 
 
 @router.get(
-    "/links/{ad_link_id}/users",
+    "/links/{ad_link_id:int}/users",
     response_model=AttributedUserPageResponse,
     responses=error_responses(404),
 )
@@ -247,7 +249,9 @@ async def list_ad_link_attributed_users(
     )
 
 
-@router.get("/users/{user_id}/attribution", response_model=Optional[UserAdAttributionResponse])
+@user_router.get(
+    "/{user_id:int}/ad-attribution", response_model=Optional[UserAdAttributionResponse]
+)
 @inject
 async def get_user_ad_attribution(
     user_id: int,
@@ -257,7 +261,7 @@ async def get_user_ad_attribution(
     attribution = await use_case(actor, user_id)
     if attribution is None:
         return None
-    return UserAdAttributionResponse(**asdict(attribution))
+    return UserAdAttributionResponse.model_validate(attribution, from_attributes=True)
 
 
 @router.get(

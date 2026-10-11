@@ -105,12 +105,6 @@ class RevenueChartDto(BaseDto):
     daily: list[DailyAmountDto]
 
 
-class RegistrationsChartDto(BaseDto):
-    days: int
-    granularity: Granularity
-    daily: list[DailyCountDto]
-
-
 class OnlineChartDto(BaseDto):
     days: int
     granularity: Granularity
