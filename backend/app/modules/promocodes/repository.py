@@ -141,10 +141,7 @@ class PromocodeRepository:
                     f"Promocode with code '{data.code}' already exists",
                     code=ErrorCode.PROMOCODE_CODE_TAKEN,
                 ) from error
-            raise ConflictError(
-                "Promocode could not be created due to a conflicting value",
-                code=ErrorCode.PROMOCODE_CONFLICT,
-            ) from error
+            raise
 
         await self.session.refresh(row)
         return self._to_dto(row)

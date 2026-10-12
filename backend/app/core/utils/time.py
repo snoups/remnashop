@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Optional
 
 from app.core.constants import TIMEZONE
@@ -23,10 +23,9 @@ def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
 
 def range_end_utc(value: Optional[datetime]) -> Optional[datetime]:
     # Exclusive upper bound, compared with "<". Same UTC assumption as
-    # range_start_utc(), but a bare date is the *whole* day being asked for --
-    # so it becomes the next day's midnight.
-    if value is None:
-        return None
-    if value.tzinfo is not None:
+    # range_start_utc(), but a bare date is the *whole* day being asked for,
+    # so it becomes the next day's midnight; a naive time of day stays as given.
+    if value is None or value.tzinfo is not None:
         return value
-    return value.replace(tzinfo=TIMEZONE) + timedelta(days=1)
+    end = value.replace(tzinfo=TIMEZONE)
+    return end + timedelta(days=1) if end.time() == time(0) else end

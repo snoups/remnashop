@@ -134,6 +134,14 @@ def register_error_handlers(app: FastAPI) -> None:
             headers=getattr(error, "headers", None),
         )
 
+    # Starlette re-raises after sending this, so the traceback still reaches the log
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(_: Request, error: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Internal server error", "code": ErrorCode.INTERNAL_ERROR},
+        )
+
     @app.exception_handler(RequestValidationError)
     async def request_validation_handler(_: Request, error: RequestValidationError) -> JSONResponse:
         return JSONResponse(

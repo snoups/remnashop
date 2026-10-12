@@ -28,6 +28,7 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
 
     async def _execute(self, actor: Actor, data: CreateAdminDto) -> tuple[UserDto, str]:
         assert_grantable(data.permission_grants)
+        assert_grantable(data.permission_revokes)
 
         password = generate_password()
         password_hash = await hash_password(password, self._config.crypt_key.get_secret_value())

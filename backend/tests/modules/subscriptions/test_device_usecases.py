@@ -246,3 +246,40 @@ async def test_reissues_the_subscription_link(
     reloaded = await subscription_repository.get_by_id(subscription.id)
     assert reloaded.url != subscription.url
     assert reloaded.link_reset_at is not None
+
+
+async def test_a_failed_panel_call_hands_the_cooldown_back(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="device-deleter-refund"))
+    subscription = await _create_active_subscription(subscription_repository, actor.id, 7007)
+    current = await settings_repository.get_shop_settings()
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=current.max_active_subscriptions,
+            device_single_reset_enabled=True,
+            device_single_reset_cooldown_hours=24,
+            device_all_reset_enabled=current.device_all_reset_enabled,
+            device_all_reset_cooldown_hours=current.device_all_reset_cooldown_hours,
+            link_reset_enabled=current.link_reset_enabled,
+            link_reset_cooldown_hours=current.link_reset_cooldown_hours,
+            fields_set=SHOP_SETTINGS_FIELDS,
+        )
+    )
+
+    async def panel_down(_: object) -> None:
+        raise RuntimeError("panel down")
+
+    monkeypatch.setattr(remnawave_sdk.hwid, "delete_hwid_to_user", panel_down)
+    use_case = DeleteDeviceUseCase(subscription_repository, remnawave_sdk, settings_repository, uow)
+
+    with pytest.raises(RuntimeError):
+        await use_case(actor, DeleteDeviceDto(hwid="first"))
+
+    reloaded = await subscription_repository.get_by_id(subscription.id)
+    assert reloaded.device_single_reset_at is None

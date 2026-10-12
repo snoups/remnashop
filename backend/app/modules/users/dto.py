@@ -318,6 +318,8 @@ class UpdateOwnProfileDto:
     current_password: Optional[str] = None
     new_password: Optional[str] = None
     language: Optional[Locale] = None
+    # kept signed in when the password changes
+    current_session_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

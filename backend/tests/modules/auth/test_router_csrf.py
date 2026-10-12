@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
-from app.core.constants import API_V1
+from app.core.constants import API_V1, CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from app.core.di.providers import get_core_providers
+from app.core.security.session_token import derive_csrf_token
 from app.modules.providers import get_module_providers
 
 _BOOTSTRAP_PASSWORD = "Sup3rSecurePassword12345"
@@ -116,3 +117,19 @@ async def test_logout_rejects_a_forged_cookie_mirrored_into_the_header(
     )
 
     assert response.status_code == 403
+
+
+async def test_refresh_rejection_carries_an_error_code(
+    auth_client: httpx.AsyncClient, config: AppConfig
+) -> None:
+    unknown_token = "never-issued-refresh-token"
+    csrf_token = derive_csrf_token(unknown_token, config.jwt_secret.get_secret_value())
+    auth_client.cookies.set(REFRESH_COOKIE_NAME, unknown_token)
+    auth_client.cookies.set(CSRF_COOKIE_NAME, csrf_token)
+
+    response = await auth_client.post(
+        f"{API_V1}/auth/refresh", headers={"X-Csrf-Token": csrf_token}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"]

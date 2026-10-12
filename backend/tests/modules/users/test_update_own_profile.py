@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 
 from app.core.config import AppConfig
@@ -11,7 +13,9 @@ from app.modules.users.usecases.update_own_profile import UpdateOwnProfileUseCas
 
 
 class _NoopRevoker:
-    async def revoke_all_by_user(self, user_id: int) -> None:
+    async def revoke_all_by_user(
+        self, user_id: int, *, keep_session_id: Optional[int] = None
+    ) -> None:
         return None
 
 

@@ -117,6 +117,25 @@ def contains_placeable(text: str) -> bool:
     )
 
 
+def assert_plain_translation_value(value: str) -> None:
+    if "\n" in value:
+        # Kept single-line even though serialize_to_fluent() indents continuations:
+        # bot command descriptions are repushed to Telegram, which rejects
+        # multi-line ones. Dialog window bodies get their newlines through
+        # modules/dialogs' own text endpoint instead.
+        raise ValidationError(
+            "Translation values cannot contain newlines", code=ErrorCode.TRANSLATION_HAS_NEWLINES
+        )
+    # the value alone, not the whole locale: a seeded value with a placeable
+    # would otherwise block edits to every other key. contains_placeable parses
+    # a full "id = value" line, hence the throwaway id.
+    if contains_placeable(f"placeholder-id = {value}"):
+        raise ValidationError(
+            "Fluent placeables are not supported in translation values",
+            code=ErrorCode.TRANSLATION_HAS_PLACEABLES,
+        )
+
+
 def _check_placeable_expression(
     expression: object, allowed_variables: frozenset[str]
 ) -> Optional[str]:

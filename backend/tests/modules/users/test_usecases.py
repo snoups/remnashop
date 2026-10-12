@@ -162,6 +162,26 @@ async def test_create_admin_rejects_manage_admins_grant(
         )
 
 
+async def test_create_admin_rejects_revoking_own_account_access(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            CreateAdminDto(
+                client_ip="127.0.0.1",
+                login="newadmin4",
+                name="X",
+                permission_revokes=[Permission.OWN_ACCOUNT_MANAGE],
+            ),
+        )
+
+
 async def test_create_admin_rejects_duplicate_login(
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -2018,6 +2038,31 @@ async def test_block_user_allows_an_api_token_actor_to_block_a_plain_user(
     blocked = await use_case(token_actor, target.id)
 
     assert blocked.is_blocked is True
+
+
+async def test_block_user_treats_an_anonymized_account_as_missing(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
+) -> None:
+    async with uow:
+        target = await user_repository.create(CreateUserDto(name="gone", telegram_id=9101))
+        await user_repository.anonymize(target.id)
+
+    use_case = BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )
+
+    with pytest.raises(NotFoundError):
+        await use_case(OWNER, target.id)
 
 
 async def test_block_user_still_refuses_an_api_token_against_staff(

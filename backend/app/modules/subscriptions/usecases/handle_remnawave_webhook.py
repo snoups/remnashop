@@ -78,7 +78,9 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
 
         replay_key = f"{REDIS_KEY_PREFIX}remnawave_webhook_seen:{headers.signature}"
         if not await self._redis.set(replay_key, "1", nx=True, ex=_REPLAY_TTL_S):
-            raise AuthenticationError("Webhook already processed", code=ErrorCode.WEBHOOK_DUPLICATE)
+            # the same signed delivery again: already applied, so acknowledge it
+            # instead of making the panel retry
+            return
 
         if not isinstance(payload.data, WebhookUserDto):
             return

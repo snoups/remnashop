@@ -30,6 +30,8 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
         async with self._uow:
             if data.permission_grants is not None:
                 assert_grantable(data.permission_grants)
+            if data.permission_revokes is not None:
+                assert_grantable(data.permission_revokes)
 
             target = await self._user_repository.get_by_id(data.user_id)
             if target is None:

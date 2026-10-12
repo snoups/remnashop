@@ -137,7 +137,8 @@ async def refresh_session(
         )
     except AuthenticationError as error:
         error_response = JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": str(error)}
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": str(error), "code": error.code.value},
         )
         _clear_session_cookies(error_response)
         return error_response

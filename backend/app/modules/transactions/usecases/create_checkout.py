@@ -16,7 +16,12 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import (
+    NotFoundError,
+    PaymentGatewayError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from app.core.ports import PromocodeLiveness
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -157,7 +162,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         gateway = self._gateway_factory.build(data.gateway_type, gateway_settings)
         try:
             intent = await gateway.create_payment(order)
-        except Exception:
+        except Exception as error:
             # no payment exists at the provider, so the order and its spent discount go back
             async with self._uow:
                 failed = await self._transaction_repository.mark_status_if(
@@ -172,7 +177,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                         order.discount_promocode_id,
                         from_promocode=order.discount_from_promocode,
                     )
-            raise
+            if isinstance(error, PaymentGatewayError):
+                raise
+            raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error
 
         async with self._uow:
             await self._transaction_repository.mark_status(

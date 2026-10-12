@@ -40,3 +40,8 @@ class SyntheticActor:
 SYSTEM_ACTOR: Final[SyntheticActor] = SyntheticActor(
     id=-1, role=Role.SYSTEM, name=Role.SYSTEM.name, is_privileged=True, log="[SYSTEM]"
 )
+
+
+def actor_user_id(actor: Actor) -> Optional[int]:
+    # an API token (0) and SYSTEM (-1) have no users row to reference
+    return actor.id if actor.id > 0 else None

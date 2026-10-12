@@ -5,11 +5,13 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
+from app.core.db.models.subscription import Subscription
 from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
@@ -267,13 +269,15 @@ async def _subscription_for_webhook(
     return created.id
 
 
-async def test_redelivery_of_a_processed_webhook_is_rejected(
+async def test_redelivery_of_a_processed_webhook_is_acknowledged_without_reapplying(
     webhook_client: httpx.AsyncClient,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     config: AppConfig,
 ) -> None:
-    await _subscription_for_webhook(subscription_repository, user_repository, 81010)
+    subscription_id = await _subscription_for_webhook(
+        subscription_repository, user_repository, 81010
+    )
     secret = config.remnawave.webhook_secret.get_secret_value()  # type: ignore[union-attr]
     body, headers = sign_webhook(
         user_event_payload(event="user.limited", remnawave_user_id=81010, status="LIMITED"), secret
@@ -281,7 +285,15 @@ async def test_redelivery_of_a_processed_webhook_is_rejected(
     url = f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}"
 
     assert (await webhook_client.post(url, content=body, headers=headers)).status_code == 200
-    assert (await webhook_client.post(url, content=body, headers=headers)).status_code == 401
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(status=SubscriptionStatus.ACTIVE)
+    )
+    assert (await webhook_client.post(url, content=body, headers=headers)).status_code == 200
+
+    refreshed = await subscription_repository.get_by_id(subscription_id)
+    assert refreshed.status is SubscriptionStatus.ACTIVE
 
 
 async def test_a_failed_webhook_can_be_redelivered(

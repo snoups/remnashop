@@ -29,13 +29,12 @@ class UnblockUserUseCase(UseCase[int, UserDto]):
 
     async def _execute(self, actor: Actor, user_id: int) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_by_id(user_id)
+            target = await self._user_repository.get_live_for_update(user_id)
             if target is None:
                 raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
             if not PermissionPolicy.can_manage(actor, target):
                 raise PermissionDeniedError
 
-        async with self._uow:
             updated = await self._user_repository.set_blocked(user_id, False)
             if updated is None:
                 raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)

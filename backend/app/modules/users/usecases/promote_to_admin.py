@@ -35,6 +35,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
     ) -> tuple[UserDto, Optional[str]]:
         async with self._uow:
             assert_grantable(data.permission_grants)
+            assert_grantable(data.permission_revokes)
 
             target = None
             if data.user_id is not None:
@@ -44,7 +45,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
             elif data.telegram_username:
                 target = await self._user_repository.get_by_username(data.telegram_username)
 
-            if target is None:
+            if target is None or target.deleted_at is not None:
                 raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
             if target.role != Role.USER:
                 raise ConflictError(

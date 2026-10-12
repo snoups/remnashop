@@ -1,6 +1,6 @@
 from loguru import logger
 
-from app.core.actor import Actor
+from app.core.actor import Actor, actor_user_id
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -36,9 +36,7 @@ class CreateBroadcastUseCase(UseCase[SaveBroadcastDto, BroadcastDto]):
         validate_broadcast(data, has_media=False)
         async with self._uow:
             await assert_references(data, self._broadcast_repository, self._promocode_repository)
-            created = await self._broadcast_repository.create(
-                data, created_by=actor.id if actor.id > 0 else None
-            )
+            created = await self._broadcast_repository.create(data, created_by=actor_user_id(actor))
             await self._event_publisher.publish(
                 BroadcastChangedEvent(user=actor, action="create", broadcast_id=created.id)
             )

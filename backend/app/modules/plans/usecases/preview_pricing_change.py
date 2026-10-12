@@ -20,12 +20,12 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (
-    BASE_PRICE_PRECISION,
     NON_ANCHOR_CURRENCIES,
     RATE_PRECISION,
     CurrencyRateTable,
     PricingRepository,
     resolve_price,
+    scale_base_price,
 )
 
 
@@ -144,13 +144,12 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             rows[data.anchor] = rows[data.anchor].model_copy(update={"rate": Decimal("1.000000")})
             projected_table = CurrencyRateTable(anchor=data.anchor, rows=rows)
             plan_base_prices = {
-                duration.id: (duration.base_price * factor).quantize(BASE_PRICE_PRECISION)
+                duration.id: scale_base_price(duration.base_price, factor)
                 for plan in plans
                 for duration in plan.durations
             }
             addon_base_prices = {
-                addon.id: (addon.base_price * factor).quantize(BASE_PRICE_PRECISION)
-                for addon in addons
+                addon.id: scale_base_price(addon.base_price, factor) for addon in addons
             }
             return projected_table, plan_base_prices, addon_base_prices
 
@@ -171,7 +170,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                 selected_ids = set(adjust.plan_duration_ids)
                 durations = [duration for duration in durations if duration.id in selected_ids]
             plan_base_prices = {
-                duration.id: (duration.base_price * adjust.factor).quantize(BASE_PRICE_PRECISION)
+                duration.id: scale_base_price(duration.base_price, adjust.factor)
                 for duration in durations
             }
 
@@ -181,8 +180,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                 selected_ids = set(adjust.addon_ids)
                 targets = [addon for addon in targets if addon.id in selected_ids]
             addon_base_prices = {
-                addon.id: (addon.base_price * adjust.factor).quantize(BASE_PRICE_PRECISION)
-                for addon in targets
+                addon.id: scale_base_price(addon.base_price, adjust.factor) for addon in targets
             }
 
         return plan_base_prices, addon_base_prices

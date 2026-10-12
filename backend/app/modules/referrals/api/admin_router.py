@@ -9,6 +9,7 @@ from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import ReferralRewardType
+from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.referrals.api.schemas import (
     AdjustBonusDaysRequest,
     AdjustPointsRequest,
@@ -70,8 +71,8 @@ async def list_referrals(
         actor,
         ListReferralsDto(
             level=level,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
             search=search,
             has_rewards=has_rewards,
             reward_type=reward_type,
@@ -103,8 +104,8 @@ async def get_referral_summary(
         actor,
         GetReferralSummaryDto(
             level=level,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
             search=search,
             has_rewards=has_rewards,
             reward_type=reward_type,

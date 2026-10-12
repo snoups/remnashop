@@ -33,7 +33,12 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import (
+    NotFoundError,
+    PaymentGatewayError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
 from app.modules.plans.dto import (
@@ -1010,7 +1015,7 @@ async def test_a_gateway_failure_fails_the_order_and_hands_the_discount_back(
         await user_repository.update_fields(actor.id, UpdateUserDto(purchase_discount=20))
     create_checkout_use_case._gateway_factory = _FakeFactory(_FailingGateway())  # type: ignore[assignment]
 
-    with pytest.raises(RuntimeError, match="provider down"):
+    with pytest.raises(PaymentGatewayError, match="RuntimeError"):
         await create_checkout_use_case(actor, _checkout_dto(actor, plan))
 
     orders, _ = await transaction_repository.list_paginated(user_id=actor.id)

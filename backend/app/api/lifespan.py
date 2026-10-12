@@ -31,33 +31,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis = await container.get(Redis)
     runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "api"))
 
-    async with container(scope=Scope.REQUEST) as startup_container:
-        config = await startup_container.get(AppConfig)
-        translation_repository = await startup_container.get(TranslationRepository)
-        uow = await startup_container.get(UnitOfWork)
-        async with uow:
-            register_all_flow_metadata()
-            await ensure_translations_seeded(config, translation_repository)
+    try:
+        async with container(scope=Scope.REQUEST) as startup_container:
+            config = await startup_container.get(AppConfig)
+            translation_repository = await startup_container.get(TranslationRepository)
+            uow = await startup_container.get(UnitOfWork)
+            async with uow:
+                register_all_flow_metadata()
+                await ensure_translations_seeded(config, translation_repository)
 
-            # fresh install only: once an owner exists the list is theirs, and
-            # a source they removed must stay removed
-            user_repository = await startup_container.get(UserRepository)
-            if not await user_repository.exists_with_role(Role.OWNER):
-                blacklist_repository = await startup_container.get(BlacklistRepository)
-                await ensure_blacklist_sources_seeded(blacklist_repository)
+                # fresh install only: once an owner exists the list is theirs, and
+                # a source they removed must stay removed
+                user_repository = await startup_container.get(UserRepository)
+                if not await user_repository.exists_with_role(Role.OWNER):
+                    blacklist_repository = await startup_container.get(BlacklistRepository)
+                    await ensure_blacklist_sources_seeded(blacklist_repository)
 
-            banner_repository = await startup_container.get(BannerRepository)
-            await ensure_default_banner_seeded(
-                banner_repository, config, await translation_repository.get_default_locale()
-            )
+                banner_repository = await startup_container.get(BannerRepository)
+                await ensure_default_banner_seeded(
+                    banner_repository, config, await translation_repository.get_default_locale()
+                )
 
-            dialog_repository = await startup_container.get(DialogRepository)
-            await ensure_dialogs_seeded(dialog_repository, translation_repository)
+                dialog_repository = await startup_container.get(DialogRepository)
+                await ensure_dialogs_seeded(dialog_repository, translation_repository)
 
-    yield
-
-    runtime_heartbeat_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await runtime_heartbeat_task
-    await broker.shutdown()
-    await container.close()
+        yield
+    finally:
+        runtime_heartbeat_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await runtime_heartbeat_task
+        try:
+            await broker.shutdown()
+        finally:
+            await container.close()

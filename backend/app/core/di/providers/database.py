@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import AppConfig
+from app.core.db.standalone import connect_args
 from app.core.db.uow import UnitOfWork
 
 
@@ -34,17 +35,7 @@ class DatabaseProvider(Provider):
             pool_pre_ping=True,
             pool_reset_on_return="rollback",
             query_cache_size=500,
-            connect_args={
-                "server_settings": {
-                    "jit": "on",
-                    "statement_timeout": str(config.database.statement_timeout_ms),
-                    "idle_in_transaction_session_timeout": str(
-                        config.database.idle_in_transaction_timeout_ms
-                    ),
-                },
-                "command_timeout": config.database.command_timeout_s,
-                "timeout": config.database.connect_timeout_s,
-            },
+            connect_args=connect_args(config.database),
         )
 
         try:

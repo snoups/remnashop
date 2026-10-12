@@ -236,3 +236,15 @@ async def test_revoke_all_by_user_revokes_every_active_session(
     await session_repository.revoke_all_by_user(user.id)
 
     assert await session_repository.list_active_by_user(user.id) == []
+
+
+async def test_revoke_all_by_user_can_keep_the_current_session(
+    session_repository: SessionRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    user = await _create_user(user_repository, uow, "keeper")
+    current = await _create_session(session_repository, user.id, "token-current")
+    await _create_session(session_repository, user.id, "token-other")
+
+    await session_repository.revoke_all_by_user(user.id, keep_session_id=current.id)
+
+    assert [s.id for s in await session_repository.list_active_by_user(user.id)] == [current.id]

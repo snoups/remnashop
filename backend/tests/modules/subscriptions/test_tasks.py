@@ -34,6 +34,7 @@ from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     GrantAddOnDto,
     PurchaseSubscriptionDto,
+    SyncSubscriptionStatusDto,
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -431,3 +432,43 @@ async def test_reconcile_skips_subscriptions_already_in_sync(
 
 def test_prune_subscription_idempotency_task_carries_a_schedule_label() -> None:
     assert prune_subscription_idempotency_task.labels.get("schedule")
+
+
+async def test_reconcile_keeps_going_after_one_row_fails_to_sync(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="reconcile-iso", telegram_id=91010))
+    created = [
+        await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=user.id,
+                remnawave_user_id=remnawave_user_id,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now() + timedelta(days=30),
+                url=f"https://fake-panel.test/sub/{remnawave_user_id}",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        for remnawave_user_id in (91011, 91012)
+    ]
+    use_case = _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher)
+    real_sync = use_case._sync_use_case._execute
+
+    async def sync_failing_first(actor: object, data: SyncSubscriptionStatusDto) -> object:
+        if data.remnawave_user_id == 91011:
+            raise RuntimeError("boom")
+        return await real_sync(actor, data)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(use_case._sync_use_case, "_execute", sync_failing_first)
+
+    await use_case.system()
+
+    refreshed = await subscription_repository.get_by_id(created[1].id)
+    assert refreshed.status == SubscriptionStatus.DELETED

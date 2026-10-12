@@ -6,6 +6,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.admin import require_admin, require_admin_user
+from app.api.dependencies.public import get_current_session_id
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import Role
@@ -127,6 +128,7 @@ async def update_me(
     payload: UpdateOwnProfileRequest,
     use_case: FromDishka[UpdateOwnProfileUseCase],
     actor: UserDto = Depends(require_admin_user),
+    session_id: int = Depends(get_current_session_id),
 ) -> CurrentUserResponse:
     updated = await use_case(
         actor,
@@ -135,6 +137,7 @@ async def update_me(
             current_password=payload.current_password,
             new_password=payload.new_password,
             language=payload.language,
+            current_session_id=session_id,
         ),
     )
     return _to_current_user_response(updated)

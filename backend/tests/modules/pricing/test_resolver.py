@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from app.core.enums import Currency, RoundingMode
-from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
-from app.modules.pricing.resolver import resolve_price
+from app.modules.pricing.dto import MIN_BASE_PRICE, CurrencyRateDto, CurrencyRateTable
+from app.modules.pricing.resolver import resolve_price, scale_base_price
 
 
 def _table(**overrides: CurrencyRateDto) -> CurrencyRateTable:
@@ -106,3 +106,8 @@ def test_anchor_switch_invariant() -> None:
     )
     from_rub = resolve_price(base_rub, Currency.RUB, None, rub_anchor_table)
     assert abs(from_usd - from_rub) <= Decimal("1")  # within integer-rounding drift
+
+
+def test_scale_base_price_never_drops_below_the_minimum() -> None:
+    assert scale_base_price(Decimal("5"), Decimal("0.001")) == MIN_BASE_PRICE
+    assert scale_base_price(Decimal("10"), Decimal("1.5")) == Decimal("15.00")

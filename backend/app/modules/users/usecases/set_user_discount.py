@@ -40,7 +40,7 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
                 )
 
         async with self._uow:
-            target = await self._user_repository.get_by_id(data.user_id)
+            target = await self._user_repository.get_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError(
                     f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND

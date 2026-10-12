@@ -65,7 +65,9 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
             if password_hash is not None:
                 # a password change may mean a compromise, so every other
                 # session ends now (UpdateAdminUseCase does the same on revokes)
-                await self._session_revoker.revoke_all_by_user(actor.id)
+                await self._session_revoker.revoke_all_by_user(
+                    actor.id, keep_session_id=data.current_session_id
+                )
 
         assert updated is not None
         return updated

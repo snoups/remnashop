@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from app.core.actor import Actor
+from app.core.actor import Actor, actor_user_id
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security import generate_refresh_token, hash_refresh_token
@@ -43,7 +43,7 @@ class CreateApiTokenUseCase(UseCase[IssueApiTokenDto, CreatedApiTokenDto]):
                     name=data.name,
                     scopes=sorted(set(data.scopes)),
                     token_hash=hash_refresh_token(secret),
-                    created_by_user_id=actor.id if actor.id > 0 else None,
+                    created_by_user_id=actor_user_id(actor),
                     expires_at=expires_at,
                     ip_allowlist=data.ip_allowlist,
                 )

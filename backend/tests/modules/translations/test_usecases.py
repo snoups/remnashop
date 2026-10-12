@@ -5,6 +5,7 @@ from redis.asyncio import Redis
 from app.core.bot_signals import RedisBotSignals
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
@@ -347,6 +348,41 @@ async def test_import_rejects_a_foreign_export_version(
 
     with pytest.raises(ValidationError):
         await use_case(OWNER, TranslationsImportDto(version=EXPORT_VERSION + 1, texts=[]))
+
+
+@pytest.mark.parametrize(
+    ("value", "code"),
+    [
+        ("two\nlines", ErrorCode.TRANSLATION_HAS_NEWLINES),
+        ("{ $name }", ErrorCode.TRANSLATION_HAS_PLACEABLES),
+        ("broken }", ErrorCode.FLUENT_SYNTAX_INVALID),
+    ],
+)
+async def test_import_refuses_what_a_hand_edit_would(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+    value: str,
+    code: ErrorCode,
+) -> None:
+    await _seed(settings_repository, translation_repository)
+    use_case = ImportTranslationsUseCase(
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RedisBotSignals(redis),
+    )
+    texts = [
+        TranslationTextExportDto(
+            locale=Locale.EN, message_id="command", attribute_id="menu", value=value
+        )
+    ]
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(OWNER, TranslationsImportDto(version=EXPORT_VERSION, texts=texts))
+
+    assert error.value.code is code
 
 
 async def test_reset_all_restores_every_edited_string(

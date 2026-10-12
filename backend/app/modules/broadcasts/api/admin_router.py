@@ -72,7 +72,7 @@ def _save_dto(body: BroadcastRequest) -> SaveBroadcastDto:
     )
 
 
-@router.get("", response_model=BroadcastListResponse, responses=error_responses(422))
+@router.get("", response_model=BroadcastListResponse)
 @inject
 async def list_broadcasts(
     use_case: FromDishka[ListBroadcastsUseCase],
@@ -105,7 +105,7 @@ async def list_broadcasts(
     "",
     response_model=BroadcastResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(404, 422),
+    responses=error_responses(400, 404),
 )
 @inject
 async def create_broadcast(
@@ -121,7 +121,7 @@ async def create_broadcast(
 @router.post(
     "/actions/preview-audience",
     response_model=AudiencePreviewResponse,
-    responses=error_responses(422),
+    responses=error_responses(400),
 )
 @inject
 async def preview_broadcast_audience(
@@ -135,7 +135,7 @@ async def preview_broadcast_audience(
     return AudiencePreviewResponse(total=result.total, by_locale=result.by_locale)
 
 
-@router.get("/summary", response_model=BroadcastSummaryResponse, responses=error_responses(422))
+@router.get("/summary", response_model=BroadcastSummaryResponse)
 @inject
 async def get_broadcast_summary(
     use_case: FromDishka[GetBroadcastSummaryUseCase],
@@ -187,7 +187,7 @@ async def list_broadcast_recipients(
 @router.put(
     "/{broadcast_id:int}",
     response_model=BroadcastResponse,
-    responses=error_responses(404, 409, 422),
+    responses=error_responses(400, 404, 409),
 )
 @inject
 async def update_broadcast(
@@ -219,7 +219,7 @@ async def delete_broadcast(
 @router.put(
     "/{broadcast_id:int}/media",
     response_model=BroadcastResponse,
-    responses=error_responses(404, 409, 422),
+    responses=error_responses(400, 404, 409),
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -267,7 +267,7 @@ async def upload_broadcast_media(
 @router.delete(
     "/{broadcast_id:int}/media",
     response_model=BroadcastResponse,
-    responses=error_responses(404, 409),
+    responses=error_responses(400, 404, 409),
 )
 @inject
 async def delete_broadcast_media(
@@ -283,7 +283,7 @@ async def delete_broadcast_media(
 @router.post(
     "/{broadcast_id:int}/actions/send-test",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(404, 422),
+    responses=error_responses(400, 404),
 )
 @inject
 async def send_test_broadcast(
@@ -297,7 +297,7 @@ async def send_test_broadcast(
 @router.post(
     "/{broadcast_id:int}/actions/send",
     response_model=BroadcastResponse,
-    responses=error_responses(404, 409, 422),
+    responses=error_responses(400, 404, 409),
 )
 @inject
 async def send_broadcast(
@@ -347,7 +347,7 @@ async def retry_broadcast(
 @router.post(
     "/{broadcast_id:int}/actions/recall",
     response_model=BroadcastResponse,
-    responses=error_responses(404, 409),
+    responses=error_responses(400, 404, 409),
 )
 @inject
 async def recall_broadcast(

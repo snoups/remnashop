@@ -1,7 +1,5 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
 from app.core.ports import BotCommandsSync, BotSignals
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -9,7 +7,7 @@ from app.modules.translations.dto import TranslationEntryDto, UpdateTranslationD
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
-    contains_placeable,
+    assert_plain_translation_value,
     serialize_to_fluent,
 )
 
@@ -30,18 +28,9 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
         self._bot_signals = bot_signals
 
     async def _execute(self, actor: Actor, data: UpdateTranslationDto) -> TranslationEntryDto:
-        async with self._uow:
-            if "\n" in data.value:
-                # Kept single-line even though serialize_to_fluent() now indents
-                # continuations: this editor reaches every key, including the bot
-                # command descriptions repushed below, which Telegram rejects
-                # unless they are one line. Dialog window bodies get their
-                # newlines through modules/dialogs' own text endpoint instead.
-                raise ValidationError(
-                    "Translation values cannot contain newlines",
-                    code=ErrorCode.TRANSLATION_HAS_NEWLINES,
-                )
+        assert_plain_translation_value(data.value)
 
+        async with self._uow:
             existing = await self._translation_repository.list_by_locale(data.locale)
             candidate = [
                 entry
@@ -61,15 +50,6 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
             )
             candidate_text = serialize_to_fluent(candidate)
             assert_fluent_compiles(data.locale, candidate_text)
-            # only the submitted value, not candidate_text: any seeded value
-            # with a placeable would otherwise block edits to every other key.
-            # contains_placeable parses a full "id = value" line, hence the
-            # throwaway id.
-            if contains_placeable(f"placeholder-id = {data.value}"):
-                raise ValidationError(
-                    "Fluent placeables are not supported in translation values",
-                    code=ErrorCode.TRANSLATION_HAS_PLACEABLES,
-                )
 
         async with self._uow:
             updated = await self._translation_repository.update_value(

@@ -36,14 +36,7 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
                     subscription.remnawave_user_id
                 )
             except RemnawaveNotFoundError:
-                await self._sync_use_case.system(
-                    SyncSubscriptionStatusDto(
-                        remnawave_user_id=subscription.remnawave_user_id,
-                        status=SubscriptionStatus.DELETED,
-                        source="reconcile",
-                    )
-                )
-                continue
+                panel_user = None
             except RemnawavePanelUnavailableError:
                 logger.warning(
                     "Reconcile sweep aborted: Remnawave panel circuit breaker is open; "
@@ -58,12 +51,25 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
                 )
                 continue
 
-            await self._sync_use_case.system(
-                SyncSubscriptionStatusDto(
+            if panel_user is None:
+                sync = SyncSubscriptionStatusDto(
+                    remnawave_user_id=subscription.remnawave_user_id,
+                    status=SubscriptionStatus.DELETED,
+                    source="reconcile",
+                )
+            else:
+                sync = SyncSubscriptionStatusDto(
                     remnawave_user_id=subscription.remnawave_user_id,
                     status=SubscriptionStatus(panel_user.status),
                     source="reconcile",
                     expire_at=panel_user.expire_at,
                     first_connected_at=panel_user.first_connected_at,
                 )
-            )
+            try:
+                await self._sync_use_case.system(sync)
+            except Exception:
+                # one bad row must not stop the sweep for every row after it
+                logger.exception(
+                    f"Reconcile sync failed for subscription '{subscription.id}'; "
+                    f"will retry next sweep"
+                )

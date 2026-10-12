@@ -2,11 +2,10 @@ import asyncio
 from pathlib import Path
 from typing import Final
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-
 from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
+from app.core.db.standalone import standalone_session
 from app.modules.settings import enable_password_login
 
 # Break-glass tool, run via `docker exec -it <api-container> python -m app.cli`.
@@ -34,12 +33,8 @@ async def _reset_owner_access() -> None:
         return
 
     config = AppConfig.get()
-    engine = create_async_engine(config.database.dsn)
-    try:
-        async with AsyncSession(engine) as session:
-            result = await reset_owner_access(session, config.crypt_key.get_secret_value())
-    finally:
-        await engine.dispose()
+    async with standalone_session(config) as session:
+        result = await reset_owner_access(session, config.crypt_key.get_secret_value())
 
     if result is None:
         print("No owner exists yet -- bootstrap one from the dashboard.")

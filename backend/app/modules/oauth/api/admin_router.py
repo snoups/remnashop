@@ -60,7 +60,7 @@ async def oauth_connect_authorize(
 @router.post(
     "/{provider}/connect/callback",
     response_model=OAuthIdentityResponse,
-    responses=error_responses(401, 409),
+    responses=error_responses(400, 409),
 )
 @inject
 async def oauth_connect_callback(
@@ -70,15 +70,19 @@ async def oauth_connect_callback(
     use_case: FromDishka[OAuthConnectCallbackUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> OAuthIdentityResponse:
-    identity = await use_case(
-        actor,
-        OAuthCallbackDto(
-            provider=provider,
-            code=payload.code,
-            state=payload.state,
-            client_ip=resolve_client_ip(request),
-        ),
-    )
+    # 401 here would make the dashboard refresh and replay a spent state, then sign out
+    try:
+        identity = await use_case(
+            actor,
+            OAuthCallbackDto(
+                provider=provider,
+                code=payload.code,
+                state=payload.state,
+                client_ip=resolve_client_ip(request),
+            ),
+        )
+    except AuthenticationError as error:
+        raise ValidationError(str(error), code=error.code) from error
     return OAuthIdentityResponse.model_validate(identity, from_attributes=True)
 
 

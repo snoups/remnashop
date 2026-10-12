@@ -33,7 +33,7 @@ class BlockUserUseCase(UseCase[int, UserDto]):
 
     async def _execute(self, actor: Actor, user_id: int) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_by_id(user_id)
+            target = await self._user_repository.get_live_for_update(user_id)
             if target is None:
                 raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
             if not PermissionPolicy.can_manage(actor, target):
@@ -43,7 +43,6 @@ class BlockUserUseCase(UseCase[int, UserDto]):
             if is_admin and not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
                 raise PermissionDeniedError
 
-        async with self._uow:
             if is_admin:
                 # same teardown as DemoteAdminUseCase: otherwise unblocking would
                 # hand back a working admin login, passkeys and live sessions

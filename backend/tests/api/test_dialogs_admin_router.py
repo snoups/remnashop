@@ -457,3 +457,23 @@ async def test_update_dialog_text_missing_key_is_404(
         headers=headers,
     )
     assert response.status_code == 404
+
+
+async def test_export_keeps_custom_window_name(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    create_resp = await client.post(
+        f"{API_V1}/dialogs/windows", headers=headers, json={"name": "Exported title"}
+    )
+    key = create_resp.json()["key"]
+
+    export_resp = await client.get(f"{API_V1}/dialogs/export", headers=headers)
+
+    assert export_resp.status_code == 200
+    windows = {window["key"]: window for window in export_resp.json()["windows"]}
+    assert windows[key]["name"] == "Exported title"

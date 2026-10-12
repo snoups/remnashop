@@ -190,9 +190,7 @@ class PlanRepository:
                 raise ConflictError(
                     f"Plan with name '{data.name}' already exists", code=ErrorCode.PLAN_NAME_TAKEN
                 ) from error
-            raise ConflictError(
-                "Plan could not be created due to a conflicting value", code=ErrorCode.PLAN_CONFLICT
-            ) from error
+            raise
 
         await self.session.refresh(row)
         return self._to_dto(row, [])
@@ -227,9 +225,7 @@ class PlanRepository:
                 raise ConflictError(
                     f"Plan name '{data.name}' already exists", code=ErrorCode.PLAN_NAME_TAKEN
                 ) from error
-            raise ConflictError(
-                "Plan could not be updated due to a conflicting value", code=ErrorCode.PLAN_CONFLICT
-            ) from error
+            raise
 
         await self.session.refresh(row)
         durations_by_plan = await self._load_durations([row.id])

@@ -3,7 +3,7 @@ import dataclasses
 from functools import partial
 from typing import Any, Final, Optional
 
-from app.core.actor import Actor
+from app.core.actor import Actor, actor_user_id
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.events import ActorEvent, BaseEvent, UserEvent
@@ -43,7 +43,7 @@ def _actor_fields(
         actor = event.user
     else:
         return None, None, None, None
-    actor_id = actor.id if actor.id > 0 else None
+    actor_id = actor_user_id(actor)
     return actor_id, actor.login, actor.name, actor.email
 
 

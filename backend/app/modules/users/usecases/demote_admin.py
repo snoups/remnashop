@@ -30,7 +30,7 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: DemoteAdminDto) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_by_id(data.user_id)
+            target = await self._user_repository.get_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:
@@ -38,7 +38,6 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
                     "Target is not a manageable admin", code=ErrorCode.ADMIN_NOT_MANAGEABLE
                 )
 
-        async with self._uow:
             # OAuth identities stay, like telegram_id and email: they're the
             # customer's identity, not admin credentials. Passkeys only open the
             # dashboard and would quietly return access on a later promotion.

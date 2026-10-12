@@ -16,7 +16,7 @@ router = APIRouter(tags=["transactions"])
     "/checkout",
     response_model=CheckoutResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(400, 403, 404),
+    responses=error_responses(400, 403, 404, 502),
 )
 @inject
 async def create_checkout(

@@ -4,10 +4,9 @@ from remnapy import RemnawaveSDK
 
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import CooldownError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.core.utils.time import datetime_now
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
@@ -42,16 +41,23 @@ class ReissueSubscriptionUseCase(UseCase[None, None, UserDto]):
                 )
             )
 
-            cooldown_hours = shop_settings.link_reset_cooldown_hours
-            if cooldown_hours > 0 and subscription.link_reset_at is not None:
-                available_at = subscription.link_reset_at + timedelta(hours=cooldown_hours)
-                if datetime_now() < available_at:
-                    raise CooldownError(available_at)
+            previous = await self._subscription_repository.claim_reset(
+                subscription.id,
+                "link_reset_at",
+                timedelta(hours=shop_settings.link_reset_cooldown_hours),
+            )
 
-        panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
-            subscription.remnawave_user_id
-        )
+        try:
+            panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
+                subscription.remnawave_user_id
+            )
+        except Exception:
+            async with self._uow:
+                await self._subscription_repository.set_reset_at(
+                    subscription.id, "link_reset_at", previous
+                )
+            raise
         async with self._uow:
-            await self._subscription_repository.mark_link_reset(
-                subscription.id, new_url=panel_user.subscription_url
+            await self._subscription_repository.set_url(
+                subscription.id, panel_user.subscription_url
             )

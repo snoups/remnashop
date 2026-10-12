@@ -46,3 +46,9 @@ def test_range_end_utc_leaves_aware_datetime_untouched() -> None:
 
 def test_range_end_utc_passes_through_none() -> None:
     assert range_end_utc(None) is None
+
+
+def test_range_end_utc_keeps_a_naive_time_of_day() -> None:
+    result = range_end_utc(datetime(2026, 8, 18, 15, 0))  # noqa: DTZ001
+
+    assert result == datetime(2026, 8, 18, 15, 0, tzinfo=timezone.utc)

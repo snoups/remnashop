@@ -14,9 +14,7 @@ from app.modules.dialogs.api.schemas import (
     DialogButtonInput,
     DialogCatalogResponse,
     DialogExportPayload,
-    DialogTextExportItem,
     DialogTextResponse,
-    DialogWindowExportItem,
     DialogWindowListResponse,
     DialogWindowResponse,
     ReplaceButtonsRequest,
@@ -218,26 +216,7 @@ async def export_dialogs(
     actor: Actor = Depends(require_admin),
 ) -> DialogExportPayload:
     export = await use_case(actor)
-    return DialogExportPayload(
-        version=export.version,
-        windows=[
-            DialogWindowExportItem(
-                key=window.key,
-                kind=window.kind,
-                banner_name=window.banner_name,
-                is_enabled=window.is_enabled,
-                position=window.position,
-                buttons=[
-                    DialogButtonInput.model_validate(button, from_attributes=True)
-                    for button in window.buttons
-                ],
-            )
-            for window in export.windows
-        ],
-        texts=[
-            DialogTextExportItem.model_validate(text, from_attributes=True) for text in export.texts
-        ],
-    )
+    return DialogExportPayload.model_validate(export, from_attributes=True)
 
 
 @router.post(

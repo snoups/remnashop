@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from loguru import logger
 from remnapy import RemnawaveSDK
 
@@ -8,7 +10,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SetSubscriptionEnabledDto, SubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription
+from app.modules.subscriptions.eligibility import get_live_subscription, lock_live_subscription
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -44,13 +46,34 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
             panel_status = (await users.disable_user(subscription.remnawave_user_id)).status
 
         action = "enable" if data.enabled else "disable"
-        async with self._uow:
-            updated = await self._lifecycle_service.sync_status(
-                subscription.id, SubscriptionStatus(panel_status)
-            )
-            await self._event_publisher.publish(
-                SubscriptionEditedEvent(user=actor, action=action, subscription_id=subscription.id)
-            )
+        try:
+            async with self._uow:
+                await lock_live_subscription(self._subscription_repository, subscription.id)
+                updated = await self._lifecycle_service.sync_status(
+                    subscription.id, SubscriptionStatus(panel_status)
+                )
+                await self._event_publisher.publish(
+                    SubscriptionEditedEvent(
+                        user=actor, action=action, subscription_id=subscription.id
+                    )
+                )
+        except Exception:
+            with suppress(Exception):
+                await self._undo_toggle(subscription, enabled=data.enabled)
+            raise
 
         logger.info(f"{actor.log} Set subscription '{subscription.id}' {action}d")
         return updated
+
+    async def _undo_toggle(self, subscription: SubscriptionDto, *, enabled: bool) -> None:
+        # a plan change keeps the panel user for its new row; only that row's state counts
+        async with self._uow:
+            owner = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+                subscription.remnawave_user_id
+            )
+        if owner is None or owner.status is SubscriptionStatus.DELETED:
+            return
+        if enabled and owner.status is SubscriptionStatus.DISABLED:
+            await self._remnawave_sdk.users.disable_user(owner.remnawave_user_id)
+        elif not enabled and owner.status is not SubscriptionStatus.DISABLED:
+            await self._remnawave_sdk.users.enable_user(owner.remnawave_user_id)

@@ -5,10 +5,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import update
 
+from app.core.actor import SyntheticActor
 from app.core.db.models.backup_run import BackupRun
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus, Locale, Role
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+from app.core.security.permissions import Permission
 from app.modules.backups.dto import (
     BackupRunDto,
     BackupSettingsDto,
@@ -101,6 +103,24 @@ async def test_create_backup_run_enqueues_task(
     run = await use_case(owner, BackupKind.DATABASE)
     assert run.status.name == "PENDING"
     assert dispatch.messages == [{"kind": "DATABASE", "run_id": run.id}]
+
+
+async def test_an_api_token_can_start_a_backup_run(
+    backup_repository: BackupRepository, uow: UnitOfWork
+) -> None:
+    token_actor = SyntheticActor(
+        id=0,
+        role=Role.ADMIN,
+        name="token",
+        is_privileged=True,
+        log="[token]",
+        permission_grants=[Permission.BACKUPS_RUN_CREATE.value],
+    )
+    use_case = CreateBackupRunUseCase(backup_repository, uow, RecordingDispatch())
+
+    run = await use_case(token_actor, BackupKind.DATABASE)
+
+    assert run.triggered_by is None
 
 
 async def test_create_backup_run_rejects_when_already_running(

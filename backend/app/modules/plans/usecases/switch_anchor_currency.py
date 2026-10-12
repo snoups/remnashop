@@ -15,12 +15,12 @@ from app.modules.plans.repository import PlanRepository
 from app.modules.plans.usecases.get_price_book import build_price_book
 from app.modules.pricing import (
     BASE_PRICE_PRECISION,
-    MIN_BASE_PRICE,
     NON_ANCHOR_CURRENCIES,
     RATE_PRECISION,
     AnchorSwitchedEvent,
     PricingRepository,
     UpdatePricingSettingsDto,
+    scale_base_price,
 )
 
 
@@ -74,9 +74,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
 
             plans = await self._plan_repository.list_all()
             plan_updates = {
-                duration.id: max(
-                    (duration.base_price * f).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE
-                )
+                duration.id: scale_base_price(duration.base_price, f)
                 for plan in plans
                 for duration in plan.durations
             }
@@ -84,10 +82,7 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
                 await self._plan_repository.set_duration_base_prices(plan_updates)
 
             addons = await self._addon_repository.list_all()
-            addon_updates = {
-                addon.id: max((addon.base_price * f).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE)
-                for addon in addons
-            }
+            addon_updates = {addon.id: scale_base_price(addon.base_price, f) for addon in addons}
             if addon_updates:
                 await self._addon_repository.set_base_prices(addon_updates)
 

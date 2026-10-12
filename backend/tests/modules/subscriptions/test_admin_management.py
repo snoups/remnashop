@@ -40,6 +40,7 @@ from app.modules.subscriptions.dto import (
     GrantSubscriptionDto,
     SetSubscriptionEnabledDto,
     SubscriptionDto,
+    UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
@@ -58,6 +59,7 @@ from app.modules.subscriptions.usecases import (
     ResetSubscriptionTrafficUseCase,
     SetSubscriptionEnabledUseCase,
     UpdateSubscriptionSquadsUseCase,
+    UpdateSubscriptionUseCase,
 )
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -387,6 +389,36 @@ async def test_enable_deleted_subscription_is_rejected(
 
     with pytest.raises(ValidationError):
         await use_case(OWNER, SetSubscriptionEnabledDto(subscription_id=granted.id, enabled=True))
+
+
+async def test_toggle_does_not_revive_a_row_deleted_mid_call(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9603, "toggle-mid")
+    real_disable_user = remnawave_sdk.users.disable_user
+
+    async def disable_then_delete(uuid: object) -> object:
+        result = await real_disable_user(uuid)
+        async with uow:
+            await subscription_repository.mark_deleted(granted.id)
+        return result
+
+    monkeypatch.setattr(remnawave_sdk.users, "disable_user", disable_then_delete)
+    use_case = _set_enabled(subscription_repository, remnawave_sdk, event_publisher, uow)
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(OWNER, SetSubscriptionEnabledDto(subscription_id=granted.id, enabled=False))
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    row = await subscription_repository.get_by_id(granted.id)
+    assert row.status is SubscriptionStatus.DELETED
 
 
 async def test_reset_traffic_zeroes_used_bytes(
@@ -765,3 +797,50 @@ async def test_squads_rollback_follows_the_plan_change_that_superseded_the_row(
     assert successor_id != 0
     # the panel user now belongs to the successor: its squads win, not the deleted row's
     assert sent[-1].active_internal_squads == [successor_squad]
+
+
+async def test_limits_are_restored_in_the_panel_when_deleted_mid_edit(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9806, "lim-del")
+    devices_before = remnawave_store[granted.remnawave_user_id]["hwidDeviceLimit"]
+    real_update_user = remnawave_sdk.users.update_user
+    calls = 0
+
+    async def update_then_delete(request: object) -> object:
+        nonlocal calls
+        calls += 1
+        result = await real_update_user(request)
+        if calls == 1:
+            async with uow:
+                await subscription_repository.mark_deleted(granted.id)
+        return result
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_delete)
+    use_case = UpdateSubscriptionUseCase(
+        subscription_repository,
+        remnawave_sdk,
+        event_publisher,
+        uow,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            UpdateSubscriptionDto(subscription_id=granted.id, device_limit=devices_before + 5),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_DELETED
+    assert calls == 2
+    assert remnawave_store[granted.remnawave_user_id]["hwidDeviceLimit"] == devices_before
+    row = await subscription_repository.get_by_id(granted.id)
+    assert row.device_limit != devices_before + 5

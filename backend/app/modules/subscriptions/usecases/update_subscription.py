@@ -14,7 +14,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription
+from app.modules.subscriptions.eligibility import get_live_subscription, lock_live_subscription
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -75,6 +75,7 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
 
         try:
             async with self._uow:
+                await lock_live_subscription(self._subscription_repository, data.subscription_id)
                 subscription = await self._subscription_repository.update(data)
                 if panel_status is not None:
                     subscription = await self._lifecycle_service.sync_status(
@@ -91,8 +92,17 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
         except Exception:
             if touches_panel:
                 with suppress(Exception):
-                    await self._remnawave_sdk.users.update_user(restore(old))
+                    owner = await self._panel_owner(old)
+                    await self._remnawave_sdk.users.update_user(restore(owner))
             raise
 
         logger.info(f"{actor.log} Updated subscription '{subscription.id}'")
         return subscription
+
+    async def _panel_owner(self, old: SubscriptionDto) -> SubscriptionDto:
+        # a plan change keeps the panel user for its new row; that row's limits win
+        async with self._uow:
+            owner = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+                old.remnawave_user_id
+            )
+        return owner or old

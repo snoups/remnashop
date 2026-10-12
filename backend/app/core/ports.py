@@ -22,7 +22,9 @@ class OutboxEntryDispatch(Protocol):
 
 @runtime_checkable
 class SessionRevoker(Protocol):
-    async def revoke_all_by_user(self, user_id: int) -> None: ...
+    async def revoke_all_by_user(
+        self, user_id: int, *, keep_session_id: Optional[int] = None
+    ) -> None: ...
 
 
 @runtime_checkable

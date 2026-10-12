@@ -46,7 +46,8 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
 
     async def _execute(self, actor: Actor, data: int) -> TransactionWithUserDto:
         async with self._uow:
-            order = await self._transaction_repository.get_by_id(data)
+            # two admins clicking at once: the second waits here and sees the first's result
+            order = await self._transaction_repository.get_by_id_for_update(data)
             user = await self._user_repository.get_by_id(order.user_id)
             unpaid = order.status in _UNPAID_FINAL
             unfulfilled = order.status is TransactionStatus.PAID and order.fulfilled_at is None

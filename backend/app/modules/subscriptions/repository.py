@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Final, Optional
+from typing import Final, Literal, Optional
 
 from sqlalchemy import ColumnElement, Numeric, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from app.core.db.models.subscription import Subscription
 from app.core.db.partial_update import apply_partial_update
 from app.core.enums import AddOnType, SubscriptionStatus
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import CooldownError, NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import OWNED_STATUSES, SubscriptionState
 from app.modules.subscriptions.dto import (
@@ -28,6 +28,8 @@ from app.modules.subscriptions.dto import (
 # modules/plans/repository.py are 8221938/8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
 RECONCILE_EXPIRED_WINDOW: Final[timedelta] = timedelta(days=30)
+
+ResetColumn = Literal["device_single_reset_at", "device_all_reset_at", "link_reset_at"]
 
 
 class SubscriptionRepository:
@@ -416,20 +418,34 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id])
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
-    async def mark_device_single_reset(self, subscription_id: int) -> None:
-        row = await self._get_or_raise(subscription_id)
-        row.device_single_reset_at = datetime_now()
+    async def claim_reset(
+        self, subscription_id: int, column: ResetColumn, cooldown: timedelta
+    ) -> Optional[datetime]:
+        # stamped before the panel call, under the row lock: a concurrent tap
+        # waits here and then sees the new stamp. Returns the old one for a refund.
+        row = await self.session.scalar(
+            select(Subscription)
+            .where(Subscription.id == subscription_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if row is None:
+            raise NotFoundError(
+                f"Subscription '{subscription_id}' not found", code=ErrorCode.SUBSCRIPTION_NOT_FOUND
+            )
+        previous: Optional[datetime] = getattr(row, column)
+        now = datetime_now()
+        if previous is not None and now < previous + cooldown:
+            raise CooldownError(previous + cooldown)
+        setattr(row, column, now)
         await self.session.flush()
+        return previous
 
-    async def mark_device_all_reset(self, subscription_id: int) -> None:
+    async def set_reset_at(
+        self, subscription_id: int, column: ResetColumn, value: Optional[datetime]
+    ) -> None:
         row = await self._get_or_raise(subscription_id)
-        row.device_all_reset_at = datetime_now()
-        await self.session.flush()
-
-    async def mark_link_reset(self, subscription_id: int, *, new_url: str) -> None:
-        row = await self._get_or_raise(subscription_id)
-        row.url = new_url
-        row.link_reset_at = datetime_now()
+        setattr(row, column, value)
         await self.session.flush()
 
     async def set_url(self, subscription_id: int, url: str) -> SubscriptionDto:

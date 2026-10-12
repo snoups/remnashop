@@ -105,6 +105,20 @@ def test_panel_outage_hides_internal_breaker_state(client: TestClient) -> None:
     }
 
 
+def test_unhandled_exception_hides_its_message() -> None:
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/crash")
+    async def crash() -> None:
+        raise RuntimeError("secret internals")
+
+    response = TestClient(app, raise_server_exceptions=False).get("/crash")
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Internal server error", "code": "INTERNAL_ERROR"}
+
+
 def test_unrouted_path_and_request_validation_get_codes(client: TestClient) -> None:
     unrouted = client.get("/nowhere")
     invalid = client.get("/typed/abc")
@@ -158,6 +172,18 @@ def test_every_operation_documents_422_and_429(config: AppConfig) -> None:
     ]
 
     assert missing == []
+
+
+def test_no_route_overrides_the_global_422_schema(config: AppConfig) -> None:
+    schema = get_app(config).openapi()
+    overridden = [
+        f"{method.upper()} {path}"
+        for path, path_item in schema["paths"].items()
+        for method, operation in path_item.items()
+        if "RequestInvalidResponse" not in str(operation["responses"]["422"])
+    ]
+
+    assert overridden == []
 
 
 def test_every_error_code_is_used() -> None:

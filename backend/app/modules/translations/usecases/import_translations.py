@@ -11,6 +11,11 @@ from app.modules.translations.dto import (
     TranslationTextExportDto,
 )
 from app.modules.translations.repository import TranslationRepository
+from app.modules.translations.serializer import (
+    assert_fluent_compiles,
+    assert_plain_translation_value,
+    serialize_to_fluent,
+)
 from app.modules.translations.usecases.export_translations import EXPORT_VERSION
 
 
@@ -35,7 +40,7 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
         if data.version != EXPORT_VERSION:
             raise ValidationError(
                 f"Unsupported export version {data.version}, expected {EXPORT_VERSION}",
-                code=ErrorCode.DIALOG_EXPORT_VERSION_UNSUPPORTED,
+                code=ErrorCode.TRANSLATION_EXPORT_VERSION_UNSUPPORTED,
             )
 
         applied: list[TranslationTextExportDto] = []
@@ -48,6 +53,7 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
                 if text.locale not in active:
                     skipped += 1
                     continue
+                assert_plain_translation_value(text.value)
                 try:
                     await self._translation_repository.update_value(
                         text.locale, text.message_id, text.attribute_id, text.value
@@ -56,6 +62,10 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
                     skipped += 1
                     continue
                 applied.append(text)
+            # raising here rolls the whole import back, as a hand edit would be refused
+            for locale in {text.locale for text in applied}:
+                entries = await self._translation_repository.list_by_locale(locale)
+                assert_fluent_compiles(locale, serialize_to_fluent(entries))
 
         for text in applied:
             await self._bot_signals.translation_changed(

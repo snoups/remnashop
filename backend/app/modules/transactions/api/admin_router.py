@@ -9,6 +9,7 @@ from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.transactions.api.schemas import (
     CreateTestPaymentRequest,
     PaymentWaitlistCountResponse,
@@ -68,8 +69,8 @@ async def list_transactions(
             status=status_filter,
             gateway_type=gateway_type,
             purchase_type=purchase_type,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
             search=search,
             user_id=user_id,
             page=page,
@@ -99,8 +100,8 @@ async def get_transaction_summary(
             status=status_filter,
             gateway_type=gateway_type,
             purchase_type=purchase_type,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
             search=search,
             user_id=user_id,
         ),

@@ -6,7 +6,12 @@ from app.core.constants import ONE_CENT
 from app.core.enums import Currency, RoundingMode
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
+from app.modules.pricing.dto import (
+    BASE_PRICE_PRECISION,
+    MIN_BASE_PRICE,
+    CurrencyRateDto,
+    CurrencyRateTable,
+)
 
 _HUNDRED: Final[Decimal] = Decimal("100")
 
@@ -30,6 +35,10 @@ def _apply_charm(amount: Decimal, mode: RoundingMode, charm_ending: int) -> Deci
     if candidate < amount:
         candidate = candidate + period
     return candidate
+
+
+def scale_base_price(price: Decimal, factor: Decimal) -> Decimal:
+    return max((price * factor).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE)
 
 
 def round_amount(amount: Decimal, rate: CurrencyRateDto, *, charm: bool = True) -> Decimal:

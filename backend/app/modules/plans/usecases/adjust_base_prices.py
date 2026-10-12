@@ -13,10 +13,9 @@ from app.modules.plans.dto import AdjustBasePricesDto, PriceBookDto
 from app.modules.plans.repository import PlanRepository
 from app.modules.plans.usecases.get_price_book import build_price_book
 from app.modules.pricing import (
-    BASE_PRICE_PRECISION,
-    MIN_BASE_PRICE,
     BasePricesAdjustedEvent,
     PricingRepository,
+    scale_base_price,
 )
 
 
@@ -65,9 +64,7 @@ class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
             selected_ids = set(data.plan_duration_ids)
             durations = [duration for duration in durations if duration.id in selected_ids]
         return {
-            duration.id: max(
-                (duration.base_price * data.factor).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE
-            )
+            duration.id: scale_base_price(duration.base_price, data.factor)
             for duration in durations
         }
 
@@ -76,9 +73,4 @@ class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
         if data.scope is PriceAdjustScope.SELECTED:
             selected_ids = set(data.addon_ids)
             addons = [addon for addon in addons if addon.id in selected_ids]
-        return {
-            addon.id: max(
-                (addon.base_price * data.factor).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE
-            )
-            for addon in addons
-        }
+        return {addon.id: scale_base_price(addon.base_price, data.factor) for addon in addons}

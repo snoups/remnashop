@@ -109,3 +109,15 @@ async def get_live_subscription(
             f"Subscription '{subscription_id}' is deleted", code=ErrorCode.SUBSCRIPTION_DELETED
         )
     return subscription
+
+
+async def lock_live_subscription(
+    repository: SubscriptionRepository, subscription_id: int
+) -> SubscriptionDto:
+    # re-read under the row lock after a panel call: the row may be gone by now
+    subscription = await repository.get_by_id_for_update(subscription_id)
+    if subscription.status is SubscriptionStatus.DELETED:
+        raise ValidationError(
+            f"Subscription '{subscription_id}' was deleted", code=ErrorCode.SUBSCRIPTION_DELETED
+        )
+    return subscription

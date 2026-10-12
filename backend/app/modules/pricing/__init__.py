@@ -18,6 +18,7 @@ from app.modules.pricing.resolver import (
     price_for,
     resolve_price,
     round_amount,
+    scale_base_price,
 )
 from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
 
@@ -42,4 +43,5 @@ __all__ = [
     "price_for",
     "resolve_price",
     "round_amount",
+    "scale_base_price",
 ]

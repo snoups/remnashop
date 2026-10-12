@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Final, Optional, cast
 
-from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, update
+from sqlalchemy import ColumnElement, CursorResult, delete, or_, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user_session import UserSession
@@ -140,11 +140,17 @@ class SessionRepository:
         await self.session.execute(stmt)
         await self.session.flush()
 
-    async def revoke_all_by_user(self, user_id: int) -> None:
+    async def revoke_all_by_user(
+        self, user_id: int, *, keep_session_id: Optional[int] = None
+    ) -> None:
         now = datetime_now()
         stmt = (
             update(UserSession)
-            .where(UserSession.user_id == user_id, *self._active_clause())
+            .where(
+                UserSession.user_id == user_id,
+                UserSession.id != keep_session_id if keep_session_id is not None else true(),
+                *self._active_clause(),
+            )
             .values(revoked_at=now)
         )
         await self.session.execute(stmt)

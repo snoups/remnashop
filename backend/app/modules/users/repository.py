@@ -171,6 +171,16 @@ class UserRepository:
         )
         return self._convert_to_dto(db_user) if db_user else None
 
+    async def get_live_for_update(self, user_id: int) -> Optional[UserDto]:
+        # an anonymized (deleted) account is gone as far as any admin action goes
+        db_user = await self.session.scalar(
+            select(User)
+            .where(User.id == user_id, User.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return self._convert_to_dto(db_user) if db_user else None
+
     async def get_many_by_ids(self, ids: list[int]) -> list[UserDto]:
         users: list[UserDto] = []
         for start in range(0, len(ids), MAX_SQL_IN_PARAMS):

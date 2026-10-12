@@ -3,9 +3,9 @@ from typing import Final, Optional
 
 from fluent_compiler.bundle import FluentBundle
 from fluentogram import FluentTranslator, TranslatorHub, TranslatorRunner
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.core.config import AppConfig
+from app.core.db.standalone import standalone_session
 from app.core.enums import Locale
 from app.modules.translations import TranslationRepository
 from app.modules.users import UserDto
@@ -33,20 +33,15 @@ def build_translator_hub(
 
 
 async def read_translator_hub(config: AppConfig) -> TranslatorHub:
-    # standalone engine, like read_bot_settings(): this runs before the
-    # dishka container exists
-    engine = create_async_engine(config.database.dsn)
-    try:
-        async with AsyncSession(engine) as session:
-            translation_repository = TranslationRepository(session)
-            active_locales = await translation_repository.list_active_locales()
-            translations_by_locale = await translation_repository.get_fluent_text_by_locale(
-                active_locales
-            )
-            default_locale = await translation_repository.get_default_locale()
-            return build_translator_hub(active_locales, translations_by_locale, default_locale)
-    finally:
-        await engine.dispose()
+    # runs before the dishka container exists
+    async with standalone_session(config) as session:
+        translation_repository = TranslationRepository(session)
+        active_locales = await translation_repository.list_active_locales()
+        translations_by_locale = await translation_repository.get_fluent_text_by_locale(
+            active_locales
+        )
+        default_locale = await translation_repository.get_default_locale()
+        return build_translator_hub(active_locales, translations_by_locale, default_locale)
 
 
 def get_translator(hub: TranslatorHub, user: UserDto) -> TranslatorRunner:

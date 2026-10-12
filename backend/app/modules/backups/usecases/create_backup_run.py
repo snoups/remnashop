@@ -2,7 +2,7 @@ from functools import partial
 
 from loguru import logger
 
-from app.core.actor import Actor
+from app.core.actor import Actor, actor_user_id
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind
 from app.core.error_codes import ErrorCode
@@ -41,7 +41,7 @@ class CreateBackupRunUseCase(UseCase[BackupKind, BackupRunDto]):
 
         async with self._uow:
             run = await self._backup_repository.create_run(
-                CreateBackupRunDto(kind=data, triggered_by=actor.id)
+                CreateBackupRunDto(kind=data, triggered_by=actor_user_id(actor))
             )
             await self._uow.after_commit(
                 partial(self._run_backup_dispatch.kiq, kind=data.value, run_id=run.id)

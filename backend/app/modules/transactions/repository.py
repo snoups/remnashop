@@ -153,6 +153,16 @@ class TransactionRepository:
             )
         return self._to_dto(row)
 
+    async def get_by_id_for_update(self, order_id: int) -> TransactionDto:
+        row = await self.session.get(
+            Transaction, order_id, with_for_update=True, populate_existing=True
+        )
+        if row is None:
+            raise NotFoundError(
+                f"Transaction '{order_id}' not found", code=ErrorCode.PAYMENT_ORDER_NOT_FOUND
+            )
+        return self._to_dto(row)
+
     async def get_by_idempotency_key(
         self, key: str, *, gateway_type: Optional[PaymentGatewayType] = None
     ) -> Optional[TransactionDto]:

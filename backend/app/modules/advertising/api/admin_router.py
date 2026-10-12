@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
-from app.core.actor import Actor
+from app.core.actor import Actor, actor_user_id
 from app.core.enums import AdLinkChannel, Currency
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
+from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.advertising.api.schemas import (
     AdLinkPageResponse,
     AdLinkResponse,
@@ -93,7 +94,7 @@ async def create_ad_link(
             allow_bot=payload.allow_bot,
             allow_webcabinet=payload.allow_webcabinet,
             note=payload.note,
-            created_by=actor.id if actor.id > 0 else None,
+            created_by=actor_user_id(actor),
         ),
     )
     return AdLinkResponse.model_validate(ad_link, from_attributes=True)
@@ -167,8 +168,8 @@ async def get_ad_link_stats(
         GetAdLinkStatsDto(
             ad_link_id=ad_link_id,
             report_currency=report_currency,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
         ),
     )
     return AdLinkStatsResponse.model_validate(stats, from_attributes=True)
@@ -219,8 +220,8 @@ async def get_advertising_summary(
         GetAdvertisingSummaryDto(
             is_active=is_active,
             report_currency=report_currency,
-            created_from=created_from,
-            created_to=created_to,
+            created_from=range_start_utc(created_from),
+            created_to=range_end_utc(created_to),
         ),
     )
     return AdvertisingSummaryResponse.model_validate(summary, from_attributes=True)
