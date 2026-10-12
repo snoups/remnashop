@@ -284,6 +284,20 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
 
+    async def get_by_remnawave_user_id(self, remnawave_user_id: int) -> Optional[SubscriptionDto]:
+        result = await self.session.execute(
+            select(Subscription)
+            .where(Subscription.remnawave_user_id == remnawave_user_id)
+            .order_by(Subscription.status == SubscriptionStatus.DELETED, Subscription.id.desc())
+            .limit(1)
+            .execution_options(populate_existing=True)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return None
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
+
     async def get_by_remnawave_user_id_for_update(
         self, remnawave_user_id: int
     ) -> Optional[SubscriptionDto]:

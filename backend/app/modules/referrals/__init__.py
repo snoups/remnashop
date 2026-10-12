@@ -9,6 +9,7 @@ from app.modules.referrals.dto import (
     RequestPointsWithdrawalDto,
     UpdateReferralSettingsDto,
 )
+from app.modules.referrals.events import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases import (
     AdjustUserPointsUseCase,
@@ -26,11 +27,13 @@ __all__ = [
     "GetOwnReferralStatsUseCase",
     "GetReferralSettingsUseCase",
     "GetUserReferralStatsUseCase",
+    "InviteeRewardIssuedEvent",
     "ListReferralsDto",
     "ListReferralsUseCase",
     "ReferralDto",
     "ReferralRepository",
     "ReferralRewardDto",
+    "ReferralRewardIssuedEvent",
     "ReferralSettingsDto",
     "ReferralStatsDto",
     "RequestPointsWithdrawalDto",

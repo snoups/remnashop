@@ -56,6 +56,31 @@ class SubscriptionStatusSyncedEvent(SystemEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class SubscriptionExpiringEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+    hours: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionExpiredEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionTrafficLimitedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionTrafficThresholdEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class SubscriptionEditedEvent(UserEvent):
     """An admin's manual change to a subscription, outside any purchase."""
 

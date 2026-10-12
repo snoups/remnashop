@@ -12,6 +12,7 @@ from app.modules.banners import get_banners_providers
 from app.modules.blacklist import get_blacklist_providers
 from app.modules.broadcasts import get_broadcasts_providers
 from app.modules.cabinet_auth import get_cabinet_auth_providers
+from app.modules.customer_notifications import get_customer_notifications_providers
 from app.modules.dialogs import get_dialogs_providers
 from app.modules.email import get_email_providers
 from app.modules.emoji_packs import get_emoji_packs_providers
@@ -50,6 +51,7 @@ def get_module_providers() -> list[Provider]:
         *get_access_providers(),
         *get_account_merge_providers(),
         *get_loyalty_providers(),
+        *get_customer_notifications_providers(),
         *get_notifications_providers(),
         *get_backups_providers(),
         *get_subscriptions_providers(),

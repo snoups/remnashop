@@ -12,11 +12,11 @@ from taskiq import TaskiqEvents, TaskiqState
 from app.core.config import AppConfig
 from app.core.event_bus import EventBus
 from app.core.logger import setup_logger
-from app.core.metrics import register_db_pool_metrics
+from app.core.metrics import WORKER_METRICS_REGISTRY, register_db_pool_metrics
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.worker.broker import RETRY_SCHEDULE_PREFIX, broker
 from app.worker.container import create_worker_container
-from app.worker.metrics import WORKER_METRICS_REGISTRY, poll_worker_gauges
+from app.worker.metrics import poll_worker_gauges
 from app.worker.subscribers import register_all_subscribers
 
 

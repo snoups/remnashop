@@ -5,6 +5,7 @@ from loguru import logger
 from prometheus_client import Gauge
 from redis.asyncio import Redis
 
+from app.core.metrics import WORKER_METRICS_REGISTRY
 from app.core.utils.lock import cron_lock
 from app.core.utils.time import datetime_now
 from app.modules.event_log.outbox_repository import OutboxLagStats
@@ -14,7 +15,6 @@ from app.modules.event_log.usecases import (
     SweepOutboxUseCase,
 )
 from app.worker.broker import broker
-from app.worker.metrics import WORKER_METRICS_REGISTRY
 
 _SWEEP_LOCK_TTL_S: Final[int] = 55
 

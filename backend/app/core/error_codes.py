@@ -110,6 +110,7 @@ class ErrorCode(UpperStrEnum):
     DEEPLINK_EXPIRED = auto()
     EMAIL_CODE_INVALID = auto()
     EMAIL_NOT_CONFIGURED = auto()
+    EMAIL_DISPOSABLE = auto()
     EMAIL_SEND_FAILED = auto()
     EMAIL_TAKEN = auto()
     EMOJI_PACK_FETCH_FAILED = auto()

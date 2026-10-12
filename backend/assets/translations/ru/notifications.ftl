@@ -40,3 +40,64 @@ ntf-broadcast-failed = Рассылка #{ $broadcast_id } остановлен�
     .title = Ошибка рассылки
 ntf-suppressed = Не отправлено похожих уведомлений с прошлого раза: { $count }.
 ntf-sources-merged = Уведомления из нескольких источников объединены; показан последний источник.
+ntf-customer-open-cabinet = Открыть кабинет
+ntf-customer-subscription-purchased = Подписка активна. Данные для подключения — в кабинете и в боте.
+    .title = Подписка активирована
+ntf-customer-subscription-renewed = Подписка продлена на { $duration_days ->
+        [one] { $duration_days } день
+        [few] { $duration_days } дня
+       *[other] { $duration_days } дней
+    }.
+    .title = Подписка продлена
+ntf-customer-subscription-changed = Тариф изменён. Данные для подключения — в кабинете и в боте.
+    .title = Тариф изменён
+ntf-customer-subscription-add-on-granted = К подписке добавлено дополнение.
+    .title = Дополнение активировано
+ntf-customer-subscription-granted = Вам выдана подписка на { $duration_days ->
+        [one] { $duration_days } день
+        [few] { $duration_days } дня
+       *[other] { $duration_days } дней
+    }.
+    .title = Подписка выдана
+ntf-customer-transaction-refunded = Платёж на { $amount } { $currency } возвращён.
+    .title = Платёж возвращён
+ntf-customer-transaction-partially-refunded = Возвращено { $amount } { $currency } от суммы платежа.
+    .title = Частичный возврат
+ntf-customer-subscription-expiring = Подписка закончится через { $hours } ч.
+    .title = Подписка скоро закончится
+ntf-customer-subscription-expired = Подписка закончилась.
+    .title = Подписка закончилась
+ntf-customer-subscription-traffic-limited = Лимит трафика исчерпан.
+    .title = Трафик закончился
+ntf-customer-subscription-traffic-threshold = Трафик подходит к концу.
+    .title = Трафик на исходе
+ntf-customer-cabinet-new-device-sign-in = Новый вход в кабинет с { $ip } ({ $browser }). Если это были не вы — выйдите со всех устройств в кабинете и напишите в поддержку.
+    .title = Новый вход
+ntf-customer-referral-reward-issued = Вам начислено { $amount } { $reward_type ->
+        [EXTRA_DAYS] { $amount ->
+            [one] бонусный день
+            [few] бонусных дня
+           *[other] бонусных дней
+        }
+        [POINTS] { $amount ->
+            [one] балл
+            [few] балла
+           *[other] баллов
+        }
+       *[other] вознаграждение
+    } за приглашённого друга.
+    .title = Награда за приглашение
+ntf-customer-invitee-reward-issued = Вам начислено { $amount } { $reward_type ->
+        [EXTRA_DAYS] { $amount ->
+            [one] бонусный день
+            [few] бонусных дня
+           *[other] бонусных дней
+        }
+        [POINTS] { $amount ->
+            [one] балл
+            [few] балла
+           *[other] баллов
+        }
+       *[other] вознаграждение
+    } за регистрацию по приглашению.
+    .title = Бонус за приглашение

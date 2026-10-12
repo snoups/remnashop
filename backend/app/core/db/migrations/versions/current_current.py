@@ -461,6 +461,13 @@ def upgrade() -> None:
         sa.Column("google_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("yandex_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("block_disposable_emails", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "extra_disposable_domains",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="[]",
+            nullable=False,
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

@@ -2,13 +2,13 @@ import asyncio
 from typing import Any, Final
 
 from loguru import logger
-from prometheus_client import CollectorRegistry, Gauge, Histogram
+from prometheus_client import Gauge, Histogram
 from redis.asyncio import Redis
 from taskiq import TaskiqMiddleware
 from taskiq.message import TaskiqMessage
 from taskiq.result import TaskiqResult
 
-WORKER_METRICS_REGISTRY: Final[CollectorRegistry] = CollectorRegistry()
+from app.core.metrics import WORKER_METRICS_REGISTRY
 
 QUEUE_DEPTH: Final[Gauge] = Gauge(
     "remnashop_taskiq_queue_depth",

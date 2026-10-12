@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import ipaddress
+import re
 import socket
 from typing import Final, Optional, Union
 from urllib.parse import urlsplit
@@ -89,6 +90,45 @@ def ip_rate_bucket(ip: str) -> str:
             return str(address.ipv4_mapped)
         return str(ipaddress.ip_network(f"{address}/64", strict=False))
     return str(address)
+
+
+def device_bucket(ip: str) -> str:
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
+    prefix = 48 if isinstance(address, ipaddress.IPv6Address) else 16
+    return str(ipaddress.ip_network(f"{address}/{prefix}", strict=False))
+
+
+_BROWSERS: Final[tuple[tuple[str, str], ...]] = (
+    ("Telegram", r"Telegram"),
+    ("Edge", r"Edg(?:e|A|iOS)?/"),
+    ("Opera", r"OPR/"),
+    ("Firefox", r"Firefox/|FxiOS/"),
+    ("Chrome", r"Chrome/|CriOS/"),
+    ("Safari", r"Version/[\d.]+.*Safari/"),
+)
+_SYSTEMS: Final[tuple[tuple[str, str], ...]] = (
+    ("iOS", r"iPhone|iPad"),
+    ("Android", r"Android"),
+    ("Windows", r"Windows"),
+    ("macOS", r"Macintosh|Mac OS X"),
+    ("Linux", r"Linux|X11"),
+)
+_UNKNOWN_BROWSER: Final[str] = "Unknown browser"
+
+
+def describe_user_agent(user_agent: Optional[str]) -> str:
+    """Browser family and OS without versions, so an update keeps the same device."""
+    agent = user_agent or ""
+    browser = next((name for name, pattern in _BROWSERS if re.search(pattern, agent)), None)
+    if browser is None:
+        return _UNKNOWN_BROWSER
+    system = next((name for name, pattern in _SYSTEMS if re.search(pattern, agent)), None)
+    return browser if system is None else f"{browser} on {system}"
 
 
 async def read_bounded_body(request: Request, limit: int) -> bytes:

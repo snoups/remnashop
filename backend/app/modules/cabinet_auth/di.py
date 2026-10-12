@@ -2,6 +2,7 @@ from dishka import Provider, Scope, provide, provide_all
 from redis.asyncio import Redis
 
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
+from app.modules.cabinet_auth.devices import KnownDevices
 from app.modules.cabinet_auth.email_codes import EmailCodeStore
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.cabinet_auth.usecases import (
@@ -38,6 +39,10 @@ class CabinetAuthProvider(Provider):
     @provide
     def get_deeplink_store(self, redis: Redis) -> DeeplinkStore:
         return DeeplinkStore(redis)
+
+    @provide
+    def get_known_devices(self, redis: Redis) -> KnownDevices:
+        return KnownDevices(redis)
 
     @provide
     def get_email_code_store(self, redis: Redis) -> EmailCodeStore:

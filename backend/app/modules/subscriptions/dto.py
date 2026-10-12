@@ -261,6 +261,13 @@ class SyncSubscriptionStatusDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PublishLifecycleEventDto:
+    remnawave_user_id: int
+    webhook_event: str
+    hours: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class CatalogPriceDto:
     currency: Currency
     price: Decimal

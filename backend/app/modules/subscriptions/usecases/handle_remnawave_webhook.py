@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Final
 
+from loguru import logger
 from redis.asyncio import Redis
 from remnapy.controllers.webhooks import WebhookHeadersDto, WebhookUtility
 from remnapy.models.webhook import UserDto as WebhookUserDto
@@ -13,7 +14,14 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ValidationError
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.dto import RemnawaveWebhookDto, SyncSubscriptionStatusDto
+from app.modules.subscriptions.dto import (
+    PublishLifecycleEventDto,
+    RemnawaveWebhookDto,
+    SyncSubscriptionStatusDto,
+)
+from app.modules.subscriptions.usecases.publish_lifecycle_event import (
+    PublishLifecycleEventUseCase,
+)
 from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
@@ -38,10 +46,12 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
     def __init__(
         self,
         sync_subscription_status: SyncSubscriptionStatusUseCase,
+        publish_lifecycle_event: PublishLifecycleEventUseCase,
         config: AppConfig,
         redis: Redis,
     ) -> None:
         self._sync_subscription_status = sync_subscription_status
+        self._publish_lifecycle_event = publish_lifecycle_event
         self._config = config
         self._redis = redis
 
@@ -95,3 +105,15 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
             # while nothing was applied.
             await self._redis.delete(replay_key)
             raise
+
+        # a notification must never undo or fail the status sync
+        try:
+            await self._publish_lifecycle_event.system(
+                PublishLifecycleEventDto(
+                    remnawave_user_id=payload.data.id,
+                    webhook_event=payload.event,
+                    hours=payload.meta.expiration if payload.meta else None,
+                )
+            )
+        except Exception:
+            logger.exception(f"Failed to publish lifecycle event '{payload.event}'")

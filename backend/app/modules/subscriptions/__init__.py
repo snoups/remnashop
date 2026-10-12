@@ -22,11 +22,16 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.eligibility import PurchaseEligibility, get_owned_target
 from app.modules.subscriptions.events import (
+    SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
+    SubscriptionExpiredEvent,
+    SubscriptionExpiringEvent,
     SubscriptionGrantedEvent,
     SubscriptionPlanChangedByAdminEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
+    SubscriptionTrafficLimitedEvent,
+    SubscriptionTrafficThresholdEvent,
 )
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -100,14 +105,19 @@ __all__ = [
     "ResetSubscriptionTrafficUseCase",
     "SetSubscriptionEnabledDto",
     "SetSubscriptionEnabledUseCase",
+    "SubscriptionAddOnGrantedEvent",
     "SubscriptionChangedEvent",
     "SubscriptionDto",
+    "SubscriptionExpiredEvent",
+    "SubscriptionExpiringEvent",
     "SubscriptionGrantedEvent",
     "SubscriptionPlanChangedByAdminEvent",
     "SubscriptionPurchasedEvent",
     "SubscriptionRenewedEvent",
     "SubscriptionRepository",
     "SubscriptionStatsRepository",
+    "SubscriptionTrafficLimitedEvent",
+    "SubscriptionTrafficThresholdEvent",
     "SyncSubscriptionStatusDto",
     "SyncSubscriptionStatusUseCase",
     "UpdateSubscriptionDto",

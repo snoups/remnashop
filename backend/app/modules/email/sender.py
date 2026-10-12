@@ -1,5 +1,6 @@
 from email.message import EmailMessage
 from email.utils import formataddr
+from typing import Final, Optional
 
 import aiosmtplib
 
@@ -7,12 +8,27 @@ from app.core.enums import SmtpSecurity
 from app.modules.email.dto import EmailMessageDto
 from app.modules.settings import EmailSettingsDto
 
+# a dropped established session (SMTPServerDisconnected, also an OSError) says
+# nothing about the server being unreachable
+_CONNECT_ERRORS: Final[tuple[type[Exception], ...]] = (
+    aiosmtplib.SMTPConnectError,
+    aiosmtplib.SMTPConnectTimeoutError,
+)
 
-class EmailSendError(Exception): ...
+
+class EmailSendError(Exception):
+    def __init__(self, message: str, *, connection: bool = False) -> None:
+        super().__init__(message)
+        self.connection = connection
 
 
 class SmtpSender:
-    async def send(self, settings: EmailSettingsDto, message: EmailMessageDto) -> None:
+    async def send(
+        self,
+        settings: EmailSettingsDto,
+        message: EmailMessageDto,
+        logo: Optional[tuple[bytes, str]] = None,
+    ) -> None:
         if settings.host is None or settings.from_address is None:
             raise EmailSendError("SMTP is not configured")
         mime = EmailMessage()
@@ -21,6 +37,12 @@ class SmtpSender:
         mime["Subject"] = message.subject
         mime.set_content(message.text)
         mime.add_alternative(message.html, subtype="html")
+        if logo is not None and "cid:logo" in message.html:
+            data, content_type = logo
+            maintype, subtype = content_type.split("/", 1)
+            html_part = mime.get_body(("html",))
+            if html_part is not None:
+                html_part.add_related(data, maintype=maintype, subtype=subtype, cid="<logo>")
         try:
             await aiosmtplib.send(
                 mime,
@@ -33,4 +55,7 @@ class SmtpSender:
                 timeout=15,
             )
         except (aiosmtplib.SMTPException, OSError) as error:
-            raise EmailSendError(str(error)) from error
+            connect_phase = isinstance(error, _CONNECT_ERRORS) or not isinstance(
+                error, aiosmtplib.SMTPException
+            )
+            raise EmailSendError(str(error), connection=connect_phase) from error

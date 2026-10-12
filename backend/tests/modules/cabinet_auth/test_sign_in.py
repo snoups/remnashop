@@ -234,3 +234,25 @@ async def test_register_cabinet_user_returns_race_winner(
             )
         )
     assert user.id == winner.id
+
+
+_FF = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+
+
+async def test_new_device_sign_in_publishes_event_but_first_is_silent(
+    sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="Bot user", telegram_id=9100))
+
+    await sign_in.issue_for(existing, _IP, _FF)
+    assert await _outbox(session, "CabinetNewDeviceSignInEvent") == []
+
+    await sign_in.issue_for(existing, _IP, _FF)
+    assert await _outbox(session, "CabinetNewDeviceSignInEvent") == []
+
+    await sign_in.issue_for(existing, "198.51.100.7", _FF)
+    [event] = await _outbox(session, "CabinetNewDeviceSignInEvent")
+    assert event.payload["browser"] == "Firefox on Linux"
+    assert event.payload["user"]["id"] == existing.id
+    assert event.ip_address == "198.51.100.7"

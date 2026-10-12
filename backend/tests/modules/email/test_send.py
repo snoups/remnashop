@@ -1,10 +1,15 @@
 from typing import Any, Optional
 
+import aiosmtplib
 import pytest
 from pydantic import SecretStr
+from redis.asyncio import Redis
 
+from app.core.constants import REDIS_KEY_PREFIX
 from app.core.enums import Locale, Role, SmtpSecurity
-from app.core.exceptions import RetryableTaskError, ValidationError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import NotFoundError, RetryableTaskError, ValidationError
+from app.modules.email import EmailBrandDto
 from app.modules.email.dto import EmailMessageDto
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_login_code
@@ -20,6 +25,9 @@ _CONFIGURED = EmailSettingsDto(
     from_address="no-reply@example.com",
     from_name="Shop",
 )
+
+
+_BRAND = EmailBrandDto(brand="Shop", color=None, has_logo=False)
 
 
 class _Repo:
@@ -42,11 +50,30 @@ class _Sender:
     def __init__(self, error: Optional[Exception] = None) -> None:
         self.error = error
         self.sent: list[EmailMessageDto] = []
+        self.calls = 0
 
-    async def send(self, settings: EmailSettingsDto, message: EmailMessageDto) -> None:
+    async def send(
+        self,
+        settings: EmailSettingsDto,
+        message: EmailMessageDto,
+        logo: Optional[tuple[bytes, str]] = None,
+    ) -> None:
+        self.calls += 1
         if self.error:
             raise self.error
         self.sent.append(message)
+
+
+class _Logo:
+    def __init__(self, found: bool = False) -> None:
+        self.found = found
+        self.calls = 0
+
+    async def execute(self, kind: object) -> tuple[bytes, str]:
+        self.calls += 1
+        if not self.found:
+            raise NotFoundError("no logo", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET)
+        return b"\x89PNG", "image/png"
 
 
 class _Actor:
@@ -69,12 +96,12 @@ def _test_case(settings: EmailSettingsDto, sender: _Sender) -> SendTestEmailUseC
 
 
 def test_login_code_template_contains_code() -> None:
-    subject, text, html = render_login_code("123456", Locale.RU)
+    subject, text, html = render_login_code("123456", Locale.RU, _BRAND, None)
     assert "123456" in text and "123456" in html and subject
 
 
 def test_login_code_template_falls_back_to_en() -> None:
-    subject, _, _ = render_login_code("123456", Locale.DE)
+    subject, _, _ = render_login_code("123456", Locale.DE, _BRAND, None)
     assert subject == "Your sign-in code: 123456"
 
 
@@ -94,15 +121,17 @@ async def test_sender_uses_tls_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls["hostname"] == "smtp.example.com" and calls["to"] == "a@b.c"
 
 
-async def test_send_email_skips_when_not_configured() -> None:
+async def test_send_email_skips_when_not_configured(redis: Redis) -> None:
     sender = _Sender()
-    use_case = SendEmailUseCase(_Repo(EmailSettingsDto()), sender, _Uow())  # type: ignore[arg-type]
+    use_case = SendEmailUseCase(_Repo(EmailSettingsDto()), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
     await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
     assert sender.sent == []
 
 
-async def test_send_email_failure_is_retryable() -> None:
-    use_case = SendEmailUseCase(_Repo(_CONFIGURED), _Sender(EmailSendError("x")), _Uow())  # type: ignore[arg-type]
+async def test_send_email_failure_is_retryable(redis: Redis) -> None:
+    use_case = SendEmailUseCase(
+        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Uow()
+    )  # type: ignore[arg-type]
     with pytest.raises(RetryableTaskError):
         await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
 
@@ -128,3 +157,82 @@ async def test_test_email_send_failure_hides_smtp_text() -> None:
     with pytest.raises(ValidationError) as info:
         await _test_case(_CONFIGURED, _Sender(EmailSendError("secret smtp text")))(_Actor(None))  # type: ignore[arg-type]
     assert "secret" not in str(info.value)
+
+
+async def test_sender_attaches_inline_logo(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent: dict[str, Any] = {}
+
+    async def fake_send(message: Any, **_kwargs: Any) -> None:
+        sent["message"] = message
+
+    monkeypatch.setattr("app.modules.email.sender.aiosmtplib.send", fake_send)
+    settings = EmailSettingsDto(host="h", port=25, security=SmtpSecurity.NONE, from_address="a@b.c")
+    await SmtpSender().send(
+        settings,
+        EmailMessageDto(to="x@y.z", subject="s", text="t", html='<img src="cid:logo">'),
+        logo=(b"\x89PNG", "image/png"),
+    )
+    parts = [p for p in sent["message"].walk() if p.get("Content-ID")]
+    assert parts and parts[0]["Content-ID"] == "<logo>"
+
+
+async def test_connection_failure_pauses_smtp(redis: Redis) -> None:
+    sender = _Sender(EmailSendError("down", connection=True))
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
+    message = EmailMessageDto(to="a@b.c", subject="s", text="t", html="h")
+    with pytest.raises(RetryableTaskError):
+        await use_case.system(message)
+    assert await redis.get(f"{REDIS_KEY_PREFIX}smtp_unavailable") is not None
+    with pytest.raises(RetryableTaskError, match="SMTP unavailable"):
+        await use_case.system(message)
+    assert sender.calls == 1
+
+
+async def test_other_send_failure_does_not_pause_smtp(redis: Redis) -> None:
+    use_case = SendEmailUseCase(
+        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Uow()
+    )  # type: ignore[arg-type]
+    with pytest.raises(RetryableTaskError):
+        await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
+    assert await redis.get(f"{REDIS_KEY_PREFIX}smtp_unavailable") is None
+
+
+async def test_logo_is_read_only_when_html_references_it(redis: Redis) -> None:
+    logo = _Logo(found=True)
+    sender = _Sender()
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, logo, _Uow())  # type: ignore[arg-type]
+    await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
+    assert logo.calls == 0
+    await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="cid:logo"))
+    assert logo.calls == 1 and len(sender.sent) == 2
+
+
+async def test_missing_logo_still_sends(redis: Redis) -> None:
+    sender = _Sender()
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
+    await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="cid:logo"))
+    assert len(sender.sent) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "connection"),
+    [
+        (aiosmtplib.SMTPConnectError("refused"), True),
+        (aiosmtplib.SMTPConnectTimeoutError("timeout"), True),
+        (OSError("unreachable"), True),
+        (aiosmtplib.SMTPServerDisconnected("dropped"), False),
+        (aiosmtplib.SMTPRecipientRefused(550, "no", "a@b.c"), False),
+    ],
+)
+async def test_only_connect_phase_failures_count_as_connection(
+    monkeypatch: pytest.MonkeyPatch, error: Exception, connection: bool
+) -> None:
+    async def fail(*args: Any, **kwargs: Any) -> None:
+        raise error
+
+    monkeypatch.setattr(aiosmtplib, "send", fail)
+    with pytest.raises(EmailSendError) as raised:
+        await SmtpSender().send(
+            _CONFIGURED, EmailMessageDto(to="a@b.c", subject="s", text="t", html="h")
+        )
+    assert raised.value.connection is connection

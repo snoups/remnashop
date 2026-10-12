@@ -1,3 +1,4 @@
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -13,3 +14,7 @@ class CabinetAuthSettings(BaseSql, TimestampMixin):
     google_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     yandex_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     email_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
+    block_disposable_emails: Mapped[bool] = mapped_column(default=False, server_default="false")
+    extra_disposable_domains: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default="[]"
+    )

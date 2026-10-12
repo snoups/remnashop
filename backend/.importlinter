@@ -264,6 +264,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:customer-notifications-boundary]
+name = customer_notifications internals are private
+type = protected
+protected_modules =
+    app.modules.customer_notifications.*
+allowed_importers =
+    app.modules.customer_notifications
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:loyalty-boundary]
 name = loyalty internals are private
 type = protected

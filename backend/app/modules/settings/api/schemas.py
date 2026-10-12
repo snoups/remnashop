@@ -1,7 +1,7 @@
 import re
 from typing import Annotated, Final, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode, SmtpSecurity
@@ -185,6 +185,8 @@ class CabinetAuthSettingsResponse(BaseModel):
     google_enabled: bool
     yandex_enabled: bool
     email_enabled: bool
+    block_disposable_emails: bool
+    extra_disposable_domains: list[str]
 
 
 class UpdateCabinetAuthSettingsRequest(BaseModel):
@@ -192,6 +194,15 @@ class UpdateCabinetAuthSettingsRequest(BaseModel):
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None
     email_enabled: Optional[bool] = None
+    block_disposable_emails: Optional[bool] = None
+    extra_disposable_domains: Optional[list[str]] = None
+
+    @field_validator("extra_disposable_domains")
+    @classmethod
+    def _normalize_domains(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+        if value is None:
+            return None
+        return list(dict.fromkeys(d for d in (item.strip().lower() for item in value) if d))
 
 
 class BotRequirementsResponse(BaseModel):

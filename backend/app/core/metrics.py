@@ -1,5 +1,10 @@
+from typing import Final
+
 from prometheus_client import CollectorRegistry, Gauge
 from sqlalchemy.ext.asyncio import AsyncEngine
+
+# lives here so module code that runs only in the worker can register on it
+WORKER_METRICS_REGISTRY: Final[CollectorRegistry] = CollectorRegistry()
 
 
 def register_db_pool_metrics(engine: AsyncEngine, *, registry: CollectorRegistry) -> None:

@@ -17,6 +17,8 @@ from app.modules.auth.events import (
     SessionTheftDetectedEvent,
     UserSessionRevokedByAdminEvent,
 )
+from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
+from app.modules.customer_notifications.tasks import notify_customer_task
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
 from app.modules.notifications.tasks import deliver_notification_task
 from app.modules.oauth.events import (
@@ -25,13 +27,23 @@ from app.modules.oauth.events import (
     OAuthLoginFailedEvent,
     OAuthLoginSucceededEvent,
 )
+from app.modules.referrals.events import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
 from app.modules.referrals.tasks import assign_referral_rewards_task, reverse_referral_rewards_task
 from app.modules.subscriptions.events import (
+    SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
+    SubscriptionExpiredEvent,
+    SubscriptionExpiringEvent,
+    SubscriptionGrantedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
+    SubscriptionTrafficLimitedEvent,
+    SubscriptionTrafficThresholdEvent,
 )
-from app.modules.transactions.events import TransactionRefundedEvent
+from app.modules.transactions.events import (
+    TransactionPartiallyRefundedEvent,
+    TransactionRefundedEvent,
+)
 from app.modules.users.dto import UserDto
 from app.worker.subscribers import register_all_subscribers
 
@@ -67,6 +79,22 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
             amount="10.00",
             currency="USD",
         ),
+        TransactionPartiallyRefundedEvent(
+            order_id=1, user_id=1, gateway_type="YOOKASSA", amount="5.00", currency="USD"
+        ),
+        SubscriptionExpiringEvent(user=_USER, subscription_id=1, hours=72),
+        SubscriptionExpiredEvent(user=_USER, subscription_id=1),
+        SubscriptionTrafficLimitedEvent(user=_USER, subscription_id=1),
+        SubscriptionTrafficThresholdEvent(user=_USER, subscription_id=1),
+        CabinetNewDeviceSignInEvent(user=_USER, browser="Firefox on Linux"),
+        SubscriptionAddOnGrantedEvent(
+            user=_USER, target=_TARGET, subscription_id=1, addon_id=1, amount=10
+        ),
+        SubscriptionGrantedEvent(
+            actor=_USER, target=_TARGET, subscription_id=1, plan_id=1, duration_days=30
+        ),
+        ReferralRewardIssuedEvent(user=_USER, level=1, reward_type="DAYS", amount="7"),
+        InviteeRewardIssuedEvent(user=_USER, reward_type="DAYS", amount=7),
     ]
 }
 
@@ -181,6 +209,7 @@ async def test_registered_handler_reads_its_real_payload_shape(
     monkeypatch.setattr(reverse_referral_rewards_task, "kiq", _noop_kiq)
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
     monkeypatch.setattr(deliver_notification_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(notify_customer_task, "kiq", _noop_kiq)
 
     bus = EventBus()
     register_all_subscribers(bus)

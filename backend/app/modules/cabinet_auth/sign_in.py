@@ -10,13 +10,19 @@ from app.core.enums import (
     SessionAudience,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, PermissionDeniedError
+from app.core.exceptions import ConflictError, PermissionDeniedError, ValidationError
+from app.core.ports import EventPublisher
 from app.core.utils.email import normalize_email
+from app.core.utils.http import describe_user_agent
 from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAccessUseCase
 from app.modules.auth import IssuedSession, SessionIssuer
 from app.modules.blacklist import BlacklistRepository
+from app.modules.cabinet_auth.devices import KnownDevices
+from app.modules.cabinet_auth.disposable import is_disposable
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
+from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
 from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository, OAuthProfile
+from app.modules.settings import SettingsRepository
 from app.modules.users import (
     RegisterCabinetUserDto,
     RegisterCabinetUserUseCase,
@@ -45,20 +51,26 @@ class CabinetSignIn:
         self,
         user_repository: UserRepository,
         blacklist_repository: BlacklistRepository,
+        settings_repository: SettingsRepository,
         oauth_identity_repository: OAuthIdentityRepository,
         register_telegram_user: RegisterTelegramUserUseCase,
         register_cabinet_user: RegisterCabinetUserUseCase,
         check_registration_access: CheckRegistrationAccessUseCase,
         session_issuer: SessionIssuer,
+        known_devices: KnownDevices,
+        event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
         self._user_repository = user_repository
         self._blacklist_repository = blacklist_repository
+        self._settings_repository = settings_repository
         self._oauth_identity_repository = oauth_identity_repository
         self._register_telegram_user = register_telegram_user
         self._register_cabinet_user = register_cabinet_user
         self._check_registration_access = check_registration_access
         self._session_issuer = session_issuer
+        self._known_devices = known_devices
+        self._event_publisher = event_publisher
         self._uow = uow
 
     async def ensure_can_register(
@@ -91,6 +103,15 @@ class CabinetSignIn:
         issued = await self._session_issuer.issue(
             user.id, client_ip, user_agent, audience=SessionAudience.CABINET
         )
+        if await self._known_devices.remember(user.id, client_ip, user_agent):
+            async with self._uow:
+                await self._event_publisher.publish(
+                    CabinetNewDeviceSignInEvent(
+                        user=user,
+                        browser=describe_user_agent(user_agent),
+                        ip_address=client_ip,
+                    )
+                )
         return user, issued
 
     async def telegram(
@@ -135,6 +156,14 @@ class CabinetSignIn:
         async with self._uow:
             user = await self._user_repository.get_by_email(email)
         if user is None:
+            async with self._uow:
+                cabinet = await self._settings_repository.get_cabinet_auth_settings()
+            if cabinet.block_disposable_emails and is_disposable(
+                email, cabinet.extra_disposable_domains
+            ):
+                raise ValidationError(
+                    "Disposable email addresses are not allowed", code=ErrorCode.EMAIL_DISPOSABLE
+                )
             async with self._uow:
                 blacklisted = await self._blacklist_repository.is_blacklisted_email(email)
             if not blacklisted:
