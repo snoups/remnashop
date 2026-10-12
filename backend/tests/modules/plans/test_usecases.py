@@ -6,6 +6,7 @@ import pytest
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PlanAvailability, PlanType, PromocodeRewardType, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
@@ -220,6 +221,43 @@ async def test_owner_can_set_plan_durations(
     )
 
     assert [duration.days for duration in updated.durations] == [30]
+
+
+@pytest.mark.parametrize(
+    ("is_trial", "durations", "code"),
+    [
+        (True, [(3, "0"), (7, "0")], ErrorCode.PLAN_TRIAL_SINGLE_DURATION),
+        (False, [(30, "0")], ErrorCode.PLAN_DURATION_PRICE_REQUIRED),
+    ],
+)
+async def test_set_plan_durations_keeps_trial_and_price_rules(
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    is_trial: bool,
+    durations: list[tuple[int, str]],
+    code: ErrorCode,
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="rules",
+            name="Rules",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+            is_trial=is_trial,
+        )
+    )
+    use_case = SetPlanDurationsUseCase(plan_repository, uow, event_publisher)
+    items = [
+        SetPlanDurationDto(days=days, order_index=index, base_price=Decimal(price))
+        for index, (days, price) in enumerate(durations)
+    ]
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(OWNER, SetPlanDurationsDto(plan_id=created.id, durations=items))
+
+    assert error.value.code is code
 
 
 async def test_regular_user_cannot_set_plan_durations(

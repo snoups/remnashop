@@ -33,7 +33,7 @@ async def _create_trial_plan(plan_repository: PlanRepository) -> None:
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0.99"))],
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0"))],
         )
     )
     await plan_repository.update_squads(
@@ -80,3 +80,18 @@ async def test_returns_no_plan_once_the_flag_is_spent(
     result = await use_case(updated_actor)
 
     assert result.is_trial_available is False
+
+
+async def test_a_used_up_trial_plan_leaves_the_catalog_too(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    await _create_trial_plan(plan_repository)
+    trial = next(plan for plan in await plan_repository.list_active() if plan.is_trial)
+    actor = await user_repository.create(CreateUserDto(name="trial-catalog"))
+    eligibility = make_eligibility(plan_repository.session)
+
+    assert await eligibility.is_purchasable(trial, actor) is True
+    await user_repository.update_fields(actor.id, UpdateUserDto(is_trial_available=False))
+    assert await eligibility.is_purchasable(trial, actor) is False

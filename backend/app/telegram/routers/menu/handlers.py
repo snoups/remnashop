@@ -1,5 +1,3 @@
-from typing import Final
-
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
@@ -24,8 +22,6 @@ from app.modules.subscriptions import (
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu
-
-_DEFAULT_TRIAL_DURATION_DAYS: Final[int] = 3
 
 router = Router(name=__name__)
 
@@ -65,13 +61,8 @@ async def on_get_trial(
         await callback.answer(runner.get("ntf-common.trial-unavailable"), show_alert=True)
         return
 
-    plan = result.plan
-    duration_days = plan.durations[0].days if plan.durations else _DEFAULT_TRIAL_DURATION_DAYS
-
     try:
-        await activate_trial_subscription(
-            user, ActivateTrialSubscriptionDto(plan=plan, duration_days=duration_days)
-        )
+        await activate_trial_subscription(user, ActivateTrialSubscriptionDto(plan=result.plan))
     except (NotFoundError, ValidationError):
         logger.exception(f"{user.log} Trial activation failed")
         await callback.answer(runner.get("ntf-common.trial-unavailable"), show_alert=True)

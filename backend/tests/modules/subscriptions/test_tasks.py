@@ -472,3 +472,49 @@ async def test_reconcile_keeps_going_after_one_row_fails_to_sync(
 
     refreshed = await subscription_repository.get_by_id(created[1].id)
     assert refreshed.status == SubscriptionStatus.DELETED
+
+
+async def test_a_delivered_paid_trial_uses_up_the_trial(
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    fulfill_purchase: FulfillPurchaseUseCase,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=447))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="paid-trial",
+            name="paid-trial",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+            is_trial=True,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("1.00"))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+
+    subscription = await fulfill_purchase.system(
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=make_plan_snapshot(
+                plan_id=plan.id, price_paid=Decimal("1.00"), currency=Currency.RUB, is_trial=True
+            ),
+            duration_days=3,
+            price_paid=Decimal("1.00"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            target_subscription_id=None,
+        )
+    )
+
+    assert subscription is not None and subscription.is_trial is True
+    reloaded = await user_repository.get_by_id(buyer.id)
+    assert reloaded is not None and reloaded.is_trial_available is False

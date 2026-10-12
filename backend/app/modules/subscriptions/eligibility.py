@@ -11,6 +11,7 @@ from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users import UserRepository
 
 
 class PurchaseEligibility:
@@ -25,11 +26,13 @@ class PurchaseEligibility:
         referrer_lookup: ReferrerLookup,
         settings_repository: SettingsRepository,
         open_order_counter: OpenOrderCounter,
+        user_repository: UserRepository,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._referrer_lookup = referrer_lookup
         self._settings_repository = settings_repository
         self._open_order_counter = open_order_counter
+        self._user_repository = user_repository
 
     async def lock_user(self, user_id: int) -> None:
         # same key as NewPurchase, so a checkout and a fulfilment for one user serialize
@@ -67,10 +70,16 @@ class PurchaseEligibility:
             )
         )
         has_referrer = await self._referrer_lookup.has_referrer(user.id)
+        # read fresh, not off the actor: a trial plan is one per customer, paid or free
+        trial_available = False
+        if any(plan.is_trial for plan in plans):
+            account = await self._user_repository.get_by_id(user.id)
+            trial_available = account is not None and account.is_trial_available
         return [
             plan
             for plan in plans
-            if is_plan_purchasable_by(
+            if (trial_available or not plan.is_trial)
+            and is_plan_purchasable_by(
                 plan, user, has_purchase_history=has_purchase_history, has_referrer=has_referrer
             )
         ]

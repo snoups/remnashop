@@ -24,7 +24,8 @@ class PlanPriceItem(BaseModel):
 class PlanDurationItem(BaseModel):
     days: int = Field(gt=0)
     order_index: int = 0
-    base_price: Decimal = Field(gt=0)
+    # 0 only on a trial plan, checked by SetPlanDurationsUseCase
+    base_price: Decimal = Field(ge=0)
     overrides: list[PlanPriceItem] = Field(default_factory=list)
 
 

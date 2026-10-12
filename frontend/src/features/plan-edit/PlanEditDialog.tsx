@@ -120,7 +120,13 @@ function PlanEditDialogBody({
   };
 
   const usedDays = new Set(durations.map((row) => Number(row.days)));
-  const presets = DURATION_PRESETS.filter((days) => !usedDays.has(days));
+  // a trial plan has exactly one duration
+  const presets = isTrial && durations.length > 0 ? [] : DURATION_PRESETS.filter((days) => !usedDays.has(days));
+  const canAddDuration = !isTrial || durations.length === 0;
+  const handleTrialChange = (checked: boolean) => {
+    setIsTrial(checked);
+    if (checked) setDurations((rows) => rows.slice(0, 1));
+  };
   const currencySuffix = anchorCurrency ? currencySymbol(anchorCurrency) : null;
 
   const handleSubmit = async (event: FormEvent) => {
@@ -294,7 +300,10 @@ function PlanEditDialogBody({
           </Card>
 
           <Card variant="form">
-            <Field label={t("plans.edit.sections.durations")} hint={t("plans.edit.durationsHint")}>
+            <Field
+              label={t("plans.edit.sections.durations")}
+              hint={isTrial ? t("plans.edit.trialDurationHint") : t("plans.edit.durationsHint")}
+            >
               {isCreate ? (
                 <p className="text-[12.5px] text-muted-foreground">{t("plans.edit.durationsAfterCreate")}</p>
               ) : (
@@ -322,15 +331,17 @@ function PlanEditDialogBody({
                       </DndContext>
                     </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-0.5 text-[12px] text-muted-foreground">{t("plans.edit.addPresetLabel")}</span>
-                    {presets.map((days) => (
-                      <PresetButton key={days} onClick={() => addDuration(String(days))}>
-                        {days}
-                      </PresetButton>
-                    ))}
-                    <PresetButton onClick={() => addDuration("")}>{t("plans.edit.customDuration")}</PresetButton>
-                  </div>
+                  {canAddDuration && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="mr-0.5 text-[12px] text-muted-foreground">{t("plans.edit.addPresetLabel")}</span>
+                      {presets.map((days) => (
+                        <PresetButton key={days} onClick={() => addDuration(String(days))}>
+                          {days}
+                        </PresetButton>
+                      ))}
+                      <PresetButton onClick={() => addDuration("")}>{t("plans.edit.customDuration")}</PresetButton>
+                    </div>
+                  )}
                 </>
               )}
             </Field>
@@ -349,7 +360,7 @@ function PlanEditDialogBody({
               label={t("plans.edit.isTrialLabel")}
               hint={t("plans.edit.isTrialHint")}
               checked={isTrial}
-              onChange={setIsTrial}
+              onChange={handleTrialChange}
             />
             <ToggleRow
               label={t("plans.edit.allowBonusDaysLabel")}

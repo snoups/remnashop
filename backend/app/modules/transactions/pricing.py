@@ -14,7 +14,7 @@ from app.modules.users import UserDto
 def _base_price(
     plan: PlanDto, duration_days: int, currency: Currency, rates: CurrencyRateTable
 ) -> Decimal:
-    for duration in plan.durations:
+    for duration in plan.sellable_durations():
         if duration.days != duration_days:
             continue
         return price_for(duration.base_price, duration.overrides, currency, rates)

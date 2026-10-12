@@ -298,7 +298,6 @@ class CatalogPlanDto:
 @dataclass(frozen=True, kw_only=True)
 class ActivateTrialSubscriptionDto:
     plan: PlanDto
-    duration_days: int
 
 
 @dataclass(frozen=True, kw_only=True)

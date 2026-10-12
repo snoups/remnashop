@@ -24,6 +24,7 @@ def make_eligibility(session: AsyncSession) -> PurchaseEligibility:
         ReferralRepository(session),
         SettingsRepository(session),
         TransactionRepository(session),
+        UserRepository(session),
     )
 
 

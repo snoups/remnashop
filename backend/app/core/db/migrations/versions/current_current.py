@@ -983,7 +983,7 @@ def upgrade() -> None:
         sa.Column("days", sa.Integer(), nullable=False),
         sa.Column("order_index", sa.Integer(), nullable=False),
         sa.Column("base_price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.CheckConstraint("base_price > 0", name="ck_plan_durations_base_price_positive"),
+        sa.CheckConstraint("base_price >= 0", name="ck_plan_durations_base_price_non_negative"),
         sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

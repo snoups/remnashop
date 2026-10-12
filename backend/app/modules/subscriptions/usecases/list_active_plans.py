@@ -33,7 +33,7 @@ def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
                     for currency in Currency
                 ],
             )
-            for duration in plan.durations
+            for duration in plan.sellable_durations()
         ],
     )
 
@@ -60,4 +60,4 @@ class ListActivePlansUseCase(UseCase[None, list[CatalogPlanDto], UserDto]):
             plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
             purchasable = await self._eligibility.purchasable(plans, actor)
             rates = await self._pricing_repository.get_rate_table()
-        return [_to_catalog_plan(plan, rates) for plan in purchasable]
+        return [_to_catalog_plan(plan, rates) for plan in purchasable if plan.sellable_durations()]

@@ -9,7 +9,7 @@ from app.core.db.base import BaseSql
 class PlanDuration(BaseSql):
     __tablename__ = "plan_durations"
     __table_args__ = (
-        CheckConstraint("base_price > 0", name="ck_plan_durations_base_price_positive"),
+        CheckConstraint("base_price >= 0", name="ck_plan_durations_base_price_non_negative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

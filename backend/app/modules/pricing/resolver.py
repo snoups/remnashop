@@ -38,6 +38,8 @@ def _apply_charm(amount: Decimal, mode: RoundingMode, charm_ending: int) -> Deci
 
 
 def scale_base_price(price: Decimal, factor: Decimal) -> Decimal:
+    if price == 0:
+        return price
     return max((price * factor).quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE)
 
 
@@ -78,6 +80,9 @@ def price_for(
     rates: CurrencyRateTable,
 ) -> Decimal:
     # what a plan duration or add-on costs in `currency`: its pinned price, else the converted base
+    if base_price == 0:
+        # a free trial stays free in every currency, past min_amount and overrides
+        return Decimal(0)
     override = next((o.price for o in overrides if o.currency is currency), None)
     return resolve_price(base_price, currency, override, rates)
 

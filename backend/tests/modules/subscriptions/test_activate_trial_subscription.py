@@ -6,6 +6,7 @@ from remnapy import RemnawaveSDK
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.modules.plans.dto import (
@@ -31,7 +32,7 @@ from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_eligibility
 
 
-async def _create_trial_plan(plan_repository: PlanRepository):
+async def _create_trial_plan(plan_repository: PlanRepository, price: str = "0"):
     plan = await plan_repository.create(
         CreatePlanDto(
             public_code="activate-trial",
@@ -45,7 +46,7 @@ async def _create_trial_plan(plan_repository: PlanRepository):
     await plan_repository.set_durations(
         SetPlanDurationsDto(
             plan_id=plan.id,
-            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0.99"))],
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal(price))],
         )
     )
     await plan_repository.update_squads(
@@ -77,7 +78,7 @@ async def test_activates_a_trial_and_spends_the_flag(
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
-    subscription = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+    subscription = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
     assert subscription.is_trial is True
     assert subscription.plan_snapshot.price_paid == Decimal("0")
@@ -112,7 +113,7 @@ async def test_rejects_when_the_flag_is_already_spent(
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
     with pytest.raises(ValidationError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
 
 async def test_a_second_activation_with_a_stale_actor_is_rejected(
@@ -139,10 +140,10 @@ async def test_a_second_activation_with_a_stale_actor_is_rejected(
         PurchaseIdempotencyRepository(subscription_repository.session),
     )
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
-    first = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+    first = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
     with pytest.raises(ValidationError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
     active = await subscription_repository.get_active_by_user(actor.id)
     assert [sub.id for sub in active] == [first.id]
@@ -178,7 +179,37 @@ async def test_a_failed_activation_gives_the_trial_back(
     use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
 
     with pytest.raises(RuntimeError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan, duration_days=3))
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
+    reloaded = await user_repository.get_by_id(actor.id)
+    assert reloaded is not None and reloaded.is_trial_available is True
+
+
+async def test_a_paid_trial_is_not_activated_for_free(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    plan = await _create_trial_plan(plan_repository, price="0.99")
+    actor = await user_repository.create(CreateUserDto(name="paid-trial"))
+    purchase_use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        PurchaseIdempotencyRepository(subscription_repository.session),
+    )
+    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+
+    assert error.value.code is ErrorCode.TRIAL_NOT_AVAILABLE
     reloaded = await user_repository.get_by_id(actor.id)
     assert reloaded is not None and reloaded.is_trial_available is True

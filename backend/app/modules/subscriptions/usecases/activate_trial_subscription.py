@@ -33,6 +33,12 @@ class ActivateTrialSubscriptionUseCase(
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: ActivateTrialSubscriptionDto) -> SubscriptionDto:
+        duration = data.plan.free_trial_duration()
+        if duration is None:
+            raise ValidationError(
+                f"Plan '{data.plan.id}' has no free trial", code=ErrorCode.TRIAL_NOT_AVAILABLE
+            )
+
         # Spend the flag before provisioning, not after: actor is loaded per
         # request, so two concurrent taps both read is_trial_available=True.
         async with self._uow:
@@ -51,10 +57,10 @@ class ActivateTrialSubscriptionUseCase(
                         data.plan,
                         price_paid=Decimal(0),
                         currency=Currency.USD,
-                        duration_days=data.duration_days,
+                        duration_days=duration.days,
                         is_trial=True,
                     ),
-                    duration_days=data.duration_days,
+                    duration_days=duration.days,
                     price_paid=Decimal(0),
                     currency=Currency.USD,
                     purchase_type=PurchaseType.NEW,

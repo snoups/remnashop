@@ -30,7 +30,8 @@ class GetAvailableTrialUseCase(UseCase[None, GetAvailableTrialDto, UserDto]):
             trial_plans = [
                 plan
                 for plan in plans
-                if plan.is_trial and plan.availability != PlanAvailability.LINK
+                if plan.free_trial_duration() is not None
+                and plan.availability != PlanAvailability.LINK
             ]
             eligible = next(iter(await self._eligibility.purchasable(trial_plans, actor)), None)
             return GetAvailableTrialDto(plan=eligible, is_trial_available=True)

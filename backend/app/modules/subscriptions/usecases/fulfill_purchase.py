@@ -47,7 +47,7 @@ class FulfillPurchaseUseCase(UseCase[PurchaseSubscriptionDto, Optional[Subscript
             else None
         )
         try:
-            return await self._purchase_subscription_use_case(
+            subscription = await self._purchase_subscription_use_case(
                 buyer,
                 replace(
                     data,
@@ -58,6 +58,13 @@ class FulfillPurchaseUseCase(UseCase[PurchaseSubscriptionDto, Optional[Subscript
         except ValidationError as error:
             if free_order_key is None or error.code is not ErrorCode.SUBSCRIPTION_LIMIT_REACHED:
                 raise
+        else:
+            if data.plan_snapshot.is_trial:
+                # spent on delivery, not at checkout: an order that is never
+                # paid must not use up the trial (a no-op when already spent)
+                async with self._uow:
+                    await self._user_repository.spend_trial(buyer.id)
+            return subscription
         # failed, not retried: a retry or the reconcile sweep would hit the same cap
         async with self._uow:
             spent = await self._order_failer.fail_unpaid_free_order(free_order_key)
