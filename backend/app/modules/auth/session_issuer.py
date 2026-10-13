@@ -41,9 +41,10 @@ class SessionIssuer:
         ip_address: str,
         user_agent: Optional[str],
         audience: SessionAudience = SessionAudience.DASHBOARD,
+        ttl_seconds: int = TTL_30D,
     ) -> IssuedSession:
         refresh_token = generate_refresh_token()
-        expires_at = datetime_now() + timedelta(seconds=TTL_30D)
+        expires_at = datetime_now() + timedelta(seconds=ttl_seconds)
 
         async with self._uow:
             await self._session_repository.revoke_active_by_fingerprint(

@@ -8,10 +8,18 @@ import httpx
 from dishka import AsyncContainer
 
 from app.core.config import AppConfig
-from app.core.constants import API_V1, CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, TTL_15M
+from app.core.constants import (
+    API_V1,
+    CSRF_COOKIE_NAME,
+    REFRESH_COOKIE_NAME,
+    TTL_7D,
+    TTL_15M,
+    TTL_30D,
+)
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SessionAudience
 from app.core.security import derive_csrf_token, hash_refresh_token
+from app.core.utils.time import datetime_now
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.cabinet_auth.cookies import (
@@ -24,6 +32,7 @@ from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.settings.dto import UpdateBotSettingsDto, UpdateCabinetAuthSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import UserDto
+from app.modules.users.repository import UserRepository
 
 _IP = "203.0.113.1"
 _BOT_TOKEN = "123456:TEST-token"
@@ -201,6 +210,12 @@ async def _enable_telegram(settings_repository: SettingsRepository, uow: UnitOfW
         )
 
 
+async def _user_by_telegram_id(uow: UnitOfWork, telegram_id: int) -> UserDto:
+    user = await UserRepository(uow.session).get_by_telegram_id(telegram_id)
+    assert user is not None
+    return user
+
+
 def _signed_init_data(token: str = _BOT_TOKEN) -> str:
     fields = {
         "auth_date": str(int(time.time())),
@@ -224,6 +239,39 @@ async def test_cabinet_telegram_login_sets_cookies(
     assert response.status_code == 200
     assert response.json()["access_token"]
     assert response.cookies.get(CABINET_REFRESH_COOKIE)
+
+
+async def test_mini_app_sign_in_lives_seven_days(
+    client: httpx.AsyncClient,
+    settings_repository: SettingsRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+) -> None:
+    await _enable_telegram(settings_repository, uow)
+
+    response = await client.post(
+        f"{API_V1}/cabinet/auth/telegram", json={"init_data": _signed_init_data()}
+    )
+
+    assert response.status_code == 200
+    set_cookie = next(
+        h for h in response.headers.get_list("set-cookie") if h.startswith(CABINET_REFRESH_COOKIE)
+    )
+    max_age = int(set_cookie.split("Max-Age=")[1].split(";")[0])
+    assert TTL_7D - 60 <= max_age <= TTL_7D
+    async with uow:
+        [session] = await session_repository.list_active_by_user(
+            (await _user_by_telegram_id(uow, 9302)).id
+        )
+    lifetime = (session.expires_at - session.created_at).total_seconds()
+    assert TTL_7D - 60 <= lifetime <= TTL_7D + 60
+
+
+async def test_other_cabinet_sign_ins_keep_thirty_days(sign_in: CabinetSignIn) -> None:
+    _, issued = await _sign_in(sign_in)
+
+    remaining = (issued.expires_at - datetime_now()).total_seconds()
+    assert TTL_30D - 60 <= remaining <= TTL_30D
 
 
 async def test_cabinet_telegram_login_rejects_tampered_data(

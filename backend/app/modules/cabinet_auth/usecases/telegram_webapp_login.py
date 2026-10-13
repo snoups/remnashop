@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+from app.core.constants import TTL_7D
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
@@ -31,5 +32,11 @@ class TelegramWebAppLoginUseCase:
             )
         data = verify_init_data(init_data, bot.token.get_secret_value(), int(time.time()))
         return await self._sign_in.telegram(
-            data.profile, codes_from_start_param(data.start_param), client_ip, user_agent
+            data.profile,
+            codes_from_start_param(data.start_param),
+            client_ip,
+            user_agent,
+            # the Mini App signs in again with initData whenever its access token
+            # expires, so a session left behind by an IP change needn't outlive a week
+            session_ttl=TTL_7D,
         )

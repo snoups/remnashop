@@ -1,5 +1,6 @@
 from typing import Final, Optional
 
+from app.core.constants import TTL_30D
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AccessDenial,
@@ -96,12 +97,20 @@ class CabinetSignIn:
             )
 
     async def issue_for(
-        self, user: UserDto, client_ip: str, user_agent: Optional[str]
+        self,
+        user: UserDto,
+        client_ip: str,
+        user_agent: Optional[str],
+        session_ttl: int = TTL_30D,
     ) -> tuple[UserDto, IssuedSession]:
         if user.is_blocked:
             raise PermissionDeniedError("User is blocked", code=ErrorCode.USER_BLOCKED)
         issued = await self._session_issuer.issue(
-            user.id, client_ip, user_agent, audience=SessionAudience.CABINET
+            user.id,
+            client_ip,
+            user_agent,
+            audience=SessionAudience.CABINET,
+            ttl_seconds=session_ttl,
         )
         if await self._known_devices.remember(user.id, client_ip, user_agent):
             async with self._uow:
@@ -120,6 +129,7 @@ class CabinetSignIn:
         codes: InviteCodesDto,
         client_ip: str,
         user_agent: Optional[str],
+        session_ttl: int = TTL_30D,
     ) -> tuple[UserDto, IssuedSession]:
         # blacklisted: the register usecase stores a blocked row, issue_for refuses it
         async with self._uow:
@@ -142,7 +152,7 @@ class CabinetSignIn:
                 referral_code=codes.referral_code,
             )
         )
-        return await self.issue_for(user, client_ip, user_agent)
+        return await self.issue_for(user, client_ip, user_agent, session_ttl)
 
     async def email(
         self,
