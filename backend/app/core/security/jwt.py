@@ -1,3 +1,4 @@
+import secrets
 import time
 from typing import Final, Literal, TypedDict, cast
 
@@ -32,7 +33,14 @@ DocsTokenScope = Literal["ott", "access"]
 
 
 def create_docs_token(scope: DocsTokenScope, ttl: int, secret: str) -> str:
-    payload = {"scope": scope, "iss": _DOCS_TOKEN_ISSUER, "exp": int(time.time()) + ttl}
+    # jti: two tickets issued in the same second must still differ, since a
+    # ticket is consumed by its hash
+    payload = {
+        "scope": scope,
+        "iss": _DOCS_TOKEN_ISSUER,
+        "exp": int(time.time()) + ttl,
+        "jti": secrets.token_urlsafe(16),
+    }
     return jwt.encode(payload, secret, algorithm="HS256")
 
 

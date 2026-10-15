@@ -13,6 +13,7 @@ import { clearAccessToken } from "@shared/lib/token-storage";
 import { initials } from "@shared/lib/initials";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
+import { disablePushOnSignOut } from "@entities/notifications/push-api";
 import { useCurrentUser } from "@entities/user/use-current-user";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
@@ -23,6 +24,7 @@ export function ProfilePage() {
   const state = useCurrentUser();
 
   const handleLogout = async () => {
+    await disablePushOnSignOut();
     if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
     clearAccessToken();
     navigate("/", { replace: true });

@@ -28,7 +28,9 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = new URL(event.notification.data?.url || "/dashboard", self.location.origin).href;
+  const target = new URL(event.notification.data?.url || "/dashboard", self.location.origin);
+  // own origin only: a notification never opens another site
+  const url = target.origin === self.location.origin ? target.href : new URL("/dashboard", self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const open = clients.find((client) => new URL(client.url).origin === self.location.origin);

@@ -4,12 +4,12 @@ import { useTranslation } from "react-i18next";
 import { matchPath, Navigate, useLocation, useNavigate, useOutlet } from "react-router-dom";
 
 import { logout } from "@shared/api/http";
-import { pushApi } from "@entities/notifications/push-api";
+import { disablePushOnSignOut, pushApi } from "@entities/notifications/push-api";
 import { updateOwnProfile } from "@entities/user/api";
 import { CurrentUserProvider } from "@entities/user/CurrentUserProvider";
 import { PasswordChangeRequired } from "@features/password-change-required/PasswordChangeRequired";
 import type { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
-import { disablePush, healPushSubscription, onServiceWorkerMessage } from "@shared/lib/push";
+import { healPushSubscription, onServiceWorkerMessage } from "@shared/lib/push";
 import { useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
@@ -151,8 +151,6 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   );
 }
 
-const LOGOUT_PUSH_TIMEOUT_MS = 2000;
-
 export function DashboardLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -160,12 +158,7 @@ export function DashboardLayout() {
   const [isLeaving, setIsLeaving] = useState(false);
 
   const handleLogout = async () => {
-    // the next admin in this browser shouldn't get this one's notifications;
-    // capped, since a hung push service mustn't hold the logout
-    await Promise.race([
-      disablePush(pushApi, { optOut: false }).catch(() => undefined),
-      new Promise((resolve) => setTimeout(resolve, LOGOUT_PUSH_TIMEOUT_MS)),
-    ]);
+    await disablePushOnSignOut();
     if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));
     setIsLeaving(true);
   };

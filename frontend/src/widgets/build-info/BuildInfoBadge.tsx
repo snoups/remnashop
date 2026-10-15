@@ -8,7 +8,7 @@ import { formatDateTime } from "@shared/lib/relative-time";
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
 import { bounceTap } from "@shared/lib/bounceState";
 import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
-import { githubApiUrl, TELEGRAM_URL } from "@shared/lib/external-links";
+import { githubApiUrl, isHttpsUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { BounceIcon } from "@shared/ui/BounceIcon";
@@ -171,7 +171,7 @@ export function BuildInfoBadge() {
                   <div className="mt-0.5 font-mono text-lg font-bold text-foreground">v{currentVersion}</div>
                 </div>
 
-                {isUpdateAvailable && release && (
+                {isUpdateAvailable && release && isHttpsUrl(release.html_url) && (
                   <a
                     href={release.html_url}
                     target="_blank"

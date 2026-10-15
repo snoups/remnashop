@@ -2,6 +2,8 @@ import httpx
 import pytest
 
 import app.modules.oauth.providers.oidc as oidc_module
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.modules.oauth.providers.oidc import OIDCOAuthClient
 
 
@@ -75,3 +77,18 @@ async def test_discover_does_not_follow_a_redirect_off_the_issuer(
         await client._discover()
 
     assert requested == ["https://idp.example.com/.well-known/openid-configuration"]
+
+
+async def test_authorization_url_rejects_a_non_https_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"authorization_endpoint": "javascript:alert(1)//"})
+
+    _patch_transport(monkeypatch, httpx.MockTransport(handler))
+    client = OIDCOAuthClient("https://idp.example.com", "client-id", "client-secret")
+
+    with pytest.raises(ValidationError) as excinfo:
+        await client.authorization_url("https://shop.example.com/cb", "state", "verifier")
+
+    assert excinfo.value.code == ErrorCode.URL_NOT_HTTPS

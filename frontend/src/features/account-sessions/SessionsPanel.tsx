@@ -10,6 +10,7 @@ import {
   revokeOwnSession,
   revokeUserSession,
 } from "@entities/auth/sessions";
+import { disablePushOnSignOut } from "@entities/notifications/push-api";
 import { getErrorMessage, logout } from "@shared/api/http";
 import { clearAccessToken, getSessionId } from "@shared/lib/token-storage";
 import { toast } from "@shared/lib/toast";
@@ -32,6 +33,8 @@ export function SessionsPanel({ userId }: { userId?: number }) {
 
   const handleRevoke = async (sessionId: number) => {
     try {
+      // before the revoke: unsubscribing needs this session
+      if (sessionId === currentSessionId) await disablePushOnSignOut();
       await (isOwn ? revokeOwnSession(sessionId) : revokeUserSession(userId, sessionId));
       if (sessionId === currentSessionId) {
         if (!(await logout())) toast.error(t("auth.errors.logoutNotConfirmed"));

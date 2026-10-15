@@ -410,6 +410,9 @@ def test_docs_trade_a_ticket_for_a_cookie(
     assert redirect.status_code == 303
     assert redirect.headers["location"] == DOCS_PATH
 
+    # spent: a second exchange of the same ticket fails
+    assert client.get(DOCS_PATH, params={"ott": ott}, follow_redirects=False).status_code == 401
+
     assert client.get(DOCS_PATH).status_code == 200
     schema = client.get(f"{DOCS_PATH}/openapi.json")
     assert schema.status_code == 200

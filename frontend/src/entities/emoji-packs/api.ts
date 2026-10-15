@@ -24,7 +24,7 @@ export function importEmojiPack(link: string): Promise<EmojiPack> {
 }
 
 export function deleteEmojiPack(setName: string): Promise<null> {
-  return apiDelete<null>(`/emoji-packs/${setName}`);
+  return apiDelete<null>(`/emoji-packs/${encodeURIComponent(setName)}`);
 }
 
 /** The pack's real artwork, served as a static thumbnail: sessionless, so an

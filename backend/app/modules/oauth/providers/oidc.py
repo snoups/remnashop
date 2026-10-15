@@ -1,8 +1,11 @@
 from typing import Final, Optional, cast
+from urllib.parse import urlsplit
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.utils.http import assert_public_https_host
 from app.modules.oauth.providers.base import OAuthProfile
 
@@ -40,6 +43,13 @@ class OIDCOAuthClient:
         self, redirect_uri: str, state: str, code_verifier: Optional[str]
     ) -> str:
         metadata = await self._discover()
+        # a browser redirect, so any host is fine, but never a javascript: or
+        # other non-https target
+        endpoint = metadata["authorization_endpoint"]
+        if urlsplit(endpoint).scheme != "https":
+            raise ValidationError(
+                "authorization_endpoint must be an https:// URL", code=ErrorCode.URL_NOT_HTTPS
+            )
         async with AsyncOAuth2Client(
             self._client_id,
             self._client_secret,
@@ -48,7 +58,7 @@ class OIDCOAuthClient:
             code_challenge_method="S256",
         ) as client:
             url, _ = client.create_authorization_url(
-                metadata["authorization_endpoint"], state=state, code_verifier=code_verifier
+                endpoint, state=state, code_verifier=code_verifier
             )
             return cast(str, url)
 

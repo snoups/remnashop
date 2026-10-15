@@ -1,6 +1,9 @@
+import hashlib
 from pathlib import Path
 from typing import Final, Optional
 
+from dishka import FromDishka
+from dishka.integrations.fastapi import inject
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -8,6 +11,7 @@ from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator
+from redis.asyncio import Redis
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
@@ -27,11 +31,19 @@ from app.api.probes_router import router as probes_router
 from app.api.routers import ROUTERS
 from app.api.system_router import router as system_router
 from app.core.config import AppConfig
-from app.core.constants import API_V1, DOCS_COOKIE_NAME, DOCS_PATH, TTL_2H
+from app.core.constants import (
+    API_V1,
+    DOCS_COOKIE_NAME,
+    DOCS_PATH,
+    REDIS_KEY_PREFIX,
+    TIME_1M,
+    TTL_2H,
+)
 from app.core.error_codes import ErrorCode
 from app.core.security import create_docs_token, is_valid_docs_token
 from app.core.utils.http import resolve_client_ip
 
+_DOCS_OTT_USED_KEY: Final[str] = f"{REDIS_KEY_PREFIX}docs:ott-used:"
 FRONTEND_DIST: Final[Path] = Path("/opt/remnashop/frontend/dist")
 # Vite hashes every file name under assets/, so a URL never changes content
 _ASSETS_CACHE_CONTROL: Final[str] = "public, max-age=31536000, immutable"
@@ -77,9 +89,15 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
     secret = config.jwt_secret.get_secret_value()
     openapi_url = f"{DOCS_PATH}/openapi.json"
 
-    def _enter(request: Request, ott: Optional[str], page: HTMLResponse) -> Response:
+    async def _enter(
+        request: Request, redis: Redis, ott: Optional[str], page: HTMLResponse
+    ) -> Response:
         if ott is not None:
-            if not is_valid_docs_token(ott, "ott", secret):
+            # one exchange per ticket: a ticket seen in a log or history is spent
+            used_key = f"{_DOCS_OTT_USED_KEY}{hashlib.sha256(ott.encode()).hexdigest()}"
+            if not is_valid_docs_token(ott, "ott", secret) or not await redis.set(
+                used_key, 1, nx=True, ex=TIME_1M
+            ):
                 raise ApiError(
                     status.HTTP_401_UNAUTHORIZED,
                     "Docs ticket is invalid or expired",
@@ -110,18 +128,20 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
             )
 
     @app.get(DOCS_PATH, include_in_schema=False)
-    async def swagger_ui(request: Request, ott: Optional[str] = None) -> Response:
-        page = get_swagger_ui_html(
-            openapi_url=openapi_url,
-            title=f"{app.title} - Swagger UI",
-            swagger_ui_parameters={"persistAuthorization": True},
-        )
-        return _enter(request, ott, page)
+    @inject
+    async def swagger_ui(
+        request: Request, redis: FromDishka[Redis], ott: Optional[str] = None
+    ) -> Response:
+        page = get_swagger_ui_html(openapi_url=openapi_url, title=f"{app.title} - Swagger UI")
+        return await _enter(request, redis, ott, page)
 
     @app.get(f"{DOCS_PATH}/redoc", include_in_schema=False)
-    async def redoc_ui(request: Request, ott: Optional[str] = None) -> Response:
+    @inject
+    async def redoc_ui(
+        request: Request, redis: FromDishka[Redis], ott: Optional[str] = None
+    ) -> Response:
         page = get_redoc_html(openapi_url=openapi_url, title=f"{app.title} - ReDoc")
-        return _enter(request, ott, page)
+        return await _enter(request, redis, ott, page)
 
     @app.get(openapi_url, include_in_schema=False)
     async def openapi_schema(request: Request) -> dict:
