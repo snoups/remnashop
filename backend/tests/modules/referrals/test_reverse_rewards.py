@@ -10,7 +10,7 @@ from app.core.enums import ReferralRewardType
 from app.core.ports import EventPublisher
 from app.modules.referrals.dto import ReverseReferralRewardsDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases.reverse_referral_rewards import ReverseReferralRewardsUseCase
+from app.modules.referrals.usecases import ReverseReferralRewardsUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
@@ -75,7 +75,7 @@ async def test_reverse_takes_what_is_left_and_floors_at_zero(
 
     await reverse_rewards.system(ReverseReferralRewardsDto(payment_key="pay-1"))
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
     session = referral_repository.session
     row = (await session.scalars(select(ReferralReward))).one()
     assert row.reversed_at is not None
@@ -98,7 +98,7 @@ async def test_second_reverse_does_nothing(
 
     await reverse_rewards.system(ReverseReferralRewardsDto(payment_key="pay-1"))
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 7
     assert len(await _reversed_events(referral_repository.session)) == 1
 
 
@@ -114,7 +114,7 @@ async def test_reverse_debits_points(
 
     await reverse_rewards.system(ReverseReferralRewardsDto(payment_key="pay-1"))
 
-    assert (await user_repository.get_by_id(referrer)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer)).points == Decimal(0)
     events = await _reversed_events(referral_repository.session)
     assert len(events) == 1
     assert events[0].payload["amount"] == "5"

@@ -8,6 +8,7 @@ from app.modules.announcements.api.schemas import (
     AnnouncementListResponse,
     AnnouncementResponse,
 )
+from app.modules.announcements.dto import AnnouncementIdsDto
 from app.modules.announcements.usecases import (
     DismissAnnouncementsUseCase,
     ListAnnouncementsUseCase,
@@ -38,7 +39,7 @@ async def mark_announcements_seen(
     use_case: FromDishka[MarkAnnouncementsSeenUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
-    await use_case(actor, body.ids)
+    await use_case(actor, AnnouncementIdsDto(ids=body.ids))
 
 
 @router.post("/actions/dismiss", status_code=status.HTTP_204_NO_CONTENT)
@@ -48,4 +49,4 @@ async def dismiss_announcements(
     use_case: FromDishka[DismissAnnouncementsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
-    await use_case(actor, body.ids)
+    await use_case(actor, AnnouncementIdsDto(ids=body.ids))

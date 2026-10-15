@@ -38,7 +38,7 @@ class BackupsProvider(Provider):
         RunScheduledBackupUseCase,
     )
 
-    @provide
+    @provide(scope=Scope.APP)
     def run_backup_dispatch(self) -> RunBackupDispatch:
         return cast(RunBackupDispatch, run_backup_task)
 

@@ -83,6 +83,9 @@ export function importTranslations(
   );
 }
 
-export function resetAllTranslations(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/translations/actions/reset-all", {});
+export function resetAllTranslations(): Promise<TranslationEntry[]> {
+  return apiPost<ListResponse<TranslationEntry>, Record<string, never>>(
+    "/translations/actions/reset-all",
+    {},
+  ).then((response) => response.items);
 }

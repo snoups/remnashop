@@ -6,19 +6,20 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import BannerFormat
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.image import matches_image_magic_bytes
 from app.modules.banners.dto import BannerDto, UploadBannerDto, UploadBannerFileDto
+from app.modules.banners.events import BannerChangedEvent
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.storage import (
+    MAX_BANNER_SIZE_BYTES,
     delete_banner_file,
     save_banner_file,
     validate_banner_name,
 )
 from app.modules.translations import TranslationRepository
-
-MAX_BANNER_SIZE_BYTES: Final[int] = 5 * 1024 * 1024
 
 _FORMAT_BY_CONTENT_TYPE: Final[dict[str, BannerFormat]] = {
     "image/jpeg": BannerFormat.JPG,
@@ -37,11 +38,13 @@ class UploadBannerUseCase(UseCase[UploadBannerFileDto, BannerDto]):
         translation_repository: TranslationRepository,
         config: AppConfig,
         uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._banner_repository = banner_repository
         self._translation_repository = translation_repository
         self._config = config
         self._uow = uow
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UploadBannerFileDto) -> BannerDto:
         try:
@@ -71,7 +74,6 @@ class UploadBannerUseCase(UseCase[UploadBannerFileDto, BannerDto]):
 
             existing = await self._banner_repository.get(data.name, data.locale)
 
-        async with self._uow:
             banner = await self._banner_repository.upsert(
                 UploadBannerDto(
                     name=data.name,
@@ -79,6 +81,11 @@ class UploadBannerUseCase(UseCase[UploadBannerFileDto, BannerDto]):
                     content_type=data.content_type,
                     extension=banner_format.value,
                     size_bytes=len(data.data),
+                )
+            )
+            await self._event_publisher.publish(
+                BannerChangedEvent(
+                    actor=actor, action="upload", name=data.name, locale=data.locale.value
                 )
             )
         # files change only after the row commits: a failed commit must not

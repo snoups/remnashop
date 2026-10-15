@@ -3,7 +3,7 @@ import string
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Callable, Final, Optional, cast
+from typing import Any, Final, Optional, cast
 
 from loguru import logger
 from sqlalchemy import ColumnElement, CursorResult, case, exists, func, or_, select, update
@@ -12,8 +12,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.core.constants import MAX_POINTS_BALANCE, MAX_SQL_IN_PARAMS
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_POINTS_BALANCE
 from app.core.db.errors import constraint_name
+from app.core.db.filters import in_ids
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.user import User
 from app.core.db.partial_update import apply_partial_update
@@ -24,7 +25,6 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.email import normalize_email
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import (
-    DEFAULT_PAGE_SIZE,
     CreateUserDto,
     DeletedFilter,
     PromoteAdminDto,
@@ -99,12 +99,8 @@ class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-        self._convert_to_dto: Callable[[User], UserDto] = lambda row: UserDto.model_validate(
-            row, from_attributes=True
-        )
-        self._convert_to_dto_list: Callable[[list[User]], list[UserDto]] = lambda rows: [
-            UserDto.model_validate(row, from_attributes=True) for row in rows
-        ]
+    def _to_dto(self, row: User) -> UserDto:
+        return UserDto.model_validate(row, from_attributes=True)
 
     async def create(self, data: CreateUserDto) -> UserDto:
         db_user = User(
@@ -129,7 +125,7 @@ class UserRepository:
         self.session.add(db_user)
         await self._flush_unique()
 
-        dto = self._convert_to_dto(db_user)
+        dto = self._to_dto(db_user)
         logger.debug(f"New user {dto.log} created in database")
         return dto
 
@@ -154,24 +150,24 @@ class UserRepository:
             message, code = violation
             raise ConflictError(message, code=code) from error
 
-    async def get_by_id(self, user_id: int) -> Optional[UserDto]:
+    async def find_by_id(self, user_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.id == user_id)
         db_user = await self.session.scalar(stmt)
         if db_user is None:
             logger.debug(f"User id='{user_id}' not found")
             return None
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
-    async def get_for_update(self, user_id: int) -> Optional[UserDto]:
+    async def find_for_update(self, user_id: int) -> Optional[UserDto]:
         db_user = await self.session.scalar(
             select(User)
             .where(User.id == user_id)
             .with_for_update()
             .execution_options(populate_existing=True)
         )
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
-    async def get_live_for_update(self, user_id: int) -> Optional[UserDto]:
+    async def find_live_for_update(self, user_id: int) -> Optional[UserDto]:
         # an anonymized (deleted) account is gone as far as any admin action goes
         db_user = await self.session.scalar(
             select(User)
@@ -179,25 +175,23 @@ class UserRepository:
             .with_for_update()
             .execution_options(populate_existing=True)
         )
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def get_many_by_ids(self, ids: list[int]) -> list[UserDto]:
         users: list[UserDto] = []
-        for start in range(0, len(ids), MAX_SQL_IN_PARAMS):
-            chunk = ids[start : start + MAX_SQL_IN_PARAMS]
-            rows = await self.session.scalars(select(User).where(User.id.in_(chunk)))
-            users.extend(self._convert_to_dto_list(list(rows)))
+        rows = await self.session.scalars(select(User).where(in_ids(User.id, ids)))
+        users.extend([self._to_dto(row) for row in rows])
         return users
 
     async def get_by_telegram_id(self, telegram_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.telegram_id == telegram_id)
         db_user = await self.session.scalar(stmt)
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def get_by_email(self, email: str) -> Optional[UserDto]:
         stmt = select(User).where(User.email == normalize_email(email))
         db_user = await self.session.scalar(stmt)
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def clear_telegram_id(self, user_id: int) -> UserDto:
         db_user = await self.session.get(User, user_id)
@@ -207,22 +201,22 @@ class UserRepository:
         db_user.username = None
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def get_by_login(self, login: str) -> Optional[UserDto]:
         stmt = select(User).where(User.login == login)
         db_user = await self.session.scalar(stmt)
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def get_by_username(self, username: str) -> Optional[UserDto]:
         stmt = select(User).where(User.username == username)
         db_user = await self.session.scalar(stmt)
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def get_by_referral_code(self, code: str) -> Optional[UserDto]:
         stmt = select(User).where(User.referral_code == code)
         db_user = await self.session.scalar(stmt)
-        return self._convert_to_dto(db_user) if db_user else None
+        return self._to_dto(db_user) if db_user else None
 
     async def credit_points(self, user_id: int, amount: Decimal) -> None:
         # Atomic UPDATE, so two rewards landing at once can't clobber each
@@ -364,16 +358,14 @@ class UserRepository:
     async def list_by_roles(self, roles: Sequence[Role]) -> list[UserDto]:
         stmt = select(User).where(User.role.in_(roles)).order_by(User.created_at.desc())
         rows = (await self.session.scalars(stmt)).all()
-        return self._convert_to_dto_list(list(rows))
+        return [self._to_dto(row) for row in rows]
 
     async def list_by_ids(self, user_ids: list[int]) -> list[UserDto]:
         users: list[User] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            users.extend(
-                (await self.session.execute(select(User).where(User.id.in_(chunk)))).scalars()
-            )
-        return self._convert_to_dto_list(users)
+        users.extend(
+            (await self.session.execute(select(User).where(in_ids(User.id, user_ids)))).scalars()
+        )
+        return [self._to_dto(row) for row in users]
 
     async def get_list_item(self, user_id: int, roles: Sequence[Role]) -> UserListItemDto:
         row = (
@@ -460,21 +452,19 @@ class UserRepository:
         db_user.language = language
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def list_loyalty_states(self, user_ids: list[int]) -> list[UserLoyaltyStateDto]:
         states: list[UserLoyaltyStateDto] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            rows = await self.session.execute(
-                select(User.id, User.loyalty_discount, User.loyalty_excluded).where(
-                    User.id.in_(chunk)
-                )
+        rows = await self.session.execute(
+            select(User.id, User.loyalty_discount, User.loyalty_excluded).where(
+                in_ids(User.id, user_ids)
             )
-            states.extend(
-                UserLoyaltyStateDto(user_id=user_id, discount=discount, excluded=excluded)
-                for user_id, discount, excluded in rows.tuples()
-            )
+        )
+        states.extend(
+            UserLoyaltyStateDto(user_id=user_id, discount=discount, excluded=excluded)
+            for user_id, discount, excluded in rows.tuples()
+        )
         return states
 
     async def list_user_ids_with_loyalty_discount(self) -> list[int]:
@@ -485,12 +475,9 @@ class UserRepository:
         for user_id, percent in changes.items():
             by_percent.setdefault(percent, []).append(user_id)
         for percent, user_ids in by_percent.items():
-            for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-                await self.session.execute(
-                    update(User)
-                    .where(User.id.in_(user_ids[start : start + MAX_SQL_IN_PARAMS]))
-                    .values(loyalty_discount=percent)
-                )
+            await self.session.execute(
+                update(User).where(in_ids(User.id, user_ids)).values(loyalty_discount=percent)
+            )
 
     async def update_fields(self, user_id: int, data: UpdateUserDto) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
@@ -511,7 +498,7 @@ class UserRepository:
         # updated_at is server-computed via onupdate=; refresh so the DTO
         # conversion below doesn't lazy-load it outside of an awaited call.
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def promote_to_admin(self, user_id: int, data: PromoteAdminDto) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
@@ -528,7 +515,7 @@ class UserRepository:
 
         await self._flush_unique()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def demote_from_admin(self, user_id: int) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
@@ -545,7 +532,7 @@ class UserRepository:
 
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def set_rules_accepted_at(self, user_id: int, accepted_at: datetime) -> UserDto:
         db_user = await self.session.get(User, user_id)
@@ -554,7 +541,7 @@ class UserRepository:
         db_user.rules_accepted_at = accepted_at
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def set_marketing_opt_out(self, user_id: int, value: bool) -> None:
         db_user = await self.session.get(User, user_id)
@@ -570,7 +557,7 @@ class UserRepository:
         db_user.is_blocked = is_blocked
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def set_telegram_id(self, user_id: int, telegram_id: int) -> UserDto:
         db_user = await self.session.scalar(
@@ -586,7 +573,7 @@ class UserRepository:
         db_user.username = None
         await self._flush_unique()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def reset_referral_code(self, user_id: int) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
@@ -595,7 +582,7 @@ class UserRepository:
         db_user.referral_code = await self._generate_referral_code()
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)
 
     async def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> None:
         db_user = await self.session.get(User, user_id)
@@ -648,4 +635,4 @@ class UserRepository:
         await self.session.execute(sa_delete(OAuthIdentity).where(OAuthIdentity.user_id == user_id))
         await self.session.flush()
         await self.session.refresh(db_user)
-        return self._convert_to_dto(db_user)
+        return self._to_dto(db_user)

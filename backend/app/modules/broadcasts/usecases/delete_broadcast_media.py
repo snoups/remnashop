@@ -9,9 +9,9 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.broadcasts.dto import BroadcastDto
 from app.modules.broadcasts.events import BroadcastChangedEvent
+from app.modules.broadcasts.lifecycle import lock_editable
 from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.storage import delete_media
-from app.modules.broadcasts.usecases.editable import lock_editable
 from app.modules.broadcasts.validation import validate_texts
 
 
@@ -44,9 +44,9 @@ class DeleteBroadcastMediaUseCase(UseCase[int, BroadcastDto]):
                 status=BroadcastStatus.DRAFT,
                 scheduled_at=None,
             )
-            updated = await self._broadcast_repository.get_or_raise(current.id)
+            updated = await self._broadcast_repository.get_by_id(current.id)
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="delete_media", broadcast_id=current.id)
+                BroadcastChangedEvent(actor=actor, action="delete_media", broadcast_id=current.id)
             )
         if current.media_extension is not None:
             delete_media(

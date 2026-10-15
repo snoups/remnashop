@@ -20,7 +20,7 @@ async def test_reconcile_blocks_matching_user_and_does_not_unblock(
     await BlockBlacklistMatchesUseCase(
         blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
     ).system()
-    refetched = await user_repository.get_by_id(user.id)
+    refetched = await user_repository.find_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
 
     # entry removed -> reconcile must NOT unblock
@@ -28,7 +28,7 @@ async def test_reconcile_blocks_matching_user_and_does_not_unblock(
     await BlockBlacklistMatchesUseCase(
         blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
     ).system()
-    refetched = await user_repository.get_by_id(user.id)
+    refetched = await user_repository.find_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
 
 
@@ -49,8 +49,8 @@ async def test_reconcile_never_blocks_staff(
         blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
     ).system()
 
-    refetched_owner = await user_repository.get_by_id(owner.id)
-    refetched_plain = await user_repository.get_by_id(plain.id)
+    refetched_owner = await user_repository.find_by_id(owner.id)
+    refetched_plain = await user_repository.find_by_id(plain.id)
     assert refetched_owner is not None and refetched_owner.is_blocked is False
     assert refetched_plain is not None and refetched_plain.is_blocked is True
 
@@ -70,7 +70,7 @@ async def test_reconcile_matches_email_case_insensitively(
         blacklist_repository, UserBlacklistRepository(user_repository.session), uow, event_publisher
     ).system()
 
-    refetched = await user_repository.get_by_id(user.id)
+    refetched = await user_repository.find_by_id(user.id)
     assert refetched is not None and refetched.is_blocked is True
 
 

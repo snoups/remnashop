@@ -9,9 +9,8 @@ from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.dependencies.public import get_current_session_id
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import Role
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
 from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
@@ -27,7 +26,7 @@ from app.modules.users.api.schemas import (
     PromoteAdminRequest,
     SecurityResponse,
     SetDiscountRequest,
-    UnblockAllResponse,
+    UnblockBlacklistMatchesResponse,
     UpdateAdminRequest,
     UpdateOwnProfileRequest,
     UpdateSecurityRequest,
@@ -36,10 +35,9 @@ from app.modules.users.api.schemas import (
     UserPageResponse,
 )
 from app.modules.users.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     BindTelegramDto,
     BlacklistMatchOrigin,
+    BlockUserDto,
     CreateAdminDto,
     DeleteAdminDto,
     DeletedFilter,
@@ -50,6 +48,7 @@ from app.modules.users.dto import (
     ListUsersDto,
     PromoteToAdminDto,
     SetUserDiscountDto,
+    UnblockUserDto,
     UpdateAdminDto,
     UpdateOwnProfileDto,
     UpdateSecuritySettingsDto,
@@ -81,15 +80,6 @@ from app.modules.users.usecases import (
 
 router = APIRouter(prefix="/users", tags=["users"])
 admins_router = APIRouter(prefix="/admins", tags=["admins"])
-
-
-def _parse_role(value: Optional[str]) -> Optional[Role]:
-    if value is None:
-        return None
-    try:
-        return Role[value]
-    except KeyError:
-        raise ValidationError(f"Invalid role: {value}", code=ErrorCode.ROLE_INVALID) from None
 
 
 def _effective_permissions(user: UserDto) -> list[str]:
@@ -126,6 +116,7 @@ async def get_me(
 @inject
 async def update_me(
     payload: UpdateOwnProfileRequest,
+    request: Request,
     use_case: FromDishka[UpdateOwnProfileUseCase],
     actor: UserDto = Depends(require_admin_user),
     session_id: int = Depends(get_current_session_id),
@@ -138,17 +129,22 @@ async def update_me(
             new_password=payload.new_password,
             language=payload.language,
             current_session_id=session_id,
+            client_ip=resolve_client_ip(request),
         ),
     )
     return _to_current_user_response(updated)
 
 
 @router.get("/me/security", response_model=SecurityResponse)
+@inject
 async def get_own_security(
-    request: Request, actor: UserDto = Depends(require_admin_user)
+    request: Request,
+    use_case: FromDishka[GetCurrentUserUseCase],
+    actor: UserDto = Depends(require_admin_user),
 ) -> SecurityResponse:
+    current = await use_case(actor)
     return SecurityResponse(
-        ip_allowlist=actor.ip_allowlist or [], client_ip=resolve_client_ip(request)
+        ip_allowlist=current.ip_allowlist or [], client_ip=resolve_client_ip(request)
     )
 
 
@@ -177,8 +173,8 @@ async def update_own_security(
 async def list_users(
     use_case: FromDishka[ListUsersUseCase],
     actor: Actor = Depends(require_admin),
-    search: Optional[str] = None,
-    role: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
+    role: Optional[Role] = None,
     is_blocked: Optional[bool] = None,
     include_staff: bool = False,
     created_from: Optional[datetime] = None,
@@ -197,7 +193,7 @@ async def list_users(
         actor,
         ListUsersDto(
             search=search,
-            role=_parse_role(role),
+            role=role,
             is_blocked=is_blocked,
             include_staff=include_staff,
             created_from=range_start_utc(created_from),
@@ -244,7 +240,7 @@ async def get_user_summary(
 async def list_blacklist_matches(
     use_case: FromDishka[ListBlacklistMatchesUseCase],
     actor: Actor = Depends(require_admin),
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     origin: Optional[BlacklistMatchOrigin] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
@@ -261,14 +257,14 @@ async def list_blacklist_matches(
     return BlacklistMatchPageResponse.model_validate(result, from_attributes=True)
 
 
-@router.post("/bulk/unblock-blacklist-matches", response_model=UnblockAllResponse)
+@router.post("/bulk/unblock-blacklist-matches", response_model=UnblockBlacklistMatchesResponse)
 @inject
 async def unblock_blacklist_matches(
     use_case: FromDishka[UnblockBlacklistMatchesUseCase],
     actor: Actor = Depends(require_admin),
-) -> UnblockAllResponse:
+) -> UnblockBlacklistMatchesResponse:
     count = await use_case(actor)
-    return UnblockAllResponse(unblocked=count)
+    return UnblockBlacklistMatchesResponse(unblocked=count)
 
 
 @router.patch(
@@ -278,6 +274,7 @@ async def unblock_blacklist_matches(
 async def set_user_discount(
     user_id: int,
     payload: SetDiscountRequest,
+    request: Request,
     use_case: FromDishka[SetUserDiscountUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
@@ -287,6 +284,7 @@ async def set_user_discount(
             user_id=user_id,
             personal_discount=payload.personal_discount,
             purchase_discount=payload.purchase_discount,
+            client_ip=resolve_client_ip(request),
         ),
     )
     return UserResponse.model_validate(updated, from_attributes=True)
@@ -299,11 +297,17 @@ async def set_user_discount(
 async def bind_user_telegram(
     user_id: int,
     payload: BindTelegramRequest,
+    request: Request,
     use_case: FromDishka[BindTelegramIdUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
     updated = await use_case(
-        actor, BindTelegramDto(user_id=user_id, telegram_id=payload.telegram_id)
+        actor,
+        BindTelegramDto(
+            user_id=user_id,
+            telegram_id=payload.telegram_id,
+            client_ip=resolve_client_ip(request),
+        ),
     )
     return UserResponse.model_validate(updated, from_attributes=True)
 
@@ -314,10 +318,13 @@ async def bind_user_telegram(
 @inject
 async def block_user(
     user_id: int,
+    request: Request,
     use_case: FromDishka[BlockUserUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
-    updated = await use_case(actor, user_id)
+    updated = await use_case(
+        actor, BlockUserDto(user_id=user_id, client_ip=resolve_client_ip(request))
+    )
     return UserResponse.model_validate(updated, from_attributes=True)
 
 
@@ -327,10 +334,13 @@ async def block_user(
 @inject
 async def unblock_user(
     user_id: int,
+    request: Request,
     use_case: FromDishka[UnblockUserUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
-    updated = await use_case(actor, user_id)
+    updated = await use_case(
+        actor, UnblockUserDto(user_id=user_id, client_ip=resolve_client_ip(request))
+    )
     return UserResponse.model_validate(updated, from_attributes=True)
 
 
@@ -371,7 +381,7 @@ async def create_admin(
     use_case: FromDishka[CreateAdminUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AdminWithPasswordResponse:
-    admin, password = await use_case(
+    created = await use_case(
         actor,
         CreateAdminDto(
             login=payload.login,
@@ -381,7 +391,9 @@ async def create_admin(
             permission_revokes=payload.permission_revokes,
         ),
     )
-    return AdminWithPasswordResponse(admin=_to_admin_response(admin), password=password)
+    return AdminWithPasswordResponse(
+        admin=_to_admin_response(created.admin), password=created.password
+    )
 
 
 @admins_router.post(
@@ -396,7 +408,7 @@ async def promote_admin(
     use_case: FromDishka[PromoteToAdminUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AdminPromoteResponse:
-    admin, password = await use_case(
+    promoted = await use_case(
         actor,
         PromoteToAdminDto(
             user_id=payload.user_id,
@@ -408,7 +420,9 @@ async def promote_admin(
             permission_revokes=payload.permission_revokes,
         ),
     )
-    return AdminPromoteResponse(admin=_to_admin_response(admin), password=password)
+    return AdminPromoteResponse(
+        admin=_to_admin_response(promoted.admin), password=promoted.password
+    )
 
 
 @admins_router.patch(

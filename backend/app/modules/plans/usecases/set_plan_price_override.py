@@ -33,7 +33,7 @@ class SetPlanPriceOverrideUseCase(UseCase[SetPlanPriceOverrideDto, PlanDto]):
                 assert_overridable_currency(data.currency, settings.anchor_currency)
             plan = await self._plan_repository.set_price_override(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="price_override", plan_id=data.plan_id)
+                PlanChangedEvent(actor=actor, action="price_override", plan_id=data.plan_id)
             )
         logger.info(
             f"{actor.log} Set price override for plan '{data.plan_id}' "

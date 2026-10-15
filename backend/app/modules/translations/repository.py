@@ -20,16 +20,7 @@ class TranslationRepository:
         self.session = session
 
     def _to_dto(self, row: BotTranslation) -> TranslationEntryDto:
-        return TranslationEntryDto(
-            id=row.id,
-            locale=row.locale,
-            message_id=row.message_id,
-            attribute_id=row.attribute_id,
-            value=row.value,
-            default_value=row.default_value,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return TranslationEntryDto.model_validate(row, from_attributes=True)
 
     async def list_active_locales(self) -> list[Locale]:
         result = await self.session.execute(select(ActiveLocale.locale))

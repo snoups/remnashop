@@ -140,7 +140,7 @@ export function OAuthSettingsForm() {
               icon={GithubIcon}
               label={t("profile.oauthAccounts.github")}
               isConfigured={state.data.is_github_configured}
-              isEnabled={state.data.is_github_enabled}
+              isEnabled={state.data.github_enabled}
               onToggled={setData}
               guide={<GithubOAuthGuideDialog />}
               fields={[
@@ -163,7 +163,7 @@ export function OAuthSettingsForm() {
               icon={TelegramIcon}
               label={t("profile.oauthAccounts.telegram")}
               isConfigured={state.data.is_telegram_configured}
-              isEnabled={state.data.is_telegram_enabled}
+              isEnabled={state.data.telegram_enabled}
               onToggled={setData}
               guide={<TelegramOAuthGuideDialog />}
               fields={[
@@ -226,7 +226,7 @@ export function OAuthSettingsForm() {
               icon={KeySquare}
               label={state.data.oidc_display_name ?? t("profile.oauthAccounts.oidcFallback")}
               isConfigured={state.data.is_oidc_configured}
-              isEnabled={state.data.is_oidc_enabled}
+              isEnabled={state.data.oidc_enabled}
               onToggled={setData}
               guide={<OidcOAuthGuideDialog />}
               fields={[
@@ -258,7 +258,7 @@ export function OAuthSettingsForm() {
             />
             <PasskeyPanel
               isConfigured={state.data.is_passkey_configured}
-              isEnabled={state.data.is_passkey_enabled}
+              isEnabled={state.data.passkey_enabled}
               rpId={passkeyRpId}
               origin={passkeyOrigin}
               onRpIdChange={setPasskeyRpId}
@@ -269,7 +269,7 @@ export function OAuthSettingsForm() {
 
           <div className="mt-2 border-t border-white/[0.08] pt-2">
             <PasswordLoginToggle
-              isEnabled={state.data.is_password_login_enabled}
+              isEnabled={state.data.password_login_enabled}
               onToggled={setData}
             />
           </div>

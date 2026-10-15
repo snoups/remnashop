@@ -4,8 +4,7 @@ from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import InvitedUserDto, ListInvitedUsersDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases.target import get_visible_target
-from app.modules.users import UserRepository, visible_user
+from app.modules.users import UserRepository, get_visible_target, visible_user
 
 
 class ListInvitedUsersUseCase(UseCase[ListInvitedUsersDto, tuple[list[InvitedUserDto], int]]):

@@ -29,6 +29,6 @@ class DeletePlanUseCase(UseCase[int, None]):
             await self._plan_reference_cleaner.forget_plan(data)
             await self._plan_repository.delete(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="delete", plan_id=data)
+                PlanChangedEvent(actor=actor, action="delete", plan_id=data)
             )
         logger.info(f"{actor.log} Deleted plan '{data}'")

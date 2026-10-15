@@ -8,8 +8,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.events import ReferralCodeResetEvent
-from app.modules.referrals.usecases.target import get_visible_target
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserDto, UserRepository, get_visible_target
 
 
 class ResetReferralCodeUseCase(UseCase[int, UserDto]):

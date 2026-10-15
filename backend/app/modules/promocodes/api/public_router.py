@@ -3,7 +3,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.public import get_current_user
-from app.api.dependencies.rate_limit import rate_limit
+from app.api.dependencies.rate_limit import user_rate_limit
 from app.api.errors import error_responses
 from app.core.constants import TIME_1M
 from app.modules.promocodes.api.schemas import ActivatePromocodeRequest, PublicPromocodeResponse
@@ -18,7 +18,9 @@ router = APIRouter(prefix="/promocodes", tags=["promocodes"])
     "/activations",
     response_model=PublicPromocodeResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit(key="promocode_activate", limit=10, window_seconds=TIME_1M))],
+    dependencies=[
+        Depends(user_rate_limit(key="promocode_activate", limit=10, window_seconds=TIME_1M))
+    ],
     responses=error_responses(400, 404, 503),
 )
 @inject

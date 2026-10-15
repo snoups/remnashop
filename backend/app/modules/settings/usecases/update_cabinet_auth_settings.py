@@ -42,8 +42,8 @@ class UpdateCabinetAuthSettingsUseCase(
             settings = await self._settings_repository.update_cabinet_auth_settings(data)
             await self._event_publisher.publish(
                 CabinetAuthSettingsChangedEvent(
-                    user=actor, changed_fields=changed_fields(before, settings, vars(data))
+                    actor=actor, changed_fields=changed_fields(before, settings, vars(data))
                 )
             )
-        logger.info(f"Cabinet auth settings updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated cabinet sign-in settings")
         return settings

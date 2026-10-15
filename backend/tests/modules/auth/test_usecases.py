@@ -32,13 +32,17 @@ from app.modules.auth.events import (
 )
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
-from app.modules.auth.usecases import BootstrapOwnerUseCase, GetAuthStatusUseCase, LoginUseCase
-from app.modules.auth.usecases.list_sessions import ListSessionsUseCase
-from app.modules.auth.usecases.list_user_sessions import ListUserSessionsUseCase
-from app.modules.auth.usecases.logout import LogoutUseCase
-from app.modules.auth.usecases.refresh_session import RefreshSessionUseCase
-from app.modules.auth.usecases.revoke_session import RevokeSessionUseCase
-from app.modules.auth.usecases.revoke_user_session import RevokeUserSessionUseCase
+from app.modules.auth.usecases import (
+    BootstrapOwnerUseCase,
+    GetAuthStatusUseCase,
+    ListSessionsUseCase,
+    ListUserSessionsUseCase,
+    LoginUseCase,
+    LogoutUseCase,
+    RefreshSessionUseCase,
+    RevokeSessionUseCase,
+    RevokeUserSessionUseCase,
+)
 from app.modules.oauth.events import (
     OAuthIdentityConnectedEvent,
     OAuthIdentityDisconnectedEvent,
@@ -738,13 +742,13 @@ async def test_admin_cannot_view_or_revoke_another_admins_session(
     other_admin_session = (await session_repository.list_active_by_user(other_admin.id))[0]
 
     list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await list_use_case(admin, other_admin.id)
 
     revoke_use_case = RevokeUserSessionUseCase(
         session_repository, user_repository, uow, event_publisher
     )
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await revoke_use_case(
             admin,
             RevokeUserSessionDto(
@@ -781,13 +785,13 @@ async def test_admin_cannot_view_or_revoke_owners_session(
     owner_session = (await session_repository.list_active_by_user(owner.id))[0]
 
     list_use_case = ListUserSessionsUseCase(session_repository, user_repository, uow)
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await list_use_case(admin, owner.id)
 
     revoke_use_case = RevokeUserSessionUseCase(
         session_repository, user_repository, uow, event_publisher
     )
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await revoke_use_case(
             admin,
             RevokeUserSessionDto(
@@ -864,9 +868,9 @@ async def test_api_token_reaches_customer_sessions_but_not_staff_sessions(
     )
 
     assert len(await list_use_case(token, customer.id)) == 1  # type: ignore[arg-type]
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await list_use_case(token, owner.id)  # type: ignore[arg-type]
-    with pytest.raises(ConflictError):
+    with pytest.raises(NotFoundError):
         await revoke_use_case(
             token,  # type: ignore[arg-type]
             RevokeUserSessionDto(

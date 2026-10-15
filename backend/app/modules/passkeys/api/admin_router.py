@@ -1,10 +1,11 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.dependencies.admin import require_admin_user
 from app.api.errors import error_responses
 from app.core.exceptions import AuthenticationError, ValidationError
+from app.core.utils.http import resolve_client_ip
 from app.modules.passkeys.api.schemas import (
     PasskeyListResponse,
     PasskeyResponse,
@@ -12,6 +13,7 @@ from app.modules.passkeys.api.schemas import (
     VerifyPasskeyRegistrationRequest,
 )
 from app.modules.passkeys.dto import (
+    DeletePasskeyDto,
     RenamePasskeyDto,
     VerifyPasskeyRegistrationDto,
 )
@@ -55,13 +57,18 @@ async def get_registration_options(
 @inject
 async def verify_registration(
     payload: VerifyPasskeyRegistrationRequest,
+    request: Request,
     use_case: FromDishka[VerifyPasskeyRegistrationUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> PasskeyResponse:
     try:
         created = await use_case(
             actor,
-            VerifyPasskeyRegistrationDto(credential=payload.credential, name=payload.name),
+            VerifyPasskeyRegistrationDto(
+                credential=payload.credential,
+                name=payload.name,
+                client_ip=resolve_client_ip(request),
+            ),
         )
     except AuthenticationError as error:
         raise ValidationError(str(error), code=error.code) from error
@@ -86,7 +93,10 @@ async def rename_passkey(
 @inject
 async def delete_passkey(
     passkey_id: int,
+    request: Request,
     use_case: FromDishka[DeletePasskeyUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
-    await use_case(actor, passkey_id)
+    await use_case(
+        actor, DeletePasskeyDto(passkey_id=passkey_id, client_ip=resolve_client_ip(request))
+    )

@@ -50,8 +50,8 @@ export async function uploadAppearanceImage(
   return result;
 }
 
-export async function deleteAppearanceImage(kind: AppearanceImageKind): Promise<null> {
-  const result = await apiDelete<null>(`/settings/appearance/${kind}`);
+export async function deleteAppearanceImage(kind: AppearanceImageKind): Promise<AppearanceSettings> {
+  const result = await apiDelete<AppearanceSettings>(`/settings/appearance/${kind}`);
   imageVersion = Date.now();
   return result;
 }

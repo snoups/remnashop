@@ -20,9 +20,7 @@ router = APIRouter(prefix="/auth/passkeys", tags=["auth"])
 
 @router.get(
     "/authenticate/options",
-    dependencies=[
-        Depends(rate_limit(key="passkey_authenticate", limit=10, window_seconds=TIME_1M))
-    ],
+    dependencies=[Depends(rate_limit(key="passkey_options", limit=10, window_seconds=TIME_1M))],
     responses=error_responses(400),
 )
 @inject

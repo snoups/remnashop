@@ -4,7 +4,7 @@ from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
+from app.modules.users.usecases import UnblockBlacklistMatchesUseCase
 
 
 async def test_unblocks_matches_and_drops_their_manual_entries(
@@ -37,7 +37,7 @@ async def test_unblocks_matches_and_drops_their_manual_entries(
     assert await use_case(owner) == 2
 
     for user, blocked in ((manual, False), (listed, False), (other, True)):
-        fetched = await user_repository.get_by_id(user.id)
+        fetched = await user_repository.find_by_id(user.id)
         assert fetched is not None and fetched.is_blocked is blocked
     blacklist = await blacklist_repository.get_blacklist()
     # unregistered manual entries stay; source entries are untouched

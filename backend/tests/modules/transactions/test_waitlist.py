@@ -11,8 +11,7 @@ from app.modules.notifications.dto import SendTelegramTextsDto
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import GetAccessSettingsUseCase
-from app.modules.transactions.usecases import notify_payment_waitlist
-from app.modules.transactions.usecases.notify_payment_waitlist import NotifyPaymentWaitlistUseCase
+from app.modules.transactions.usecases import NotifyPaymentWaitlistUseCase, notify_payment_waitlist
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository

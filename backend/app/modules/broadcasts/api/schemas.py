@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 from app.core.enums import (
     BroadcastCategory,
@@ -19,8 +19,6 @@ from app.modules.broadcasts.validation import MAX_TITLE_LENGTH
 
 
 class BroadcastRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     title: Optional[str] = Field(default=None, max_length=MAX_TITLE_LENGTH)
     category: BroadcastCategory
     audience: BroadcastAudienceDto
@@ -62,7 +60,7 @@ class BroadcastResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
-class BroadcastListResponse(BaseModel):
+class BroadcastPageResponse(BaseModel):
     items: list[BroadcastResponse]
     total: int
 
@@ -80,14 +78,12 @@ class BroadcastRecipientResponse(BaseModel):
     language: Locale
 
 
-class BroadcastRecipientListResponse(BaseModel):
+class BroadcastRecipientPageResponse(BaseModel):
     items: list[BroadcastRecipientResponse]
     total: int
 
 
 class PreviewAudienceRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     audience: BroadcastAudienceDto
     category: BroadcastCategory
 
@@ -98,8 +94,6 @@ class AudiencePreviewResponse(BaseModel):
 
 
 class SendBroadcastRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     scheduled_at: Optional[AwareDatetime] = None
 
 

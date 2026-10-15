@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models.notification_settings import NotificationSettings
 from app.core.db.models.push_subscription import PushSubscription
 from app.core.db.models.user_session import UserSession
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.utils.time import datetime_now
 from app.modules.notifications.dto import (
     NotificationSettingsDto,
@@ -15,7 +15,6 @@ from app.modules.notifications.dto import (
     UpdateNotificationSettingsDto,
 )
 
-_SINGLETON_ID: Final[int] = 1
 _MAX_PUSH_FAILURES: Final[int] = 3
 
 
@@ -29,13 +28,13 @@ class NotificationRepository:
         return NotificationSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_settings(self) -> NotificationSettingsDto:
-        return self._settings_dto(await self.session.get(NotificationSettings, _SINGLETON_ID))
+        return self._settings_dto(await self.session.get(NotificationSettings, SINGLETON_ID))
 
     async def is_push_configured(self) -> bool:
         return (await self.get_settings()).is_push_configured
 
     async def set_vapid_keys(self, public_key: str, private_key: str) -> NotificationSettingsDto:
-        row = await get_or_create_singleton(self.session, NotificationSettings, _SINGLETON_ID)
+        row = await get_or_create_singleton(self.session, NotificationSettings, SINGLETON_ID)
         row.vapid_public_key = public_key
         row.vapid_private_key = private_key
         await self.session.flush()
@@ -43,7 +42,7 @@ class NotificationRepository:
         return self._settings_dto(row)
 
     async def update_settings(self, data: UpdateNotificationSettingsDto) -> NotificationSettingsDto:
-        row = await get_or_create_singleton(self.session, NotificationSettings, _SINGLETON_ID)
+        row = await get_or_create_singleton(self.session, NotificationSettings, SINGLETON_ID)
         if data.vapid_contact is not None:
             row.vapid_contact = data.vapid_contact or None
         await self.session.flush()

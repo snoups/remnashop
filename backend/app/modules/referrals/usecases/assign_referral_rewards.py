@@ -20,7 +20,7 @@ from app.modules.referrals.events import ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.transactions import TransactionDto, TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserDto, UserRepository
 
 _MAX_LEVEL: Final[int] = 3
 _HUNDRED: Final[Decimal] = Decimal(100)
@@ -71,25 +71,26 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: AssignReferralRewardsDto) -> None:
-        settings = await self._referral_repository.get_settings()
-        if not settings.enabled:
-            return
-        order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
-        # a bonus-day redemption carries a payment_key too, with no order behind it
-        if order is None:
-            logger.info(f"Referral reward skipped: no order for payment '{data.payment_key}'")
-            return
-        # unpaid or refunded orders earn nothing; a 100%-discount checkout is paid but free
-        if order.status is not TransactionStatus.PAID or order.final_price <= 0:
-            logger.info(
-                f"Referral reward skipped: order for payment '{data.payment_key}' is "
-                f"{order.status.value} at {order.final_price}"
-            )
-            return
-        if not await self._purchase_earns_a_reward(settings.accrual_strategy, data):
-            return
+        async with self._uow:
+            settings = await self._referral_repository.get_settings()
+            if not settings.enabled:
+                return
+            order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
+            # a bonus-day redemption carries a payment_key too, with no order behind it
+            if order is None:
+                logger.info(f"Referral reward skipped: no order for payment '{data.payment_key}'")
+                return
+            # unpaid or refunded orders earn nothing; a 100%-discount checkout is paid but free
+            if order.status is not TransactionStatus.PAID or order.final_price <= 0:
+                logger.info(
+                    f"Referral reward skipped: order for payment '{data.payment_key}' is "
+                    f"{order.status.value} at {order.final_price}"
+                )
+                return
+            if not await self._purchase_earns_a_reward(settings.accrual_strategy, data):
+                return
 
-        chain = await self._walk_chain(data.user_id, settings.max_level)
+            chain = await self._walk_chain(data.user_id, settings.max_level)
         if not chain:
             return
 
@@ -181,44 +182,35 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         settings: ReferralSettingsDto,
         amount: Decimal,
     ) -> None:
-        referrer = await self._user_repository.get_by_id(hop.referrer_id)
-        if referrer is None or referrer.deleted_at is not None or referrer.is_blocked:
-            return
-
         reward_type = settings.reward_type
-        if reward_type is ReferralRewardType.EXTRA_DAYS and settings.days_require_paid_subscription:
-            async with self._uow:
-                has_paid = await self._subscription_repository.has_paid_subscription_before(
+        async with self._uow:
+            referrer = await self._user_repository.find_by_id(hop.referrer_id)
+            if referrer is None or referrer.deleted_at is not None or referrer.is_blocked:
+                return
+            if (
+                reward_type is ReferralRewardType.EXTRA_DAYS
+                and settings.days_require_paid_subscription
+                and not await self._subscription_repository.has_paid_subscription_before(
                     hop.referrer_id
                 )
-            if not has_paid:
+            ):
                 logger.info(
                     f"Day reward skipped: referrer '{hop.referrer_id}' never paid for a plan"
                 )
                 return
 
-        # ledger row and credit commit together: the row is the idempotency
-        # guard, and a crash between them would record a reward never given
-        if not await self._record_reward(hop, data, reward_type, amount):
-            return
-
-        async with self._uow:
-            await self._event_publisher.publish(
-                ReferralRewardIssuedEvent(
-                    user=referrer,
-                    level=hop.level,
-                    reward_type=reward_type.value,
-                    amount=str(amount),
-                )
-            )
+        await self._record_reward(hop, data, referrer, reward_type, amount)
 
     async def _record_reward(
         self,
         hop: _Hop,
         data: AssignReferralRewardsDto,
+        referrer: UserDto,
         reward_type: ReferralRewardType,
         amount: Decimal,
-    ) -> bool:
+    ) -> None:
+        # ledger row, credit and event commit together: the row is the idempotency
+        # guard, and a crash between them would record a reward never given
         try:
             async with self._uow:
                 status = await self._transaction_repository.lock_status_by_idempotency_key(
@@ -229,7 +221,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                         f"Referral reward for payment '{data.payment_key}' skipped: order is "
                         f"{status.value if status else 'gone'} now"
                     )
-                    return False
+                    return
                 await self._referral_repository.create_reward(
                     referral_id=hop.referral_id,
                     referrer_id=hop.referrer_id,
@@ -242,10 +234,16 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                     await self._user_repository.credit_bonus_days(hop.referrer_id, int(amount))
                 else:
                     await self._user_repository.credit_points(hop.referrer_id, amount)
+                await self._event_publisher.publish(
+                    ReferralRewardIssuedEvent(
+                        user=referrer,
+                        level=hop.level,
+                        reward_type=reward_type.value,
+                        amount=str(amount),
+                    )
+                )
         except ConflictError:
             logger.info(
                 f"Referral reward for payment '{data.payment_key}' referral "
                 f"'{hop.referral_id}' already granted, skipping"
             )
-            return False
-        return True

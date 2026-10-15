@@ -5,6 +5,8 @@ from typing import Optional
 from pydantic import BaseModel, field_validator
 
 
+# lives outside api/: users and account_merge both answer with it, and importing
+# users.api from the package would pull in the routers
 class UserResponse(BaseModel):
     id: int
     name: str

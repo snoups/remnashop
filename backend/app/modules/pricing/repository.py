@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.pricing_settings import PricingSettings
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import Currency, RoundingMode
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
@@ -19,8 +19,6 @@ from app.modules.pricing.dto import (
     UpdateCurrencyRateDto,
     UpdatePricingSettingsDto,
 )
-
-_SETTINGS_ID: Final[int] = 1
 
 # rate is per 1 USD (the default anchor): RUB at Steam's in-game rate, XTR at
 # Telegram's ~$0.013 payout per star
@@ -36,26 +34,13 @@ class PricingRepository:
         self.session = session
 
     def _to_rate_dto(self, row: CurrencyRate) -> CurrencyRateDto:
-        return CurrencyRateDto(
-            currency=row.currency,
-            rate=row.rate,
-            rounding_mode=row.rounding_mode,
-            charm_ending=row.charm_ending,
-            min_amount=row.min_amount,
-        )
+        return CurrencyRateDto.model_validate(row, from_attributes=True)
 
     def _to_settings_dto(self, row: PricingSettings) -> PricingSettingsDto:
-        return PricingSettingsDto(
-            id=row.id,
-            anchor_currency=row.anchor_currency,
-            price_per_day=row.price_per_day,
-            price_per_gb=row.price_per_gb,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return PricingSettingsDto.model_validate(row, from_attributes=True)
 
     async def _get_or_create_settings(self) -> PricingSettings:
-        return await get_or_create_singleton(self.session, PricingSettings, _SETTINGS_ID)
+        return await get_or_create_singleton(self.session, PricingSettings, SINGLETON_ID)
 
     async def _seed_missing_rates(self, missing: list[Currency]) -> None:
         # ON CONFLICT DO NOTHING, not session.add: the same fresh-database race

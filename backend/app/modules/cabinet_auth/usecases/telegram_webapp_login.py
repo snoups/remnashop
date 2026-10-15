@@ -28,7 +28,7 @@ class TelegramWebAppLoginUseCase:
             bot = await self._settings_repository.get_bot_settings()
         if not cabinet.telegram_enabled or bot.token is None:
             raise AuthenticationError(
-                "Telegram sign-in is disabled", code=ErrorCode.OAUTH_PROVIDER_DISABLED
+                "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )
         data = verify_init_data(init_data, bot.token.get_secret_value(), int(time.time()))
         return await self._sign_in.telegram(

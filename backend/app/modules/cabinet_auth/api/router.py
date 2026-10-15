@@ -286,7 +286,7 @@ async def cabinet_oauth_callback(
     "/refresh",
     response_model=CabinetAuthResponse,
     dependencies=[Depends(rate_limit(key="cabinet_refresh", limit=30, window_seconds=TIME_1M))],
-    responses=error_responses(401),
+    responses=error_responses(401, 403),
 )
 @inject
 async def cabinet_refresh(
@@ -330,6 +330,7 @@ async def cabinet_refresh(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(rate_limit(key="cabinet_logout", limit=30, window_seconds=TIME_1M))],
+    responses=error_responses(403),
 )
 @inject
 async def cabinet_logout(

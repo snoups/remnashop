@@ -1,15 +1,13 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Optional
 
 from pydantic import Field
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AdLinkChannel, Currency
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 
 
 class AdLinkDto(BaseDto, TimestampMixin):

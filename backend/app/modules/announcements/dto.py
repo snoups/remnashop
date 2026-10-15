@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -32,3 +33,8 @@ class AnnouncementDto(BaseModel):
     @property
     def seen(self) -> bool:
         return self.seen_at is not None
+
+
+@dataclass(frozen=True, kw_only=True)
+class AnnouncementIdsDto:
+    ids: list[str]

@@ -11,6 +11,7 @@ from app.modules.notifications import (
     channels_for,
     group_of,
 )
+from app.modules.notifications.dto import UpdateNotificationChannelsDto
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.notifications.usecases import (
     GetNotificationChannelsUseCase,
@@ -66,13 +67,16 @@ async def test_update_stores_matrix_and_get_reads_it(
     notification_repository: NotificationRepository,
 ) -> None:
     update = UpdateNotificationChannelsUseCase(user_repository, notification_repository, uow)
-    result = await update(owner, {"money": ["push", "bell"], "security": ["bell"]})
+    result = await update(
+        owner,
+        UpdateNotificationChannelsDto(channels={"money": ["push", "bell"], "security": ["bell"]}),
+    )
 
     assert result.channels["money"] == ["bell", "push"]
     assert result.channels["failures"] == []
-    assert result.push_configured is False
+    assert result.is_push_configured is False
     assert result.telegram_available is False
-    stored = await user_repository.get_by_id(owner.id)
+    stored = await user_repository.find_by_id(owner.id)
     assert stored is not None
     get = GetNotificationChannelsUseCase(notification_repository, uow)
     assert (await get(stored, None)).channels["security"] == ["bell"]
@@ -88,4 +92,4 @@ async def test_update_rejects_unknown_groups_and_channels(
 ) -> None:
     update = UpdateNotificationChannelsUseCase(user_repository, notification_repository, uow)
     with pytest.raises(ValidationError):
-        await update(owner, matrix)
+        await update(owner, UpdateNotificationChannelsDto(channels=matrix))

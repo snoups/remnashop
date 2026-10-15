@@ -1,17 +1,14 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Final, Literal, Optional
+from typing import Literal, Optional
 
-from app.core.constants import REMNASHOP_PREFIX, WEB_PREFIX
+from app.core.constants import DEFAULT_PAGE_SIZE, REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AdLinkChannel, BlacklistKind, CabinetSignInMethod, Locale, Role
 from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
 from app.modules.blacklist import BlacklistOriginDto
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 
 UserSort = Literal["created_at", "points", "discount", "name", "channels", "subscriptions"]
 # exclude: live users only (the default); include: both; only: soft-deleted ones
@@ -159,6 +156,7 @@ class PromoteAdminDto:
 @dataclass(frozen=True, kw_only=True)
 class SetUserDiscountDto:
     user_id: int
+    client_ip: str
     personal_discount: Optional[int] = None
     purchase_discount: Optional[int] = None
 
@@ -167,6 +165,7 @@ class SetUserDiscountDto:
 class BindTelegramDto:
     user_id: int
     telegram_id: int
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -320,9 +319,34 @@ class UpdateOwnProfileDto:
     language: Optional[Locale] = None
     # kept signed in when the password changes
     current_session_id: Optional[int] = None
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateSecuritySettingsDto:
     ip_allowlist: list[str]
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetMarketingOptOutDto:
+    opted_out: bool
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdminWithPasswordDto:
+    admin: UserDto
+    # shown once; None when a promoted user keeps the password they already had
+    password: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlockUserDto:
+    user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class UnblockUserDto:
+    user_id: int
     client_ip: str

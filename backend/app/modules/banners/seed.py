@@ -4,7 +4,7 @@ from typing import Final
 from app.core.config import AppConfig
 from app.core.constants import ASSETS_DIR, DEFAULT_BANNER_NAME
 from app.core.enums import Locale
-from app.modules.banners.dto import UploadBannerDto
+from app.modules.banners.dto import BannerDto, UploadBannerDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.storage import save_banner_file
 
@@ -25,9 +25,9 @@ async def ensure_default_banner_seeded(
 
 async def restore_default_banner(
     banner_repository: BannerRepository, config: AppConfig, default_locale: Locale
-) -> None:
+) -> BannerDto:
     data = _SOURCE.read_bytes()
-    await banner_repository.upsert(
+    banner = await banner_repository.upsert(
         UploadBannerDto(
             name=DEFAULT_BANNER_NAME,
             locale=default_locale,
@@ -37,6 +37,7 @@ async def restore_default_banner(
         )
     )
     save_banner_file(config.media_dir, DEFAULT_BANNER_NAME, default_locale, _EXTENSION, data)
+    return banner
 
 
 class DefaultBannerSeeder:

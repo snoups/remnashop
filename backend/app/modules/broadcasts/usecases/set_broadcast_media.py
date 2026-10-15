@@ -1,12 +1,9 @@
-from typing import Final
-
 from loguru import logger
 
 from app.core.actor import Actor
 from app.core.config import AppConfig
-from app.core.constants import BROADCAST_MEDIA_MAX_BYTES
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BroadcastMediaType, BroadcastStatus
+from app.core.enums import BroadcastStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
@@ -14,22 +11,10 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.broadcasts.dto import BroadcastDto, SetBroadcastMediaDto
 from app.modules.broadcasts.events import BroadcastChangedEvent
+from app.modules.broadcasts.lifecycle import lock_editable
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.storage import delete_media, place_media
-from app.modules.broadcasts.usecases.editable import lock_editable
+from app.modules.broadcasts.storage import MEDIA_TYPES, delete_media, place_media
 from app.modules.broadcasts.validation import validate_text_lengths
-
-_MB: Final[int] = 1024 * 1024
-_TYPES: Final[dict[str, tuple[BroadcastMediaType, str, int]]] = {
-    "image/jpeg": (BroadcastMediaType.PHOTO, "jpg", 10 * _MB),
-    "image/png": (BroadcastMediaType.PHOTO, "png", 10 * _MB),
-    "image/webp": (BroadcastMediaType.PHOTO, "webp", 10 * _MB),
-    "image/gif": (BroadcastMediaType.ANIMATION, "gif", BROADCAST_MEDIA_MAX_BYTES),
-    "video/mp4": (BroadcastMediaType.VIDEO, "mp4", BROADCAST_MEDIA_MAX_BYTES),
-    "application/pdf": (BroadcastMediaType.DOCUMENT, "pdf", BROADCAST_MEDIA_MAX_BYTES),
-    "application/zip": (BroadcastMediaType.DOCUMENT, "zip", BROADCAST_MEDIA_MAX_BYTES),
-}
-MEDIA_CONTENT_TYPES: Final[tuple[str, ...]] = tuple(_TYPES)
 
 
 class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
@@ -48,7 +33,7 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: SetBroadcastMediaDto) -> BroadcastDto:
-        spec = _TYPES.get(data.content_type)
+        spec = MEDIA_TYPES.get(data.content_type)
         if spec is None:
             raise ValidationError(
                 f"Unsupported media type: {data.content_type}",
@@ -76,9 +61,9 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
                 status=BroadcastStatus.DRAFT,
                 scheduled_at=None,
             )
-            updated = await self._broadcast_repository.get_or_raise(current.id)
+            updated = await self._broadcast_repository.get_by_id(current.id)
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="set_media", broadcast_id=current.id)
+                BroadcastChangedEvent(actor=actor, action="set_media", broadcast_id=current.id)
             )
         # the file changes only after the row commits
         place_media(self._config.media_dir, current.id, version, extension, data.source)

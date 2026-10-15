@@ -167,4 +167,4 @@ async def test_revoke_user_session_rejects_higher_privileged_target(
         headers={"Authorization": f"Bearer {admin_token}"},
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 404

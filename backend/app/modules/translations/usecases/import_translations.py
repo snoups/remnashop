@@ -2,21 +2,22 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import BotCommandsSync, BotSignals
+from app.core.ports import BotCommandsSync, BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.translations.dto import (
+    EXPORT_VERSION,
     TranslationsImportDto,
     TranslationsImportResultDto,
     TranslationTextExportDto,
 )
+from app.modules.translations.events import TranslationChangedEvent
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
     assert_plain_translation_value,
     serialize_to_fluent,
 )
-from app.modules.translations.usecases.export_translations import EXPORT_VERSION
 
 
 class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImportResultDto]):
@@ -28,11 +29,13 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
         uow: UnitOfWork,
         bot_commands: BotCommandsSync,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._translation_repository = translation_repository
         self._uow = uow
         self._bot_commands = bot_commands
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
     async def _execute(
         self, actor: Actor, data: TranslationsImportDto
@@ -66,6 +69,9 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
             for locale in {text.locale for text in applied}:
                 entries = await self._translation_repository.list_by_locale(locale)
                 assert_fluent_compiles(locale, serialize_to_fluent(entries))
+            await self._event_publisher.publish(
+                TranslationChangedEvent(actor=actor, action="import")
+            )
 
         for text in applied:
             await self._bot_signals.translation_changed(

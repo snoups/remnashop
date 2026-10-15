@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from app.core.events import ActorEvent, BaseEvent, EventCategory
 
@@ -22,3 +22,10 @@ class BlacklistEntryRemovedEvent(ActorEvent):
 class BlacklistReconciledEvent(BaseEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     blocked_user_ids: list[int]
+
+
+@dataclass(frozen=True, kw_only=True)
+class BlacklistSourceChangedEvent(ActorEvent):
+    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    action: str
+    source_id: Optional[int] = None

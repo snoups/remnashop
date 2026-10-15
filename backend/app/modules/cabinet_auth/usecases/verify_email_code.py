@@ -46,7 +46,7 @@ class VerifyEmailCodeUseCase:
             email_settings = await self._settings_repository.get_email_settings()
         if not (cabinet.email_enabled and email_settings.is_configured):
             raise AuthenticationError(
-                "Email sign-in is disabled", code=ErrorCode.OAUTH_PROVIDER_DISABLED
+                "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
             )
         digest = email_key(email)
         if await fail_budget_exhausted(self._redis, digest):

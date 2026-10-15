@@ -26,10 +26,12 @@ from app.modules.transactions.dto import (
     ListTransactionsDto,
 )
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
-from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
-from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
-from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
+from app.modules.transactions.usecases import (
+    FulfillTransactionUseCase,
+    GetTransactionSummaryUseCase,
+    GetTransactionUseCase,
+    ListTransactionsUseCase,
+)
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch

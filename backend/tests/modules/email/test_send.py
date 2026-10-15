@@ -14,7 +14,7 @@ from app.modules.email.dto import EmailMessageDto
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_login_code
 from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
-from app.modules.settings import EmailSettingsDto
+from app.modules.settings import AppearanceImageDto, EmailSettingsDto
 
 _CONFIGURED = EmailSettingsDto(
     host="smtp.example.com",
@@ -170,7 +170,7 @@ async def test_sender_attaches_inline_logo(monkeypatch: pytest.MonkeyPatch) -> N
     await SmtpSender().send(
         settings,
         EmailMessageDto(to="x@y.z", subject="s", text="t", html='<img src="cid:logo">'),
-        logo=(b"\x89PNG", "image/png"),
+        logo=AppearanceImageDto(data=b"\x89PNG", content_type="image/png"),
     )
     parts = [p for p in sent["message"].walk() if p.get("Content-ID")]
     assert parts and parts[0]["Content-ID"] == "<logo>"

@@ -30,10 +30,10 @@ class UpdateAccessSettingsUseCase(UseCase[UpdateAccessSettingsDto, AccessSetting
             settings = await self._settings_repository.update_access_settings(data)
             await self._event_publisher.publish(
                 AccessSettingsChangedEvent(
-                    user=actor,
+                    actor=actor,
                     changed_fields=changed_fields(before, settings, vars(data)),
                     payments_reenabled=not before.payments_enabled and settings.payments_enabled,
                 )
             )
-        logger.info(f"Access settings updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated access settings")
         return settings

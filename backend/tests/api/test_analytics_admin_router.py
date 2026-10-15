@@ -264,7 +264,7 @@ async def test_owner_can_get_cohorts(
     response = await client.get(f"{API_V1}/analytics/cohorts", headers=headers)
 
     assert response.status_code == 200
-    assert len(response.json()["cohorts"]) == 12
+    assert len(response.json()["items"]) == response.json()["total"] == 12
 
 
 async def test_admin_without_analytics_view_is_denied_on_cohorts(

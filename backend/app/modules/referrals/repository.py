@@ -21,22 +21,22 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.core.constants import MAX_SQL_IN_PARAMS
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.db.errors import constraint_name
+from app.core.db.filters import in_ids
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.models.referral_settings import ReferralSettings
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.partial_update import apply_partial_update
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.db.user_search import user_search_filter
 from app.core.enums import ReferralLevel, ReferralRewardType, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
 from app.modules.referrals.dto import (
-    DEFAULT_PAGE_SIZE,
     DownlineEntryDto,
     ReferralDto,
     ReferralRewardDto,
@@ -46,7 +46,6 @@ from app.modules.referrals.dto import (
     UpdateReferralSettingsDto,
 )
 
-_SINGLETON_ID: Final[int] = 1
 # rewards never reach further up the chain than this
 _MAX_DEPTH: Final[int] = max(ReferralLevel)
 
@@ -74,31 +73,16 @@ class ReferralRepository:
         self.session = session
 
     def _to_dto(self, row: Referral) -> ReferralDto:
-        return ReferralDto(
-            id=row.id,
-            referrer_id=row.referrer_id,
-            referred_id=row.referred_id,
-            level=row.level,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return ReferralDto.model_validate(row, from_attributes=True)
 
-    def _reward_to_dto(
+    def _to_reward_dto(
         self, row: ReferralReward, buyer_id: Optional[int] = None
     ) -> ReferralRewardDto:
-        return ReferralRewardDto(
-            id=row.id,
-            referral_id=row.referral_id,
-            referrer_id=row.referrer_id,
-            subscription_id=row.subscription_id,
-            type=row.type,
-            amount=row.amount,
-            buyer_id=buyer_id,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+        return ReferralRewardDto.model_validate(row, from_attributes=True).model_copy(
+            update={"buyer_id": buyer_id}
         )
 
-    def _settings_to_dto(self, row: Optional[ReferralSettings]) -> ReferralSettingsDto:
+    def _to_settings_dto(self, row: Optional[ReferralSettings]) -> ReferralSettingsDto:
         if row is None:
             return ReferralSettingsDto()
         return ReferralSettingsDto(
@@ -131,10 +115,8 @@ class ReferralRepository:
         if referred_ids is None:
             return list((await self.session.execute(stmt)).tuples().all())
         result: list[tuple[int, Optional[int], int]] = []
-        for start in range(0, len(referred_ids), MAX_SQL_IN_PARAMS):
-            chunk = referred_ids[start : start + MAX_SQL_IN_PARAMS]
-            rows = await self.session.execute(stmt.where(Referral.referred_id.in_(chunk)))
-            result.extend(rows.tuples().all())
+        rows = await self.session.execute(stmt.where(in_ids(Referral.referred_id, referred_ids)))
+        result.extend(rows.tuples().all())
         return result
 
     async def create_referral(
@@ -459,7 +441,7 @@ class ReferralRepository:
                 f"Reward already granted for payment '{payment_key}' and referral '{referral_id}'",
                 code=ErrorCode.REFERRAL_REWARD_ALREADY_GRANTED,
             ) from error
-        return self._reward_to_dto(row)
+        return self._to_reward_dto(row)
 
     async def list_active_rewards_by_payment_key(self, key: str) -> list[ReferralRewardDto]:
         rows = await self.session.scalars(
@@ -467,7 +449,7 @@ class ReferralRepository:
             .where(ReferralReward.payment_key == key, ReferralReward.reversed_at.is_(None))
             .order_by(ReferralReward.id)
         )
-        return [self._reward_to_dto(row) for row in rows]
+        return [self._to_reward_dto(row) for row in rows]
 
     async def mark_reversed(self, reward_id: int) -> bool:
         result = await self.session.execute(
@@ -487,21 +469,21 @@ class ReferralRepository:
             .order_by(ReferralReward.created_at.desc())
         )
         rows = await self.session.execute(stmt)
-        return [self._reward_to_dto(row, buyer_id) for row, buyer_id in rows.all()]
+        return [self._to_reward_dto(row, buyer_id) for row, buyer_id in rows.all()]
 
     async def _get_or_create_settings(self) -> ReferralSettings:
-        return await get_or_create_singleton(self.session, ReferralSettings, _SINGLETON_ID)
+        return await get_or_create_singleton(self.session, ReferralSettings, SINGLETON_ID)
 
     async def get_settings(self) -> ReferralSettingsDto:
-        row = await self.session.get(ReferralSettings, _SINGLETON_ID)
-        return self._settings_to_dto(row)
+        row = await self.session.get(ReferralSettings, SINGLETON_ID)
+        return self._to_settings_dto(row)
 
     async def reset_settings(self) -> ReferralSettingsDto:
-        row = await self.session.get(ReferralSettings, _SINGLETON_ID)
+        row = await self.session.get(ReferralSettings, SINGLETON_ID)
         if row is not None:
             await self.session.delete(row)
             await self.session.flush()
-        return self._settings_to_dto(None)
+        return self._to_settings_dto(None)
 
     async def update_settings(self, data: UpdateReferralSettingsDto) -> ReferralSettingsDto:
         row = await self._get_or_create_settings()
@@ -512,4 +494,4 @@ class ReferralRepository:
 
         await self.session.flush()
         await self.session.refresh(row)
-        return self._settings_to_dto(row)
+        return self._to_settings_dto(row)

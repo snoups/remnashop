@@ -23,4 +23,5 @@ class EventLogPageResponse(BaseModel):
 
 class NotificationsResponse(BaseModel):
     items: list[EventLogEntryResponse]
+    total: int
     unread_count: int

@@ -487,15 +487,12 @@ async def test_list_user_ids_with_paid_order(
     assert paid_ids == {payer.id}
 
 
-async def test_user_id_queries_chunk_and_merge_beyond_the_in_param_cap(
+async def test_user_id_queries_aggregate_across_many_users(
     transaction_repository: TransactionRepository,
     uow: UnitOfWork,
     user_repository: UserRepository,
     plan_id: int,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("app.modules.transactions.repository.MAX_SQL_IN_PARAMS", 2)
-
     rub_buyers = [
         await user_repository.create(CreateUserDto(name=f"rub{i}", telegram_id=900_200 + i))
         for i in range(3)

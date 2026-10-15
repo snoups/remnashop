@@ -30,7 +30,7 @@ class ResetReferralSettingsUseCase(UseCase[None, ReferralSettingsDto]):
         async with self._uow:
             settings = await self._referral_repository.reset_settings()
             await self._event_publisher.publish(
-                ReferralSettingsChangedEvent(user=actor, action="reset")
+                ReferralSettingsChangedEvent(actor=actor, action="reset")
             )
             pricing = await self._pricing_repository.get_settings()
         logger.info(f"{actor.log} Reset referral settings")

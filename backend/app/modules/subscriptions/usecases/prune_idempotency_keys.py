@@ -1,5 +1,4 @@
 from datetime import timedelta
-from typing import Final
 
 from loguru import logger
 
@@ -7,12 +6,10 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
-
-# Must exceed the longest webhook-resend window of any payment provider --
-# deleting a still-resendable key turns a replay into a fresh claim (double
-# charge + double provisioning).
-IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
+from app.modules.subscriptions.idempotency_repository import (
+    IDEMPOTENCY_KEY_RETENTION_DAYS,
+    PurchaseIdempotencyRepository,
+)
 
 
 class PruneIdempotencyKeysUseCase(UseCase[None, None]):

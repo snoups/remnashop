@@ -15,7 +15,9 @@ class FetchBlacklistSourcesUseCase(UseCase[None, None]):
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: None) -> None:
-        for source in await self._blacklist_repository.list_sources():
+        async with self._uow:
+            sources = await self._blacklist_repository.list_sources()
+        for source in sources:
             if not source.enabled:
                 continue
             try:

@@ -30,7 +30,7 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: DemoteAdminDto) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_live_for_update(data.user_id)
+            target = await self._user_repository.find_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:

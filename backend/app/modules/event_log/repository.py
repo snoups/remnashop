@@ -1,12 +1,12 @@
 import builtins
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Optional
 
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INT32_MAX
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.user import User
 from app.core.db.user_search import user_search_filter
@@ -14,7 +14,7 @@ from app.core.dto import SERVER_OWNED_FIELDS
 from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
 from app.core.exceptions import NotFoundError
-from app.modules.event_log.dto import DEFAULT_PAGE_SIZE, EventLogEntryDto
+from app.modules.event_log.dto import EventLogEntryDto
 
 
 def _notification_filters(
@@ -31,9 +31,8 @@ class EventLogRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-        self._convert_to_dto: Callable[[EventLogEntry], EventLogEntryDto] = (
-            lambda row: EventLogEntryDto.model_validate(row, from_attributes=True)
-        )
+    def _to_dto(self, row: EventLogEntry) -> EventLogEntryDto:
+        return EventLogEntryDto.model_validate(row, from_attributes=True)
 
     async def create(self, entry: EventLogEntryDto) -> Optional[EventLogEntryDto]:
         entry_data = entry.model_dump(exclude=SERVER_OWNED_FIELDS)
@@ -45,7 +44,7 @@ class EventLogRepository:
         )
         row = (await self.session.execute(stmt)).scalar_one_or_none()
         await self.session.flush()
-        return self._convert_to_dto(row) if row is not None else None
+        return self._to_dto(row) if row is not None else None
 
     async def get_by_id(self, entry_id: int) -> EventLogEntryDto:
         row = await self.session.get(EventLogEntry, entry_id)
@@ -54,7 +53,7 @@ class EventLogRepository:
                 f"Event log entry '{entry_id}' not found",
                 code=ErrorCode.EVENT_LOG_ENTRY_NOT_FOUND,
             )
-        return self._convert_to_dto(row)
+        return self._to_dto(row)
 
     async def list(
         self,
@@ -109,7 +108,7 @@ class EventLogRepository:
         )
         rows = (await self.session.scalars(stmt)).all()
 
-        return [self._convert_to_dto(row) for row in rows], int(total or 0)
+        return [self._to_dto(row) for row in rows], int(total or 0)
 
     async def list_notifications(
         self,
@@ -128,7 +127,7 @@ class EventLogRepository:
             .order_by(EventLogEntry.occurred_at.desc(), EventLogEntry.id.desc())
             .limit(limit)
         )
-        return [self._convert_to_dto(row) for row in (await self.session.scalars(stmt))]
+        return [self._to_dto(row) for row in (await self.session.scalars(stmt))]
 
     async def count_notifications_since(
         self, *, event_types: frozenset[str], exclude_actor_id: int, since: Optional[datetime]

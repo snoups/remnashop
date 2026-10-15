@@ -61,10 +61,9 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
                     ),
                 )
 
-        async with self._uow:
             promo = await self._promocode_repository.update(data)
             await self._event_publisher.publish(
-                PromocodeChangedEvent(user=actor, action="update", promocode_id=data.promocode_id)
+                PromocodeChangedEvent(actor=actor, action="update", promocode_id=data.promocode_id)
             )
-        logger.info(f"{actor.log} Updated promocode id={data.promocode_id}")
+        logger.info(f"{actor.log} Updated promocode '{data.promocode_id}'")
         return promo

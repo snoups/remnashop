@@ -25,7 +25,7 @@ class DialogRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _button_to_dto(self, row: DialogButton, system_text_keys: set[str]) -> DialogButtonDto:
+    def _to_button_dto(self, row: DialogButton, system_text_keys: set[str]) -> DialogButtonDto:
         dto = DialogButtonDto.model_validate(row, from_attributes=True)
         dto.is_system = row.text_key in system_text_keys
         return dto
@@ -42,7 +42,7 @@ class DialogRepository:
             is_enabled=row.is_enabled,
             position=row.position,
             slot=row.slot,
-            buttons=[self._button_to_dto(b, system_text_keys) for b in row.buttons],
+            buttons=[self._to_button_dto(b, system_text_keys) for b in row.buttons],
             created_at=row.created_at,
             updated_at=row.updated_at,
         )

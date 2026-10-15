@@ -11,6 +11,7 @@ from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import UpdateBotSettingsUseCase
 from app.modules.translations.dto import (
+    EXPORT_VERSION,
     ResetTranslationDto,
     TranslationsImportDto,
     TranslationTextExportDto,
@@ -25,8 +26,8 @@ from app.modules.translations.usecases import (
     ResetTranslationUseCase,
     UpdateTranslationUseCase,
 )
-from app.modules.translations.usecases.export_translations import EXPORT_VERSION
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.settings.factories import make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
@@ -67,6 +68,7 @@ async def test_owner_can_update_translation_value(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     updated = await use_case(
@@ -93,6 +95,7 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -121,6 +124,7 @@ async def test_update_translation_rejects_placeables(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -148,6 +152,7 @@ async def test_update_translation_raises_not_found_for_unknown_key(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(NotFoundError):
@@ -171,6 +176,7 @@ async def test_reset_translation_raises_not_found_for_unknown_key(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(NotFoundError):
@@ -191,7 +197,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     # the description the registry actually points at
     await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
-    await UpdateBotSettingsUseCase(settings_repository, uow)(
+    await UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
@@ -210,6 +216,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await use_case(
         OWNER,
@@ -234,6 +241,7 @@ async def test_owner_can_reset_translation_to_default(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await update_use_case(
         OWNER,
@@ -246,6 +254,7 @@ async def test_owner_can_reset_translation_to_default(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     reset = await reset_use_case(
@@ -267,6 +276,7 @@ async def test_regular_user_cannot_update_translation(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -305,6 +315,7 @@ async def test_import_applies_known_keys_and_skips_the_rest(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     result = await use_case(
@@ -344,6 +355,7 @@ async def test_import_rejects_a_foreign_export_version(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -372,6 +384,7 @@ async def test_import_refuses_what_a_hand_edit_would(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     texts = [
         TranslationTextExportDto(
@@ -397,6 +410,7 @@ async def test_reset_all_restores_every_edited_string(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(
         OWNER,
         UpdateTranslationDto(
@@ -409,6 +423,7 @@ async def test_reset_all_restores_every_edited_string(
         uow,
         make_bot_commands_sync(settings_repository.session, uow),
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(OWNER)
 
     entry = await translation_repository.get(Locale.EN, "command", "menu")

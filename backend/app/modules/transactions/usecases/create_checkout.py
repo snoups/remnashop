@@ -77,7 +77,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         gateway_factory: PaymentGatewayFactory,
         purchase_dispatch: PurchaseSubscriptionDispatch,
         promocode_liveness: PromocodeLiveness,
-        get_access_settings: GetAccessSettingsUseCase,
+        get_access_settings_use_case: GetAccessSettingsUseCase,
         waitlist_repository: WaitlistRepository,
     ) -> None:
         self._plan_repository = plan_repository
@@ -91,7 +91,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._gateway_factory = gateway_factory
         self._purchase_dispatch = purchase_dispatch
         self._promocode_liveness = promocode_liveness
-        self._get_access_settings = get_access_settings
+        self._get_access_settings_use_case = get_access_settings_use_case
         self._waitlist_repository = waitlist_repository
 
     @staticmethod
@@ -108,7 +108,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         return customer_email
 
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
-        if not (await self._get_access_settings.system()).payments_enabled:
+        if not (await self._get_access_settings_use_case.system()).payments_enabled:
             # own transaction, so the refusal below doesn't roll it back
             async with self._uow:
                 await self._waitlist_repository.add(actor.id)
@@ -213,7 +213,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self, user_id: int, data: CreateCheckoutDto
     ) -> tuple[PlanDto, UserDto]:
         plan = await self._plan_repository.get_by_id(data.plan_id)
-        user = await self._user_repository.get_by_id(user_id)
+        user = await self._user_repository.find_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
 
@@ -281,7 +281,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             if not dead:
                 return user
             await self._user_repository.clear_discounts_from(dead, user_id=user.id)
-            refreshed = await self._user_repository.get_by_id(user.id)
+            refreshed = await self._user_repository.find_by_id(user.id)
         if refreshed is None:
             raise NotFoundError(f"User '{user.id}' not found", code=ErrorCode.USER_NOT_FOUND)
         logger.info(f"{user.log} Dropped discounts from ended promocodes {sorted(dead)}")

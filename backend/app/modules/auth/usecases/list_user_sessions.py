@@ -1,12 +1,10 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, NotFoundError
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.auth.dto import SessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, assert_manageable, get_visible_target
 
 
 class ListUserSessionsUseCase(UseCase[int, list[SessionDto]]):
@@ -24,13 +22,7 @@ class ListUserSessionsUseCase(UseCase[int, list[SessionDto]]):
 
     async def _execute(self, actor: Actor, data: int) -> list[SessionDto]:
         async with self._uow:
-            target = await self._user_repository.get_by_id(data)
-            if target is None:
-                raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
-            if not PermissionPolicy.can_manage(actor, target):
-                raise ConflictError(
-                    "Cannot manage sessions for an equally or more privileged account",
-                    code=ErrorCode.SESSIONS_TARGET_TOO_PRIVILEGED,
-                )
+            target = await get_visible_target(self._user_repository, actor, data)
+            assert_manageable(actor, target)
 
             return await self._session_repository.list_active_by_user(data)

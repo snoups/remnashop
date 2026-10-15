@@ -44,10 +44,10 @@ class UpdateBotRequirementsUseCase(UseCase[UpdateBotRequirementsDto, BotRequirem
             settings = await self._settings_repository.update_bot_requirements(data)
             await self._event_publisher.publish(
                 BotRequirementsChangedEvent(
-                    user=actor, changed_fields=changed_fields(before, settings, vars(data))
+                    actor=actor, changed_fields=changed_fields(before, settings, vars(data))
                 )
             )
-        logger.info(f"Bot requirements updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated bot requirements")
         return settings
 
     async def _assert_channel_accessible(self, channel_id: int) -> None:

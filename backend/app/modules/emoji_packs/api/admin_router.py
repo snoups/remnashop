@@ -1,6 +1,6 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
@@ -10,6 +10,7 @@ from app.modules.emoji_packs.api.schemas import (
     EmojiPackResponse,
     ImportEmojiPackRequest,
 )
+from app.modules.emoji_packs.dto import ImportEmojiPackDto
 from app.modules.emoji_packs.usecases import (
     DeleteEmojiPackUseCase,
     ImportEmojiPackUseCase,
@@ -45,16 +46,17 @@ async def import_emoji_pack(
     actor: Actor = Depends(require_admin),
 ) -> EmojiPackResponse:
     return EmojiPackResponse.model_validate(
-        await use_case(actor, payload.link), from_attributes=True
+        await use_case(actor, ImportEmojiPackDto(link=payload.link)), from_attributes=True
     )
 
 
-@router.delete("/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{set_name}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+)
 @inject
 async def delete_emoji_pack(
     set_name: str,
     use_case: FromDishka[DeleteEmojiPackUseCase],
     actor: Actor = Depends(require_admin),
-) -> Response:
+) -> None:
     await use_case(actor, set_name)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

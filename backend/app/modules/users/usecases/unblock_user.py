@@ -2,17 +2,18 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.dto import UserDto
+from app.modules.users.dto import UnblockUserDto, UserDto
 from app.modules.users.events import UserUnblockedEvent
 from app.modules.users.repository import UserRepository
+from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
-class UnblockUserUseCase(UseCase[int, UserDto]):
+class UnblockUserUseCase(UseCase[UnblockUserDto, UserDto]):
     required_permission = Permission.USERS_UNBLOCK
 
     def __init__(
@@ -27,23 +28,24 @@ class UnblockUserUseCase(UseCase[int, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, user_id: int) -> UserDto:
+    async def _execute(self, actor: Actor, data: UnblockUserDto) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_live_for_update(user_id)
-            if target is None:
-                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
-            if not PermissionPolicy.can_manage(actor, target):
-                raise PermissionDeniedError
+            target = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
+            assert_manageable(actor, target)
 
-            updated = await self._user_repository.set_blocked(user_id, False)
+            updated = await self._user_repository.set_blocked(data.user_id, False)
             if updated is None:
-                raise NotFoundError(f"User {user_id} not found", code=ErrorCode.USER_NOT_FOUND)
+                raise NotFoundError(f"User {data.user_id} not found", code=ErrorCode.USER_NOT_FOUND)
             if target.telegram_id is not None:
                 await self._blacklist_repository.remove_entry(
                     BlacklistKind.TELEGRAM_ID, str(target.telegram_id)
                 )
             if target.email is not None:
                 await self._blacklist_repository.remove_entry(BlacklistKind.EMAIL, target.email)
-            await self._event_publisher.publish(UserUnblockedEvent(actor=actor, target=updated))
+            await self._event_publisher.publish(
+                UserUnblockedEvent(actor=actor, target=updated, ip_address=data.client_ip)
+            )
 
         return updated

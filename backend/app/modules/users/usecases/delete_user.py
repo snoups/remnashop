@@ -32,8 +32,8 @@ class DeleteUserUseCase(UseCase[DeleteUserDto, None]):
 
     async def _execute(self, actor: Actor, data: DeleteUserDto) -> None:
         async with self._uow:
-            target = await self._user_repository.get_by_id(data.user_id)
-            if target is None or target.deleted_at is not None:
+            target = await self._user_repository.find_live_for_update(data.user_id)
+            if target is None:
                 raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
             if target.role != Role.USER:
                 raise ConflictError(
@@ -44,7 +44,6 @@ class DeleteUserUseCase(UseCase[DeleteUserDto, None]):
                     "Cannot delete your own account", code=ErrorCode.CANNOT_DELETE_SELF
                 )
 
-        async with self._uow:
             # Panel access goes first and inside the transaction: if the panel
             # call fails, nothing local changes and VPN access isn't orphaned.
             await self._subscription_revoker.revoke_all_by_user(target.id)

@@ -20,7 +20,7 @@ def _use_case(session: AsyncSession, uow: UnitOfWork) -> RecalculateLoyaltyDisco
 
 
 async def _discount(user_repository: UserRepository, user_id: int) -> int:
-    user = await user_repository.get_by_id(user_id)
+    user = await user_repository.find_by_id(user_id)
     assert user is not None
     return user.loyalty_discount
 

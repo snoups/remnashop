@@ -75,7 +75,13 @@ class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserDto]):
                 target.id, merged_user_fields(source, target, sides)
             )
             await self._event_publisher.publish(
-                AccountsMergedEvent(actor=actor, target=merged, source=source, choices=dict(sides))
+                AccountsMergedEvent(
+                    actor=actor,
+                    target=merged,
+                    source=source,
+                    choices=dict(sides),
+                    ip_address=data.client_ip,
+                )
             )
         logger.info(f"{actor.log} Merged user '{source.id}' into '{target.id}'")
         return merged

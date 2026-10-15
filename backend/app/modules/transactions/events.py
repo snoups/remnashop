@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from app.core.events import ActorTargetEvent, EventCategory, SystemEvent
+from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -30,3 +30,10 @@ class TransactionFulfilledManuallyEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     previous_status: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class GatewayTestPaymentCreatedEvent(ActorEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    gateway_type: str

@@ -1,10 +1,11 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.utils.http import resolve_client_ip
 from app.modules.api_tokens.api.schemas import (
     ApiTokenListResponse,
     ApiTokenResponse,
@@ -12,7 +13,7 @@ from app.modules.api_tokens.api.schemas import (
     CreatedApiTokenResponse,
     DocsOttResponse,
 )
-from app.modules.api_tokens.dto import IssueApiTokenDto
+from app.modules.api_tokens.dto import IssueApiTokenDto, RevokeApiTokenDto
 from app.modules.api_tokens.usecases import (
     CreateApiTokenUseCase,
     IssueDocsOttUseCase,
@@ -43,6 +44,7 @@ async def list_api_tokens(
 @inject
 async def create_api_token(
     payload: CreateApiTokenRequest,
+    request: Request,
     use_case: FromDishka[CreateApiTokenUseCase],
     actor: Actor = Depends(require_admin),
 ) -> CreatedApiTokenResponse:
@@ -53,12 +55,10 @@ async def create_api_token(
             scopes=payload.scopes,
             expires_in_days=payload.expires_in_days,
             ip_allowlist=payload.ip_allowlist,
+            client_ip=resolve_client_ip(request),
         ),
     )
-    return CreatedApiTokenResponse(
-        token=ApiTokenResponse.model_validate(result.token, from_attributes=True),
-        secret=result.secret,
-    )
+    return CreatedApiTokenResponse.model_validate(result, from_attributes=True)
 
 
 @router.post("/actions/issue-ott", response_model=DocsOttResponse)
@@ -76,7 +76,10 @@ async def issue_docs_ott(
 @inject
 async def revoke_api_token(
     token_id: int,
+    request: Request,
     use_case: FromDishka[RevokeApiTokenUseCase],
     actor: Actor = Depends(require_admin),
 ) -> None:
-    await use_case(actor, token_id)
+    await use_case(
+        actor, RevokeApiTokenDto(token_id=token_id, client_ip=resolve_client_ip(request))
+    )

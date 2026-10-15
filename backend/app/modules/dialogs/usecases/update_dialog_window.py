@@ -3,10 +3,11 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import BotSignals
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs.dto import ConfigureDialogWindowDto, DialogWindowDto, UpdateDialogWindowDto
+from app.modules.dialogs.events import DialogChangedEvent
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._window_texts import validate_stored_window_texts
 from app.modules.translations import TranslationRepository
@@ -21,11 +22,13 @@ class UpdateDialogWindowUseCase(UseCase[ConfigureDialogWindowDto, DialogWindowDt
         translation_repository: TranslationRepository,
         uow: UnitOfWork,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._dialog_repository = dialog_repository
         self._translation_repository = translation_repository
         self._uow = uow
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: ConfigureDialogWindowDto) -> DialogWindowDto:
         async with self._uow:
@@ -52,6 +55,9 @@ class UpdateDialogWindowUseCase(UseCase[ConfigureDialogWindowDto, DialogWindowDt
                     is_enabled=data.is_enabled,
                     name=data.name,
                 ),
+            )
+            await self._event_publisher.publish(
+                DialogChangedEvent(actor=actor, action="update", window_key=data.key)
             )
         await self._bot_signals.dialogs_changed()
         return window

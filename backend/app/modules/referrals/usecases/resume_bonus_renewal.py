@@ -7,26 +7,20 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import (
-    AppError,
     NotFoundError,
-    RemnawavePanelUnavailableError,
     RetryableTaskError,
 )
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import ResumeBonusRenewalDto
 from app.modules.referrals.events import BonusDaysRenewalStuckEvent
+from app.modules.referrals.failures import is_infrastructure_error
 from app.modules.subscriptions import (
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
     SubscriptionRepository,
 )
 from app.modules.users import UserRepository
-
-
-def is_infrastructure_error(error: BaseException) -> bool:
-    # a domain refusal won't change on retry; a panel or network failure may
-    return not isinstance(error, AppError) or isinstance(error, RemnawavePanelUnavailableError)
 
 
 class ResumeBonusRenewalUseCase(UseCase[ResumeBonusRenewalDto, None]):
@@ -53,7 +47,7 @@ class ResumeBonusRenewalUseCase(UseCase[ResumeBonusRenewalDto, None]):
         # the pinned date is owed: a disable since must not strand the days
         try:
             async with self._uow:
-                user = await self._user_repository.get_by_id(data.user_id)
+                user = await self._user_repository.find_by_id(data.user_id)
                 if user is None:
                     raise NotFoundError(
                         f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND

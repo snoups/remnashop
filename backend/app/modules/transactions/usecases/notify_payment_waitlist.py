@@ -19,12 +19,12 @@ class NotifyPaymentWaitlistUseCase(UseCase[None, None]):
     def __init__(
         self,
         waitlist_claims: WaitlistClaims,
-        get_access_settings: GetAccessSettingsUseCase,
-        send_texts: SendTelegramTextsUseCase,
+        get_access_settings_use_case: GetAccessSettingsUseCase,
+        send_texts_use_case: SendTelegramTextsUseCase,
     ) -> None:
         self._waitlist_claims = waitlist_claims
-        self._get_access_settings = get_access_settings
-        self._send_texts = send_texts
+        self._get_access_settings_use_case = get_access_settings_use_case
+        self._send_texts_use_case = send_texts_use_case
 
     async def _execute(self, actor: Actor, data: None) -> None:
         failed: set[int] = set()
@@ -32,13 +32,13 @@ class NotifyPaymentWaitlistUseCase(UseCase[None, None]):
         while True:
             # the batch's transaction stays open while sending: a concurrent run skips its rows
             async with self._waitlist_claims.batch() as waitlist:
-                if not (await self._get_access_settings.system()).payments_enabled:
+                if not (await self._get_access_settings_use_case.system()).payments_enabled:
                     logger.info("Payments were disabled again, waitlist broadcast stopped")
                     break
                 user_ids = await waitlist.claim_batch(_BATCH_SIZE, failed)
                 if not user_ids:
                     break
-                done = await self._send_texts.system(
+                done = await self._send_texts_use_case.system(
                     SendTelegramTextsDto(user_ids=user_ids, key=_PAYMENTS_RESTORED_KEY)
                 )
                 # failed sends stay listed for the next re-enable

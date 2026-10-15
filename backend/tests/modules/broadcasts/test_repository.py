@@ -50,7 +50,7 @@ def save_dto(**overrides: object) -> SaveBroadcastDto:
 
 async def test_create_roundtrips_json(broadcast_repository: BroadcastRepository) -> None:
     created = await broadcast_repository.create(save_dto(), created_by=None)
-    loaded = await broadcast_repository.get(created.id)
+    loaded = await broadcast_repository.find_by_id(created.id)
     assert loaded is not None
     assert loaded.status is BroadcastStatus.DRAFT
     assert loaded.contents[Locale.EN].text == "Hi { $name }"
@@ -257,10 +257,10 @@ async def test_lock_for_update_returns_fresh_state_and_raises_for_missing(
     await session.execute(
         update(Broadcast).where(Broadcast.id == created.id).values(status=BroadcastStatus.SENDING)
     )
-    locked = await broadcast_repository.lock_for_update(created.id)
+    locked = await broadcast_repository.get_by_id_for_update(created.id)
     assert locked.status is BroadcastStatus.SENDING
     with pytest.raises(NotFoundError) as error:
-        await broadcast_repository.lock_for_update(999_999)
+        await broadcast_repository.get_by_id_for_update(999_999)
     assert error.value.code is ErrorCode.BROADCAST_NOT_FOUND
 
 
@@ -400,7 +400,7 @@ async def test_creator_name_prefers_login(
         CreateUserDto(name="Display", role=Role.ADMIN, login="bc-creator")
     )
     created = await broadcast_repository.create(save_dto(), created_by=creator.id)
-    fetched = await broadcast_repository.get_or_raise(created.id)
+    fetched = await broadcast_repository.get_by_id(created.id)
     assert fetched.created_by_name == "bc-creator"
     items, _ = await broadcast_repository.list(ListBroadcastsDto())
     assert items[0].created_by_name == "bc-creator"
@@ -475,7 +475,7 @@ async def test_summary_counts_window_and_audience(
     assert summary.by_status[BroadcastStatus.DRAFT] == 0
     assert (
         summary.next_scheduled_at
-        == (await broadcast_repository.get_or_raise(scheduled.id)).scheduled_at
+        == (await broadcast_repository.get_by_id(scheduled.id)).scheduled_at
     )
     assert summary.delivered_30d == 1
     assert summary.processed_30d == 2

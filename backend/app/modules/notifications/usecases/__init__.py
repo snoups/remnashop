@@ -1,7 +1,7 @@
 from app.modules.notifications.usecases.delete_push_subscription import (
     DeletePushSubscriptionUseCase,
 )
-from app.modules.notifications.usecases.deliver import DeliverNotificationUseCase
+from app.modules.notifications.usecases.deliver_notification import DeliverNotificationUseCase
 from app.modules.notifications.usecases.generate_vapid_keys import GenerateVapidKeysUseCase
 from app.modules.notifications.usecases.get_notification_channels import (
     GetNotificationChannelsUseCase,

@@ -6,12 +6,12 @@ from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
 from app.core.security.permissions import Permission, assert_grantable
 from app.core.usecase import UseCase
-from app.modules.users.dto import CreateAdminDto, CreateUserDto, UserDto
+from app.modules.users.dto import AdminWithPasswordDto, CreateAdminDto, CreateUserDto
 from app.modules.users.events import AdminCreatedEvent
 from app.modules.users.repository import UserRepository
 
 
-class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
+class CreateAdminUseCase(UseCase[CreateAdminDto, AdminWithPasswordDto]):
     required_permission = Permission.ADMINS_MANAGE
 
     def __init__(
@@ -26,7 +26,7 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
         self._config = config
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: CreateAdminDto) -> tuple[UserDto, str]:
+    async def _execute(self, actor: Actor, data: CreateAdminDto) -> AdminWithPasswordDto:
         assert_grantable(data.permission_grants)
         assert_grantable(data.permission_revokes)
 
@@ -50,4 +50,4 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, tuple[UserDto, str]]):
                 AdminCreatedEvent(actor=actor, target=admin, ip_address=data.client_ip)
             )
 
-        return admin, password
+        return AdminWithPasswordDto(admin=admin, password=password)

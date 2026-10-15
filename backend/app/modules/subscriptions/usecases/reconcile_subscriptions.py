@@ -3,6 +3,7 @@ from remnapy import RemnawaveSDK
 from remnapy.exceptions import NotFoundError as RemnawaveNotFoundError
 
 from app.core.actor import Actor
+from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.exceptions import RemnawavePanelUnavailableError
 from app.core.usecase import UseCase
@@ -21,16 +22,20 @@ class ReconcileSubscriptionsUseCase(UseCase[None, None]):
         subscription_repository: SubscriptionRepository,
         remnawave_sdk: RemnawaveSDK,
         sync_use_case: SyncSubscriptionStatusUseCase,
+        uow: UnitOfWork,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._remnawave_sdk = remnawave_sdk
         self._sync_use_case = sync_use_case
+        self._uow = uow
 
     async def _execute(self, actor: Actor, data: None) -> None:
         # No batching: every non-terminal row is loaded and checked against the
         # panel one by one. Fine at current scale; switch to paginated batches
         # with a bounded gather() if a run nears its 30-minute interval.
-        for subscription in await self._subscription_repository.list_non_terminal():
+        async with self._uow:
+            subscriptions = await self._subscription_repository.list_non_terminal()
+        for subscription in subscriptions:
             try:
                 panel_user = await self._remnawave_sdk.users.get_user_by_id(
                     subscription.remnawave_user_id

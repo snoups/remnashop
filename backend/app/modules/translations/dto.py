@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Final
 
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import Locale
@@ -61,3 +62,6 @@ class UpdateTranslationDto:
     message_id: str
     attribute_id: str
     value: str
+
+
+EXPORT_VERSION: Final[int] = 1

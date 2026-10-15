@@ -95,7 +95,7 @@ class OAuthLoginCallbackUseCase:
                     )
                 )
                 if identity is not None:
-                    user = await self._user_repository.get_by_id(identity.user_id)
+                    user = await self._user_repository.find_by_id(identity.user_id)
         # one message for a missing, blocked or non-staff user, so an
         # unauthenticated caller can't learn blocked-status (as in LoginUseCase)
         if user is None or user.is_blocked or not user.is_privileged:

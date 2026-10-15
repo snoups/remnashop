@@ -32,12 +32,12 @@ async def get_appearance(use_case: FromDishka[GetPublicAppearanceUseCase]) -> Ap
 @router.get("/logo", responses=error_responses(404))
 @inject
 async def get_appearance_logo(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    data, content_type = await use_case.execute(AppearanceImageKind.LOGO)
-    return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)
+    image = await use_case.execute(AppearanceImageKind.LOGO)
+    return Response(content=image.data, media_type=image.content_type, headers=_IMAGE_HEADERS)
 
 
 @router.get("/favicon", responses=error_responses(404))
 @inject
 async def get_appearance_favicon(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    data, content_type = await use_case.execute(AppearanceImageKind.FAVICON)
-    return Response(content=data, media_type=content_type, headers=_IMAGE_HEADERS)
+    image = await use_case.execute(AppearanceImageKind.FAVICON)
+    return Response(content=image.data, media_type=image.content_type, headers=_IMAGE_HEADERS)

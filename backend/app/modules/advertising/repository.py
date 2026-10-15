@@ -5,8 +5,8 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.errors import constraint_name
+from app.core.db.filters import in_ids
 from app.core.db.models.ad_link import AdLink
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
 from app.core.db.partial_update import apply_partial_update
@@ -46,29 +46,10 @@ class AdLinkRepository:
         self.session = session
 
     def _to_dto(self, row: AdLink) -> AdLinkDto:
-        return AdLinkDto(
-            id=row.id,
-            name=row.name,
-            code=row.code,
-            cost=row.cost,
-            cost_currency=row.cost_currency,
-            is_active=row.is_active,
-            allow_bot=row.allow_bot,
-            allow_webcabinet=row.allow_webcabinet,
-            note=row.note,
-            created_by=row.created_by,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return AdLinkDto.model_validate(row, from_attributes=True)
 
-    def _attribution_to_dto(self, row: AdLinkAttribution) -> AdLinkAttributionDto:
-        return AdLinkAttributionDto(
-            id=row.id,
-            ad_link_id=row.ad_link_id,
-            user_id=row.user_id,
-            channel=row.channel,
-            created_at=row.created_at,
-        )
+    def _to_attribution_dto(self, row: AdLinkAttribution) -> AdLinkAttributionDto:
+        return AdLinkAttributionDto.model_validate(row, from_attributes=True)
 
     async def _get_or_raise(self, ad_link_id: int) -> AdLink:
         row = await self.session.get(AdLink, ad_link_id)
@@ -163,14 +144,12 @@ class AdLinkRepository:
 
     async def list_user_links(self, user_ids: list[int]) -> list[tuple[int, int, str]]:
         result: list[tuple[int, int, str]] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                select(AdLinkAttribution.user_id, AdLink.id, AdLink.name)
-                .join(AdLink, AdLink.id == AdLinkAttribution.ad_link_id)
-                .where(AdLinkAttribution.user_id.in_(chunk))
-            )
-            result.extend((await self.session.execute(stmt)).tuples().all())
+        stmt = (
+            select(AdLinkAttribution.user_id, AdLink.id, AdLink.name)
+            .join(AdLink, AdLink.id == AdLinkAttribution.ad_link_id)
+            .where(in_ids(AdLinkAttribution.user_id, user_ids))
+        )
+        result.extend((await self.session.execute(stmt)).tuples().all())
         return result
 
     async def create_attribution(
@@ -188,7 +167,7 @@ class AdLinkRepository:
                 code=ErrorCode.USER_ALREADY_ATTRIBUTED,
             ) from error
         await self.session.refresh(row)
-        return self._attribution_to_dto(row)
+        return self._to_attribution_dto(row)
 
     async def list_all(self, *, is_active: Optional[bool] = None) -> list[AdLinkDto]:
         filters = [AdLink.is_active == is_active] if is_active is not None else []
@@ -288,7 +267,7 @@ class AdLinkRepository:
             .limit(page_size)
         )
         rows = (await self.session.scalars(stmt)).all()
-        return [self._attribution_to_dto(row) for row in rows], int(total or 0)
+        return [self._to_attribution_dto(row) for row in rows], int(total or 0)
 
     async def get_user_attribution(self, user_id: int) -> Optional[UserAdAttributionDto]:
         row = (

@@ -111,7 +111,8 @@ export interface CohortRow {
 }
 
 export interface Cohorts {
-  cohorts: CohortRow[];
+  items: CohortRow[];
+  total: number;
 }
 
 export function getCohorts(signal?: AbortSignal): Promise<Cohorts> {

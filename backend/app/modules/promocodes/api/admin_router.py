@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import PromocodeRewardType, PromocodeStatus
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.utils.time import range_start_utc
 from app.modules.promocodes.api.schemas import (
     CreatePromocodeRequest,
     GeneratedPromocodeCodeResponse,
@@ -23,8 +23,6 @@ from app.modules.promocodes.api.schemas import (
     UserPromocodeActivationResponse,
 )
 from app.modules.promocodes.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     CreatePromocodeDto,
     ListPromocodeActivatedUsersDto,
     ListPromocodesDto,
@@ -53,7 +51,7 @@ async def list_promocodes(
     actor: Actor = Depends(require_admin),
     promocode_status: Optional[PromocodeStatus] = Query(None, alias="status"),
     reward_type: Optional[PromocodeRewardType] = Query(None),
-    search: Optional[str] = Query(None, max_length=64),
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> PromocodePageResponse:
@@ -76,7 +74,9 @@ async def list_promocodes(
 
 
 @user_router.get(
-    "/{user_id:int}/promocode-activations", response_model=UserPromocodeActivationListResponse
+    "/{user_id:int}/promocode-activations",
+    response_model=UserPromocodeActivationListResponse,
+    responses=error_responses(404),
 )
 @inject
 async def list_user_promocode_activations(
@@ -152,12 +152,13 @@ async def create_promocode(
                 availability=payload.availability,
                 allowed_user_ids=payload.allowed_user_ids,
                 allowed_plan_ids=payload.allowed_plan_ids,
-                expires_at=range_start_utc(payload.expires_at),
+                expires_at=payload.expires_at,
                 max_activations=payload.max_activations,
                 is_reusable=payload.is_reusable,
             ),
         )
-    except (NotFoundError, ValidationError) as error:
+    except NotFoundError as error:
+        # a referenced plan or add-on that doesn't exist is a bad body, not a missing route
         raise ValidationError(str(error), code=error.code) from error
     return PromocodeResponse.model_validate(promo, from_attributes=True)
 
@@ -180,7 +181,7 @@ async def update_promocode(
             availability=payload.availability,
             allowed_user_ids=payload.allowed_user_ids,
             allowed_plan_ids=payload.allowed_plan_ids,
-            expires_at=range_start_utc(payload.expires_at),
+            expires_at=payload.expires_at,
             max_activations=payload.max_activations,
             is_reusable=payload.is_reusable,
         ),

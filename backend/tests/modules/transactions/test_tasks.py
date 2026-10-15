@@ -94,7 +94,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
 
     await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
 
-    assert (await user_repository.get_by_id(user_id)).purchase_discount == 20
+    assert (await user_repository.find_by_id(user_id)).purchase_discount == 20
 
 
 async def _prune_discounted_order(
@@ -131,7 +131,7 @@ async def _prune_discounted_order(
             )
         )
     await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
-    return (await user_repository.get_by_id(user_id)).purchase_discount
+    return (await user_repository.find_by_id(user_id)).purchase_discount
 
 
 async def test_prune_gives_back_an_admin_granted_purchase_discount(

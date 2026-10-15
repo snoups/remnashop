@@ -11,15 +11,8 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dto import BroadcastDto
 from app.modules.broadcasts.events import BroadcastCanceledEvent
+from app.modules.broadcasts.lifecycle import cancel_sending
 from app.modules.broadcasts.repository import BroadcastRepository
-
-
-async def cancel_sending(repository: BroadcastRepository, broadcast_id: int) -> None:
-    await repository.update_fields(
-        broadcast_id, status=BroadcastStatus.CANCELED, completed_at=datetime_now()
-    )
-    await repository.cancel_pending(broadcast_id)
-    await repository.refresh_counts(broadcast_id)
 
 
 class CancelBroadcastUseCase(UseCase[int, BroadcastDto]):
@@ -37,7 +30,7 @@ class CancelBroadcastUseCase(UseCase[int, BroadcastDto]):
 
     async def _execute(self, actor: Actor, data: int) -> BroadcastDto:
         async with self._uow:
-            broadcast = await self._broadcast_repository.lock_for_update(data)
+            broadcast = await self._broadcast_repository.get_by_id_for_update(data)
             if broadcast.status is BroadcastStatus.SCHEDULED:
                 await self._broadcast_repository.update_fields(
                     data,
@@ -55,8 +48,8 @@ class CancelBroadcastUseCase(UseCase[int, BroadcastDto]):
                     code=ErrorCode.BROADCAST_INVALID_STATUS,
                 )
             await self._event_publisher.publish(
-                BroadcastCanceledEvent(user=actor, broadcast_id=data)
+                BroadcastCanceledEvent(actor=actor, broadcast_id=data)
             )
-            result = await self._broadcast_repository.get_or_raise(data)
+            result = await self._broadcast_repository.get_by_id(data)
         logger.info(f"{actor.log} Canceled broadcast '{data}'")
         return result

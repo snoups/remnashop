@@ -3,6 +3,7 @@ from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.di import get_settings_providers
 from app.modules.settings.dto import (
     AccessSettingsDto,
+    AppearanceImageDto,
     AppearanceSettingsDto,
     BotCommandDto,
     BotRequirementsDto,
@@ -10,6 +11,7 @@ from app.modules.settings.dto import (
     BotStatusDto,
     CabinetAuthSettingsDto,
     EmailSettingsDto,
+    GetBotCommandsDto,
     OAuthSettingsDto,
     ShopSettingsDto,
     UpdateAppearanceSettingsDto,
@@ -62,6 +64,7 @@ __all__ = [
     "BOT_COMMANDS",
     "AccessSettingsChangedEvent",
     "AccessSettingsDto",
+    "AppearanceImageDto",
     "AppearanceSettingsDto",
     "BotCommand",
     "BotCommandDto",
@@ -75,6 +78,7 @@ __all__ = [
     "EmailSettingsChangedEvent",
     "EmailSettingsDto",
     "GetAccessSettingsUseCase",
+    "GetBotCommandsDto",
     "GetBotCommandsUseCase",
     "GetBotLogsUseCase",
     "GetBotRequirementsUseCase",

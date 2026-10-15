@@ -24,7 +24,7 @@ class UpdateAddOnUseCase(UseCase[UpdateAddOnDto, AddOnDto]):
         async with self._uow:
             addon = await self._addon_repository.update(data)
             await self._event_publisher.publish(
-                AddOnChangedEvent(user=actor, action="update", addon_id=addon.id)
+                AddOnChangedEvent(actor=actor, action="update", addon_id=addon.id)
             )
         logger.info(f"{actor.log} Updated addon '{addon.id}'")
         return addon

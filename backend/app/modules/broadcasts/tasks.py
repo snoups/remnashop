@@ -3,6 +3,7 @@ from typing import Final
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
+from app.core.constants import TTL_1H
 from app.core.utils.lock import cron_lock
 from app.modules.broadcasts.usecases import (
     DeliverBroadcastBatchUseCase,
@@ -14,7 +15,7 @@ from app.modules.broadcasts.usecases import (
 from app.worker.broker import broker
 
 _TICK_LOCK_TTL_S: Final[int] = 55
-_PRUNE_LOCK_TTL_S: Final[int] = 60 * 60
+_PRUNE_LOCK_TTL_S: Final[int] = TTL_1H
 
 
 @broker.task

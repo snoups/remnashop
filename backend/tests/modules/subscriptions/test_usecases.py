@@ -57,6 +57,7 @@ def _update_use_case(
 ) -> UpdateSubscriptionUseCase:
     return UpdateSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         remnawave_sdk,
         event_publisher,
         uow,
@@ -146,7 +147,11 @@ async def test_owner_can_update_subscription_squads(
     _seed_panel_user(remnawave_store, 6004)
     created = await subscription_repository.create(_create_dto(user.id, 6004))
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
     squad = uuid4()
 
@@ -172,7 +177,11 @@ async def test_regular_user_cannot_update_subscription_squads(
     _seed_panel_user(remnawave_store, 6005)
     created = await subscription_repository.create(_create_dto(user.id, 6005))
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -197,6 +206,7 @@ async def test_owner_can_delete_subscription(
     created = await subscription_repository.create(_create_dto(user.id, 6006))
     use_case = DeleteSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
         event_publisher,
         uow,
@@ -219,6 +229,7 @@ async def test_delete_subscription_tolerates_user_already_removed_in_panel(
     created = await subscription_repository.create(_create_dto(user.id, 6008))
     use_case = DeleteSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
         event_publisher,
         uow,
@@ -244,6 +255,7 @@ async def test_regular_user_cannot_delete_subscription(
     created = await subscription_repository.create(_create_dto(user.id, 6007))
     use_case = DeleteSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
         event_publisher,
         uow,
@@ -402,7 +414,11 @@ async def test_squads_edit_refused_when_the_subscription_was_deleted_meanwhile(
 
     monkeypatch.setattr(remnawave_sdk.users, "update_user", _update_then_delete)
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(ValidationError) as error:

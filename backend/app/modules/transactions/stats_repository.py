@@ -4,7 +4,7 @@ from typing import Any, Final, Optional
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import MAX_SQL_IN_PARAMS
+from app.core.db.filters import in_ids
 from app.core.db.models.transaction import Transaction
 from app.core.enums import PaymentGatewayType, TransactionStatus
 from app.modules.transactions.dto import PaidTransactionDto, PaymentAttemptDto
@@ -77,16 +77,13 @@ class TransactionStatsRepository:
     async def list_paid_by_users(
         self, user_ids: list[int], end: datetime
     ) -> list[PaidTransactionDto]:
-        result: list[PaidTransactionDto] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                self._paid_select()
-                .where(Transaction.user_id.in_(chunk), Transaction.updated_at < end)
-                .order_by(Transaction.updated_at, Transaction.id)
-            )
-            result.extend(self._to_paid(row) for row in (await self.session.execute(stmt)).all())
-        return sorted(result, key=lambda row: row.paid_at)
+        stmt = (
+            self._paid_select()
+            .where(in_ids(Transaction.user_id, user_ids), Transaction.updated_at < end)
+            .order_by(Transaction.updated_at, Transaction.id)
+        )
+        rows = (await self.session.execute(stmt)).all()
+        return sorted((self._to_paid(row) for row in rows), key=lambda row: row.paid_at)
 
     async def list_attempts(self, start: datetime, end: datetime) -> list[PaymentAttemptDto]:
         stmt = select(

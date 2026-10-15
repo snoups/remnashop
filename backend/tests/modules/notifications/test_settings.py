@@ -19,6 +19,7 @@ from app.modules.notifications.usecases import (
 from app.modules.notifications.vapid import generate_vapid_keypair
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.notifications.conftest import NewSession
 
 ADMIN = UserDto(id=99, login="a", name="a", role=Role.ADMIN, language=Locale.EN)
@@ -67,9 +68,9 @@ async def test_generate_keys_wipes_subscriptions_and_configures_push(
 async def test_update_sets_contact(
     owner: UserDto, notification_repository: NotificationRepository, uow: UnitOfWork
 ) -> None:
-    result = await UpdateNotificationSettingsUseCase(notification_repository, uow)(
-        owner, UpdateNotificationSettingsDto(vapid_contact="mailto:ops@example.com")
-    )
+    result = await UpdateNotificationSettingsUseCase(
+        notification_repository, uow, RecordingEventPublisher()
+    )(owner, UpdateNotificationSettingsDto(vapid_contact="mailto:ops@example.com"))
     assert result.vapid_contact == "mailto:ops@example.com"
 
 

@@ -42,5 +42,12 @@ class RenamePasskeyDto:
 
 @dataclass(frozen=True, kw_only=True)
 class VerifyPasskeyRegistrationDto:
+    client_ip: str
     credential: dict[str, Any]
     name: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeletePasskeyDto:
+    passkey_id: int
+    client_ip: str

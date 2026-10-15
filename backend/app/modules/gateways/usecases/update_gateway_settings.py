@@ -35,11 +35,11 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
             gateway = await self._gateway_repository.update_settings(data.type, data.values)
             await self._event_publisher.publish(
                 GatewayChangedEvent(
-                    user=actor,
+                    actor=actor,
                     action="settings",
                     gateway_type=data.type.value,
                     changed_fields=sorted(data.values),
                 )
             )
-        logger.info(f"Gateway '{data.type.value}' settings updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated settings of gateway '{data.type.value}'")
         return gateway

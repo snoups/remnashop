@@ -6,8 +6,9 @@ from app.modules.settings.command_translations import (
     delete_bot_commands_for_locale,
     push_bot_commands_to_telegram,
 )
+from app.modules.settings.dto import GetBotCommandsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
+from app.modules.settings.usecases import GetBotCommandsUseCase
 from app.modules.translations import TranslationRepository
 
 
@@ -19,12 +20,12 @@ class BotCommandsPusher:
         self,
         settings_repository: SettingsRepository,
         translation_repository: TranslationRepository,
-        get_bot_commands: GetBotCommandsUseCase,
+        get_bot_commands_use_case: GetBotCommandsUseCase,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
         self._translation_repository = translation_repository
-        self._get_bot_commands = get_bot_commands
+        self._get_bot_commands_use_case = get_bot_commands_use_case
         self._uow = uow
 
     async def push(self) -> bool:
@@ -35,7 +36,7 @@ class BotCommandsPusher:
             token = bot_settings.token
             if not bot_settings.is_configured or token is None:
                 return True
-            commands = await self._get_bot_commands.system(False)
+            commands = await self._get_bot_commands_use_case.system(GetBotCommandsDto())
             async with self._uow:
                 active_locales = await self._translation_repository.list_active_locales()
                 translations_by_locale = (

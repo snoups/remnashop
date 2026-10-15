@@ -33,3 +33,9 @@ class UploadBannerFileDto:
     locale: Locale
     content_type: str
     data: bytes
+
+
+@dataclass(frozen=True, kw_only=True)
+class BannerImageDto:
+    data: bytes
+    content_type: str

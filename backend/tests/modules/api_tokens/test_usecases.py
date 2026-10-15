@@ -7,7 +7,7 @@ from app.core.exceptions import NotFoundError, PermissionDeniedError, Validation
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.modules.api_tokens.api.schemas import CreateApiTokenRequest
-from app.modules.api_tokens.dto import IssueApiTokenDto
+from app.modules.api_tokens.dto import IssueApiTokenDto, RevokeApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.api_tokens.usecases import (
     CreateApiTokenUseCase,
@@ -43,7 +43,10 @@ async def test_owner_can_create_token_and_secret_is_returned_once(
     result = await use_case(
         owner,
         IssueApiTokenDto(
-            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+            name="ci-script",
+            scopes=[Permission.BANNERS_UPLOAD.value],
+            expires_in_days=30,
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -61,7 +64,10 @@ async def test_create_token_rejects_manage_admins_permission(
         await use_case(
             OWNER,
             IssueApiTokenDto(
-                name="bad", scopes=[Permission.ADMINS_MANAGE.value], expires_in_days=30
+                name="bad",
+                scopes=[Permission.ADMINS_MANAGE.value],
+                expires_in_days=30,
+                client_ip="127.0.0.1",
             ),
         )
 
@@ -75,7 +81,10 @@ async def test_create_token_rejects_manage_own_account_permission(
         await use_case(
             OWNER,
             IssueApiTokenDto(
-                name="bad", scopes=[Permission.OWN_ACCOUNT_MANAGE.value], expires_in_days=30
+                name="bad",
+                scopes=[Permission.OWN_ACCOUNT_MANAGE.value],
+                expires_in_days=30,
+                client_ip="127.0.0.1",
             ),
         )
 
@@ -89,7 +98,10 @@ async def test_regular_user_cannot_create_token(
         await use_case(
             REGULAR_USER,
             IssueApiTokenDto(
-                name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+                name="ci-script",
+                scopes=[Permission.BANNERS_UPLOAD.value],
+                expires_in_days=30,
+                client_ip="127.0.0.1",
             ),
         )
 
@@ -106,7 +118,10 @@ async def test_list_returns_created_tokens_without_secret(
     await create_use_case(
         owner,
         IssueApiTokenDto(
-            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+            name="ci-script",
+            scopes=[Permission.BANNERS_UPLOAD.value],
+            expires_in_days=30,
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -128,11 +143,16 @@ async def test_revoke_removes_token_from_list(
     created = await create_use_case(
         owner,
         IssueApiTokenDto(
-            name="ci-script", scopes=[Permission.BANNERS_UPLOAD.value], expires_in_days=30
+            name="ci-script",
+            scopes=[Permission.BANNERS_UPLOAD.value],
+            expires_in_days=30,
+            client_ip="127.0.0.1",
         ),
     )
 
-    await revoke_use_case(owner, created.token.id)
+    await revoke_use_case(
+        owner, RevokeApiTokenDto(token_id=created.token.id, client_ip="127.0.0.1")
+    )
 
     tokens = await list_use_case(OWNER)
     assert tokens == []
@@ -144,7 +164,7 @@ async def test_revoke_unknown_token_raises_not_found(
     revoke_use_case = RevokeApiTokenUseCase(api_token_repository, uow, event_publisher)
 
     with pytest.raises(NotFoundError):
-        await revoke_use_case(OWNER, 999_999)
+        await revoke_use_case(OWNER, RevokeApiTokenDto(token_id=999_999, client_ip="127.0.0.1"))
 
 
 async def test_create_token_with_expires_in_days_computes_expiry(
@@ -158,7 +178,10 @@ async def test_create_token_with_expires_in_days_computes_expiry(
     result = await use_case(
         owner,
         IssueApiTokenDto(
-            name="ci-script", scopes=[Permission.BANNERS_IMAGE_VIEW.value], expires_in_days=30
+            name="ci-script",
+            scopes=[Permission.BANNERS_IMAGE_VIEW.value],
+            expires_in_days=30,
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -172,7 +195,12 @@ async def test_create_token_rejects_a_scope_granting_nothing(
 
     for scope in ("users:delete", "nonexistent:*", "oauth_settings:write", "NOT_A_PERMISSION"):
         with pytest.raises(ValidationError):
-            await use_case(OWNER, IssueApiTokenDto(name="bad", scopes=[scope], expires_in_days=30))
+            await use_case(
+                OWNER,
+                IssueApiTokenDto(
+                    name="bad", scopes=[scope], expires_in_days=30, client_ip="127.0.0.1"
+                ),
+            )
 
 
 def test_create_request_rejects_invalid_ip_allowlist() -> None:

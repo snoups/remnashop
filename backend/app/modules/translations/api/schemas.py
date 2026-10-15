@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from app.core.enums import Locale
 
 
-class TranslationEntryItem(BaseModel):
+class TranslationEntryResponse(BaseModel):
     locale: Locale
     message_id: str
     attribute_id: str
@@ -22,18 +22,23 @@ class TranslationTextExportItem(BaseModel):
     value: str
 
 
-class TranslationsExportPayload(BaseModel):
+class TranslationsExportResponse(BaseModel):
     version: int
     texts: list[TranslationTextExportItem]
 
 
-class TranslationsImportResult(BaseModel):
+class TranslationsImportRequest(BaseModel):
+    version: int
+    texts: list[TranslationTextExportItem]
+
+
+class TranslationsImportResponse(BaseModel):
     applied: int
     skipped: int
 
 
 class TranslationEntryListResponse(BaseModel):
-    items: list[TranslationEntryItem]
+    items: list[TranslationEntryResponse]
     total: int
 
 

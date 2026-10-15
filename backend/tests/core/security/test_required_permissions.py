@@ -2,10 +2,12 @@ import pytest
 
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.advertising.usecases.get_ad_link import GetAdLinkUseCase
-from app.modules.banners.usecases.delete_banner import DeleteBannerUseCase
-from app.modules.banners.usecases.get_banner_image import GetBannerImageUseCase
-from app.modules.banners.usecases.upload_banner import UploadBannerUseCase
+from app.modules.advertising.usecases import GetAdLinkUseCase
+from app.modules.banners.usecases import (
+    DeleteBannerUseCase,
+    GetBannerImageUseCase,
+    UploadBannerUseCase,
+)
 from app.modules.dialogs.usecases import (
     CreateCustomDialogWindowUseCase,
     DeleteCustomDialogWindowUseCase,
@@ -18,35 +20,40 @@ from app.modules.dialogs.usecases import (
     UpdateDialogWindowUseCase,
 )
 from app.modules.event_log.usecases import GetEventLogEntryUseCase
-from app.modules.gateways.usecases.list_gateways import ListGatewaysUseCase
-from app.modules.gateways.usecases.reorder_gateways import ReorderGatewaysUseCase
-from app.modules.gateways.usecases.set_gateway_active import SetGatewayActiveUseCase
-from app.modules.gateways.usecases.update_gateway_settings import UpdateGatewaySettingsUseCase
+from app.modules.gateways.usecases import (
+    ListGatewaysUseCase,
+    ReorderGatewaysUseCase,
+    SetGatewayActiveUseCase,
+    UpdateGatewaySettingsUseCase,
+)
 from app.modules.notifications.usecases import (
     GenerateVapidKeysUseCase,
     GetNotificationSettingsUseCase,
     UpdateNotificationSettingsUseCase,
 )
-from app.modules.plans.usecases import GetAddOnUseCase
-from app.modules.plans.usecases.get_plan import GetPlanUseCase
-from app.modules.plans.usecases.set_plan_duration_base_price import SetPlanDurationBasePriceUseCase
-from app.modules.promocodes.usecases.get_promocode import GetPromocodeUseCase
-from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
-from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
-from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
-from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
-from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
-from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
-from app.modules.transactions.usecases.list_transaction_gateways import (
-    ListTransactionGatewaysUseCase,
+from app.modules.plans.usecases import (
+    GetAddOnUseCase,
+    GetPlanUseCase,
+    SetPlanDurationBasePriceUseCase,
 )
-from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
-from app.modules.translations.usecases.add_locale import AddLocaleUseCase
-from app.modules.translations.usecases.remove_locale import RemoveLocaleUseCase
-from app.modules.translations.usecases.reset_translation import ResetTranslationUseCase
-from app.modules.translations.usecases.update_translation import UpdateTranslationUseCase
-from app.modules.users.usecases.get_user import GetUserUseCase
-from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
+from app.modules.promocodes.usecases import GetPromocodeUseCase
+from app.modules.settings.usecases import GetBotCommandsUseCase
+from app.modules.subscriptions.usecases import GetSubscriptionUseCase
+from app.modules.transactions.usecases import (
+    CreateTestPaymentUseCase,
+    FulfillTransactionUseCase,
+    GetTestPaymentStatusUseCase,
+    GetTransactionUseCase,
+    ListTransactionGatewaysUseCase,
+    ListTransactionsUseCase,
+)
+from app.modules.translations.usecases import (
+    AddLocaleUseCase,
+    RemoveLocaleUseCase,
+    ResetTranslationUseCase,
+    UpdateTranslationUseCase,
+)
+from app.modules.users.usecases import GetUserUseCase, SetUserDiscountUseCase
 
 
 @pytest.mark.parametrize(

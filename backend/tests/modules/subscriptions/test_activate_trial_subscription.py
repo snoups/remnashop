@@ -23,9 +23,9 @@ from app.modules.subscriptions.dto import ActivateTrialSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
-from app.modules.subscriptions.usecases.activate_trial_subscription import (
+from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
+    PurchaseSubscriptionUseCase,
 )
 from app.modules.users.dto import CreateUserDto, UpdateUserDto
 from app.modules.users.repository import UserRepository
@@ -83,7 +83,7 @@ async def test_activates_a_trial_and_spends_the_flag(
     assert subscription.is_trial is True
     assert subscription.plan_snapshot.price_paid == Decimal("0")
 
-    reloaded = await user_repository.get_by_id(actor.id)
+    reloaded = await user_repository.find_by_id(actor.id)
     assert reloaded.is_trial_available is False
 
 
@@ -99,7 +99,7 @@ async def test_rejects_when_the_flag_is_already_spent(
     plan = await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-spent-2"))
     await user_repository.update_fields(actor.id, UpdateUserDto(is_trial_available=False))
-    actor = await user_repository.get_by_id(actor.id)
+    actor = await user_repository.find_by_id(actor.id)
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
         make_eligibility(subscription_repository.session),
@@ -181,7 +181,7 @@ async def test_a_failed_activation_gives_the_trial_back(
     with pytest.raises(RuntimeError):
         await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
-    reloaded = await user_repository.get_by_id(actor.id)
+    reloaded = await user_repository.find_by_id(actor.id)
     assert reloaded is not None and reloaded.is_trial_available is True
 
 
@@ -211,5 +211,5 @@ async def test_a_paid_trial_is_not_activated_for_free(
         await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
 
     assert error.value.code is ErrorCode.TRIAL_NOT_AVAILABLE
-    reloaded = await user_repository.get_by_id(actor.id)
+    reloaded = await user_repository.find_by_id(actor.id)
     assert reloaded is not None and reloaded.is_trial_available is True

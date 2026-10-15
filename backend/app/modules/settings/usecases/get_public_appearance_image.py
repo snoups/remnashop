@@ -4,6 +4,7 @@ from app.core.enums import AppearanceImageKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.settings.appearance_storage import read_appearance_image
+from app.modules.settings.dto import AppearanceImageDto
 from app.modules.settings.repository import SettingsRepository
 
 
@@ -18,7 +19,7 @@ class GetPublicAppearanceImageUseCase:
         self._config = config
         self._uow = uow
 
-    async def execute(self, kind: AppearanceImageKind) -> tuple[bytes, str]:
+    async def execute(self, kind: AppearanceImageKind) -> AppearanceImageDto:
         async with self._uow:
             meta = await self._settings_repository.get_appearance_image_meta(kind)
             if meta is None:
@@ -34,4 +35,4 @@ class GetPublicAppearanceImageUseCase:
                     f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
                 ) from None
 
-            return data, content_type
+            return AppearanceImageDto(data=data, content_type=content_type)

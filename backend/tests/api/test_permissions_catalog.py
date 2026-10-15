@@ -107,7 +107,7 @@ async def test_permissions_catalog_returns_every_metadata_entry(
     )
 
     assert response.status_code == 200
-    entries = response.json()["entries"]
+    entries = response.json()["items"]
     assert len(entries) == len(PERMISSION_METADATA)
 
     by_permission = {entry["permission"]: entry for entry in entries}

@@ -9,11 +9,11 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
 from fluentogram import TranslatorHub, TranslatorRunner
 
-from app.core.constants import INT32_MAX
+from app.core.constants import INT32_MAX, T_ME
 from app.modules.broadcasts import GetBroadcastPromocodeUseCase
 from app.modules.promocodes import ValidatePromocodeUseCase
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
-from app.modules.users import SetMarketingOptOutUseCase, UserDto
+from app.modules.users import SetMarketingOptOutDto, SetMarketingOptOutUseCase, UserDto
 from app.telegram.broadcast_callbacks import (
     MENU_CALLBACK,
     MENU_START_PAYLOAD,
@@ -131,7 +131,7 @@ async def on_broadcast_promocode(
         return
     # the client opens the private chat and sends /start bc_<id>; the dialog must not touch the post
     await callback.answer(
-        url=f"https://t.me/{(await bot.me()).username}?start={START_PREFIX}{broadcast_id}"
+        url=f"{T_ME}{(await bot.me()).username}?start={START_PREFIX}{broadcast_id}"
     )
 
 
@@ -147,7 +147,7 @@ async def on_broadcast_unsubscribe(
         await _answer_unknown_user(callback, i18n)
         return
     runner = get_translator(i18n, user)
-    await set_marketing_opt_out(user, True)
+    await set_marketing_opt_out(user, SetMarketingOptOutDto(opted_out=True))
     await callback.answer()
     await bot.send_message(
         callback.from_user.id,
@@ -175,7 +175,7 @@ async def on_broadcast_resubscribe(
     if user is None:
         await _answer_unknown_user(callback, i18n)
         return
-    await set_marketing_opt_out(user, False)
+    await set_marketing_opt_out(user, SetMarketingOptOutDto(opted_out=False))
     await callback.answer(
         get_translator(i18n, user).get("ntf-broadcast.resubscribed"), show_alert=True
     )
@@ -191,6 +191,4 @@ async def on_broadcast_menu(
     if user is None:
         await _answer_unknown_user(callback, i18n)
         return
-    await callback.answer(
-        url=f"https://t.me/{(await bot.me()).username}?start={MENU_START_PAYLOAD}"
-    )
+    await callback.answer(url=f"{T_ME}{(await bot.me()).username}?start={MENU_START_PAYLOAD}")

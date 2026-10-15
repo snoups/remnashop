@@ -3,6 +3,7 @@ from app.modules.users.dto import (
     CreateUserDto,
     RegisterCabinetUserDto,
     RegisterTelegramUserDto,
+    SetMarketingOptOutDto,
     SetUserDiscountDto,
     UpdateUserDto,
     UserDto,
@@ -22,7 +23,7 @@ from app.modules.users.usecases import (
     SetUserDiscountUseCase,
     UnblockUserUseCase,
 )
-from app.modules.users.visibility import visible_user
+from app.modules.users.visibility import assert_manageable, get_visible_target, visible_user
 
 __all__ = [
     "AcceptRulesUseCase",
@@ -35,6 +36,7 @@ __all__ = [
     "RegisterCabinetUserUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
+    "SetMarketingOptOutDto",
     "SetMarketingOptOutUseCase",
     "SetUserDiscountDto",
     "SetUserDiscountUseCase",
@@ -45,6 +47,8 @@ __all__ = [
     "UserRepository",
     "UserResponse",
     "UserStatsRepository",
+    "assert_manageable",
     "get_users_providers",
+    "get_visible_target",
     "visible_user",
 ]

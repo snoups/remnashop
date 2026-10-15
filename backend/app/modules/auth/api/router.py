@@ -113,7 +113,7 @@ async def login(
     "/refresh",
     response_model=RefreshResponse,
     dependencies=[Depends(rate_limit(key="refresh", limit=30, window_seconds=TIME_1M))],
-    responses=error_responses(401),
+    responses=error_responses(401, 403),
 )
 @inject
 async def refresh_session(
@@ -151,6 +151,7 @@ async def refresh_session(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(rate_limit(key="logout", limit=30, window_seconds=TIME_1M))],
+    responses=error_responses(403),
 )
 @inject
 async def logout(

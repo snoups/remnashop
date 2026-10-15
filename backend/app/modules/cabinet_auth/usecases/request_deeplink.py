@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.core.constants import TTL_5M
+from app.core.constants import T_ME, TTL_5M, WEBAUTH_START_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
@@ -25,7 +25,7 @@ class RequestDeeplinkUseCase:
             bot = await self._settings_repository.get_bot_settings()
         if not cabinet.telegram_enabled or bot.token is None:
             raise AuthenticationError(
-                "Telegram sign-in is disabled", code=ErrorCode.OAUTH_PROVIDER_DISABLED
+                "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )
         username = await fetch_bot_username(bot.token.get_secret_value(), bot.proxy)
         if username is None:
@@ -34,7 +34,7 @@ class RequestDeeplinkUseCase:
             )
         token, binding = await self._store.create(codes, client_ip, user_agent)
         return DeeplinkTicketDto(
-            bot_url=f"https://t.me/{username}?start=webauth_{token}",
+            bot_url=f"{T_ME}{username}?start={WEBAUTH_START_PREFIX}{token}",
             binding=binding,
             expires_in=TTL_5M,
         )

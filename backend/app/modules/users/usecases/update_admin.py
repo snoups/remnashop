@@ -33,7 +33,7 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
             if data.permission_revokes is not None:
                 assert_grantable(data.permission_revokes)
 
-            target = await self._user_repository.get_by_id(data.user_id)
+            target = await self._user_repository.find_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:
@@ -54,7 +54,6 @@ class UpdateAdminUseCase(UseCase[UpdateAdminDto, UserDto]):
                 ),
             )
 
-        async with self._uow:
             updated = await self._user_repository.update_fields(data.user_id, update_data)
             assert updated is not None
             if data.permission_revokes is not None:

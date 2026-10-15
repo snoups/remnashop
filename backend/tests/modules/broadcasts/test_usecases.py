@@ -129,7 +129,7 @@ async def _make(
         if status is BroadcastStatus.SCHEDULED:
             fields["scheduled_at"] = datetime_now()
         await repository.update_fields(created.id, **fields)
-    return await repository.get_or_raise(created.id)
+    return await repository.get_by_id(created.id)
 
 
 def _upload(data: bytes) -> Path:
@@ -334,7 +334,7 @@ async def test_delete_media_refuses_when_texts_would_be_empty(
             admin, broadcast.id
         )
     assert error.value.code is ErrorCode.BROADCAST_DEFAULT_LOCALE_MISSING
-    kept = await broadcast_repository.get_or_raise(broadcast.id)
+    kept = await broadcast_repository.get_by_id(broadcast.id)
     assert kept.media_extension == "jpg"
     assert media_path(media_config.media_dir, broadcast.id, 1, "jpg").exists()
 
@@ -393,7 +393,7 @@ async def test_delete_removes_media_file(
     assert path.exists()
     await delete_use_case(admin, broadcast.id)
     assert not path.exists()
-    assert await broadcast_repository.get(broadcast.id) is None
+    assert await broadcast_repository.find_by_id(broadcast.id) is None
 
 
 async def test_delete_while_sending_is_refused(
@@ -1082,7 +1082,7 @@ async def test_cancel_scheduled_resets_pending_rows(
         BroadcastRecipientStatus.CANCELED,
         BroadcastRecipientStatus.SENT,
     ]
-    assert (await broadcast_repository.get_or_raise(scheduled.id)).sent_count == 1
+    assert (await broadcast_repository.get_by_id(scheduled.id)).sent_count == 1
 
 
 async def test_retry_after_recall_request_refused(

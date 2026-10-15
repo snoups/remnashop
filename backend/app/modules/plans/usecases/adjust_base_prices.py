@@ -10,8 +10,8 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import AdjustBasePricesDto, PriceBookDto
+from app.modules.plans.price_book import build_price_book
 from app.modules.plans.repository import PlanRepository
-from app.modules.plans.usecases.get_price_book import build_price_book
 from app.modules.pricing import (
     BasePricesAdjustedEvent,
     PricingRepository,
@@ -49,13 +49,14 @@ class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
                     await self._addon_repository.set_base_prices(addon_updates)
 
             await self._event_publisher.publish(
-                BasePricesAdjustedEvent(user=actor, scope=data.scope, factor=str(data.factor))
+                BasePricesAdjustedEvent(actor=actor, scope=data.scope, factor=str(data.factor))
             )
 
         logger.info(f"{actor.log} Adjusted base prices for scope '{data.scope}'")
-        return await build_price_book(
-            self._plan_repository, self._addon_repository, self._pricing_repository
-        )
+        async with self._uow:
+            return await build_price_book(
+                self._plan_repository, self._addon_repository, self._pricing_repository
+            )
 
     async def _resolve_plan_updates(self, data: AdjustBasePricesDto) -> dict[int, Decimal]:
         plans = await self._plan_repository.list_all()

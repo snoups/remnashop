@@ -33,7 +33,7 @@ class SetAddOnPriceOverrideUseCase(UseCase[SetAddOnPriceOverrideDto, AddOnDto]):
                 assert_overridable_currency(data.currency, settings.anchor_currency)
             addon = await self._addon_repository.set_price_override(data)
             await self._event_publisher.publish(
-                AddOnChangedEvent(user=actor, action="price_override", addon_id=data.addon_id)
+                AddOnChangedEvent(actor=actor, action="price_override", addon_id=data.addon_id)
             )
         logger.info(
             f"{actor.log} Set price override for addon '{data.addon_id}' currency '{data.currency}'"

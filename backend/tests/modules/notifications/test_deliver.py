@@ -8,7 +8,7 @@ from app.core.exceptions import RetryableTaskError
 from app.modules.notifications.dto import DeliverNotificationDto, PushMessage
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.notifications.usecases import DeliverNotificationUseCase
-from app.modules.notifications.usecases import deliver as deliver_module
+from app.modules.notifications.usecases import deliver_notification as deliver_module
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

@@ -4,7 +4,7 @@ import orjson
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
-from app.core.constants import REDIS_KEY_PREFIX
+from app.core.constants import REDIS_KEY_PREFIX, TTL_1D
 from app.core.exceptions import RetryableTaskError
 from app.core.utils.lock import cron_lock
 from app.modules.notifications.dto import (
@@ -16,9 +16,9 @@ from app.modules.notifications.usecases import DeliverNotificationUseCase
 from app.worker.broker import broker
 
 # longer than the outbox sweep keeps retrying a row
-_DELIVERED_TTL_S: Final[int] = 24 * 60 * 60
+_DELIVERED_TTL_S: Final[int] = TTL_1D
 # outlives any window until the next flush picks it up
-_SUMMARY_TTL_S: Final[int] = 24 * 60 * 60
+_SUMMARY_TTL_S: Final[int] = TTL_1D
 _WINDOW: Final[str] = f"{REDIS_KEY_PREFIX}notification_window:"
 _SKIPPED: Final[str] = f"{REDIS_KEY_PREFIX}notification_skipped:"
 _LAST: Final[str] = f"{REDIS_KEY_PREFIX}notification_last:"

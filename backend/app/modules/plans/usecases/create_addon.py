@@ -24,7 +24,7 @@ class CreateAddOnUseCase(UseCase[CreateAddOnDto, AddOnDto]):
         async with self._uow:
             addon = await self._addon_repository.create(data)
             await self._event_publisher.publish(
-                AddOnChangedEvent(user=actor, action="create", addon_id=addon.id)
+                AddOnChangedEvent(actor=actor, action="create", addon_id=addon.id)
             )
         logger.info(f"{actor.log} Created addon '{addon.name}'")
         return addon

@@ -24,10 +24,10 @@ class BlockBlacklistMatchesUseCase(UseCase[None, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: None) -> None:
-        ids, emails = await self._blacklist_repository.all_blocked_identities()
-        if not ids and not emails:
-            return
         async with self._uow:
+            ids, emails = await self._blacklist_repository.all_blocked_identities()
+            if not ids and not emails:
+                return
             blocked = await self._user_blacklist.block_matching(ids, emails)
             if blocked:
                 await self._event_publisher.publish(

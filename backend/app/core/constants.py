@@ -44,6 +44,7 @@ IMPORTED_TAG: Final[str] = "IMPORTED"
 INLINE_QUERY_INVITE: Final[str] = "invite"
 REMNASHOP_PREFIX: Final[str] = "rs_"
 WEB_PREFIX: Final[str] = "web_"
+WEBAUTH_START_PREFIX: Final[str] = "webauth_"
 PAYMENT_PREFIX: Final[str] = "payment_"
 GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
@@ -67,8 +68,8 @@ BROADCAST_MEDIA_MAX_BYTES: Final[int] = 50 * 1024 * 1024
 # oauth writes this cookie, auth reads it.
 REFRESH_COOKIE_NAME: Final[str] = "refresh_token"
 CSRF_COOKIE_NAME: Final[str] = "csrf_token"
-REFRESH_COOKIE_PATH: Final[str] = "/api/v1/auth"
-DOCS_PATH: Final[str] = "/api/v1/docs"
+REFRESH_COOKIE_PATH: Final[str] = f"{API_V1}/auth"
+DOCS_PATH: Final[str] = f"{API_V1}/docs"
 DOCS_COOKIE_NAME: Final[str] = "docs_access"
 
 CABINET_API_PREFIX: Final[str] = "/cabinet"
@@ -93,7 +94,6 @@ MAX_POINTS_BALANCE: Final[Decimal] = Decimal(10**12 - 1)
 INT64_MAX: Final[int] = 2**63 - 1
 
 TIMEZONE: Final[timezone] = timezone.utc
-DATETIME_VIEW_FORMAT: Final[str] = "%d.%m.%y %H:%M:%S"
 DATETIME_FILE_FORMAT: Final[str] = "%Y-%m-%d_%H-%M-%S"
 
 TIME_1M: Final[int] = 60
@@ -131,6 +131,7 @@ GB_TO_BYTES: Final[int] = 1024**3
 # largest real payload, a Remnawave user event.
 MAX_WEBHOOK_BODY_BYTES: Final[int] = 1024 * 1024
 
-# asyncpg caps a statement at 32,767 bind parameters; an IN list chunked to this
-# still fits after the other predicates are added.
-MAX_SQL_IN_PARAMS: Final[int] = 20_000
+
+DEFAULT_PAGE_SIZE: Final[int] = 50
+MAX_PAGE_SIZE: Final[int] = 200
+SEARCH_MAX_LENGTH: Final[int] = 200

@@ -43,8 +43,8 @@ async def test_same_browser_moves_to_the_admin_signed_in_now(
     second = await _admin(user_repository, uow, "second")
     subscribe = SubscribePushUseCase(notification_repository, uow)
 
-    _, created = await subscribe(first, _sub(await new_session(first.id)))
-    _, created_again = await subscribe(second, _sub(await new_session(second.id)))
+    created = (await subscribe(first, _sub(await new_session(first.id)))).created
+    created_again = (await subscribe(second, _sub(await new_session(second.id)))).created
 
     assert created and not created_again
     listing = ListPushSubscriptionsUseCase(notification_repository, uow)
@@ -60,9 +60,11 @@ async def test_cannot_delete_someone_elses_subscription(
 ) -> None:
     owner_of_sub = await _admin(user_repository, uow, "first")
     other = await _admin(user_repository, uow, "second")
-    sub, _ = await SubscribePushUseCase(notification_repository, uow)(
-        owner_of_sub, _sub(await new_session(owner_of_sub.id))
-    )
+    sub = (
+        await SubscribePushUseCase(notification_repository, uow)(
+            owner_of_sub, _sub(await new_session(owner_of_sub.id))
+        )
+    ).subscription
 
     with pytest.raises(NotFoundError):
         await DeletePushSubscriptionUseCase(notification_repository, uow)(other, sub.id)
@@ -85,9 +87,11 @@ async def test_browser_push_services_are_accepted(
     endpoint: str,
 ) -> None:
     admin = await _admin(user_repository, uow, "first")
-    sub, _ = await SubscribePushUseCase(notification_repository, uow)(
-        admin, _sub(await new_session(admin.id), endpoint=endpoint)
-    )
+    sub = (
+        await SubscribePushUseCase(notification_repository, uow)(
+            admin, _sub(await new_session(admin.id), endpoint=endpoint)
+        )
+    ).subscription
     assert sub.endpoint == endpoint
 
 

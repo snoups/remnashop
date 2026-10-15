@@ -34,7 +34,8 @@ class GatewayCatalogEntryResponse(BaseModel):
 
 
 class GatewayCatalogResponse(BaseModel):
-    entries: list[GatewayCatalogEntryResponse]
+    items: list[GatewayCatalogEntryResponse]
+    total: int
 
 
 class GatewayListResponse(BaseModel):

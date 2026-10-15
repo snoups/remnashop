@@ -27,8 +27,7 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.referrals.dto import RedeemBonusDaysDto, ResumeBonusRenewalDto
-from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
-from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
+from app.modules.referrals.usecases import RedeemBonusDaysUseCase, ResumeBonusRenewalUseCase
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     PurchaseSubscriptionDto,
@@ -96,7 +95,7 @@ async def _plan(plan_repository: PlanRepository) -> PlanDto:
 async def _user_with_days(user_repository: UserRepository, telegram_id: int, days: int) -> UserDto:
     user = await user_repository.create(CreateUserDto(name="u", telegram_id=telegram_id))
     await user_repository.credit_bonus_days(user.id, days)
-    refreshed = await user_repository.get_by_id(user.id)
+    refreshed = await user_repository.find_by_id(user.id)
     assert refreshed is not None
     return refreshed
 
@@ -130,7 +129,7 @@ async def _set_status(
 
 
 async def _bonus_days(user_repository: UserRepository, user_id: int) -> int:
-    user = await user_repository.get_by_id(user_id)
+    user = await user_repository.find_by_id(user_id)
     assert user is not None
     return user.bonus_days
 

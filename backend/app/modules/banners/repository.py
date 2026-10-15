@@ -14,16 +14,7 @@ class BannerRepository:
         self.session = session
 
     def _to_dto(self, row: Banner) -> BannerDto:
-        return BannerDto(
-            id=row.id,
-            name=row.name,
-            locale=row.locale,
-            content_type=row.content_type,
-            extension=row.extension,
-            size_bytes=row.size_bytes,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return BannerDto.model_validate(row, from_attributes=True)
 
     async def get(self, name: str, locale: Locale) -> Optional[BannerDto]:
         row = await self.session.scalar(

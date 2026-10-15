@@ -57,6 +57,7 @@ export function listEventLog(
 
 export interface Notifications {
   items: EventLogEntry[];
+  total: number;
   unread_count: number;
 }
 

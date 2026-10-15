@@ -57,7 +57,7 @@ class UpdateDialogWindowRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
-class DialogButtonInput(BaseModel):
+class DialogButtonRequest(BaseModel):
     row: int = Field(ge=0)
     column: int = Field(ge=0)
     text_key: str = Field(min_length=1, max_length=64)
@@ -71,7 +71,7 @@ class DialogButtonInput(BaseModel):
 
 
 class ReplaceButtonsRequest(BaseModel):
-    buttons: list[DialogButtonInput]
+    buttons: list[DialogButtonRequest]
 
 
 class CreateCustomWindowRequest(BaseModel):
@@ -96,10 +96,16 @@ class DialogWindowExportItem(BaseModel):
     name: Optional[str] = Field(default=None, max_length=128)
     is_enabled: bool = True
     position: int = Field(default=0, ge=0)
-    buttons: list[DialogButtonInput] = Field(default_factory=list)
+    buttons: list[DialogButtonRequest] = Field(default_factory=list)
 
 
-class DialogExportPayload(BaseModel):
+class DialogExportResponse(BaseModel):
+    version: int
+    windows: list[DialogWindowExportItem]
+    texts: list[DialogTextExportItem] = Field(default_factory=list)
+
+
+class DialogImportRequest(BaseModel):
     version: int
     windows: list[DialogWindowExportItem]
     texts: list[DialogTextExportItem] = Field(default_factory=list)

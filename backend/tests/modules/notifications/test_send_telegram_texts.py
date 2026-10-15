@@ -7,8 +7,7 @@ from app.core.enums import Locale
 from app.modules.notifications.dto import SendTelegramTextsDto
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.notifications.telegram import TelegramSendResult
-from app.modules.notifications.usecases import send_telegram_texts
-from app.modules.notifications.usecases.send_telegram_texts import SendTelegramTextsUseCase
+from app.modules.notifications.usecases import SendTelegramTextsUseCase, send_telegram_texts
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

@@ -3,14 +3,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
 from app.core.enums import Locale, Role
-from app.core.exceptions import PermissionDeniedError
+from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.passkeys.repository import PasskeyRepository
-from app.modules.users.dto import CreateUserDto, PromoteAdminDto, UserDto
+from app.modules.users.dto import (
+    BlockUserDto,
+    CreateUserDto,
+    PromoteAdminDto,
+    UnblockUserDto,
+    UserDto,
+)
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.block_user import BlockUserUseCase
-from app.modules.users.usecases.unblock_user import UnblockUserUseCase
+from app.modules.users.usecases import BlockUserUseCase, UnblockUserUseCase
 
 
 @pytest.fixture
@@ -55,7 +60,7 @@ async def test_block_user_sets_flag_and_writes_cascade_entry(
         session_repository,
         passkey_repository,
     )
-    result = await use_case(owner, target.id)
+    result = await use_case(owner, BlockUserDto(user_id=target.id, client_ip="127.0.0.1"))
     assert result.is_blocked is True
 
     bl = await blacklist_repository.get_blacklist()
@@ -93,7 +98,7 @@ async def test_block_user_role_guard(
         passkey_repository,
     )
     with pytest.raises(PermissionDeniedError):
-        await use_case(admin_actor, target.id)
+        await use_case(admin_actor, BlockUserDto(user_id=target.id, client_ip="127.0.0.1"))
 
 
 async def test_unblock_removes_manual_cascade_entry(
@@ -113,12 +118,12 @@ async def test_unblock_removes_manual_cascade_entry(
         event_publisher,
         session_repository,
         passkey_repository,
-    )(owner, target.id)
+    )(owner, BlockUserDto(user_id=target.id, client_ip="127.0.0.1"))
     await UnblockUserUseCase(user_repository, blacklist_repository, uow, event_publisher)(
-        owner, target.id
+        owner, UnblockUserDto(user_id=target.id, client_ip="127.0.0.1")
     )
 
-    refetched = await user_repository.get_by_id(target.id)
+    refetched = await user_repository.find_by_id(target.id)
     assert refetched is not None and refetched.is_blocked is False
     bl = await blacklist_repository.get_blacklist()
     assert 600 not in bl.telegram_ids
@@ -145,5 +150,5 @@ async def test_staff_cannot_block_themselves(
         passkey_repository,
     )
 
-    with pytest.raises(PermissionDeniedError):
-        await use_case(self_owner, self_owner.id)
+    with pytest.raises(NotFoundError):
+        await use_case(self_owner, BlockUserDto(user_id=self_owner.id, client_ip="127.0.0.1"))

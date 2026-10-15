@@ -7,7 +7,7 @@ from app.modules.transactions.dto import (
     TransactionWithUserDto,
 )
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.visibility import visible_transaction
+from app.modules.transactions.visibility import visible_transaction
 from app.modules.users import UserRepository
 
 

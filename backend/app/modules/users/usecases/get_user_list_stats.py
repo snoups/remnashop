@@ -7,8 +7,8 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import GetUserListStatsDto, UserListStatsDto
+from app.modules.users.listing import resolve_list_roles
 from app.modules.users.stats_repository import UserStatsRepository
-from app.modules.users.usecases.list_users import resolve_list_roles
 
 NEW_USERS_WINDOW: Final[timedelta] = timedelta(days=7)
 TOTAL_GROWTH_WINDOW: Final[timedelta] = timedelta(days=30)

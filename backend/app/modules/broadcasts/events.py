@@ -1,31 +1,31 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from app.core.events import EventCategory, SystemEvent, UserEvent
+from app.core.events import ActorEvent, EventCategory, SystemEvent
 
 
 @dataclass(frozen=True, kw_only=True)
-class BroadcastChangedEvent(UserEvent):
+class BroadcastChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.BROADCAST
     action: str
     broadcast_id: int
 
 
 @dataclass(frozen=True, kw_only=True)
-class BroadcastScheduledEvent(UserEvent):
+class BroadcastScheduledEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.BROADCAST
     broadcast_id: int
     scheduled_at: str
 
 
 @dataclass(frozen=True, kw_only=True)
-class BroadcastCanceledEvent(UserEvent):
+class BroadcastCanceledEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.BROADCAST
     broadcast_id: int
 
 
 @dataclass(frozen=True, kw_only=True)
-class BroadcastRecalledEvent(UserEvent):
+class BroadcastRecalledEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.BROADCAST
     broadcast_id: int
 

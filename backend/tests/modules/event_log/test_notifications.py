@@ -89,7 +89,7 @@ async def test_mark_read_stores_seen_at(
 ) -> None:
     await MarkNotificationsReadUseCase(user_repository, uow)(owner)
 
-    stored = await user_repository.get_by_id(owner.id)
+    stored = await user_repository.find_by_id(owner.id)
     assert stored is not None
     assert stored.notifications_seen_at is not None
 
@@ -114,7 +114,7 @@ async def test_clear_hides_earlier_events_and_marks_them_read(
         )
     )
 
-    cleared = await user_repository.get_by_id(owner.id)
+    cleared = await user_repository.find_by_id(owner.id)
     assert cleared is not None
     assert cleared.notifications_cleared_at is not None
     assert cleared.notifications_seen_at == cleared.notifications_cleared_at

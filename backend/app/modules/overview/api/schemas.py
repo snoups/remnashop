@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
+from enum import IntEnum
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType
 from app.modules.overview.dto import AttentionKind
@@ -164,3 +165,17 @@ class AttentionItemResponse(BaseModel):
 
 class AttentionResponse(BaseModel):
     items: list[AttentionItemResponse]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total(self) -> int:
+        return len(self.items)
+
+
+class OverviewPeriodDays(IntEnum):
+    # a query string isn't coerced into Literal[7, 30, 90] (`?days=7` 422s), an
+    # IntEnum is; mapped back to OverviewDays when building GetOverviewChartDto
+    ALL = 0
+    SEVEN = 7
+    THIRTY = 30
+    NINETY = 90

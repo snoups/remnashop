@@ -4,15 +4,23 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.promocodes.dto import UserPromocodeActivationDto
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.users import UserRepository, get_visible_target
 
 
 class ListUserPromocodeActivationsUseCase(UseCase[int, list[UserPromocodeActivationDto]]):
     required_permission = Permission.PROMOCODES_ACTIVATIONS_VIEW
 
-    def __init__(self, promocode_repository: PromocodeRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        promocode_repository: PromocodeRepository,
+        user_repository: UserRepository,
+        uow: UnitOfWork,
+    ) -> None:
         self._promocode_repository = promocode_repository
+        self._user_repository = user_repository
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: int) -> list[UserPromocodeActivationDto]:
         async with self._uow:
+            await get_visible_target(self._user_repository, actor, data)
             return await self._promocode_repository.list_activations_by_user(data)

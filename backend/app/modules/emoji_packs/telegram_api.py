@@ -4,11 +4,10 @@ from typing import Any, Final, Optional
 
 import httpx
 
+from app.core.telegram_api import bot_file_url, bot_method_url
 from app.modules.emoji_packs.dto import EmojiPackItemDto, FetchedEmojiPack
 
 _TIMEOUT_S: Final[float] = 10.0
-_API_URL: Final[str] = "https://api.telegram.org/bot{token}/{method}"
-_FILE_URL: Final[str] = "https://api.telegram.org/file/bot{token}/{path}"
 # t.me/addemoji/<name>, with or without scheme, query or trailing slash, or
 # the bare name.
 _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
@@ -33,7 +32,7 @@ async def fetch_emoji_pack(token: str, proxy: Optional[str], set_name: str) -> F
     # telegram extra, so importing Bot here would break it outright.
     async with httpx.AsyncClient(timeout=_TIMEOUT_S, proxy=proxy) as client:
         response = await client.post(
-            _API_URL.format(token=token, method="getStickerSet"), json={"name": set_name}
+            bot_method_url(token, "getStickerSet"), json={"name": set_name}
         )
         payload = response.json()
         pack = parse_emoji_pack_payload(payload, set_name)
@@ -86,10 +85,10 @@ async def _download_artwork(
         async with semaphore:
             try:
                 info = await client.get(
-                    _API_URL.format(token=token, method="getFile"), params={"file_id": file_id}
+                    bot_method_url(token, "getFile"), params={"file_id": file_id}
                 )
                 file_path = info.json()["result"]["file_path"]
-                file = await client.get(_FILE_URL.format(token=token, path=file_path))
+                file = await client.get(bot_file_url(token, file_path))
                 file.raise_for_status()
             except (httpx.HTTPError, KeyError):
                 # Losing a file costs that emoji its artwork, not the import.

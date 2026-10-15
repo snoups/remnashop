@@ -1,10 +1,11 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.utils.http import resolve_client_ip
 from app.modules.account_merge.api.schemas import (
     MergeAccountsRequest,
     MergePreviewResponse,
@@ -39,6 +40,7 @@ async def get_merge_preview(
 async def merge_users(
     user_id: int,
     payload: MergeAccountsRequest,
+    request: Request,
     use_case: FromDishka[MergeAccountsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UserResponse:
@@ -49,6 +51,7 @@ async def merge_users(
             source_id=payload.source_id,
             choices=payload.choices,
             fingerprint=payload.fingerprint,
+            client_ip=resolve_client_ip(request),
         ),
     )
     return UserResponse.model_validate(merged, from_attributes=True)

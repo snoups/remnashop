@@ -23,7 +23,7 @@ from app.telegram.dialogs.rendering import (
     render_window_text,
     resolve_variable_kwargs,
 )
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import format_date, get_translator
 
 _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows", "macos", "linux"})
 
@@ -89,7 +89,7 @@ async def devices_getter(
                 platform_icon=runner.get(f"platform-icon.{_platform_icon_key(device.platform)}"),
                 platform=device.platform or "?",
                 device_model=device.device_model or "?",
-                created_at=device.created_at.strftime("%d.%m.%Y"),
+                created_at=format_date(device.created_at),
             ),
         }
         for index, device in enumerate(devices)

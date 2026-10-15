@@ -33,11 +33,13 @@ from app.modules.subscriptions.events import (
     SubscriptionTrafficLimitedEvent,
     SubscriptionTrafficThresholdEvent,
 )
-from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
+from app.modules.subscriptions.idempotency_repository import (
+    IDEMPOTENCY_KEY_RETENTION_DAYS,
+    PurchaseIdempotencyRepository,
+)
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.subscriptions.usecases import (
-    IDEMPOTENCY_KEY_RETENTION_DAYS,
     ActivateTrialSubscriptionUseCase,
     AdminDeleteAllDevicesUseCase,
     AdminDeleteDeviceUseCase,

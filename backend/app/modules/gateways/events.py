@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, Optional
 
-from app.core.events import EventCategory, UserEvent
+from app.core.events import ActorEvent, EventCategory
 
 
 @dataclass(frozen=True, kw_only=True)
-class GatewayChangedEvent(UserEvent):
+class GatewayChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     action: str
     gateway_type: Optional[str] = None

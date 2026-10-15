@@ -13,22 +13,21 @@ from app.modules.auth import SessionIssuer
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.dto import (
     CreatePasskeyCredentialDto,
+    DeletePasskeyDto,
     RenamePasskeyDto,
     VerifyPasskeyRegistrationDto,
 )
 from app.modules.passkeys.repository import PasskeyRepository
-from app.modules.passkeys.usecases import verify_registration
-from app.modules.passkeys.usecases.delete_passkey import DeletePasskeyUseCase
-from app.modules.passkeys.usecases.get_authentication_options import (
+from app.modules.passkeys.usecases import (
+    DeletePasskeyUseCase,
     GetPasskeyAuthenticationOptionsUseCase,
-)
-from app.modules.passkeys.usecases.get_registration_options import (
     GetPasskeyRegistrationOptionsUseCase,
+    ListPasskeysUseCase,
+    RenamePasskeyUseCase,
+    VerifyPasskeyAuthenticationUseCase,
+    VerifyPasskeyRegistrationUseCase,
+    verify_passkey_registration,
 )
-from app.modules.passkeys.usecases.list_passkeys import ListPasskeysUseCase
-from app.modules.passkeys.usecases.rename_passkey import RenamePasskeyUseCase
-from app.modules.passkeys.usecases.verify_authentication import VerifyPasskeyAuthenticationUseCase
-from app.modules.passkeys.usecases.verify_registration import VerifyPasskeyRegistrationUseCase
 from app.modules.settings.dto import UpdateOAuthSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -133,7 +132,10 @@ async def test_verify_registration_rejects_expired_challenge(
 
     credential = _fake_registration_credential(b"some-challenge")
     with pytest.raises(AuthenticationError, match="challenge"):
-        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+        await use_case(
+            actor,
+            VerifyPasskeyRegistrationDto(credential=credential, name=None, client_ip="127.0.0.1"),
+        )
 
 
 async def test_verify_registration_rejects_invalid_response(
@@ -155,12 +157,18 @@ async def test_verify_registration_rejects_invalid_response(
     credential = _fake_registration_credential(challenge)
 
     with pytest.raises(AuthenticationError, match="verified"):
-        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+        await use_case(
+            actor,
+            VerifyPasskeyRegistrationDto(credential=credential, name=None, client_ip="127.0.0.1"),
+        )
 
     # a failed verification still consumes the challenge, so a second attempt
     # fails as "expired"
     with pytest.raises(AuthenticationError, match="challenge"):
-        await use_case(actor, VerifyPasskeyRegistrationDto(credential=credential, name=None))
+        await use_case(
+            actor,
+            VerifyPasskeyRegistrationDto(credential=credential, name=None, client_ip="127.0.0.1"),
+        )
 
 
 def _create_passkey_dto(user_id: int, credential_id: str = "cred-1") -> CreatePasskeyCredentialDto:
@@ -225,7 +233,7 @@ async def test_delete_passkey_removes_it(
     created = await passkey_repository.create(_create_passkey_dto(actor.id))
 
     use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
-    await use_case(actor, created.id)
+    await use_case(actor, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
 
     assert await passkey_repository.get_by_id_and_user(created.id, actor.id) is None
 
@@ -242,7 +250,7 @@ async def test_delete_passkey_rejects_other_users_passkey(
 
     use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
     with pytest.raises(NotFoundError):
-        await use_case(other, created.id)
+        await use_case(other, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
 
 
 CLIENT_IP = "203.0.113.1"
@@ -425,7 +433,7 @@ async def test_verify_registration_rejects_an_oversized_credential_id(
     challenge = b"a-real-looking-challenge"
     await redis_challenge_store.store_registration_challenge(actor.id, challenge)
     monkeypatch.setattr(
-        verify_registration,
+        verify_passkey_registration,
         "verify_registration_response",
         lambda **_: SimpleNamespace(
             credential_id=b"x" * 300,
@@ -443,7 +451,9 @@ async def test_verify_registration_rejects_an_oversized_credential_id(
         await use_case(
             actor,
             VerifyPasskeyRegistrationDto(
-                credential=_fake_registration_credential(challenge), name=None
+                credential=_fake_registration_credential(challenge),
+                name=None,
+                client_ip="127.0.0.1",
             ),
         )
 

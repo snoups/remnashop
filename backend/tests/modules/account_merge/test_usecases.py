@@ -67,11 +67,12 @@ async def test_merge_moves_everything_and_anonymizes_source(
             source_id=source.id,
             choices={"telegram": "target", "name": "source"},
             fingerprint=await _fingerprint(preview, owner, target.id, source.id),
+            client_ip="127.0.0.1",
         ),
     )
 
     assert (result.telegram_id, result.name, result.points) == (22, "old", Decimal(5))
-    gone = await user_repository.get_by_id(source.id)
+    gone = await user_repository.find_by_id(source.id)
     assert gone is not None and gone.deleted_at is not None and gone.telegram_id is None
 
 
@@ -89,6 +90,7 @@ async def test_merge_requires_choice_for_every_conflict(
                 source_id=source.id,
                 choices={},
                 fingerprint=await _fingerprint(preview, owner, target.id, source.id),
+                client_ip="127.0.0.1",
             ),
         )
     assert error.value.code == ErrorCode.MERGE_CHOICE_MISSING
@@ -109,10 +111,11 @@ async def test_merge_rejects_stale_preview(merge, preview, session, user_reposit
                 source_id=source.id,
                 choices={"email": "source"},
                 fingerprint=fingerprint,
+                client_ip="127.0.0.1",
             ),
         )
     assert error.value.code == ErrorCode.MERGE_PREVIEW_STALE
-    untouched = await user_repository.get_by_id(source.id)
+    untouched = await user_repository.find_by_id(source.id)
     assert untouched is not None and untouched.deleted_at is None
 
 
@@ -129,7 +132,11 @@ async def test_merge_rejects_preview_when_source_became_staff(
         await merge(
             owner,
             MergeAccountsDto(
-                target_id=target.id, source_id=source.id, choices={}, fingerprint=fingerprint
+                target_id=target.id,
+                source_id=source.id,
+                choices={},
+                fingerprint=fingerprint,
+                client_ip="127.0.0.1",
             ),
         )
     assert error.value.code == ErrorCode.MERGE_PREVIEW_STALE
@@ -141,7 +148,13 @@ async def test_merge_rejects_same_account(merge, user_repository, owner) -> None
     with pytest.raises(ValidationError) as error:
         await merge(
             owner,
-            MergeAccountsDto(target_id=user.id, source_id=user.id, choices={}, fingerprint=""),
+            MergeAccountsDto(
+                target_id=user.id,
+                source_id=user.id,
+                choices={},
+                fingerprint="",
+                client_ip="127.0.0.1",
+            ),
         )
     assert error.value.code == ErrorCode.MERGE_SAME_ACCOUNT
 
@@ -154,7 +167,13 @@ async def test_merge_rejects_deleted_side(merge, user_repository, owner) -> None
     with pytest.raises(NotFoundError):
         await merge(
             owner,
-            MergeAccountsDto(target_id=target.id, source_id=source.id, choices={}, fingerprint=""),
+            MergeAccountsDto(
+                target_id=target.id,
+                source_id=source.id,
+                choices={},
+                fingerprint="",
+                client_ip="127.0.0.1",
+            ),
         )
 
 
@@ -164,7 +183,13 @@ async def test_merge_rejects_two_staff_accounts(merge, user_repository, owner) -
     with pytest.raises(ValidationError) as error:
         await merge(
             owner,
-            MergeAccountsDto(target_id=owner.id, source_id=admin.id, choices={}, fingerprint=""),
+            MergeAccountsDto(
+                target_id=owner.id,
+                source_id=admin.id,
+                choices={},
+                fingerprint="",
+                client_ip="127.0.0.1",
+            ),
         )
     assert error.value.code == ErrorCode.MERGE_BOTH_PRIVILEGED
 
@@ -177,7 +202,13 @@ async def test_staff_merge_needs_admins_manage(merge, user_repository) -> None:
     with pytest.raises(PermissionDeniedError):
         await merge(
             actor,
-            MergeAccountsDto(target_id=admin.id, source_id=customer.id, choices={}, fingerprint=""),
+            MergeAccountsDto(
+                target_id=admin.id,
+                source_id=customer.id,
+                choices={},
+                fingerprint="",
+                client_ip="127.0.0.1",
+            ),
         )
 
 
@@ -191,6 +222,7 @@ async def test_owner_source_hands_role_to_target(merge, user_repository, owner, 
             source_id=owner.id,
             choices={"name": "source"},
             fingerprint=await _fingerprint(preview, owner, customer.id, owner.id),
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -210,6 +242,7 @@ async def test_blocked_customer_does_not_block_owner(
             source_id=customer.id,
             choices={"name": "target"},
             fingerprint=await _fingerprint(preview, owner, owner.id, customer.id),
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -243,6 +276,7 @@ async def test_merge_into_own_account_keeps_actor_sessions(
             source_id=customer.id,
             choices={"name": "target"},
             fingerprint=await _fingerprint(preview, owner, owner.id, customer.id),
+            client_ip="127.0.0.1",
         ),
     )
 
@@ -297,6 +331,7 @@ async def test_preview_flags_a_referrer_that_would_loop_and_merge_drops_it(
             source_id=source.id,
             choices={"name": "target"},
             fingerprint=result.fingerprint,
+            client_ip="127.0.0.1",
         ),
     )
     assert await session.scalar(select(Referral).where(Referral.referred_id == target.id)) is None

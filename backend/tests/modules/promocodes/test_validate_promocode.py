@@ -7,7 +7,7 @@ from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, ValidatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.promocodes.usecases.validate_promocode import ValidatePromocodeUseCase
+from app.modules.promocodes.usecases import ValidatePromocodeUseCase
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto

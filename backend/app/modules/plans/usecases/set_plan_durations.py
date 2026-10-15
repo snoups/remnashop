@@ -37,7 +37,7 @@ class SetPlanDurationsUseCase(UseCase[SetPlanDurationsDto, PlanDto]):
                 )
             plan = await self._plan_repository.set_durations(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="durations", plan_id=data.plan_id)
+                PlanChangedEvent(actor=actor, action="durations", plan_id=data.plan_id)
             )
         logger.info(f"{actor.log} Set durations for plan '{data.plan_id}'")
         return plan

@@ -22,6 +22,7 @@ from app.modules.blacklist.usecases import (
 )
 from app.modules.users.dto import UserDto
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 
 
 @pytest.fixture
@@ -136,7 +137,7 @@ async def test_add_entry_kicks_reconcile_only_for_a_real_new_entry(
 async def test_add_source_rejects_non_https(
     blacklist_repository: BlacklistRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
-    add = AddBlacklistSourceUseCase(blacklist_repository, uow)
+    add = AddBlacklistSourceUseCase(blacklist_repository, uow, RecordingEventPublisher())
     with pytest.raises(ValidationError):
         await add(owner, AddBlacklistSourceDto(url="http://insecure.example/list.txt"))
 
@@ -155,12 +156,12 @@ async def test_toggle_source(
         _fake_assert_public_https_host,
     )
 
-    src = await AddBlacklistSourceUseCase(blacklist_repository, uow)(
+    src = await AddBlacklistSourceUseCase(blacklist_repository, uow, RecordingEventPublisher())(
         owner, AddBlacklistSourceDto(url="https://ok.example/list.txt")
     )
-    toggled = await UpdateBlacklistSourceUseCase(blacklist_repository, uow)(
-        owner, UpdateBlacklistSourceDto(source_id=src.id, enabled=False)
-    )
+    toggled = await UpdateBlacklistSourceUseCase(
+        blacklist_repository, uow, RecordingEventPublisher()
+    )(owner, UpdateBlacklistSourceDto(source_id=src.id, enabled=False))
     assert toggled.enabled is False
 
 
@@ -177,7 +178,7 @@ async def test_add_source_derives_name_when_blank(
         "app.modules.blacklist.usecases.add_blacklist_source.assert_public_https_host",
         _fake_assert_public_https_host,
     )
-    add = AddBlacklistSourceUseCase(blacklist_repository, uow)
+    add = AddBlacklistSourceUseCase(blacklist_repository, uow, RecordingEventPublisher())
 
     derived = await add(owner, AddBlacklistSourceDto(url="https://feed.example/a.txt", name="  "))
     assert derived.name == "feed.example/a.txt"

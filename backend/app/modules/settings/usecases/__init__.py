@@ -1,7 +1,5 @@
-from app.modules.settings.usecases.delete_appearance_image import (
-    DeleteAppearanceFaviconUseCase,
-    DeleteAppearanceLogoUseCase,
-)
+from app.modules.settings.usecases.delete_appearance_favicon import DeleteAppearanceFaviconUseCase
+from app.modules.settings.usecases.delete_appearance_logo import DeleteAppearanceLogoUseCase
 from app.modules.settings.usecases.get_access_settings import GetAccessSettingsUseCase
 from app.modules.settings.usecases.get_bot_commands import GetBotCommandsUseCase
 from app.modules.settings.usecases.get_bot_logs import GetBotLogsUseCase
@@ -31,10 +29,8 @@ from app.modules.settings.usecases.update_cabinet_auth_settings import (
 from app.modules.settings.usecases.update_email_settings import UpdateEmailSettingsUseCase
 from app.modules.settings.usecases.update_oauth_settings import UpdateOAuthSettingsUseCase
 from app.modules.settings.usecases.update_shop_settings import UpdateShopSettingsUseCase
-from app.modules.settings.usecases.upload_appearance_image import (
-    UploadAppearanceFaviconUseCase,
-    UploadAppearanceLogoUseCase,
-)
+from app.modules.settings.usecases.upload_appearance_favicon import UploadAppearanceFaviconUseCase
+from app.modules.settings.usecases.upload_appearance_logo import UploadAppearanceLogoUseCase
 
 __all__ = [
     "DeleteAppearanceFaviconUseCase",

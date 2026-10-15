@@ -47,14 +47,8 @@ class PromocodeRepository:
             updated_at=row.updated_at,
         )
 
-    def _activation_to_dto(self, row: PromocodeActivation) -> PromocodeActivationDto:
-        return PromocodeActivationDto(
-            id=row.id,
-            promocode_id=row.promocode_id,
-            user_id=row.user_id,
-            subscription_id=row.subscription_id,
-            activated_at=row.activated_at,
-        )
+    def _to_activation_dto(self, row: PromocodeActivation) -> PromocodeActivationDto:
+        return PromocodeActivationDto.model_validate(row, from_attributes=True)
 
     async def _get_or_raise(self, promocode_id: int) -> Promocode:
         row = await self.session.get(Promocode, promocode_id)
@@ -231,7 +225,7 @@ class PromocodeRepository:
         self.session.add(row)
         await self.session.flush()
         await self.session.refresh(row)
-        return self._activation_to_dto(row)
+        return self._to_activation_dto(row)
 
     async def get_activations_count(self, promocode_id: int) -> int:
         result = await self.session.execute(
@@ -288,7 +282,7 @@ class PromocodeRepository:
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
-        return [self._activation_to_dto(row) for row in rows], total or 0
+        return [self._to_activation_dto(row) for row in rows], total or 0
 
     async def get_activation_by_user(
         self, promocode_id: int, user_id: int
@@ -303,7 +297,7 @@ class PromocodeRepository:
             .limit(1)
         )
         row = result.scalar_one_or_none()
-        return self._activation_to_dto(row) if row is not None else None
+        return self._to_activation_dto(row) if row is not None else None
 
     async def list_activations_by_user(self, user_id: int) -> list[UserPromocodeActivationDto]:
         rows = await self.session.execute(

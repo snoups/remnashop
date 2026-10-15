@@ -72,12 +72,12 @@ from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
-from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
+from app.modules.transactions.usecases import CreateCheckoutUseCase, CreateTestPaymentUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_eligibility, make_plan_snapshot
 
@@ -805,6 +805,7 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
         pricing_repository,
         uow,
         _FakeFactory(fake_gateway),
+        RecordingEventPublisher(),
     )
 
     result = await use_case(owner, PaymentGatewayType.YOOKASSA)
@@ -833,6 +834,7 @@ async def test_test_payment_rejects_an_unconfigured_gateway(
         pricing_repository,
         uow,
         _FakeFactory(fake_gateway),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -867,7 +869,7 @@ async def test_checkout_spends_the_purchase_discount_with_the_order(
     order = await transaction_repository.get_by_id(result.order_id)
     assert order.discount_source is DiscountSource.PURCHASE
     assert order.discount_percent == 20
-    user = await user_repository.get_by_id(actor.id)
+    user = await user_repository.find_by_id(actor.id)
     assert user is not None and user.purchase_discount == 0
 
 
@@ -895,11 +897,11 @@ async def test_a_personal_discount_order_leaves_the_purchase_discount_alone(
         await user_repository.update_fields(
             actor.id, UpdateUserDto(personal_discount=30, purchase_discount=10)
         )
-    actor = await user_repository.get_by_id(actor.id)  # type: ignore[assignment]
+    actor = await user_repository.find_by_id(actor.id)  # type: ignore[assignment]
 
     await create_checkout_use_case(actor, _checkout_dto(actor, plan))
 
-    assert (await user_repository.get_by_id(actor.id)).purchase_discount == 10  # type: ignore[union-attr]
+    assert (await user_repository.find_by_id(actor.id)).purchase_discount == 10  # type: ignore[union-attr]
 
 
 async def _promocode(promocode_repository: PromocodeRepository, code: str, *, live: bool) -> int:
@@ -928,14 +930,14 @@ async def test_a_discount_from_a_dead_promocode_is_dropped(
         await user_repository.update_fields(
             actor.id, UpdateUserDto(purchase_discount=20, purchase_discount_promocode_id=dead)
         )
-    buyer = await user_repository.get_by_id(actor.id)
+    buyer = await user_repository.find_by_id(actor.id)
     assert buyer is not None
 
     result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
 
     order = await transaction_repository.get_by_id(result.order_id)
     assert order.discount_percent == 0
-    user = await user_repository.get_by_id(actor.id)
+    user = await user_repository.find_by_id(actor.id)
     assert user is not None
     assert (user.purchase_discount, user.purchase_discount_promocode_id) == (0, None)
 
@@ -962,7 +964,7 @@ async def test_the_live_smaller_discount_applies_when_the_larger_ones_promocode_
                 purchase_discount_promocode_id=live,
             ),
         )
-    buyer = await user_repository.get_by_id(actor.id)
+    buyer = await user_repository.find_by_id(actor.id)
     assert buyer is not None
 
     result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
@@ -986,7 +988,7 @@ async def test_a_personal_promocode_discount_is_not_flagged_as_a_purchase_promoc
         await user_repository.update_fields(
             actor.id, UpdateUserDto(personal_discount=15, personal_discount_promocode_id=live)
         )
-    buyer = await user_repository.get_by_id(actor.id)
+    buyer = await user_repository.find_by_id(actor.id)
     assert buyer is not None
 
     result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))
@@ -1020,7 +1022,7 @@ async def test_a_gateway_failure_fails_the_order_and_hands_the_discount_back(
 
     orders, _ = await transaction_repository.list_paginated(user_id=actor.id)
     assert [order.status for order in orders] == [TransactionStatus.FAILED]
-    restored = await user_repository.get_by_id(actor.id)
+    restored = await user_repository.find_by_id(actor.id)
     assert restored is not None
     assert (restored.purchase_discount, restored.purchase_discount_promocode_id) == (20, None)
 
@@ -1036,7 +1038,7 @@ async def test_an_admin_granted_discount_survives(
 ) -> None:
     async with uow:
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=15))
-    buyer = await user_repository.get_by_id(actor.id)
+    buyer = await user_repository.find_by_id(actor.id)
     assert buyer is not None
 
     result = await create_checkout_use_case(buyer, _checkout_dto(buyer, plan))

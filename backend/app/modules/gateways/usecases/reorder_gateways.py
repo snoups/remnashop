@@ -36,6 +36,6 @@ class ReorderGatewaysUseCase(UseCase[ReorderGatewaysDto, list[PaymentGatewayDto]
 
         async with self._uow:
             gateways = await self._gateway_repository.reorder(data.ordered_types)
-            await self._event_publisher.publish(GatewayChangedEvent(user=actor, action="reorder"))
-        logger.info(f"Gateways reordered by actor {actor.log}")
+            await self._event_publisher.publish(GatewayChangedEvent(actor=actor, action="reorder"))
+        logger.info(f"{actor.log} Reordered gateways")
         return gateways

@@ -25,7 +25,8 @@ export interface GatewayCatalogEntry {
 }
 
 interface GatewayCatalogResponse {
-  entries: GatewayCatalogEntry[];
+  items: GatewayCatalogEntry[];
+  total: number;
 }
 
 export function listGateways(signal?: AbortSignal): Promise<Gateway[]> {
@@ -34,7 +35,7 @@ export function listGateways(signal?: AbortSignal): Promise<Gateway[]> {
 
 export function getGatewayCatalog(signal?: AbortSignal): Promise<GatewayCatalogEntry[]> {
   return apiGet<GatewayCatalogResponse>("/gateways/catalog", signal).then(
-    (response) => response.entries,
+    (response) => response.items,
   );
 }
 

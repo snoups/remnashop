@@ -9,8 +9,10 @@ from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
 
 
 class EmailProvider(Provider):
+    scope = Scope.REQUEST
+
     sender = provide(SmtpSender, scope=Scope.APP)
-    use_cases = provide_all(SendEmailUseCase, SendTestEmailUseCase, scope=Scope.REQUEST)
+    use_cases = provide_all(SendEmailUseCase, SendTestEmailUseCase)
 
     @provide(scope=Scope.APP)
     def send_email_dispatch(self) -> SendEmailDispatch:

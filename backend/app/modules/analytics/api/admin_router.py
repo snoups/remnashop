@@ -14,7 +14,6 @@ from app.modules.analytics.api.schemas import (
     CohortsResponse,
     FunnelResponse,
     LtvBreakdownResponse,
-    LtvBucketResponse,
     LtvDistributionResponse,
     PromocodeStatsResponse,
     RetentionResponse,
@@ -72,11 +71,8 @@ async def get_analytics_cohorts(
     actor: Actor = Depends(require_admin),
 ) -> CohortsResponse:
     cohorts = await use_case(actor)
-    return CohortsResponse(
-        cohorts=[
-            CohortRowResponse.model_validate(row, from_attributes=True) for row in cohorts.cohorts
-        ]
-    )
+    items = [CohortRowResponse.model_validate(row, from_attributes=True) for row in cohorts.cohorts]
+    return CohortsResponse(items=items, total=len(items))
 
 
 @router.get("/ltv-distribution", response_model=LtvDistributionResponse)
@@ -85,20 +81,10 @@ async def get_analytics_ltv_distribution(
     use_case: FromDishka[GetLtvDistributionUseCase],
     actor: Actor = Depends(require_admin),
 ) -> LtvDistributionResponse:
-    distribution = await use_case(actor)
-    return LtvDistributionResponse(
-        report_currency=distribution.report_currency,
-        buckets=[
-            LtvBucketResponse.model_validate(bucket, from_attributes=True)
-            for bucket in distribution.buckets
-        ],
-        payers=distribution.payers,
-        mean=distribution.mean,
-        median=distribution.median,
-    )
+    return LtvDistributionResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
-@router.get("/ltv-breakdown", response_model=LtvBreakdownResponse, responses=error_responses())
+@router.get("/ltv-breakdown", response_model=LtvBreakdownResponse)
 @inject
 async def get_analytics_ltv_breakdown(
     use_case: FromDishka[GetLtvBreakdownUseCase],
@@ -134,7 +120,7 @@ async def get_analytics_trial(
     return TrialResponse.model_validate(await use_case(actor, query), from_attributes=True)
 
 
-@router.get("/retention", response_model=RetentionResponse, responses=error_responses())
+@router.get("/retention", response_model=RetentionResponse)
 @inject
 async def get_analytics_retention(
     use_case: FromDishka[GetRetentionUseCase],

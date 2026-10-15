@@ -30,6 +30,6 @@ class DeletePromocodeUseCase(UseCase[int, None]):
             await self._user_repository.clear_discounts_from({data})
             await self._promocode_repository.delete(data)
             await self._event_publisher.publish(
-                PromocodeChangedEvent(user=actor, action="delete", promocode_id=data)
+                PromocodeChangedEvent(actor=actor, action="delete", promocode_id=data)
             )
         logger.info(f"{actor.log} Deleted promocode '{data}'")

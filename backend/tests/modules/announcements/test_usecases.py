@@ -9,6 +9,7 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.utils.time import datetime_now
+from app.modules.announcements.dto import AnnouncementIdsDto
 from app.modules.announcements.repository import AnnouncementRepository
 from app.modules.announcements.usecases import (
     ListAnnouncementsUseCase,
@@ -101,7 +102,9 @@ async def test_list_applies_visibility_and_mark_hides_after_a_day(
     listed = await ListAnnouncementsUseCase(announcement_repository, uow, config)(admin)
     assert [a.id for a in listed] == ["all"]
 
-    await MarkAnnouncementsSeenUseCase(announcement_repository, uow)(admin, ["all"])
+    await MarkAnnouncementsSeenUseCase(announcement_repository, uow)(
+        admin, AnnouncementIdsDto(ids=["all"])
+    )
     monkeypatch.setattr(
         "app.modules.announcements.usecases.list_announcements.datetime_now",
         lambda: datetime_now() + timedelta(days=2),

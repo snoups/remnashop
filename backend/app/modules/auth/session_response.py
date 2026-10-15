@@ -5,6 +5,7 @@ from fastapi import Request, Response
 from pydantic import BaseModel
 
 from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH
+from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError
 from app.core.security import derive_csrf_token
@@ -16,7 +17,7 @@ from app.modules.users import UserDto
 class AuthResponse(BaseModel):
     id: int
     login: str
-    role: str
+    role: Role
     access_token: str
 
 
@@ -71,6 +72,4 @@ def verify_csrf(
 def to_auth_response(user: UserDto, access_token: str) -> AuthResponse:
     # every sign-in flow (bootstrap, login, OAuth, passkey) only succeeds for a user with a login
     assert user.login is not None
-    return AuthResponse(
-        id=user.id, login=user.login, role=str(user.role), access_token=access_token
-    )
+    return AuthResponse(id=user.id, login=user.login, role=user.role, access_token=access_token)

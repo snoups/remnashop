@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.enums import BackupKind, BackupRunStatus
 from app.modules.backups.api.schemas import (
     BackupRunPageResponse,
@@ -17,11 +18,7 @@ from app.modules.backups.api.schemas import (
     CreateBackupRunRequest,
     UpdateBackupSettingsRequest,
 )
-from app.modules.backups.dto import (
-    DEFAULT_PAGE_SIZE,
-    ListBackupRunsDto,
-    UpdateBackupSettingsDto,
-)
+from app.modules.backups.dto import ListBackupRunsDto, StartBackupRunDto, UpdateBackupSettingsDto
 from app.modules.backups.usecases import (
     CreateBackupRunUseCase,
     DeleteBackupRunUseCase,
@@ -54,7 +51,14 @@ async def update_backup_settings(
     use_case: FromDishka[UpdateBackupSettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> BackupSettingsResponse:
-    settings = await use_case(actor, UpdateBackupSettingsDto(**body.model_dump()))
+    settings = await use_case(
+        actor,
+        UpdateBackupSettingsDto(
+            enabled=body.enabled,
+            interval_hours=body.interval_hours,
+            max_files=body.max_files,
+        ),
+    )
     return BackupSettingsResponse.model_validate(settings, from_attributes=True)
 
 
@@ -90,7 +94,7 @@ async def create_backup_run(
     use_case: FromDishka[CreateBackupRunUseCase],
     actor: Actor = Depends(require_admin),
 ) -> BackupRunResponse:
-    run = await use_case(actor, body.kind)
+    run = await use_case(actor, StartBackupRunDto(kind=body.kind))
     return BackupRunResponse.model_validate(run, from_attributes=True)
 
 
@@ -102,7 +106,7 @@ async def list_backup_runs(
     kind: Optional[BackupKind] = Query(default=None),
     status_filter: Optional[BackupRunStatus] = Query(default=None, alias="status"),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=200),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> BackupRunPageResponse:
     runs, total = await use_case(
         actor, ListBackupRunsDto(kind=kind, status=status_filter, page=page, page_size=page_size)
@@ -110,8 +114,6 @@ async def list_backup_runs(
     return BackupRunPageResponse(
         items=[BackupRunResponse.model_validate(r, from_attributes=True) for r in runs],
         total=total,
-        page=page,
-        page_size=page_size,
     )
 
 

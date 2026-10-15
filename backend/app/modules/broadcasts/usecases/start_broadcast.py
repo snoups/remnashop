@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Final, Optional
 
 from loguru import logger
@@ -56,7 +57,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
         async with self._uow:
             # serializes concurrent starts past the has_sending() check below
             await self._broadcast_repository.lock_starts()
-            broadcast = await self._broadcast_repository.lock(data)
+            broadcast = await self._broadcast_repository.try_lock(data)
             if broadcast is None or broadcast.status is not BroadcastStatus.SCHEDULED:
                 return
             # one broadcast at a time; the next due one is picked up by the tick
@@ -84,7 +85,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
             await self._event_publisher.publish(
                 BroadcastStartedEvent(broadcast_id=data, total=total, promocode_dropped=dropped)
             )
-            await self._uow.after_commit(lambda: self._deliver_dispatch.kiq(broadcast_id=data))
+            await self._uow.after_commit(partial(self._deliver_dispatch.kiq, broadcast_id=data))
         logger.info(f"Broadcast '{data}' started for {total} recipients")
         # a retry restarts with started_at set, so the channel gets one post only
         if broadcast.post_to_channel and broadcast.started_at is None:
@@ -92,7 +93,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
 
     async def _post_to_channel(self, broadcast_id: int) -> None:
         async with self._uow:
-            broadcast = await self._broadcast_repository.get_or_raise(broadcast_id)
+            broadcast = await self._broadcast_repository.get_by_id(broadcast_id)
             bot = await self._settings_repository.get_bot_settings()
             requirements = await self._settings_repository.get_bot_requirements()
             code = (

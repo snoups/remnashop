@@ -23,6 +23,6 @@ class DeleteAddOnUseCase(UseCase[int, None]):
         async with self._uow:
             await self._addon_repository.delete(data)
             await self._event_publisher.publish(
-                AddOnChangedEvent(user=actor, action="delete", addon_id=data)
+                AddOnChangedEvent(actor=actor, action="delete", addon_id=data)
             )
         logger.info(f"{actor.log} Deleted addon '{data}'")

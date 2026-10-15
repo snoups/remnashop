@@ -50,7 +50,7 @@ async def test_reset_owner_access_resets_password_allowlist_and_sessions(
     assert result is not None
     reset, password = result
     assert reset.id == owner.id
-    updated = await user_repository.get_by_id(owner.id)
+    updated = await user_repository.find_by_id(owner.id)
     assert updated is not None
     assert updated.ip_allowlist == []
     assert updated.password_hash and await verify_password(password, updated.password_hash, pepper)
@@ -112,5 +112,5 @@ async def test_reset_owner_access_unlinks_telegram(
 
     assert await reset_owner_access(session, config.crypt_key.get_secret_value()) is not None
 
-    after = await user_repository.get_by_id(owner.id)
+    after = await user_repository.find_by_id(owner.id)
     assert after is not None and after.telegram_id is None

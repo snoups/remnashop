@@ -4,20 +4,17 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.loyalty.dispatch import LoyaltyRecalcDispatch
 from app.modules.loyalty.dto import SetUserLoyaltyExcludedDto, UserLoyaltyDto
 from app.modules.loyalty.events import UserLoyaltyExclusionChangedEvent
 from app.modules.loyalty.repository import LoyaltyRepository
-from app.modules.loyalty.usecases.get_user_loyalty import build_user_loyalty
+from app.modules.loyalty.summary import build_user_loyalty
 from app.modules.pricing import PricingRepository
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UpdateUserDto, UserRepository
+from app.modules.users import UpdateUserDto, UserRepository, get_visible_target
 
 
 class SetUserLoyaltyExcludedUseCase(UseCase[SetUserLoyaltyExcludedDto, UserLoyaltyDto]):
@@ -43,18 +40,9 @@ class SetUserLoyaltyExcludedUseCase(UseCase[SetUserLoyaltyExcludedDto, UserLoyal
 
     async def _execute(self, actor: Actor, data: SetUserLoyaltyExcludedDto) -> UserLoyaltyDto:
         async with self._uow:
-            target = await self._user_repository.get_live_for_update(data.user_id)
-            if target is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
-            if target.role in (Role.ADMIN, Role.OWNER) and not PermissionPolicy.has_permission(
-                actor, Permission.ADMINS_MANAGE
-            ):
-                raise ValidationError(
-                    "Cannot change the loyalty program of a staff account",
-                    code=ErrorCode.DISCOUNT_STAFF_ACCOUNT,
-                )
+            target = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
 
             updated = target
             if target.loyalty_excluded != data.excluded:

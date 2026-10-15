@@ -38,7 +38,7 @@ class CreateBroadcastUseCase(UseCase[SaveBroadcastDto, BroadcastDto]):
             await assert_references(data, self._broadcast_repository, self._promocode_repository)
             created = await self._broadcast_repository.create(data, created_by=actor_user_id(actor))
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="create", broadcast_id=created.id)
+                BroadcastChangedEvent(actor=actor, action="create", broadcast_id=created.id)
             )
         logger.info(f"{actor.log} Created broadcast '{created.id}'")
         return created

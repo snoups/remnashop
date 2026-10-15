@@ -7,8 +7,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import AdjustUserBonusDaysDto
 from app.modules.referrals.events import UserBonusDaysAdjustedEvent
-from app.modules.referrals.usecases.target import get_visible_target
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, get_visible_target
 
 
 class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
@@ -27,6 +26,8 @@ class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
             # the floor itself is in credit_bonus_days' UPDATE predicate
             await self._user_repository.credit_bonus_days(data.user_id, data.delta)
             await self._event_publisher.publish(
-                UserBonusDaysAdjustedEvent(actor=actor, target=target, delta=data.delta)
+                UserBonusDaysAdjustedEvent(
+                    actor=actor, target=target, delta=data.delta, ip_address=data.client_ip
+                )
             )
         logger.info(f"{actor.log} Adjusted bonus days of user '{data.user_id}' by '{data.delta}'")

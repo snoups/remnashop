@@ -6,16 +6,14 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.notifications.dto import (
-    PushSubscriptionDto,
-    SubscribePushDto,
-)
+from app.modules.notifications.dto import SubscribedPushDto, SubscribePushDto
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.users import UserDto
 
 # Browsers' push services, matched by host rather than by resolving it: behind a
 # fake-IP DNS (proxy TUN modes, 198.18.0.0/15) they resolve to "private" addresses
 _PUSH_SERVICE_HOSTS: Final[frozenset[str]] = frozenset({"fcm.googleapis.com"})
+_USER_AGENT_MAX_LENGTH: Final[int] = 512
 _PUSH_SERVICE_SUFFIXES: Final[tuple[str, ...]] = (
     ".notify.windows.com",
     ".push.services.mozilla.com",
@@ -39,23 +37,23 @@ def _assert_push_service(endpoint: str) -> None:
     )
 
 
-class SubscribePushUseCase(UseCase[SubscribePushDto, tuple[PushSubscriptionDto, bool], UserDto]):
+class SubscribePushUseCase(UseCase[SubscribePushDto, SubscribedPushDto, UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
     def __init__(self, notification_repository: NotificationRepository, uow: UnitOfWork) -> None:
         self._notification_repository = notification_repository
         self._uow = uow
 
-    async def _execute(
-        self, actor: UserDto, data: SubscribePushDto
-    ) -> tuple[PushSubscriptionDto, bool]:
+    async def _execute(self, actor: UserDto, data: SubscribePushDto) -> SubscribedPushDto:
         _assert_push_service(data.endpoint)
         async with self._uow:
-            return await self._notification_repository.upsert_push_subscription(
+            subscription, created = await self._notification_repository.upsert_push_subscription(
                 user_id=actor.id,
                 session_id=data.session_id,
                 endpoint=data.endpoint,
                 p256dh=data.p256dh,
                 auth=data.auth,
-                user_agent=data.user_agent,
+                # the column is 512 wide; a longer header is cut, not refused
+                user_agent=(data.user_agent or "")[:_USER_AGENT_MAX_LENGTH] or None,
             )
+        return SubscribedPushDto(subscription=subscription, created=created)

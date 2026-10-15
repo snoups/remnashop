@@ -24,7 +24,7 @@ class SetPlanDurationBasePriceUseCase(UseCase[SetPlanDurationBasePriceDto, PlanD
         async with self._uow:
             plan = await self._plan_repository.set_duration_base_price(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="base_price", plan_id=data.plan_id)
+                PlanChangedEvent(actor=actor, action="base_price", plan_id=data.plan_id)
             )
         logger.info(f"{actor.log} Set base price for plan '{data.plan_id}' duration '{data.days}'")
         return plan

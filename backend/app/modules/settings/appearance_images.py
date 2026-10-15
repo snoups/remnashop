@@ -7,12 +7,12 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageFormat, AppearanceImageKind
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
-from app.core.security.permissions import Permission
-from app.core.usecase import UseCase
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.ports import EventPublisher
 from app.core.utils.image import matches_image_magic_bytes, read_image_size, read_svg_size
 from app.modules.settings.appearance_storage import delete_appearance_image, save_appearance_image
 from app.modules.settings.dto import AppearanceSettingsDto, UploadAppearanceImageDto
+from app.modules.settings.events import AppearanceSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
 
@@ -76,10 +76,12 @@ def _validate_raster(
         )
 
 
-async def _upload_appearance_image(
+async def upload_appearance_image(
     settings_repository: SettingsRepository,
     config: AppConfig,
     uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    actor: Actor,
     kind: AppearanceImageKind,
     data: UploadAppearanceImageDto,
 ) -> AppearanceSettingsDto:
@@ -102,48 +104,37 @@ async def _upload_appearance_image(
 
     async with uow:
         existing = await settings_repository.get_appearance_image_meta(kind)
-
-    save_appearance_image(config.media_dir, kind, image_format.value, data.data)
-
-    async with uow:
         result = await settings_repository.set_appearance_image(
             kind, data.content_type, image_format.value
         )
-    # Only drop the old file once the DB row committed to the new one --
-    # otherwise a failed commit would leave the row pointing at a file we
-    # just deleted.
+        await event_publisher.publish(
+            AppearanceSettingsChangedEvent(actor=actor, action=f"{kind.value.lower()}_upload")
+        )
+    # files change only after the row commits: a failed commit must not
+    # leave the row pointing at a file already overwritten or deleted
+    save_appearance_image(config.media_dir, kind, image_format.value, data.data)
     if existing is not None and existing[0] != image_format.value:
         delete_appearance_image(config.media_dir, kind, existing[0])
     return result
 
 
-class UploadAppearanceLogoUseCase(UseCase[UploadAppearanceImageDto, AppearanceSettingsDto]):
-    required_permission = Permission.APPEARANCE_LOGO_UPLOAD
-
-    def __init__(
-        self, settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork
-    ) -> None:
-        self._settings_repository = settings_repository
-        self._config = config
-        self._uow = uow
-
-    async def _execute(self, actor: Actor, data: UploadAppearanceImageDto) -> AppearanceSettingsDto:
-        return await _upload_appearance_image(
-            self._settings_repository, self._config, self._uow, AppearanceImageKind.LOGO, data
+async def remove_appearance_image(
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    actor: Actor,
+    kind: AppearanceImageKind,
+) -> AppearanceSettingsDto:
+    async with uow:
+        meta = await settings_repository.get_appearance_image_meta(kind)
+        if meta is None:
+            raise NotFoundError(
+                f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
+            )
+        settings = await settings_repository.clear_appearance_image(kind)
+        await event_publisher.publish(
+            AppearanceSettingsChangedEvent(actor=actor, action=f"{kind.value.lower()}_delete")
         )
-
-
-class UploadAppearanceFaviconUseCase(UseCase[UploadAppearanceImageDto, AppearanceSettingsDto]):
-    required_permission = Permission.APPEARANCE_FAVICON_UPLOAD
-
-    def __init__(
-        self, settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork
-    ) -> None:
-        self._settings_repository = settings_repository
-        self._config = config
-        self._uow = uow
-
-    async def _execute(self, actor: Actor, data: UploadAppearanceImageDto) -> AppearanceSettingsDto:
-        return await _upload_appearance_image(
-            self._settings_repository, self._config, self._uow, AppearanceImageKind.FAVICON, data
-        )
+    delete_appearance_image(config.media_dir, kind, meta[0])
+    return settings

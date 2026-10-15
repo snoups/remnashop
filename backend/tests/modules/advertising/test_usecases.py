@@ -45,16 +45,18 @@ from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
-OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+# id 0: no users row, so the ad link records no author (created_by is a real FK)
+OWNER = UserDto(id=0, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
 
 
 async def test_owner_can_create_ad_link(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:
-    use_case = CreateAdLinkUseCase(ad_link_repository, uow)
+    use_case = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
 
     ad_link = await use_case(OWNER, CreateAdLinkDto(name="YouTube", code="yt-1"))
 
@@ -65,7 +67,7 @@ async def test_owner_can_create_ad_link(
 async def test_regular_user_cannot_create_ad_link(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:
-    use_case = CreateAdLinkUseCase(ad_link_repository, uow)
+    use_case = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, CreateAdLinkDto(name="YouTube", code="yt-2"))
@@ -74,7 +76,7 @@ async def test_regular_user_cannot_create_ad_link(
 async def test_create_ad_link_duplicate_code_raises_conflict(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:
-    use_case = CreateAdLinkUseCase(ad_link_repository, uow)
+    use_case = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     await use_case(OWNER, CreateAdLinkDto(name="A", code="dup-uc"))
 
     with pytest.raises(ConflictError):
@@ -82,8 +84,8 @@ async def test_create_ad_link_duplicate_code_raises_conflict(
 
 
 async def test_update_ad_link(ad_link_repository: AdLinkRepository, uow: UnitOfWork) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
-    update = UpdateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    update = UpdateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Before", code="upd-1"))
 
     updated = await update(
@@ -97,8 +99,8 @@ async def test_update_ad_link(ad_link_repository: AdLinkRepository, uow: UnitOfW
 async def test_delete_ad_link_without_attributions_succeeds(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
-    delete = DeleteAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    delete = DeleteAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Del", code="del-1"))
 
     await delete(OWNER, ad_link.id)
@@ -110,8 +112,8 @@ async def test_delete_ad_link_without_attributions_succeeds(
 async def test_delete_ad_link_with_attributions_raises_validation_error(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork, user_repository: UserRepository
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
-    delete = DeleteAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    delete = DeleteAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Keep", code="del-2"))
     user = await user_repository.create(CreateUserDto(name="Attr", telegram_id=930_001))
     await ad_link_repository.create_attribution(
@@ -125,8 +127,8 @@ async def test_delete_ad_link_with_attributions_raises_validation_error(
 async def test_list_ad_links_filters_by_is_active(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
-    update = UpdateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    update = UpdateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     list_use_case = ListAdLinksUseCase(ad_link_repository, uow)
     active = await create(OWNER, CreateAdLinkDto(name="Active", code="list-active"))
     inactive = await create(OWNER, CreateAdLinkDto(name="Inactive", code="list-inactive"))
@@ -180,7 +182,7 @@ async def test_get_ad_link_stats_zero_attributions_has_no_division_by_zero(
     transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Empty", code="stats-empty"))
     use_case = GetAdLinkStatsUseCase(
         ad_link_repository, transaction_repository, pricing_repository, uow
@@ -200,7 +202,7 @@ async def test_get_ad_link_stats_zero_cost_has_no_roi(
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Free", code="stats-free-cost"))
     user = await user_repository.create(CreateUserDto(name="Free User", telegram_id=940_001))
     await ad_link_repository.create_attribution(
@@ -227,7 +229,7 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
     user_repository: UserRepository,
     plan_id: int,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(
         OWNER, CreateAdLinkDto(name="Paid Campaign", code="stats-paid", cost=Decimal("100"))
     )
@@ -280,7 +282,7 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
         )
     )
 
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="FX Campaign", code="stats-fx"))
     rub_payer = await user_repository.create(CreateUserDto(name="RubPayer", telegram_id=941_001))
     usd_payer = await user_repository.create(CreateUserDto(name="UsdPayer", telegram_id=941_002))
@@ -359,7 +361,7 @@ async def test_list_ad_link_attributed_users_reports_paid_flag(
     user_repository: UserRepository,
     plan_id: int,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="List", code="list-users"))
     payer = await user_repository.create(CreateUserDto(name="Payer2", telegram_id=940_004))
     non_payer = await user_repository.create(CreateUserDto(name="NonPayer2", telegram_id=940_005))
@@ -408,7 +410,7 @@ async def test_get_ad_link_stats_created_from_excludes_older_attributions(
     pricing_repository: PricingRepository,
     user_repository: UserRepository,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Period", code="stats-period"))
     user = await user_repository.create(CreateUserDto(name="Period User", telegram_id=942_001))
     await ad_link_repository.create_attribution(
@@ -440,7 +442,7 @@ async def test_get_advertising_summary_aggregates_links(
     user_repository: UserRepository,
     plan_id: int,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     paid_link = await create(
         OWNER, CreateAdLinkDto(name="Paid", code="summary-paid", cost=Decimal("100"))
     )
@@ -512,7 +514,7 @@ async def test_get_advertising_summary_created_to_is_a_snapshot(
     user_repository: UserRepository,
     plan_id: int,
 ) -> None:
-    create = CreateAdLinkUseCase(ad_link_repository, uow)
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
     ad_link = await create(OWNER, CreateAdLinkDto(name="Snapshot", code="summary-snapshot"))
     old = await user_repository.create(CreateUserDto(name="Old", telegram_id=944_001))
     new = await user_repository.create(CreateUserDto(name="New", telegram_id=944_002))

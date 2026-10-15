@@ -37,8 +37,6 @@ class BackupRunResponse(BaseModel):
 class BackupRunPageResponse(BaseModel):
     items: list[BackupRunResponse]
     total: int
-    page: int
-    page_size: int
 
 
 class BackupStatsResponse(BaseModel):

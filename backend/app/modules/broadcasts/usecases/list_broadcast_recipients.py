@@ -19,5 +19,5 @@ class ListBroadcastRecipientsUseCase(
         self, actor: Actor, data: ListBroadcastRecipientsDto
     ) -> tuple[list[BroadcastRecipientDto], int]:
         async with self._uow:
-            await self._broadcast_repository.get_or_raise(data.broadcast_id)
+            await self._broadcast_repository.get_by_id(data.broadcast_id)
             return await self._broadcast_repository.list_recipients(data)

@@ -415,7 +415,7 @@ async def test_delete_admin_endpoint_removes_admin(
     )
 
     assert response.status_code == 204
-    deleted = await user_repository.get_by_id(admin_id)
+    deleted = await user_repository.find_by_id(admin_id)
     assert deleted is not None and deleted.deleted_at is not None
 
 
@@ -433,7 +433,7 @@ async def test_delete_admin_endpoint_rejects_owner_target(
     )
 
     assert response.status_code == 409
-    assert await user_repository.get_by_id(owner.id) is not None
+    assert await user_repository.find_by_id(owner.id) is not None
 
 
 async def test_delete_user_endpoint_removes_regular_user(
@@ -455,7 +455,7 @@ async def test_delete_user_endpoint_removes_regular_user(
     )
 
     assert response.status_code == 204
-    deleted = await user_repository.get_by_id(target.id)
+    deleted = await user_repository.find_by_id(target.id)
     assert deleted is not None and deleted.deleted_at is not None
 
 
@@ -487,7 +487,7 @@ async def test_delete_user_endpoint_rejects_admin_without_grant(
     )
 
     assert response.status_code == 403
-    assert await user_repository.get_by_id(target.id) is not None
+    assert await user_repository.find_by_id(target.id) is not None
 
 
 async def test_set_user_discount_updates_personal_discount(

@@ -1,6 +1,6 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
@@ -8,11 +8,11 @@ from app.core.actor import Actor
 from app.core.enums import Locale
 from app.modules.translations.api.schemas import (
     ActiveLocalesResponse,
-    TranslationEntryItem,
     TranslationEntryListResponse,
-    TranslationsExportPayload,
-    TranslationsImportResult,
-    TranslationTextExportItem,
+    TranslationEntryResponse,
+    TranslationsExportResponse,
+    TranslationsImportRequest,
+    TranslationsImportResponse,
     UpdateLocalesRequest,
     UpdateTranslationRequest,
 )
@@ -47,35 +47,30 @@ async def list_translations(
     actor: Actor = Depends(require_admin),
 ) -> TranslationEntryListResponse:
     entries = await use_case(actor)
-    items = [TranslationEntryItem.model_validate(entry, from_attributes=True) for entry in entries]
+    items = [
+        TranslationEntryResponse.model_validate(entry, from_attributes=True) for entry in entries
+    ]
     return TranslationEntryListResponse(items=items, total=len(items))
 
 
-@router.get("/export", response_model=TranslationsExportPayload)
+@router.get("/export", response_model=TranslationsExportResponse)
 @inject
 async def export_translations(
     use_case: FromDishka[ExportTranslationsUseCase],
     actor: Actor = Depends(require_admin),
-) -> TranslationsExportPayload:
-    export = await use_case(actor)
-    return TranslationsExportPayload(
-        version=export.version,
-        texts=[
-            TranslationTextExportItem.model_validate(text, from_attributes=True)
-            for text in export.texts
-        ],
-    )
+) -> TranslationsExportResponse:
+    return TranslationsExportResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.post(
-    "/actions/import", response_model=TranslationsImportResult, responses=error_responses(400)
+    "/actions/import", response_model=TranslationsImportResponse, responses=error_responses(400)
 )
 @inject
 async def import_translations(
-    payload: TranslationsExportPayload,
+    payload: TranslationsImportRequest,
     use_case: FromDishka[ImportTranslationsUseCase],
     actor: Actor = Depends(require_admin),
-) -> TranslationsImportResult:
+) -> TranslationsImportResponse:
     result = await use_case(
         actor,
         TranslationsImportDto(
@@ -91,21 +86,25 @@ async def import_translations(
             ],
         ),
     )
-    return TranslationsImportResult.model_validate(result, from_attributes=True)
+    return TranslationsImportResponse.model_validate(result, from_attributes=True)
 
 
-@router.post("/actions/reset-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/actions/reset-all", response_model=TranslationEntryListResponse)
 @inject
 async def reset_all_translations(
     use_case: FromDishka[ResetAllTranslationsUseCase],
     actor: Actor = Depends(require_admin),
-) -> None:
-    await use_case(actor)
+) -> TranslationEntryListResponse:
+    entries = await use_case(actor)
+    items = [
+        TranslationEntryResponse.model_validate(entry, from_attributes=True) for entry in entries
+    ]
+    return TranslationEntryListResponse(items=items, total=len(items))
 
 
 @router.put(
     "/{locale}/{message_id}",
-    response_model=TranslationEntryItem,
+    response_model=TranslationEntryResponse,
     responses=error_responses(400, 404),
 )
 @inject
@@ -116,19 +115,19 @@ async def update_translation(
     use_case: FromDishka[UpdateTranslationUseCase],
     actor: Actor = Depends(require_admin),
     attribute_id: str = Query(default=""),
-) -> TranslationEntryItem:
+) -> TranslationEntryResponse:
     entry = await use_case(
         actor,
         UpdateTranslationDto(
             locale=locale, message_id=message_id, attribute_id=attribute_id, value=payload.value
         ),
     )
-    return TranslationEntryItem.model_validate(entry, from_attributes=True)
+    return TranslationEntryResponse.model_validate(entry, from_attributes=True)
 
 
 @router.post(
     "/{locale}/{message_id}/actions/reset",
-    response_model=TranslationEntryItem,
+    response_model=TranslationEntryResponse,
     responses=error_responses(404),
 )
 @inject
@@ -138,12 +137,12 @@ async def reset_translation(
     use_case: FromDishka[ResetTranslationUseCase],
     actor: Actor = Depends(require_admin),
     attribute_id: str = Query(default=""),
-) -> TranslationEntryItem:
+) -> TranslationEntryResponse:
     entry = await use_case(
         actor,
         ResetTranslationDto(locale=locale, message_id=message_id, attribute_id=attribute_id),
     )
-    return TranslationEntryItem.model_validate(entry, from_attributes=True)
+    return TranslationEntryResponse.model_validate(entry, from_attributes=True)
 
 
 @locales_router.get("", response_model=ActiveLocalesResponse)

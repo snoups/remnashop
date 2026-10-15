@@ -5,11 +5,12 @@ from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.api_tokens.dto import RevokeApiTokenDto
 from app.modules.api_tokens.events import ApiTokenRevokedEvent
 from app.modules.api_tokens.repository import ApiTokenRepository
 
 
-class RevokeApiTokenUseCase(UseCase[int, None]):
+class RevokeApiTokenUseCase(UseCase[RevokeApiTokenDto, None]):
     required_permission = Permission.API_TOKENS_MANAGE
 
     def __init__(
@@ -22,9 +23,11 @@ class RevokeApiTokenUseCase(UseCase[int, None]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: int) -> None:
+    async def _execute(self, actor: Actor, data: RevokeApiTokenDto) -> None:
         async with self._uow:
-            revoked = await self._api_token_repository.revoke_by_id(data)
+            revoked = await self._api_token_repository.revoke_by_id(data.token_id)
             if revoked is None:
                 raise NotFoundError("API token not found", code=ErrorCode.API_TOKEN_NOT_FOUND)
-            await self._event_publisher.publish(ApiTokenRevokedEvent(user=actor, token_id=data))
+            await self._event_publisher.publish(
+                ApiTokenRevokedEvent(actor=actor, token_id=data.token_id, ip_address=data.client_ip)
+            )

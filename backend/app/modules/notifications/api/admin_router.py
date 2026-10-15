@@ -24,6 +24,7 @@ from app.modules.notifications.dto import (
     NotificationChannel,
     NotificationChannelsDto,
     SubscribePushDto,
+    UpdateNotificationChannelsDto,
     UpdateNotificationSettingsDto,
 )
 from app.modules.notifications.usecases import (
@@ -72,7 +73,9 @@ async def update_notification_channels(
     use_case: FromDishka[UpdateNotificationChannelsUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> NotificationChannelsResponse:
-    return _channels_response(await use_case(actor, body.channels))
+    return _channels_response(
+        await use_case(actor, UpdateNotificationChannelsDto(channels=body.channels))
+    )
 
 
 @router.get("/push/public-key", response_model=PushPublicKeyResponse)
@@ -101,6 +104,7 @@ async def list_push_subscriptions(
     "/push-subscriptions",
     response_model=PushSubscriptionResponse,
     status_code=status.HTTP_201_CREATED,
+    responses=error_responses(400),
 )
 @inject
 async def subscribe_push(
@@ -111,20 +115,19 @@ async def subscribe_push(
     actor: UserDto = Depends(require_admin_user),
     session_id: int = Depends(get_current_session_id),
 ) -> PushSubscriptionResponse:
-    subscription, created = await use_case(
+    subscribed = await use_case(
         actor,
         SubscribePushDto(
             endpoint=str(body.endpoint),
             p256dh=body.keys.p256dh,
             auth=body.keys.auth,
             session_id=session_id,
-            user_agent=(request.headers.get("user-agent") or "")[:512] or None,
+            user_agent=request.headers.get("user-agent"),
         ),
     )
-    if not created:
-        # the browser was already registered, now under this account
+    if not subscribed.created:
         response.status_code = status.HTTP_200_OK
-    return PushSubscriptionResponse.model_validate(subscription, from_attributes=True)
+    return PushSubscriptionResponse.model_validate(subscribed.subscription, from_attributes=True)
 
 
 @router.delete(

@@ -28,6 +28,7 @@ from app.modules.gateways.usecases import (
     SetGatewayActiveUseCase,
     UpdateGatewaySettingsUseCase,
 )
+from app.modules.users import UserDto
 
 router = APIRouter(prefix="/gateways", tags=["gateways"])
 
@@ -47,32 +48,31 @@ async def list_gateways(
 @inject
 async def get_gateway_catalog(
     config: FromDishka[AppConfig],
-    actor: Actor = Depends(require_admin_user),
+    actor: UserDto = Depends(require_admin_user),
 ) -> GatewayCatalogResponse:
     # static schema metadata, no secrets: no usecase or Permission, dashboard
     # sessions only (like GET /permissions/catalog)
-    return GatewayCatalogResponse(
-        entries=[
-            GatewayCatalogEntryResponse(
-                type=gateway_type,
-                # payments go through the bot, not an inbound callback
-                webhook_url=(
-                    None
-                    if gateway_type == PaymentGatewayType.TELEGRAM_STARS
-                    else config.get_webhook(gateway_type)
-                ),
-                fields=[
-                    GatewayFieldSpecResponse(
-                        key=field_spec.key,
-                        kind=field_spec.kind.value,
-                        required=field_spec.required,
-                    )
-                    for field_spec in field_specs
-                ],
-            )
-            for gateway_type, field_specs in GATEWAY_FIELD_CATALOG.items()
-        ]
-    )
+    items = [
+        GatewayCatalogEntryResponse(
+            type=gateway_type,
+            # payments go through the bot, not an inbound callback
+            webhook_url=(
+                None
+                if gateway_type == PaymentGatewayType.TELEGRAM_STARS
+                else config.get_webhook(gateway_type)
+            ),
+            fields=[
+                GatewayFieldSpecResponse(
+                    key=field_spec.key,
+                    kind=field_spec.kind.value,
+                    required=field_spec.required,
+                )
+                for field_spec in field_specs
+            ],
+        )
+        for gateway_type, field_specs in GATEWAY_FIELD_CATALOG.items()
+    ]
+    return GatewayCatalogResponse(items=items, total=len(items))
 
 
 @router.put(

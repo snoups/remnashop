@@ -3,9 +3,10 @@ from typing import Final, Optional
 from aiogram.types import Message, TelegramObject
 from loguru import logger
 
+from app.core.constants import WEBAUTH_START_PREFIX
+
 _AD_LINK_PREFIX: Final[str] = "ad_"
 _REFERRAL_PREFIX: Final[str] = "ref_"
-_WEBAUTH_PREFIX: Final[str] = "webauth_"
 
 
 def _parse_start_code(event: TelegramObject, prefix: str) -> Optional[str]:
@@ -37,4 +38,4 @@ def parse_referral_code(event: TelegramObject) -> Optional[str]:
 
 
 def parse_webauth_token(event: TelegramObject) -> Optional[str]:
-    return _parse_start_code(event, _WEBAUTH_PREFIX)
+    return _parse_start_code(event, WEBAUTH_START_PREFIX)

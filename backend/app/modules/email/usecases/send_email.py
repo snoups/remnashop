@@ -11,7 +11,11 @@ from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.usecase import UseCase
 from app.modules.email.dto import EmailMessageDto
 from app.modules.email.sender import EmailSendError, SmtpSender
-from app.modules.settings import GetPublicAppearanceImageUseCase, SettingsRepository
+from app.modules.settings import (
+    AppearanceImageDto,
+    GetPublicAppearanceImageUseCase,
+    SettingsRepository,
+)
 
 _PAUSE_KEY: Final[str] = f"{REDIS_KEY_PREFIX}smtp_unavailable"
 _PAUSE_SECONDS: Final[int] = TIME_1M
@@ -25,13 +29,13 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
         settings_repository: SettingsRepository,
         sender: SmtpSender,
         redis: Redis,
-        get_public_appearance_image: GetPublicAppearanceImageUseCase,
+        get_public_appearance_image_use_case: GetPublicAppearanceImageUseCase,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
         self._sender = sender
         self._redis = redis
-        self._get_public_appearance_image = get_public_appearance_image
+        self._get_public_appearance_image_use_case = get_public_appearance_image_use_case
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: EmailMessageDto) -> None:
@@ -42,10 +46,12 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
             return
         if await self._redis.exists(_PAUSE_KEY):
             raise RetryableTaskError("SMTP unavailable")
-        logo: Optional[tuple[bytes, str]] = None
+        logo: Optional[AppearanceImageDto] = None
         if "cid:logo" in data.html:
             try:
-                logo = await self._get_public_appearance_image.execute(AppearanceImageKind.LOGO)
+                logo = await self._get_public_appearance_image_use_case.execute(
+                    AppearanceImageKind.LOGO
+                )
             except NotFoundError:
                 pass
         try:

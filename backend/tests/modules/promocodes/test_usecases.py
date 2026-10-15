@@ -1031,7 +1031,7 @@ async def test_activate_promocode_applies_personal_discount(
 
     await use_case(actor, ActivatePromocodeDto(code="DISC50"))
 
-    updated = await user_repository.get_by_id(actor.id)
+    updated = await user_repository.find_by_id(actor.id)
     assert updated is not None
     assert updated.personal_discount == 50
 
@@ -1065,7 +1065,7 @@ async def test_activate_promocode_zero_reward_personal_discount_is_a_noop(
 
     await use_case(actor, ActivatePromocodeDto(code="DISC0"))
 
-    updated = await user_repository.get_by_id(actor.id)
+    updated = await user_repository.find_by_id(actor.id)
     assert updated is not None
     assert updated.personal_discount == 40
 
@@ -1095,7 +1095,7 @@ async def test_activate_promocode_applies_purchase_discount(
 
     await use_case(actor, ActivatePromocodeDto(code="ONEOFF20"))
 
-    updated = await user_repository.get_by_id(actor.id)
+    updated = await user_repository.find_by_id(actor.id)
     assert updated is not None
     assert updated.purchase_discount == 20
 
@@ -1473,10 +1473,10 @@ async def test_deleting_a_promocode_ends_the_discounts_it_gave(
         OWNER, promo.id
     )
 
-    after = await user_repository.get_by_id(holder.id)
+    after = await user_repository.find_by_id(holder.id)
     assert after is not None
     assert (after.purchase_discount, after.personal_discount) == (0, 0)
-    untouched = await user_repository.get_by_id(bystander.id)
+    untouched = await user_repository.find_by_id(bystander.id)
     assert untouched is not None
     assert untouched.personal_discount == 15
 

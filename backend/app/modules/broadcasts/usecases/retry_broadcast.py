@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Final
 
 from loguru import logger
@@ -39,7 +40,7 @@ class RetryBroadcastUseCase(UseCase[int, BroadcastDto]):
 
     async def _execute(self, actor: Actor, data: int) -> BroadcastDto:
         async with self._uow:
-            broadcast = await self._broadcast_repository.lock_for_update(data)
+            broadcast = await self._broadcast_repository.get_by_id_for_update(data)
             # recalled messages are gone for good; resending would contradict the recall
             if (
                 broadcast.status not in _RETRYABLE
@@ -59,8 +60,8 @@ class RetryBroadcastUseCase(UseCase[int, BroadcastDto]):
             )
             result = await self._broadcast_repository.refresh_counts(data)
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="retry", broadcast_id=data)
+                BroadcastChangedEvent(actor=actor, action="retry", broadcast_id=data)
             )
-            await self._uow.after_commit(lambda: self._start_dispatch.kiq(broadcast_id=data))
+            await self._uow.after_commit(partial(self._start_dispatch.kiq, broadcast_id=data))
         logger.info(f"{actor.log} Retrying broadcast '{data}'")
         return result

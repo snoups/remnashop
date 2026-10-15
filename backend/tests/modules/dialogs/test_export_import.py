@@ -11,10 +11,11 @@ from app.modules.dialogs.dto import (
     DialogTextExportDto,
     DialogWindowExportDto,
 )
+from app.modules.dialogs.export import EXPORT_VERSION
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases import ExportDialogsUseCase, ImportDialogsUseCase
-from app.modules.dialogs.usecases.export_dialogs import EXPORT_VERSION
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 
 OWNER = UserDto(id=1, login="a", name="a", role=Role.OWNER, language=Locale.EN)
 
@@ -101,7 +102,11 @@ async def test_import_restores_an_exported_configuration(
     await translation_repository.update_value(Locale.EN, "btn-menu", "trial", "Changed")
 
     await ImportDialogsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(OWNER, export)
 
     restored = await dialog_repository.get_by_key_or_raise("menu.main")
@@ -119,7 +124,11 @@ async def test_import_deletes_custom_windows_missing_from_the_file(
     await dialog_repository.create_custom_window("custom.later", CreateCustomWindowDto())
 
     await ImportDialogsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(OWNER, export)
 
     assert await dialog_repository.get_by_key("custom.later") is None
@@ -160,7 +169,11 @@ async def test_import_creates_a_custom_window_from_the_file(
     )
 
     await ImportDialogsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(OWNER, payload)
 
     created = await dialog_repository.get_by_key("custom-faq")
@@ -201,7 +214,11 @@ async def test_import_rejects_a_button_pointing_nowhere(
 
     with pytest.raises(ValidationError):
         await ImportDialogsUseCase(
-            dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+            dialog_repository,
+            translation_repository,
+            uow,
+            RedisBotSignals(redis),
+            RecordingEventPublisher(),
         )(OWNER, payload)
 
 
@@ -210,5 +227,9 @@ async def test_import_rejects_an_unknown_version(
 ) -> None:
     with pytest.raises(ValidationError):
         await ImportDialogsUseCase(
-            dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+            dialog_repository,
+            translation_repository,
+            uow,
+            RedisBotSignals(redis),
+            RecordingEventPublisher(),
         )(OWNER, DialogExportDto(version=99, windows=[], texts=[]))

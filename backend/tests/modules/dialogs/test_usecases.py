@@ -22,12 +22,13 @@ from app.modules.dialogs.usecases import (
     ListDialogWindowsUseCase,
     ResetAllDialogsUseCase,
     ResetDialogWindowUseCase,
+    UpdateDialogTextUseCase,
     UpdateDialogWindowButtonsUseCase,
     UpdateDialogWindowUseCase,
 )
-from app.modules.dialogs.usecases.update_text import UpdateDialogTextUseCase
 from app.modules.translations import serialize_to_fluent
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 
 OWNER = UserDto(id=1, login="a", name="a", role=Role.OWNER, language=Locale.EN)
 USER = UserDto(id=2, name="b", role=Role.USER, language=Locale.EN)
@@ -100,7 +101,11 @@ async def test_update_window_changes_banner_and_enabled(
     await _seed(dialog_repository)
     await dialog_repository.create_custom_window("custom.off", CreateCustomWindowDto())
     use_case = UpdateDialogWindowUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     result = await use_case(OWNER, ConfigureDialogWindowDto(key="custom.off", is_enabled=False))
     assert result.is_enabled is False
@@ -116,7 +121,11 @@ async def test_update_window_renames_custom_only(
     await _seed(dialog_repository)
     await dialog_repository.create_custom_window("custom.n", CreateCustomWindowDto(name="Old"))
     use_case = UpdateDialogWindowUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     renamed = await use_case(OWNER, ConfigureDialogWindowDto(key="custom.n", name="New"))
     assert renamed.name == "New"
@@ -129,7 +138,11 @@ async def test_seed_window_cannot_be_disabled(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(OWNER, ConfigureDialogWindowDto(key="menu.main", is_enabled=False))
@@ -141,7 +154,11 @@ async def test_system_button_cannot_be_hidden(
     await _seed(dialog_repository)
     _register_button_window("btn-menu.trial")
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     system = DialogButtonInputDto(
         row=0,
@@ -162,7 +179,11 @@ async def test_update_buttons_rejects_unknown_action(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -189,7 +210,11 @@ async def test_update_buttons_rejects_action_not_belonging_to_this_seed_window(
     catalog.bind_action_handler("other_action", lambda: None)
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -214,7 +239,11 @@ async def test_update_buttons_rejects_action_on_custom_window(
 ) -> None:
     window = await dialog_repository.create_custom_window("custom.abc", CreateCustomWindowDto())
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -239,7 +268,11 @@ async def test_update_buttons_rejects_duplicate_position(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -271,7 +304,11 @@ async def test_update_buttons_rejects_unknown_visibility_condition(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -297,7 +334,11 @@ async def test_update_buttons_rejects_url_without_value(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -318,7 +359,11 @@ async def test_update_buttons_rejects_unknown_navigate_target(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -344,7 +389,11 @@ async def test_update_buttons_allows_added_url_button(
     _register_button_window("btn-menu.trial", "btn-menu.help")
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     result = await use_case(
         OWNER,
@@ -384,7 +433,11 @@ async def test_update_buttons_rejects_unusable_url(
 ) -> None:
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -413,7 +466,11 @@ async def test_update_buttons_accepts_url_built_from_a_catalog_variable(
     _register_button_window("btn-menu.connect")
     await _seed(dialog_repository)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     result = await use_case(
         OWNER,
@@ -437,7 +494,11 @@ async def test_create_custom_window_seeds_translation(
     dialog_repository, translation_repository, settings_repository, uow, redis
 ) -> None:
     use_case = CreateCustomDialogWindowUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     result = await use_case(OWNER, CreateCustomDialogWindowDto(name="Hello"))
     assert result.name == "Hello"
@@ -450,7 +511,12 @@ async def test_delete_custom_window(
 ) -> None:
     window = await dialog_repository.create_custom_window("custom.del", CreateCustomWindowDto())
     use_case = DeleteCustomDialogWindowUseCase(
-        dialog_repository, banner_repository, config, uow, RedisBotSignals(redis)
+        dialog_repository,
+        banner_repository,
+        config,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await use_case(OWNER, window.key)
     with pytest.raises(NotFoundError):
@@ -460,9 +526,9 @@ async def test_delete_custom_window(
 async def test_reset_window_restores_snapshot(dialog_repository, uow, redis) -> None:
     await _seed(dialog_repository)
     await dialog_repository.replace_buttons("menu.main", [])
-    result = await ResetDialogWindowUseCase(dialog_repository, uow, RedisBotSignals(redis))(
-        OWNER, "menu.main"
-    )
+    result = await ResetDialogWindowUseCase(
+        dialog_repository, uow, RedisBotSignals(redis), RecordingEventPublisher()
+    )(OWNER, "menu.main")
     assert [b.text_key for b in result.buttons] == ["btn-menu.trial"]
 
 
@@ -484,6 +550,7 @@ async def test_reset_all_restores_every_seed_window(
         config,
         uow,
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await use_case(OWNER)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
@@ -531,6 +598,7 @@ async def test_reset_all_restores_an_edited_button_label(
         config,
         uow,
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await use_case(OWNER)
 
@@ -547,7 +615,11 @@ async def test_update_dialog_text_rejects_a_dotted_message_id(
     redis,
 ) -> None:
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -605,7 +677,11 @@ async def test_update_dialog_text_allows_known_variable(
     await translation_repository.seed_missing(Locale.EN, "msg-window-greeting", "", "Hi!")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     updated = await use_case(
         OWNER,
@@ -647,7 +723,11 @@ async def test_update_dialog_text_edits_attribute_keyed_button_label(
     await translation_repository.seed_missing(Locale.EN, "btn-menu", "subscription", "Sub")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     updated = await use_case(
         OWNER,
@@ -674,7 +754,11 @@ async def test_update_dialog_text_rejects_non_dialog_message_id(
     await translation_repository.seed_missing(Locale.EN, "command", "menu", "Menu")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -698,7 +782,11 @@ async def test_update_dialog_text_rejects_unknown_variable(
     await translation_repository.seed_missing(Locale.EN, "msg-window-greeting2", "", "Hi!")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -733,7 +821,11 @@ async def test_update_dialog_text_allows_window_own_variable(
     await translation_repository.seed_missing(Locale.EN, "msg-window-counted", "", "Count")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     entry = await use_case(
         OWNER,
@@ -763,7 +855,11 @@ async def test_update_dialog_text_sets_icon_never_seeded(
     await translation_repository.seed_missing(Locale.EN, "btn-menu", "connect", "Connect")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     entry = await use_case(
         OWNER,
@@ -801,7 +897,11 @@ async def test_update_dialog_text_keeps_multiline_value(
     await translation_repository.seed_missing(Locale.EN, "msg-window-greeting3", "", "Hi!")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     updated = await use_case(
         OWNER,
@@ -831,7 +931,11 @@ async def test_update_buttons_seeds_translation_for_new_custom_text_key(
             await translation_repository.add_active_locale(locale)
     _register_button_window("btn-menu.trial")
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     new_key = f"{catalog.CUSTOM_TEXT_KEY_PREFIX}abc123"
     await use_case(
@@ -871,7 +975,11 @@ async def test_update_buttons_rejects_a_text_key_no_window_owns(
     if Locale.EN not in await translation_repository.list_active_locales():
         await translation_repository.add_active_locale(Locale.EN)
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -914,6 +1022,7 @@ async def test_reset_all_removes_custom_windows(
         config,
         uow,
         RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )(OWNER)
 
     assert await dialog_repository.list_custom_keys() == set()
@@ -933,7 +1042,11 @@ async def test_update_dialog_text_rejects_an_empty_button_label(
     await translation_repository.seed_missing(Locale.EN, "btn-menu", "trial", "Try")
 
     use_case = UpdateDialogTextUseCase(
-        translation_repository, dialog_repository, uow, RedisBotSignals(redis)
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     with pytest.raises(ValidationError):
         await use_case(
@@ -958,7 +1071,11 @@ async def test_banner_cannot_be_set_over_text_too_long_for_a_caption(
     await translation_repository.seed_missing(Locale.EN, "msg-main-menu", "", "a" * 2000)
 
     use_case = UpdateDialogWindowUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     await use_case(
         OWNER,

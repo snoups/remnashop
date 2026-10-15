@@ -33,7 +33,7 @@ class UpdatePlanDiscountUseCase(UseCase[UpdatePlanDiscountDto, PlanDto]):
         async with self._uow:
             plan = await self._plan_repository.update_discount(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="discount", plan_id=data.plan_id)
+                PlanChangedEvent(actor=actor, action="discount", plan_id=data.plan_id)
             )
         logger.info(f"{actor.log} Set a {data.discount_percent}% discount on plan '{data.plan_id}'")
         return plan

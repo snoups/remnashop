@@ -24,17 +24,17 @@ class RunScheduledBackupUseCase(UseCase[None, None]):
         self._run_backup_use_case = run_backup_use_case
 
     async def _execute(self, actor: Actor, data: None) -> None:
-        settings = await self._backup_repository.get_settings()
-        if not settings.enabled:
-            return
-
-        latest = await self._backup_repository.get_latest_completed(BackupKind.DATABASE)
-        if latest is not None and latest.finished_at is not None:
-            if datetime_now() - latest.finished_at < timedelta(hours=settings.interval_hours):
+        async with self._uow:
+            settings = await self._backup_repository.get_settings()
+            if not settings.enabled:
                 return
 
-        # triggered_by=None (create_run's default) marks a scheduler-started run
-        async with self._uow:
+            latest = await self._backup_repository.get_latest_completed(BackupKind.DATABASE)
+            if latest is not None and latest.finished_at is not None:
+                if datetime_now() - latest.finished_at < timedelta(hours=settings.interval_hours):
+                    return
+
+            # triggered_by=None (create_run's default) marks a scheduler-started run
             run = await self._backup_repository.create_run(
                 CreateBackupRunDto(kind=BackupKind.DATABASE)
             )

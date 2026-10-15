@@ -27,13 +27,20 @@ from app.modules.settings import command_translations
 from app.modules.settings.bot_commands import BOT_COMMANDS, BotCommand
 from app.modules.settings.dto import (
     BotStatusDto,
+    GetBotCommandsDto,
+    SetBotProxyDto,
     UpdateAppearanceSettingsDto,
+    UpdateBotCommandsDto,
     UpdateBotSettingsDto,
     UpdateOAuthSettingsDto,
     UpdateShopSettingsDto,
     UploadAppearanceImageDto,
 )
-from app.modules.settings.events import OidcIssuerChangedEvent, ShopSettingsChangedEvent
+from app.modules.settings.events import (
+    BotSettingsChangedEvent,
+    OidcIssuerChangedEvent,
+    ShopSettingsChangedEvent,
+)
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import (
     DeleteAppearanceLogoUseCase,
@@ -59,6 +66,7 @@ from app.modules.settings.usecases import (
 )
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS, make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
@@ -92,7 +100,7 @@ async def test_owner_can_view_and_update_bot_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
     get_use_case = GetBotSettingsUseCase(settings_repository, uow)
-    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     settings = await get_use_case(OWNER)
     assert not settings.is_configured
@@ -115,7 +123,7 @@ async def test_bot_status_is_unconfigured_without_a_token(
 async def test_bot_status_is_running_when_telegram_reports_a_webhook(
     settings_repository: SettingsRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    await UpdateBotSettingsUseCase(settings_repository, uow)(
+    await UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
@@ -141,8 +149,8 @@ async def test_bot_status_is_running_when_telegram_reports_a_webhook(
 async def test_set_bot_proxy_normalizes_socks5h_and_stores_it(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    settings = await SetBotProxyUseCase(settings_repository, uow)(
-        OWNER, " socks5h://user:pass@proxy.example:1080/ "
+    settings = await SetBotProxyUseCase(settings_repository, uow, RecordingEventPublisher())(
+        OWNER, SetBotProxyDto(proxy_url=" socks5h://user:pass@proxy.example:1080/ ")
     )
 
     assert settings.is_proxy_configured is True
@@ -164,7 +172,9 @@ async def test_set_bot_proxy_rejects_what_the_clients_cannot_use(
     settings_repository: SettingsRepository, uow: UnitOfWork, proxy_url: str
 ) -> None:
     with pytest.raises(ValidationError) as error:
-        await SetBotProxyUseCase(settings_repository, uow)(OWNER, proxy_url)
+        await SetBotProxyUseCase(settings_repository, uow, RecordingEventPublisher())(
+            OWNER, SetBotProxyDto(proxy_url=proxy_url)
+        )
 
     assert error.value.code == ErrorCode.BOT_PROXY_URL_INVALID
     assert (await settings_repository.get_bot_settings()).is_proxy_configured is False
@@ -173,9 +183,13 @@ async def test_set_bot_proxy_rejects_what_the_clients_cannot_use(
 async def test_remove_bot_proxy_clears_it(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    await SetBotProxyUseCase(settings_repository, uow)(OWNER, "http://proxy.example:3128")
+    await SetBotProxyUseCase(settings_repository, uow, RecordingEventPublisher())(
+        OWNER, SetBotProxyDto(proxy_url="http://proxy.example:3128")
+    )
 
-    settings = await RemoveBotProxyUseCase(settings_repository, uow)(OWNER)
+    settings = await RemoveBotProxyUseCase(settings_repository, uow, RecordingEventPublisher())(
+        OWNER
+    )
 
     assert settings.is_proxy_configured is False
     assert (await settings_repository.get_bot_settings()).proxy is None
@@ -184,10 +198,12 @@ async def test_remove_bot_proxy_clears_it(
 async def test_bot_status_goes_through_the_stored_proxy(
     settings_repository: SettingsRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    await UpdateBotSettingsUseCase(settings_repository, uow)(
+    await UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
-    await SetBotProxyUseCase(settings_repository, uow)(OWNER, "http://proxy.example:3128")
+    await SetBotProxyUseCase(settings_repository, uow, RecordingEventPublisher())(
+        OWNER, SetBotProxyDto(proxy_url="http://proxy.example:3128")
+    )
     seen: list[Optional[str]] = []
 
     async def _fake_fetch(token: str, proxy: Optional[str]) -> BotStatusDto:
@@ -208,7 +224,7 @@ async def test_bot_status_is_not_running_while_telegram_reports_an_error(
 ) -> None:
     # A configured token whose webhook Telegram cannot reach is exactly the
     # case the badge has to tell apart from "configured".
-    await UpdateBotSettingsUseCase(settings_repository, uow)(
+    await UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
@@ -243,7 +259,7 @@ async def test_regular_user_cannot_view_bot_settings(
 async def test_regular_user_cannot_update_bot_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
         await update_use_case(REGULAR_USER, UpdateBotSettingsDto(token="123:abcdef"))
@@ -553,16 +569,21 @@ async def test_owner_can_update_and_list_bot_commands(
     uow: UnitOfWork,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert [c.command for c in result.commands] == ["start", "paysupport"]
     assert result.telegram_sync_failed is False
 
-    listed = await get_use_case(OWNER)
+    listed = await get_use_case(OWNER, GetBotCommandsDto())
     assert [c.command for c in listed] == ["start", "paysupport"]
 
 
@@ -572,7 +593,7 @@ async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
 ) -> None:
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
-    listed = await get_use_case(OWNER)
+    listed = await get_use_case(OWNER, GetBotCommandsDto())
 
     assert [c.command for c in listed] == ["start", "paysupport"]
     assert listed[0].enabled is True
@@ -585,7 +606,7 @@ async def test_get_bot_commands_with_default_order_ignores_the_stored_order(
     await settings_repository.replace_bot_commands([("start", False)])
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
-    listed = await get_use_case(OWNER, True)
+    listed = await get_use_case(OWNER, GetBotCommandsDto(default_order=True))
 
     assert [c.command for c in listed] == [c.command for c in BOT_COMMANDS]
     assert listed[0].enabled is False
@@ -597,11 +618,16 @@ async def test_update_bot_commands_rejects_unknown_command(
     uow: UnitOfWork,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
-        await update_use_case(OWNER, [("start", True), ("help", True)])
+        await update_use_case(
+            OWNER, UpdateBotCommandsDto(commands=[("start", True), ("help", True)])
+        )
 
 
 async def test_update_bot_commands_rejects_missing_command(
@@ -610,11 +636,14 @@ async def test_update_bot_commands_rejects_missing_command(
     uow: UnitOfWork,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
-        await update_use_case(OWNER, [])
+        await update_use_case(OWNER, UpdateBotCommandsDto(commands=[]))
 
 
 async def test_get_bot_commands_drops_stale_rows_not_in_registry(
@@ -624,7 +653,7 @@ async def test_get_bot_commands_drops_stale_rows_not_in_registry(
     await settings_repository.replace_bot_commands([("ghost", True)])
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
-    listed = await get_use_case(OWNER)
+    listed = await get_use_case(OWNER, GetBotCommandsDto())
 
     assert [c.command for c in listed] == ["start", "paysupport"]
 
@@ -645,7 +674,10 @@ async def test_regular_user_cannot_update_bot_commands(
     uow: UnitOfWork,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -658,10 +690,15 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
     uow: UnitOfWork,
 ) -> None:
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert result.telegram_sync_failed is False
 
@@ -691,18 +728,25 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     await translation_repository.seed_missing(Locale.RU, "command", "start", "Открыть главное меню")
     await translation_repository.seed_missing(Locale.RU, "command", "paysupport", "Возврат")
 
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     pushed = _capture_command_pushes(monkeypatch)
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert result.telegram_sync_failed is False
     active_locales = await translation_repository.list_active_locales()
@@ -726,18 +770,25 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
     await translation_repository.seed_missing(Locale.RU, "command", "start", "Открыть главное меню")
     await translation_repository.seed_missing(Locale.RU, "command", "paysupport", "Возврат")
 
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     pushed = _capture_command_pushes(monkeypatch)
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert result.telegram_sync_failed is False
     assert [p.get("language_code") for p in pushed] == ["en", "ru", None]
@@ -755,16 +806,23 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
     await translation_repository.add_active_locale(Locale.RU)
     # an active `ru` locale with no row for the key
 
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert result.telegram_sync_failed is True
 
@@ -787,19 +845,26 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
     for module in (update_bot_commands, get_bot_commands, command_translations):
         monkeypatch.setattr(module, "BOT_COMMANDS", commands)
 
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     pushed = _capture_command_pushes(monkeypatch)
 
     # "help" is disabled, so its missing description_key is never looked up
-    result = await update_use_case(OWNER, [("start", True), ("help", False)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("help", False)])
+    )
 
     assert result.telegram_sync_failed is False
     for payload in pushed:
@@ -818,16 +883,21 @@ async def test_update_bot_commands_reports_telegram_sync_failure_on_missing_tran
         (BotCommand(command="start", description_key="command.missing"),),
     )
 
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
-    result = await update_use_case(OWNER, [("start", True)])
+    result = await update_use_case(OWNER, UpdateBotCommandsDto(commands=[("start", True)]))
 
     assert result.telegram_sync_failed is True
 
@@ -838,19 +908,26 @@ async def test_update_bot_commands_reports_telegram_sync_success(
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
 ) -> None:
-    settings_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    settings_use_case = UpdateBotSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
     await settings_use_case(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
     update_use_case = UpdateBotCommandsUseCase(
-        settings_repository, uow, make_bot_commands_sync(settings_repository.session, uow)
+        settings_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RecordingEventPublisher(),
     )
 
     await _seed_en(translation_repository)
     _capture_command_pushes(monkeypatch)
 
-    result = await update_use_case(OWNER, [("start", True), ("paysupport", True)])
+    result = await update_use_case(
+        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+    )
 
     assert result.telegram_sync_failed is False
 
@@ -858,7 +935,7 @@ async def test_update_bot_commands_reports_telegram_sync_success(
 async def test_admin_with_only_bot_commands_permission_cannot_update_bot_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
     limited_admin = UserDto(
         id=99,
         login="limited",
@@ -902,7 +979,7 @@ async def test_get_public_appearance_returns_defaults(
 async def test_owner_can_update_appearance_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow)
+    use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     settings = await use_case(
         OWNER,
@@ -923,7 +1000,7 @@ async def test_owner_can_update_appearance_settings(
 async def test_regular_user_cannot_update_appearance_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow)
+    use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, UpdateAppearanceSettingsDto(brand_name="Acme VPN"))
@@ -932,8 +1009,12 @@ async def test_regular_user_cannot_update_appearance_settings(
 async def test_owner_can_reset_appearance_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    update_use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow)
-    reset_use_case = ResetAppearanceSettingsUseCase(settings_repository, uow)
+    update_use_case = UpdateAppearanceSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
+    reset_use_case = ResetAppearanceSettingsUseCase(
+        settings_repository, uow, RecordingEventPublisher()
+    )
 
     await update_use_case(
         OWNER,
@@ -955,7 +1036,7 @@ async def test_owner_can_reset_appearance_settings(
 async def test_regular_user_cannot_reset_appearance_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    use_case = ResetAppearanceSettingsUseCase(settings_repository, uow)
+    use_case = ResetAppearanceSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)
@@ -965,7 +1046,9 @@ async def test_owner_can_upload_and_fetch_logo(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    upload_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
+    upload_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
     get_use_case = GetPublicAppearanceImageUseCase(settings_repository, cfg, uow)
 
     settings = await upload_use_case(
@@ -974,7 +1057,8 @@ async def test_owner_can_upload_and_fetch_logo(
     )
     assert settings.has_logo is True
 
-    data, content_type = await get_use_case.execute(AppearanceImageKind.LOGO)
+    image = await get_use_case.execute(AppearanceImageKind.LOGO)
+    data, content_type = image.data, image.content_type
     assert data == FAKE_PNG_APPEARANCE
     assert content_type == "image/png"
 
@@ -986,7 +1070,9 @@ async def test_upload_accepts_plain_square_svg(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    logo_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
+    logo_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
     svg_data = f"<svg {_SVG_NS} viewBox='0 0 64 64'><rect width='64' height='64'/></svg>".encode()
 
     settings = await logo_use_case(
@@ -1019,7 +1105,7 @@ async def test_upload_rejects_unsafe_or_invalid_svg(
     svg: str,
 ) -> None:
     use_case = UploadAppearanceFaviconUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     with pytest.raises(ValidationError):
@@ -1032,7 +1118,7 @@ async def test_upload_rejects_unsupported_content_type(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     use_case = UploadAppearanceLogoUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     with pytest.raises(ValidationError):
@@ -1043,7 +1129,7 @@ async def test_upload_rejects_content_not_matching_declared_type(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     use_case = UploadAppearanceLogoUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     with pytest.raises(ValidationError):
@@ -1060,7 +1146,7 @@ async def test_upload_rejects_oversized_file(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     use_case = UploadAppearanceLogoUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
     oversized = FAKE_PNG_APPEARANCE + b"x" * (1024 * 1024 + 1)
 
@@ -1072,7 +1158,7 @@ async def test_upload_favicon_has_its_own_weight_limit(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     use_case = UploadAppearanceFaviconUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
     oversized = _png(32, 32) + b"x" * (256 * 1024 + 1)
 
@@ -1090,7 +1176,7 @@ async def test_upload_logo_rejects_bad_dimensions(
     height: int,
 ) -> None:
     use_case = UploadAppearanceLogoUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     with pytest.raises(ValidationError):
@@ -1103,7 +1189,7 @@ async def test_upload_favicon_accepts_small_square(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     use_case = UploadAppearanceFaviconUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     settings = await use_case(
@@ -1131,8 +1217,12 @@ async def test_owner_can_delete_uploaded_logo(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    upload_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    delete_use_case = DeleteAppearanceLogoUseCase(settings_repository, cfg, uow)
+    upload_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
+    delete_use_case = DeleteAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
 
     await upload_use_case(
         OWNER,
@@ -1148,7 +1238,7 @@ async def test_delete_missing_appearance_image_raises_not_found(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     delete_use_case = DeleteAppearanceLogoUseCase(
-        settings_repository, _appearance_config(config, tmp_path), uow
+        settings_repository, _appearance_config(config, tmp_path), uow, RecordingEventPublisher()
     )
 
     with pytest.raises(NotFoundError):
@@ -1159,8 +1249,12 @@ async def test_admin_with_only_logo_permission_cannot_upload_favicon(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    logo_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    favicon_use_case = UploadAppearanceFaviconUseCase(settings_repository, cfg, uow)
+    logo_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
+    favicon_use_case = UploadAppearanceFaviconUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
     limited_admin = UserDto(
         id=100,
         login="logo-admin",
@@ -1187,8 +1281,12 @@ async def test_admin_with_upload_permission_cannot_delete(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    upload_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    delete_use_case = DeleteAppearanceLogoUseCase(settings_repository, cfg, uow)
+    upload_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
+    delete_use_case = DeleteAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
     upload_only_admin = UserDto(
         id=102,
         login="upload-only-admin",
@@ -1211,8 +1309,12 @@ async def test_admin_with_only_favicon_permission_cannot_upload_logo(
     settings_repository: SettingsRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
     cfg = _appearance_config(config, tmp_path)
-    logo_use_case = UploadAppearanceLogoUseCase(settings_repository, cfg, uow)
-    favicon_use_case = UploadAppearanceFaviconUseCase(settings_repository, cfg, uow)
+    logo_use_case = UploadAppearanceLogoUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
+    favicon_use_case = UploadAppearanceFaviconUseCase(
+        settings_repository, cfg, uow, RecordingEventPublisher()
+    )
     limited_admin = UserDto(
         id=101,
         login="favicon-admin",
@@ -1287,3 +1389,18 @@ async def test_shop_settings_patch_sets_unlimited_when_null_is_sent(
 
     assert updated.max_active_subscriptions is None
     assert updated.device_single_reset_enabled is True
+
+
+async def test_bot_token_change_is_audited_without_its_value(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    publisher = RecordingEventPublisher()
+
+    await UpdateBotSettingsUseCase(settings_repository, uow, publisher)(
+        OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
+    )
+
+    [event] = publisher.events
+    assert isinstance(event, BotSettingsChangedEvent)
+    assert event.changed_fields == ["secret_token", "token"]
+    assert "123:abcdef" not in repr(event)

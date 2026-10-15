@@ -25,40 +25,39 @@ def _row_values(item: FeedItem) -> dict[str, Any]:
     }
 
 
-def _to_dto(
-    row: Announcement, seen_at: Optional[datetime], dismissed_at: Optional[datetime]
-) -> AnnouncementDto:
-    content = row.content
-    return AnnouncementDto(
-        id=row.id,
-        icon=content["icon"],
-        severity=content["severity"],
-        title=content["title"],
-        text=content["text"],
-        url=content["url"],
-        # rows synced before url_label existed lack the key until the next sync
-        url_label=content.get("url_label", {}),
-        notify_at=row.notify_at,
-        auto_open=row.auto_open,
-        slides=[
-            SlideDto(
-                image_url=REPO_RAW_BASE + slide["image"] if slide["image"] else None,
-                text=slide["text"],
-                url=slide["url"],
-                url_label=slide.get("url_label", {}),
-            )
-            for slide in content["slides"]
-        ],
-        roles=row.roles,
-        versions=row.versions,
-        seen_at=seen_at,
-        dismissed_at=dismissed_at,
-    )
-
-
 class AnnouncementRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    def _to_dto(
+        self, row: Announcement, seen_at: Optional[datetime], dismissed_at: Optional[datetime]
+    ) -> AnnouncementDto:
+        content = row.content
+        return AnnouncementDto(
+            id=row.id,
+            icon=content["icon"],
+            severity=content["severity"],
+            title=content["title"],
+            text=content["text"],
+            url=content["url"],
+            # rows synced before url_label existed lack the key until the next sync
+            url_label=content.get("url_label", {}),
+            notify_at=row.notify_at,
+            auto_open=row.auto_open,
+            slides=[
+                SlideDto(
+                    image_url=REPO_RAW_BASE + slide["image"] if slide["image"] else None,
+                    text=slide["text"],
+                    url=slide["url"],
+                    url_label=slide.get("url_label", {}),
+                )
+                for slide in content["slides"]
+            ],
+            roles=row.roles,
+            versions=row.versions,
+            seen_at=seen_at,
+            dismissed_at=dismissed_at,
+        )
 
     async def replace_all(self, items: list[FeedItem]) -> None:
         await self.session.execute(
@@ -89,7 +88,9 @@ class AnnouncementRepository:
             .where(Announcement.notify_at >= notify_from, Announcement.notify_at <= now)
             .order_by(Announcement.notify_at.desc(), Announcement.id)
         )
-        return [_to_dto(row, seen_at, dismissed_at) for row, seen_at, dismissed_at in result.all()]
+        return [
+            self._to_dto(row, seen_at, dismissed_at) for row, seen_at, dismissed_at in result.all()
+        ]
 
     async def _existing_ids(self, ids: list[str]) -> list[str]:
         # an id removed from the feed between list and mark would break the FK

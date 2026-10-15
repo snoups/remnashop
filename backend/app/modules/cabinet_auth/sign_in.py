@@ -54,9 +54,9 @@ class CabinetSignIn:
         blacklist_repository: BlacklistRepository,
         settings_repository: SettingsRepository,
         oauth_identity_repository: OAuthIdentityRepository,
-        register_telegram_user: RegisterTelegramUserUseCase,
-        register_cabinet_user: RegisterCabinetUserUseCase,
-        check_registration_access: CheckRegistrationAccessUseCase,
+        register_telegram_user_use_case: RegisterTelegramUserUseCase,
+        register_cabinet_user_use_case: RegisterCabinetUserUseCase,
+        check_registration_access_use_case: CheckRegistrationAccessUseCase,
         session_issuer: SessionIssuer,
         known_devices: KnownDevices,
         event_publisher: EventPublisher,
@@ -66,9 +66,9 @@ class CabinetSignIn:
         self._blacklist_repository = blacklist_repository
         self._settings_repository = settings_repository
         self._oauth_identity_repository = oauth_identity_repository
-        self._register_telegram_user = register_telegram_user
-        self._register_cabinet_user = register_cabinet_user
-        self._check_registration_access = check_registration_access
+        self._register_telegram_user_use_case = register_telegram_user_use_case
+        self._register_cabinet_user_use_case = register_cabinet_user_use_case
+        self._check_registration_access_use_case = check_registration_access_use_case
         self._session_issuer = session_issuer
         self._known_devices = known_devices
         self._event_publisher = event_publisher
@@ -82,7 +82,7 @@ class CabinetSignIn:
         email: Optional[str] = None,
     ) -> None:
         # passes existing users through, so it's safe to call before a lookup
-        denial = await self._check_registration_access.system(
+        denial = await self._check_registration_access_use_case.system(
             CheckRegistrationAccessDto(
                 channel=AdLinkChannel.WEBCABINET,
                 telegram_id=telegram_id,
@@ -139,7 +139,7 @@ class CabinetSignIn:
         if not blacklisted:
             await self.ensure_can_register(codes, telegram_id=profile.telegram_id)
         language = _parse_locale(profile.language)
-        user = await self._register_telegram_user.system(
+        user = await self._register_telegram_user_use_case.system(
             RegisterTelegramUserDto(
                 telegram_id=profile.telegram_id,
                 name=profile.name,
@@ -178,7 +178,7 @@ class CabinetSignIn:
                 blacklisted = await self._blacklist_repository.is_blacklisted_email(email)
             if not blacklisted:
                 await self.ensure_can_register(codes, email=email)
-            user = await self._register_cabinet_user.system(
+            user = await self._register_cabinet_user_use_case.system(
                 RegisterCabinetUserDto(
                     name=email.split("@", 1)[0],
                     language=language,
@@ -231,7 +231,7 @@ class CabinetSignIn:
                     await self.ensure_can_register(codes, email=verified_email)
             else:
                 await self.ensure_can_register(codes)
-            user = await self._register_cabinet_user.system(
+            user = await self._register_cabinet_user_use_case.system(
                 RegisterCabinetUserDto(
                     name=profile.name or profile.login or provider.value.title(),
                     language=_parse_locale(profile.language) or Locale.EN,
@@ -271,4 +271,4 @@ class CabinetSignIn:
             identity = await self._oauth_identity_repository.get_by_provider_external_id(
                 provider, external_id
             )
-            return await self._user_repository.get_by_id(identity.user_id) if identity else None
+            return await self._user_repository.find_by_id(identity.user_id) if identity else None

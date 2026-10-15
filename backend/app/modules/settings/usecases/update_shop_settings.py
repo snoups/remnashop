@@ -38,8 +38,8 @@ class UpdateShopSettingsUseCase(UseCase[UpdateShopSettingsDto, ShopSettingsDto])
             settings = await self._settings_repository.update_shop_settings(data)
             await self._event_publisher.publish(
                 ShopSettingsChangedEvent(
-                    user=actor, changed_fields=changed_fields(before, settings, data.fields_set)
+                    actor=actor, changed_fields=changed_fields(before, settings, data.fields_set)
                 )
             )
-        logger.info(f"Shop settings updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated shop settings")
         return settings

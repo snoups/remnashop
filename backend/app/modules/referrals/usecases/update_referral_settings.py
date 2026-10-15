@@ -8,7 +8,7 @@ from app.core.constants import MAX_POINTS_BALANCE
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardStrategy, ReferralRewardType
 from app.core.error_codes import ErrorCode
-from app.core.events import set_fields
+from app.core.events import changed_fields
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -99,7 +99,9 @@ class UpdateReferralSettingsUseCase(UseCase[UpdateReferralSettingsDto, ReferralS
             updated = await self._referral_repository.update_settings(data)
             await self._event_publisher.publish(
                 ReferralSettingsChangedEvent(
-                    user=actor, action="update", changed_fields=set_fields(data)
+                    actor=actor,
+                    action="update",
+                    changed_fields=changed_fields(current, updated, vars(data)),
                 )
             )
             pricing = await self._pricing_repository.get_settings()

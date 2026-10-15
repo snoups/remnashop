@@ -5,7 +5,7 @@ export interface NotificationChannels {
   channels: Record<string, string[]>;
   available_groups: string[];
   available_channels: string[];
-  push_configured: boolean;
+  is_push_configured: boolean;
   telegram_available: boolean;
 }
 

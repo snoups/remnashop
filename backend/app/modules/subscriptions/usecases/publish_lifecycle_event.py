@@ -52,7 +52,7 @@ class PublishLifecycleEventUseCase(UseCase[PublishLifecycleEventDto, None]):
             )
             if subscription is None or subscription.status is SubscriptionStatus.DELETED:
                 return
-            owner = await self._user_repository.get_by_id(subscription.user_id)
+            owner = await self._user_repository.find_by_id(subscription.user_id)
             if owner is None:
                 return
 

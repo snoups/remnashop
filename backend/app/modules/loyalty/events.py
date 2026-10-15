@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from app.core.events import ActorTargetEvent, EventCategory, UserEvent
+from app.core.events import ActorEvent, ActorTargetEvent, EventCategory
 
 
 @dataclass(frozen=True, kw_only=True)
-class LoyaltySettingsChangedEvent(UserEvent):
+class LoyaltySettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
 
 

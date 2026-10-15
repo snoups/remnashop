@@ -23,6 +23,6 @@ class ReorderPlansUseCase(UseCase[ReorderPlansDto, list[PlanDto]]):
     async def _execute(self, actor: Actor, data: ReorderPlansDto) -> list[PlanDto]:
         async with self._uow:
             plans = await self._plan_repository.reorder(data)
-            await self._event_publisher.publish(PlanChangedEvent(user=actor, action="reorder"))
+            await self._event_publisher.publish(PlanChangedEvent(actor=actor, action="reorder"))
         logger.info(f"{actor.log} Reordered plans")
         return plans

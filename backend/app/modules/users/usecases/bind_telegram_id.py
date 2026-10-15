@@ -1,14 +1,15 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import BindTelegramDto, UserDto
 from app.modules.users.events import TelegramIdBoundEvent
 from app.modules.users.repository import UserRepository
+from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
 class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
@@ -28,14 +29,10 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: BindTelegramDto) -> UserDto:
         async with self._uow:
-            target = await self._user_repository.get_for_update(data.user_id)
-            if target is None or target.deleted_at is not None:
-                raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
-            if target.is_privileged and not (
-                PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
-                and (target.id == actor.id or PermissionPolicy.can_manage(actor, target))
-            ):
-                raise PermissionDeniedError
+            target = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
+            assert_manageable(actor, target, allow_self=True)
             if target.telegram_id == data.telegram_id:
                 return target
             if await self._blacklist_repository.is_blacklisted_telegram_id(data.telegram_id):
@@ -45,7 +42,10 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
             updated = await self._user_repository.set_telegram_id(target.id, data.telegram_id)
             await self._event_publisher.publish(
                 TelegramIdBoundEvent(
-                    actor=actor, target=updated, previous_telegram_id=target.telegram_id
+                    actor=actor,
+                    target=updated,
+                    previous_telegram_id=target.telegram_id,
+                    ip_address=data.client_ip,
                 )
             )
         return updated

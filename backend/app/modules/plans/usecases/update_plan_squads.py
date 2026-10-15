@@ -24,7 +24,7 @@ class UpdatePlanSquadsUseCase(UseCase[UpdatePlanSquadsDto, PlanDto]):
         async with self._uow:
             plan = await self._plan_repository.update_squads(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="squads", plan_id=data.plan_id)
+                PlanChangedEvent(actor=actor, action="squads", plan_id=data.plan_id)
             )
         logger.info(f"{actor.log} Updated squads for plan '{data.plan_id}'")
         return plan

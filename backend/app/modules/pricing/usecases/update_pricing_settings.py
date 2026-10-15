@@ -2,7 +2,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.events import set_fields
+from app.core.events import changed_fields
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -26,9 +26,12 @@ class UpdatePricingSettingsUseCase(UseCase[UpdatePricingSettingsDto, PricingSett
 
     async def _execute(self, actor: Actor, data: UpdatePricingSettingsDto) -> PricingSettingsDto:
         async with self._uow:
+            before = await self._pricing_repository.get_settings()
             settings = await self._pricing_repository.update_settings(data)
             await self._event_publisher.publish(
-                PricingSettingsChangedEvent(user=actor, changed_fields=set_fields(data))
+                PricingSettingsChangedEvent(
+                    actor=actor, changed_fields=changed_fields(before, settings, vars(data))
+                )
             )
         logger.info(f"{actor.log} Updated pricing settings")
         return settings

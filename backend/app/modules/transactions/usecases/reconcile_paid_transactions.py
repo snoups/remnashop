@@ -30,16 +30,20 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
 
     async def _execute(self, actor: Actor, data: ReconcilePaidTransactionsDto) -> None:
         now = datetime_now()
-        stuck = await self._transaction_repository.list_paid_awaiting_reconciliation(
-            now - data.grace_period, since=now - RECONCILE_WINDOW
-        )
+        async with self._uow:
+            stuck = await self._transaction_repository.list_paid_awaiting_reconciliation(
+                now - data.grace_period, since=now - RECONCILE_WINDOW
+            )
 
         redispatched = 0
         for order in stuck:
-            linked = await self._idempotency_repository.get_subscription_id(order.idempotency_key)
-            if linked is not None:
-                async with self._uow:
+            async with self._uow:
+                linked = await self._idempotency_repository.get_subscription_id(
+                    order.idempotency_key
+                )
+                if linked is not None:
                     await self._transaction_repository.mark_fulfilled(order.id, linked)
+            if linked is not None:
                 continue
 
             # same idempotency_key as the original attempt: the purchase locks the

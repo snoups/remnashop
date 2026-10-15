@@ -68,15 +68,15 @@ class BroadcastsProvider(Provider):
         PruneBroadcastRecipientsUseCase,
     )
 
-    @provide
+    @provide(scope=Scope.APP)
     def start_broadcast_dispatch(self) -> StartBroadcastDispatch:
         return cast(StartBroadcastDispatch, start_broadcast_task)
 
-    @provide
+    @provide(scope=Scope.APP)
     def deliver_broadcast_dispatch(self) -> DeliverBroadcastDispatch:
         return cast(DeliverBroadcastDispatch, deliver_broadcast_task)
 
-    @provide
+    @provide(scope=Scope.APP)
     def recall_broadcast_dispatch(self) -> RecallBroadcastDispatch:
         return cast(RecallBroadcastDispatch, recall_broadcast_task)
 

@@ -335,7 +335,8 @@ async def test_reset_window_and_reset_all(
     assert reset_resp.json()["is_enabled"] is True
 
     reset_all_resp = await client.post(f"{API_V1}/dialogs/actions/reset-all", headers=headers)
-    assert reset_all_resp.status_code == 204
+    assert reset_all_resp.status_code == 200
+    assert reset_all_resp.json()["total"] == len(reset_all_resp.json()["items"]) > 0
 
 
 async def test_window_response_includes_text_keys_for_seed_window(

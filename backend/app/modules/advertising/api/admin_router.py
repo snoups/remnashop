@@ -7,10 +7,9 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
-from app.core.actor import Actor, actor_user_id
+from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.enums import AdLinkChannel, Currency
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.advertising.api.schemas import (
     AdLinkPageResponse,
@@ -26,8 +25,6 @@ from app.modules.advertising.api.schemas import (
     UserAdAttributionResponse,
 )
 from app.modules.advertising.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     CreateAdLinkDto,
     GetAdLinkStatsDto,
     GetAdvertisingSummaryDto,
@@ -35,7 +32,7 @@ from app.modules.advertising.dto import (
     ListAdLinksDto,
     UpdateAdLinkDto,
 )
-from app.modules.advertising.qr import render_qr_png
+from app.modules.advertising.qr import render_share_qr
 from app.modules.advertising.usecases import (
     CreateAdLinkUseCase,
     DeleteAdLinkUseCase,
@@ -94,7 +91,6 @@ async def create_ad_link(
             allow_bot=payload.allow_bot,
             allow_webcabinet=payload.allow_webcabinet,
             note=payload.note,
-            created_by=actor_user_id(actor),
         ),
     )
     return AdLinkResponse.model_validate(ad_link, from_attributes=True)
@@ -198,11 +194,8 @@ async def get_ad_link_qr(
     actor: Actor = Depends(require_admin),
     channel: AdLinkChannel = Query(AdLinkChannel.BOT),
 ) -> Response:
-    urls = await use_case(actor, ad_link_id)
-    url = urls.bot_url if channel == AdLinkChannel.BOT else urls.webcabinet_url
-    if url is None:
-        raise NotFoundError("Channel is unavailable", code=ErrorCode.AD_LINK_CHANNEL_UNAVAILABLE)
-    return Response(content=render_qr_png(url), media_type="image/png")
+    png = render_share_qr(await use_case(actor, ad_link_id), channel)
+    return Response(content=png, media_type="image/png")
 
 
 @router.get("/summary", response_model=AdvertisingSummaryResponse)
@@ -251,7 +244,9 @@ async def list_ad_link_attributed_users(
 
 
 @user_router.get(
-    "/{user_id:int}/ad-attribution", response_model=Optional[UserAdAttributionResponse]
+    "/{user_id:int}/ad-attribution",
+    response_model=Optional[UserAdAttributionResponse],
+    responses=error_responses(404),
 )
 @inject
 async def get_user_ad_attribution(

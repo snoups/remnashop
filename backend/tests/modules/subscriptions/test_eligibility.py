@@ -58,7 +58,7 @@ async def test_purchasable_applies_purchase_history(
     sub = await create_subscription(
         subscription_repository, user_repository, telegram_id=91011, remnawave_user_id=91011
     )
-    buyer = await user_repository.get_by_id(sub.user_id)
+    buyer = await user_repository.find_by_id(sub.user_id)
     assert buyer is not None
     plans = [
         _plan("for-all", PlanAvailability.ALL),

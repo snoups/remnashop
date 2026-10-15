@@ -341,6 +341,7 @@ def _set_enabled(
 ) -> SetSubscriptionEnabledUseCase:
     return SetSubscriptionEnabledUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         remnawave_sdk,
         SubscriptionLifecycleService(subscription_repository),
         event_publisher,
@@ -434,12 +435,23 @@ async def test_reset_traffic_zeroes_used_bytes(
     granted = await _granted(grant_use_case, user_repository, plan_repository, 9701, "traffic")
     remnawave_store[granted.remnawave_user_id]["userTraffic"]["usedTrafficBytes"] = 12345
     use_case = ResetSubscriptionTrafficUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     await use_case(OWNER, granted.id)
 
     assert remnawave_store[granted.remnawave_user_id]["userTraffic"]["usedTrafficBytes"] == 0
+    # the owner is the event's target, so the log finds the edit when filtered by user
+    payload = await subscription_repository.session.scalar(
+        select(EventOutboxEntry.payload)
+        .where(EventOutboxEntry.event_type == "SubscriptionEditedEvent")
+        .order_by(EventOutboxEntry.id.desc())
+    )
+    assert payload is not None and payload["target"]["id"] == granted.user_id
 
 
 async def test_admin_reissue_updates_url_without_client_cooldown(
@@ -453,7 +465,11 @@ async def test_admin_reissue_updates_url_without_client_cooldown(
 ) -> None:
     granted = await _granted(grant_use_case, user_repository, plan_repository, 9702, "reissue")
     use_case = AdminReissueSubscriptionUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     reissued = await use_case(OWNER, granted.id)
@@ -475,7 +491,11 @@ async def test_reset_traffic_of_deleted_subscription_is_rejected(
     async with uow:
         await subscription_repository.mark_deleted(granted.id)
     use_case = ResetSubscriptionTrafficUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(ValidationError):
@@ -512,10 +532,18 @@ async def test_admin_device_list_and_delete(
     remnawave_hwid_store[panel_id] = [_device(h, panel_id) for h in ("a", "b", "c")]
     list_devices = AdminListDevicesUseCase(subscription_repository, remnawave_sdk, uow)
     delete_one = AdminDeleteDeviceUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
     delete_all = AdminDeleteAllDevicesUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     assert [d.hwid for d in await list_devices(OWNER, granted.id)] == ["a", "b", "c"]
@@ -585,6 +613,7 @@ async def test_delete_of_superseded_row_keeps_live_panel_user(
     )
     use_case = DeleteSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
         event_publisher,
         uow,
@@ -614,7 +643,11 @@ async def test_squads_of_superseded_row_are_rejected(
     )
     panel_before = dict(remnawave_store[live.remnawave_user_id])
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(ValidationError) as error:
@@ -646,7 +679,11 @@ async def test_squads_keep_db_unchanged_when_panel_fails(
 
     monkeypatch.setattr(remnawave_sdk.users, "update_user", failing_update_user)
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(RemnawavePanelUnavailableError):
@@ -719,7 +756,11 @@ async def test_squads_are_restored_in_the_panel_when_deleted_mid_edit(
 
     monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_delete)
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(ValidationError) as error:
@@ -782,7 +823,11 @@ async def test_squads_rollback_follows_the_plan_change_that_superseded_the_row(
 
     monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_change)
     use_case = UpdateSubscriptionSquadsUseCase(
-        subscription_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
     )
 
     with pytest.raises(ValidationError) as error:
@@ -827,6 +872,7 @@ async def test_limits_are_restored_in_the_panel_when_deleted_mid_edit(
     monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_delete)
     use_case = UpdateSubscriptionUseCase(
         subscription_repository,
+        UserRepository(subscription_repository.session),
         remnawave_sdk,
         event_publisher,
         uow,

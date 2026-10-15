@@ -1,4 +1,5 @@
 from datetime import timedelta
+from functools import partial
 from typing import Final
 
 from loguru import logger
@@ -15,8 +16,8 @@ from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dispatch import RecallBroadcastDispatch
 from app.modules.broadcasts.dto import BroadcastDto
 from app.modules.broadcasts.events import BroadcastRecalledEvent
+from app.modules.broadcasts.lifecycle import cancel_sending
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.usecases.cancel_broadcast import cancel_sending
 
 RECALL_WINDOW: Final[timedelta] = timedelta(hours=48)
 # since the chain's last batch: a repeat while it works would delete the same rows twice
@@ -44,7 +45,7 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
     async def _execute(self, actor: Actor, data: int) -> BroadcastDto:
         now = datetime_now()
         async with self._uow:
-            broadcast = await self._broadcast_repository.lock_for_update(data)
+            broadcast = await self._broadcast_repository.get_by_id_for_update(data)
             if broadcast.status not in _RECALLABLE or broadcast.started_at is None:
                 raise ConflictError(
                     f"Broadcast '{data}' is {broadcast.status}",
@@ -72,10 +73,10 @@ class RecallBroadcastUseCase(UseCase[int, BroadcastDto]):
             if broadcast.status is BroadcastStatus.SENDING:
                 await cancel_sending(self._broadcast_repository, data)
             await self._event_publisher.publish(
-                BroadcastRecalledEvent(user=actor, broadcast_id=data)
+                BroadcastRecalledEvent(actor=actor, broadcast_id=data)
             )
-            await self._uow.after_commit(lambda: self._recall_dispatch.kiq(broadcast_id=data))
-            result = await self._broadcast_repository.get_or_raise(data)
+            await self._uow.after_commit(partial(self._recall_dispatch.kiq, broadcast_id=data))
+            result = await self._broadcast_repository.get_by_id(data)
             result = result.model_copy(
                 update={"recallable_count": await self._broadcast_repository.count_recallable(data)}
             )

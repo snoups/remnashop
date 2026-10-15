@@ -4,10 +4,11 @@ from typing import Optional, cast
 from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.db.models.user import User
 from app.core.db.user_search import user_search_filter
 from app.core.enums import Role
-from app.modules.users.dto import DEFAULT_PAGE_SIZE, UserDto
+from app.modules.users.dto import UserDto
 from app.modules.users.filters import identity_filter
 
 
@@ -17,8 +18,8 @@ class UserBlacklistRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _to_dtos(self, rows: Sequence[User]) -> list[UserDto]:
-        return [UserDto.model_validate(row, from_attributes=True) for row in rows]
+    def _to_dto(self, row: User) -> UserDto:
+        return UserDto.model_validate(row, from_attributes=True)
 
     async def block_matching(self, telegram_ids: set[int], emails: set[str]) -> list[int]:
         if not telegram_ids and not emails:
@@ -64,7 +65,7 @@ class UserBlacklistRepository:
             .limit(page_size)
         )
         rows = (await self.session.scalars(stmt)).all()
-        return self._to_dtos(list(rows)), total or 0
+        return [self._to_dto(row) for row in rows], total or 0
 
     async def count_matching(
         self, telegram_ids: set[int], emails: set[str], *, roles: Sequence[Role]

@@ -3,10 +3,12 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.actor import SyntheticActor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
+from app.core.security.permissions import Permission
 from app.modules.loyalty.dto import LoyaltyTierDto, SetUserLoyaltyExcludedDto
 from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.loyalty.usecases import GetUserLoyaltyUseCase, SetUserLoyaltyExcludedUseCase
@@ -83,7 +85,32 @@ async def test_exclusion_of_a_staff_account_needs_admins_manage(
         CreateUserDto(name="s", role=Role.ADMIN, login="loyaltystaff")
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(NotFoundError):
         await _set_excluded(session, uow, event_publisher, RecordingDispatch())(
             ADMIN, SetUserLoyaltyExcludedDto(user_id=staff.id, excluded=True)
         )
+
+
+async def test_a_token_cannot_read_a_staff_accounts_loyalty(
+    session: AsyncSession, uow: UnitOfWork, user_repository: UserRepository
+) -> None:
+    async with uow:
+        owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
+    token = SyntheticActor(
+        id=0,
+        role=Role.USER,
+        name="API Token: loyalty",
+        is_privileged=True,
+        log="[api_token:loyalty]",
+        permission_grants=[Permission.USERS_LOYALTY_VIEW.value],
+    )
+    use_case = GetUserLoyaltyUseCase(
+        LoyaltyRepository(session),
+        TransactionRepository(session),
+        user_repository,
+        PricingRepository(session),
+        uow,
+    )
+
+    with pytest.raises(NotFoundError):
+        await use_case(token, owner.id)

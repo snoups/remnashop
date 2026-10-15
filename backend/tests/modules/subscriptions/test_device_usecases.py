@@ -12,10 +12,12 @@ from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto, DeleteDeviceDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases.delete_all_devices import DeleteAllDevicesUseCase
-from app.modules.subscriptions.usecases.delete_device import DeleteDeviceUseCase
-from app.modules.subscriptions.usecases.list_devices import ListDevicesUseCase
-from app.modules.subscriptions.usecases.reissue_subscription import ReissueSubscriptionUseCase
+from app.modules.subscriptions.usecases import (
+    DeleteAllDevicesUseCase,
+    DeleteDeviceUseCase,
+    ListDevicesUseCase,
+    ReissueSubscriptionUseCase,
+)
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload

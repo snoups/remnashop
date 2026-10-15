@@ -90,17 +90,17 @@ class BotLogsResponse(BaseModel):
 
 class OAuthSettingsResponse(BaseModel):
     is_github_configured: bool
-    is_github_enabled: bool
+    github_enabled: bool
     is_telegram_configured: bool
-    is_telegram_enabled: bool
+    telegram_enabled: bool
     is_google_configured: bool
     is_yandex_configured: bool
     is_oidc_configured: bool
-    is_oidc_enabled: bool
+    oidc_enabled: bool
     oidc_display_name: Optional[str] = None
-    is_password_login_enabled: bool
+    password_login_enabled: bool
     is_passkey_configured: bool
-    is_passkey_enabled: bool
+    passkey_enabled: bool
     passkey_rp_id: Optional[str] = None
     passkey_origin: Optional[str] = None
 

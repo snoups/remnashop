@@ -6,8 +6,10 @@ import httpx
 from loguru import logger
 
 from app.core.enums import UpperStrEnum
+from app.core.telegram_api import bot_method_url, retry_after_seconds
 
-_TELEGRAM_API_URL: Final[str] = "https://api.telegram.org"
+# an alert waits out a short flood-wait once; a long one fails the delivery
+_MAX_RETRY_AFTER_S: Final[float] = 30.0
 TELEGRAM_TIMEOUT_SECONDS: Final[float] = 10.0
 _RATE_LIMITED: Final[int] = 429
 _FORBIDDEN: Final[int] = 403
@@ -22,7 +24,7 @@ class TelegramSendResult(UpperStrEnum):
 
 async def _post(client: httpx.AsyncClient, token: str, chat_id: int, text: str) -> dict[str, Any]:
     response = await client.post(
-        f"{_TELEGRAM_API_URL}/bot{token}/sendMessage",
+        bot_method_url(token, "sendMessage"),
         json={"chat_id": chat_id, "text": text},
     )
     payload: dict[str, Any] = response.json()
@@ -34,7 +36,10 @@ async def _post_with_retry(
 ) -> dict[str, Any]:
     payload = await _post(client, token, chat_id, text)
     if payload.get("error_code") == _RATE_LIMITED:
-        await asyncio.sleep(payload.get("parameters", {}).get("retry_after", 1))
+        retry_after = retry_after_seconds(payload)
+        if retry_after > _MAX_RETRY_AFTER_S:
+            return payload
+        await asyncio.sleep(retry_after)
         payload = await _post(client, token, chat_id, text)
     return payload
 

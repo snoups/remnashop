@@ -78,7 +78,7 @@ async def test_request_when_method_disabled(
         )
     response = await client.post(_CODE_URL, json={"email": "a@b.c"})
     assert response.status_code == 401
-    assert response.json()["code"] == "OAUTH_PROVIDER_DISABLED"
+    assert response.json()["code"] == "CABINET_EMAIL_DISABLED"
 
 
 async def test_verify_signs_in(
@@ -195,7 +195,7 @@ async def test_verify_when_method_disabled(
             UpdateCabinetAuthSettingsDto(email_enabled=False)
         )
     response = await client.post(_VERIFY_URL, json={"email": "ann@mail.ru", "code": code})
-    assert (response.status_code, response.json()["code"]) == (401, "OAUTH_PROVIDER_DISABLED")
+    assert (response.status_code, response.json()["code"]) == (401, "CABINET_EMAIL_DISABLED")
 
 
 @pytest.mark.parametrize("email", ["a@b.c,evil@x.y", "a@b.c;x", "<a@b.c>", 'a"@b.c', "a@b.c:x"])

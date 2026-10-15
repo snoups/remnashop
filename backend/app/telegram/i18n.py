@@ -10,7 +10,8 @@ from app.core.enums import Locale
 from app.modules.translations import TranslationRepository
 from app.modules.users import UserDto
 
-_EXPIRE_TIME_FORMAT: Final[str] = "%d.%m.%Y %H:%M"
+_DATETIME_FORMAT: Final[str] = "%d.%m.%Y %H:%M"
+_DATE_FORMAT: Final[str] = "%d.%m.%Y"
 
 
 def build_translator_hub(
@@ -48,7 +49,10 @@ def get_translator(hub: TranslatorHub, user: UserDto) -> TranslatorRunner:
     return hub.get_translator_by_locale(user.language.value)
 
 
-def i18n_format_expire_time(expiry: Optional[datetime]) -> str:
-    if expiry is None:
-        return "—"
-    return expiry.strftime(_EXPIRE_TIME_FORMAT)
+# every date the bot shows a customer goes through these two
+def format_datetime(value: Optional[datetime]) -> str:
+    return value.strftime(_DATETIME_FORMAT) if value is not None else "—"
+
+
+def format_date(value: Optional[datetime]) -> str:
+    return value.strftime(_DATE_FORMAT) if value is not None else "—"

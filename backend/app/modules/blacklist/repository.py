@@ -1,4 +1,4 @@
-from typing import Final, Optional
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.errors import constraint_name
 from app.core.db.models.blacklist import Blacklist
 from app.core.db.models.blacklist_source import BlacklistSource
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import BlacklistKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
@@ -22,8 +22,6 @@ from app.modules.blacklist.dto import (
 )
 from app.modules.blacklist.normalize import normalize_identity, removal_key
 
-_SINGLETON_ID: Final[int] = 1
-
 
 class BlacklistRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -31,7 +29,7 @@ class BlacklistRepository:
 
     async def _get_or_create_row(self) -> Blacklist:
         return await get_or_create_singleton(
-            self.session, Blacklist, _SINGLETON_ID, blocked_telegram_ids=[], blocked_emails=[]
+            self.session, Blacklist, SINGLETON_ID, blocked_telegram_ids=[], blocked_emails=[]
         )
 
     def _to_source_dto(self, row: BlacklistSource) -> BlacklistSourceDto:
@@ -48,7 +46,7 @@ class BlacklistRepository:
         )
 
     async def get_blacklist(self) -> BlacklistDto:
-        row = await self.session.get(Blacklist, _SINGLETON_ID)
+        row = await self.session.get(Blacklist, SINGLETON_ID)
         if row is None:
             return BlacklistDto()
         return BlacklistDto(
@@ -76,7 +74,7 @@ class BlacklistRepository:
         normalized = removal_key(kind, value)
         if normalized is None:
             return False
-        row = await self.session.get(Blacklist, _SINGLETON_ID)
+        row = await self.session.get(Blacklist, SINGLETON_ID)
         if row is None:
             return False
         if kind is BlacklistKind.TELEGRAM_ID:
@@ -174,7 +172,7 @@ class BlacklistRepository:
     # is_blacklisted_* methods to a targeted `WHERE :v = ANY(blocked_telegram_ids)`
     # query with a GIN index and keep all_blocked_identities only for reconcile.
     async def all_blocked_identities(self) -> tuple[set[int], set[str]]:
-        manual = await self.session.get(Blacklist, _SINGLETON_ID)
+        manual = await self.session.get(Blacklist, SINGLETON_ID)
         ids: set[int] = set(manual.blocked_telegram_ids) if manual else set()
         emails: set[str] = set(manual.blocked_emails) if manual else set()
         rows = (
@@ -189,7 +187,7 @@ class BlacklistRepository:
 
     async def identity_origins(self) -> BlacklistOriginsDto:
         origins = BlacklistOriginsDto()
-        manual = await self.session.get(Blacklist, _SINGLETON_ID)
+        manual = await self.session.get(Blacklist, SINGLETON_ID)
         lists: list[tuple[BlacklistOriginDto, list[int], list[str]]] = []
         if manual:
             lists.append((BlacklistOriginDto(), manual.blocked_telegram_ids, manual.blocked_emails))

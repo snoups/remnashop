@@ -16,23 +16,25 @@ from app.modules.backups.dto import (
     BackupSettingsDto,
     CreateBackupRunDto,
     ListBackupRunsDto,
+    StartBackupRunDto,
     UpdateBackupSettingsDto,
 )
 from app.modules.backups.repository import BackupRepository
-from app.modules.backups.usecases.create_backup_run import CreateBackupRunUseCase
-from app.modules.backups.usecases.delete_backup_run import DeleteBackupRunUseCase
-from app.modules.backups.usecases.get_backup_run import GetBackupRunUseCase
-from app.modules.backups.usecases.get_backup_settings import GetBackupSettingsUseCase
-from app.modules.backups.usecases.get_backup_stats import (
+from app.modules.backups.usecases import (
+    CreateBackupRunUseCase,
+    DeleteBackupRunUseCase,
+    GetBackupRunUseCase,
+    GetBackupSettingsUseCase,
     GetBackupStatsUseCase,
-    next_scheduled_run,
+    ListBackupRunsUseCase,
+    ResetBackupSettingsUseCase,
+    UpdateBackupSettingsUseCase,
 )
-from app.modules.backups.usecases.list_backup_runs import ListBackupRunsUseCase
-from app.modules.backups.usecases.reset_backup_settings import ResetBackupSettingsUseCase
-from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
+from app.modules.backups.usecases.get_backup_stats import next_scheduled_run
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 ADMIN_NO_GRANT = UserDto(id=2, login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
@@ -70,7 +72,7 @@ async def test_admin_without_grant_cannot_get_settings(
 async def test_owner_can_update_settings(
     backup_repository: BackupRepository, uow: UnitOfWork
 ) -> None:
-    use_case = UpdateBackupSettingsUseCase(backup_repository, uow)
+    use_case = UpdateBackupSettingsUseCase(backup_repository, uow, RecordingEventPublisher())
     result = await use_case(OWNER, UpdateBackupSettingsDto(enabled=True, interval_hours=6))
     assert result.enabled is True
     assert result.interval_hours == 6
@@ -79,10 +81,12 @@ async def test_owner_can_update_settings(
 async def test_owner_can_reset_settings(
     backup_repository: BackupRepository, uow: UnitOfWork
 ) -> None:
-    await UpdateBackupSettingsUseCase(backup_repository, uow)(
+    await UpdateBackupSettingsUseCase(backup_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBackupSettingsDto(enabled=True, interval_hours=6)
     )
-    result = await ResetBackupSettingsUseCase(backup_repository, uow)(OWNER)
+    result = await ResetBackupSettingsUseCase(backup_repository, uow, RecordingEventPublisher())(
+        OWNER
+    )
     assert result.enabled is False
     assert result.interval_hours == 24
 
@@ -90,7 +94,7 @@ async def test_owner_can_reset_settings(
 async def test_admin_without_grant_cannot_reset_settings(
     backup_repository: BackupRepository, uow: UnitOfWork
 ) -> None:
-    use_case = ResetBackupSettingsUseCase(backup_repository, uow)
+    use_case = ResetBackupSettingsUseCase(backup_repository, uow, RecordingEventPublisher())
     with pytest.raises(PermissionDeniedError):
         await use_case(ADMIN_NO_GRANT)
 
@@ -99,8 +103,8 @@ async def test_create_backup_run_enqueues_task(
     backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
     dispatch = RecordingDispatch()
-    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
-    run = await use_case(owner, BackupKind.DATABASE)
+    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch, RecordingEventPublisher())
+    run = await use_case(owner, StartBackupRunDto(kind=BackupKind.DATABASE))
     assert run.status.name == "PENDING"
     assert dispatch.messages == [{"kind": "DATABASE", "run_id": run.id}]
 
@@ -116,9 +120,11 @@ async def test_an_api_token_can_start_a_backup_run(
         log="[token]",
         permission_grants=[Permission.BACKUPS_RUN_CREATE.value],
     )
-    use_case = CreateBackupRunUseCase(backup_repository, uow, RecordingDispatch())
+    use_case = CreateBackupRunUseCase(
+        backup_repository, uow, RecordingDispatch(), RecordingEventPublisher()
+    )
 
-    run = await use_case(token_actor, BackupKind.DATABASE)
+    run = await use_case(token_actor, StartBackupRunDto(kind=BackupKind.DATABASE))
 
     assert run.triggered_by is None
 
@@ -127,22 +133,22 @@ async def test_create_backup_run_rejects_when_already_running(
     backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
     dispatch = RecordingDispatch()
-    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
-    await use_case(owner, BackupKind.DATABASE)
+    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch, RecordingEventPublisher())
+    await use_case(owner, StartBackupRunDto(kind=BackupKind.DATABASE))
     async with uow:
         runs, _ = await backup_repository.list_runs(kind=BackupKind.DATABASE)
         await backup_repository.mark_running(runs[0].id)
 
     with pytest.raises(ConflictError):
-        await use_case(owner, BackupKind.DATABASE)
+        await use_case(owner, StartBackupRunDto(kind=BackupKind.DATABASE))
 
 
 async def test_create_backup_run_ignores_a_stranded_run(
     backup_repository: BackupRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
     dispatch = RecordingDispatch()
-    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch)
-    stranded = await use_case(owner, BackupKind.DATABASE)
+    use_case = CreateBackupRunUseCase(backup_repository, uow, dispatch, RecordingEventPublisher())
+    stranded = await use_case(owner, StartBackupRunDto(kind=BackupKind.DATABASE))
     async with uow:
         await backup_repository.mark_running(stranded.id)
         await backup_repository.session.execute(
@@ -154,7 +160,7 @@ async def test_create_backup_run_ignores_a_stranded_run(
             )
         )
 
-    run = await use_case(owner, BackupKind.DATABASE)
+    run = await use_case(owner, StartBackupRunDto(kind=BackupKind.DATABASE))
     assert run.status.name == "PENDING"
 
 
@@ -183,7 +189,7 @@ async def test_delete_backup_run_removes_it(
 ) -> None:
     async with uow:
         created = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
-    use_case = DeleteBackupRunUseCase(backup_repository, uow)
+    use_case = DeleteBackupRunUseCase(backup_repository, uow, RecordingEventPublisher())
     await use_case(OWNER, created.id)
     with pytest.raises(NotFoundError):
         await backup_repository.get_run(created.id)
@@ -201,7 +207,7 @@ async def test_delete_backup_run_does_not_unlink_file_when_commit_fails(
             created.id, file_path=str(dump_file), size_bytes=1, checksum_sha256="a" * 64
         )
 
-    use_case = DeleteBackupRunUseCase(backup_repository, uow)
+    use_case = DeleteBackupRunUseCase(backup_repository, uow, RecordingEventPublisher())
     # the row delete flushes, the commit fails: the file is unlinked only after
     # a clean commit, so it must survive
     with patch.object(uow, "commit", AsyncMock(side_effect=RuntimeError("commit failed"))):

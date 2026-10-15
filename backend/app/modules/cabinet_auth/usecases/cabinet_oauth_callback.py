@@ -7,9 +7,9 @@ from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
+from app.modules.cabinet_auth.cookies import hash_binding
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
-from app.modules.cabinet_auth.usecases.cabinet_oauth_authorize import hash_binding
 from app.modules.oauth import (
     OAUTH_EXCHANGE_ERRORS,
     OAuthFlowPurpose,

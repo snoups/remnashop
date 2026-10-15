@@ -3,8 +3,8 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.users.dto import UserListItemDto
+from app.modules.users.listing import ALLOWED_ROLES, STAFF_ROLES
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.list_users import ALLOWED_ROLES, STAFF_ROLES
 
 
 class GetUserUseCase(UseCase[int, UserListItemDto]):

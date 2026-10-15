@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.transactions.api.schemas import (
@@ -21,8 +22,6 @@ from app.modules.transactions.api.schemas import (
     TransactionSummaryResponse,
 )
 from app.modules.transactions.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     GetTransactionSummaryDto,
     ListTransactionsDto,
     TransactionWithUserDto,
@@ -58,7 +57,7 @@ async def list_transactions(
     purchase_type: Optional[PurchaseType] = None,
     created_from: Optional[datetime] = None,
     created_to: Optional[datetime] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     user_id: Optional[int] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
@@ -91,7 +90,7 @@ async def get_transaction_summary(
     purchase_type: Optional[PurchaseType] = None,
     created_from: Optional[datetime] = None,
     created_to: Optional[datetime] = None,
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     user_id: Optional[int] = None,
 ) -> TransactionSummaryResponse:
     summary = await use_case(

@@ -5,9 +5,9 @@ import pytest
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import RetryableTaskError
 from app.modules.customer_notifications.dto import SendCustomerTelegramDto
-from app.modules.customer_notifications.usecases import send_customer_telegram
-from app.modules.customer_notifications.usecases.send_customer_telegram import (
+from app.modules.customer_notifications.usecases import (
     SendCustomerTelegramUseCase,
+    send_customer_telegram,
 )
 from app.modules.notifications import TelegramSendResult
 from app.modules.users.dto import CreateUserDto, UserDto

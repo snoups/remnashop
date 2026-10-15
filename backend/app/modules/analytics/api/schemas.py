@@ -77,7 +77,8 @@ class CohortRowResponse(BaseModel):
 
 
 class CohortsResponse(BaseModel):
-    cohorts: list[CohortRowResponse]
+    items: list[CohortRowResponse]
+    total: int
 
 
 class LtvBucketResponse(BaseModel):

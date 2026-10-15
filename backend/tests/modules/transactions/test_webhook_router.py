@@ -601,13 +601,13 @@ async def test_provider_cancel_gives_back_the_purchase_discount_once(
     _install_stub(monkeypatch, _StubGateway(signal=canceled))
 
     await client.post("/api/v1/payments/yookassa", content=b"{}")
-    assert (await user_repository.get_by_id(user_id)).purchase_discount == 20
+    assert (await user_repository.find_by_id(user_id)).purchase_discount == 20
 
     # spent again elsewhere; a repeated CANCELED must not hand it back a second time
     async with uow:
         assert await user_repository.spend_purchase_discount(user_id, 20)
     await client.post("/api/v1/payments/yookassa", content=b"{}")
-    assert (await user_repository.get_by_id(user_id)).purchase_discount == 0
+    assert (await user_repository.find_by_id(user_id)).purchase_discount == 0
 
 
 async def test_late_payment_for_a_canceled_discounted_order_is_not_fulfilled(

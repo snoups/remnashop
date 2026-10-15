@@ -25,20 +25,18 @@ class UpdateCurrencyRateUseCase(UseCase[UpdateCurrencyRateDto, list[CurrencyRate
 
     async def _execute(self, actor: Actor, data: UpdateCurrencyRateDto) -> list[CurrencyRateDto]:
         async with self._uow:
+            # under the same lock update_rate takes, so the audited old rate is the replaced one
+            await self._pricing_repository.lock_settings()
             old_row = (await self._pricing_repository.get_rate_table()).for_currency(data.currency)
-
-        async with self._uow:
             await self._pricing_repository.update_rate(data)
             await self._event_publisher.publish(
                 CurrencyRateChangedEvent(
-                    user=actor,
+                    actor=actor,
                     currency=data.currency,
                     old_rate=str(old_row.rate),
                     new_rate=str(data.rate),
                 )
             )
-
-        async with self._uow:
             table = await self._pricing_repository.get_rate_table()
-            logger.info(f"{actor.log} Updated currency rate for '{data.currency}'")
-            return list(table.rows.values())
+        logger.info(f"{actor.log} Updated currency rate for '{data.currency}'")
+        return list(table.rows.values())

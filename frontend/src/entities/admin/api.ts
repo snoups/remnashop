@@ -89,9 +89,10 @@ export interface PermissionCatalogEntry {
 }
 
 interface PermissionCatalogResponse {
-  entries: PermissionCatalogEntry[];
+  items: PermissionCatalogEntry[];
+  total: number;
 }
 
 export function getPermissionCatalog(signal?: AbortSignal): Promise<PermissionCatalogEntry[]> {
-  return apiGet<PermissionCatalogResponse>("/permissions/catalog", signal).then((response) => response.entries);
+  return apiGet<PermissionCatalogResponse>("/permissions/catalog", signal).then((response) => response.items);
 }

@@ -6,12 +6,12 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from dishka import FromDishka
 from fluentogram import TranslatorHub
 
+from app.core.constants import WEBAUTH_START_PREFIX
 from app.modules.cabinet_auth import ConfirmDeeplinkUseCase, DeeplinkStore, TelegramProfileDto
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 
-_WEBAUTH_PREFIX: Final[str] = "webauth_"
-_WEBAUTH_PAYLOAD: Final[str] = rf"^{_WEBAUTH_PREFIX}[A-Za-z0-9_-]{{20,64}}$"
+_WEBAUTH_PAYLOAD: Final[str] = rf"^{WEBAUTH_START_PREFIX}[A-Za-z0-9_-]{{20,64}}$"
 # callback_data is capped at 64 bytes; a 43-char token fits
 _CONFIRM_PREFIX: Final[str] = "webauth:"
 
@@ -28,7 +28,7 @@ async def on_start_webauth(
     if user is None:
         return
     runner = get_translator(i18n, user)
-    token = (message.text or "").split(maxsplit=1)[-1].removeprefix(_WEBAUTH_PREFIX)
+    token = (message.text or "").split(maxsplit=1)[-1].removeprefix(WEBAUTH_START_PREFIX)
     pending = await store.peek(token)
     if pending is None:
         await message.answer(runner.get("ntf-cabinet-login.expired"))

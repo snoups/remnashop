@@ -10,12 +10,12 @@ from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
 from app.core.security.permissions import Permission, assert_grantable
 from app.core.usecase import UseCase
-from app.modules.users.dto import PromoteAdminDto, PromoteToAdminDto, UserDto
+from app.modules.users.dto import AdminWithPasswordDto, PromoteAdminDto, PromoteToAdminDto
 from app.modules.users.events import AdminPromotedEvent
 from app.modules.users.repository import UserRepository
 
 
-class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[str]]]):
+class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
     required_permission = Permission.ADMINS_MANAGE
 
     def __init__(
@@ -30,16 +30,14 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
         self._config = config
         self._event_publisher = event_publisher
 
-    async def _execute(
-        self, actor: Actor, data: PromoteToAdminDto
-    ) -> tuple[UserDto, Optional[str]]:
+    async def _execute(self, actor: Actor, data: PromoteToAdminDto) -> AdminWithPasswordDto:
         async with self._uow:
             assert_grantable(data.permission_grants)
             assert_grantable(data.permission_revokes)
 
             target = None
             if data.user_id is not None:
-                target = await self._user_repository.get_by_id(data.user_id)
+                target = await self._user_repository.find_by_id(data.user_id)
             elif data.email:
                 target = await self._user_repository.get_by_email(data.email)
             elif data.telegram_username:
@@ -83,4 +81,4 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, tuple[UserDto, Optional[s
                 AdminPromotedEvent(actor=actor, target=updated, ip_address=data.client_ip)
             )
 
-        return updated, password
+        return AdminWithPasswordDto(admin=updated, password=password)

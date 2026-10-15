@@ -9,16 +9,21 @@ from app.core.actor import Actor
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, SubscriptionStatus
-from app.core.events import set_fields
+from app.core.events import changed_fields
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription, lock_live_subscription
+from app.modules.subscriptions.eligibility import (
+    get_live_subscription,
+    lock_live_subscription,
+    subscription_owner,
+)
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel import restore
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases.purchase_subscription.panel import restore
+from app.modules.users import UserRepository
 
 
 def _effective(base: int, subscription: SubscriptionDto, addon_type: AddOnType) -> int:
@@ -33,12 +38,14 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
     def __init__(
         self,
         subscription_repository: SubscriptionRepository,
+        user_repository: UserRepository,
         remnawave_sdk: RemnawaveSDK,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
         lifecycle_service: SubscriptionLifecycleService,
     ) -> None:
         self._subscription_repository = subscription_repository
+        self._user_repository = user_repository
         self._remnawave_sdk = remnawave_sdk
         self._event_publisher = event_publisher
         self._uow = uow
@@ -81,12 +88,16 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
                     subscription = await self._lifecycle_service.sync_status(
                         subscription.id, panel_status
                     )
+                subscriber = await subscription_owner(self._user_repository, subscription)
                 await self._event_publisher.publish(
                     SubscriptionEditedEvent(
-                        user=actor,
+                        actor=actor,
+                        target=subscriber,
                         action="update",
                         subscription_id=data.subscription_id,
-                        changed_fields=set_fields(data, skip=frozenset({"subscription_id"})),
+                        changed_fields=changed_fields(
+                            old, subscription, set(vars(data)) - {"subscription_id"}
+                        ),
                     )
                 )
         except Exception:

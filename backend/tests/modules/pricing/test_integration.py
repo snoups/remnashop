@@ -33,7 +33,7 @@ from app.modules.subscriptions.usecases import ListActivePlansUseCase
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
+from app.modules.transactions.usecases import CreateCheckoutUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository

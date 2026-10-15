@@ -1,5 +1,4 @@
 from dishka import Provider, Scope, alias, provide, provide_all
-from redis.asyncio import Redis
 
 from app.core.ports import PasskeyRevoker
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
@@ -15,10 +14,11 @@ from app.modules.passkeys.usecases import (
 )
 
 
-class PasskeysDIProvider(Provider):
+class PasskeysProvider(Provider):
     scope = Scope.REQUEST
 
     passkey_repository = provide(PasskeyRepository)
+    passkey_challenge_store = provide(PasskeyChallengeStore)
     use_cases = provide_all(
         ListPasskeysUseCase,
         GetPasskeyRegistrationOptionsUseCase,
@@ -30,10 +30,6 @@ class PasskeysDIProvider(Provider):
     )
     passkey_revoker = alias(source=PasskeyRepository, provides=PasskeyRevoker)
 
-    @provide
-    def get_passkey_challenge_store(self, redis: Redis) -> PasskeyChallengeStore:
-        return PasskeyChallengeStore(redis)
-
 
 def get_passkeys_providers() -> list[Provider]:
-    return [PasskeysDIProvider()]
+    return [PasskeysProvider()]

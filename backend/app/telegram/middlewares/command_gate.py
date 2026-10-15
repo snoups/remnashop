@@ -5,7 +5,7 @@ from dishka import AsyncContainer
 
 from app.core.constants import CONTAINER_KEY
 from app.core.enums import MiddlewareEventType
-from app.modules.settings import BOT_COMMANDS, GetBotCommandsUseCase
+from app.modules.settings import BOT_COMMANDS, GetBotCommandsDto, GetBotCommandsUseCase
 from app.telegram.middlewares.base import EventTypedMiddleware
 
 _CURRENT_COMMAND_NAMES: Final[frozenset[str]] = frozenset(item.command for item in BOT_COMMANDS)
@@ -34,7 +34,7 @@ class CommandGateMiddleware(EventTypedMiddleware):
         if command in _CURRENT_COMMAND_NAMES:
             container: AsyncContainer = data[CONTAINER_KEY]
             use_case = await container.get(GetBotCommandsUseCase)
-            commands = await use_case.system()
+            commands = await use_case.system(GetBotCommandsDto())
             disabled = {item.command for item in commands if not item.enabled}
             if command in disabled:
                 return None

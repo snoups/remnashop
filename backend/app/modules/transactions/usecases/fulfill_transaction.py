@@ -16,7 +16,7 @@ from app.modules.transactions.dto import TransactionWithUserDto
 from app.modules.transactions.events import TransactionFulfilledManuallyEvent
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.transactions.usecases.visibility import visible_transaction
+from app.modules.transactions.visibility import visible_transaction
 from app.modules.users import UserRepository
 
 # the gateway reported no payment, the admin confirms it was received after all
@@ -48,7 +48,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
         async with self._uow:
             # two admins clicking at once: the second waits here and sees the first's result
             order = await self._transaction_repository.get_by_id_for_update(data)
-            user = await self._user_repository.get_by_id(order.user_id)
+            user = await self._user_repository.find_by_id(order.user_id)
             unpaid = order.status in _UNPAID_FINAL
             unfulfilled = order.status is TransactionStatus.PAID and order.fulfilled_at is None
             if order.is_test or user is None or not (unpaid or unfulfilled):
@@ -88,8 +88,8 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
                     partial(dispatch_fulfillment, self._purchase_dispatch, order)
                 )
                 logger.info(
-                    f"Transaction '{order.id}' ({order.status.value}) fulfilled manually "
-                    f"by '{actor.id}'"
+                    f"{actor.log} Fulfilled transaction '{order.id}' ({order.status.value}) "
+                    f"manually"
                 )
 
         async with self._uow:

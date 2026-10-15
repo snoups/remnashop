@@ -33,11 +33,6 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: CreatePromocodeDto) -> PromocodeDto:
-        async with self._uow:
-            await self._validate_reward(data)
-            await check_allowed_plans(
-                data.reward_type, data.allowed_plan_ids, self._plan_repository
-            )
         if data.availability == PromocodeAvailability.ALLOWED and not data.allowed_user_ids:
             raise ValidationError(
                 "availability=ALLOWED requires at least one allowed user id",
@@ -45,9 +40,13 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
             )
 
         async with self._uow:
+            await self._validate_reward(data)
+            await check_allowed_plans(
+                data.reward_type, data.allowed_plan_ids, self._plan_repository
+            )
             promo = await self._promocode_repository.create(data)
             await self._event_publisher.publish(
-                PromocodeChangedEvent(user=actor, action="create", promocode_id=promo.id)
+                PromocodeChangedEvent(actor=actor, action="create", promocode_id=promo.id)
             )
         logger.info(f"{actor.log} Created promocode '{promo.code}'")
         return promo

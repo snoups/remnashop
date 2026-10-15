@@ -3,7 +3,7 @@ from typing import Final
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind, Locale
-from app.core.ports import BotSignals
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
@@ -11,6 +11,7 @@ from app.modules.dialogs.dto import (
     DialogWindowDto,
     UpdateDialogWindowButtonsDto,
 )
+from app.modules.dialogs.events import DialogChangedEvent
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.validation import validate_buttons
 from app.modules.translations import (
@@ -33,11 +34,13 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, Dia
         translation_repository: TranslationRepository,
         uow: UnitOfWork,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._dialog_repository = dialog_repository
         self._translation_repository = translation_repository
         self._uow = uow
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UpdateDialogWindowButtonsDto) -> DialogWindowDto:
         async with self._uow:
@@ -62,7 +65,7 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, Dia
             )
 
             locales = await self._translation_repository.list_active_locales()
-        async with self._uow:
+
             seeded = False
             for button in data.buttons:
                 if button.text_key.startswith(catalog.CUSTOM_TEXT_KEY_PREFIX):
@@ -75,6 +78,9 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, Dia
             if seeded:
                 await self._check_locales_compile(locales)
             updated = await self._dialog_repository.replace_buttons(data.key, data.buttons)
+            await self._event_publisher.publish(
+                DialogChangedEvent(actor=actor, action="buttons", window_key=data.key)
+            )
         await self._bot_signals.dialogs_changed()
         return updated
 

@@ -34,18 +34,20 @@ from app.modules.referrals.dto import (
 )
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases.adjust_user_bonus_days import AdjustUserBonusDaysUseCase
-from app.modules.referrals.usecases.adjust_user_points import AdjustUserPointsUseCase
-from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
-from app.modules.referrals.usecases.get_referral_settings import GetReferralSettingsUseCase
-from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
-from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
-from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
-from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
-from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
-from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
-from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
-from app.modules.referrals.usecases.update_referral_settings import UpdateReferralSettingsUseCase
+from app.modules.referrals.usecases import (
+    AdjustUserBonusDaysUseCase,
+    AdjustUserPointsUseCase,
+    GetOwnReferralStatsUseCase,
+    GetReferralSettingsUseCase,
+    GetUserReferralRevenueUseCase,
+    GetUserReferralStatsUseCase,
+    ListInvitedUsersUseCase,
+    ListReferralsUseCase,
+    RequestPointsWithdrawalUseCase,
+    ResetReferralCodeUseCase,
+    ResetReferralSettingsUseCase,
+    UpdateReferralSettingsUseCase,
+)
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -111,12 +113,12 @@ async def test_request_withdrawal_does_not_touch_points(
 ) -> None:
     user = await _create_user(user_repository, 5002)
     await user_repository.credit_points(user.id, Decimal("50"))
-    refreshed = await user_repository.get_by_id(user.id)
+    refreshed = await user_repository.find_by_id(user.id)
     use_case = RequestPointsWithdrawalUseCase(uow, event_publisher)
 
     await use_case(refreshed, RequestPointsWithdrawalDto(amount=Decimal("20")))
 
-    unchanged = await user_repository.get_by_id(user.id)
+    unchanged = await user_repository.find_by_id(user.id)
     assert unchanged.points == Decimal("50")
 
 
@@ -128,7 +130,10 @@ async def test_adjust_user_points_requires_permission(
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(regular_actor, AdjustUserPointsDto(user_id=target.id, delta=Decimal("10")))
+        await use_case(
+            regular_actor,
+            AdjustUserPointsDto(user_id=target.id, delta=Decimal("10"), client_ip="127.0.0.1"),
+        )
 
 
 async def test_adjust_user_points_owner_can_increase_and_decrease(
@@ -137,10 +142,14 @@ async def test_adjust_user_points_owner_can_increase_and_decrease(
     target = await _create_user(user_repository, 5004)
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
-    await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("30")))
-    await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("-10")))
+    await use_case(
+        OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("30"), client_ip="127.0.0.1")
+    )
+    await use_case(
+        OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("-10"), client_ip="127.0.0.1")
+    )
 
-    updated = await user_repository.get_by_id(target.id)
+    updated = await user_repository.find_by_id(target.id)
     assert updated.points == Decimal("20")
 
 
@@ -153,9 +162,12 @@ async def test_adjust_user_points_below_zero_raises_validation_error(
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("-20")))
+        await use_case(
+            OWNER,
+            AdjustUserPointsDto(user_id=target.id, delta=Decimal("-20"), client_ip="127.0.0.1"),
+        )
 
-    unchanged = await user_repository.get_by_id(target.id)
+    unchanged = await user_repository.find_by_id(target.id)
     assert unchanged.points == Decimal("10")
 
 
@@ -165,7 +177,9 @@ async def test_adjust_user_points_publishes_event(
     target = await _create_user(user_repository, 5006)
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
-    await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("15")))
+    await use_case(
+        OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("15"), client_ip="127.0.0.1")
+    )
 
     rows = (
         await session.scalars(
@@ -656,10 +670,12 @@ async def test_adjust_user_points_above_the_column_limit_raises_validation_error
     use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
 
     with pytest.raises(ValidationError) as error:
-        await use_case(OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("5")))
+        await use_case(
+            OWNER, AdjustUserPointsDto(user_id=target.id, delta=Decimal("5"), client_ip="127.0.0.1")
+        )
 
     assert error.value.code is ErrorCode.POINTS_LIMIT_EXCEEDED
-    unchanged = await user_repository.get_by_id(target.id)
+    unchanged = await user_repository.find_by_id(target.id)
     assert unchanged.points == Decimal(10**12 - 2)
 
 
@@ -693,11 +709,12 @@ def _per_user_call(name, referral_repository, user_repository, uow, event_publis
             )
         if name == "adjust_points":
             return AdjustUserPointsUseCase(user_repository, uow, event_publisher)(
-                actor, AdjustUserPointsDto(user_id=user_id, delta=Decimal("1"))
+                actor,
+                AdjustUserPointsDto(user_id=user_id, delta=Decimal("1"), client_ip="127.0.0.1"),
             )
         if name == "adjust_days":
             return AdjustUserBonusDaysUseCase(user_repository, uow, event_publisher)(
-                actor, AdjustUserBonusDaysDto(user_id=user_id, delta=1)
+                actor, AdjustUserBonusDaysDto(user_id=user_id, delta=1, client_ip="127.0.0.1")
             )
         return ResetReferralCodeUseCase(user_repository, uow, event_publisher)(actor, user_id)
 
@@ -729,7 +746,7 @@ async def test_per_user_referral_routes_hide_staff_without_admins_manage(
         await call(admin, staff.id)
 
     assert error.value.code is ErrorCode.USER_NOT_FOUND
-    unchanged = await user_repository.get_by_id(staff.id)
+    unchanged = await user_repository.find_by_id(staff.id)
     assert unchanged is not None and unchanged.referral_code == staff.referral_code
     await call(OWNER, staff.id)
 

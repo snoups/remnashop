@@ -130,7 +130,7 @@ class VerifyPasskeyAuthenticationUseCase:
             ) from error
 
         async with self._uow:
-            user = await self._user_repository.get_by_id(stored.user_id)
+            user = await self._user_repository.find_by_id(stored.user_id)
         # Same generic message whether the user record is gone, blocked or no longer staff --
         # matches LoginUseCase/OAuthLoginCallbackUseCase's no-enumeration rule.
         if user is None or user.is_blocked or not user.is_privileged:

@@ -33,7 +33,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
         # a stale, foreign or disabled link just leaves the newcomer unattached
         async with self._uow:
             settings = await self._referral_repository.get_settings()
-            user = await self._user_repository.get_by_id(data.user_id)
+            user = await self._user_repository.find_by_id(data.user_id)
             referrer = await self._user_repository.get_by_referral_code(data.referral_code)
         if user is None or user.deleted_at is not None or not settings.enabled:
             return

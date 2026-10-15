@@ -6,7 +6,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.accept_rules import AcceptRulesUseCase
+from app.modules.users.usecases import AcceptRulesUseCase
 
 
 async def test_accepting_rules_stamps_the_user_and_records_the_event(
@@ -20,7 +20,7 @@ async def test_accepting_rules_stamps_the_user_and_records_the_event(
     updated = await AcceptRulesUseCase(user_repository, uow, event_publisher)(user)
 
     assert updated.rules_accepted_at is not None
-    stored = await user_repository.get_by_id(user.id)
+    stored = await user_repository.find_by_id(user.id)
     assert stored is not None and stored.rules_accepted_at == updated.rules_accepted_at
     events = (
         await session.scalars(

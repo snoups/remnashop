@@ -4,23 +4,22 @@ from typing import Final, Optional
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.backup_settings import BackupSettings
 from app.core.db.partial_update import apply_partial_update
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import (
-    DEFAULT_PAGE_SIZE,
     BackupRunDto,
     BackupSettingsDto,
     CreateBackupRunDto,
     UpdateBackupSettingsDto,
 )
 
-_SINGLETON_ID: Final[int] = 1
 # one key per backup kind, so two worker runs of one kind decide one at a time
 _BACKUP_KIND_LOCK_KEY: Final[int] = 8221942
 
@@ -36,11 +35,11 @@ class BackupRepository:
         return BackupRunDto.model_validate(row, from_attributes=True)
 
     async def get_settings(self) -> BackupSettingsDto:
-        row = await get_or_create_singleton(self.session, BackupSettings, _SINGLETON_ID)
+        row = await get_or_create_singleton(self.session, BackupSettings, SINGLETON_ID)
         return self._to_settings_dto(row)
 
     async def update_settings(self, data: UpdateBackupSettingsDto) -> BackupSettingsDto:
-        row = await get_or_create_singleton(self.session, BackupSettings, _SINGLETON_ID)
+        row = await get_or_create_singleton(self.session, BackupSettings, SINGLETON_ID)
         apply_partial_update(row, data)
         await self.session.flush()
         await self.session.refresh(row)

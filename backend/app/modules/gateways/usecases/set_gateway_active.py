@@ -34,18 +34,17 @@ class SetGatewayActiveUseCase(UseCase[SetGatewayActiveDto, PaymentGatewayDto]):
                     code=ErrorCode.GATEWAY_NOT_CONFIGURED,
                 )
 
-        async with self._uow:
             gateway = await self._gateway_repository.set_active(data.type, data.is_active)
             await self._event_publisher.publish(
                 GatewayChangedEvent(
-                    user=actor,
+                    actor=actor,
                     action="enable" if data.is_active else "disable",
                     gateway_type=data.type.value,
                     is_active=gateway.is_active,
                 )
             )
         logger.info(
-            f"Gateway '{data.type.value}' active status set to '{gateway.is_active}' "
-            f"by actor {actor.log}"
+            f"{actor.log} {'Enabled' if gateway.is_active else 'Disabled'} gateway "
+            f"'{data.type.value}'"
         )
         return gateway

@@ -2,11 +2,12 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import BotSignals
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import UpdateDialogTextDto
+from app.modules.dialogs.events import DialogChangedEvent
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.validation import validate_window_text
 from app.modules.translations import (
@@ -27,11 +28,13 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
         dialog_repository: DialogRepository,
         uow: UnitOfWork,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._translation_repository = translation_repository
         self._dialog_repository = dialog_repository
         self._uow = uow
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UpdateDialogTextDto) -> TranslationEntryDto:
         async with self._uow:
@@ -100,7 +103,6 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
             candidate_text = serialize_to_fluent(candidate)
             assert_fluent_compiles(data.locale, candidate_text)
 
-        async with self._uow:
             if catalog.is_icon_text_key(full_key):
                 # An icon row exists only once something sets it: the assets seed
                 # a few glyphs and no premium ids. Empty default, so a reset
@@ -110,6 +112,9 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
                 )
             updated = await self._translation_repository.update_value(
                 data.locale, data.message_id, data.attribute_id, data.value
+            )
+            await self._event_publisher.publish(
+                DialogChangedEvent(actor=actor, action="text", window_key=window_key)
             )
 
         await self._bot_signals.translation_changed(

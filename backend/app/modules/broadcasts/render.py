@@ -6,6 +6,7 @@ from typing import Any, Final, Optional
 from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
+from app.core.constants import T_ME
 from app.core.enums import BroadcastButtonKind, BroadcastCategory, Locale
 from app.modules.broadcasts.content import render_text
 from app.modules.broadcasts.dto import BroadcastContentDto, BroadcastDto, RecipientContextDto
@@ -53,7 +54,7 @@ class BroadcastRenderer:
         bot_username: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
         rows: list[list[dict[str, str]]] = []
-        link = f"https://t.me/{bot_username}" if bot_username else None
+        link = f"{T_ME}{bot_username}" if bot_username else None
         for button, label in zip(self._broadcast.buttons, labels, strict=True):
             if button.kind is BroadcastButtonKind.URL and button.url:
                 rows.append([{"text": label, "url": button.url}])

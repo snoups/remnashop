@@ -5,7 +5,7 @@ from typing import Final, Optional
 from sqlalchemy import Integer, Numeric, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import MAX_SQL_IN_PARAMS
+from app.core.db.filters import in_ids
 from app.core.db.models.subscription import Subscription
 from app.core.enums import Currency, SubscriptionStatus
 from app.modules.subscriptions.domain import OWNED_STATUSES
@@ -85,27 +85,23 @@ class SubscriptionStatsRepository:
         if not user_ids:
             return set()
         connected: set[int] = set()
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = select(Subscription.user_id.distinct()).where(
-                Subscription.user_id.in_(chunk),
-                Subscription.first_connected_at.is_not(None),
-            )
-            connected.update((await self.session.execute(stmt)).scalars().all())
+        stmt = select(Subscription.user_id.distinct()).where(
+            in_ids(Subscription.user_id, user_ids),
+            Subscription.first_connected_at.is_not(None),
+        )
+        connected.update((await self.session.execute(stmt)).scalars().all())
         return connected
 
     async def list_user_ids_with_trial(self, user_ids: list[int]) -> set[int]:
         if not user_ids:
             return set()
         trial_users: set[int] = set()
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = select(Subscription.user_id.distinct()).where(
-                Subscription.user_id.in_(chunk),
-                Subscription.is_trial.is_(True),
-            )
-            result = await self.session.execute(stmt)
-            trial_users.update(result.scalars().all())
+        stmt = select(Subscription.user_id.distinct()).where(
+            in_ids(Subscription.user_id, user_ids),
+            Subscription.is_trial.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        trial_users.update(result.scalars().all())
         return trial_users
 
     async def list_trials_started(

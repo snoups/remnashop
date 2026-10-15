@@ -10,10 +10,15 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SetSubscriptionEnabledDto, SubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription, lock_live_subscription
+from app.modules.subscriptions.eligibility import (
+    get_live_subscription,
+    lock_live_subscription,
+    subscription_owner,
+)
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users import UserRepository
 
 
 class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, SubscriptionDto]):
@@ -22,12 +27,14 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
     def __init__(
         self,
         subscription_repository: SubscriptionRepository,
+        user_repository: UserRepository,
         remnawave_sdk: RemnawaveSDK,
         lifecycle_service: SubscriptionLifecycleService,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
         self._subscription_repository = subscription_repository
+        self._user_repository = user_repository
         self._remnawave_sdk = remnawave_sdk
         self._lifecycle_service = lifecycle_service
         self._event_publisher = event_publisher
@@ -52,9 +59,13 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
                 updated = await self._lifecycle_service.sync_status(
                     subscription.id, SubscriptionStatus(panel_status)
                 )
+                subscriber = await subscription_owner(self._user_repository, subscription)
                 await self._event_publisher.publish(
                     SubscriptionEditedEvent(
-                        user=actor, action=action, subscription_id=subscription.id
+                        actor=actor,
+                        target=subscriber,
+                        action=action,
+                        subscription_id=subscription.id,
                     )
                 )
         except Exception:

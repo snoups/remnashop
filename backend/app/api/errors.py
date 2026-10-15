@@ -86,7 +86,8 @@ GLOBAL_ERROR_RESPONSES: Final[dict[int | str, dict[str, Any]]] = {
         "model": RequestInvalidResponse,
         "description": "Request validation failed",
     },
-    **error_responses(status.HTTP_429_TOO_MANY_REQUESTS),
+    # BodySizeLimitMiddleware caps every request body
+    **error_responses(status.HTTP_413_CONTENT_TOO_LARGE, status.HTTP_429_TOO_MANY_REQUESTS),
 }
 
 

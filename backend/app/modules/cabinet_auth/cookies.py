@@ -1,3 +1,4 @@
+import hashlib
 from typing import Final
 
 from fastapi import Response
@@ -51,3 +52,7 @@ def set_oauth_cookie(response: Response, binding: str, secure: bool) -> None:
         samesite="strict",
         path=CABINET_REFRESH_PATH,
     )
+
+
+def hash_binding(binding: str) -> str:
+    return hashlib.sha256(binding.encode()).hexdigest()

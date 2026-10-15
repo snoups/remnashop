@@ -290,8 +290,10 @@ export function importDialogs(payload: DialogExportPayload): Promise<null> {
   return apiPost<null, DialogExportPayload>("/dialogs/actions/import", payload);
 }
 
-export function resetAll(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/dialogs/actions/reset-all", {});
+export function resetAll(): Promise<DialogWindow[]> {
+  return apiPost<ListResponse<DialogWindow>, Record<string, never>>("/dialogs/actions/reset-all", {}).then(
+    (response) => response.items,
+  );
 }
 
 export function updateDialogText(

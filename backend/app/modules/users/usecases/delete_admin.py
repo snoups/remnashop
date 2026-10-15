@@ -32,8 +32,8 @@ class DeleteAdminUseCase(UseCase[DeleteAdminDto, None]):
 
     async def _execute(self, actor: Actor, data: DeleteAdminDto) -> None:
         async with self._uow:
-            target = await self._user_repository.get_by_id(data.user_id)
-            if target is None or target.deleted_at is not None:
+            target = await self._user_repository.find_live_for_update(data.user_id)
+            if target is None:
                 raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
             if target.role != Role.ADMIN:
                 raise ConflictError(
@@ -44,7 +44,6 @@ class DeleteAdminUseCase(UseCase[DeleteAdminDto, None]):
                     "Cannot delete your own account", code=ErrorCode.CANNOT_DELETE_SELF
                 )
 
-        async with self._uow:
             # Same lifecycle as a customer deletion (an admin may be a promoted
             # customer with live subscriptions and paid orders): panel access
             # first, then a soft delete that keeps payment history.

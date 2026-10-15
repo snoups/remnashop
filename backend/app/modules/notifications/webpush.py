@@ -6,11 +6,12 @@ import requests
 from loguru import logger
 from pywebpush import WebPushException, webpush
 
+from app.core.constants import TTL_1D
 from app.core.db.uow import UnitOfWork
 from app.modules.notifications.dto import PushMessage, PushSubscriptionDto
 from app.modules.notifications.repository import NotificationRepository
 
-_TTL_SECONDS: Final[int] = 24 * 60 * 60
+_TTL_SECONDS: Final[int] = TTL_1D
 _TIMEOUT_SECONDS: Final[float] = 10.0
 _GONE_STATUSES: Final[frozenset[int]] = frozenset({404, 410})
 # our payload was too big, not the device's fault

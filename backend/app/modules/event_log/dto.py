@@ -2,11 +2,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Optional
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto
 from app.core.events import EventCategory
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 
 NOTIFICATIONS_LIMIT: Final[int] = 20
 

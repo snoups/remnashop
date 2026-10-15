@@ -7,7 +7,7 @@ from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto, ListBlacklistMatchesDto, UserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.list_blacklist_matches import ListBlacklistMatchesUseCase
+from app.modules.users.usecases import ListBlacklistMatchesUseCase
 
 
 async def test_lists_users_with_their_origins(

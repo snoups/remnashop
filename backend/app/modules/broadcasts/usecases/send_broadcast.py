@@ -1,4 +1,5 @@
 from datetime import timedelta
+from functools import partial
 from typing import Final
 
 from loguru import logger
@@ -46,7 +47,7 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
                 "Send time is in the past", code=ErrorCode.BROADCAST_SCHEDULE_IN_PAST
             )
         async with self._uow:
-            broadcast = await self._broadcast_repository.lock_for_update(data.broadcast_id)
+            broadcast = await self._broadcast_repository.get_by_id_for_update(data.broadcast_id)
             if broadcast.status is not BroadcastStatus.DRAFT:
                 raise ConflictError(
                     f"Broadcast '{broadcast.id}' is {broadcast.status}",
@@ -68,14 +69,14 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
             )
             await self._event_publisher.publish(
                 BroadcastScheduledEvent(
-                    user=actor, broadcast_id=broadcast.id, scheduled_at=scheduled_at.isoformat()
+                    actor=actor, broadcast_id=broadcast.id, scheduled_at=scheduled_at.isoformat()
                 )
             )
             if scheduled_at <= now:
                 await self._uow.after_commit(
-                    lambda: self._start_dispatch.kiq(broadcast_id=broadcast.id)
+                    partial(self._start_dispatch.kiq, broadcast_id=broadcast.id)
                 )
-            result = await self._broadcast_repository.get_or_raise(broadcast.id)
+            result = await self._broadcast_repository.get_by_id(broadcast.id)
         logger.info(
             f"{actor.log} Scheduled broadcast '{broadcast.id}' at {scheduled_at.isoformat()}"
         )

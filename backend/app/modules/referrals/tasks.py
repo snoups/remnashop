@@ -9,10 +9,12 @@ from app.modules.referrals.dto import (
     ResumeBonusRenewalDto,
     ReverseReferralRewardsDto,
 )
-from app.modules.referrals.usecases import AttachReferralOnRegistrationUseCase
-from app.modules.referrals.usecases.assign_referral_rewards import AssignReferralRewardsUseCase
-from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
-from app.modules.referrals.usecases.reverse_referral_rewards import ReverseReferralRewardsUseCase
+from app.modules.referrals.usecases import (
+    AssignReferralRewardsUseCase,
+    AttachReferralOnRegistrationUseCase,
+    ResumeBonusRenewalUseCase,
+    ReverseReferralRewardsUseCase,
+)
 from app.worker.broker import broker
 
 _RESUME_MAX_RETRIES: Final[int] = 10

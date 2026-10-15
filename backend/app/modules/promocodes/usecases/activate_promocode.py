@@ -112,15 +112,14 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 user_id=actor.id,
                 subscription_id=target.id if target is not None else None,
             )
-
-        await self._apply_reward(actor, promo, target, reward_plan, activation.id)
-
-        async with self._uow:
+            # the claim is the activation, recorded even if the reward then fails
             await self._event_publisher.publish(
                 PromocodeActivatedEvent(
                     user=actor, promocode_id=promo.id, reward_type=promo.reward_type.value
                 )
             )
+
+        await self._apply_reward(actor, promo, target, reward_plan, activation.id)
 
         logger.info(f"{actor.log} Activated promocode '{promo.code}'")
         return promo

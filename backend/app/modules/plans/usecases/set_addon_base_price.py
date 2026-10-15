@@ -24,7 +24,7 @@ class SetAddOnBasePriceUseCase(UseCase[SetAddOnBasePriceDto, AddOnDto]):
         async with self._uow:
             addon = await self._addon_repository.set_base_price(data)
             await self._event_publisher.publish(
-                AddOnChangedEvent(user=actor, action="base_price", addon_id=data.addon_id)
+                AddOnChangedEvent(actor=actor, action="base_price", addon_id=data.addon_id)
             )
         logger.info(f"{actor.log} Set base price for addon '{data.addon_id}'")
         return addon

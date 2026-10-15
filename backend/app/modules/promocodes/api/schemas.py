@@ -2,9 +2,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType
+from app.core.utils.time import range_start_utc
 
 
 class PromocodeResponse(BaseModel):
@@ -50,6 +51,12 @@ class CreatePromocodeRequest(BaseModel):
     max_activations: Optional[int] = Field(default=None, ge=1)
     is_reusable: bool = False
 
+    @field_validator("expires_at")
+    @classmethod
+    def _expires_at_utc(cls, value: Optional[datetime]) -> Optional[datetime]:
+        # a naive time is taken as UTC
+        return range_start_utc(value)
+
 
 class UpdatePromocodeRequest(BaseModel):
     is_active: Optional[bool] = None
@@ -59,6 +66,12 @@ class UpdatePromocodeRequest(BaseModel):
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = Field(default=None, ge=1)
     is_reusable: Optional[bool] = None
+
+    @field_validator("expires_at")
+    @classmethod
+    def _expires_at_utc(cls, value: Optional[datetime]) -> Optional[datetime]:
+        # a naive time is taken as UTC
+        return range_start_utc(value)
 
 
 class ActivatePromocodeRequest(BaseModel):

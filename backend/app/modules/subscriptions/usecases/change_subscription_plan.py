@@ -48,7 +48,7 @@ class ChangeSubscriptionPlanUseCase(UseCase[ChangeSubscriptionPlanDto, Subscript
     async def _execute(self, actor: Actor, data: ChangeSubscriptionPlanDto) -> SubscriptionDto:
         async with self._uow:
             old = await get_live_subscription(self._subscription_repository, data.subscription_id)
-            owner = await self._user_repository.get_by_id(old.user_id)
+            owner = await self._user_repository.find_by_id(old.user_id)
             if owner is None:
                 raise NotFoundError(
                     f"User '{old.user_id}' not found", code=ErrorCode.USER_NOT_FOUND

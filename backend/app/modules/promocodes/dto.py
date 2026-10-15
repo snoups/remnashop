@@ -1,15 +1,13 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Optional
 
 from pydantic import Field
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import Currency, PromocodeAvailability, PromocodeRewardType, PromocodeStatus
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 
 
 class PromocodeDto(BaseDto, TimestampMixin):

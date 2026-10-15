@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
@@ -12,8 +13,6 @@ from app.core.enums import (
 )
 from app.modules.users import UserDto
 
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 # ten years; keeps a typo out of the int32 column
 MAX_BONUS_DAYS: Final[int] = 3650
 
@@ -144,6 +143,7 @@ class InvitedUserDto:
 @dataclass(frozen=True, kw_only=True)
 class AdjustUserPointsDto:
     user_id: int
+    client_ip: str
     delta: Decimal
 
 
@@ -231,4 +231,5 @@ class ResumeBonusRenewalDto:
 @dataclass(frozen=True, kw_only=True)
 class AdjustUserBonusDaysDto:
     user_id: int
+    client_ip: str
     delta: int

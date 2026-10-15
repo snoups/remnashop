@@ -9,7 +9,8 @@ from app.core.exceptions import ValidationError
 from app.core.security import hash_password
 from app.modules.users.dto import CreateUserDto, UpdateOwnProfileDto, UserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.update_own_profile import UpdateOwnProfileUseCase
+from app.modules.users.usecases import UpdateOwnProfileUseCase
+from tests.fakes.events import RecordingEventPublisher
 
 
 class _NoopRevoker:
@@ -29,13 +30,17 @@ async def admin(user_repository: UserRepository, uow: UnitOfWork) -> UserDto:
 def use_case(
     user_repository: UserRepository, uow: UnitOfWork, config: AppConfig
 ) -> UpdateOwnProfileUseCase:
-    return UpdateOwnProfileUseCase(user_repository, uow, config, _NoopRevoker())
+    return UpdateOwnProfileUseCase(
+        user_repository, uow, config, _NoopRevoker(), RecordingEventPublisher()
+    )
 
 
 async def test_update_own_profile_cleans_the_name(
     use_case: UpdateOwnProfileUseCase, admin: UserDto
 ) -> None:
-    updated = await use_case(admin, UpdateOwnProfileDto(name="  <b>Neo</b> { $x } 😀 "))
+    updated = await use_case(
+        admin, UpdateOwnProfileDto(name="  <b>Neo</b> { $x } 😀 ", client_ip="127.0.0.1")
+    )
     assert updated.name == "Neo x"
 
 
@@ -43,7 +48,7 @@ async def test_update_own_profile_rejects_a_name_with_nothing_left(
     use_case: UpdateOwnProfileUseCase, admin: UserDto
 ) -> None:
     with pytest.raises(ValidationError):
-        await use_case(admin, UpdateOwnProfileDto(name="😀 {}"))
+        await use_case(admin, UpdateOwnProfileDto(name="😀 {}", client_ip="127.0.0.1"))
 
 
 async def test_own_password_change_clears_password_change_required(
@@ -66,7 +71,9 @@ async def test_own_password_change_clears_password_change_required(
 
     updated = await use_case(
         admin,
-        UpdateOwnProfileDto(current_password="temp-password", new_password="New-password-1"),
+        UpdateOwnProfileDto(
+            current_password="temp-password", new_password="New-password-1", client_ip="127.0.0.1"
+        ),
     )
     assert not updated.password_change_required
 
@@ -74,5 +81,5 @@ async def test_own_password_change_clears_password_change_required(
 async def test_update_own_profile_sets_language(
     use_case: UpdateOwnProfileUseCase, admin: UserDto
 ) -> None:
-    updated = await use_case(admin, UpdateOwnProfileDto(language=Locale.RU))
+    updated = await use_case(admin, UpdateOwnProfileDto(language=Locale.RU, client_ip="127.0.0.1"))
     assert updated.language == Locale.RU

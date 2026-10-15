@@ -23,10 +23,11 @@ from app.modules.loyalty.usecases import (
     UpdateLoyaltySettingsUseCase,
 )
 
-router = APIRouter(tags=["loyalty"])
+router = APIRouter(prefix="/loyalty", tags=["loyalty"])
+user_router = APIRouter(prefix="/users", tags=["loyalty"])
 
 
-@router.get("/loyalty/settings", response_model=LoyaltySettingsResponse)
+@router.get("/settings", response_model=LoyaltySettingsResponse)
 @inject
 async def get_loyalty_settings(
     use_case: FromDishka[GetLoyaltySettingsUseCase],
@@ -35,9 +36,7 @@ async def get_loyalty_settings(
     return LoyaltySettingsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
-@router.put(
-    "/loyalty/settings", response_model=LoyaltySettingsResponse, responses=error_responses(400)
-)
+@router.put("/settings", response_model=LoyaltySettingsResponse, responses=error_responses(400))
 @inject
 async def update_loyalty_settings(
     payload: LoyaltySettingsRequest,
@@ -55,8 +54,8 @@ async def update_loyalty_settings(
     return LoyaltySettingsResponse.model_validate(saved, from_attributes=True)
 
 
-@router.get(
-    "/users/{user_id:int}/loyalty",
+@user_router.get(
+    "/{user_id:int}/loyalty",
     response_model=UserLoyaltyResponse,
     responses=error_responses(404),
 )
@@ -69,10 +68,10 @@ async def get_user_loyalty(
     return UserLoyaltyResponse.model_validate(await use_case(actor, user_id), from_attributes=True)
 
 
-@router.patch(
-    "/users/{user_id:int}/loyalty",
+@user_router.patch(
+    "/{user_id:int}/loyalty",
     response_model=UserLoyaltyResponse,
-    responses=error_responses(400, 404),
+    responses=error_responses(404),
 )
 @inject
 async def update_user_loyalty(

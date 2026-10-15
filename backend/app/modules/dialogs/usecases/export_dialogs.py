@@ -1,10 +1,7 @@
-from typing import Final
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import (
     DialogButtonInputDto,
     DialogExportDto,
@@ -12,21 +9,9 @@ from app.modules.dialogs.dto import (
     DialogWindowDto,
     DialogWindowExportDto,
 )
+from app.modules.dialogs.export import EXPORT_VERSION, dialog_text_keys
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.translations import TranslationRepository, join_message_key
-
-# Bumped when the payload's meaning changes: banner_name went from a fixed
-# category to a free name, and a button's icon moved out into translations.
-# An older file would import cleanly and land wrong, so it is refused instead.
-EXPORT_VERSION: Final[int] = 2
-
-
-def dialog_text_keys(windows: list[DialogWindowDto]) -> set[str]:
-    keys: set[str] = set()
-    for window in windows:
-        keys.update(catalog.window_text_keys(window.key))
-        keys.update(button.text_key for button in window.buttons)
-    return keys
 
 
 class ExportDialogsUseCase(UseCase[None, DialogExportDto]):

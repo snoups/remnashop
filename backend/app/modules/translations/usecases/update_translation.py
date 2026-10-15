@@ -1,13 +1,15 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.ports import BotCommandsSync, BotSignals
+from app.core.ports import BotCommandsSync, BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.translations.dto import TranslationEntryDto, UpdateTranslationDto
+from app.modules.translations.events import TranslationChangedEvent
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
     assert_plain_translation_value,
+    join_message_key,
     serialize_to_fluent,
 )
 
@@ -21,11 +23,13 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
         uow: UnitOfWork,
         bot_commands: BotCommandsSync,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._translation_repository = translation_repository
         self._uow = uow
         self._bot_commands = bot_commands
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UpdateTranslationDto) -> TranslationEntryDto:
         assert_plain_translation_value(data.value)
@@ -51,9 +55,16 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
             candidate_text = serialize_to_fluent(candidate)
             assert_fluent_compiles(data.locale, candidate_text)
 
-        async with self._uow:
             updated = await self._translation_repository.update_value(
                 data.locale, data.message_id, data.attribute_id, data.value
+            )
+            await self._event_publisher.publish(
+                TranslationChangedEvent(
+                    actor=actor,
+                    action="update",
+                    locale=data.locale.value,
+                    key=join_message_key(data.message_id, data.attribute_id),
+                )
             )
 
         await self._bot_signals.translation_changed(

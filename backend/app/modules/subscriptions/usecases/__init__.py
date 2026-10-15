@@ -27,10 +27,7 @@ from app.modules.subscriptions.usecases.list_own_active_subscriptions import (
     ListOwnActiveSubscriptionsUseCase,
 )
 from app.modules.subscriptions.usecases.list_subscriptions import ListSubscriptionsUseCase
-from app.modules.subscriptions.usecases.prune_idempotency_keys import (
-    IDEMPOTENCY_KEY_RETENTION_DAYS,
-    PruneIdempotencyKeysUseCase,
-)
+from app.modules.subscriptions.usecases.prune_idempotency_keys import PruneIdempotencyKeysUseCase
 from app.modules.subscriptions.usecases.publish_lifecycle_event import (
     PublishLifecycleEventUseCase,
 )
@@ -52,7 +49,6 @@ from app.modules.subscriptions.usecases.update_subscription_squads import (
 )
 
 __all__ = [
-    "IDEMPOTENCY_KEY_RETENTION_DAYS",
     "ActivateTrialSubscriptionUseCase",
     "AdminDeleteAllDevicesUseCase",
     "AdminDeleteDeviceUseCase",

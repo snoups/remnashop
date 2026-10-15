@@ -9,14 +9,19 @@ from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.config import AppConfig
-from app.core.constants import BROADCAST_MEDIA_MAX_BYTES
+from app.core.constants import (
+    BROADCAST_MEDIA_MAX_BYTES,
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    SEARCH_MAX_LENGTH,
+)
 from app.core.enums import BroadcastRecipientStatus, BroadcastStatus
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.modules.broadcasts.api.schemas import (
     AudiencePreviewResponse,
-    BroadcastListResponse,
-    BroadcastRecipientListResponse,
+    BroadcastPageResponse,
+    BroadcastRecipientPageResponse,
     BroadcastRecipientResponse,
     BroadcastRequest,
     BroadcastResponse,
@@ -25,8 +30,6 @@ from app.modules.broadcasts.api.schemas import (
     SendBroadcastRequest,
 )
 from app.modules.broadcasts.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     ListBroadcastRecipientsDto,
     ListBroadcastsDto,
     PreviewAudienceDto,
@@ -35,7 +38,7 @@ from app.modules.broadcasts.dto import (
     SetBroadcastMediaDto,
     UpdateBroadcastDto,
 )
-from app.modules.broadcasts.storage import upload_path
+from app.modules.broadcasts.storage import MEDIA_CONTENT_TYPES, upload_path
 from app.modules.broadcasts.usecases import (
     CancelBroadcastUseCase,
     CreateBroadcastUseCase,
@@ -53,7 +56,6 @@ from app.modules.broadcasts.usecases import (
     SetBroadcastMediaUseCase,
     UpdateBroadcastUseCase,
 )
-from app.modules.broadcasts.usecases.set_broadcast_media import MEDIA_CONTENT_TYPES
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/broadcasts", tags=["broadcasts"])
@@ -72,18 +74,18 @@ def _save_dto(body: BroadcastRequest) -> SaveBroadcastDto:
     )
 
 
-@router.get("", response_model=BroadcastListResponse)
+@router.get("", response_model=BroadcastPageResponse)
 @inject
 async def list_broadcasts(
     use_case: FromDishka[ListBroadcastsUseCase],
     actor: Actor = Depends(require_admin),
     broadcast_statuses: list[BroadcastStatus] = Query([], alias="status"),
-    search: Optional[str] = Query(None, max_length=200),
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     created_from: Optional[datetime] = Query(None),
     created_to: Optional[datetime] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
-) -> BroadcastListResponse:
+) -> BroadcastPageResponse:
     items, total = await use_case(
         actor,
         ListBroadcastsDto(
@@ -95,7 +97,7 @@ async def list_broadcasts(
             page_size=page_size,
         ),
     )
-    return BroadcastListResponse(
+    return BroadcastPageResponse(
         items=[BroadcastResponse.model_validate(item, from_attributes=True) for item in items],
         total=total,
     )
@@ -158,7 +160,7 @@ async def get_broadcast(
 
 @router.get(
     "/{broadcast_id:int}/recipients",
-    response_model=BroadcastRecipientListResponse,
+    response_model=BroadcastRecipientPageResponse,
     responses=error_responses(404),
 )
 @inject
@@ -169,14 +171,14 @@ async def list_broadcast_recipients(
     recipient_status: Optional[BroadcastRecipientStatus] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
-) -> BroadcastRecipientListResponse:
+) -> BroadcastRecipientPageResponse:
     items, total = await use_case(
         actor,
         ListBroadcastRecipientsDto(
             broadcast_id=broadcast_id, status=recipient_status, page=page, page_size=page_size
         ),
     )
-    return BroadcastRecipientListResponse(
+    return BroadcastRecipientPageResponse(
         items=[
             BroadcastRecipientResponse.model_validate(item, from_attributes=True) for item in items
         ],

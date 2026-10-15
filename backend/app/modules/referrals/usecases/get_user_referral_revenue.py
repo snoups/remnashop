@@ -7,9 +7,8 @@ from app.core.usecase import UseCase
 from app.modules.pricing import PricingRepository
 from app.modules.referrals.dto import ReferralRevenueDto
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases.target import get_visible_target
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, get_visible_target
 
 
 class GetUserReferralRevenueUseCase(UseCase[int, ReferralRevenueDto]):

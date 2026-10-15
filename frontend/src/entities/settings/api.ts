@@ -77,17 +77,17 @@ export function updateBotCommands(commands: BotCommandItem[]): Promise<UpdateBot
 
 export interface OAuthSettings {
   is_github_configured: boolean;
-  is_github_enabled: boolean;
+  github_enabled: boolean;
   is_telegram_configured: boolean;
-  is_telegram_enabled: boolean;
+  telegram_enabled: boolean;
   is_google_configured: boolean;
   is_yandex_configured: boolean;
   is_oidc_configured: boolean;
-  is_oidc_enabled: boolean;
+  oidc_enabled: boolean;
   oidc_display_name: string | null;
-  is_password_login_enabled: boolean;
+  password_login_enabled: boolean;
   is_passkey_configured: boolean;
-  is_passkey_enabled: boolean;
+  passkey_enabled: boolean;
   passkey_rp_id: string | null;
   passkey_origin: string | null;
 }

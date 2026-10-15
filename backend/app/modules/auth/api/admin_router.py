@@ -49,7 +49,7 @@ async def revoke_session(
 @user_sessions_router.get(
     "/{user_id:int}/sessions",
     response_model=SessionListResponse,
-    responses=error_responses(404, 409),
+    responses=error_responses(404),
 )
 @inject
 async def list_user_sessions(
@@ -65,7 +65,7 @@ async def list_user_sessions(
 @user_sessions_router.delete(
     "/{user_id:int}/sessions/{session_id:int}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(404, 409),
+    responses=error_responses(404),
 )
 @inject
 async def revoke_user_session(

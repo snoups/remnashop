@@ -2,15 +2,17 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.emoji_packs.dto import EmojiPackDto
+from app.modules.emoji_packs.dto import EmojiPackDto, ImportEmojiPackDto
+from app.modules.emoji_packs.events import EmojiPackChangedEvent
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.emoji_packs.telegram_api import fetch_emoji_pack, parse_set_name
 from app.modules.settings import SettingsRepository
 
 
-class ImportEmojiPackUseCase(UseCase[str, EmojiPackDto]):
+class ImportEmojiPackUseCase(UseCase[ImportEmojiPackDto, EmojiPackDto]):
     required_permission = Permission.EMOJI_PACKS_IMPORT
 
     def __init__(
@@ -18,14 +20,16 @@ class ImportEmojiPackUseCase(UseCase[str, EmojiPackDto]):
         emoji_pack_repository: EmojiPackRepository,
         settings_repository: SettingsRepository,
         uow: UnitOfWork,
+        event_publisher: EventPublisher,
     ) -> None:
         self._emoji_pack_repository = emoji_pack_repository
         self._settings_repository = settings_repository
         self._uow = uow
+        self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: str) -> EmojiPackDto:
+    async def _execute(self, actor: Actor, data: ImportEmojiPackDto) -> EmojiPackDto:
         try:
-            set_name = parse_set_name(data)
+            set_name = parse_set_name(data.link)
         except ValueError as err:
             raise ValidationError(str(err), code=ErrorCode.EMOJI_PACK_NAME_INVALID) from None
 
@@ -47,4 +51,8 @@ class ImportEmojiPackUseCase(UseCase[str, EmojiPackDto]):
             raise ValidationError(str(err), code=ErrorCode.EMOJI_PACK_FETCH_FAILED) from None
 
         async with self._uow:
-            return await self._emoji_pack_repository.upsert(fetched)
+            pack = await self._emoji_pack_repository.upsert(fetched)
+            await self._event_publisher.publish(
+                EmojiPackChangedEvent(actor=actor, action="import", set_name=set_name)
+            )
+        return pack

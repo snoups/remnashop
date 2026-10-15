@@ -1,4 +1,5 @@
 import asyncio
+from functools import partial
 from typing import Final
 
 import httpx
@@ -11,18 +12,13 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dispatch import RecallBroadcastDispatch
 from app.modules.broadcasts.dto import SentRecipientDto
+from app.modules.broadcasts.pacing import BATCH_SIZE, GROUP_PAUSE_S, GROUP_SIZE, MAX_RETRY_AFTER_S
 from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.telegram_api import (
     SendOutcome,
     SendResult,
     TelegramClientFactory,
     delete_telegram_message,
-)
-from app.modules.broadcasts.usecases.deliver_broadcast_batch import (
-    BATCH_SIZE,
-    GROUP_PAUSE_S,
-    GROUP_SIZE,
-    MAX_RETRY_AFTER_S,
 )
 from app.modules.settings import SettingsRepository
 
@@ -85,7 +81,7 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
 
     async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
-            if await self._broadcast_repository.get(data) is None:
+            if await self._broadcast_repository.find_by_id(data) is None:
                 return
             rows = await self._broadcast_repository.list_recallable(data, BATCH_SIZE)
             channel = await self._broadcast_repository.channel_post(data)
@@ -111,7 +107,7 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
                 await self._broadcast_repository.update_fields(
                     data, recall_requested_at=datetime_now()
                 )
-                await self._uow.after_commit(lambda: self._recall_dispatch.kiq(broadcast_id=data))
+                await self._uow.after_commit(partial(self._recall_dispatch.kiq, broadcast_id=data))
         if not authorized:
             logger.warning(f"Broadcast '{data}' recall stopped: the bot token was rejected")
         elif last_page:

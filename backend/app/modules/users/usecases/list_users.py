@@ -1,33 +1,14 @@
-from typing import Final
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
-from app.core.exceptions import PermissionDeniedError
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import (
     ListUsersDto,
     UserListItemDto,
 )
+from app.modules.users.listing import identities_of, resolve_list_roles
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases.list_blacklist_matches import identities_of
-
-# Staff (ADMIN/OWNER) are listed by ListAdminsUseCase behind the non-grantable
-# ADMINS_MANAGE. USERS_VIEW can be granted to any admin or API token, so it
-# never shows staff; `include_staff` (staff can be customers too) needs
-# ADMINS_MANAGE.
-ALLOWED_ROLES: Final[list[Role]] = [Role.USER]
-STAFF_ROLES: Final[list[Role]] = [Role.USER, Role.ADMIN, Role.OWNER]
-
-
-def resolve_list_roles(actor: Actor, include_staff: bool) -> list[Role]:
-    if not include_staff:
-        return ALLOWED_ROLES
-    if not PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
-        raise PermissionDeniedError
-    return STAFF_ROLES
 
 
 class ListUsersUseCase(UseCase[ListUsersDto, tuple[list[UserListItemDto], int]]):

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Optional
 
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, UserEvent
@@ -101,3 +101,14 @@ class UserPurchaseDiscountChangedEvent(ActorTargetEvent):
 @dataclass(frozen=True, kw_only=True)
 class UserRulesAcceptedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
+
+
+@dataclass(frozen=True, kw_only=True)
+class PasswordChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+
+
+@dataclass(frozen=True, kw_only=True)
+class SecuritySettingsChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+    changed_fields: list[str] = field(default_factory=list)

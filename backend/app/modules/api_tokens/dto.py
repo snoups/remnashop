@@ -27,6 +27,7 @@ class CreateApiTokenDto:
 
 @dataclass(frozen=True, kw_only=True)
 class IssueApiTokenDto:
+    client_ip: str
     name: str
     scopes: list[str]
     expires_in_days: int
@@ -37,3 +38,9 @@ class IssueApiTokenDto:
 class CreatedApiTokenDto:
     token: ApiTokenDto
     secret: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class RevokeApiTokenDto:
+    token_id: int
+    client_ip: str

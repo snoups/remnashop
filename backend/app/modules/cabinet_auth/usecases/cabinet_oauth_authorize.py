@@ -1,4 +1,3 @@
-import hashlib
 import secrets
 from typing import Final
 
@@ -9,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
+from app.modules.cabinet_auth.cookies import hash_binding
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.oauth import (
     OAUTH_EXCHANGE_ERRORS,
@@ -22,10 +22,6 @@ from app.modules.settings import SettingsRepository
 CABINET_OAUTH_PROVIDERS: Final[frozenset[OAuthProvider]] = frozenset(
     {OAuthProvider.TELEGRAM, OAuthProvider.GOOGLE, OAuthProvider.YANDEX}
 )
-
-
-def hash_binding(binding: str) -> str:
-    return hashlib.sha256(binding.encode()).hexdigest()
 
 
 class CabinetOAuthAuthorizeUseCase:

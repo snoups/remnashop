@@ -40,7 +40,6 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         async with self._uow:
             addon = await self._addon_repository.get_by_id(data.addon_id)
 
-        async with self._uow:
             subscription = await self._subscription_repository.grant_entitlement(
                 subscription_id=data.subscription_id,
                 addon_id=addon.id,
@@ -68,7 +67,7 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
         # retry-safe: only update_user above raises a retried exception, so a
         # failed attempt never gets here and the event fires once
         async with self._uow:
-            recipient = await self._user_repository.get_by_id(subscription.user_id)
+            recipient = await self._user_repository.find_by_id(subscription.user_id)
             await self._event_publisher.publish(
                 SubscriptionAddOnGrantedEvent(
                     user=actor,

@@ -1,13 +1,19 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 
 from app.api.dependencies.admin import require_admin_user
 from app.api.dependencies.public import get_current_actor
+from app.api.system_schemas import (
+    GitInfoResponse,
+    PermissionCatalogEntryResponse,
+    PermissionCatalogResponse,
+    SystemMetadataResponse,
+)
+from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import REPOSITORY
 from app.core.enums import Role
@@ -15,36 +21,10 @@ from app.core.security.permissions import (
     PERMISSION_METADATA,
     ROLE_PERMISSIONS,
     TOKEN_GRANTABLE_PERMISSIONS,
-    Permission,
 )
 from app.modules.users import UserDto
 
 router = APIRouter(tags=["system"])
-
-
-class GitInfoResponse(BaseModel):
-    commit_sha: Optional[str]
-    commit_date: Optional[datetime]
-    branch: Optional[str]
-    is_official_build: bool
-
-
-class SystemMetadataResponse(BaseModel):
-    version: str
-    repository_url: str
-    git: GitInfoResponse
-
-
-class PermissionCatalogEntry(BaseModel):
-    permission: Permission
-    resource: str
-    kind: Literal["read", "write"]
-    token_grantable: bool
-    admin_default: bool
-
-
-class PermissionCatalogResponse(BaseModel):
-    entries: list[PermissionCatalogEntry]
 
 
 def parse_commit_date(value: Optional[str]) -> Optional[datetime]:
@@ -60,7 +40,7 @@ def parse_commit_date(value: Optional[str]) -> Optional[datetime]:
 @inject
 async def get_system_metadata(
     config: FromDishka[AppConfig],
-    _: UserDto = Depends(get_current_actor),
+    _: Actor = Depends(get_current_actor),
 ) -> SystemMetadataResponse:
     # is_official_build gates the update check --
     # only a CI-baked artifact is safe to compare against GitHub releases.
@@ -77,15 +57,14 @@ async def get_system_metadata(
 async def get_permissions_catalog(
     _: UserDto = Depends(require_admin_user),
 ) -> PermissionCatalogResponse:
-    return PermissionCatalogResponse(
-        entries=[
-            PermissionCatalogEntry(
-                permission=permission,
-                resource=meta.resource,
-                kind=meta.kind,
-                token_grantable=permission in TOKEN_GRANTABLE_PERMISSIONS,
-                admin_default=permission in ROLE_PERMISSIONS[Role.ADMIN],
-            )
-            for permission, meta in PERMISSION_METADATA.items()
-        ]
-    )
+    items = [
+        PermissionCatalogEntryResponse(
+            permission=permission,
+            resource=meta.resource,
+            kind=meta.kind,
+            token_grantable=permission in TOKEN_GRANTABLE_PERMISSIONS,
+            admin_default=permission in ROLE_PERMISSIONS[Role.ADMIN],
+        )
+        for permission, meta in PERMISSION_METADATA.items()
+    ]
+    return PermissionCatalogResponse(items=items, total=len(items))

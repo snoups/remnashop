@@ -13,7 +13,7 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases.get_available_trial import GetAvailableTrialUseCase
+from app.modules.subscriptions.usecases import GetAvailableTrialUseCase
 from app.modules.users.dto import CreateUserDto, UpdateUserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import make_eligibility
@@ -72,7 +72,7 @@ async def test_returns_no_plan_once_the_flag_is_spent(
     await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-spent"))
     await user_repository.update_fields(actor.id, UpdateUserDto(is_trial_available=False))
-    updated_actor = await user_repository.get_by_id(actor.id)
+    updated_actor = await user_repository.find_by_id(actor.id)
     use_case = GetAvailableTrialUseCase(
         plan_repository, make_eligibility(plan_repository.session), uow
     )

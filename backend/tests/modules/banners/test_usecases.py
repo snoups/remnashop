@@ -8,11 +8,14 @@ from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.banners.dto import BannerKeyDto, UploadBannerFileDto
 from app.modules.banners.repository import BannerRepository
-from app.modules.banners.usecases.delete_banner import DeleteBannerUseCase
-from app.modules.banners.usecases.get_banner_image import GetBannerImageUseCase
-from app.modules.banners.usecases.upload_banner import UploadBannerUseCase
+from app.modules.banners.usecases import (
+    DeleteBannerUseCase,
+    GetBannerImageUseCase,
+    UploadBannerUseCase,
+)
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
 REGULAR_USER = UserDto(id=2, name="Bob", role=Role.USER, language=Locale.EN)
@@ -45,6 +48,7 @@ async def test_owner_can_upload_banner(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
 
     banner = await use_case(
@@ -73,6 +77,7 @@ async def test_regular_user_cannot_upload_banner(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(PermissionDeniedError):
@@ -97,6 +102,7 @@ async def test_upload_rejects_unsupported_content_type(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -121,6 +127,7 @@ async def test_upload_rejects_locale_not_in_config(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -145,6 +152,7 @@ async def test_upload_rejects_oversized_file(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
     oversized = FAKE_JPEG + b"x" * (5 * 1024 * 1024 + 1)
 
@@ -166,8 +174,10 @@ async def test_owner_can_delete_banner(
 ) -> None:
     await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
-    delete_use_case = DeleteBannerUseCase(banner_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(
+        banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
+    )
+    delete_use_case = DeleteBannerUseCase(banner_repository, cfg, uow, RecordingEventPublisher())
 
     await upload_use_case(
         OWNER,
@@ -184,7 +194,9 @@ async def test_owner_can_delete_banner(
 async def test_delete_missing_banner_raises_not_found(
     banner_repository: BannerRepository, config: AppConfig, uow: UnitOfWork, tmp_path: Path
 ) -> None:
-    delete_use_case = DeleteBannerUseCase(banner_repository, _config(config, tmp_path), uow)
+    delete_use_case = DeleteBannerUseCase(
+        banner_repository, _config(config, tmp_path), uow, RecordingEventPublisher()
+    )
 
     with pytest.raises(NotFoundError):
         await delete_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
@@ -199,7 +211,9 @@ async def test_get_banner_image_returns_bytes_and_content_type(
 ) -> None:
     await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(
+        banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
+    )
     get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
@@ -209,7 +223,8 @@ async def test_get_banner_image_returns_bytes_and_content_type(
         ),
     )
 
-    data, content_type = await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
+    result = await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
+    data, content_type = result.data, result.content_type
     assert data == FAKE_JPEG
     assert content_type == "image/jpeg"
 
@@ -235,7 +250,9 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
 ) -> None:
     await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    upload_use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
+    upload_use_case = UploadBannerUseCase(
+        banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
+    )
     get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
 
     await upload_use_case(
@@ -263,6 +280,7 @@ async def test_upload_rejects_content_not_matching_declared_type(
         translation_repository,
         _config(config, tmp_path),
         uow,
+        RecordingEventPublisher(),
     )
 
     with pytest.raises(ValidationError):
@@ -286,7 +304,9 @@ async def test_upload_replaces_file_when_format_changes(
 ) -> None:
     await _seed_locales(translation_repository)
     cfg = _config(config, tmp_path)
-    use_case = UploadBannerUseCase(banner_repository, translation_repository, cfg, uow)
+    use_case = UploadBannerUseCase(
+        banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
+    )
 
     await use_case(
         OWNER,

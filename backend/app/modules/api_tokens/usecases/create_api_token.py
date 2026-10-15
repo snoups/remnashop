@@ -49,7 +49,9 @@ class CreateApiTokenUseCase(UseCase[IssueApiTokenDto, CreatedApiTokenDto]):
                 )
             )
             await self._event_publisher.publish(
-                ApiTokenCreatedEvent(user=actor, token_id=token.id, name=token.name)
+                ApiTokenCreatedEvent(
+                    actor=actor, token_id=token.id, name=token.name, ip_address=data.client_ip
+                )
             )
 
         return CreatedApiTokenDto(token=token, secret=secret)

@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import partial
 from typing import Final, Optional
 
@@ -24,6 +24,15 @@ from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dispatch import DeliverBroadcastDispatch, RecallBroadcastDispatch
 from app.modules.broadcasts.dto import PendingRecipientDto, RecipientContextDto
 from app.modules.broadcasts.events import BroadcastCompletedEvent, BroadcastFailedEvent
+from app.modules.broadcasts.pacing import (
+    BATCH_SIZE,
+    CLAIM_LEASE,
+    GROUP_PAUSE_S,
+    GROUP_SIZE,
+    MAX_ATTEMPTS,
+    MAX_FLOOD_WAIT_S,
+    MAX_RETRY_AFTER_S,
+)
 from app.modules.broadcasts.render import BroadcastRenderer, load_unsubscribe_labels, outgoing_media
 from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.telegram_api import (
@@ -38,14 +47,6 @@ from app.modules.promocodes import PromocodeRepository
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationRepository
 
-# every record and flood-wait heartbeat renews the chain lock, so a batch may outlast CLAIM_LEASE
-BATCH_SIZE: Final[int] = 100
-GROUP_SIZE: Final[int] = 25
-GROUP_PAUSE_S: Final[float] = 1.0
-MAX_ATTEMPTS: Final[int] = 3
-MAX_RETRY_AFTER_S: Final[float] = 60.0
-MAX_FLOOD_WAIT_S: Final[float] = 300.0
-CLAIM_LEASE: Final[timedelta] = timedelta(minutes=5)
 _TOKEN_REJECTED: Final[str] = "Bot token was rejected"
 _MEDIA_MISSING: Final[str] = "Media file is missing"
 _STOPPED: Final[str] = "stopped"
@@ -101,7 +102,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         # True: more to send, kick the next batch
         async with self._uow:
             try:
-                broadcast = await self._broadcast_repository.lock_for_update(data)
+                broadcast = await self._broadcast_repository.get_by_id_for_update(data)
             except NotFoundError:
                 return False
             if broadcast.status is not BroadcastStatus.SENDING:
@@ -294,7 +295,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
 
     async def _still_sending(self, broadcast_id: int) -> bool:
         async with self._uow:
-            broadcast = await self._broadcast_repository.get(broadcast_id)
+            broadcast = await self._broadcast_repository.find_by_id(broadcast_id)
         if broadcast is None:
             return False
         if broadcast.status is BroadcastStatus.SENDING:
@@ -324,7 +325,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
     async def _fail(self, broadcast_id: int, error: str) -> None:
         async with self._uow:
             try:
-                broadcast = await self._broadcast_repository.lock_for_update(broadcast_id)
+                broadcast = await self._broadcast_repository.get_by_id_for_update(broadcast_id)
             except NotFoundError:
                 return
             if broadcast.status is not BroadcastStatus.SENDING:

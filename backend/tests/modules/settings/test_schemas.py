@@ -30,17 +30,17 @@ def test_update_oauth_settings_request_rejects_non_https_issuer_url() -> None:
 def test_oauth_settings_response_carries_oidc_fields() -> None:
     response = OAuthSettingsResponse(
         is_github_configured=False,
-        is_github_enabled=False,
+        github_enabled=False,
         is_telegram_configured=False,
         is_google_configured=False,
         is_yandex_configured=False,
-        is_telegram_enabled=False,
+        telegram_enabled=False,
         is_oidc_configured=True,
-        is_oidc_enabled=True,
+        oidc_enabled=True,
         oidc_display_name="Keycloak",
-        is_password_login_enabled=True,
+        password_login_enabled=True,
         is_passkey_configured=False,
-        is_passkey_enabled=False,
+        passkey_enabled=False,
     )
 
     assert response.is_oidc_configured

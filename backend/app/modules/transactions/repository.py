@@ -5,7 +5,8 @@ from typing import Any, Final, Optional, cast
 from sqlalchemy import ColumnElement, CursorResult, and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INT32_MAX, MAX_SQL_IN_PARAMS
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
+from app.core.db.filters import in_ids
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
@@ -22,7 +23,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import SpentPurchaseDiscount
 from app.modules.subscriptions import IDEMPOTENCY_KEY_RETENTION_DAYS, PlanSnapshot
-from app.modules.transactions.dto import DEFAULT_PAGE_SIZE, CreateTransactionDto, TransactionDto
+from app.modules.transactions.dto import CreateTransactionDto, TransactionDto
 
 # Test orders never provision a subscription and must stay out of every
 # revenue/analytics/reconciliation query, and out of the admin order list.
@@ -433,35 +434,29 @@ class TransactionRepository:
         if not user_ids:
             return {}
         totals: dict[Currency, Decimal] = {}
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                select(Transaction.currency, func.sum(Transaction.final_price))
-                .where(
-                    Transaction.user_id.in_(chunk),
-                    Transaction.status == TransactionStatus.PAID,
-                    _NOT_TEST,
-                )
-                .group_by(Transaction.currency)
+        stmt = (
+            select(Transaction.currency, func.sum(Transaction.final_price))
+            .where(
+                in_ids(Transaction.user_id, user_ids),
+                Transaction.status == TransactionStatus.PAID,
+                _NOT_TEST,
             )
-            rows = (await self.session.execute(stmt)).tuples()
-            for currency, amount in rows.all():
-                totals[currency] = totals.get(currency, Decimal(0)) + amount
+            .group_by(Transaction.currency)
+        )
+        rows = (await self.session.execute(stmt)).tuples()
+        for currency, amount in rows.all():
+            totals[currency] = totals.get(currency, Decimal(0)) + amount
         return totals
 
     async def sum_paid_anchor_amount_by_user_ids(self, user_ids: list[int]) -> Decimal:
-        total = Decimal(0)
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            chunk_total = await self.session.scalar(
-                select(func.sum(Transaction.anchor_final_price)).where(
-                    Transaction.user_id.in_(chunk),
-                    Transaction.status == TransactionStatus.PAID,
-                    _NOT_TEST,
-                )
+        total = await self.session.scalar(
+            select(func.sum(Transaction.anchor_final_price)).where(
+                in_ids(Transaction.user_id, user_ids),
+                Transaction.status == TransactionStatus.PAID,
+                _NOT_TEST,
             )
-            total += chunk_total or Decimal(0)
-        return total
+        )
+        return total or Decimal(0)
 
     async def sum_paid_promocode_discounts(self) -> tuple[int, Decimal]:
         # (paid orders, discount amount in the anchor currency)
@@ -484,35 +479,31 @@ class TransactionRepository:
         if not user_ids:
             return set()
         paid: set[int] = set()
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = select(Transaction.user_id.distinct()).where(
-                Transaction.user_id.in_(chunk),
-                Transaction.status == TransactionStatus.PAID,
-                _NOT_TEST,
-            )
-            result = await self.session.execute(stmt)
-            paid.update(result.scalars().all())
+        stmt = select(Transaction.user_id.distinct()).where(
+            in_ids(Transaction.user_id, user_ids),
+            Transaction.status == TransactionStatus.PAID,
+            _NOT_TEST,
+        )
+        result = await self.session.execute(stmt)
+        paid.update(result.scalars().all())
         return paid
 
     async def list_user_ids_with_multiple_paid_orders(self, user_ids: list[int]) -> set[int]:
         if not user_ids:
             return set()
         repeat_payers: set[int] = set()
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                select(Transaction.user_id)
-                .where(
-                    Transaction.user_id.in_(chunk),
-                    Transaction.status == TransactionStatus.PAID,
-                    _NOT_TEST,
-                )
-                .group_by(Transaction.user_id)
-                .having(func.count() > 1)
+        stmt = (
+            select(Transaction.user_id)
+            .where(
+                in_ids(Transaction.user_id, user_ids),
+                Transaction.status == TransactionStatus.PAID,
+                _NOT_TEST,
             )
-            result = await self.session.execute(stmt)
-            repeat_payers.update(result.scalars().all())
+            .group_by(Transaction.user_id)
+            .having(func.count() > 1)
+        )
+        result = await self.session.execute(stmt)
+        repeat_payers.update(result.scalars().all())
         return repeat_payers
 
     async def sum_paid_anchor_amount_per_user(
@@ -550,18 +541,16 @@ class TransactionRepository:
 
     async def list_paid_periods(self, user_ids: list[int]) -> list[tuple[int, datetime, int]]:
         periods: list[tuple[int, datetime, int]] = []
-        for start in range(0, len(user_ids), MAX_SQL_IN_PARAMS):
-            chunk = user_ids[start : start + MAX_SQL_IN_PARAMS]
-            stmt = (
-                select(Transaction.user_id, Transaction.updated_at, Transaction.duration_days)
-                .where(
-                    Transaction.user_id.in_(chunk),
-                    Transaction.status == TransactionStatus.PAID,
-                    _NOT_TEST,
-                )
-                .order_by(Transaction.user_id, Transaction.updated_at)
+        stmt = (
+            select(Transaction.user_id, Transaction.updated_at, Transaction.duration_days)
+            .where(
+                in_ids(Transaction.user_id, user_ids),
+                Transaction.status == TransactionStatus.PAID,
+                _NOT_TEST,
             )
-            periods.extend((await self.session.execute(stmt)).tuples().all())
+            .order_by(Transaction.user_id, Transaction.updated_at)
+        )
+        periods.extend((await self.session.execute(stmt)).tuples().all())
         return periods
 
     async def first_paid_at_since(self, since: datetime) -> dict[int, datetime]:

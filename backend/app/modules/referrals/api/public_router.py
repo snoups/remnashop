@@ -16,9 +16,11 @@ from app.modules.referrals.dto import (
     RedeemBonusDaysDto,
     RequestPointsWithdrawalDto,
 )
-from app.modules.referrals.usecases.get_own_referral_stats import GetOwnReferralStatsUseCase
-from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
-from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
+from app.modules.referrals.usecases import (
+    GetOwnReferralStatsUseCase,
+    RedeemBonusDaysUseCase,
+    RequestPointsWithdrawalUseCase,
+)
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
@@ -38,7 +40,7 @@ async def get_my_referral_stats(
     status_code=status.HTTP_204_NO_CONTENT,
     # each request is an audit-log row an admin works through by hand
     dependencies=[Depends(user_rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],
-    responses=error_responses(400),
+    responses=error_responses(400, 404),
 )
 @inject
 async def withdraw_points(

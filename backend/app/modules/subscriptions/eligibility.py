@@ -11,7 +11,7 @@ from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserDto, UserRepository
 
 
 class PurchaseEligibility:
@@ -73,7 +73,7 @@ class PurchaseEligibility:
         # read fresh, not off the actor: a trial plan is one per customer, paid or free
         trial_available = False
         if any(plan.is_trial for plan in plans):
-            account = await self._user_repository.get_by_id(user.id)
+            account = await self._user_repository.find_by_id(user.id)
             trial_available = account is not None and account.is_trial_available
         return [
             plan
@@ -130,3 +130,14 @@ async def lock_live_subscription(
             f"Subscription '{subscription_id}' was deleted", code=ErrorCode.SUBSCRIPTION_DELETED
         )
     return subscription
+
+
+async def subscription_owner(
+    user_repository: UserRepository, subscription: SubscriptionDto
+) -> UserDto:
+    owner = await user_repository.find_by_id(subscription.user_id)
+    if owner is None:
+        raise NotFoundError(
+            f"User '{subscription.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
+        )
+    return owner

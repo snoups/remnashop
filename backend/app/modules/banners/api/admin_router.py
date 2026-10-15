@@ -8,13 +8,13 @@ from app.core.actor import Actor
 from app.core.enums import Locale
 from app.modules.banners.api.schemas import BannerMetaResponse
 from app.modules.banners.dto import BannerKeyDto, UploadBannerFileDto
+from app.modules.banners.storage import MAX_BANNER_SIZE_BYTES
 from app.modules.banners.usecases import (
     DeleteBannerUseCase,
     GetBannerImageUseCase,
     RestoreDefaultBannerUseCase,
     UploadBannerUseCase,
 )
-from app.modules.banners.usecases.upload_banner import MAX_BANNER_SIZE_BYTES
 
 router = APIRouter(prefix="/banners", tags=["banners"])
 
@@ -60,15 +60,14 @@ async def get_banner_image(
     use_case: FromDishka[GetBannerImageUseCase],
     actor: Actor = Depends(require_admin),
 ) -> Response:
-    data, content_type = await use_case(actor, BannerKeyDto(name=name, locale=locale))
-    return Response(content=data, media_type=content_type)
+    image = await use_case(actor, BannerKeyDto(name=name, locale=locale))
+    return Response(content=image.data, media_type=image.content_type)
 
 
-@router.post("/actions/reset-default", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/actions/reset-default", response_model=BannerMetaResponse)
 @inject
 async def reset_default_banner(
     use_case: FromDishka[RestoreDefaultBannerUseCase],
     actor: Actor = Depends(require_admin),
-) -> Response:
-    await use_case(actor)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+) -> BannerMetaResponse:
+    return BannerMetaResponse.model_validate(await use_case(actor), from_attributes=True)

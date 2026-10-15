@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.api.schemas import (
     ChangeSubscriptionPlanRequest,
@@ -19,8 +20,6 @@ from app.modules.subscriptions.api.schemas import (
     UpdateSubscriptionSquadsRequest,
 )
 from app.modules.subscriptions.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
     AdminDeleteDeviceDto,
     ChangeSubscriptionPlanDto,
     GrantSubscriptionDto,
@@ -54,7 +53,7 @@ async def list_subscriptions(
     use_case: FromDishka[ListSubscriptionsUseCase],
     actor: Actor = Depends(require_admin),
     status_filter: Optional[SubscriptionStatus] = Query(None, alias="status"),
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     user_id: Optional[int] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
@@ -124,7 +123,7 @@ async def update_subscription(
 @router.put(
     "/{subscription_id:int}/squads",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def update_subscription_squads(

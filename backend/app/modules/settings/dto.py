@@ -79,6 +79,23 @@ class BotCommandDto(BaseDto, TimestampMixin):
     enabled: bool = True
 
 
+@dataclass(frozen=True, kw_only=True)
+class GetBotCommandsDto:
+    # BOT_COMMANDS' own order instead of the stored one, for the "reset order" button
+    default_order: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateBotCommandsDto:
+    # (command, enabled) in display order
+    commands: list[tuple[str, bool]]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetBotProxyDto:
+    proxy_url: str
+
+
 class UpdateBotCommandsResultDto(BaseModel):
     model_config = ConfigDict(strict=False, extra="ignore")
 
@@ -277,3 +294,9 @@ class UpdateBotRequirementsDto:
     channel_required: bool
     channel_id: Optional[int]
     channel_url: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class AppearanceImageDto:
+    data: bytes
+    content_type: str

@@ -81,7 +81,7 @@ class SubscriptionTrafficThresholdEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class SubscriptionEditedEvent(UserEvent):
+class SubscriptionEditedEvent(ActorTargetEvent):
     """An admin's manual change to a subscription, outside any purchase."""
 
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION

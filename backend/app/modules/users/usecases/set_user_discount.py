@@ -4,11 +4,10 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.dto import SetUserDiscountDto, UpdateUserDto, UserDto
 from app.modules.users.events import (
@@ -16,6 +15,7 @@ from app.modules.users.events import (
     UserPurchaseDiscountChangedEvent,
 )
 from app.modules.users.repository import UserRepository
+from app.modules.users.visibility import get_visible_target
 
 
 def _changed(new: Optional[int], old: int) -> bool:
@@ -40,18 +40,9 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
                 )
 
         async with self._uow:
-            target = await self._user_repository.get_live_for_update(data.user_id)
-            if target is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
-            if target.role in (Role.ADMIN, Role.OWNER) and not PermissionPolicy.has_permission(
-                actor, Permission.ADMINS_MANAGE
-            ):
-                raise ValidationError(
-                    "Cannot set a discount on a staff account",
-                    code=ErrorCode.DISCOUNT_STAFF_ACCOUNT,
-                )
+            target = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
 
             personal_changed = _changed(data.personal_discount, target.personal_discount)
             purchase_changed = _changed(data.purchase_discount, target.purchase_discount)
@@ -78,6 +69,7 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
                         target=target,
                         old_percent=target.personal_discount,
                         new_percent=updated.personal_discount,
+                        ip_address=data.client_ip,
                     )
                 )
             if purchase_changed:
@@ -87,6 +79,7 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
                         target=target,
                         old_percent=target.purchase_discount,
                         new_percent=updated.purchase_discount,
+                        ip_address=data.client_ip,
                     )
                 )
 

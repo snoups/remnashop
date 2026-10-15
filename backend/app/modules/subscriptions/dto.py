@@ -1,18 +1,16 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Final, Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 from remnapy.enums import TrafficLimitStrategy
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, SubscriptionStatus
 from app.modules.plans import PlanDto
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 
 
 @dataclass(frozen=True, kw_only=True)

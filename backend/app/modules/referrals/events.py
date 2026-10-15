@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from app.core.events import ActorTargetEvent, EventCategory, SystemEvent, UserEvent
+from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,7 +36,7 @@ class ReferralCodeResetEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class ReferralSettingsChangedEvent(UserEvent):
+class ReferralSettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     action: str
     changed_fields: list[str] = field(default_factory=list)

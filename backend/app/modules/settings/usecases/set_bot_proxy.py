@@ -7,9 +7,11 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.settings.dto import BotSettingsDto
+from app.modules.settings.dto import BotSettingsDto, SetBotProxyDto
+from app.modules.settings.events import BotSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
 # What both clients accept: aiohttp-socks (bot process) and httpx[socks] (api).
@@ -39,16 +41,25 @@ def normalize_proxy_url(url: str) -> str:
     )
 
 
-class SetBotProxyUseCase(UseCase[str, BotSettingsDto]):
+class SetBotProxyUseCase(UseCase[SetBotProxyDto, BotSettingsDto]):
     required_permission = Permission.BOT_PROXY_SET
 
-    def __init__(self, settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        settings_repository: SettingsRepository,
+        uow: UnitOfWork,
+        event_publisher: EventPublisher,
+    ) -> None:
         self._settings_repository = settings_repository
         self._uow = uow
+        self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: str) -> BotSettingsDto:
-        proxy_url = normalize_proxy_url(data)
+    async def _execute(self, actor: Actor, data: SetBotProxyDto) -> BotSettingsDto:
+        proxy_url = normalize_proxy_url(data.proxy_url)
         async with self._uow:
             settings = await self._settings_repository.set_bot_proxy_url(proxy_url)
-        logger.info(f"Bot proxy set by actor {actor.log}")
+            await self._event_publisher.publish(
+                BotSettingsChangedEvent(actor=actor, action="proxy_set")
+            )
+        logger.info(f"{actor.log} Set the bot proxy")
         return settings

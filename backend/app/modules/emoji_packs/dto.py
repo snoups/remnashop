@@ -25,3 +25,9 @@ class FetchedEmojiPack:
     set_name: str
     title: str
     items: list[EmojiPackItemDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ImportEmojiPackDto:
+    # a t.me/addemoji/<name> link or the bare set name
+    link: str

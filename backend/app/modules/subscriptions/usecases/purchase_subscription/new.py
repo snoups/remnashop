@@ -16,14 +16,14 @@ from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionD
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.events import SubscriptionPurchasedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
-from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases.purchase_subscription.panel import (
+from app.modules.subscriptions.panel import (
     configure_for_plan,
     new_panel_user,
     reset_traffic_if_paid,
     restore,
     subscription_row,
 )
+from app.modules.subscriptions.repository import SubscriptionRepository
 
 
 class _AlreadyProvisionedError(Exception):

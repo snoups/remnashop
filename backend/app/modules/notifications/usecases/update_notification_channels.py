@@ -7,6 +7,7 @@ from app.modules.notifications.dto import (
     NOTIFICATION_GROUPS,
     NotificationChannel,
     NotificationChannelsDto,
+    UpdateNotificationChannelsDto,
 )
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.notifications.usecases._channels import to_channels_dto
@@ -14,7 +15,7 @@ from app.modules.users import UserDto, UserRepository
 
 
 class UpdateNotificationChannelsUseCase(
-    UseCase[dict[str, list[str]], NotificationChannelsDto, UserDto]
+    UseCase[UpdateNotificationChannelsDto, NotificationChannelsDto, UserDto]
 ):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
 
@@ -28,18 +29,20 @@ class UpdateNotificationChannelsUseCase(
         self._notification_repository = notification_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: dict[str, list[str]]) -> NotificationChannelsDto:
+    async def _execute(
+        self, actor: UserDto, data: UpdateNotificationChannelsDto
+    ) -> NotificationChannelsDto:
         known_channels = {c.value for c in NotificationChannel}
-        unknown = (set(data) - NOTIFICATION_GROUPS.keys()) | {
-            c for channels in data.values() for c in channels if c not in known_channels
+        requested = data.channels
+        unknown = (set(requested) - NOTIFICATION_GROUPS.keys()) | {
+            c for channels in requested.values() for c in channels if c not in known_channels
         }
         if unknown:
             raise ValidationError(
                 f"Unknown notification groups or channels: {', '.join(sorted(unknown))}",
                 code=ErrorCode.NOTIFICATION_CHANNELS_INVALID,
             )
-        # every group is stored, so a group left out of the request is switched off
-        matrix = {group: sorted(set(data.get(group, []))) for group in NOTIFICATION_GROUPS}
+        matrix = {group: sorted(set(requested.get(group, []))) for group in NOTIFICATION_GROUPS}
         async with self._uow:
             await self._user_repository.set_notification_channels(actor.id, matrix)
             updated = actor.model_copy(update={"notification_channels": matrix})

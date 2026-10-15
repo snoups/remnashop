@@ -29,16 +29,17 @@ class ReverseReferralRewardsUseCase(UseCase[ReverseReferralRewardsDto, None]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: ReverseReferralRewardsDto) -> None:
-        rewards = await self._referral_repository.list_active_rewards_by_payment_key(
-            data.payment_key
-        )
+        async with self._uow:
+            rewards = await self._referral_repository.list_active_rewards_by_payment_key(
+                data.payment_key
+            )
         for reward in rewards:
             async with self._uow:
                 if not await self._referral_repository.mark_reversed(reward.id):
                     continue
                 if reward.referrer_id is None:
                     continue
-                referrer = await self._user_repository.get_by_id(reward.referrer_id)
+                referrer = await self._user_repository.find_by_id(reward.referrer_id)
                 if referrer is None:
                     continue
                 taken: Decimal

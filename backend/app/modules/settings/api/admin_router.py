@@ -30,9 +30,13 @@ from app.modules.settings.api.schemas import (
     UpdateOAuthSettingsRequest,
     UpdateShopSettingsRequest,
 )
+from app.modules.settings.appearance_images import MAX_APPEARANCE_IMAGE_SIZE_BYTES
 from app.modules.settings.dto import (
+    GetBotCommandsDto,
+    SetBotProxyDto,
     UpdateAccessSettingsDto,
     UpdateAppearanceSettingsDto,
+    UpdateBotCommandsDto,
     UpdateBotRequirementsDto,
     UpdateBotSettingsDto,
     UpdateCabinetAuthSettingsDto,
@@ -70,7 +74,6 @@ from app.modules.settings.usecases import (
     UploadAppearanceFaviconUseCase,
     UploadAppearanceLogoUseCase,
 )
-from app.modules.settings.usecases.upload_appearance_image import MAX_APPEARANCE_IMAGE_SIZE_BYTES
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -129,7 +132,7 @@ async def set_bot_proxy(
     use_case: FromDishka[SetBotProxyUseCase],
     actor: Actor = Depends(require_admin),
 ) -> BotSettingsResponse:
-    settings = await use_case(actor, payload.proxy_url)
+    settings = await use_case(actor, SetBotProxyDto(proxy_url=payload.proxy_url))
     return BotSettingsResponse.model_validate(settings, from_attributes=True)
 
 
@@ -222,7 +225,18 @@ async def update_email_settings(
     use_case: FromDishka[UpdateEmailSettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> EmailSettingsResponse:
-    settings = await use_case(actor, UpdateEmailSettingsDto(**payload.model_dump()))
+    settings = await use_case(
+        actor,
+        UpdateEmailSettingsDto(
+            host=payload.host,
+            port=payload.port,
+            security=payload.security,
+            username=payload.username,
+            password=payload.password,
+            from_address=payload.from_address,
+            from_name=payload.from_name,
+        ),
+    )
     return EmailSettingsResponse.model_validate(settings, from_attributes=True)
 
 
@@ -247,7 +261,17 @@ async def update_cabinet_auth_settings(
     use_case: FromDishka[UpdateCabinetAuthSettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> CabinetAuthSettingsResponse:
-    settings = await use_case(actor, UpdateCabinetAuthSettingsDto(**payload.model_dump()))
+    settings = await use_case(
+        actor,
+        UpdateCabinetAuthSettingsDto(
+            telegram_enabled=payload.telegram_enabled,
+            google_enabled=payload.google_enabled,
+            yandex_enabled=payload.yandex_enabled,
+            email_enabled=payload.email_enabled,
+            block_disposable_emails=payload.block_disposable_emails,
+            extra_disposable_domains=payload.extra_disposable_domains,
+        ),
+    )
     return CabinetAuthSettingsResponse.model_validate(settings, from_attributes=True)
 
 
@@ -294,7 +318,7 @@ async def get_bot_commands(
     default_order: bool = False,
     actor: Actor = Depends(require_admin),
 ) -> BotCommandsResponse:
-    commands = await use_case(actor, default_order)
+    commands = await use_case(actor, GetBotCommandsDto(default_order=default_order))
     return BotCommandsResponse(
         commands=[BotCommandItem.model_validate(item, from_attributes=True) for item in commands]
     )
@@ -311,14 +335,9 @@ async def update_bot_commands(
 ) -> UpdateBotCommandsResponse:
     result = await use_case(
         actor,
-        [(item.command, item.enabled) for item in payload.commands],
+        UpdateBotCommandsDto(commands=[(item.command, item.enabled) for item in payload.commands]),
     )
-    return UpdateBotCommandsResponse(
-        commands=[
-            BotCommandItem.model_validate(item, from_attributes=True) for item in result.commands
-        ],
-        telegram_sync_failed=result.telegram_sync_failed,
-    )
+    return UpdateBotCommandsResponse.model_validate(result, from_attributes=True)
 
 
 @router.get("/oauth", response_model=OAuthSettingsResponse)
@@ -328,25 +347,10 @@ async def get_oauth_settings(
     actor: Actor = Depends(require_admin),
 ) -> OAuthSettingsResponse:
     settings = await use_case(actor)
-    return OAuthSettingsResponse(
-        is_github_configured=settings.is_github_configured,
-        is_github_enabled=settings.github_enabled,
-        is_telegram_configured=settings.is_telegram_configured,
-        is_telegram_enabled=settings.telegram_enabled,
-        is_google_configured=settings.is_google_configured,
-        is_yandex_configured=settings.is_yandex_configured,
-        is_oidc_configured=settings.is_oidc_configured,
-        is_oidc_enabled=settings.oidc_enabled,
-        oidc_display_name=settings.oidc_display_name,
-        is_password_login_enabled=settings.password_login_enabled,
-        is_passkey_configured=settings.is_passkey_configured,
-        is_passkey_enabled=settings.passkey_enabled,
-        passkey_rp_id=settings.passkey_rp_id,
-        passkey_origin=settings.passkey_origin,
-    )
+    return OAuthSettingsResponse.model_validate(settings, from_attributes=True)
 
 
-@router.patch("/oauth", response_model=OAuthSettingsResponse)
+@router.patch("/oauth", response_model=OAuthSettingsResponse, responses=error_responses(400))
 @inject
 async def update_oauth_settings(
     payload: UpdateOAuthSettingsRequest,
@@ -377,22 +381,7 @@ async def update_oauth_settings(
             passkey_origin=payload.passkey_origin,
         ),
     )
-    return OAuthSettingsResponse(
-        is_github_configured=settings.is_github_configured,
-        is_github_enabled=settings.github_enabled,
-        is_telegram_configured=settings.is_telegram_configured,
-        is_telegram_enabled=settings.telegram_enabled,
-        is_google_configured=settings.is_google_configured,
-        is_yandex_configured=settings.is_yandex_configured,
-        is_oidc_configured=settings.is_oidc_configured,
-        is_oidc_enabled=settings.oidc_enabled,
-        oidc_display_name=settings.oidc_display_name,
-        is_password_login_enabled=settings.password_login_enabled,
-        is_passkey_configured=settings.is_passkey_configured,
-        is_passkey_enabled=settings.passkey_enabled,
-        passkey_rp_id=settings.passkey_rp_id,
-        passkey_origin=settings.passkey_origin,
-    )
+    return OAuthSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @router.patch("/appearance", response_model=AppearanceResponse)
@@ -440,14 +429,14 @@ async def upload_appearance_logo(
 
 
 @router.delete(
-    "/appearance/logo", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/appearance/logo", response_model=AppearanceResponse, responses=error_responses(404)
 )
 @inject
 async def delete_appearance_logo(
     use_case: FromDishka[DeleteAppearanceLogoUseCase],
     actor: Actor = Depends(require_admin),
-) -> None:
-    await use_case(actor)
+) -> AppearanceResponse:
+    return AppearanceResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.put(
@@ -468,11 +457,11 @@ async def upload_appearance_favicon(
 
 
 @router.delete(
-    "/appearance/favicon", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/appearance/favicon", response_model=AppearanceResponse, responses=error_responses(404)
 )
 @inject
 async def delete_appearance_favicon(
     use_case: FromDishka[DeleteAppearanceFaviconUseCase],
     actor: Actor = Depends(require_admin),
-) -> None:
-    await use_case(actor)
+) -> AppearanceResponse:
+    return AppearanceResponse.model_validate(await use_case(actor), from_attributes=True)

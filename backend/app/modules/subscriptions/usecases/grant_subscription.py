@@ -41,7 +41,7 @@ class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
 
     async def _execute(self, actor: Actor, data: GrantSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
-            recipient = await self._user_repository.get_by_id(data.user_id)
+            recipient = await self._user_repository.find_by_id(data.user_id)
             if recipient is None:
                 raise NotFoundError(
                     f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND

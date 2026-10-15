@@ -7,9 +7,10 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription
+from app.modules.subscriptions.eligibility import get_live_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users import UserRepository
 
 
 class ResetSubscriptionTrafficUseCase(UseCase[int, SubscriptionDto]):
@@ -18,11 +19,13 @@ class ResetSubscriptionTrafficUseCase(UseCase[int, SubscriptionDto]):
     def __init__(
         self,
         subscription_repository: SubscriptionRepository,
+        user_repository: UserRepository,
         remnawave_sdk: RemnawaveSDK,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
         self._subscription_repository = subscription_repository
+        self._user_repository = user_repository
         self._remnawave_sdk = remnawave_sdk
         self._event_publisher = event_publisher
         self._uow = uow
@@ -34,9 +37,13 @@ class ResetSubscriptionTrafficUseCase(UseCase[int, SubscriptionDto]):
         await self._remnawave_sdk.users.reset_user_traffic(subscription.remnawave_user_id)
 
         async with self._uow:
+            subscriber = await subscription_owner(self._user_repository, subscription)
             await self._event_publisher.publish(
                 SubscriptionEditedEvent(
-                    user=actor, action="reset_traffic", subscription_id=subscription.id
+                    actor=actor,
+                    target=subscriber,
+                    action="reset_traffic",
+                    subscription_id=subscription.id,
                 )
             )
         logger.info(f"{actor.log} Reset traffic of subscription '{subscription.id}'")

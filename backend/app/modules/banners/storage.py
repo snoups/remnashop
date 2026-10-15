@@ -32,3 +32,6 @@ def read_banner_file(media_dir: Path, name: str, locale: Locale, extension: str)
 
 def delete_banner_file(media_dir: Path, name: str, locale: Locale, extension: str) -> None:
     banner_path(media_dir, name, locale, extension).unlink(missing_ok=True)
+
+
+MAX_BANNER_SIZE_BYTES: Final[int] = 5 * 1024 * 1024

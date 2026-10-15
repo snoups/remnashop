@@ -27,7 +27,7 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             logger.warning("Bot is not configured, customer Telegram message was not sent")
             return
         async with self._uow:
-            user = await self._user_repository.get_by_id(data.user_id)
+            user = await self._user_repository.find_by_id(data.user_id)
         if (
             user is None
             or user.telegram_id is None

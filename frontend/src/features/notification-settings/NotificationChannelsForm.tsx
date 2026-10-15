@@ -104,14 +104,14 @@ export function NotificationChannelsForm() {
   };
 
   const pushStatus = (data: NotificationChannels) => {
-    if (!data.push_configured) return t("profile.notifications.push.notConfigured");
+    if (!data.is_push_configured) return t("profile.notifications.push.notConfigured");
     if (support === "ios-needs-install") return t("profile.notifications.push.iosInstall");
     if (support === "unsupported") return t("profile.notifications.push.unsupported");
     return null;
   };
 
   const isChannelAvailable = (data: NotificationChannels, channel: string) =>
-    channel === "push" ? data.push_configured : channel === "telegram" ? data.telegram_available : true;
+    channel === "push" ? data.is_push_configured : channel === "telegram" ? data.telegram_available : true;
 
   return (
     <Card>
@@ -194,7 +194,7 @@ export function NotificationChannelsForm() {
               })}
             </div>
 
-            {state.data.push_configured && support === "ready" && (
+            {state.data.is_push_configured && support === "ready" && (
               <PushDevicesList
                 version={devicesVersion}
                 onRemoved={(endpoint) => {

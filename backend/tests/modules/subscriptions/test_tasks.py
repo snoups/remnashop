@@ -86,7 +86,7 @@ def _reconcile_use_case(
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
     )
-    return ReconcileSubscriptionsUseCase(subscription_repository, remnawave_sdk, sync)
+    return ReconcileSubscriptionsUseCase(subscription_repository, remnawave_sdk, sync, uow)
 
 
 def test_purchase_and_grant_tasks_are_retry_enabled() -> None:
@@ -270,7 +270,7 @@ async def test_a_free_order_over_the_cap_fails_instead_of_provisioning(
     assert len(await subscription_repository.get_active_by_user(buyer.id)) == 1
     assert (await transactions.get_by_id(order.id)).status is TransactionStatus.FAILED
     # the spent 100% purchase discount that made the order free comes back
-    assert (await user_repository.get_by_id(buyer.id)).purchase_discount == 100  # type: ignore[union-attr]
+    assert (await user_repository.find_by_id(buyer.id)).purchase_discount == 100  # type: ignore[union-attr]
 
 
 async def test_grant_addon_task_body_grants_an_entitlement(
@@ -516,5 +516,5 @@ async def test_a_delivered_paid_trial_uses_up_the_trial(
     )
 
     assert subscription is not None and subscription.is_trial is True
-    reloaded = await user_repository.get_by_id(buyer.id)
+    reloaded = await user_repository.find_by_id(buyer.id)
     assert reloaded is not None and reloaded.is_trial_available is False

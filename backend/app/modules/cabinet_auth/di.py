@@ -1,5 +1,4 @@
 from dishka import Provider, Scope, provide, provide_all
-from redis.asyncio import Redis
 
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.devices import KnownDevices
@@ -34,19 +33,10 @@ class CabinetAuthProvider(Provider):
         TelegramWebAppLoginUseCase,
         VerifyEmailCodeUseCase,
     )
-    sign_in = provide(CabinetSignIn)
-
-    @provide
-    def get_deeplink_store(self, redis: Redis) -> DeeplinkStore:
-        return DeeplinkStore(redis)
-
-    @provide
-    def get_known_devices(self, redis: Redis) -> KnownDevices:
-        return KnownDevices(redis)
-
-    @provide
-    def get_email_code_store(self, redis: Redis) -> EmailCodeStore:
-        return EmailCodeStore(redis)
+    cabinet_sign_in = provide(CabinetSignIn)
+    deeplink_store = provide(DeeplinkStore)
+    known_devices = provide(KnownDevices)
+    email_code_store = provide(EmailCodeStore)
 
 
 def get_cabinet_auth_providers() -> list[Provider]:

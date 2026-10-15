@@ -17,6 +17,7 @@ from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.backups.dispatch import RunBackupDispatch
 from app.modules.backups.repository import BackupRepository
 from app.modules.backups.usecases import (
     CreateBackupRunUseCase,
@@ -29,7 +30,6 @@ from app.modules.backups.usecases import (
     ResetBackupSettingsUseCase,
     UpdateBackupSettingsUseCase,
 )
-from app.modules.backups.usecases.create_backup_run import RunBackupDispatch
 from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository

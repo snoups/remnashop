@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Final, Optional
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import BackupKind, BackupRunStatus
-
-DEFAULT_PAGE_SIZE: Final[int] = 50
 
 
 class BackupSettingsDto(BaseDto, TimestampMixin):
@@ -59,3 +58,12 @@ class ListBackupRunsDto:
 class RunBackupDto:
     kind: BackupKind
     run_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class StartBackupRunDto:
+    kind: BackupKind
+
+
+# a run older than this was stranded by a killed worker; a real dump finishes well within it
+STALE_RUN_AFTER: Final[timedelta] = timedelta(hours=2)

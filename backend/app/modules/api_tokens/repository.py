@@ -13,18 +13,7 @@ class ApiTokenRepository:
         self.session = session
 
     def _to_dto(self, row: ApiToken) -> ApiTokenDto:
-        return ApiTokenDto(
-            id=row.id,
-            name=row.name,
-            scopes=row.scopes,
-            ip_allowlist=row.ip_allowlist,
-            created_by_user_id=row.created_by_user_id,
-            last_used_at=row.last_used_at,
-            revoked_at=row.revoked_at,
-            expires_at=row.expires_at,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
-        )
+        return ApiTokenDto.model_validate(row, from_attributes=True)
 
     async def create(self, data: CreateApiTokenDto) -> ApiTokenDto:
         row = ApiToken(

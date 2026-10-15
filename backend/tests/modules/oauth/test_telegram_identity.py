@@ -266,7 +266,7 @@ async def test_telegram_connect_sets_telegram_id_without_identity_row(
     assert identity.external_id == str(TELEGRAM_ID)
     assert identity.external_login == "tg_user"
     async with uow:
-        reloaded = await user_repository.get_by_id(admin.id)
+        reloaded = await user_repository.find_by_id(admin.id)
     assert reloaded is not None
     assert reloaded.telegram_id == TELEGRAM_ID
     assert await oauth_identity_repository.list_by_user(admin.id) == []
@@ -326,7 +326,7 @@ async def test_telegram_disconnect_clears_telegram_id(
     await use_case(admin, OAuthDisconnectDto(provider=OAuthProvider.TELEGRAM, client_ip=CLIENT_IP))
 
     async with uow:
-        reloaded = await user_repository.get_by_id(admin.id)
+        reloaded = await user_repository.find_by_id(admin.id)
     assert reloaded is not None
     assert reloaded.telegram_id is None
 

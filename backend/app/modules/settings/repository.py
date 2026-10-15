@@ -13,7 +13,7 @@ from app.core.db.models.email_settings import EmailSettings
 from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
-from app.core.db.singleton import get_or_create_singleton
+from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import AppearanceImageKind
 from app.modules.settings.dto import (
     AccessSettingsDto,
@@ -35,7 +35,6 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
 )
 
-_SINGLETON_ID: Final[int] = 1
 # pg_advisory_xact_lock key serializing replace_bot_commands: DELETE without
 # WHERE re-evaluates its rows after a lock wait, so two concurrent
 # replacements would otherwise both insert.
@@ -59,16 +58,16 @@ class SettingsRepository:
         self.session = session
 
     async def _get_or_create_singleton(self, model: type[_SingletonRow]) -> _SingletonRow:
-        return await get_or_create_singleton(self.session, model, _SINGLETON_ID)
+        return await get_or_create_singleton(self.session, model, SINGLETON_ID)
 
-    def _to_dto(self, row: Optional[BotSettings]) -> BotSettingsDto:
+    def _to_bot_dto(self, row: Optional[BotSettings]) -> BotSettingsDto:
         if row is None:
             return BotSettingsDto()
         return BotSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_bot_settings(self) -> BotSettingsDto:
-        row = await self.session.get(BotSettings, _SINGLETON_ID)
-        return self._to_dto(row)
+        row = await self.session.get(BotSettings, SINGLETON_ID)
+        return self._to_bot_dto(row)
 
     async def update_bot_settings(self, data: UpdateBotSettingsDto) -> BotSettingsDto:
         row = await self._get_or_create_singleton(BotSettings)
@@ -76,7 +75,7 @@ class SettingsRepository:
 
         await self.session.flush()
         await self.session.refresh(row)
-        return self._to_dto(row)
+        return self._to_bot_dto(row)
 
     async def set_bot_proxy_url(self, proxy_url: Optional[str]) -> BotSettingsDto:
         row = await self._get_or_create_singleton(BotSettings)
@@ -84,7 +83,7 @@ class SettingsRepository:
 
         await self.session.flush()
         await self.session.refresh(row)
-        return self._to_dto(row)
+        return self._to_bot_dto(row)
 
     def _to_shop_dto(self, row: Optional[ShopSettings]) -> ShopSettingsDto:
         if row is None:
@@ -92,7 +91,7 @@ class SettingsRepository:
         return ShopSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_shop_settings(self) -> ShopSettingsDto:
-        row = await self.session.get(ShopSettings, _SINGLETON_ID)
+        row = await self.session.get(ShopSettings, SINGLETON_ID)
         return self._to_shop_dto(row)
 
     async def update_shop_settings(self, data: UpdateShopSettingsDto) -> ShopSettingsDto:
@@ -100,7 +99,7 @@ class SettingsRepository:
         row = await get_or_create_singleton(
             self.session,
             ShopSettings,
-            _SINGLETON_ID,
+            SINGLETON_ID,
             max_active_subscriptions=ShopSettingsDto().max_active_subscriptions,
         )
         for name in data.fields_set:
@@ -116,7 +115,7 @@ class SettingsRepository:
         return AccessSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_bot_requirements(self) -> BotRequirementsDto:
-        row = await self.session.get(BotRequirements, _SINGLETON_ID)
+        row = await self.session.get(BotRequirements, SINGLETON_ID)
         if row is None:
             return BotRequirementsDto()
         return BotRequirementsDto.model_validate(row, from_attributes=True)
@@ -134,7 +133,7 @@ class SettingsRepository:
         return BotRequirementsDto.model_validate(row, from_attributes=True)
 
     async def get_access_settings(self) -> AccessSettingsDto:
-        row = await self.session.get(AccessSettings, _SINGLETON_ID)
+        row = await self.session.get(AccessSettings, SINGLETON_ID)
         return self._to_access_dto(row)
 
     async def update_access_settings(self, data: UpdateAccessSettingsDto) -> AccessSettingsDto:
@@ -151,7 +150,7 @@ class SettingsRepository:
         return EmailSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_email_settings(self) -> EmailSettingsDto:
-        row = await self.session.get(EmailSettings, _SINGLETON_ID)
+        row = await self.session.get(EmailSettings, SINGLETON_ID)
         return self._to_email_dto(row)
 
     async def update_email_settings(self, data: UpdateEmailSettingsDto) -> EmailSettingsDto:
@@ -168,7 +167,7 @@ class SettingsRepository:
         return CabinetAuthSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_cabinet_auth_settings(self) -> CabinetAuthSettingsDto:
-        row = await self.session.get(CabinetAuthSettings, _SINGLETON_ID)
+        row = await self.session.get(CabinetAuthSettings, SINGLETON_ID)
         return self._to_cabinet_auth_dto(row)
 
     async def update_cabinet_auth_settings(
@@ -187,7 +186,7 @@ class SettingsRepository:
         return OAuthSettingsDto.model_validate(row, from_attributes=True)
 
     async def get_oauth_settings(self) -> OAuthSettingsDto:
-        row = await self.session.get(OAuthSettings, _SINGLETON_ID)
+        row = await self.session.get(OAuthSettings, SINGLETON_ID)
         return self._to_oauth_dto(row)
 
     async def lock_oauth_settings(self, *, exclusive: bool) -> OAuthSettingsDto:
@@ -195,7 +194,7 @@ class SettingsRepository:
         await self._get_or_create_singleton(OAuthSettings)
         stmt = (
             select(OAuthSettings)
-            .where(OAuthSettings.id == _SINGLETON_ID)
+            .where(OAuthSettings.id == SINGLETON_ID)
             .execution_options(populate_existing=True)
         )
         row = await self.session.scalar(
@@ -229,7 +228,7 @@ class SettingsRepository:
         )
 
     async def get_appearance_settings(self) -> AppearanceSettingsDto:
-        row = await self.session.get(AppearanceSettings, _SINGLETON_ID)
+        row = await self.session.get(AppearanceSettings, SINGLETON_ID)
         return self._to_appearance_dto(row)
 
     async def update_appearance_settings(
@@ -257,7 +256,7 @@ class SettingsRepository:
     async def get_appearance_image_meta(
         self, kind: AppearanceImageKind
     ) -> Optional[tuple[str, str]]:
-        row = await self.session.get(AppearanceSettings, _SINGLETON_ID)
+        row = await self.session.get(AppearanceSettings, SINGLETON_ID)
         if row is None:
             return None
 

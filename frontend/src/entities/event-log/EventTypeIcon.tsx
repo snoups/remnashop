@@ -1,4 +1,6 @@
 import {
+  Image,
+  Smile,
   Anchor,
   BadgePercent,
   ArrowLeftRight,
@@ -158,6 +160,19 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   SubscriptionTrafficThresholdEvent: GaugeCircle,
   SubscriptionPlanChangedByAdminEvent: ArrowLeftRight,
   AddOnChangedEvent: PackagePlus,
+  AdLinkChangedEvent: Link,
+  BannerChangedEvent: Image,
+  DialogChangedEvent: PencilLine,
+  EmojiPackChangedEvent: Smile,
+  BotSettingsChangedEvent: Settings2,
+  AppearanceSettingsChangedEvent: Settings2,
+  NotificationSettingsChangedEvent: Settings2,
+  PasswordChangedEvent: KeyRound,
+  SecuritySettingsChangedEvent: ShieldCheck,
+  BackupChangedEvent: DatabaseZap,
+  BlacklistSourceChangedEvent: Ban,
+  TranslationChangedEvent: Languages,
+  GatewayTestPaymentCreatedEvent: CreditCard,
 };
 
 export function EventTypeIcon({ eventType, className }: { eventType: string; className?: string }) {

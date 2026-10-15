@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Final, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     BroadcastButtonKind,
@@ -15,9 +16,6 @@ from app.core.enums import (
     BroadcastSubscriptionFilter,
     Locale,
 )
-
-DEFAULT_PAGE_SIZE: Final[int] = 20
-MAX_PAGE_SIZE: Final[int] = 100
 
 
 class BroadcastAudienceDto(BaseModel):

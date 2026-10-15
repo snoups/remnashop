@@ -44,7 +44,7 @@ class RequestEmailCodeUseCase:
             brand = await load_email_brand(self._settings_repository)
         if not (cabinet.email_enabled and email_settings.is_configured):
             raise AuthenticationError(
-                "Email sign-in is disabled", code=ErrorCode.OAUTH_PROVIDER_DISABLED
+                "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
             )
 
         # over a limit the answer stays 204, so the limits don't reveal anything

@@ -244,7 +244,7 @@ function ExpiringCard({ data }: { data: Retention }) {
 function CurveCard({ data }: { data: Cohorts }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const rows = data.cohorts.filter((row) => row.cohort_size > 0);
+  const rows = data.items.filter((row) => row.cohort_size > 0);
   const recent = rows.filter((row) => row.retention_by_month.length >= CURVE_MIN_MONTHS).slice(-CURVE_COHORTS).reverse();
   const length = Math.min(MONTH_COLUMNS, Math.max(0, ...rows.map((row) => row.retention_by_month.length)));
 
@@ -337,7 +337,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
         }
       />
 
-      {data.cohorts.every((row) => row.cohort_size === 0) ? (
+      {data.items.every((row) => row.cohort_size === 0) ? (
         <EmptyState text={t("analytics.empty")} size="page" />
       ) : (
         <div className="-mx-1 mt-3 overflow-x-auto">
@@ -354,7 +354,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
               </tr>
             </thead>
             <tbody>
-              {data.cohorts.map((row) => (
+              {data.items.map((row) => (
                 <tr key={row.cohort}>
                   <td className="px-1 font-mono text-[12px] text-foreground">{row.cohort}</td>
                   <td className="px-1.5 text-right text-[12.5px] font-semibold text-foreground">{row.cohort_size.toLocaleString(language)}</td>

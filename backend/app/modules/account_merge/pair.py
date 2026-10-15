@@ -12,8 +12,8 @@ async def load_pair(
         raise ValidationError(
             "Cannot merge an account into itself", code=ErrorCode.MERGE_SAME_ACCOUNT
         )
-    source = await users.get_by_id(source_id)
-    target = await users.get_by_id(target_id)
+    source = await users.find_by_id(source_id)
+    target = await users.find_by_id(target_id)
     if source is None or target is None or source.deleted_at or target.deleted_at:
         raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
     if source.is_privileged and target.is_privileged:

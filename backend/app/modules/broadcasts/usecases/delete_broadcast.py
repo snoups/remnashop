@@ -31,14 +31,14 @@ class DeleteBroadcastUseCase(UseCase[int, None]):
 
     async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
-            current = await self._broadcast_repository.lock_for_update(data)
+            current = await self._broadcast_repository.get_by_id_for_update(data)
             if current.status is BroadcastStatus.SENDING:
                 raise ConflictError(
                     f"Broadcast '{data}' is being sent", code=ErrorCode.BROADCAST_INVALID_STATUS
                 )
             await self._broadcast_repository.delete(data)
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="delete", broadcast_id=data)
+                BroadcastChangedEvent(actor=actor, action="delete", broadcast_id=data)
             )
         if current.media_extension is not None:
             delete_media(

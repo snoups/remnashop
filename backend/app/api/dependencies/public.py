@@ -99,7 +99,7 @@ async def get_current_actor(
             status.HTTP_401_UNAUTHORIZED, "Invalid or expired token", code=ErrorCode.TOKEN_INVALID
         )
 
-    actor = await user_repository.get_by_id(user_id)
+    actor = await user_repository.find_by_id(user_id)
     if actor is None:
         logger.warning(f"Token for nonexistent user_id={user_id} from IP '{client_ip}'")
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "User not found", code=ErrorCode.TOKEN_INVALID)

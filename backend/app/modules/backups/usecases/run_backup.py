@@ -1,6 +1,5 @@
 import hashlib
 import os
-from datetime import timedelta
 from pathlib import Path
 from typing import Final, Optional
 
@@ -14,15 +13,13 @@ from app.core.enums import BackupKind, BackupRunStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.backups.dto import RunBackupDto
+from app.modules.backups.dto import STALE_RUN_AFTER, RunBackupDto
 from app.modules.backups.dump import create_assets_dump, create_database_dump
 from app.modules.backups.events import BackupFailedEvent
 from app.modules.backups.provenance import sign_backup_file
 from app.modules.backups.repository import BackupRepository
 
 _FILE_MODE: Final[int] = 0o600
-# a run older than this was stranded by a killed worker; a real dump finishes well within it
-STALE_RUN_AFTER: Final[timedelta] = timedelta(hours=2)
 _STALE_RUN_ERROR: Final[str] = "Interrupted: the worker stopped before the backup finished"
 _EXTENSION_BY_KIND: Final[dict[BackupKind, str]] = {
     BackupKind.DATABASE: "dump",
@@ -128,8 +125,9 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
             logger.exception(f"Backup run '{run_id}' ('{kind.value}') rotation failed")
 
     async def _rotate(self, kind: BackupKind) -> None:
-        completed = await self._backup_repository.list_completed_for_rotation(kind)
-        settings = await self._backup_repository.get_settings()
+        async with self._uow:
+            completed = await self._backup_repository.list_completed_for_rotation(kind)
+            settings = await self._backup_repository.get_settings()
         for stale in completed[settings.max_files :]:
             if stale.file_path:
                 Path(stale.file_path).unlink(missing_ok=True)

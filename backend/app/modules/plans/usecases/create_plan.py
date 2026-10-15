@@ -40,7 +40,7 @@ class CreatePlanUseCase(UseCase[CreatePlanDto, PlanDto]):
         async with self._uow:
             plan = await self._plan_repository.create(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(user=actor, action="create", plan_id=plan.id)
+                PlanChangedEvent(actor=actor, action="create", plan_id=plan.id)
             )
         logger.info(f"{actor.log} Created plan '{plan.name}'")
         return plan

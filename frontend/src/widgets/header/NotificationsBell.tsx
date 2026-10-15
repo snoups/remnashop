@@ -188,7 +188,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         void dismissAnnouncements(ids.slice(0, MAX_SEEN_IDS)).catch(() => {});
       return;
     }
-    setData((current) => (current ? { items: [], unread_count: 0 } : current));
+    setData((current) => (current ? { items: [], total: 0, unread_count: 0 } : current));
     setHighlighted(0);
     void clearNotifications().catch(() => {});
   };

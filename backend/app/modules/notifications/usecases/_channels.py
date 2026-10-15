@@ -8,6 +8,6 @@ async def to_channels_dto(
 ) -> NotificationChannelsDto:
     return NotificationChannelsDto(
         channels=effective_matrix(user),
-        push_configured=await repository.is_push_configured(),
+        is_push_configured=await repository.is_push_configured(),
         telegram_available=user.telegram_id is not None,
     )

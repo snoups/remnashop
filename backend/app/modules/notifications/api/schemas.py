@@ -8,7 +8,7 @@ class NotificationChannelsResponse(BaseModel):
     channels: dict[str, list[str]]
     available_groups: list[str]
     available_channels: list[str]
-    push_configured: bool
+    is_push_configured: bool
     telegram_available: bool
 
 

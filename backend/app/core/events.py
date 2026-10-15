@@ -69,14 +69,6 @@ class StoredEvent:
     ip_address: Optional[str]
 
 
-def set_fields(dto: object, *, skip: frozenset[str] = frozenset()) -> list[str]:
-    """Names of a partial-update DTO's fields that carry a value: what an
-    audit event records about a change, never the values themselves."""
-    return sorted(
-        name for name, value in vars(dto).items() if value is not None and name not in skip
-    )
-
-
 def changed_fields(before: object, after: object, names: Iterable[str]) -> list[str]:
     """Names whose value differs between two snapshots of the same record."""
     return sorted(name for name in names if getattr(before, name) != getattr(after, name))

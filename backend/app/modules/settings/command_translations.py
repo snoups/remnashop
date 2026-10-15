@@ -5,9 +5,9 @@ from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
 from app.core.enums import Locale
+from app.core.telegram_api import bot_method_url
 from app.modules.settings.bot_commands import BOT_COMMANDS
 from app.modules.settings.dto import BotCommandDto
-from app.modules.settings.telegram_status import TELEGRAM_API_URL
 
 _TIMEOUT_SECONDS: Final[float] = 10.0
 # outranks the default scope in private chats, so commands set there earlier
@@ -89,7 +89,7 @@ async def delete_bot_commands_for_locale(token: str, proxy: Optional[str], local
 async def _call(
     client: httpx.AsyncClient, token: str, method: str, payload: dict[str, Any]
 ) -> bool:
-    response = await client.post(f"{TELEGRAM_API_URL}/bot{token}/{method}", json=payload)
+    response = await client.post(bot_method_url(token, method), json=payload)
     body: dict[str, Any] = response.json()
     if body.get("ok"):
         return True

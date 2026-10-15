@@ -29,11 +29,11 @@ from app.modules.referrals.dto import (
     UpdateReferralSettingsDto,
 )
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.referrals.usecases import AttachReferralOnRegistrationUseCase
-from app.modules.referrals.usecases.assign_referral_rewards import (
+from app.modules.referrals.usecases import (
     AssignReferralRewardsUseCase,
-    _level_amounts,
+    AttachReferralOnRegistrationUseCase,
 )
+from app.modules.referrals.usecases.assign_referral_rewards import _level_amounts
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -145,7 +145,7 @@ async def test_assign_referral_rewards_skips_when_system_disabled(
         )
     )
 
-    updated_referrer = await user_repository.get_by_id(referrer_id)
+    updated_referrer = await user_repository.find_by_id(referrer_id)
     assert updated_referrer.points == Decimal(0)
 
 
@@ -185,8 +185,8 @@ async def test_assign_referral_rewards_credits_points_up_the_chain(
         )
     )
 
-    assert (await user_repository.get_by_id(middle)).points == Decimal("10")
-    assert (await user_repository.get_by_id(top)).points == Decimal("3")
+    assert (await user_repository.find_by_id(middle)).points == Decimal("10")
+    assert (await user_repository.find_by_id(top)).points == Decimal("3")
 
     # Each reward's referral_id must be the edge that placed its beneficiary
     # at that level (the edge below them), not the edge above them.
@@ -244,7 +244,7 @@ async def test_assign_referral_rewards_skips_trial_purchase(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal(0)
 
 
 async def test_assign_referral_rewards_first_payment_strategy_skips_renewal(
@@ -279,7 +279,7 @@ async def test_assign_referral_rewards_first_payment_strategy_skips_renewal(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal(0)
 
 
 async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next(
@@ -335,7 +335,7 @@ async def test_assign_referral_rewards_one_level_failure_does_not_block_the_next
         (await subscription_repository.session.scalars(select(ReferralReward.referrer_id))).all()
     )
     assert rewarded == {top}
-    top_user = await user_repository.get_by_id(top)
+    top_user = await user_repository.find_by_id(top)
     assert top_user is not None
     assert top_user.points == Decimal("7")
 
@@ -373,7 +373,7 @@ async def test_assign_referral_rewards_is_idempotent_against_duplicate_delivery(
             )
         )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal("10")
     rows = (
         await referral_repository.session.scalars(
             select(ReferralReward).where(
@@ -419,8 +419,8 @@ async def test_assign_referral_rewards_stops_walk_at_mutual_referral_cycle(
 
     # Level 1 (b -> a) rewards a; the walk must stop there instead of looping
     # back to b (the buyer) as a bogus level-2 hop.
-    assert (await user_repository.get_by_id(a)).points == Decimal("10")
-    assert (await user_repository.get_by_id(b)).points == Decimal(0)
+    assert (await user_repository.find_by_id(a)).points == Decimal("10")
+    assert (await user_repository.find_by_id(b)).points == Decimal(0)
 
 
 async def test_assign_referral_rewards_every_payment_strategy_rewards_each_renewal(
@@ -456,7 +456,7 @@ async def test_assign_referral_rewards_every_payment_strategy_rewards_each_renew
             )
         )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal("30")
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal("30")
 
 
 async def test_first_payment_strategy_skips_a_second_paid_subscription(
@@ -496,7 +496,7 @@ async def test_first_payment_strategy_skips_a_second_paid_subscription(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal(0)
     assert await referral_repository.list_rewards_by_referrer(referrer_id) == []
 
 
@@ -553,7 +553,7 @@ async def test_points_reward_is_not_recorded_when_the_credit_fails(
     failing = False
     await assign_rewards.system(data)
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal("10")
     assert len(await referral_repository.list_rewards_by_referrer(referrer_id)) == 1
 
 
@@ -616,8 +616,8 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
     )
 
     # 10% of 250 = 25; 3% of 250 = 7.5, rounded down
-    assert (await user_repository.get_by_id(middle)).points == Decimal("25")
-    assert (await user_repository.get_by_id(top)).points == Decimal("7")
+    assert (await user_repository.find_by_id(middle)).points == Decimal("25")
+    assert (await user_repository.find_by_id(top)).points == Decimal("7")
 
 
 async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
@@ -673,7 +673,7 @@ async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
     )
 
     # 10% of the anchor amount 10, not of the 900 paid in RUB
-    assert (await user_repository.get_by_id(referrer)).points == Decimal("1")
+    assert (await user_repository.find_by_id(referrer)).points == Decimal("1")
 
 
 def test_level_amounts_percent_of_days_rounds_down_with_a_floor_of_one() -> None:
@@ -708,7 +708,7 @@ async def _register(
 
 
 async def _referral_code(user_repository: UserRepository, user_id: int) -> Optional[str]:
-    user = await user_repository.get_by_id(user_id)
+    user = await user_repository.find_by_id(user_id)
     assert user is not None
     return user.referral_code
 
@@ -767,8 +767,8 @@ async def test_registration_rewards_the_newcomer_with_days(
         attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
     )
 
-    assert (await user_repository.get_by_id(newcomer)).bonus_days == 7
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(newcomer)).bonus_days == 7
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
 
 
 async def test_registration_rewards_the_newcomer_with_points(
@@ -788,7 +788,7 @@ async def test_registration_rewards_the_newcomer_with_points(
         attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
     )
 
-    assert (await user_repository.get_by_id(newcomer)).points == Decimal(50)
+    assert (await user_repository.find_by_id(newcomer)).points == Decimal(50)
 
 
 async def test_registration_with_a_zero_reward_links_without_crediting(
@@ -805,7 +805,7 @@ async def test_registration_with_a_zero_reward_links_without_crediting(
     )
 
     assert await referral_repository.get_by_referred_id(newcomer) is not None
-    user = await user_repository.get_by_id(newcomer)
+    user = await user_repository.find_by_id(newcomer)
     assert user.bonus_days == 0
     assert user.points == Decimal(0)
 
@@ -827,7 +827,7 @@ async def test_a_redelivered_registration_rewards_once(
     await _register(attach_on_registration, newcomer, code)
     await _register(attach_on_registration, newcomer, code)
 
-    assert (await user_repository.get_by_id(newcomer)).bonus_days == 7
+    assert (await user_repository.find_by_id(newcomer)).bonus_days == 7
 
 
 @pytest.mark.parametrize("case", ["disabled", "unknown", "own", "cycle"])
@@ -859,7 +859,7 @@ async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
     await _register(attach_on_registration, newcomer, code)
 
     assert await referral_repository.get_by_referred_id(newcomer) is None
-    assert (await user_repository.get_by_id(newcomer)).bonus_days == 0
+    assert (await user_repository.find_by_id(newcomer)).bonus_days == 0
 
 
 def _free_order(buyer: int, idempotency_key: str, currency: Currency) -> CreateTransactionDto:
@@ -923,7 +923,7 @@ async def test_free_order_earns_no_referral_reward(
     )
 
     # PERCENT would otherwise floor at 1 point even on a zero base
-    assert (await user_repository.get_by_id(referrer)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer)).points == Decimal(0)
 
 
 async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
@@ -957,7 +957,7 @@ async def test_first_payment_strategy_ignores_an_earlier_free_subscription(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).points == Decimal("10")
+    assert (await user_repository.find_by_id(referrer)).points == Decimal("10")
 
 
 async def _enable_day_rewards(
@@ -996,7 +996,7 @@ async def test_day_reward_goes_to_the_balance_not_a_subscription(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 7
     after = await subscription_repository.get_by_id(referrer_sub)
     assert after.expire_at == before.expire_at
     reward = await referral_repository.session.scalar(
@@ -1029,7 +1029,7 @@ async def test_day_reward_skipped_for_a_referrer_who_never_paid(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
     rows = (
         await referral_repository.session.scalars(
             select(ReferralReward).where(ReferralReward.referrer_id == referrer)
@@ -1057,7 +1057,7 @@ async def test_day_reward_credited_without_any_subscription_when_not_required(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 7
 
 
 async def test_day_reward_is_not_credited_twice_for_one_payment(
@@ -1080,7 +1080,7 @@ async def test_day_reward_is_not_credited_twice_for_one_payment(
             )
         )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 7
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 7
 
 
 async def test_renewal_without_an_order_earns_no_reward(
@@ -1105,7 +1105,7 @@ async def test_renewal_without_an_order_earns_no_reward(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
 
 
 async def test_day_reward_skipped_for_a_referrer_with_only_a_trial(
@@ -1140,7 +1140,7 @@ async def test_day_reward_skipped_for_a_referrer_with_only_a_trial(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
 
 
 async def test_deleted_referrer_earns_nothing(
@@ -1163,7 +1163,7 @@ async def test_deleted_referrer_earns_nothing(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
     assert await referral_repository.list_rewards_by_referrer(referrer) == []
 
 
@@ -1183,7 +1183,7 @@ async def test_a_blocked_referrers_link_neither_links_nor_rewards(
     await _register(attach_on_registration, newcomer, code)
 
     assert await referral_repository.get_by_referred_id(newcomer) is None
-    assert (await user_repository.get_by_id(newcomer)).bonus_days == 0
+    assert (await user_repository.find_by_id(newcomer)).bonus_days == 0
 
 
 async def test_a_deleted_newcomer_is_not_linked(
@@ -1224,7 +1224,7 @@ async def test_a_blocked_referrer_earns_nothing_from_payments(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).bonus_days == 0
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 0
     assert await referral_repository.list_rewards_by_referrer(referrer) == []
 
 
@@ -1263,7 +1263,7 @@ async def test_refunded_order_earns_no_referral_reward(
         )
     )
 
-    assert (await user_repository.get_by_id(referrer)).points == Decimal(0)
+    assert (await user_repository.find_by_id(referrer)).points == Decimal(0)
 
 
 async def test_first_payment_rewards_the_earlier_of_two_paid_subscriptions(
@@ -1302,7 +1302,7 @@ async def test_first_payment_rewards_the_earlier_of_two_paid_subscriptions(
             )
         )
 
-    assert (await user_repository.get_by_id(referrer_id)).points == Decimal("10")
+    assert (await user_repository.find_by_id(referrer_id)).points == Decimal("10")
     rewarded = await referral_repository.session.scalars(
         select(ReferralReward.subscription_id).where(ReferralReward.referrer_id == referrer_id)
     )
@@ -1351,7 +1351,7 @@ async def test_assign_referral_rewards_skips_an_order_refunded_while_assigning(
         )
     )
 
-    assert (await user_repository.get_by_id(inviter)).points == Decimal("0")
+    assert (await user_repository.find_by_id(inviter)).points == Decimal("0")
     assert (
         await session.scalar(select(ReferralReward).where(ReferralReward.referrer_id == inviter))
     ) is None

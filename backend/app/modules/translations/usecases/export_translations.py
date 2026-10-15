@@ -1,13 +1,13 @@
-from typing import Final
-
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.translations.dto import TranslationsExportDto, TranslationTextExportDto
+from app.modules.translations.dto import (
+    EXPORT_VERSION,
+    TranslationsExportDto,
+    TranslationTextExportDto,
+)
 from app.modules.translations.repository import TranslationRepository
-
-EXPORT_VERSION: Final[int] = 1
 
 
 class ExportTranslationsUseCase(UseCase[None, TranslationsExportDto]):

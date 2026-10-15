@@ -18,12 +18,12 @@ class CheckRegistrationAccessUseCase(UseCase[CheckRegistrationAccessDto, Optiona
 
     def __init__(
         self,
-        get_access_settings: GetAccessSettingsUseCase,
+        get_access_settings_use_case: GetAccessSettingsUseCase,
         user_repository: UserRepository,
         ad_link_repository: AdLinkRepository,
         uow: UnitOfWork,
     ) -> None:
-        self._get_access_settings = get_access_settings
+        self._get_access_settings_use_case = get_access_settings_use_case
         self._user_repository = user_repository
         self._ad_link_repository = ad_link_repository
         self._uow = uow
@@ -31,7 +31,7 @@ class CheckRegistrationAccessUseCase(UseCase[CheckRegistrationAccessDto, Optiona
     async def _execute(
         self, actor: Actor, data: CheckRegistrationAccessDto
     ) -> Optional[AccessDenial]:
-        settings = await self._get_access_settings.system()
+        settings = await self._get_access_settings_use_case.system()
         if settings.mode is AccessMode.PUBLIC and settings.registration_enabled:
             return None
 

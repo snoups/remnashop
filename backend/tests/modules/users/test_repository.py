@@ -9,7 +9,6 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import MAX_SQL_IN_PARAMS
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
@@ -62,7 +61,7 @@ def _add_subscription(
 async def test_create_and_get_by_id(user_repository: UserRepository, uow: UnitOfWork) -> None:
     created = await _create_user(user_repository, uow, telegram_id=111, name="Alice")
 
-    fetched = await user_repository.get_by_id(created.id)
+    fetched = await user_repository.find_by_id(created.id)
 
     assert fetched is not None
     assert fetched.telegram_id == 111
@@ -104,7 +103,7 @@ async def test_create_leaves_unmapped_violation_unmasked(
 
 
 async def test_get_by_id_missing_returns_none(user_repository: UserRepository) -> None:
-    assert await user_repository.get_by_id(999_999) is None
+    assert await user_repository.find_by_id(999_999) is None
 
 
 async def test_get_by_telegram_id(user_repository: UserRepository, uow: UnitOfWork) -> None:
@@ -187,7 +186,7 @@ async def test_create_and_update_permission_and_ip_fields(
         ip_allowlist=["10.0.0.1", "192.168.1.0/24"],
     )
 
-    fetched = await user_repository.get_by_id(created.id)
+    fetched = await user_repository.find_by_id(created.id)
 
     assert fetched is not None
     assert fetched.permission_grants == ["ADMINS_MANAGE"]
@@ -200,7 +199,7 @@ async def test_permission_and_ip_fields_default_to_none(
 ) -> None:
     created = await _create_user(user_repository, uow)
 
-    fetched = await user_repository.get_by_id(created.id)
+    fetched = await user_repository.find_by_id(created.id)
 
     assert fetched is not None
     assert fetched.permission_grants is None
@@ -293,7 +292,7 @@ async def test_credit_points_adds_to_existing_points(user_repository: UserReposi
     await user_repository.credit_points(created.id, Decimal("15"))
     await user_repository.credit_points(created.id, Decimal("5"))
 
-    updated = await user_repository.get_by_id(created.id)
+    updated = await user_repository.find_by_id(created.id)
     assert updated is not None
     assert updated.points == Decimal("20")
 
@@ -308,7 +307,7 @@ async def test_credit_points_refuses_to_overdraw(user_repository: UserRepository
     with pytest.raises(ValidationError):
         await user_repository.credit_points(created.id, Decimal("-20"))
 
-    unchanged = await user_repository.get_by_id(created.id)
+    unchanged = await user_repository.find_by_id(created.id)
     assert unchanged is not None
     assert unchanged.points == Decimal("10")
 
@@ -341,12 +340,13 @@ async def test_list_by_ids_returns_matching_users_in_no_particular_order(
     assert {user.id for user in users} == {a.id, b.id}
 
 
-async def test_list_by_ids_chunks_more_ids_than_bind_param_cap(
+async def test_list_by_ids_takes_more_ids_than_the_bind_param_cap(
     user_repository: UserRepository,
 ) -> None:
     a = await user_repository.create(CreateUserDto(name="Alpha", telegram_id=910_011))
     b = await user_repository.create(CreateUserDto(name="Beta", telegram_id=910_012))
-    missing = [-i for i in range(1, MAX_SQL_IN_PARAMS + 4)]
+    # asyncpg caps a statement at 32,767 bind parameters
+    missing = [-i for i in range(1, 40_000)]
 
     users = await user_repository.list_by_ids([a.id, *missing, b.id])
 
@@ -593,7 +593,7 @@ async def test_credit_bonus_days_adds_and_subtracts(user_repository: UserReposit
     await user_repository.credit_bonus_days(user.id, 7)
     await user_repository.credit_bonus_days(user.id, -3)
 
-    updated = await user_repository.get_by_id(user.id)
+    updated = await user_repository.find_by_id(user.id)
     assert updated is not None
     assert updated.bonus_days == 4
 
@@ -606,7 +606,7 @@ async def test_credit_bonus_days_refuses_to_go_below_zero(user_repository: UserR
         await user_repository.credit_bonus_days(user.id, -3)
 
     assert error.value.code is ErrorCode.BONUS_DAYS_BELOW_ZERO
-    updated = await user_repository.get_by_id(user.id)
+    updated = await user_repository.find_by_id(user.id)
     assert updated is not None
     assert updated.bonus_days == 2
 
@@ -639,7 +639,7 @@ async def test_restore_purchase_discount_skips_an_order_without_a_promocode(
 
     await user_repository.restore_purchase_discount(user.id, 20, None, from_promocode=True)
 
-    restored = await user_repository.get_by_id(user.id)
+    restored = await user_repository.find_by_id(user.id)
     assert restored is not None
     assert restored.purchase_discount == 0
 
@@ -651,7 +651,7 @@ async def test_restore_purchase_discount_gives_back_an_admin_granted_one(
 
     await user_repository.restore_purchase_discount(user.id, 20, None, from_promocode=False)
 
-    restored = await user_repository.get_by_id(user.id)
+    restored = await user_repository.find_by_id(user.id)
     assert restored is not None
     assert (restored.purchase_discount, restored.purchase_discount_promocode_id) == (20, None)
 
@@ -672,16 +672,16 @@ async def test_get_for_update_returns_fresh_row(
     user_repository: UserRepository, session: AsyncSession
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="before"))
-    assert (await user_repository.get_by_id(user.id)) is not None
+    assert (await user_repository.find_by_id(user.id)) is not None
     await session.execute(
         update(User).where(User.id == user.id).values(name="after"),
         execution_options={"synchronize_session": False},
     )
 
-    fresh = await user_repository.get_for_update(user.id)
+    fresh = await user_repository.find_for_update(user.id)
 
     assert fresh is not None and fresh.name == "after"
-    assert await user_repository.get_for_update(user.id + 100000) is None
+    assert await user_repository.find_for_update(user.id + 100000) is None
 
 
 async def test_credit_points_reports_a_missing_user(user_repository: UserRepository) -> None:

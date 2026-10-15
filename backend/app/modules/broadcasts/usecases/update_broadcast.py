@@ -7,8 +7,8 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.broadcasts.dto import BroadcastDto, UpdateBroadcastDto
 from app.modules.broadcasts.events import BroadcastChangedEvent
+from app.modules.broadcasts.lifecycle import lock_editable
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.usecases.editable import lock_editable
 from app.modules.broadcasts.validation import (
     assert_references,
     validate_audience,
@@ -42,7 +42,7 @@ class UpdateBroadcastUseCase(UseCase[UpdateBroadcastDto, BroadcastDto]):
             )
             updated = await self._broadcast_repository.replace(current.id, data.data)
             await self._event_publisher.publish(
-                BroadcastChangedEvent(user=actor, action="update", broadcast_id=current.id)
+                BroadcastChangedEvent(actor=actor, action="update", broadcast_id=current.id)
             )
         logger.info(f"{actor.log} Updated broadcast '{current.id}'")
         return updated

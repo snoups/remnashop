@@ -11,9 +11,10 @@ from app.core.enums import Locale
 from app.modules.dialogs import catalog
 from app.modules.dialogs.api.schemas import (
     CreateCustomWindowRequest,
-    DialogButtonInput,
+    DialogButtonRequest,
     DialogCatalogResponse,
-    DialogExportPayload,
+    DialogExportResponse,
+    DialogImportRequest,
     DialogTextResponse,
     DialogWindowListResponse,
     DialogWindowResponse,
@@ -58,7 +59,7 @@ def _to_window_response(window: DialogWindowDto) -> DialogWindowResponse:
     )
 
 
-def _to_button_input(button: DialogButtonInput) -> DialogButtonInputDto:
+def _to_button_input(button: DialogButtonRequest) -> DialogButtonInputDto:
     return DialogButtonInputDto(
         row=button.row,
         column=button.column,
@@ -209,14 +210,14 @@ async def update_dialog_text(
     return DialogTextResponse.model_validate(entry, from_attributes=True)
 
 
-@router.get("/export", response_model=DialogExportPayload)
+@router.get("/export", response_model=DialogExportResponse)
 @inject
 async def export_dialogs(
     use_case: FromDishka[ExportDialogsUseCase],
     actor: Actor = Depends(require_admin),
-) -> DialogExportPayload:
+) -> DialogExportResponse:
     export = await use_case(actor)
-    return DialogExportPayload.model_validate(export, from_attributes=True)
+    return DialogExportResponse.model_validate(export, from_attributes=True)
 
 
 @router.post(
@@ -224,7 +225,7 @@ async def export_dialogs(
 )
 @inject
 async def import_dialogs(
-    payload: DialogExportPayload,
+    payload: DialogImportRequest,
     use_case: FromDishka[ImportDialogsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> None:
@@ -257,10 +258,11 @@ async def import_dialogs(
     )
 
 
-@router.post("/actions/reset-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/actions/reset-all", response_model=DialogWindowListResponse)
 @inject
 async def reset_all_dialogs(
     use_case: FromDishka[ResetAllDialogsUseCase],
     actor: Actor = Depends(require_admin),
-) -> None:
-    await use_case(actor)
+) -> DialogWindowListResponse:
+    items = [_to_window_response(window) for window in await use_case(actor)]
+    return DialogWindowListResponse(items=items, total=len(items))

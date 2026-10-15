@@ -6,7 +6,7 @@ from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
 from app.modules.transactions.api.schemas import CheckoutResponse, CreateCheckoutRequest
 from app.modules.transactions.dto import CreateCheckoutDto
-from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
+from app.modules.transactions.usecases import CreateCheckoutUseCase
 from app.modules.users import UserDto
 
 router = APIRouter(tags=["transactions"])

@@ -6,7 +6,7 @@ import aiosmtplib
 
 from app.core.enums import SmtpSecurity
 from app.modules.email.dto import EmailMessageDto
-from app.modules.settings import EmailSettingsDto
+from app.modules.settings import AppearanceImageDto, EmailSettingsDto
 
 # a dropped established session (SMTPServerDisconnected, also an OSError) says
 # nothing about the server being unreachable
@@ -27,7 +27,7 @@ class SmtpSender:
         self,
         settings: EmailSettingsDto,
         message: EmailMessageDto,
-        logo: Optional[tuple[bytes, str]] = None,
+        logo: Optional[AppearanceImageDto] = None,
     ) -> None:
         if settings.host is None or settings.from_address is None:
             raise EmailSendError("SMTP is not configured")
@@ -38,11 +38,10 @@ class SmtpSender:
         mime.set_content(message.text)
         mime.add_alternative(message.html, subtype="html")
         if logo is not None and "cid:logo" in message.html:
-            data, content_type = logo
-            maintype, subtype = content_type.split("/", 1)
+            maintype, subtype = logo.content_type.split("/", 1)
             html_part = mime.get_body(("html",))
             if html_part is not None:
-                html_part.add_related(data, maintype=maintype, subtype=subtype, cid="<logo>")
+                html_part.add_related(logo.data, maintype=maintype, subtype=subtype, cid="<logo>")
         try:
             await aiosmtplib.send(
                 mime,

@@ -24,7 +24,7 @@ class GetBroadcastPromocodeUseCase(UseCase[int, Optional[str], UserDto]):
 
     async def _execute(self, actor: UserDto, data: int) -> Optional[str]:
         async with self._uow:
-            broadcast = await self._broadcast_repository.get(data)
+            broadcast = await self._broadcast_repository.find_by_id(data)
             if broadcast is None or broadcast.started_at is None or broadcast.promocode_id is None:
                 return None
             if (

@@ -13,6 +13,7 @@ from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.seed import ensure_dialogs_seeded
 from app.modules.dialogs.usecases import GetDialogCatalogUseCase, UpdateDialogWindowButtonsUseCase
 from app.modules.users.dto import UserDto
+from tests.fakes.events import RecordingEventPublisher
 
 # Same construction tests/modules/dialogs/test_usecases.py uses for its OWNER actor --
 # not a fixture, a plain module-level constant, matched here for consistency.
@@ -93,7 +94,11 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
     assert window.kind == DialogWindowKind.SEED
 
     use_case = UpdateDialogWindowButtonsUseCase(
-        dialog_repository, translation_repository, uow, RedisBotSignals(redis)
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
     )
     # This is the exact round trip the telegram-render-engine review found broken:
     # read a seed window's own action key back through the admin API's write path.

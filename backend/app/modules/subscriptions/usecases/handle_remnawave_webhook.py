@@ -45,13 +45,13 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
 
     def __init__(
         self,
-        sync_subscription_status: SyncSubscriptionStatusUseCase,
-        publish_lifecycle_event: PublishLifecycleEventUseCase,
+        sync_subscription_status_use_case: SyncSubscriptionStatusUseCase,
+        publish_lifecycle_event_use_case: PublishLifecycleEventUseCase,
         config: AppConfig,
         redis: Redis,
     ) -> None:
-        self._sync_subscription_status = sync_subscription_status
-        self._publish_lifecycle_event = publish_lifecycle_event
+        self._sync_subscription_status_use_case = sync_subscription_status_use_case
+        self._publish_lifecycle_event_use_case = publish_lifecycle_event_use_case
         self._config = config
         self._redis = redis
 
@@ -92,7 +92,7 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
         )
         is_deletion = target_status is SubscriptionStatus.DELETED
         try:
-            await self._sync_subscription_status.system(
+            await self._sync_subscription_status_use_case.system(
                 SyncSubscriptionStatusDto(
                     remnawave_user_id=payload.data.id,
                     status=target_status,
@@ -110,7 +110,7 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
 
         # a notification must never undo or fail the status sync
         try:
-            await self._publish_lifecycle_event.system(
+            await self._publish_lifecycle_event_use_case.system(
                 PublishLifecycleEventDto(
                     remnawave_user_id=payload.data.id,
                     webhook_event=payload.event,

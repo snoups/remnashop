@@ -1,3 +1,4 @@
+import type { ListResponse } from "@shared/api/http";
 import type { PurchaseType } from "@entities/transactions/api";
 import { apiGet } from "@shared/api/http";
 
@@ -178,6 +179,6 @@ export function getClientApps(signal?: AbortSignal): Promise<ClientApps> {
   return apiGet<ClientApps>("/overview/client-apps", signal);
 }
 
-export function getAttention(signal?: AbortSignal): Promise<{ items: AttentionItem[] }> {
-  return apiGet<{ items: AttentionItem[] }>("/overview/attention", signal);
+export function getAttention(signal?: AbortSignal): Promise<ListResponse<AttentionItem>> {
+  return apiGet<ListResponse<AttentionItem>>("/overview/attention", signal);
 }

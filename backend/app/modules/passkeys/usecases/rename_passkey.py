@@ -21,5 +21,4 @@ class RenamePasskeyUseCase(UseCase[RenamePasskeyDto, PasskeyCredentialDto, UserD
             if existing is None:
                 raise NotFoundError("Passkey not found", code=ErrorCode.PASSKEY_NOT_FOUND)
 
-        async with self._uow:
             return await self._passkey_repository.update_name(data.id, data.name)

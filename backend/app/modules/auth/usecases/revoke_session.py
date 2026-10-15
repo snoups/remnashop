@@ -31,7 +31,6 @@ class RevokeSessionUseCase(UseCase[RevokeSessionDto, None, UserDto]):
                 # don't leak which case it was.
                 raise NotFoundError("Session not found", code=ErrorCode.SESSION_NOT_FOUND)
 
-        async with self._uow:
             await self._session_repository.revoke_by_id(data.session_id)
             await self._event_publisher.publish(
                 SessionRevokedEvent(

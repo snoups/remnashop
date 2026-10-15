@@ -216,7 +216,7 @@ async def _broadcast(
     if status is BroadcastStatus.SCHEDULED:
         fields["scheduled_at"] = datetime_now()
     await repository.update_fields(created.id, **fields)
-    return await repository.get_or_raise(created.id)
+    return await repository.get_by_id(created.id)
 
 
 async def _sending(
@@ -227,7 +227,7 @@ async def _sending(
         broadcast.id, broadcast.audience, broadcast.category, datetime_now()
     )
     await repository.update_fields(broadcast.id, total_count=total, started_at=datetime_now())
-    return await repository.get_or_raise(broadcast.id)
+    return await repository.get_by_id(broadcast.id)
 
 
 async def _recipients(session: AsyncSession, broadcast_id: int) -> list[BroadcastRecipient]:
@@ -279,7 +279,7 @@ async def test_start_materializes_and_kicks_deliver(
 
     await make_start(telegram).system(broadcast.id)
 
-    started = await broadcast_repository.get_or_raise(broadcast.id)
+    started = await broadcast_repository.get_by_id(broadcast.id)
     assert started.status is BroadcastStatus.SENDING
     assert started.total_count == 3
     assert started.started_at is not None
@@ -303,7 +303,7 @@ async def test_start_waits_while_another_is_sending(
 
     await make_start(MockTelegram(ok_response)).system(waiting.id)
 
-    after = await broadcast_repository.get_or_raise(waiting.id)
+    after = await broadcast_repository.get_by_id(waiting.id)
     assert after.status is BroadcastStatus.SCHEDULED
     assert after.started_at is None
     assert deliver_dispatch.messages == []
@@ -331,7 +331,7 @@ async def test_start_skips_materialize_on_retry(
 
     await make_start(MockTelegram(ok_response)).system(broadcast.id)
 
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.status is BroadcastStatus.SENDING
     assert after.total_count == 2
     assert len(await _recipients(session, broadcast.id)) == 2
@@ -356,7 +356,7 @@ async def test_start_drops_dead_promocode(
 
     await make_start(MockTelegram(ok_response)).system(broadcast.id)
 
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.promocode_id is None
     assert after.status is BroadcastStatus.SENDING
     assert _published(publisher) == [
@@ -396,7 +396,7 @@ async def test_start_posts_to_channel(
     assert len(telegram.requests) == 1
     assert telegram.requests[0].url.path == "/bot123:abc/sendMessage"
     assert _chat_id(telegram.requests[0]) == -100500
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert (after.channel_chat_id, after.channel_message_id) == (-100500, 100)
 
 
@@ -432,7 +432,7 @@ async def test_deliver_marks_outcomes_and_completes(
         BroadcastRecipientStatus.FAILED,
     ]
     assert (await _recipients(session, broadcast.id))[0].telegram_message_id == 7
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.status is BroadcastStatus.COMPLETED
     assert after.completed_at is not None
     assert (after.sent_count, after.blocked_count, after.failed_count) == (1, 1, 1)
@@ -545,7 +545,7 @@ async def test_deliver_uploads_media_once(
     assert kinds == ["multipart/form-data", "application/json", "application/json"]
     assert all(r.url.path.endswith("/sendPhoto") for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.SENT] * 3
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.media_file_id == "F"
 
 
@@ -563,7 +563,7 @@ async def test_deliver_without_token_fails_broadcast(
 
     await make_deliver(telegram).system(broadcast.id)
 
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.status is BroadcastStatus.FAILED
     assert after.completed_at is not None
     assert _published(publisher) == [
@@ -590,7 +590,7 @@ async def test_deliver_rejected_token_fails_broadcast(
         broadcast.id
     )
 
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.status is BroadcastStatus.FAILED
     assert after.completed_at is not None
     assert _published(publisher) == [
@@ -615,7 +615,7 @@ async def test_deliver_missing_media_file_fails_broadcast(
 
     await make_deliver(telegram).system(broadcast.id)
 
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.status is BroadcastStatus.FAILED
     assert _published(publisher) == [
         _strip(BroadcastFailedEvent(broadcast_id=broadcast.id, error="Media file is missing"))
@@ -709,7 +709,7 @@ async def test_recall_deletes_and_marks(
     assert deleted == [(-100500, 77), (9730, 11), (9731, 12)]
     assert all(r.url.path.endswith("/deleteMessage") for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.RECALLED] * 2
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.recalled_count == 2
     assert after.channel_message_id is None
     assert recall_dispatch.messages == []
@@ -796,7 +796,7 @@ async def test_recall_stops_at_once_on_unauthorized(
 
     assert len(telegram.requests) == 1
     assert await _statuses(session, broadcast_id) == [BroadcastRecipientStatus.SENT] * 2
-    assert (await broadcast_repository.get_or_raise(broadcast_id)).channel_message_id == 77
+    assert (await broadcast_repository.get_by_id(broadcast_id)).channel_message_id == 77
     assert recall_dispatch.messages == []
 
 
@@ -821,7 +821,7 @@ async def test_recall_keeps_channel_post_it_could_not_delete(
     ).system(broadcast_id)
 
     assert await _statuses(session, broadcast_id) == [BroadcastRecipientStatus.RECALLED]
-    assert (await broadcast_repository.get_or_raise(broadcast_id)).channel_message_id == 77
+    assert (await broadcast_repository.get_by_id(broadcast_id)).channel_message_id == 77
 
 
 async def test_recall_rekicks_until_the_last_page(
@@ -895,18 +895,18 @@ async def test_two_send_now_run_one_after_another(
 
     await start.system(first.id)
     await start.system(second.id)
-    assert (await broadcast_repository.get_or_raise(first.id)).status is BroadcastStatus.SENDING
-    assert (await broadcast_repository.get_or_raise(second.id)).status is BroadcastStatus.SCHEDULED
+    assert (await broadcast_repository.get_by_id(first.id)).status is BroadcastStatus.SENDING
+    assert (await broadcast_repository.get_by_id(second.id)).status is BroadcastStatus.SCHEDULED
 
     deliver = make_deliver(telegram)
     await deliver.system(first.id)
     await deliver.system(first.id)
-    assert (await broadcast_repository.get_or_raise(first.id)).status is BroadcastStatus.COMPLETED
+    assert (await broadcast_repository.get_by_id(first.id)).status is BroadcastStatus.COMPLETED
 
     await tick_use_case.system()
     assert start_dispatch.messages == [{"broadcast_id": second.id}]
     await start.system(second.id)
-    assert (await broadcast_repository.get_or_raise(second.id)).status is BroadcastStatus.SENDING
+    assert (await broadcast_repository.get_by_id(second.id)).status is BroadcastStatus.SENDING
 
 
 async def test_prune_keeps_counts(
@@ -935,7 +935,7 @@ async def test_prune_keeps_counts(
         .where(BroadcastRecipient.broadcast_id == broadcast.id)
     )
     assert remaining == 0
-    after = await broadcast_repository.get_or_raise(broadcast.id)
+    after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.sent_count == 2
     assert after.total_count == 2
 
@@ -1046,7 +1046,7 @@ async def test_stop_by_cancel_counts_the_in_flight_group(
 
     await deliver.system(broadcast.id)
 
-    assert (await broadcast_repository.get_or_raise(broadcast.id)).sent_count == 2
+    assert (await broadcast_repository.get_by_id(broadcast.id)).sent_count == 2
 
 
 async def test_recall_waits_on_429_and_retries_once(
@@ -1184,7 +1184,7 @@ async def test_deliver_releases_lock_before_chained_kick(
     assert held_at_kick == [0]
     await deliver.system(broadcast.id)
 
-    assert (await broadcast_repository.get_or_raise(broadcast.id)).status is (
+    assert (await broadcast_repository.get_by_id(broadcast.id)).status is (
         BroadcastStatus.COMPLETED
     )
     assert not await redis.exists(_deliver_lock_key(broadcast.id))
@@ -1232,7 +1232,7 @@ async def test_deliver_does_not_skip_a_row_locked_elsewhere(
         return None
 
     # what SKIP LOCKED answers while a short admin transaction holds the row
-    monkeypatch.setattr(broadcast_repository, "lock", skipped)
+    monkeypatch.setattr(broadcast_repository, "try_lock", skipped)
 
     await make_deliver(MockTelegram(ok_response)).system(broadcast.id)
 
@@ -1317,7 +1317,7 @@ async def test_deliver_survives_deletion_mid_group(
     await deliver.system(broadcast.id)
 
     assert deliver_dispatch.messages == []
-    assert await broadcast_repository.get(broadcast.id) is None
+    assert await broadcast_repository.find_by_id(broadcast.id) is None
 
 
 async def test_retry_after_rejected_token_resends_unsent(
@@ -1335,9 +1335,7 @@ async def test_retry_after_rejected_token_resends_unsent(
     await make_deliver(MockTelegram(lambda request: _error(401, "Unauthorized"))).system(
         broadcast.id
     )
-    assert (await broadcast_repository.get_or_raise(broadcast.id)).status is (
-        BroadcastStatus.FAILED
-    )
+    assert (await broadcast_repository.get_by_id(broadcast.id)).status is (BroadcastStatus.FAILED)
 
     result = await RetryBroadcastUseCase(
         broadcast_repository, start_dispatch, uow, publisher
@@ -1466,6 +1464,6 @@ async def test_a_running_recall_chain_keeps_its_repeat_window_fresh(
     # a full page means more is coming, so the chain is still running
     await recall.system(broadcast_id)
 
-    refreshed = await broadcast_repository.get_or_raise(broadcast_id)
+    refreshed = await broadcast_repository.get_by_id(broadcast_id)
     assert refreshed.recall_requested_at is not None
     assert refreshed.recall_requested_at > requested + timedelta(minutes=5)

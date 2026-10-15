@@ -13,8 +13,8 @@ export function uploadBanner(name: string, locale: string, file: File): Promise<
   return apiUpload<BannerMeta>(`/banners/${name}/${locale}`, formData);
 }
 
-export function restoreDefaultBanner(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/banners/actions/reset-default", {});
+export function restoreDefaultBanner(): Promise<BannerMeta> {
+  return apiPost<BannerMeta, Record<string, never>>("/banners/actions/reset-default", {});
 }
 
 export function deleteBanner(name: string, locale: string): Promise<null> {

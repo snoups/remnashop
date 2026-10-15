@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional, cast
+from typing import Final, Optional, cast
 
 from sqlalchemy import CursorResult, delete, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -10,6 +10,11 @@ from app.core.db.models.subscription_purchase_idempotency import SubscriptionPur
 from app.core.db.timestamp import NOW_FUNC
 from app.core.error_codes import ErrorCode
 from app.modules.subscriptions.domain import SupersededError
+
+# Must exceed the longest webhook-resend window of any payment provider --
+# deleting a still-resendable key turns a replay into a fresh claim (double
+# charge + double provisioning).
+IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
 
 
 def _claim_lost(key: str) -> SupersededError:

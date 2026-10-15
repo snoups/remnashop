@@ -4,7 +4,7 @@ from typing import Final, Literal, Optional
 from sqlalchemy import ColumnElement, Numeric, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import INT32_MAX
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
@@ -15,7 +15,6 @@ from app.core.exceptions import CooldownError, NotFoundError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import OWNED_STATUSES, SubscriptionState
 from app.modules.subscriptions.dto import (
-    DEFAULT_PAGE_SIZE,
     AddOnEntitlementDto,
     CreateSubscriptionDto,
     PlanSnapshot,

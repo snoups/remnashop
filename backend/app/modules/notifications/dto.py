@@ -101,7 +101,7 @@ def effective_matrix(user: "UserDto") -> dict[str, list[str]]:
 @dataclass(frozen=True, kw_only=True)
 class NotificationChannelsDto:
     channels: dict[str, list[str]]
-    push_configured: bool
+    is_push_configured: bool
     telegram_available: bool
 
 
@@ -165,3 +165,16 @@ class SendTelegramTextsDto:
     user_ids: list[int]
     # "<message>.<attribute>" from the bot's translations
     key: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateNotificationChannelsDto:
+    # group -> channels; a group left out is switched off
+    channels: dict[str, list[str]]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscribedPushDto:
+    subscription: PushSubscriptionDto
+    # False when the browser was already registered and only moved to this account
+    created: bool

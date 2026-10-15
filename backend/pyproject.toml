@@ -33,7 +33,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pillow>=12.0.0",
     "httpx[socks]>=0.27.2",
-    # dialog text validation runs in api (update_text, import_dialogs, command_translations)
+    # dialog text validation runs in api (update_dialog_text, import_dialogs, command_translations)
     "fluent-compiler~=1.1",
     "packaging>=25.0",
     "pywebpush>=2.3.0",

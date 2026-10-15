@@ -203,7 +203,7 @@ class SecurityResponse(BaseModel):
     client_ip: str
 
 
-class UnblockAllResponse(BaseModel):
+class UnblockBlacklistMatchesResponse(BaseModel):
     unblocked: int
 
 

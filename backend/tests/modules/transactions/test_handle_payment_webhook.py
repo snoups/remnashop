@@ -28,8 +28,10 @@ from app.modules.transactions.gateways.base import (
     WebhookSignal,
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
-from app.modules.transactions.usecases import PruneExpiredTransactionsUseCase
-from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
+from app.modules.transactions.usecases import (
+    HandlePaymentWebhookUseCase,
+    PruneExpiredTransactionsUseCase,
+)
 from app.modules.users.dto import UpdateUserDto
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
@@ -176,7 +178,7 @@ async def test_paid_does_not_overwrite_cancel_with_restored_discount(
 
     assert (await transaction_repository.get_by_id(order.id)).status is TransactionStatus.CANCELED
     assert purchase_dispatch.messages == []
-    assert (await user_repository.get_by_id(user_id)).purchase_discount == order.discount_percent
+    assert (await user_repository.find_by_id(user_id)).purchase_discount == order.discount_percent
 
 
 async def test_paid_after_plain_cancel_is_still_fulfilled(

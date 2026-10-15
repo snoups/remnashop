@@ -2,17 +2,19 @@ from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import NotFoundError
-from app.core.ports import BotSignals
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.banners import BannerRepository
 from app.modules.dialogs import catalog
+from app.modules.dialogs.dto import DialogWindowDto
+from app.modules.dialogs.events import DialogChangedEvent
 from app.modules.dialogs.repository import DialogRepository
 from app.modules.dialogs.usecases._banners import drop_window_banners
 from app.modules.translations import TranslationRepository, split_message_key
 
 
-class ResetAllDialogsUseCase(UseCase[None, None]):
+class ResetAllDialogsUseCase(UseCase[None, list[DialogWindowDto]]):
     required_permission = Permission.DIALOGS_WINDOWS_RESET_ALL
 
     def __init__(
@@ -23,6 +25,7 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
         config: AppConfig,
         uow: UnitOfWork,
         bot_signals: BotSignals,
+        event_publisher: EventPublisher,
     ) -> None:
         self._dialog_repository = dialog_repository
         self._translation_repository = translation_repository
@@ -30,15 +33,16 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
         self._config = config
         self._uow = uow
         self._bot_signals = bot_signals
+        self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: None) -> None:
+    async def _execute(self, actor: Actor, data: None) -> list[DialogWindowDto]:
         async with self._uow:
             locales = await self._translation_repository.list_active_locales()
             text_keys: set[str] = set()
             for window in catalog.all_windows():
                 text_keys.update(window.text_keys)
                 text_keys.update(b.text_key for b in window.buttons)
-        async with self._uow:
+
             # "Everything back to how it shipped" includes windows that were not
             # shipped at all: a custom one has no default to fall back to.
             for key in await self._dialog_repository.list_custom_keys():
@@ -55,4 +59,7 @@ class ResetAllDialogsUseCase(UseCase[None, None]):
                         )
                     except NotFoundError:
                         continue
+            await self._event_publisher.publish(DialogChangedEvent(actor=actor, action="reset_all"))
+            windows = await self._dialog_repository.list_all()
         await self._bot_signals.dialogs_changed()
+        return windows

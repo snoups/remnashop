@@ -17,7 +17,7 @@ from app.modules.plans import PlanRepository
 from app.modules.referrals.dispatch import BonusRenewalDispatch
 from app.modules.referrals.dto import BonusDaysRedemptionDto, RedeemBonusDaysDto
 from app.modules.referrals.events import BonusDaysRedeemedEvent, BonusDaysRenewalStuckEvent
-from app.modules.referrals.usecases.resume_bonus_renewal import is_infrastructure_error
+from app.modules.referrals.failures import is_infrastructure_error
 from app.modules.subscriptions import (
     PurchaseIdempotencyRepository,
     PurchaseSubscriptionDto,
@@ -145,7 +145,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             await self._event_publisher.publish(
                 BonusDaysRedeemedEvent(user=actor, subscription_id=subscription.id, days=data.days)
             )
-            refreshed = await self._user_repository.get_by_id(actor.id)
+            refreshed = await self._user_repository.find_by_id(actor.id)
             if refreshed is None:
                 raise NotFoundError(f"User '{actor.id}' not found", code=ErrorCode.USER_NOT_FOUND)
 

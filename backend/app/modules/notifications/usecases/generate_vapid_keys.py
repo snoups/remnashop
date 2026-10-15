@@ -29,6 +29,6 @@ class GenerateVapidKeysUseCase(UseCase[None, NotificationSettingsDto]):
             removed = await self._notification_repository.delete_all_push_subscriptions()
             settings = await self._notification_repository.set_vapid_keys(public_key, private_key)
             await self._event_publisher.publish(
-                VapidKeysGeneratedEvent(user=actor, subscriptions_removed=removed)
+                VapidKeysGeneratedEvent(actor=actor, subscriptions_removed=removed)
             )
         return settings

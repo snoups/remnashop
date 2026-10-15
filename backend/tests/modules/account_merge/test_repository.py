@@ -181,7 +181,7 @@ async def test_merge_moves_source_telegram_to_target(
     await user_repository.anonymize(source.id)
     await merge_repository.write_target(target.id, {"telegram_id": 900, "username": None})
 
-    merged = await user_repository.get_by_id(target.id)
+    merged = await user_repository.find_by_id(target.id)
     assert merged is not None and merged.telegram_id == 900
 
 

@@ -73,11 +73,10 @@ class BroadcastRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    @staticmethod
-    def _to_dto(row: Broadcast, created_by_name: Optional[str] = None) -> BroadcastDto:
-        dto = BroadcastDto.model_validate(row, from_attributes=True)
-        dto.created_by_name = created_by_name
-        return dto
+    def _to_dto(self, row: Broadcast, created_by_name: Optional[str] = None) -> BroadcastDto:
+        return BroadcastDto.model_validate(row, from_attributes=True).model_copy(
+            update={"created_by_name": created_by_name}
+        )
 
     async def _creator_names(self, user_ids: set[int]) -> dict[int, str]:
         if not user_ids:
@@ -122,12 +121,12 @@ class BroadcastRepository:
         await self.session.refresh(row)
         return await self._with_creator(row)
 
-    async def get(self, broadcast_id: int) -> Optional[BroadcastDto]:
+    async def find_by_id(self, broadcast_id: int) -> Optional[BroadcastDto]:
         # fresh read: the worker re-checks status written by another process
         row = await self.session.get(Broadcast, broadcast_id, populate_existing=True)
         return await self._with_creator(row) if row is not None else None
 
-    async def get_or_raise(self, broadcast_id: int) -> BroadcastDto:
+    async def get_by_id(self, broadcast_id: int) -> BroadcastDto:
         return await self._with_creator(await self._get_row(broadcast_id))
 
     async def has_missing_references(self, audience: BroadcastAudienceDto) -> bool:
@@ -146,7 +145,7 @@ class BroadcastRepository:
                 return True
         return False
 
-    async def lock_for_update(self, broadcast_id: int) -> BroadcastDto:
+    async def get_by_id_for_update(self, broadcast_id: int) -> BroadcastDto:
         row = await self.session.scalar(
             select(Broadcast)
             .where(Broadcast.id == broadcast_id)
@@ -159,7 +158,7 @@ class BroadcastRepository:
             )
         return self._to_dto(row)
 
-    async def lock(self, broadcast_id: int) -> Optional[BroadcastDto]:
+    async def try_lock(self, broadcast_id: int) -> Optional[BroadcastDto]:
         row = await self.session.scalar(
             select(Broadcast)
             .where(Broadcast.id == broadcast_id)

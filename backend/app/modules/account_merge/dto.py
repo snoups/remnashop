@@ -58,6 +58,7 @@ class GetMergePreviewDto:
 
 @dataclass(frozen=True, kw_only=True)
 class MergeAccountsDto:
+    client_ip: str
     target_id: int
     source_id: int
     choices: dict[str, MergeSide]

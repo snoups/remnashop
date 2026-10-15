@@ -30,8 +30,8 @@ class UpdateEmailSettingsUseCase(UseCase[UpdateEmailSettingsDto, EmailSettingsDt
             settings = await self._settings_repository.update_email_settings(data)
             await self._event_publisher.publish(
                 EmailSettingsChangedEvent(
-                    user=actor, changed_fields=changed_fields(before, settings, vars(data))
+                    actor=actor, changed_fields=changed_fields(before, settings, vars(data))
                 )
             )
-        logger.info(f"Email settings updated by actor {actor.log}")
+        logger.info(f"{actor.log} Updated email settings")
         return settings

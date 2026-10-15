@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final, Optional
 
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
@@ -18,8 +19,6 @@ if TYPE_CHECKING:
     # gateways.base imports TransactionDto from here
     from app.modules.transactions.gateways.base import WebhookRequest
 
-DEFAULT_PAGE_SIZE: Final[int] = 50
-MAX_PAGE_SIZE: Final[int] = 200
 # time for the normal dispatch + worker run to finish before an order counts as stuck
 _GRACE_PERIOD: Final[timedelta] = timedelta(minutes=10)
 

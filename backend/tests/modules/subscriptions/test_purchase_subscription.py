@@ -1992,7 +1992,7 @@ async def test_a_system_grant_does_not_consume_the_purchase_discount(
         ),
     )
 
-    updated = await user_repository.get_by_id(buyer.id)
+    updated = await user_repository.find_by_id(buyer.id)
     assert updated is not None
     assert updated.purchase_discount == 15
 

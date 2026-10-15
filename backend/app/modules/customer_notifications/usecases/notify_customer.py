@@ -61,7 +61,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
 
     async def _notify(self, data: NotifyCustomerDto) -> None:
         async with self._uow:
-            user = await self._user_repository.get_by_id(data.user_id)
+            user = await self._user_repository.find_by_id(data.user_id)
         if user is None or user.is_blocked or user.deleted_at is not None:
             return
         token, _ = await self._token_source.get_bot_token()

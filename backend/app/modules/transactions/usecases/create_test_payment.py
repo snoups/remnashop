@@ -10,6 +10,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import DiscountSource, PaymentGatewayType, PurchaseType, TransactionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PaymentGatewayError, ValidationError
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -17,6 +18,7 @@ from app.modules.gateways import GatewayRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import CreateTransactionDto, TestPaymentDto
+from app.modules.transactions.events import GatewayTestPaymentCreatedEvent
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.repository import TransactionRepository
@@ -36,12 +38,14 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
+        event_publisher: EventPublisher,
     ) -> None:
         self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: PaymentGatewayType) -> TestPaymentDto:
         gateway_class = GATEWAY_REGISTRY.get(data)
@@ -119,7 +123,10 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                 TransactionStatus.PENDING,
                 external_payment_id=intent.provider_payment_id,
             )
-        logger.info(
-            f"Test transaction '{order.id}' created on gateway '{data.value}' by actor {actor.log}"
-        )
+            await self._event_publisher.publish(
+                GatewayTestPaymentCreatedEvent(
+                    actor=actor, order_id=order.id, gateway_type=data.value
+                )
+            )
+        logger.info(f"{actor.log} Created test transaction '{order.id}' on gateway '{data.value}'")
         return TestPaymentDto(order_id=order.id, confirmation_url=intent.confirmation_url)

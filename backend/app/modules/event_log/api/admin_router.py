@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
-from app.core.constants import INT32_MAX
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.events import EventCategory
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.event_log.api.schemas import (
@@ -16,11 +16,7 @@ from app.modules.event_log.api.schemas import (
     EventLogPageResponse,
     NotificationsResponse,
 )
-from app.modules.event_log.dto import (
-    DEFAULT_PAGE_SIZE,
-    MAX_PAGE_SIZE,
-    ListEventLogDto,
-)
+from app.modules.event_log.dto import ListEventLogDto
 from app.modules.event_log.usecases import (
     ClearNotificationsUseCase,
     GetEventLogEntryUseCase,
@@ -42,7 +38,7 @@ async def list_event_log(
     actor_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
     target_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
     event_type: Optional[str] = Query(None, max_length=128),
-    search: Optional[str] = None,
+    search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     occurred_from: Optional[datetime] = None,
     occurred_to: Optional[datetime] = None,
     page: int = Query(1, ge=1),
@@ -75,12 +71,11 @@ async def get_notifications(
     actor: UserDto = Depends(require_admin_user),
 ) -> NotificationsResponse:
     notifications = await use_case(actor)
+    items = [
+        EventLogEntryResponse.model_validate(i, from_attributes=True) for i in notifications.items
+    ]
     return NotificationsResponse(
-        items=[
-            EventLogEntryResponse.model_validate(i, from_attributes=True)
-            for i in notifications.items
-        ],
-        unread_count=notifications.unread_count,
+        items=items, total=len(items), unread_count=notifications.unread_count
     )
 
 

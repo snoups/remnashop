@@ -101,6 +101,8 @@ class VerifyPasskeyRegistrationUseCase(
                 )
             )
             await self._event_publisher.publish(
-                PasskeyRegisteredEvent(user=actor, credential_name=credential.name)
+                PasskeyRegisteredEvent(
+                    user=actor, credential_name=credential.name, ip_address=data.client_ip
+                )
             )
         return credential

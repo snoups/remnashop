@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from app.core.events import EventCategory, UserEvent
+from app.core.events import ActorEvent, EventCategory, UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -12,7 +12,7 @@ class PromocodeActivatedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PromocodeChangedEvent(UserEvent):
+class PromocodeChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PROMOCODE
     action: str
     promocode_id: int

@@ -5,7 +5,7 @@ from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from fluentogram import TranslatorHub
+from fluentogram import TranslatorHub, TranslatorRunner
 from loguru import logger
 
 from app.core.constants import USER_KEY
@@ -20,7 +20,7 @@ from app.modules.subscriptions import (
     ReissueSubscriptionUseCase,
 )
 from app.modules.users import UserDto
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import format_datetime, get_translator
 from app.telegram.states import MainMenu
 
 router = Router(name=__name__)
@@ -42,6 +42,15 @@ async def on_paysupport_command(
 ) -> None:
     logger.info(f"{user.log} Called '/paysupport' command")
     await message.answer(get_translator(i18n, user).get("msg-paysupport"))
+
+
+async def _answer_cooldown(
+    callback: CallbackQuery, runner: TranslatorRunner, error: CooldownError
+) -> None:
+    await callback.answer(
+        runner.get("ntf-common.cooldown-active", available_at=format_datetime(error.available_at)),
+        show_alert=True,
+    )
 
 
 @inject
@@ -101,10 +110,7 @@ async def on_device_delete_confirm(
     try:
         await delete_device(user, DeleteDeviceDto(hwid=hwid))
     except CooldownError as e:
-        await callback.answer(
-            runner.get("ntf-common.cooldown-active", available_at=str(e.available_at)),
-            show_alert=True,
-        )
+        await _answer_cooldown(callback, runner, e)
         return
     await callback.answer(runner.get("ntf-devices.deleted"))
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
@@ -123,10 +129,7 @@ async def on_device_delete_all_confirm(
     try:
         await delete_all_devices(user)
     except CooldownError as e:
-        await callback.answer(
-            runner.get("ntf-common.cooldown-active", available_at=str(e.available_at)),
-            show_alert=True,
-        )
+        await _answer_cooldown(callback, runner, e)
         return
     await callback.answer(runner.get("ntf-devices.all-deleted"))
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
@@ -145,10 +148,7 @@ async def on_reissue_subscription_confirm(
     try:
         await reissue_subscription(user)
     except CooldownError as e:
-        await callback.answer(
-            runner.get("ntf-common.cooldown-active", available_at=str(e.available_at)),
-            show_alert=True,
-        )
+        await _answer_cooldown(callback, runner, e)
         return
     await callback.answer(runner.get("ntf-devices.reissued"))
     await dialog_manager.switch_to(state=MainMenu.DEVICES)
