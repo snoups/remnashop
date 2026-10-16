@@ -607,6 +607,7 @@
       "BonusDaysRedeemedEvent": "Bonus days redeemed",
       "PromocodeActivatedEvent": "Promocode activated",
       "PromocodeChangedEvent": "Promocode changed",
+      "PromocodeDiscountExpiringEvent": "Promocode discount expiring",
       "ReferralAttachedEvent": "Referral attached",
       "ReferralCodeResetEvent": "Referral code reset",
       "ReferralRewardIssuedEvent": "Referral reward",

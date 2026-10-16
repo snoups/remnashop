@@ -14,6 +14,7 @@ from app.modules.promocodes.usecases import (
     ListUserPromocodeActivationsUseCase,
     UpdatePromocodeUseCase,
     ValidatePromocodeUseCase,
+    WarnExpiringPromocodeDiscountsUseCase,
 )
 
 
@@ -35,6 +36,7 @@ class PromocodesProvider(Provider):
         ListPromocodeActivatedUsersUseCase,
         ActivatePromocodeUseCase,
         ValidatePromocodeUseCase,
+        WarnExpiringPromocodeDiscountsUseCase,
     )
 
 

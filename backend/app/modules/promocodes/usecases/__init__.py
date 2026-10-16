@@ -13,6 +13,9 @@ from app.modules.promocodes.usecases.list_user_promocode_activations import (
 )
 from app.modules.promocodes.usecases.update_promocode import UpdatePromocodeUseCase
 from app.modules.promocodes.usecases.validate_promocode import ValidatePromocodeUseCase
+from app.modules.promocodes.usecases.warn_expiring_promocode_discounts import (
+    WarnExpiringPromocodeDiscountsUseCase,
+)
 
 __all__ = [
     "ActivatePromocodeUseCase",
@@ -26,4 +29,5 @@ __all__ = [
     "ListUserPromocodeActivationsUseCase",
     "UpdatePromocodeUseCase",
     "ValidatePromocodeUseCase",
+    "WarnExpiringPromocodeDiscountsUseCase",
 ]

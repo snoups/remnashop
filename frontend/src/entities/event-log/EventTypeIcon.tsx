@@ -121,6 +121,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   BonusDaysRedeemedEvent: CalendarPlus,
   PromocodeActivatedEvent: TicketCheck,
   PromocodeChangedEvent: Ticket,
+  PromocodeDiscountExpiringEvent: Clock,
   ReferralAttachedEvent: Users,
   ReferralCodeResetEvent: KeyRound,
   ReferralRewardIssuedEvent: Gift,

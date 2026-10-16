@@ -16,3 +16,12 @@ class PromocodeChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PROMOCODE
     action: str
     promocode_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeDiscountExpiringEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.PROMOCODE
+    promocode_id: int
+    code: str
+    percent: int
+    hours: int

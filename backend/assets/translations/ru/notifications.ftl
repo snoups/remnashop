@@ -157,3 +157,5 @@ ntf-customer-subscription-expired-ago = Подписка закончилась 
     .title = Подписка закончилась
 ntf-customer-torrent-blocker-report = Использовать торренты с включённым VPN запрещено. Торрент-трафик заблокирован; при повторных нарушениях доступ может быть ограничен.
     .title = Торренты запрещены
+ntf-customer-promocode-discount-expiring = Скидка { $percent }% по промокоду { $code } действует ещё { $hours } ч. Успейте оформить покупку.
+    .title = Скидка скоро сгорит

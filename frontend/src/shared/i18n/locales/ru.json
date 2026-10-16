@@ -643,6 +643,7 @@
       "BonusDaysRedeemedEvent": "Бонусные дни потрачены",
       "PromocodeActivatedEvent": "Промокод активирован",
       "PromocodeChangedEvent": "Промокод изменён",
+      "PromocodeDiscountExpiringEvent": "Скидка по промокоду скоро сгорит",
       "ReferralAttachedEvent": "Реферал привязан",
       "ReferralCodeResetEvent": "Реферальный код сброшен",
       "ReferralRewardIssuedEvent": "Награда за реферала",

@@ -145,3 +145,5 @@ ntf-customer-subscription-expired-ago = Your subscription expired { $hours } h a
     .title = Subscription expired
 ntf-customer-torrent-blocker-report = Using torrents with the VPN on is forbidden. Your torrent traffic was blocked; repeated violations may lead to restrictions.
     .title = Torrents are not allowed
+ntf-customer-promocode-discount-expiring = Your { $percent }% discount from promocode { $code } is valid for { $hours } more h. Make your purchase before it’s gone.
+    .title = Your discount is about to expire

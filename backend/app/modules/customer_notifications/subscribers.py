@@ -5,6 +5,7 @@ from app.core.events import StoredEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
 from app.modules.customer_notifications.tasks import notify_customer_task
+from app.modules.promocodes import PromocodeDiscountExpiringEvent
 from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
 from app.modules.subscriptions import (
     SubscriptionAddOnGrantedEvent,
@@ -77,6 +78,18 @@ def _amount(value: str | int) -> str | int:
     return value
 
 
+async def _on_discount_expiring(entry: StoredEvent) -> None:
+    await _notify(
+        entry,
+        entry.payload["user"]["id"],
+        {
+            "code": entry.payload["code"],
+            "percent": entry.payload["percent"],
+            "hours": entry.payload["hours"],
+        },
+    )
+
+
 async def _on_reward(entry: StoredEvent) -> None:
     await _notify(
         entry,
@@ -119,3 +132,4 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(AccountsMergedEvent, _on_accounts_merged)
     bus.subscribe(ReferralRewardIssuedEvent, _on_reward)
     bus.subscribe(InviteeRewardIssuedEvent, _on_reward)
+    bus.subscribe(PromocodeDiscountExpiringEvent, _on_discount_expiring)

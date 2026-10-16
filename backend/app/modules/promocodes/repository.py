@@ -166,6 +166,16 @@ class PromocodeRepository:
         # same edge as activation: usable through the expiry instant itself
         return row.expires_at is None or row.expires_at >= datetime_now()
 
+    async def list_expiring(self, now: datetime, until: datetime) -> list[PromocodeDto]:
+        rows = await self.session.scalars(
+            select(Promocode).where(
+                Promocode.is_active.is_(True),
+                Promocode.expires_at >= now,
+                Promocode.expires_at < until,
+            )
+        )
+        return [self._to_dto(row) for row in rows]
+
     async def delete(self, promocode_id: int) -> None:
         row = await self._get_or_raise(promocode_id)
         await self.session.delete(row)

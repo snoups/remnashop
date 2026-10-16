@@ -6,7 +6,17 @@ from decimal import Decimal
 from typing import Any, Final, Optional, cast
 
 from loguru import logger
-from sqlalchemy import ColumnElement, CursorResult, case, exists, func, or_, select, update
+from sqlalchemy import (
+    ColumnElement,
+    CursorResult,
+    and_,
+    case,
+    exists,
+    func,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -315,6 +325,24 @@ class UserRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         return cast(CursorResult, result).rowcount == 1
+
+    async def list_with_discounts_from(self, promocode_ids: list[int]) -> list[UserDto]:
+        rows = await self.session.scalars(
+            select(User).where(
+                User.deleted_at.is_(None),
+                or_(
+                    and_(
+                        User.personal_discount > 0,
+                        in_ids(User.personal_discount_promocode_id, promocode_ids),
+                    ),
+                    and_(
+                        User.purchase_discount > 0,
+                        in_ids(User.purchase_discount_promocode_id, promocode_ids),
+                    ),
+                ),
+            )
+        )
+        return [self._to_dto(row) for row in rows]
 
     async def clear_discounts_from(
         self, promocode_ids: set[int], *, user_id: Optional[int] = None
