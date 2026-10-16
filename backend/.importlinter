@@ -254,6 +254,16 @@ allowed_importers =
     app.api.routers
     app.worker.subscribers
 
+[importlinter:contract:identity-links-boundary]
+name = identity_links internals are private
+type = protected
+protected_modules =
+    app.modules.identity_links.*
+allowed_importers =
+    app.modules.identity_links
+    app.api.routers
+    app.worker.subscribers
+
 [importlinter:contract:access-boundary]
 name = access internals are private
 type = protected

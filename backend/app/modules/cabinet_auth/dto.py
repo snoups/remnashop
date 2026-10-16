@@ -28,9 +28,17 @@ class TelegramProfileDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class StartTicketDto:
+    codes: InviteCodesDto
+    # set when the cabinet asked to link Telegram to this account rather than sign in
+    link_user_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class BotSignInGrantDto:
     profile: TelegramProfileDto
     codes: InviteCodesDto
+    link_user_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

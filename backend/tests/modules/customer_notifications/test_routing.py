@@ -18,6 +18,7 @@ T, E = CustomerChannel.TELEGRAM, CustomerChannel.EMAIL
         ("SubscriptionPurchasedEvent", None, "a@b.c", [E]),
         ("TransactionRefundedEvent", 1, None, [T]),
         ("CabinetNewDeviceSignInEvent", 1, "a@b.c", [T, E]),
+        ("AccountsMergedEvent", 1, "a@b.c", [T, E]),
         ("ReferralRewardIssuedEvent", 1, "a@b.c", [T]),
     ],
 )

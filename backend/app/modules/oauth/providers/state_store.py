@@ -34,6 +34,7 @@ class OAuthFlowPurpose(UpperStrEnum):
     LOGIN = auto()
     CONNECT = auto()
     CABINET_LOGIN = auto()
+    CABINET_CONNECT = auto()
 
 
 @dataclass(frozen=True, kw_only=True)

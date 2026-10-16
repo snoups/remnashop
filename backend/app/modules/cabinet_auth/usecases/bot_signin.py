@@ -36,7 +36,8 @@ class BotSignInUseCase:
                 "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )
         grant = await self._store.take_signin(token)
-        if grant is None:
+        # a link grant must never sign anybody in
+        if grant is None or grant.link_user_id is not None:
             raise AuthenticationError(
                 "The sign-in link has expired", code=ErrorCode.DEEPLINK_EXPIRED
             )

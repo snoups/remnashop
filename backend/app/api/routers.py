@@ -22,6 +22,7 @@ from app.modules.emoji_packs.api import admin_router as emoji_packs_admin_router
 from app.modules.emoji_packs.api import router as emoji_packs_router
 from app.modules.event_log.api import admin_router as event_log_admin_router
 from app.modules.gateways.api import admin_router as gateways_admin_router
+from app.modules.identity_links.api import router as identity_links_router
 from app.modules.loyalty.api import admin_router as loyalty_admin_router
 from app.modules.loyalty.api import user_router as loyalty_user_router
 from app.modules.notifications.api import admin_router as notifications_admin_router
@@ -61,6 +62,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_user_sessions_router,
     cabinet_auth_router,
     users_router,
+    identity_links_router,
     oauth_admin_router,
     passkeys_router,
     passkeys_admin_router,

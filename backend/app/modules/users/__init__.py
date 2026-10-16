@@ -13,13 +13,18 @@ from app.modules.users.dto import (
 )
 from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import UserResponse
+from app.modules.users.schemas import (
+    CurrentUserResponse,
+    UserResponse,
+    to_current_user_response,
+)
 from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.unsubscribe import read_unsubscribe_token, unsubscribe_token
 from app.modules.users.usecases import (
     AcceptRulesUseCase,
     BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
+    FindTelegramUserUseCase,
     GetCurrentUserUseCase,
     RegisterCabinetUserUseCase,
     RegisterTelegramUserUseCase,
@@ -36,6 +41,8 @@ __all__ = [
     "BlockUserUseCase",
     "CabinetUserRegisteredEvent",
     "CreateUserDto",
+    "CurrentUserResponse",
+    "FindTelegramUserUseCase",
     "GetCurrentUserUseCase",
     "RegisterCabinetUserDto",
     "RegisterCabinetUserUseCase",
@@ -60,6 +67,7 @@ __all__ = [
     "get_visible_target",
     "mark_bot_blocked",
     "read_unsubscribe_token",
+    "to_current_user_response",
     "unsubscribe_token",
     "visible_user",
 ]

@@ -4,6 +4,9 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.core.security.permissions import Permission, PermissionPolicy
+from app.modules.users.dto import UserDto
+
 
 # lives outside api/: users and account_merge both answer with it, and importing
 # users.api from the package would pull in the routers
@@ -34,3 +37,33 @@ class UserResponse(BaseModel):
     def _enum_as_name(cls, value: object) -> str:
         # Role's value is its rank; the API speaks its name
         return str(value)
+
+
+def effective_permission_names(user: UserDto) -> list[str]:
+    return sorted(p.value for p in PermissionPolicy.effective_permissions(user))
+
+
+class CurrentUserResponse(BaseModel):
+    id: int
+    login: Optional[str]
+    name: str
+    role: str
+    effective_permissions: list[Permission]
+    password_change_required: bool
+    language: str
+    email: Optional[str]
+    telegram_id: Optional[int]
+    username: Optional[str]
+
+    @field_validator("role", "language", mode="before")
+    @classmethod
+    def _enum_as_name(cls, value: object) -> str:
+        # Role's value is its rank; the API speaks its name
+        return str(value)
+
+
+# /users/me and the cabinet's self-merge answer with the same body
+def to_current_user_response(user: UserDto) -> CurrentUserResponse:
+    return CurrentUserResponse.model_validate(
+        {**dict(user), "effective_permissions": effective_permission_names(user)}
+    )

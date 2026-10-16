@@ -593,6 +593,17 @@ class UserRepository:
         db_user.email_undeliverable_at = at
         await self.session.flush()
 
+    async def set_email(self, user_id: int, email: Optional[str]) -> UserDto:
+        # a linked or unlinked address starts with a clean delivery record
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.email = normalize_email(email) if email else None
+        db_user.email_undeliverable_at = None
+        await self._flush_unique()
+        await self.session.refresh(db_user)
+        return self._to_dto(db_user)
+
     async def set_blocked(self, user_id: int, is_blocked: bool) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

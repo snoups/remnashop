@@ -31,7 +31,6 @@ from app.modules.users.api.schemas import (
     UserListStatsResponse,
     UserPageResponse,
     UserRegistrationResponse,
-    effective_permission_names,
 )
 from app.modules.users.dto import (
     BindTelegramDto,
@@ -54,7 +53,7 @@ from app.modules.users.dto import (
     UserDto,
     UserSort,
 )
-from app.modules.users.schemas import UserResponse
+from app.modules.users.schemas import UserResponse, effective_permission_names
 from app.modules.users.usecases import (
     BindTelegramIdUseCase,
     BlockUserUseCase,

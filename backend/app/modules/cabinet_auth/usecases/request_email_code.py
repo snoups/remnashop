@@ -1,25 +1,22 @@
-from typing import Final
-
 from redis.asyncio import Redis
 
 from app.core.config import AppConfig
-from app.core.constants import REDIS_KEY_PREFIX, TIME_1M
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.utils.email import normalize_email
-from app.core.utils.rate_counter import hit_counter
 from app.modules.cabinet_auth.dto import InviteCodesDto
-from app.modules.cabinet_auth.email_codes import EmailCodeStore, email_key, fail_budget_exhausted
+from app.modules.cabinet_auth.email_codes import (
+    EmailCodeStore,
+    email_key,
+    fail_budget_exhausted,
+    send_limit_hit,
+)
 from app.modules.cabinet_auth.email_domains import is_allowed_domain
 from app.modules.email import SendEmailDispatch, load_email_brand, render_login_code
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserRepository
-
-_LIMIT_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_limit:"
-_HOUR: Final[int] = TIME_1M * 60
-_PER_HOUR: Final[int] = 10
 
 
 class RequestEmailCodeUseCase:
@@ -60,9 +57,7 @@ class RequestEmailCodeUseCase:
         digest = email_key(email)
         if await fail_budget_exhausted(self._redis, digest):
             return
-        if await hit_counter(self._redis, f"{_LIMIT_PREFIX}min:{digest}", TIME_1M) > 1:
-            return
-        if await hit_counter(self._redis, f"{_LIMIT_PREFIX}hour:{digest}", _HOUR) > _PER_HOUR:
+        if await send_limit_hit(self._redis, digest):
             return
 
         code = await self._store.issue(email, codes, locale)

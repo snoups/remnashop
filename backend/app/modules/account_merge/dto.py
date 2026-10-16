@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, Optional
 
 from app.modules.users import UserDto
@@ -31,6 +32,9 @@ class MergeLinksDto:
     # provider -> external login or id
     source_oauth: dict[str, str]
     target_oauth: dict[str, str]
+    # Referral.created_at, to tell which referrer came first
+    source_referred_at: Optional[datetime] = None
+    target_referred_at: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)

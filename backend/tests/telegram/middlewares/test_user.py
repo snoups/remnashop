@@ -23,7 +23,7 @@ from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.users import CreateUserDto
 from app.modules.users.repository import UserRepository
-from app.modules.users.usecases import RegisterTelegramUserUseCase
+from app.modules.users.usecases import FindTelegramUserUseCase, RegisterTelegramUserUseCase
 from app.telegram.middlewares.user import UserMiddleware
 
 
@@ -71,6 +71,8 @@ class _FakeContainer:
                 self._ad_link_repository,
                 self._uow,
             )
+        if dependency_type is FindTelegramUserUseCase:
+            return FindTelegramUserUseCase(self._user_repository, self._uow)
         assert dependency_type is RegisterTelegramUserUseCase
         return RegisterTelegramUserUseCase(
             self._user_repository, self._blacklist_repository, self._uow, self._event_publisher
@@ -378,3 +380,92 @@ async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
     ).all()
     assert len(rows) == 1
     assert rows[0].payload["referral_code"] == "abc"
+
+
+async def _run_link_start(
+    telegram_id: int, container: _FakeContainer, config: AppConfig, token: str
+) -> dict[str, Any]:
+    message = _start_message(telegram_id, f"/start webauth_{token}", [])
+    data: dict[str, Any] = {
+        "event_chat": message.chat,
+        "event_from_user": message.from_user,
+        CONTAINER_KEY: container,
+        CONFIG_KEY: config,
+    }
+    seen: dict[str, Any] = {}
+
+    async def handler(event: Any, handler_data: dict[str, Any]) -> None:
+        seen.update(handler_data)
+
+    await UserMiddleware().middleware_logic(handler, message, data)
+    return seen
+
+
+async def test_link_start_skips_registration(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    settings_repository: SettingsRepository,
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+    redis: Redis,
+) -> None:
+    async with uow:
+        owner = await user_repository.create(CreateUserDto(name="owner", email="o@gmail.com"))
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(mode=AccessMode.INVITED)
+        )
+        await uow.commit()
+    store = DeeplinkStore(redis)
+    token = await store.create(InviteCodesDto(), link_user_id=owner.id)
+    container = _FakeContainer(
+        user_repository,
+        blacklist_repository,
+        settings_repository,
+        ad_link_repository,
+        uow,
+        event_publisher,
+        store,
+    )
+
+    seen = await _run_link_start(6565, container, config, token)
+
+    assert seen and seen.get(USER_KEY) is None
+    assert await user_repository.get_by_telegram_id(6565) is None
+    # peeking only: the bot still has the start token to spend
+    assert await store.peek(token) is not None
+
+
+async def test_link_start_existing_user_loaded(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    settings_repository: SettingsRepository,
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    config: AppConfig,
+    session: AsyncSession,
+    redis: Redis,
+) -> None:
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="tg", telegram_id=6666))
+        owner = await user_repository.create(CreateUserDto(name="owner", email="o@gmail.com"))
+        await uow.commit()
+    store = DeeplinkStore(redis)
+    token = await store.create(InviteCodesDto(), link_user_id=owner.id)
+    container = _FakeContainer(
+        user_repository,
+        blacklist_repository,
+        settings_repository,
+        ad_link_repository,
+        uow,
+        event_publisher,
+        store,
+    )
+    before = len((await session.scalars(select(EventOutboxEntry))).all())
+
+    seen = await _run_link_start(6666, container, config, token)
+
+    assert seen[USER_KEY].id == existing.id
+    assert len((await session.scalars(select(EventOutboxEntry))).all()) == before

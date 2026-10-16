@@ -10,10 +10,12 @@ from app.core.enums import AdLinkChannel, Locale, MiddlewareEventType, Registrat
 from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAccessUseCase
 from app.modules.cabinet_auth import DeeplinkStore
 from app.modules.users import (
+    FindTelegramUserUseCase,
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
     RegistrationSnapshotDto,
 )
+from app.telegram.i18n import telegram_locale
 from app.telegram.middlewares._codes import (
     parse_ad_link_code,
     parse_referral_code,
@@ -49,9 +51,7 @@ class UserMiddleware(EventTypedMiddleware):
         container: AsyncContainer = data[CONTAINER_KEY]
         use_case = await container.get(RegisterTelegramUserUseCase)
         hub = await container.get(TranslatorHub)
-        # "pt-br" -> "pt"; only a locale the bot actually serves counts
-        code = (aiogram_user.language_code or "").split("-")[0].lower()
-        telegram_language = Locale(code) if code in hub.translators_map else None
+        telegram_language = telegram_locale(hub, aiogram_user.language_code)
         language = telegram_language or Locale(hub.root_locale)
         referral_code = parse_referral_code(event)
         ad_link_code = parse_ad_link_code(event)
@@ -59,9 +59,15 @@ class UserMiddleware(EventTypedMiddleware):
         # a newcomer arriving from the cabinet button registers with the cabinet's invite
         if webauth_token := parse_webauth_token(event):
             pending = await (await container.get(DeeplinkStore)).peek(webauth_token)
+            if pending is not None and pending.link_user_id is not None:
+                # linking to a cabinet account: no new account here, and invite-only
+                # doesn't apply; the handler gets the existing account or None
+                find_user = await container.get(FindTelegramUserUseCase)
+                data[USER_KEY] = await find_user.system(aiogram_user.id)
+                return await handler(event, data)
             if pending is not None:
-                referral_code = pending.referral_code
-                ad_link_code = pending.ad_link_code
+                referral_code = pending.codes.referral_code
+                ad_link_code = pending.codes.ad_link_code
                 channel = AdLinkChannel.WEBCABINET
 
         check_access = await container.get(CheckRegistrationAccessUseCase)

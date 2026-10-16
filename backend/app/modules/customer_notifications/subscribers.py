@@ -2,6 +2,7 @@ from typing import Any
 
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent
+from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
 from app.modules.customer_notifications.tasks import notify_customer_task
 from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
@@ -92,6 +93,13 @@ async def _on_new_device(entry: StoredEvent) -> None:
     )
 
 
+async def _on_accounts_merged(entry: StoredEvent) -> None:
+    # an admin merge is not the customer's own doing, no notice
+    target_id = entry.payload["target"]["id"]
+    if entry.payload["actor"]["id"] == target_id:
+        await _notify(entry, target_id, {})
+
+
 def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(SubscriptionPurchasedEvent, _on_purchase)
     bus.subscribe(SubscriptionChangedEvent, _on_purchase)
@@ -108,5 +116,6 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(SubscriptionExpiredAgoEvent, _on_hours)
     bus.subscribe(TorrentBlockerReportEvent, _on_purchase)
     bus.subscribe(CabinetNewDeviceSignInEvent, _on_new_device)
+    bus.subscribe(AccountsMergedEvent, _on_accounts_merged)
     bus.subscribe(ReferralRewardIssuedEvent, _on_reward)
     bus.subscribe(InviteeRewardIssuedEvent, _on_reward)

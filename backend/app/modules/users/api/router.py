@@ -11,12 +11,9 @@ from app.core.constants import TIME_1M
 from app.core.enums import SessionAudience
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.http import resolve_client_ip
-from app.modules.users.api.schemas import (
-    CurrentUserResponse,
-    UpdateOwnProfileRequest,
-    effective_permission_names,
-)
+from app.modules.users.api.schemas import UpdateOwnProfileRequest
 from app.modules.users.dto import UpdateOwnProfileDto, UserDto
+from app.modules.users.schemas import CurrentUserResponse, to_current_user_response
 from app.modules.users.usecases import (
     GetCurrentUserUseCase,
     UnsubscribeMarketingUseCase,
@@ -29,12 +26,6 @@ _UNSUBSCRIBE_LIMIT_PER_MINUTE: Final[int] = 600
 router = APIRouter(tags=["users"])
 
 
-def _to_current_user_response(user: UserDto) -> CurrentUserResponse:
-    return CurrentUserResponse.model_validate(
-        {**dict(user), "effective_permissions": effective_permission_names(user)}
-    )
-
-
 @router.get("/users/me", response_model=CurrentUserResponse)
 @inject
 async def get_me(
@@ -42,7 +33,7 @@ async def get_me(
     actor: UserDto = Depends(get_profile_user),
 ) -> CurrentUserResponse:
     current_user = await use_case(actor)
-    return _to_current_user_response(current_user)
+    return to_current_user_response(current_user)
 
 
 @router.patch("/users/me", response_model=CurrentUserResponse, responses=error_responses(400))
@@ -70,7 +61,7 @@ async def update_me(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return _to_current_user_response(updated)
+    return to_current_user_response(updated)
 
 
 # POST only: mail scanners open links, and RFC 8058 clients POST here themselves

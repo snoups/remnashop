@@ -11,6 +11,7 @@ from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.oauth import (
     OAUTH_EXCHANGE_ERRORS,
     OAuthFlowPurpose,
+    OAuthProfile,
     OAuthStateStore,
     binding_matches,
     build_cabinet_redirect_uri,
@@ -44,10 +45,41 @@ class CabinetOAuthCallbackUseCase:
         client_ip: str,
         user_agent: Optional[str],
     ) -> tuple[UserDto, IssuedSession]:
+        profile, codes = await self._fetch(provider, code, state, binding, link_user_id=None)
+        return await self._sign_in.oauth(provider, profile, codes, client_ip, user_agent)
+
+    async def fetch_profile(
+        self,
+        provider: OAuthProvider,
+        code: str,
+        state: str,
+        binding: Optional[str],
+        *,
+        link_user_id: Optional[int],
+    ) -> OAuthProfile:
+        profile, _ = await self._fetch(provider, code, state, binding, link_user_id=link_user_id)
+        return profile
+
+    async def _fetch(
+        self,
+        provider: OAuthProvider,
+        code: str,
+        state: str,
+        binding: Optional[str],
+        *,
+        link_user_id: Optional[int],
+    ) -> tuple[OAuthProfile, InviteCodesDto]:
+        # a sign-in state never links and a link state never signs in
+        purpose = (
+            OAuthFlowPurpose.CABINET_LOGIN
+            if link_user_id is None
+            else OAuthFlowPurpose.CABINET_CONNECT
+        )
         state_data = await self._state_store.consume(state)
         if (
             state_data is None
-            or state_data.purpose is not OAuthFlowPurpose.CABINET_LOGIN
+            or state_data.purpose is not purpose
+            or state_data.user_id != link_user_id
             or state_data.provider is not provider
             or not binding_matches(binding, state_data.binding_hash)
         ):
@@ -75,12 +107,6 @@ class CabinetOAuthCallbackUseCase:
             raise AuthenticationError(
                 "Failed to exchange OAuth code", code=ErrorCode.OAUTH_CODE_EXCHANGE_FAILED
             ) from error
-        return await self._sign_in.oauth(
-            provider,
-            profile,
-            InviteCodesDto(
-                referral_code=state_data.referral_code, ad_link_code=state_data.ad_link_code
-            ),
-            client_ip,
-            user_agent,
+        return profile, InviteCodesDto(
+            referral_code=state_data.referral_code, ad_link_code=state_data.ad_link_code
         )

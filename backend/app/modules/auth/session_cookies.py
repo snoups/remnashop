@@ -61,7 +61,11 @@ def presented_refresh_tokens(request: Request) -> list[tuple[SessionAudience, st
 
 
 def set_oauth_binding_cookie(
-    response: Response, binding: str, secure: bool, audience: SessionAudience
+    response: Response,
+    binding: str,
+    secure: bool,
+    audience: SessionAudience,
+    path: str = REFRESH_COOKIE_PATH,
 ) -> None:
     response.set_cookie(
         OAUTH_BINDING_COOKIE,
@@ -70,9 +74,9 @@ def set_oauth_binding_cookie(
         httponly=True,
         secure=secure,
         samesite=SESSION_COOKIES[audience].samesite,
-        path=REFRESH_COOKIE_PATH,
+        path=path,
     )
 
 
-def clear_oauth_binding_cookie(response: Response) -> None:
-    response.delete_cookie(OAUTH_BINDING_COOKIE, path=REFRESH_COOKIE_PATH)
+def clear_oauth_binding_cookie(response: Response, path: str = REFRESH_COOKIE_PATH) -> None:
+    response.delete_cookie(OAUTH_BINDING_COOKIE, path=path)

@@ -25,8 +25,8 @@ async def test_peek_reads_the_start_record_without_spending_it(
     deeplink_store: DeeplinkStore,
 ) -> None:
     token = await deeplink_store.create(InviteCodesDto(referral_code="abc"))
-    codes = await deeplink_store.peek(token)
-    assert codes is not None and codes.referral_code == "abc"
+    ticket = await deeplink_store.peek(token)
+    assert ticket is not None and ticket.codes.referral_code == "abc"
     assert await deeplink_store.peek(token) is not None
     assert await deeplink_store.peek("unknown") is None
 

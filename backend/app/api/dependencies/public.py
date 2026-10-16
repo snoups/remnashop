@@ -180,6 +180,18 @@ def get_cabinet_user(request: Request, user: UserDto = Depends(get_current_user)
     return user
 
 
+def get_cabinet_customer(user: UserDto = Depends(get_cabinet_user)) -> UserDto:
+    """Customer self-service in the cabinet: staff manage their sign-in from the
+    dashboard. A blocked account never gets here, get_current_actor refuses it."""
+    if user.is_privileged:
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "This endpoint is available to customers only",
+            code=ErrorCode.PERMISSION_DENIED,
+        )
+    return user
+
+
 def get_profile_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
     """/users/me: a cabinet session, or staff in the dashboard; a customer's
     dashboard session is refused, as is any dashboard session through the cabinet."""

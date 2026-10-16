@@ -124,3 +124,17 @@ async def test_system_actor_owner_is_skipped() -> None:
         await subscribers._on_purchase(_entry("SubscriptionPurchasedEvent", {"user": {"id": 0}}))
 
     kiq.assert_not_awaited()
+
+
+@pytest.mark.parametrize(("actor_id", "notified"), [(7, True), (1, False)])
+async def test_merge_notifies_only_on_self_merge(actor_id: int, notified: bool) -> None:
+    payload = {"actor": {"id": actor_id}, "target": {"id": 7}, "source": {"id": 8}}
+    with patch(_KIQ, new_callable=AsyncMock) as kiq:
+        await subscribers._on_accounts_merged(_entry("AccountsMergedEvent", payload))
+
+    if notified:
+        kiq.assert_awaited_once_with(
+            user_id=7, event_type="AccountsMergedEvent", outbox_id=5, args={}
+        )
+    else:
+        kiq.assert_not_awaited()

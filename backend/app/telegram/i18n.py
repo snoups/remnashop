@@ -45,6 +45,12 @@ async def read_translator_hub(config: AppConfig) -> TranslatorHub:
         return build_translator_hub(active_locales, translations_by_locale, default_locale)
 
 
+def telegram_locale(hub: TranslatorHub, language_code: Optional[str]) -> Optional[Locale]:
+    # "pt-br" -> "pt"; only a locale the bot actually serves counts
+    code = (language_code or "").split("-")[0].lower()
+    return Locale(code) if code in hub.translators_map else None
+
+
 def get_translator(hub: TranslatorHub, user: UserDto) -> TranslatorRunner:
     return hub.get_translator_by_locale(user.language.value)
 

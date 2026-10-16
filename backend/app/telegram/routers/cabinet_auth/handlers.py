@@ -7,9 +7,10 @@ from dishka import FromDishka
 from fluentogram import TranslatorHub
 
 from app.core.constants import WEBAUTH_START_PREFIX
+from app.core.enums import Locale
 from app.modules.cabinet_auth import IssueBotSignInLinkUseCase, TelegramProfileDto
 from app.modules.users import UserDto
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import get_translator, telegram_locale
 
 _WEBAUTH_PAYLOAD: Final[str] = rf"^{WEBAUTH_START_PREFIX}[A-Za-z0-9_-]{{20,64}}$"
 
@@ -23,9 +24,14 @@ async def on_start_webauth(
     i18n: FromDishka[TranslatorHub],
     user: Optional[UserDto] = None,
 ) -> None:
-    if user is None or message.from_user is None:
+    if message.from_user is None:
         return
-    runner = get_translator(i18n, user)
+    # a link start from a Telegram without an account arrives with no user
+    if user is not None:
+        runner = get_translator(i18n, user)
+    else:
+        locale = telegram_locale(i18n, message.from_user.language_code)
+        runner = i18n.get_translator_by_locale((locale or Locale(i18n.root_locale)).value)
     start = (message.text or "").split(maxsplit=1)[-1].removeprefix(WEBAUTH_START_PREFIX)
     # the link lands only in this chat, so whoever handed out the start link gains nothing
     url = await issue_link.execute(

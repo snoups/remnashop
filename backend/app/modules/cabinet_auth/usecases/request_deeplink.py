@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.core.constants import T_ME, TTL_5M, WEBAUTH_START_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
@@ -15,7 +17,9 @@ class RequestDeeplinkUseCase:
         self._store = store
         self._uow = uow
 
-    async def execute(self, codes: InviteCodesDto) -> DeeplinkTicketDto:
+    async def execute(
+        self, codes: InviteCodesDto, link_user_id: Optional[int] = None
+    ) -> DeeplinkTicketDto:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
             bot = await self._settings_repository.get_bot_settings()
@@ -28,7 +32,7 @@ class RequestDeeplinkUseCase:
             raise AuthenticationError(
                 "The bot is unreachable", code=ErrorCode.OAUTH_PROVIDER_UNREACHABLE
             )
-        token = await self._store.create(codes)
+        token = await self._store.create(codes, link_user_id)
         return DeeplinkTicketDto(
             bot_url=f"{T_ME}{username}?start={WEBAUTH_START_PREFIX}{token}",
             expires_in=TTL_5M,

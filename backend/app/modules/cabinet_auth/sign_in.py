@@ -49,6 +49,16 @@ def _parse_locale(code: Optional[str]) -> Optional[Locale]:
         return None
 
 
+def telegram_profile_from_oauth(profile: OAuthProfile) -> TelegramProfileDto:
+    # Telegram OIDC: the subject is the telegram_id
+    return TelegramProfileDto(
+        telegram_id=int(profile.external_id),
+        name=profile.name or profile.login or "",
+        username=profile.login,
+        language=profile.language,
+    )
+
+
 class CabinetSignIn:
     def __init__(
         self,
@@ -223,12 +233,7 @@ class CabinetSignIn:
     ) -> tuple[UserDto, IssuedSession]:
         if provider is OAuthProvider.TELEGRAM:
             return await self.telegram(
-                TelegramProfileDto(
-                    telegram_id=int(profile.external_id),
-                    name=profile.name or profile.login or "",
-                    username=profile.login,
-                    language=profile.language,
-                ),
+                telegram_profile_from_oauth(profile),
                 codes,
                 client_ip,
                 user_agent,

@@ -86,6 +86,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   EmailCodeAttemptsExhaustedEvent: ShieldX,
   OAuthIdentityConnectedEvent: Link,
   OAuthIdentityDisconnectedEvent: Unlink,
+  SignInMethodLinkedEvent: Link,
+  SignInMethodUnlinkedEvent: Unlink,
   SessionRevokedEvent: LogOut,
   SessionTheftDetectedEvent: Siren,
   UserSessionRevokedByAdminEvent: LogOut,

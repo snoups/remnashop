@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, Optional
 
 from authlib.common.security import generate_token
 
@@ -36,7 +36,10 @@ class CabinetOAuthAuthorizeUseCase:
         self._config = config
         self._uow = uow
 
-    async def execute(self, provider: OAuthProvider, codes: InviteCodesDto) -> tuple[str, str]:
+    async def execute(
+        self, provider: OAuthProvider, codes: InviteCodesDto, link_user_id: Optional[int] = None
+    ) -> tuple[str, str]:
+        # with link_user_id the round trip links the provider to that customer instead of signing in
         if provider not in CABINET_OAUTH_PROVIDERS:
             raise AuthenticationError(
                 "Provider is not available for cabinet sign-in",
@@ -60,8 +63,12 @@ class CabinetOAuthAuthorizeUseCase:
         binding, binding_hash = new_binding()
         state = await self._state_store.create(
             provider=provider,
-            purpose=OAuthFlowPurpose.CABINET_LOGIN,
-            user_id=None,
+            purpose=(
+                OAuthFlowPurpose.CABINET_LOGIN
+                if link_user_id is None
+                else OAuthFlowPurpose.CABINET_CONNECT
+            ),
+            user_id=link_user_id,
             code_verifier=code_verifier,
             binding_hash=binding_hash,
             referral_code=codes.referral_code,

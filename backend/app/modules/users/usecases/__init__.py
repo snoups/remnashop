@@ -7,6 +7,7 @@ from app.modules.users.usecases.create_admin import CreateAdminUseCase
 from app.modules.users.usecases.delete_admin import DeleteAdminUseCase
 from app.modules.users.usecases.delete_user import DeleteUserUseCase
 from app.modules.users.usecases.demote_admin import DemoteAdminUseCase
+from app.modules.users.usecases.find_telegram_user import FindTelegramUserUseCase
 from app.modules.users.usecases.get_current_user import GetCurrentUserUseCase
 from app.modules.users.usecases.get_user import GetUserUseCase
 from app.modules.users.usecases.get_user_list_stats import GetUserListStatsUseCase
@@ -38,6 +39,7 @@ __all__ = [
     "DeleteAdminUseCase",
     "DeleteUserUseCase",
     "DemoteAdminUseCase",
+    "FindTelegramUserUseCase",
     "GetCurrentUserUseCase",
     "GetUserListStatsUseCase",
     "GetUserRegistrationUseCase",

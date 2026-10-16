@@ -65,6 +65,8 @@ ntf-customer-subscription-traffic-threshold = Your traffic is running low.
     .title = Traffic running low
 ntf-customer-cabinet-new-device-sign-in = New sign-in to your cabinet from { $ip } ({ $browser }). If it wasn't you, sign out everywhere in the cabinet and contact support.
     .title = New sign-in
+ntf-customer-accounts-merged = Your accounts were merged: the other account's subscriptions, payments and sign-in methods are now here. If it wasn't you, contact support.
+    .title = Accounts merged
 ntf-customer-referral-reward-issued = You got { $amount } { $reward_type ->
         [EXTRA_DAYS] { $amount ->
             [one] bonus day

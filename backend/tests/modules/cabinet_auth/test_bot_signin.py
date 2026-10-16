@@ -43,7 +43,7 @@ def _token_from(url: str) -> str:
 async def test_start_record_is_taken_once(store: DeeplinkStore) -> None:
     token = await store.create(InviteCodesDto(referral_code="abc"))
     first = await store.take_start(token)
-    assert first is not None and first.referral_code == "abc"
+    assert first is not None and first.codes.referral_code == "abc"
     assert await store.take_start(token) is None
     assert await store.peek(token) is None
 
@@ -105,3 +105,30 @@ async def test_signin_is_refused_when_telegram_is_disabled(
     assert error.value.code is ErrorCode.CABINET_TELEGRAM_DISABLED
     # a switched-off method must not burn the link: switching it back on lets it through
     assert await store.take_signin(token) is not None
+
+
+async def test_link_token_url_uses_link_path(
+    store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", _CABINET)
+    start = await store.create(InviteCodesDto(), link_user_id=42)
+    ticket = await store.peek(start)
+    assert ticket is not None and ticket.link_user_id == 42
+
+    url = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
+
+    assert url is not None and url.startswith(f"{_CABINET}/link/bot#token=")
+    grant = await store.take_signin(_token_from(url))
+    assert grant is not None and grant.link_user_id == 42 and grant.profile == _PROFILE
+
+
+@pytest.mark.usefixtures("telegram_enabled")
+async def test_login_signin_rejects_link_grant(
+    store: DeeplinkStore, sign_in_use_case: BotSignInUseCase
+) -> None:
+    token = await store.issue_signin(
+        BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto(), link_user_id=42)
+    )
+    with pytest.raises(AuthenticationError) as error:
+        await sign_in_use_case.execute(token, _IP, "ua")
+    assert error.value.code is ErrorCode.DEEPLINK_EXPIRED

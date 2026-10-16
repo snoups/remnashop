@@ -73,6 +73,8 @@ ntf-customer-subscription-traffic-threshold = Трафик подходит к �
     .title = Трафик на исходе
 ntf-customer-cabinet-new-device-sign-in = Новый вход в кабинет с { $ip } ({ $browser }). Если это были не вы — выйдите со всех устройств в кабинете и напишите в поддержку.
     .title = Новый вход
+ntf-customer-accounts-merged = Аккаунты объединены: подписки, платежи и способы входа другого аккаунта теперь здесь. Если это были не вы — напишите в поддержку.
+    .title = Аккаунты объединены
 ntf-customer-referral-reward-issued = Вам начислено { $amount } { $reward_type ->
         [EXTRA_DAYS] { $amount ->
             [one] бонусный день

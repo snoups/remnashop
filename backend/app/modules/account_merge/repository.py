@@ -72,12 +72,26 @@ class AccountMergeRepository:
         )
 
     async def read_links(self, source_id: int, target_id: int) -> MergeLinksDto:
+        source_referrer_id, source_referred_at = await self._referral_of(source_id)
+        target_referrer_id, target_referred_at = await self._referral_of(target_id)
         return MergeLinksDto(
-            source_referrer_id=await self._referrer_of(source_id),
-            target_referrer_id=await self._referrer_of(target_id),
+            source_referrer_id=source_referrer_id,
+            target_referrer_id=target_referrer_id,
             source_oauth=await self._oauth_labels(source_id),
             target_oauth=await self._oauth_labels(target_id),
+            source_referred_at=source_referred_at,
+            target_referred_at=target_referred_at,
         )
+
+    async def _referral_of(self, user_id: int) -> tuple[Optional[int], Optional[datetime]]:
+        row = (
+            await self.session.execute(
+                select(Referral.referrer_id, Referral.created_at).where(
+                    Referral.referred_id == user_id
+                )
+            )
+        ).one_or_none()
+        return (row[0], row[1]) if row else (None, None)
 
     async def _referrer_of(self, user_id: int) -> Optional[int]:
         return await self.session.scalar(

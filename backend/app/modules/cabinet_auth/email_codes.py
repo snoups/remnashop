@@ -2,20 +2,22 @@ import hashlib
 import hmac
 import json
 import secrets
-from typing import Final, Optional
+from typing import ClassVar, Final, Optional
 
 from redis.asyncio import Redis
 
-from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TTL_10M
+from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TIME_1M, TTL_10M
 from app.core.enums import Locale
 from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.rate_counter import hit_counter
 from app.modules.cabinet_auth.dto import EmailCodeGrantDto, InviteCodesDto
 
-_KEY_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code:"
 _MAX_ATTEMPTS: Final[int] = 5
 _FAIL_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_fail:"
 _DAILY_FAIL_BUDGET: Final[int] = 20
+_LIMIT_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_limit:"
+_HOUR: Final[int] = TIME_1M * 60
+_PER_HOUR: Final[int] = 10
 
 
 class EmailCodeExpired(Exception):  # noqa: N818
@@ -42,7 +44,16 @@ async def record_failure(redis: Redis, digest: str) -> None:
     await hit_counter(redis, f"{_FAIL_PREFIX}{digest}", TIME_1D)
 
 
+async def send_limit_hit(redis: Redis, digest: str) -> bool:
+    # shared by login and link: one budget per mailbox, whatever the flow
+    if await hit_counter(redis, f"{_LIMIT_PREFIX}min:{digest}", TIME_1M) > 1:
+        return True
+    return await hit_counter(redis, f"{_LIMIT_PREFIX}hour:{digest}", _HOUR) > _PER_HOUR
+
+
 class EmailCodeStore:
+    key_prefix: ClassVar[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code:"
+
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
@@ -57,12 +68,12 @@ class EmailCodeStore:
             "ad_link_code": codes.ad_link_code,
             "locale": locale.value,
         }
-        await self._redis.set(f"{_KEY_PREFIX}{email_hash}", json.dumps(payload), ex=TTL_10M)
+        await self._redis.set(f"{self.key_prefix}{email_hash}", json.dumps(payload), ex=TTL_10M)
         return code
 
     async def verify(self, email: str, code: str) -> Optional[EmailCodeGrantDto]:
         email_hash = email_key(email)
-        key = f"{_KEY_PREFIX}{email_hash}"
+        key = f"{self.key_prefix}{email_hash}"
         raw = await self._redis.get(key)
         if raw is None:
             raise EmailCodeExpired
