@@ -87,6 +87,7 @@ class Permission(UpperStrEnum):
     NOTIFICATION_VAPID_KEYS_GENERATE = auto()
     USERS_VIEW = auto()
     USERS_DETAIL_VIEW = auto()
+    USERS_REGISTRATION_VIEW = auto()
     USERS_STATS_VIEW = auto()
     USERS_DELETE = auto()
     USERS_DISCOUNT_MANAGE = auto()
@@ -306,6 +307,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     ),
     Permission.USERS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DETAIL_VIEW: PermissionMeta(resource="users", kind="read"),
+    Permission.USERS_REGISTRATION_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
@@ -669,6 +671,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BROADCASTS_EMAIL_TEST_SEND,
         Permission.USERS_VIEW,
         Permission.USERS_DETAIL_VIEW,
+        Permission.USERS_REGISTRATION_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
         Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR,
         Permission.USERS_LOYALTY_VIEW,

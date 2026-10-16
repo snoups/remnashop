@@ -29,6 +29,10 @@ def _parse_start_code(event: TelegramObject, prefix: str) -> Optional[str]:
     return code
 
 
+def parse_start_payload(event: TelegramObject) -> Optional[str]:
+    return _parse_start_code(event, "")
+
+
 def parse_ad_link_code(event: TelegramObject) -> Optional[str]:
     return _parse_start_code(event, _AD_LINK_PREFIX)
 

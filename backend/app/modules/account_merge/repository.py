@@ -21,6 +21,7 @@ from app.core.db.models import (
     Subscription,
     Transaction,
     User,
+    UserRegistration,
 )
 from app.core.enums import SubscriptionStatus
 from app.modules.account_merge.dto import MergeCountsDto, MergeLinksDto, MergeSide
@@ -39,6 +40,7 @@ REASSIGNED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("announcement_views", "user_id"),
         ("payment_waitlist", "user_id"),
         ("ad_link_attributions", "user_id"),
+        ("user_registrations", "user_id"),
         ("referrals", "referrer_id"),
         ("referrals", "referred_id"),
         ("referral_rewards", "referrer_id"),
@@ -154,6 +156,7 @@ class AccountMergeRepository:
             PaymentWaitlistEntry.user_id, PaymentWaitlistEntry.created_at, s, t
         )
         await self._keep_earliest(AdLinkAttribution.user_id, AdLinkAttribution.created_at, s, t)
+        await self._keep_earliest(UserRegistration.user_id, UserRegistration.created_at, s, t)
         await self._move_oauth(s, t, sides)
         await self._move_referrals(s, t, sides)
         await self._replace_in_promocode_allowlists(s, t)

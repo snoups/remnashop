@@ -8,6 +8,7 @@ from app.core.enums import (
     CabinetSignInMethod,
     Locale,
     OAuthProvider,
+    RegistrationSource,
     SessionAudience,
 )
 from app.core.error_codes import ErrorCode
@@ -29,6 +30,7 @@ from app.modules.users import (
     RegisterCabinetUserUseCase,
     RegisterTelegramUserDto,
     RegisterTelegramUserUseCase,
+    RegistrationSnapshotDto,
     UserDto,
     UserRepository,
 )
@@ -135,6 +137,7 @@ class CabinetSignIn:
         client_ip: str,
         user_agent: Optional[str],
         session_ttl: int = TTL_30D,
+        source: RegistrationSource = RegistrationSource.CABINET_TELEGRAM,
     ) -> tuple[UserDto, IssuedSession]:
         # blacklisted: the register usecase stores a blocked row, issue_for refuses it
         async with self._uow:
@@ -155,6 +158,12 @@ class CabinetSignIn:
                 channel=AdLinkChannel.WEBCABINET,
                 ad_link_code=codes.ad_link_code,
                 referral_code=codes.referral_code,
+                snapshot=RegistrationSnapshotDto(
+                    source=source,
+                    telegram_language_code=profile.language,
+                    ip_address=client_ip,
+                    user_agent=user_agent,
+                ),
             )
         )
         return await self.issue_for(
@@ -191,6 +200,11 @@ class CabinetSignIn:
                     email=email,
                     ad_link_code=codes.ad_link_code,
                     referral_code=codes.referral_code,
+                    snapshot=RegistrationSnapshotDto(
+                        source=RegistrationSource.CABINET_EMAIL,
+                        ip_address=client_ip,
+                        user_agent=user_agent,
+                    ),
                 )
             )
         elif user.email_undeliverable_at is not None:
@@ -250,6 +264,11 @@ class CabinetSignIn:
                     email=verified_email,
                     ad_link_code=codes.ad_link_code,
                     referral_code=codes.referral_code,
+                    snapshot=RegistrationSnapshotDto(
+                        source=RegistrationSource(f"CABINET_{provider.value}"),
+                        ip_address=client_ip,
+                        user_agent=user_agent,
+                    ),
                 )
             )
         async with self._uow:

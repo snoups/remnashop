@@ -972,6 +972,25 @@
       "done": "Telegram ID saved.",
       "error": "Failed to save the Telegram ID."
     },
+    "registration": {
+      "title": "Registration",
+      "none": "No data: the account was created before this was recorded.",
+      "source": "Source",
+      "startPayload": "Start link",
+      "telegramLanguage": "Telegram language",
+      "telegramPremium": "Telegram Premium",
+      "ip": "IP address",
+      "browser": "Browser",
+      "sources": {
+        "BOT": "Bot",
+        "CABINET_TELEGRAM": "Cabinet · Telegram",
+        "CABINET_MINI_APP": "Cabinet · Mini App",
+        "CABINET_BOT_LINK": "Cabinet · via the bot",
+        "CABINET_EMAIL": "Cabinet · email code",
+        "CABINET_GOOGLE": "Cabinet · Google",
+        "CABINET_YANDEX": "Cabinet · Yandex"
+      }
+    },
     "botBlocked": {
       "badge": "Bot blocked"
     },
@@ -1634,6 +1653,7 @@
     "EVENT_LOG_DETAIL_VIEW": "View event log entry",
     "USERS_VIEW": "View users",
     "USERS_DETAIL_VIEW": "View user details",
+    "USERS_REGISTRATION_VIEW": "View how a user signed up",
     "USERS_STATS_VIEW": "View user counters",
     "USERS_DELETE": "Delete users",
     "USERS_MERGE_PREVIEW": "Preview a user account merge",

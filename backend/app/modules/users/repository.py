@@ -17,6 +17,7 @@ from app.core.db.errors import constraint_name
 from app.core.db.filters import in_ids
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.db.models.user import User
+from app.core.db.models.user_registration import UserRegistration
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.user_search import user_search_filter
 from app.core.enums import Locale, Role
@@ -28,10 +29,12 @@ from app.modules.users.dto import (
     CreateUserDto,
     DeletedFilter,
     PromoteAdminDto,
+    RegistrationSnapshotDto,
     UpdateUserDto,
     UserDto,
     UserListItemDto,
     UserLoyaltyStateDto,
+    UserRegistrationDto,
     UserSort,
 )
 from app.modules.users.filters import (
@@ -550,6 +553,29 @@ class UserRepository:
         db_user.marketing_opt_out = value
         await self.session.flush()
 
+    async def add_registration(self, user_id: int, snapshot: RegistrationSnapshotDto) -> None:
+        language = snapshot.telegram_language_code
+        self.session.add(
+            UserRegistration(
+                user_id=user_id,
+                source=snapshot.source,
+                start_payload=snapshot.start_payload,
+                telegram_language_code=language[:16] if language else None,
+                telegram_is_premium=snapshot.telegram_is_premium,
+                ip_address=snapshot.ip_address,
+                # browsers send whatever they like; the column has a bound
+                user_agent=snapshot.user_agent[:512] if snapshot.user_agent else None,
+            )
+        )
+        await self.session.flush()
+
+    async def find_registration(self, user_id: int) -> Optional[UserRegistrationDto]:
+        row = await self.session.get(UserRegistration, user_id)
+        return self._to_registration_dto(row) if row is not None else None
+
+    def _to_registration_dto(self, row: UserRegistration) -> UserRegistrationDto:
+        return UserRegistrationDto.model_validate(row, from_attributes=True)
+
     async def set_bot_blocked(self, user_id: int, blocked: bool) -> bool:
         # True only when the flag actually flipped
         result = await self.session.execute(
@@ -650,6 +676,9 @@ class UserRepository:
         db_user.deleted_at = datetime_now()
         # provider subject ids are personal data too; nothing else reads them
         await self.session.execute(sa_delete(OAuthIdentity).where(OAuthIdentity.user_id == user_id))
+        await self.session.execute(
+            sa_delete(UserRegistration).where(UserRegistration.user_id == user_id)
+        )
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._to_dto(db_user)

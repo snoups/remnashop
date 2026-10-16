@@ -29,6 +29,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { BalanceTiles } from "@features/user-details/BalanceTiles";
+import { RegistrationCard } from "@features/user-details/RegistrationCard";
 import { userHandle } from "@features/user-referrals/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDateTime } from "@shared/lib/relative-time";
@@ -71,6 +72,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
   const permissions = usePermissions();
   const canViewAdSource = permissions.includes("AD_LINKS_USER_ATTRIBUTION_VIEW");
   const canViewReferrer = permissions.includes("REFERRALS_VIEW");
+  const canViewRegistration = permissions.includes("USERS_REGISTRATION_VIEW");
   const [adSource] = useAsyncResource((signal) =>
     canViewAdSource ? getUserAdAttribution(user.id, signal) : Promise.resolve(null),
   );
@@ -186,6 +188,8 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           </div>
         )}
       </Card>
+
+      {canViewRegistration && <RegistrationCard userId={user.id} />}
 
       <BalanceTiles user={user} onChanged={onChanged} />
     </div>

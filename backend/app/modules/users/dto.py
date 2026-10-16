@@ -5,8 +5,16 @@ from typing import Literal, Optional
 
 from app.core.constants import DEFAULT_PAGE_SIZE, REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AdLinkChannel, BlacklistKind, CabinetSignInMethod, Locale, Role
+from app.core.enums import (
+    AdLinkChannel,
+    BlacklistKind,
+    CabinetSignInMethod,
+    Locale,
+    RegistrationSource,
+    Role,
+)
 from app.core.security.permissions import Permission
+from app.core.utils.http import describe_user_agent
 from app.core.utils.time import datetime_now
 from app.modules.blacklist import BlacklistOriginDto
 
@@ -280,6 +288,30 @@ class PromoteToAdminDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RegistrationSnapshotDto:
+    source: RegistrationSource
+    start_payload: Optional[str] = None
+    telegram_language_code: Optional[str] = None
+    telegram_is_premium: Optional[bool] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+
+
+class UserRegistrationDto(BaseDto):
+    source: RegistrationSource
+    start_payload: Optional[str] = None
+    telegram_language_code: Optional[str] = None
+    telegram_is_premium: Optional[bool] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime
+
+    @property
+    def browser(self) -> Optional[str]:
+        return describe_user_agent(self.user_agent) if self.user_agent else None
+
+
+@dataclass(frozen=True, kw_only=True)
 class RegisterTelegramUserDto:
     telegram_id: int
     name: str
@@ -292,6 +324,7 @@ class RegisterTelegramUserDto:
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
     channel: AdLinkChannel = AdLinkChannel.BOT
+    snapshot: Optional[RegistrationSnapshotDto] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -302,6 +335,7 @@ class RegisterCabinetUserDto:
     email: Optional[str] = None
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
+    snapshot: Optional[RegistrationSnapshotDto] = None
 
 
 @dataclass(frozen=True, kw_only=True)

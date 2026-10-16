@@ -147,6 +147,16 @@ class ReferralRewardStrategy(UpperStrEnum):
     PERCENT = auto()
 
 
+class RegistrationSource(UpperStrEnum):
+    BOT = auto()
+    CABINET_TELEGRAM = auto()
+    CABINET_MINI_APP = auto()
+    CABINET_BOT_LINK = auto()
+    CABINET_EMAIL = auto()
+    CABINET_GOOGLE = auto()
+    CABINET_YANDEX = auto()
+
+
 class AdLinkChannel(UpperStrEnum):
     BOT = auto()
     WEBCABINET = auto()

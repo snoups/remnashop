@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.core.constants import TTL_7D
 from app.core.db.uow import UnitOfWork
+from app.core.enums import RegistrationSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
@@ -39,4 +40,5 @@ class TelegramWebAppLoginUseCase:
             # the Mini App signs in again with initData whenever its access token
             # expires, so a session left behind by an IP change needn't outlive a week
             session_ttl=TTL_7D,
+            source=RegistrationSource.CABINET_MINI_APP,
         )

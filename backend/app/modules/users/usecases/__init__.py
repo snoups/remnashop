@@ -10,6 +10,7 @@ from app.modules.users.usecases.demote_admin import DemoteAdminUseCase
 from app.modules.users.usecases.get_current_user import GetCurrentUserUseCase
 from app.modules.users.usecases.get_user import GetUserUseCase
 from app.modules.users.usecases.get_user_list_stats import GetUserListStatsUseCase
+from app.modules.users.usecases.get_user_registration import GetUserRegistrationUseCase
 from app.modules.users.usecases.list_admins import ListAdminsUseCase
 from app.modules.users.usecases.list_blacklist_matches import ListBlacklistMatchesUseCase
 from app.modules.users.usecases.list_users import ListUsersUseCase
@@ -39,6 +40,7 @@ __all__ = [
     "DemoteAdminUseCase",
     "GetCurrentUserUseCase",
     "GetUserListStatsUseCase",
+    "GetUserRegistrationUseCase",
     "GetUserUseCase",
     "ListAdminsUseCase",
     "ListBlacklistMatchesUseCase",

@@ -14,7 +14,7 @@ from app.core.config import AppConfig
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import BlacklistKind, Locale, Role, SessionAudience
+from app.core.enums import BlacklistKind, Locale, RegistrationSource, Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError as DomainValidationError
 from app.core.security import create_access_token, hash_password, hash_refresh_token
@@ -26,7 +26,7 @@ from app.modules.blacklist import BlacklistRepository
 from app.modules.providers import get_module_providers
 from app.modules.users import unsubscribe_token
 from app.modules.users.api.schemas import PromoteAdminRequest
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.dto import CreateUserDto, RegistrationSnapshotDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnsubscribeMarketingUseCase
 from tests.fakes.events import RecordingEventPublisher
@@ -867,3 +867,34 @@ async def test_clear_undeliverable(
     admin_token = await _issue_token(admin.id, session_repository, config)
     denied = await client.post(url, headers={"Authorization": f"Bearer {admin_token}"})
     assert denied.status_code == 403
+
+
+async def test_registration_snapshot_is_shown_with_its_browser(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    old = await _create(user_repository, uow, telegram_id=777011, name="old", role=Role.USER)
+    fresh = await _create(user_repository, uow, telegram_id=777012, name="new", role=Role.USER)
+    async with uow:
+        await user_repository.add_registration(
+            fresh.id,
+            RegistrationSnapshotDto(
+                source=RegistrationSource.CABINET_EMAIL,
+                ip_address="203.0.113.9",
+                user_agent="Mozilla/5.0 (Macintosh) Chrome/130.0 Safari/537.36",
+            ),
+        )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    none = await client.get(f"/api/v1/users/{old.id}/registration", headers=headers)
+    shown = await client.get(f"/api/v1/users/{fresh.id}/registration", headers=headers)
+
+    assert none.json() == {"registration": None}
+    body = shown.json()["registration"]
+    assert body["source"] == "CABINET_EMAIL"
+    assert body["ip_address"] == "203.0.113.9"
+    assert body["browser"] == "Chrome on macOS"

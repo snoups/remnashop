@@ -47,6 +47,8 @@ class RegisterCabinetUserUseCase(UseCase[RegisterCabinetUserDto, UserDto]):
                         name=data.name, language=data.language, email=email, is_blocked=is_blocked
                     )
                 )
+                if data.snapshot is not None:
+                    await self._user_repository.add_registration(user.id, data.snapshot)
                 event: UserEvent = (
                     CabinetRegistrationBlockedEvent(user=user)
                     if is_blocked

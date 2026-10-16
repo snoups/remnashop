@@ -1016,6 +1016,25 @@
       "done": "Telegram ID сохранён.",
       "error": "Не удалось сохранить Telegram ID."
     },
+    "registration": {
+      "title": "Регистрация",
+      "none": "Нет данных: аккаунт создан до того, как это начали записывать.",
+      "source": "Источник",
+      "startPayload": "Ссылка /start",
+      "telegramLanguage": "Язык Telegram",
+      "telegramPremium": "Telegram Premium",
+      "ip": "IP-адрес",
+      "browser": "Браузер",
+      "sources": {
+        "BOT": "Бот",
+        "CABINET_TELEGRAM": "Кабинет · Telegram",
+        "CABINET_MINI_APP": "Кабинет · Mini App",
+        "CABINET_BOT_LINK": "Кабинет · через бота",
+        "CABINET_EMAIL": "Кабинет · код на почту",
+        "CABINET_GOOGLE": "Кабинет · Google",
+        "CABINET_YANDEX": "Кабинет · Яндекс"
+      }
+    },
     "botBlocked": {
       "badge": "Бот заблокирован"
     },
@@ -1680,6 +1699,7 @@
     "EVENT_LOG_DETAIL_VIEW": "Просмотр записи журнала событий",
     "USERS_VIEW": "Просмотр пользователей",
     "USERS_DETAIL_VIEW": "Просмотр карточки пользователя",
+    "USERS_REGISTRATION_VIEW": "Просмотр данных регистрации пользователя",
     "USERS_STATS_VIEW": "Просмотр счётчиков пользователей",
     "USERS_DELETE": "Удаление пользователей",
     "USERS_MERGE_PREVIEW": "Предпросмотр объединения аккаунтов",

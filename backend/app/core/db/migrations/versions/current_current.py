@@ -1759,6 +1759,37 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_table(
+        "user_registrations",
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "source",
+            sa.Enum(
+                "BOT",
+                "CABINET_TELEGRAM",
+                "CABINET_MINI_APP",
+                "CABINET_BOT_LINK",
+                "CABINET_EMAIL",
+                "CABINET_GOOGLE",
+                "CABINET_YANDEX",
+                name="registrationsource",
+            ),
+            nullable=False,
+        ),
+        sa.Column("start_payload", sa.String(length=64), nullable=True),
+        sa.Column("telegram_language_code", sa.String(length=16), nullable=True),
+        sa.Column("telegram_is_premium", sa.Boolean(), nullable=True),
+        sa.Column("ip_address", sa.String(length=45), nullable=True),
+        sa.Column("user_agent", sa.String(length=512), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id"),
+    )
+    op.create_table(
         "addon_entitlements",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("subscription_id", sa.Integer(), nullable=False),
@@ -2179,6 +2210,7 @@ def downgrade() -> None:
     op.drop_table("addon_entitlements")
     op.drop_index(op.f("ix_ad_link_attributions_ad_link_id"), table_name="ad_link_attributions")
     op.drop_table("ad_link_attributions")
+    op.drop_table("user_registrations")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_revoked_at"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_refresh_token_hash"), table_name="user_sessions")

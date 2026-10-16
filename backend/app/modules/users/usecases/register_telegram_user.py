@@ -57,6 +57,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                         is_blocked=is_blocked,
                     )
                 )
+                if data.snapshot is not None:
+                    await self._user_repository.add_registration(user.id, data.snapshot)
                 if is_blocked:
                     await self._event_publisher.publish(TelegramRegistrationBlockedEvent(user=user))
                     return user

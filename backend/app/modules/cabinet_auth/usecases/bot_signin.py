@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
+from app.core.enums import RegistrationSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
@@ -39,4 +40,10 @@ class BotSignInUseCase:
             raise AuthenticationError(
                 "The sign-in link has expired", code=ErrorCode.DEEPLINK_EXPIRED
             )
-        return await self._sign_in.telegram(grant.profile, grant.codes, client_ip, user_agent)
+        return await self._sign_in.telegram(
+            grant.profile,
+            grant.codes,
+            client_ip,
+            user_agent,
+            source=RegistrationSource.CABINET_BOT_LINK,
+        )

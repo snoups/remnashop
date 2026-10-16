@@ -30,6 +30,7 @@ from app.modules.users.api.schemas import (
     UserListItemResponse,
     UserListStatsResponse,
     UserPageResponse,
+    UserRegistrationResponse,
     effective_permission_names,
 )
 from app.modules.users.dto import (
@@ -64,6 +65,7 @@ from app.modules.users.usecases import (
     DemoteAdminUseCase,
     GetCurrentUserUseCase,
     GetUserListStatsUseCase,
+    GetUserRegistrationUseCase,
     GetUserUseCase,
     ListAdminsUseCase,
     ListBlacklistMatchesUseCase,
@@ -177,6 +179,23 @@ async def get_user(
 ) -> UserListItemResponse:
     user = await use_case(actor, user_id)
     return UserListItemResponse.model_validate(user, from_attributes=True)
+
+
+@router.get(
+    "/{user_id:int}/registration",
+    response_model=UserRegistrationResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_user_registration(
+    user_id: int,
+    use_case: FromDishka[GetUserRegistrationUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserRegistrationResponse:
+    registration = await use_case(actor, user_id)
+    return UserRegistrationResponse.model_validate(
+        {"registration": registration}, from_attributes=True
+    )
 
 
 @router.get("/summary", response_model=UserListStatsResponse)

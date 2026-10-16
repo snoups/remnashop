@@ -187,3 +187,31 @@ export function mergeUsers(
 export function bindUserTelegram(userId: number, telegramId: number): Promise<UserListItem> {
   return apiPut<UserListItem, { telegram_id: number }>(`/users/${userId}/telegram`, { telegram_id: telegramId });
 }
+
+export type RegistrationSource =
+  | "BOT"
+  | "CABINET_TELEGRAM"
+  | "CABINET_MINI_APP"
+  | "CABINET_BOT_LINK"
+  | "CABINET_EMAIL"
+  | "CABINET_GOOGLE"
+  | "CABINET_YANDEX";
+
+export interface RegistrationSnapshot {
+  source: RegistrationSource;
+  start_payload: string | null;
+  telegram_language_code: string | null;
+  telegram_is_premium: boolean | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  browser: string | null;
+  created_at: string;
+}
+
+// registration is null for accounts made before snapshots were kept
+export function getUserRegistration(
+  userId: number,
+  signal?: AbortSignal,
+): Promise<{ registration: RegistrationSnapshot | null }> {
+  return apiGet<{ registration: RegistrationSnapshot | null }>(`/users/${userId}/registration`, signal);
+}

@@ -4,12 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.event_outbox import EventOutboxEntry
+from app.core.db.models.user_registration import UserRegistration
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AccessMode,
     BlacklistKind,
     CabinetSignInMethod,
     Locale,
+    RegistrationSource,
     SessionAudience,
 )
 from app.core.error_codes import ErrorCode
@@ -59,6 +61,11 @@ async def test_telegram_creates_client_and_cabinet_session(
     [event] = await _outbox(session, "CabinetUserRegisteredEvent")
     assert event.payload["method"] == "TELEGRAM"
     assert await _outbox(session, "TelegramUserRegisteredEvent") == []
+    registration = await session.get(UserRegistration, user.id)
+    assert registration is not None
+    assert registration.source is RegistrationSource.CABINET_TELEGRAM
+    assert (registration.ip_address, registration.user_agent) == (_IP, "ua")
+    assert registration.telegram_language_code == "ru"
 
 
 async def test_telegram_unknown_language_falls_back_to_english(sign_in: CabinetSignIn) -> None:
@@ -167,6 +174,8 @@ async def test_email_registration_publishes_event(
     assert event.payload["method"] == "EMAIL"
     assert event.payload["referral_code"] == "abc"
     assert event.payload["user"]["id"] == user.id
+    registration = await session.get(UserRegistration, user.id)
+    assert registration is not None and registration.source is RegistrationSource.CABINET_EMAIL
 
 
 async def test_blacklisted_email_blocked(

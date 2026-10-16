@@ -110,6 +110,22 @@ class BlacklistMatchPageResponse(BaseModel):
     lists_total: int
 
 
+class RegistrationSnapshotResponse(BaseModel):
+    source: str
+    start_payload: Optional[str]
+    telegram_language_code: Optional[str]
+    telegram_is_premium: Optional[bool]
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    browser: Optional[str]
+    created_at: datetime
+
+
+class UserRegistrationResponse(BaseModel):
+    # null: the account predates registration snapshots
+    registration: Optional[RegistrationSnapshotResponse]
+
+
 class UserListItemResponse(UserResponse):
     active_subscriptions: int
     limited_subscriptions: int

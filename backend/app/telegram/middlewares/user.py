@@ -6,13 +6,18 @@ from dishka import AsyncContainer
 from fluentogram import TranslatorHub
 
 from app.core.constants import CONTAINER_KEY, USER_KEY
-from app.core.enums import AdLinkChannel, Locale, MiddlewareEventType
+from app.core.enums import AdLinkChannel, Locale, MiddlewareEventType, RegistrationSource
 from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAccessUseCase
 from app.modules.cabinet_auth import DeeplinkStore
-from app.modules.users import RegisterTelegramUserDto, RegisterTelegramUserUseCase
+from app.modules.users import (
+    RegisterTelegramUserDto,
+    RegisterTelegramUserUseCase,
+    RegistrationSnapshotDto,
+)
 from app.telegram.middlewares._codes import (
     parse_ad_link_code,
     parse_referral_code,
+    parse_start_payload,
     parse_webauth_token,
 )
 from app.telegram.middlewares.base import EventTypedMiddleware
@@ -88,6 +93,14 @@ class UserMiddleware(EventTypedMiddleware):
                 ad_link_code=ad_link_code,
                 referral_code=referral_code,
                 channel=channel,
+                snapshot=RegistrationSnapshotDto(
+                    source=RegistrationSource.BOT
+                    if channel is AdLinkChannel.BOT
+                    else RegistrationSource.CABINET_BOT_LINK,
+                    start_payload=parse_start_payload(event),
+                    telegram_language_code=aiogram_user.language_code,
+                    telegram_is_premium=aiogram_user.is_premium,
+                ),
             )
         )
         return await handler(event, data)

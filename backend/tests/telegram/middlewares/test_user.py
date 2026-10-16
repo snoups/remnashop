@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import AppConfig
 from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
 from app.core.db.models.event_outbox import EventOutboxEntry
+from app.core.db.models.user_registration import UserRegistration
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AccessMode, Locale
+from app.core.enums import AccessMode, Locale, RegistrationSource
 from app.core.ports import EventPublisher
 from app.modules.access import CheckRegistrationAccessUseCase
 from app.modules.advertising.repository import AdLinkRepository
@@ -158,7 +159,9 @@ async def test_user_middleware_carries_ad_link_code_from_start_payload(
         date=0,
         chat=Chat(id=5252, type=ChatType.PRIVATE),
         text="/start ad_middleware-code",
-        from_user=_sender(5252),
+        from_user=AiogramUser(
+            id=5252, is_bot=False, first_name="A", is_premium=True, language_code="pt-br"
+        ),
     )
     data: dict[str, Any] = {
         "event_chat": message.chat,
@@ -190,6 +193,12 @@ async def test_user_middleware_carries_ad_link_code_from_start_payload(
     ).all()
     assert len(rows) == 1
     assert rows[0].payload["ad_link_code"] == "middleware-code"
+    registration = await session.get(UserRegistration, rows[0].payload["user"]["id"])
+    assert registration is not None
+    assert registration.source is RegistrationSource.BOT
+    assert registration.start_payload == "ad_middleware-code"
+    assert registration.telegram_is_premium is True
+    assert registration.telegram_language_code == "pt-br"
 
 
 async def test_user_middleware_syncs_username_and_an_active_telegram_language(

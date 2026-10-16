@@ -48,6 +48,7 @@ from app.core.db.models.subscription import Subscription
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
+from app.core.db.models.user_registration import UserRegistration
 from app.core.db.models.user_session import UserSession
 
 __all__ = [
@@ -106,5 +107,6 @@ __all__ = [
     "SubscriptionPurchaseIdempotency",
     "Transaction",
     "User",
+    "UserRegistration",
     "UserSession",
 ]
