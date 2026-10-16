@@ -239,6 +239,14 @@ class EmailSettingsDto(BaseDto, TimestampMixin):
     password: Optional[SecretStr] = None
     from_address: Optional[str] = None
     from_name: Optional[str] = None
+    bulk_host: Optional[str] = None
+    bulk_port: int = 587
+    bulk_security: SmtpSecurity = SmtpSecurity.STARTTLS
+    bulk_username: Optional[str] = None
+    bulk_password: Optional[SecretStr] = None
+    bulk_from_address: Optional[str] = None
+    bulk_from_name: Optional[str] = None
+    bulk_rate_per_minute: int = 60
 
     @property
     def is_configured(self) -> bool:
@@ -247,6 +255,53 @@ class EmailSettingsDto(BaseDto, TimestampMixin):
     @property
     def is_password_set(self) -> bool:
         return self.password is not None
+
+    @property
+    def is_bulk_configured(self) -> bool:
+        return self.bulk_host is not None and self.bulk_from_address is not None
+
+    @property
+    def is_bulk_password_set(self) -> bool:
+        return self.bulk_password is not None
+
+    def profile(self, *, bulk: bool) -> "SmtpProfileDto":
+        if bulk and self.is_bulk_configured:
+            return SmtpProfileDto(
+                host=self.bulk_host,
+                port=self.bulk_port,
+                security=self.bulk_security,
+                username=self.bulk_username,
+                password=self.bulk_password,
+                from_address=self.bulk_from_address,
+                from_name=self.bulk_from_name,
+                is_bulk=True,
+            )
+        return SmtpProfileDto(
+            host=self.host,
+            port=self.port,
+            security=self.security,
+            username=self.username,
+            password=self.password,
+            from_address=self.from_address,
+            from_name=self.from_name,
+            is_bulk=False,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class SmtpProfileDto:
+    host: Optional[str]
+    port: int
+    security: SmtpSecurity
+    username: Optional[str]
+    password: Optional[SecretStr]
+    from_address: Optional[str]
+    from_name: Optional[str]
+    is_bulk: bool
+
+    @property
+    def is_configured(self) -> bool:
+        return self.host is not None and self.from_address is not None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -258,6 +313,14 @@ class UpdateEmailSettingsDto:
     password: Optional[str] = None
     from_address: Optional[str] = None
     from_name: Optional[str] = None
+    bulk_host: Optional[str] = None
+    bulk_port: Optional[int] = None
+    bulk_security: Optional[SmtpSecurity] = None
+    bulk_username: Optional[str] = None
+    bulk_password: Optional[str] = None
+    bulk_from_address: Optional[str] = None
+    bulk_from_name: Optional[str] = None
+    bulk_rate_per_minute: Optional[int] = None
 
 
 class CabinetAuthSettingsDto(BaseDto, TimestampMixin):

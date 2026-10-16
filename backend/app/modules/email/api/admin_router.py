@@ -1,9 +1,13 @@
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies.admin import require_admin_user
 from app.api.errors import error_responses
+from app.modules.email.api.schemas import SendTestEmailRequest
+from app.modules.email.dto import SendTestEmailDto
 from app.modules.email.usecases import SendTestEmailUseCase
 from app.modules.users import UserDto
 
@@ -18,6 +22,7 @@ router = APIRouter(prefix="/settings/email", tags=["settings"])
 @inject
 async def send_test_email(
     use_case: FromDishka[SendTestEmailUseCase],
+    payload: Optional[SendTestEmailRequest] = None,
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
-    await use_case(actor)
+    await use_case(actor, SendTestEmailDto(bulk=payload.bulk if payload else False))

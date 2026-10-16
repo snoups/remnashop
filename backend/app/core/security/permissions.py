@@ -45,6 +45,7 @@ class Permission(UpperStrEnum):
     EMAIL_SETTINGS_VIEW = auto()
     EMAIL_SETTINGS_MANAGE = auto()
     EMAIL_SETTINGS_TEST = auto()
+    EMAIL_SETTINGS_BULK_RESET = auto()
     CABINET_AUTH_SETTINGS_VIEW = auto()
     CABINET_AUTH_SETTINGS_MANAGE = auto()
     BANNERS_IMAGE_VIEW = auto()
@@ -167,6 +168,10 @@ class Permission(UpperStrEnum):
     BROADCASTS_MEDIA_DELETE = auto()
     BROADCASTS_AUDIENCE_PREVIEW = auto()
     BROADCASTS_SUMMARY_VIEW = auto()
+    BROADCASTS_EMAIL_IMAGE_ADD = auto()
+    BROADCASTS_EMAIL_IMAGE_VIEW = auto()
+    BROADCASTS_EMAIL_PREVIEW = auto()
+    BROADCASTS_EMAIL_TEST_SEND = auto()
     TRANSACTIONS_VIEW = auto()
     TRANSACTIONS_SUMMARY_VIEW = auto()
     TRANSACTIONS_DETAIL_VIEW = auto()
@@ -205,6 +210,7 @@ class Permission(UpperStrEnum):
     BLACKLIST_SYNC = auto()
     BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
+    USERS_EMAIL_UNDELIVERABLE_CLEAR = auto()
     USERS_UNBLOCK = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     USERS_MERGE_PREVIEW = auto()
@@ -251,6 +257,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.EMAIL_SETTINGS_VIEW: PermissionMeta(resource="email_settings", kind="read"),
     Permission.EMAIL_SETTINGS_MANAGE: PermissionMeta(resource="email_settings", kind="write"),
     Permission.EMAIL_SETTINGS_TEST: PermissionMeta(resource="email_settings", kind="write"),
+    Permission.EMAIL_SETTINGS_BULK_RESET: PermissionMeta(resource="email_settings", kind="write"),
     Permission.CABINET_AUTH_SETTINGS_VIEW: PermissionMeta(
         resource="cabinet_auth_settings", kind="read"
     ),
@@ -377,6 +384,10 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BROADCASTS_MEDIA_DELETE: PermissionMeta(resource="broadcasts", kind="write"),
     Permission.BROADCASTS_AUDIENCE_PREVIEW: PermissionMeta(resource="broadcasts", kind="read"),
     Permission.BROADCASTS_SUMMARY_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_EMAIL_IMAGE_ADD: PermissionMeta(resource="broadcasts", kind="write"),
+    Permission.BROADCASTS_EMAIL_IMAGE_VIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_EMAIL_PREVIEW: PermissionMeta(resource="broadcasts", kind="read"),
+    Permission.BROADCASTS_EMAIL_TEST_SEND: PermissionMeta(resource="broadcasts", kind="write"),
     Permission.TRANSACTIONS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
@@ -414,6 +425,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_SYNC: PermissionMeta(resource="blacklist", kind="write"),
     Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_MERGE_PREVIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_MERGE: PermissionMeta(resource="users", kind="write"),
@@ -556,6 +568,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.OAUTH_SETTINGS_VIEW,
         Permission.EMAIL_SETTINGS_VIEW,
         Permission.EMAIL_SETTINGS_TEST,
+        Permission.EMAIL_SETTINGS_BULK_RESET,
         Permission.CABINET_AUTH_SETTINGS_VIEW,
         Permission.CABINET_AUTH_SETTINGS_MANAGE,
         Permission.LOCALES_VIEW,
@@ -640,9 +653,14 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.BROADCASTS_MEDIA_DELETE,
         Permission.BROADCASTS_AUDIENCE_PREVIEW,
         Permission.BROADCASTS_SUMMARY_VIEW,
+        Permission.BROADCASTS_EMAIL_IMAGE_ADD,
+        Permission.BROADCASTS_EMAIL_IMAGE_VIEW,
+        Permission.BROADCASTS_EMAIL_PREVIEW,
+        Permission.BROADCASTS_EMAIL_TEST_SEND,
         Permission.USERS_VIEW,
         Permission.USERS_DETAIL_VIEW,
         Permission.USERS_DISCOUNT_MANAGE,
+        Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR,
         Permission.USERS_LOYALTY_VIEW,
         Permission.USERS_LOYALTY_MANAGE,
         Permission.TRANSACTIONS_VIEW,

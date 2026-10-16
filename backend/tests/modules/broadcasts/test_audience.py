@@ -67,8 +67,11 @@ async def people(session: AsyncSession, user_repository: UserRepository) -> dict
 
 async def test_everyone_reachable(session: AsyncSession, people: dict[str, int]) -> None:
     found = await _match(session, BroadcastAudienceDto())
-    assert found >= {people[k] for k in ("active", "trial", "expired", "none", "opted_out")}
-    assert not found & {people[k] for k in ("no_tg", "blocked", "deleted", "admin")}
+    # channels are chosen at materialization, so a customer without telegram still matches
+    assert found >= {
+        people[k] for k in ("active", "trial", "expired", "none", "no_tg", "opted_out")
+    }
+    assert not found & {people[k] for k in ("blocked", "deleted", "admin")}
 
 
 async def test_marketing_skips_opted_out(session: AsyncSession, people: dict[str, int]) -> None:
@@ -151,3 +154,48 @@ async def test_registered_range_and_sources(
     assert await _match(session, BroadcastAudienceDto(ad_link_ids=[link.id])) == {people["trial"]}
     assert people["none"] in await _match(session, BroadcastAudienceDto(referred=True))
     assert people["none"] not in await _match(session, BroadcastAudienceDto(referred=False))
+
+
+async def test_limited_bucket(session: AsyncSession, user_repository: UserRepository) -> None:
+    limited = await make_customer(user_repository, session, telegram_id=7101)
+    expired = await make_customer(user_repository, session, telegram_id=7102)
+    await add_subscription(session, limited, status=SubscriptionStatus.LIMITED)
+    await add_subscription(
+        session,
+        expired,
+        status=SubscriptionStatus.EXPIRED,
+        expire_at=datetime_now() - timedelta(days=1),
+    )
+    mine = {limited, expired}
+    assert await _match(session, BroadcastAudienceDto(subscription=[F.LIMITED])) & mine == {limited}
+    assert await _match(session, BroadcastAudienceDto(subscription=[F.EXPIRED])) & mine == {expired}
+
+
+async def test_not_connected_within_days(
+    session: AsyncSession, user_repository: UserRepository
+) -> None:
+    now = datetime_now()
+    fresh = await make_customer(user_repository, session, telegram_id=7111)
+    connected = await make_customer(user_repository, session, telegram_id=7112)
+    old = await make_customer(user_repository, session, telegram_id=7113)
+    await add_subscription(session, fresh)
+    await add_subscription(session, connected, first_connected_at=now)
+    await add_subscription(session, old, created_at=now - timedelta(days=10))
+    found = await _match(session, BroadcastAudienceDto(not_connected_within_days=7))
+    assert found & {fresh, connected, old} == {fresh}
+
+
+async def test_has_telegram_and_has_email(
+    session: AsyncSession, user_repository: UserRepository
+) -> None:
+    tg = await make_customer(user_repository, session, telegram_id=7121)
+    both = await make_customer(user_repository, session, telegram_id=7122, email="both@x.example")
+    mail = await make_customer(user_repository, session, telegram_id=None, email="mail@x.example")
+    bare = await make_customer(user_repository, session, telegram_id=None)
+    mine = {tg, both, mail, bare}
+    assert await _match(session, BroadcastAudienceDto(has_telegram=False)) & mine == {mail, bare}
+    assert await _match(session, BroadcastAudienceDto(has_telegram=True)) & mine == {tg, both}
+    assert await _match(session, BroadcastAudienceDto(has_email=True)) & mine == {both, mail}
+    assert await _match(
+        session, BroadcastAudienceDto(has_telegram=False, has_email=True)
+    ) & mine == {mail}

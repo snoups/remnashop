@@ -7,7 +7,6 @@ from functools import partial
 from typing import Final, Optional
 
 import httpx
-from loguru import logger
 from redis.asyncio import Redis
 from redis.asyncio.lock import Lock
 from redis.exceptions import LockNotOwnedError
@@ -21,9 +20,9 @@ from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.broadcasts.completion import complete_broadcast, fail_broadcast
 from app.modules.broadcasts.dispatch import DeliverBroadcastDispatch, RecallBroadcastDispatch
 from app.modules.broadcasts.dto import PendingRecipientDto, RecipientContextDto
-from app.modules.broadcasts.events import BroadcastCompletedEvent, BroadcastFailedEvent
 from app.modules.broadcasts.pacing import (
     BATCH_SIZE,
     CLAIM_LEASE,
@@ -49,7 +48,6 @@ from app.modules.translations import TranslationRepository
 
 _TOKEN_REJECTED: Final[str] = "Bot token was rejected"
 _MEDIA_MISSING: Final[str] = "Media file is missing"
-_STOPPED: Final[str] = "stopped"
 
 
 class DeliverBroadcastBatchUseCase(UseCase[int, None]):
@@ -116,7 +114,9 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
             if not pending:
                 # rows still leased by a crashed chain: the stall watchdog re-kicks later
                 if not await self._broadcast_repository.has_pending(data):
-                    await self._complete(data)
+                    await complete_broadcast(
+                        self._broadcast_repository, self._event_publisher, data
+                    )
                 return False
             bot = await self._settings_repository.get_bot_settings()
             contexts = await self._broadcast_repository.recipient_contexts(
@@ -307,36 +307,8 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
             await self._recall_dispatch.kiq(broadcast_id=broadcast_id)
         return False
 
-    async def _complete(self, broadcast_id: int) -> None:
-        counts = await self._broadcast_repository.refresh_counts(broadcast_id)
-        await self._broadcast_repository.update_fields(
-            broadcast_id, status=BroadcastStatus.COMPLETED, completed_at=datetime_now()
-        )
-        await self._event_publisher.publish(
-            BroadcastCompletedEvent(
-                broadcast_id=broadcast_id,
-                sent=counts.sent_count,
-                failed=counts.failed_count,
-                blocked=counts.blocked_count,
-            )
-        )
-        logger.info(f"Broadcast '{broadcast_id}' completed")
-
     async def _fail(self, broadcast_id: int, error: str) -> None:
         async with self._uow:
-            try:
-                broadcast = await self._broadcast_repository.get_by_id_for_update(broadcast_id)
-            except NotFoundError:
-                return
-            if broadcast.status is not BroadcastStatus.SENDING:
-                return
-            await self._broadcast_repository.update_fields(
-                broadcast_id, status=BroadcastStatus.FAILED, completed_at=datetime_now()
+            await fail_broadcast(
+                self._broadcast_repository, self._event_publisher, broadcast_id, error
             )
-            # FAILED, not CANCELED: a retry after fixing the cause resends them
-            await self._broadcast_repository.fail_pending(broadcast_id, _STOPPED)
-            await self._broadcast_repository.refresh_counts(broadcast_id)
-            await self._event_publisher.publish(
-                BroadcastFailedEvent(broadcast_id=broadcast_id, error=error)
-            )
-        logger.warning(f"Broadcast '{broadcast_id}' failed: {error}")

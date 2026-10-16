@@ -9,6 +9,8 @@ from app.core.db.models.broadcast import Broadcast, BroadcastRecipient
 from app.core.db.models.user import User
 from app.core.enums import (
     BroadcastCategory,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastStatus,
     Locale,
     Role,
@@ -22,6 +24,7 @@ from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dto import (
     BroadcastAudienceDto,
     BroadcastContentDto,
+    BroadcastEmailContentDto,
     ListBroadcastRecipientsDto,
     ListBroadcastsDto,
     SaveBroadcastDto,
@@ -89,11 +92,15 @@ async def test_materialize_is_idempotent_and_claims_in_order(
     )
     now = datetime_now()
     assert (
-        await broadcast_repository.materialize(created.id, created.audience, created.category, now)
+        await broadcast_repository.materialize(
+            created.id, created.audience, created.category, BroadcastDelivery.TELEGRAM, False, now
+        )
         == 2
     )
     assert (
-        await broadcast_repository.materialize(created.id, created.audience, created.category, now)
+        await broadcast_repository.materialize(
+            created.id, created.audience, created.category, BroadcastDelivery.TELEGRAM, False, now
+        )
         == 2
     )
     claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
@@ -112,7 +119,12 @@ async def test_claim_pending_fails_unreachable_recipients(
         save_dto(audience=BroadcastAudienceDto(user_ids=[a, b])), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     await session.execute(update(User).where(User.id == a).values(telegram_id=None))
     claimed = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
@@ -142,7 +154,12 @@ async def test_claim_pending_cancels_opted_out_and_blocked(
         save_dto(audience=BroadcastAudienceDto(user_ids=list(ids.values()))), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     await session.execute(update(User).where(User.id == ids["a"]).values(marketing_opt_out=True))
     await session.execute(update(User).where(User.id == ids["b"]).values(is_blocked=True))
@@ -165,7 +182,12 @@ async def test_counts_and_attempts(
         save_dto(audience=BroadcastAudienceDto(user_ids=ids)), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     first, second, third = await broadcast_repository.claim_pending(
         created.id, 10, _LEASE, marketing=False
@@ -235,7 +257,12 @@ async def test_recall_keeps_send_history(
         save_dto(audience=BroadcastAudienceDto(user_ids=[user_id])), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     await broadcast_repository.mark_recipient(pending.id, R.SENT, message_id=11)
@@ -274,7 +301,12 @@ async def test_claim_pending_leases_rows(
         save_dto(audience=BroadcastAudienceDto(user_ids=ids)), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     first = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
     second = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
@@ -301,7 +333,12 @@ async def test_bump_attempt_releases_lease_and_keeps_cancel(
         save_dto(audience=BroadcastAudienceDto(user_ids=ids)), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     retried, canceled = await broadcast_repository.claim_pending(
         created.id, 10, _LEASE, marketing=False
@@ -337,7 +374,12 @@ async def test_sent_clears_stale_error(
         save_dto(audience=BroadcastAudienceDto(user_ids=[user_id])), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     (pending,) = await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False)
     await broadcast_repository.bump_attempt(pending.id, max_attempts=3, error="timeout")
@@ -418,7 +460,12 @@ async def test_recipients_carry_user_fields(
         save_dto(audience=BroadcastAudienceDto(user_ids=[a])), created_by=None
     )
     await broadcast_repository.materialize(
-        created.id, created.audience, created.category, datetime_now()
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     items, total = await broadcast_repository.list_recipients(
         ListBroadcastRecipientsDto(broadcast_id=created.id)
@@ -437,6 +484,21 @@ async def test_summary_counts_window_and_audience(
     reachable = await make_customer(user_repository, session, telegram_id=8401)
     opted = await make_customer(user_repository, session, telegram_id=8402, marketing_opt_out=True)
     await make_customer(user_repository, session, telegram_id=None)
+    await make_customer(
+        user_repository,
+        session,
+        telegram_id=None,
+        email="opted@example.com",
+        marketing_opt_out=True,
+    )
+    await make_customer(
+        user_repository,
+        session,
+        telegram_id=None,
+        email="bad@example.com",
+        email_undeliverable_at=now,
+        marketing_opt_out=True,
+    )
     await make_customer(user_repository, session, telegram_id=8403, is_blocked=True)
     await make_customer(
         user_repository, session, telegram_id=8404, is_blocked=True, marketing_opt_out=True
@@ -479,6 +541,162 @@ async def test_summary_counts_window_and_audience(
     )
     assert summary.delivered_30d == 1
     assert summary.processed_30d == 2
-    assert summary.opted_out == 1
-    assert summary.reachable_customers == 1 + 1 + 3
+    assert summary.opted_out == 2
+    assert summary.reachable_customers == 1 + 1 + 3 + 1
     assert reachable and opted
+
+
+async def test_email_content_roundtrips(broadcast_repository: BroadcastRepository) -> None:
+    created = await broadcast_repository.create(
+        save_dto(
+            delivery=BroadcastDelivery.ALL,
+            email_contents={Locale.EN: BroadcastEmailContentDto(subject="S", html="<p>b</p>")},
+        ),
+        created_by=None,
+    )
+    loaded = await broadcast_repository.get_by_id(created.id)
+    assert loaded.delivery is BroadcastDelivery.ALL
+    assert loaded.email_contents[Locale.EN].subject == "S"
+    assert loaded.sends_email and loaded.sends_telegram
+
+
+async def _five_customers(session: AsyncSession, user_repository: UserRepository) -> dict[str, int]:
+    return {
+        "tg": await make_customer(user_repository, session, telegram_id=9900),
+        "both": await make_customer(
+            user_repository, session, telegram_id=9901, email="both@x.example"
+        ),
+        "mail": await make_customer(
+            user_repository, session, telegram_id=None, email="mail@x.example"
+        ),
+        "dead": await make_customer(
+            user_repository,
+            session,
+            telegram_id=None,
+            email="dead@x.example",
+            email_undeliverable_at=datetime_now(),
+        ),
+        "none": await make_customer(user_repository, session, telegram_id=None),
+    }
+
+
+@pytest.mark.parametrize(
+    ("delivery", "fallback", "expected"),
+    [
+        (BroadcastDelivery.TELEGRAM, False, {("tg", "TELEGRAM"), ("both", "TELEGRAM")}),
+        (
+            BroadcastDelivery.TELEGRAM,
+            True,
+            {("tg", "TELEGRAM"), ("both", "TELEGRAM"), ("mail", "EMAIL")},
+        ),
+        (BroadcastDelivery.EMAIL, False, {("mail", "EMAIL"), ("both", "EMAIL")}),
+        (
+            BroadcastDelivery.ALL,
+            False,
+            {("tg", "TELEGRAM"), ("both", "TELEGRAM"), ("both", "EMAIL"), ("mail", "EMAIL")},
+        ),
+    ],
+)
+async def test_materialize_rows_per_mode(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    delivery: BroadcastDelivery,
+    fallback: bool,
+    expected: set[tuple[str, str]],
+) -> None:
+    ids = await _five_customers(session, user_repository)
+    names = {v: k for k, v in ids.items()}
+    created = await broadcast_repository.create(save_dto(), created_by=None)
+    total = await broadcast_repository.materialize(
+        created.id,
+        BroadcastAudienceDto(user_ids=list(ids.values())),
+        BroadcastCategory.SERVICE,
+        delivery,
+        fallback,
+        datetime_now(),
+    )
+    rows = await session.execute(
+        select(BroadcastRecipient.user_id, BroadcastRecipient.channel).where(
+            BroadcastRecipient.broadcast_id == created.id
+        )
+    )
+    got = {(names[u], c.value) for u, c in rows.tuples()}
+    assert got == expected
+    assert total == len(expected)
+
+
+async def test_marketing_skips_opted_out_on_email(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+) -> None:
+    opted_out = await make_customer(
+        user_repository, session, telegram_id=None, email="out@x.example", marketing_opt_out=True
+    )
+    subscribed = await make_customer(
+        user_repository, session, telegram_id=None, email="in@x.example"
+    )
+    created = await broadcast_repository.create(save_dto(), created_by=None)
+    total = await broadcast_repository.materialize(
+        created.id,
+        BroadcastAudienceDto(user_ids=[opted_out, subscribed]),
+        BroadcastCategory.MARKETING,
+        BroadcastDelivery.EMAIL,
+        False,
+        datetime_now(),
+    )
+    users = await session.scalars(
+        select(BroadcastRecipient.user_id).where(BroadcastRecipient.broadcast_id == created.id)
+    )
+    assert list(users) == [subscribed]
+    assert total == 1
+
+
+async def test_count_audience_by_channel(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+) -> None:
+    ids = await _five_customers(session, user_repository)
+    audience = BroadcastAudienceDto(user_ids=list(ids.values()))
+    preview = await broadcast_repository.count_audience(
+        audience, BroadcastCategory.SERVICE, BroadcastDelivery.ALL, False, datetime_now()
+    )
+    assert preview.by_channel == {BroadcastChannel.TELEGRAM: 2, BroadcastChannel.EMAIL: 2}
+    assert preview.total == 3
+    assert preview.by_locale == {Locale.EN: 3}
+
+    telegram_only = await broadcast_repository.count_audience(
+        audience, BroadcastCategory.SERVICE, BroadcastDelivery.TELEGRAM, False, datetime_now()
+    )
+    assert telegram_only.by_channel == {BroadcastChannel.TELEGRAM: 2}
+    assert telegram_only.total == 2
+
+
+async def test_claim_and_list_split_by_channel(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+) -> None:
+    both = await make_customer(user_repository, session, telegram_id=9910, email="c@x.example")
+    created = await broadcast_repository.create(save_dto(), created_by=None)
+    await broadcast_repository.materialize(
+        created.id,
+        BroadcastAudienceDto(user_ids=[both]),
+        BroadcastCategory.SERVICE,
+        BroadcastDelivery.ALL,
+        False,
+        datetime_now(),
+    )
+    await session.execute(update(User).where(User.id == both).values(telegram_id=None))
+    assert await broadcast_repository.claim_pending(created.id, 10, _LEASE, marketing=False) == []
+    emails, total = await broadcast_repository.list_recipients(
+        ListBroadcastRecipientsDto(broadcast_id=created.id, channel=BroadcastChannel.EMAIL)
+    )
+    assert total == 1
+    assert (emails[0].status, emails[0].email) == (R.PENDING, "c@x.example")
+    telegrams, _ = await broadcast_repository.list_recipients(
+        ListBroadcastRecipientsDto(broadcast_id=created.id, channel=BroadcastChannel.TELEGRAM)
+    )
+    assert (telegrams[0].status, telegrams[0].error) == (R.FAILED, "no telegram")

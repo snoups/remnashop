@@ -550,6 +550,13 @@ class UserRepository:
         db_user.marketing_opt_out = value
         await self.session.flush()
 
+    async def set_email_undeliverable(self, user_id: int, at: Optional[datetime]) -> None:
+        db_user = await self.session.get(User, user_id)
+        if db_user is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        db_user.email_undeliverable_at = at
+        await self.session.flush()
+
     async def set_blocked(self, user_id: int, is_blocked: bool) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

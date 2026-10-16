@@ -16,6 +16,7 @@ from app.modules.settings.usecases.get_public_appearance_image import (
 from app.modules.settings.usecases.get_shop_settings import GetShopSettingsUseCase
 from app.modules.settings.usecases.remove_bot_proxy import RemoveBotProxyUseCase
 from app.modules.settings.usecases.reset_appearance_settings import ResetAppearanceSettingsUseCase
+from app.modules.settings.usecases.reset_bulk_email_settings import ResetBulkEmailSettingsUseCase
 from app.modules.settings.usecases.restart_bot import RestartBotUseCase
 from app.modules.settings.usecases.set_bot_proxy import SetBotProxyUseCase
 from app.modules.settings.usecases.update_access_settings import UpdateAccessSettingsUseCase
@@ -49,6 +50,7 @@ __all__ = [
     "GetShopSettingsUseCase",
     "RemoveBotProxyUseCase",
     "ResetAppearanceSettingsUseCase",
+    "ResetBulkEmailSettingsUseCase",
     "RestartBotUseCase",
     "SetBotProxyUseCase",
     "UpdateAccessSettingsUseCase",

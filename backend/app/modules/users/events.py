@@ -69,6 +69,11 @@ class UserUnblockedEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class UserEmailUndeliverableClearedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+
+
+@dataclass(frozen=True, kw_only=True)
 class TelegramRegistrationBlockedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
 

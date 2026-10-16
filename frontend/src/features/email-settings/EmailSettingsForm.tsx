@@ -86,7 +86,7 @@ export function EmailSettingsForm() {
   const handleTest = async () => {
     setIsTesting(true);
     try {
-      await sendTestEmail();
+      await sendTestEmail(false);
       toast.success(t("settings.email.testSent"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));

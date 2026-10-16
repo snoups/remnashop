@@ -4,6 +4,7 @@ from typing import Optional
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.responses import FileResponse
 
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
@@ -15,11 +16,13 @@ from app.core.constants import (
     MAX_PAGE_SIZE,
     SEARCH_MAX_LENGTH,
 )
-from app.core.enums import BroadcastRecipientStatus, BroadcastStatus
+from app.core.enums import BroadcastChannel, BroadcastRecipientStatus, BroadcastStatus
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.modules.broadcasts.api.schemas import (
     AudiencePreviewResponse,
+    BroadcastEmailImageResponse,
+    BroadcastEmailPreviewResponse,
     BroadcastPageResponse,
     BroadcastRecipientPageResponse,
     BroadcastRecipientResponse,
@@ -27,31 +30,46 @@ from app.modules.broadcasts.api.schemas import (
     BroadcastResponse,
     BroadcastSummaryResponse,
     PreviewAudienceRequest,
+    PreviewBroadcastEmailRequest,
     SendBroadcastRequest,
+    SendTestBroadcastEmailRequest,
 )
 from app.modules.broadcasts.dto import (
+    AddEmailImageDto,
+    GetEmailImageDto,
     ListBroadcastRecipientsDto,
     ListBroadcastsDto,
     PreviewAudienceDto,
+    PreviewBroadcastEmailDto,
     SaveBroadcastDto,
     SendBroadcastDto,
+    SendTestBroadcastEmailDto,
     SetBroadcastMediaDto,
     UpdateBroadcastDto,
 )
-from app.modules.broadcasts.storage import MEDIA_CONTENT_TYPES, upload_path
+from app.modules.broadcasts.storage import (
+    EMAIL_IMAGE_TYPES,
+    MAX_EMAIL_IMAGE_BYTES,
+    MEDIA_CONTENT_TYPES,
+    upload_path,
+)
 from app.modules.broadcasts.usecases import (
+    AddBroadcastEmailImageUseCase,
     CancelBroadcastUseCase,
     CreateBroadcastUseCase,
     DeleteBroadcastMediaUseCase,
     DeleteBroadcastUseCase,
+    GetBroadcastEmailImageUseCase,
     GetBroadcastSummaryUseCase,
     GetBroadcastUseCase,
     ListBroadcastRecipientsUseCase,
     ListBroadcastsUseCase,
     PreviewBroadcastAudienceUseCase,
+    PreviewBroadcastEmailUseCase,
     RecallBroadcastUseCase,
     RetryBroadcastUseCase,
     SendBroadcastUseCase,
+    SendTestBroadcastEmailUseCase,
     SendTestBroadcastUseCase,
     SetBroadcastMediaUseCase,
     UpdateBroadcastUseCase,
@@ -71,6 +89,9 @@ def _save_dto(body: BroadcastRequest) -> SaveBroadcastDto:
         buttons=body.buttons,
         promocode_id=body.promocode_id,
         post_to_channel=body.post_to_channel,
+        delivery=body.delivery,
+        email_fallback=body.email_fallback,
+        email_contents=body.email_contents,
     )
 
 
@@ -132,9 +153,15 @@ async def preview_broadcast_audience(
     actor: Actor = Depends(require_admin),
 ) -> AudiencePreviewResponse:
     result = await use_case(
-        actor, PreviewAudienceDto(audience=body.audience, category=body.category)
+        actor,
+        PreviewAudienceDto(
+            audience=body.audience,
+            category=body.category,
+            delivery=body.delivery,
+            email_fallback=body.email_fallback,
+        ),
     )
-    return AudiencePreviewResponse(total=result.total, by_locale=result.by_locale)
+    return AudiencePreviewResponse.model_validate(result, from_attributes=True)
 
 
 @router.get("/summary", response_model=BroadcastSummaryResponse)
@@ -169,13 +196,18 @@ async def list_broadcast_recipients(
     use_case: FromDishka[ListBroadcastRecipientsUseCase],
     actor: Actor = Depends(require_admin),
     recipient_status: Optional[BroadcastRecipientStatus] = Query(None, alias="status"),
+    channel: Optional[BroadcastChannel] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> BroadcastRecipientPageResponse:
     items, total = await use_case(
         actor,
         ListBroadcastRecipientsDto(
-            broadcast_id=broadcast_id, status=recipient_status, page=page, page_size=page_size
+            broadcast_id=broadcast_id,
+            status=recipient_status,
+            channel=channel,
+            page=page,
+            page_size=page_size,
         ),
     )
     return BroadcastRecipientPageResponse(
@@ -283,6 +315,72 @@ async def delete_broadcast_media(
 
 
 @router.post(
+    "/{broadcast_id:int}/email-images",
+    status_code=status.HTTP_201_CREATED,
+    response_model=BroadcastEmailImageResponse,
+    responses=error_responses(400, 404, 409),
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                content_type: {"schema": {"type": "string", "format": "binary"}}
+                for content_type in EMAIL_IMAGE_TYPES
+            },
+        }
+    },
+)
+@inject
+async def upload_broadcast_email_image(
+    broadcast_id: int,
+    request: Request,
+    use_case: FromDishka[AddBroadcastEmailImageUseCase],
+    config: FromDishka[AppConfig],
+    actor: Actor = Depends(require_admin),
+) -> BroadcastEmailImageResponse:
+    # permission before the body, as with media: a refused caller uploads nothing
+    if not PermissionPolicy.has_permission(actor, Permission.BROADCASTS_EMAIL_IMAGE_ADD):
+        raise PermissionDeniedError
+    source = upload_path(config.media_dir)
+    source.parent.mkdir(parents=True, exist_ok=True)
+    size = 0
+    try:
+        with source.open("wb") as file:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > MAX_EMAIL_IMAGE_BYTES:
+                    break  # one byte over is enough for the usecase to reject it
+                file.write(chunk)
+        content_type = request.headers.get("content-type", "").split(";")[0].strip()
+        result = await use_case(
+            actor,
+            AddEmailImageDto(
+                broadcast_id=broadcast_id, content_type=content_type, source=source, size=size
+            ),
+        )
+    finally:
+        source.unlink(missing_ok=True)  # already moved on success
+    return BroadcastEmailImageResponse.model_validate(result, from_attributes=True)
+
+
+@router.get(
+    "/{broadcast_id:int}/email-images/{image_id:int}",
+    response_class=FileResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_broadcast_email_image(
+    broadcast_id: int,
+    image_id: int,
+    use_case: FromDishka[GetBroadcastEmailImageUseCase],
+    actor: Actor = Depends(require_admin),
+) -> FileResponse:
+    file = await use_case(actor, GetEmailImageDto(broadcast_id=broadcast_id, image_id=image_id))
+    return FileResponse(
+        file.path, media_type=file.content_type, headers={"Cache-Control": "private, max-age=3600"}
+    )
+
+
+@router.post(
     "/{broadcast_id:int}/actions/send-test",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=error_responses(400, 404),
@@ -294,6 +392,42 @@ async def send_test_broadcast(
     actor: UserDto = Depends(require_admin_user),
 ) -> None:
     await use_case(actor, broadcast_id)
+
+
+@router.post(
+    "/{broadcast_id:int}/actions/preview-email",
+    response_model=BroadcastEmailPreviewResponse,
+    responses=error_responses(400, 404),
+)
+@inject
+async def preview_broadcast_email(
+    broadcast_id: int,
+    body: PreviewBroadcastEmailRequest,
+    use_case: FromDishka[PreviewBroadcastEmailUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BroadcastEmailPreviewResponse:
+    result = await use_case(
+        actor, PreviewBroadcastEmailDto(broadcast_id=broadcast_id, locale=body.locale)
+    )
+    return BroadcastEmailPreviewResponse.model_validate(result, from_attributes=True)
+
+
+@router.post(
+    "/{broadcast_id:int}/actions/send-test-email",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(400, 404),
+)
+@inject
+async def send_test_broadcast_email(
+    broadcast_id: int,
+    body: SendTestBroadcastEmailRequest,
+    use_case: FromDishka[SendTestBroadcastEmailUseCase],
+    actor: UserDto = Depends(require_admin_user),
+) -> None:
+    await use_case(
+        actor,
+        SendTestBroadcastEmailDto(broadcast_id=broadcast_id, locale=body.locale, to=body.to),
+    )
 
 
 @router.post(

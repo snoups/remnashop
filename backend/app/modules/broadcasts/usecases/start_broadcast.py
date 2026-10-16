@@ -10,7 +10,7 @@ from app.core.enums import BroadcastButtonKind, BroadcastStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.broadcasts.dispatch import DeliverBroadcastDispatch
+from app.modules.broadcasts.dispatch import DeliverBroadcastDispatch, DeliverBroadcastEmailDispatch
 from app.modules.broadcasts.events import BroadcastStartedEvent
 from app.modules.broadcasts.render import BroadcastRenderer, outgoing_media
 from app.modules.broadcasts.repository import BroadcastRepository
@@ -40,6 +40,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
         client_factory: TelegramClientFactory,
         config: AppConfig,
         deliver_dispatch: DeliverBroadcastDispatch,
+        email_dispatch: DeliverBroadcastEmailDispatch,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
@@ -49,6 +50,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
         self._client_factory = client_factory
         self._config = config
         self._deliver_dispatch = deliver_dispatch
+        self._email_dispatch = email_dispatch
         self._uow = uow
         self._event_publisher = event_publisher
 
@@ -74,7 +76,12 @@ class StartBroadcastUseCase(UseCase[int, None]):
             total = broadcast.total_count
             if broadcast.started_at is None:
                 total = await self._broadcast_repository.materialize(
-                    data, broadcast.audience, broadcast.category, now
+                    data,
+                    broadcast.audience,
+                    broadcast.category,
+                    broadcast.delivery,
+                    broadcast.email_fallback,
+                    now,
                 )
             await self._broadcast_repository.update_fields(
                 data,
@@ -85,7 +92,10 @@ class StartBroadcastUseCase(UseCase[int, None]):
             await self._event_publisher.publish(
                 BroadcastStartedEvent(broadcast_id=data, total=total, promocode_dropped=dropped)
             )
-            await self._uow.after_commit(partial(self._deliver_dispatch.kiq, broadcast_id=data))
+            if broadcast.sends_telegram:
+                await self._uow.after_commit(partial(self._deliver_dispatch.kiq, broadcast_id=data))
+            if broadcast.sends_email:
+                await self._uow.after_commit(partial(self._email_dispatch.kiq, broadcast_id=data))
         logger.info(f"Broadcast '{data}' started for {total} recipients")
         # a retry restarts with started_at set, so the channel gets one post only
         if broadcast.post_to_channel and broadcast.started_at is None:

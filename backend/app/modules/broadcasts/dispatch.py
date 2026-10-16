@@ -9,5 +9,9 @@ class DeliverBroadcastDispatch(Protocol):
     async def kiq(self, *, broadcast_id: int) -> object: ...
 
 
+class DeliverBroadcastEmailDispatch(Protocol):
+    async def kiq(self, *, broadcast_id: int) -> object: ...
+
+
 class RecallBroadcastDispatch(Protocol):
     async def kiq(self, *, broadcast_id: int) -> object: ...

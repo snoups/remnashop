@@ -53,6 +53,7 @@ from app.modules.translations.api import admin_router as translations_admin_rout
 from app.modules.translations.api import locales_router as translations_locales_router
 from app.modules.users.api import admin_router as users_admin_router
 from app.modules.users.api import admins_router as users_admins_router
+from app.modules.users.api import router as users_router
 
 # Each further module contributes its router here once it has an api/ package.
 ROUTERS: Final[tuple[APIRouter, ...]] = (
@@ -61,6 +62,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_user_sessions_router,
     cabinet_auth_router,
     cabinet_public_router,
+    users_router,
     oauth_router,
     oauth_admin_router,
     passkeys_router,

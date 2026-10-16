@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
 
-import type { AudiencePreview, BroadcastCategory } from "@entities/broadcasts/api";
+import type { AudiencePreview, BroadcastCategory, BroadcastChannel } from "@entities/broadcasts/api";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { Spinner } from "@shared/ui/Spinner";
+
+const CHANNELS: BroadcastChannel[] = ["TELEGRAM", "EMAIL"];
 
 interface RecipientsPreviewProps {
   state: AsyncState<AudiencePreview>;
@@ -39,6 +41,10 @@ export function RecipientsPreview({ state, category, defaultLocale, contentLocal
       });
     }
   }
+  const channelCounts =
+    state.kind === "ready"
+      ? CHANNELS.map((channel) => [channel, state.data.by_channel[channel] ?? 0] as const).filter(([, n]) => n > 0)
+      : [];
   const total = state.kind === "ready" ? state.data.total : 0;
 
   return (
@@ -51,6 +57,13 @@ export function RecipientsPreview({ state, category, defaultLocale, contentLocal
       {state.kind === "ready" && (
         <>
           <span className="text-[30px] font-bold tabular-nums text-foreground">{format(total)}</span>
+          {channelCounts.length > 0 && (
+            <span className="text-[12.5px] text-foreground/80">
+              {channelCounts
+                .map(([channel, n]) => `${t(`broadcasts.channel.${channel}`)}: ${format(n)}`)
+                .join(" · ")}
+            </span>
+          )}
           {rows.map((row) => (
             <div key={row.key} className="flex flex-col gap-1">
               <div className="flex justify-between text-[12.5px]">

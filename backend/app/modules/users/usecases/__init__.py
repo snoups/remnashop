@@ -2,6 +2,7 @@ from app.modules.users.usecases.accept_rules import AcceptRulesUseCase
 from app.modules.users.usecases.bind_telegram_id import BindTelegramIdUseCase
 from app.modules.users.usecases.block_blacklist_matches import BlockBlacklistMatchesUseCase
 from app.modules.users.usecases.block_user import BlockUserUseCase
+from app.modules.users.usecases.clear_email_undeliverable import ClearEmailUndeliverableUseCase
 from app.modules.users.usecases.create_admin import CreateAdminUseCase
 from app.modules.users.usecases.delete_admin import DeleteAdminUseCase
 from app.modules.users.usecases.delete_user import DeleteUserUseCase
@@ -19,6 +20,7 @@ from app.modules.users.usecases.set_marketing_opt_out import SetMarketingOptOutU
 from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
 from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
 from app.modules.users.usecases.unblock_user import UnblockUserUseCase
+from app.modules.users.usecases.unsubscribe_marketing import UnsubscribeMarketingUseCase
 from app.modules.users.usecases.update_admin import UpdateAdminUseCase
 from app.modules.users.usecases.update_own_profile import UpdateOwnProfileUseCase
 from app.modules.users.usecases.update_own_security_settings import UpdateOwnSecuritySettingsUseCase
@@ -29,6 +31,7 @@ __all__ = [
     "BlacklistMatchOrigin",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",
+    "ClearEmailUndeliverableUseCase",
     "CreateAdminUseCase",
     "DeleteAdminUseCase",
     "DeleteUserUseCase",
@@ -47,6 +50,7 @@ __all__ = [
     "SetUserDiscountUseCase",
     "UnblockBlacklistMatchesUseCase",
     "UnblockUserUseCase",
+    "UnsubscribeMarketingUseCase",
     "UpdateAdminUseCase",
     "UpdateOwnProfileUseCase",
     "UpdateOwnSecuritySettingsUseCase",

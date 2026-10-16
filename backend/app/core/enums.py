@@ -164,6 +164,12 @@ class SmtpSecurity(UpperStrEnum):
     NONE = auto()
 
 
+class EmailOutcome(UpperStrEnum):
+    SENT = auto()
+    REFUSED = auto()
+    RETRY = auto()
+
+
 class AccessDenial(UpperStrEnum):
     RESTRICTED = auto()
     REGISTRATION_DISABLED = auto()
@@ -204,6 +210,17 @@ class BroadcastCategory(UpperStrEnum):
     MARKETING = auto()
 
 
+class BroadcastDelivery(UpperStrEnum):
+    TELEGRAM = auto()
+    EMAIL = auto()
+    ALL = auto()
+
+
+class BroadcastChannel(UpperStrEnum):
+    TELEGRAM = auto()
+    EMAIL = auto()
+
+
 class BroadcastRecipientStatus(UpperStrEnum):
     PENDING = auto()
     SENT = auto()
@@ -230,6 +247,7 @@ class BroadcastSubscriptionFilter(UpperStrEnum):
     ACTIVE = auto()
     TRIAL = auto()
     EXPIRED = auto()
+    LIMITED = auto()
     NONE = auto()
 
 

@@ -133,10 +133,22 @@ export interface EmailSettings {
   from_address: string | null;
   from_name: string | null;
   is_configured: boolean;
+  bulk_host: string | null;
+  bulk_port: number;
+  bulk_security: SmtpSecurity;
+  bulk_username: string | null;
+  is_bulk_password_set: boolean;
+  bulk_from_address: string | null;
+  bulk_from_name: string | null;
+  bulk_rate_per_minute: number;
+  is_bulk_configured: boolean;
 }
 
 export type UpdateEmailSettingsPayload = Partial<
-  Omit<EmailSettings, "is_password_set" | "is_configured"> & { password: string }
+  Omit<EmailSettings, "is_password_set" | "is_configured" | "is_bulk_password_set" | "is_bulk_configured"> & {
+    password: string;
+    bulk_password: string;
+  }
 >;
 
 export function getEmailSettings(signal?: AbortSignal): Promise<EmailSettings> {
@@ -147,8 +159,12 @@ export function updateEmailSettings(payload: UpdateEmailSettingsPayload): Promis
   return apiPatch<EmailSettings, UpdateEmailSettingsPayload>("/settings/email", payload);
 }
 
-export function sendTestEmail(): Promise<null> {
-  return apiPost<null, Record<string, never>>("/settings/email/actions/test", {});
+export function sendTestEmail(bulk = false): Promise<null> {
+  return apiPost<null, { bulk: boolean }>("/settings/email/actions/test", { bulk });
+}
+
+export function resetBulkEmailSettings(): Promise<EmailSettings> {
+  return apiPost<EmailSettings, Record<string, never>>("/settings/email/bulk/actions/reset", {});
 }
 
 export interface CabinetAuthSettings {

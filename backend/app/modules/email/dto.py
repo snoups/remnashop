@@ -11,6 +11,11 @@ class EmailMessageDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SendTestEmailDto:
+    bulk: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class EmailBrandDto:
     brand: str
     color: Optional[str]

@@ -1,9 +1,10 @@
 import type { ParseKeys } from "i18next";
+import { Mail, Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DEFAULT_PAGE_SIZE, listBroadcastRecipients } from "@entities/broadcasts/api";
-import type { Broadcast, BroadcastRecipient, BroadcastRecipientStatus } from "@entities/broadcasts/api";
+import type { Broadcast, BroadcastChannel, BroadcastRecipient, BroadcastRecipientStatus } from "@entities/broadcasts/api";
 import { processedCount, RECIPIENT_STATUS_TONE } from "@entities/broadcasts/display";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -15,7 +16,8 @@ import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 
-const ROW_GRID_CLASS = "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,0.9fr)] items-center gap-3";
+const ROW_GRID_CLASS = "grid grid-cols-[minmax(0,1.6fr)_minmax(0,0.5fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,0.9fr)] items-center gap-3";
+const CHANNELS: BroadcastChannel[] = ["TELEGRAM", "EMAIL"];
 // the backend stores these as fixed English markers (broadcasts/repository.py)
 const REASON_KEYS: Record<string, ParseKeys> = {
   stopped: "broadcasts.details.stopped",
@@ -71,13 +73,15 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
   const { t, i18n } = useTranslation();
   const [selectedTab, setTab] = useState<TabKey>("all");
   const stopped = isStopped(broadcast);
+  const isMultiChannel = broadcast.delivery === "ALL" || (broadcast.delivery === "TELEGRAM" && broadcast.email_fallback);
   const visibleTabs = TABS.filter((entry) => stopped || entry.key !== "CANCELED");
   const tab = visibleTabs.some((entry) => entry.key === selectedTab) ? selectedTab : "all";
   const status = TABS.find((entry) => entry.key === tab)?.status;
-  const filters = useMemo(() => ({ status }), [status]);
+  const [channel, setChannel] = useState<BroadcastChannel | undefined>(undefined);
+  const filters = useMemo(() => ({ status, channel }), [status, channel]);
   const { state, isLoadingMore, hasMore, loadMore, reload } = usePaginatedList(
     (current, page, signal) =>
-      listBroadcastRecipients(broadcast.id, { status: current.status, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+      listBroadcastRecipients(broadcast.id, { status: current.status, channel: current.channel, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
     filters,
   );
 
@@ -105,6 +109,12 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
     return r.status === "SENT" ? t("broadcasts.details.messageSent") : t("common.none");
   };
 
+  // the broadcast's counters span every channel; with a channel picked only the open tab's total is known
+  const countOf = (key: TabKey): number | undefined => {
+    if (channel === undefined) return tabCount(broadcast, key);
+    return key === tab && state.kind === "ready" ? state.total : undefined;
+  };
+
   return (
     <Card variant="list" className="min-w-0">
       <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2.5 pt-2">
@@ -112,13 +122,23 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
         {visibleTabs.map(({ key }) => (
           <ChoiceChip key={key} size="md" active={tab === key} onClick={() => setTab(key)}>
             {t(`broadcasts.details.tabs.${key}` as ParseKeys)}
-            {!(stopped && key === "PENDING") && (
-              <span className="text-[11px] tabular-nums opacity-70">
-                {tabCount(broadcast, key).toLocaleString(i18n.language)}
-              </span>
+            {countOf(key) !== undefined && !(stopped && key === "PENDING") && (
+              <span className="text-[11px] tabular-nums opacity-70">{countOf(key)?.toLocaleString(i18n.language)}</span>
             )}
           </ChoiceChip>
         ))}
+        {isMultiChannel && (
+          <span className="ml-auto flex gap-1.5">
+            <ChoiceChip size="md" active={channel === undefined} onClick={() => setChannel(undefined)}>
+              {t("broadcasts.recipients.channelAll")}
+            </ChoiceChip>
+            {CHANNELS.map((value) => (
+              <ChoiceChip key={value} size="md" active={channel === value} onClick={() => setChannel(value)}>
+                {t(`broadcasts.channel.${value}`)}
+              </ChoiceChip>
+            ))}
+          </span>
+        )}
       </div>
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && <ErrorState text={t("broadcasts.details.recipientsError")} size="page" />}
@@ -127,9 +147,10 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
       )}
       {state.kind === "ready" && state.items.length > 0 && (
         <div className="overflow-x-auto">
-          <div className="min-w-[620px]">
+          <div className="min-w-[680px]">
             <div className={`${ROW_GRID_CLASS} ${LIST_HEAD_CLASS}`}>
               <span>{t("broadcasts.details.columns.customer")}</span>
+              <span>{t("broadcasts.recipients.channel")}</span>
               <span>{t("broadcasts.details.columns.status")}</span>
               <span>{t("broadcasts.details.columns.details")}</span>
               <span>{t("broadcasts.details.columns.time")}</span>
@@ -140,9 +161,16 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate text-[13px] font-semibold text-foreground">{r.user_name}</span>
                     <span className="truncate text-[12px] text-muted-foreground">
-                      {r.username ? `@${r.username}` : t("broadcasts.details.idLabel", { id: r.telegram_id ?? r.user_id })} ·{" "}
-                      {r.language.toUpperCase()}
+                      {r.channel === "EMAIL"
+                        ? (r.email ?? t("common.none"))
+                        : r.username
+                          ? `@${r.username}`
+                          : t("broadcasts.details.idLabel", { id: r.telegram_id ?? r.user_id })}{" "}
+                      · {r.language.toUpperCase()}
                     </span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {r.channel === "EMAIL" ? <Mail className="size-4" /> : <Send className="size-4" />}
                   </span>
                   <span>
                     <Badge tone={RECIPIENT_STATUS_TONE[r.status]}>{t(`broadcasts.recipientStatus.${r.status}`)}</Badge>

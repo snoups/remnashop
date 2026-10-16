@@ -5,8 +5,9 @@ from typing import Final
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BroadcastStatus
+from app.core.enums import BroadcastCategory, BroadcastStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, ValidationError
 from app.core.ports import EventPublisher
@@ -29,12 +30,14 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
         self,
         broadcast_repository: BroadcastRepository,
         settings_repository: SettingsRepository,
+        config: AppConfig,
         start_dispatch: StartBroadcastDispatch,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
     ) -> None:
         self._broadcast_repository = broadcast_repository
         self._settings_repository = settings_repository
+        self._config = config
         self._start_dispatch = start_dispatch
         self._uow = uow
         self._event_publisher = event_publisher
@@ -53,17 +56,10 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
                     f"Broadcast '{broadcast.id}' is {broadcast.status}",
                     code=ErrorCode.BROADCAST_INVALID_STATUS,
                 )
-            bot = await self._settings_repository.get_bot_settings()
-            if bot.token is None:
-                raise ValidationError(
-                    "Bot token is not set", code=ErrorCode.BROADCAST_BOT_NOT_CONFIGURED
-                )
-            if broadcast.post_to_channel:
-                requirements = await self._settings_repository.get_bot_requirements()
-                if requirements.channel_id is None:
-                    raise ValidationError(
-                        "Channel is not set", code=ErrorCode.BROADCAST_CHANNEL_NOT_CONFIGURED
-                    )
+            if broadcast.sends_telegram:
+                await self._check_bot(broadcast)
+            if broadcast.sends_email:
+                await self._check_email(broadcast)
             await self._broadcast_repository.update_fields(
                 broadcast.id, status=BroadcastStatus.SCHEDULED, scheduled_at=scheduled_at
             )
@@ -81,3 +77,29 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
             f"{actor.log} Scheduled broadcast '{broadcast.id}' at {scheduled_at.isoformat()}"
         )
         return result
+
+    async def _check_bot(self, broadcast: BroadcastDto) -> None:
+        bot = await self._settings_repository.get_bot_settings()
+        if bot.token is None:
+            raise ValidationError(
+                "Bot token is not set", code=ErrorCode.BROADCAST_BOT_NOT_CONFIGURED
+            )
+        if broadcast.post_to_channel:
+            requirements = await self._settings_repository.get_bot_requirements()
+            if requirements.channel_id is None:
+                raise ValidationError(
+                    "Channel is not set", code=ErrorCode.BROADCAST_CHANNEL_NOT_CONFIGURED
+                )
+
+    async def _check_email(self, broadcast: BroadcastDto) -> None:
+        email = await self._settings_repository.get_email_settings()
+        if not email.profile(bulk=True).is_configured:
+            raise ValidationError("SMTP is not configured", code=ErrorCode.EMAIL_NOT_CONFIGURED)
+        # marketing letters must carry a working unsubscribe link
+        if (
+            broadcast.category is BroadcastCategory.MARKETING
+            and not self._config.web_cabinet_url.strip()
+        ):
+            raise ValidationError(
+                "Web cabinet URL is not set", code=ErrorCode.BROADCAST_UNSUBSCRIBE_URL_MISSING
+            )

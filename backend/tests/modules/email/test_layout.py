@@ -1,4 +1,4 @@
-from app.modules.email import render_email
+from app.modules.email import render_email, render_email_html
 
 
 def test_layout_escapes_and_links_only_to_the_cabinet() -> None:
@@ -38,3 +38,17 @@ def test_bad_color_is_ignored() -> None:
         button=None,
     )
     assert "<script>" not in html
+
+
+def test_render_email_html_keeps_body_markup_and_footer() -> None:
+    page = render_email_html(
+        brand="Shop",
+        color="#ff0000",
+        has_logo=True,
+        body_html="<p>Hi <b>there</b></p>",
+        footer_html='<a href="https://x/u">Unsub</a>',
+    )
+    assert "<p>Hi <b>there</b></p>" in page
+    assert 'src="cid:logo"' in page
+    assert '<a href="https://x/u">Unsub</a>' in page
+    assert "Shop" in page

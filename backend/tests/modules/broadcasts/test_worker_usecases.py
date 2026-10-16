@@ -21,9 +21,12 @@ from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     BroadcastButtonKind,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastMediaType,
     BroadcastRecipientStatus,
     BroadcastStatus,
+    Locale,
     PromocodeRewardType,
 )
 from app.core.error_codes import ErrorCode
@@ -35,6 +38,7 @@ from app.modules.broadcasts.dto import (
     BroadcastButtonDto,
     BroadcastContentDto,
     BroadcastDto,
+    BroadcastEmailContentDto,
 )
 from app.modules.broadcasts.events import (
     BroadcastCompletedEvent,
@@ -119,6 +123,11 @@ def recall_dispatch() -> RecordingDispatch:
 
 
 @pytest.fixture
+def email_dispatch() -> RecordingDispatch:
+    return RecordingDispatch()
+
+
+@pytest.fixture
 def media_config(config: AppConfig, tmp_path: Path) -> AppConfig:
     return config.model_copy(update={"media_dir": tmp_path})
 
@@ -135,6 +144,7 @@ def make_start(
     promocode_repository: PromocodeRepository,
     media_config: AppConfig,
     deliver_dispatch: RecordingDispatch,
+    email_dispatch: RecordingDispatch,
     uow: UnitOfWork,
     publisher: RecordingPublisher,
 ) -> Callable[[MockTelegram], StartBroadcastUseCase]:
@@ -146,6 +156,7 @@ def make_start(
             telegram,
             media_config,
             deliver_dispatch,
+            email_dispatch,
             uow,
             publisher,
         )
@@ -189,9 +200,12 @@ def tick_use_case(
     broadcast_repository: BroadcastRepository,
     start_dispatch: RecordingDispatch,
     deliver_dispatch: RecordingDispatch,
+    email_dispatch: RecordingDispatch,
     uow: UnitOfWork,
 ) -> TickBroadcastsUseCase:
-    return TickBroadcastsUseCase(broadcast_repository, start_dispatch, deliver_dispatch, uow)
+    return TickBroadcastsUseCase(
+        broadcast_repository, start_dispatch, deliver_dispatch, email_dispatch, uow
+    )
 
 
 async def _customers(
@@ -224,7 +238,12 @@ async def _sending(
 ) -> BroadcastDto:
     broadcast = await _broadcast(repository, BroadcastStatus.SENDING, user_ids, **overrides)
     total = await repository.materialize(
-        broadcast.id, broadcast.audience, broadcast.category, datetime_now()
+        broadcast.id,
+        broadcast.audience,
+        broadcast.category,
+        broadcast.delivery,
+        broadcast.email_fallback,
+        datetime_now(),
     )
     await repository.update_fields(broadcast.id, total_count=total, started_at=datetime_now())
     return await repository.get_by_id(broadcast.id)
@@ -323,6 +342,8 @@ async def test_start_skips_materialize_on_retry(
         broadcast.id,
         BroadcastAudienceDto(user_ids=[first, second]),
         broadcast.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
         datetime_now(),
     )
     await broadcast_repository.update_fields(
@@ -875,6 +896,51 @@ async def test_tick_starts_due_and_rekicks_stalled(
     await broadcast_repository.update_fields(stalled.id, status=BroadcastStatus.COMPLETED)
     await tick_use_case.system()
     assert start_dispatch.messages == [{"broadcast_id": due.id}]
+
+
+async def test_start_kicks_email_chain(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_start: Callable[[MockTelegram], StartBroadcastUseCase],
+    deliver_dispatch: RecordingDispatch,
+    email_dispatch: RecordingDispatch,
+) -> None:
+    ids = await _customers(session, user_repository, 9745, 1)
+    broadcast = await _broadcast(
+        broadcast_repository,
+        BroadcastStatus.SCHEDULED,
+        ids,
+        delivery=BroadcastDelivery.ALL,
+        email_contents={Locale.EN: BroadcastEmailContentDto(subject="Hi", html="<p>x</p>")},
+    )
+
+    await make_start(MockTelegram(ok_response)).system(broadcast.id)
+
+    assert deliver_dispatch.messages == [{"broadcast_id": broadcast.id}]
+    assert email_dispatch.messages == [{"broadcast_id": broadcast.id}]
+
+
+async def test_tick_rekicks_both_chains_when_stalled(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    tick_use_case: TickBroadcastsUseCase,
+    deliver_dispatch: RecordingDispatch,
+    email_dispatch: RecordingDispatch,
+) -> None:
+    ids = await _customers(session, user_repository, 9747, 1)
+    stalled = await _sending(broadcast_repository, ids)
+    await session.execute(
+        update(Broadcast)
+        .where(Broadcast.id == stalled.id)
+        .values(updated_at=datetime_now() - timedelta(minutes=5))
+    )
+
+    await tick_use_case.system()
+
+    assert deliver_dispatch.messages == [{"broadcast_id": stalled.id}]
+    assert email_dispatch.messages == [{"broadcast_id": stalled.id}]
 
 
 async def test_two_send_now_run_one_after_another(
@@ -1467,3 +1533,65 @@ async def test_a_running_recall_chain_keeps_its_repeat_window_fresh(
     refreshed = await broadcast_repository.get_by_id(broadcast_id)
     assert refreshed.recall_requested_at is not None
     assert refreshed.recall_requested_at > requested + timedelta(minutes=5)
+
+
+async def test_email_only_broadcast_needs_no_bot(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_deliver: Callable[[MockTelegram], DeliverBroadcastBatchUseCase],
+    publisher: RecordingPublisher,
+) -> None:
+    user = await make_customer(user_repository, session, telegram_id=None, email="m@x.example")
+    broadcast = await _sending(
+        broadcast_repository,
+        [user],
+        delivery=BroadcastDelivery.EMAIL,
+        contents={},
+        email_contents={Locale.EN: BroadcastEmailContentDto(subject="s", html="<p>b</p>")},
+    )
+    telegram = MockTelegram(ok_response)
+
+    await make_deliver(telegram).system(broadcast.id)
+
+    after = await broadcast_repository.get_by_id(broadcast.id)
+    # the email row waits for its own chain, not failed for a missing bot
+    assert after.status is BroadcastStatus.SENDING
+    assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.PENDING]
+    assert publisher.events == []
+    assert telegram.requests == []
+
+
+async def test_complete_once_when_both_chains_finish(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_deliver: Callable[[MockTelegram], DeliverBroadcastBatchUseCase],
+    publisher: RecordingPublisher,
+    with_token: None,
+) -> None:
+    user = await make_customer(user_repository, session, telegram_id=9990, email="b@x.example")
+    broadcast = await _sending(broadcast_repository, [user], delivery=BroadcastDelivery.ALL)
+    assert broadcast.total_count == 2
+    await session.execute(
+        update(BroadcastRecipient)
+        .where(
+            BroadcastRecipient.broadcast_id == broadcast.id,
+            BroadcastRecipient.channel == BroadcastChannel.EMAIL,
+        )
+        .values(status=BroadcastRecipientStatus.SENT)
+    )
+    telegram = MockTelegram(ok_response)
+    deliver = make_deliver(telegram)
+
+    await deliver.system(broadcast.id)
+    await deliver.system(broadcast.id)
+    await deliver.system(broadcast.id)
+
+    after = await broadcast_repository.get_by_id(broadcast.id)
+    assert after.status is BroadcastStatus.COMPLETED
+    assert after.sent_count == 2
+    assert _published(publisher) == [
+        _strip(BroadcastCompletedEvent(broadcast_id=broadcast.id, sent=2, failed=0, blocked=0))
+    ]
+    assert len(telegram.requests) == 1

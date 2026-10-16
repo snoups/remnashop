@@ -7,6 +7,7 @@ from app.core.constants import TTL_1H
 from app.core.utils.lock import cron_lock
 from app.modules.broadcasts.usecases import (
     DeliverBroadcastBatchUseCase,
+    DeliverBroadcastEmailBatchUseCase,
     PruneBroadcastRecipientsUseCase,
     RecallBroadcastBatchUseCase,
     StartBroadcastUseCase,
@@ -30,6 +31,14 @@ async def start_broadcast_task(
 @inject(patch_module=True)
 async def deliver_broadcast_task(
     broadcast_id: int, use_case: FromDishka[DeliverBroadcastBatchUseCase]
+) -> None:
+    await use_case.system(broadcast_id)
+
+
+@broker.task
+@inject(patch_module=True)
+async def deliver_broadcast_email_task(
+    broadcast_id: int, use_case: FromDishka[DeliverBroadcastEmailBatchUseCase]
 ) -> None:
     await use_case.system(broadcast_id)
 

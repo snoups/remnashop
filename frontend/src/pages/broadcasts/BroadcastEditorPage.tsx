@@ -1,5 +1,5 @@
 import { ChevronLeft, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useBlocker, useNavigate, useParams } from "react-router-dom";
 
@@ -33,7 +33,6 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import { TextInput } from "@shared/ui/TextInput";
 
 import { AudienceEditor } from "@pages/broadcasts/editor/AudienceEditor";
@@ -41,13 +40,20 @@ import type { AudienceMode } from "@pages/broadcasts/editor/AudienceEditor";
 import { ButtonsEditor } from "@pages/broadcasts/editor/ButtonsEditor";
 import { CategoryPicker } from "@pages/broadcasts/editor/CategoryPicker";
 import { ContentEditor } from "@pages/broadcasts/editor/ContentEditor";
+import { DeliveryPicker } from "@pages/broadcasts/editor/DeliveryPicker";
 import { EditorFooter } from "@pages/broadcasts/editor/EditorFooter";
-import { isDirty, toForm } from "@pages/broadcasts/editor/form";
+import { EmailPreview } from "@pages/broadcasts/editor/EmailPreview";
+import { isDirty, sendsEmail, sendsTelegram, toForm } from "@pages/broadcasts/editor/form";
 import type { EditorForm } from "@pages/broadcasts/editor/form";
 import { MediaField } from "@pages/broadcasts/editor/MediaField";
 import { RecipientsPreview } from "@pages/broadcasts/editor/RecipientsPreview";
 import { TelegramPreview } from "@pages/broadcasts/editor/TelegramPreview";
 import { useAudiencePreview } from "@pages/broadcasts/editor/use-audience-preview";
+
+// TipTap is only needed here, and only for broadcasts with email
+const EmailEditor = lazy(() =>
+  import("@pages/broadcasts/editor/EmailEditor").then((m) => ({ default: m.EmailEditor })),
+);
 
 const LIST_PATH = "/dashboard/broadcasts";
 // first page only; a picker with search once a shop has more than this
@@ -140,6 +146,8 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   const { state: previewState, freshTotal: recipients } = useAudiencePreview(
     audience,
     form.category,
+    form.delivery,
+    form.email_fallback,
     audienceReady && can("BROADCASTS_AUDIENCE_PREVIEW"),
   );
 
@@ -276,36 +284,62 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
             disabled={!canEdit}
             onChange={(category) => setForm({ ...form, category })}
           />
-          <ContentEditor
+          <DeliveryPicker
             form={form}
             onChange={setForm}
-            activeLocale={activeLocale}
-            onLocaleChange={setActiveLocale}
-            botLocales={botLocales}
-            hasMedia={Boolean(broadcast?.media_type)}
-            disabled={!canEdit}
-          >
-            <MediaField
-              broadcast={broadcast}
-              fileName={mediaName}
-              canSet={can("BROADCASTS_MEDIA_SET")}
-              canDelete={can("BROADCASTS_MEDIA_DELETE")}
-              onChanged={(updated, name) => {
-                const previousAt = broadcast?.status === "SCHEDULED" ? broadcast.scheduled_at : null;
-                setBroadcast(updated);
-                setMediaName(name);
-                void run(async () => void (await keepSchedule(updated, previousAt)));
-              }}
-            />
-          </ContentEditor>
-          <ButtonsEditor
-            form={form}
-            onChange={setForm}
-            activeLocale={activeLocale}
-            promocodes={promocodes}
-            describePromocode={describePromocode}
+            channelName={channelName}
+            channelMissing={channelMissing}
             disabled={!canEdit}
           />
+          {sendsTelegram(form) && (
+            <>
+              <ContentEditor
+                form={form}
+                onChange={setForm}
+                activeLocale={activeLocale}
+                onLocaleChange={setActiveLocale}
+                botLocales={botLocales}
+                hasMedia={Boolean(broadcast?.media_type)}
+                disabled={!canEdit}
+              >
+                <MediaField
+                  broadcast={broadcast}
+                  fileName={mediaName}
+                  canSet={can("BROADCASTS_MEDIA_SET")}
+                  canDelete={can("BROADCASTS_MEDIA_DELETE")}
+                  onChanged={(updated, name) => {
+                    const previousAt = broadcast?.status === "SCHEDULED" ? broadcast.scheduled_at : null;
+                    setBroadcast(updated);
+                    setMediaName(name);
+                    void run(async () => void (await keepSchedule(updated, previousAt)));
+                  }}
+                />
+              </ContentEditor>
+              <ButtonsEditor
+                form={form}
+                onChange={setForm}
+                activeLocale={activeLocale}
+                promocodes={promocodes}
+                describePromocode={describePromocode}
+                disabled={!canEdit}
+              />
+            </>
+          )}
+          {sendsEmail(form) && (
+            <Suspense fallback={<Spinner size="card" />}>
+              <EmailEditor
+                form={form}
+                onChange={setForm}
+                activeLocale={activeLocale}
+                onLocaleChange={setActiveLocale}
+                botLocales={botLocales}
+                broadcastId={broadcast?.id ?? null}
+                canAddImage={can("BROADCASTS_EMAIL_IMAGE_ADD")}
+                canViewImages={can("BROADCASTS_EMAIL_IMAGE_VIEW")}
+                disabled={!canEdit}
+              />
+            </Suspense>
+          )}
           <Card className="flex flex-col gap-3.5">
             <AudienceEditor
               audience={audience}
@@ -317,34 +351,29 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
               botLocales={botLocales}
               disabled={!canEdit}
             />
-            <div className="flex items-center gap-2.5 border-t border-border pt-2.5">
-              <Switch
-                checked={form.post_to_channel}
-                disabled={!canEdit || (channelMissing && !form.post_to_channel)}
-                onChange={(post_to_channel) => setForm({ ...form, post_to_channel })}
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-[13.5px] font-semibold text-foreground">
-                  {channelName
-                    ? t("broadcasts.editor.channel.titleNamed", { name: channelName })
-                    : t("broadcasts.editor.channel.title")}
-                </span>
-                <span className="text-[12px] text-muted-foreground">
-                  {t(channelMissing ? "broadcasts.editor.channel.missing" : "broadcasts.editor.channel.hint")}
-                </span>
-              </span>
-            </div>
           </Card>
         </div>
 
         <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-4">
-          <TelegramPreview
-            form={form}
-            locale={activeLocale}
-            mediaType={broadcast?.media_type ?? null}
-            mediaName={mediaName}
-            promocodeCode={promocodeCode}
-          />
+          {sendsTelegram(form) && (
+            <TelegramPreview
+              form={form}
+              locale={activeLocale}
+              mediaType={broadcast?.media_type ?? null}
+              mediaName={mediaName}
+              promocodeCode={promocodeCode}
+            />
+          )}
+          {sendsEmail(form) && (
+            <EmailPreview
+              broadcastId={broadcast?.id ?? null}
+              savedAt={broadcast?.updated_at ?? null}
+              dirty={dirty}
+              locale={activeLocale}
+              canPreview={can("BROADCASTS_EMAIL_PREVIEW")}
+              canTestSend={can("BROADCASTS_EMAIL_TEST_SEND")}
+            />
+          )}
           {can("BROADCASTS_AUDIENCE_PREVIEW") && (
             <RecipientsPreview
               state={previewState}

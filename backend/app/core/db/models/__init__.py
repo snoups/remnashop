@@ -18,7 +18,7 @@ from app.core.db.models.bot_command import BotCommand
 from app.core.db.models.bot_requirements import BotRequirements
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.bot_translation import BotTranslation
-from app.core.db.models.broadcast import Broadcast, BroadcastRecipient
+from app.core.db.models.broadcast import Broadcast, BroadcastEmailImage, BroadcastRecipient
 from app.core.db.models.cabinet_auth_settings import CabinetAuthSettings
 from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.dialog_button import DialogButton
@@ -73,6 +73,7 @@ __all__ = [
     "BotSettings",
     "BotTranslation",
     "Broadcast",
+    "BroadcastEmailImage",
     "BroadcastRecipient",
     "CabinetAuthSettings",
     "CurrencyRate",

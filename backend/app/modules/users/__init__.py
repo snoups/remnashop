@@ -12,6 +12,7 @@ from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserReg
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import UserResponse
 from app.modules.users.stats_repository import UserStatsRepository
+from app.modules.users.unsubscribe import read_unsubscribe_token, unsubscribe_token
 from app.modules.users.usecases import (
     AcceptRulesUseCase,
     BlockBlacklistMatchesUseCase,
@@ -50,5 +51,7 @@ __all__ = [
     "assert_manageable",
     "get_users_providers",
     "get_visible_target",
+    "read_unsubscribe_token",
+    "unsubscribe_token",
     "visible_user",
 ]

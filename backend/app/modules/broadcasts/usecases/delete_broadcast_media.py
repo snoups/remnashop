@@ -33,7 +33,8 @@ class DeleteBroadcastMediaUseCase(UseCase[int, BroadcastDto]):
     async def _execute(self, actor: Actor, data: int) -> BroadcastDto:
         async with self._uow:
             current = await lock_editable(self._broadcast_repository, data)
-            validate_texts(current.contents, current.default_locale, has_media=False)
+            if current.sends_telegram:
+                validate_texts(current.contents, current.default_locale, has_media=False)
             await self._broadcast_repository.update_fields(
                 current.id,
                 media_type=None,

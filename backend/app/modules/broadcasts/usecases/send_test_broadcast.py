@@ -47,6 +47,10 @@ class SendTestBroadcastUseCase(UseCase[int, None, UserDto]):
             raise ValidationError("No Telegram linked", code=ErrorCode.BROADCAST_TEST_NO_TELEGRAM)
         async with self._uow:
             broadcast = await self._broadcast_repository.get_by_id(data)
+            if not broadcast.sends_telegram:
+                raise ValidationError(
+                    "A test send needs Telegram delivery", code=ErrorCode.BROADCAST_DELIVERY_INVALID
+                )
             bot = await self._settings_repository.get_bot_settings()
             contexts = await self._broadcast_repository.recipient_contexts([actor.id])
             code = (

@@ -659,6 +659,7 @@
       "UserPersonalDiscountChangedEvent": "Персональная скидка изменена",
       "UserPurchaseDiscountChangedEvent": "Скидка на покупку изменена",
       "UserUnblockedEvent": "Пользователь разблокирован",
+      "UserEmailUndeliverableClearedEvent": "Снята отметка о недоставке почты",
       "UsersBulkUnblockedEvent": "Массовая разблокировка",
       "TransactionRefundedEvent": "Возврат транзакции",
       "TransactionPartiallyRefundedEvent": "Частичный возврат транзакции",
@@ -980,6 +981,11 @@
       "mergeWith": "Объединить с #{{id}}",
       "done": "Telegram ID сохранён.",
       "error": "Не удалось сохранить Telegram ID."
+    },
+    "emailUndeliverable": {
+      "badge": "Не доставляется",
+      "clear": "Снять отметку о недоставке",
+      "cleared": "Отметка о недоставке снята."
     }
   },
   "announcements": {
@@ -1367,6 +1373,34 @@
       "testSending": "Отправка…",
       "testSent": "Тестовое письмо отправлено."
     },
+    "emailBulk": {
+      "hostLabel": "SMTP-хост",
+      "portLabel": "Порт",
+      "securityLabel": "Шифрование",
+      "security": {
+        "STARTTLS": "STARTTLS",
+        "TLS": "TLS",
+        "NONE": "Нет"
+      },
+      "usernameLabel": "Имя пользователя",
+      "passwordLabel": "Пароль",
+      "passwordSet": "Задан — оставьте пустым, чтобы не менять",
+      "passwordUnset": "Не задан",
+      "fromAddressLabel": "Адрес отправителя",
+      "fromNameLabel": "Имя отправителя",
+      "testButton": "Отправить тестовое письмо",
+      "testSending": "Отправка…",
+      "testSent": "Тестовое письмо отправлено.",
+      "title": "SMTP для рассылок",
+      "description": "Отдельный SMTP-сервер для рассылок; без него рассылки идут через основной",
+      "loadError": "Не удалось загрузить настройки SMTP для рассылок.",
+      "rateLabel": "Писем в минуту",
+      "rateHint": "От 1 до 1000. Действует для рассылок и без отдельного сервера.",
+      "rateInvalid": "Введите целое число от 1 до 1000.",
+      "resetTitle": "Сбросить SMTP для рассылок?",
+      "resetMessage": "Отдельный сервер будет удалён, и рассылки снова пойдут через основной SMTP. Лимит скорости сохранится.",
+      "resetDone": "SMTP для рассылок сброшен."
+    },
     "cabinetAuth": {
       "title": "Вход в кабинет",
       "description": "Способы, которыми клиенты входят в веб-кабинет",
@@ -1577,6 +1611,7 @@
     "EMAIL_SETTINGS_VIEW": "Просмотр настроек почты",
     "EMAIL_SETTINGS_MANAGE": "Изменение настроек почты",
     "EMAIL_SETTINGS_TEST": "Отправка тестового письма",
+    "EMAIL_SETTINGS_BULK_RESET": "Сброс SMTP-профиля рассылок",
     "CABINET_AUTH_SETTINGS_VIEW": "Просмотр способов входа в кабинет",
     "CABINET_AUTH_SETTINGS_MANAGE": "Управление способами входа в кабинет",
     "BANNERS_IMAGE_VIEW": "Просмотр изображения баннера",
@@ -1678,6 +1713,10 @@
     "BROADCASTS_MEDIA_DELETE": "Удаление медиа рассылки",
     "BROADCASTS_AUDIENCE_PREVIEW": "Предпросмотр аудитории рассылки",
     "BROADCASTS_SUMMARY_VIEW": "Просмотр сводки рассылок",
+    "BROADCASTS_EMAIL_IMAGE_ADD": "Загрузка изображений в письма рассылок",
+    "BROADCASTS_EMAIL_IMAGE_VIEW": "Просмотр изображений писем рассылок",
+    "BROADCASTS_EMAIL_PREVIEW": "Предпросмотр писем рассылок",
+    "BROADCASTS_EMAIL_TEST_SEND": "Тестовое письмо рассылки",
     "TRANSACTIONS_VIEW": "Просмотр транзакций",
     "TRANSACTIONS_SUMMARY_VIEW": "Просмотр сводки по транзакциям",
     "TRANSACTIONS_DETAIL_VIEW": "Просмотр деталей транзакций",
@@ -1714,6 +1753,7 @@
     "BLACKLIST_SYNC": "Синхронизация источников чёрного списка",
     "BLACKLIST_MATCHES_VIEW": "Просмотр пользователей из чёрного списка",
     "USERS_BLOCK": "Блокировка пользователей",
+    "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Снятие отметки о недоставке почты",
     "USERS_UNBLOCK": "Разблокировка пользователей",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Разблокировка всех совпадений чёрного списка",
     "AD_LINKS_VIEW": "Просмотр рекламных ссылок",
@@ -3296,6 +3336,11 @@
     "BROADCAST_RECALL_EXPIRED": "Telegram позволяет удалять сообщения только в течение 48 часов.",
     "BROADCAST_RECALL_IN_PROGRESS": "Отзыв ещё идёт. Повторите через несколько минут.",
     "BROADCAST_TITLE_TOO_LONG": "Название слишком длинное.",
+    "BROADCAST_DELIVERY_INVALID": "Эта настройка отправки не подходит к выбранному режиму.",
+    "BROADCAST_EMAIL_HTML_INVALID": "В письме есть неподдерживаемое оформление.",
+    "BROADCAST_EMAIL_IMAGE_INVALID": "Картинка не подходит под ограничения письма.",
+    "BROADCAST_EMAIL_SUBJECT_INVALID": "Заполните тему письма, до 200 символов.",
+    "BROADCAST_UNSUBSCRIBE_URL_MISSING": "Укажите адрес кабинета: в рекламных письмах нужна ссылка отписки.",
     "BANNER_NAME_INVALID": "Недопустимое имя баннера.",
     "BANNER_NOT_FOUND": "Баннер не найден.",
     "BANNER_TOO_LARGE": "Файл баннера слишком большой.",
@@ -3501,6 +3546,7 @@
     "TRANSLATION_HAS_PLACEABLES": "Подстановки Fluent здесь не поддерживаются.",
     "TRANSLATION_NOT_FOUND": "Перевод не найден.",
     "TRIAL_NOT_AVAILABLE": "Пробный период недоступен.",
+    "UNSUBSCRIBE_TOKEN_INVALID": "Ссылка отписки недействительна.",
     "URL_HOST_NOT_PUBLIC": "URL должен указывать на публичный адрес.",
     "URL_HOST_UNRESOLVABLE": "Не удалось найти хост URL.",
     "URL_NOT_HTTPS": "Укажите URL с https://.",
@@ -3617,7 +3663,8 @@
       "delivered": "Доставлено за 30 дней",
       "deliveredShare": "{{percent}} от обработанного",
       "optedOut": "Отписались от акций",
-      "optedOutShare": "{{percent}} клиентов с Telegram"
+      "optedOutShare": "{{percent}} доступных клиентов",
+      "reachableByEmail": "Доступны по почте"
     },
     "filters": {
       "all": "Все",
@@ -3718,6 +3765,7 @@
           "ACTIVE": "Активная",
           "TRIAL": "Пробная",
           "EXPIRED": "Истекла",
+          "LIMITED": "Трафик исчерпан",
           "NONE": "Без подписки"
         },
         "plans": "Планы",
@@ -3732,7 +3780,10 @@
         "registered": "Регистрация",
         "from": "С",
         "to": "По",
-        "bothDates": "Укажите обе даты."
+        "bothDates": "Укажите обе даты.",
+        "notConnected": "Не подключался к VPN (дней)",
+        "hasTelegram": "Telegram",
+        "hasEmail": "Почта"
       },
       "channel": {
         "title": "Опубликовать в канале",
@@ -3786,7 +3837,41 @@
       "savedUnscheduled": "Сохранено. Рассылка снята с расписания.",
       "openCard": "Открыть карточку",
       "sent": "Рассылка запущена.",
-      "scheduled": "Рассылка запланирована."
+      "scheduled": "Рассылка запланирована.",
+      "delivery": {
+        "title": "Доставка",
+        "option": {
+          "TELEGRAM": "Telegram",
+          "EMAIL": "Только письма",
+          "ALL": "Telegram и письма"
+        },
+        "hint": {
+          "TELEGRAM": "Бот отправит сообщение клиентам с Telegram.",
+          "EMAIL": "Письмо уйдёт клиентам с подтверждённым адресом.",
+          "ALL": "Клиенты с Telegram получат сообщение, клиенты с почтой — письмо."
+        },
+        "fallback": {
+          "title": "Тем, у кого нет Telegram, — письмом",
+          "hint": "Кому бот написать не может, уйдёт письмо."
+        }
+      },
+      "email": {
+        "title": "Письмо",
+        "subject": "Тема письма",
+        "imageHint": "PNG, JPEG или GIF до 1 МБ",
+        "imageSaveFirst": "Изображения можно добавить после первого сохранения",
+        "imageError": "Не удалось загрузить изображение."
+      },
+      "emailPreview": {
+        "title": "Предпросмотр письма",
+        "saveFirst": "Сохраните, чтобы обновить предпросмотр",
+        "error": "Не удалось построить предпросмотр.",
+        "noSubject": "Без темы",
+        "toPlaceholder": "Адрес для тестового письма",
+        "testButton": "Отправить тестовое письмо",
+        "testSending": "Отправка…",
+        "testSent": "Тестовое письмо отправлено."
+      }
     },
     "details": {
       "loadError": "Не удалось загрузить рассылку.",
@@ -3893,6 +3978,14 @@
           "done": "Рассылка удалена."
         }
       }
+    },
+    "channel": {
+      "TELEGRAM": "Telegram",
+      "EMAIL": "Почта"
+    },
+    "recipients": {
+      "channel": "Канал",
+      "channelAll": "Все каналы"
     }
   }
 }

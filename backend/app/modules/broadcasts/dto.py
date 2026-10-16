@@ -10,12 +10,15 @@ from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     BroadcastButtonKind,
     BroadcastCategory,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastMediaType,
     BroadcastRecipientStatus,
     BroadcastStatus,
     BroadcastSubscriptionFilter,
     Locale,
 )
+from app.modules.broadcasts.channels import sends_email, sends_telegram
 
 
 class BroadcastAudienceDto(BaseModel):
@@ -32,6 +35,9 @@ class BroadcastAudienceDto(BaseModel):
     registered_to: Optional[datetime] = None
     ad_link_ids: list[int] = []
     referred: Optional[bool] = None
+    not_connected_within_days: Optional[int] = None
+    has_telegram: Optional[bool] = None
+    has_email: Optional[bool] = None
 
 
 class BroadcastButtonDto(BaseModel):
@@ -48,6 +54,13 @@ class BroadcastContentDto(BaseModel):
     button_labels: list[str] = []
 
 
+class BroadcastEmailContentDto(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    subject: str
+    html: str
+
+
 class BroadcastDto(BaseDto, TimestampMixin):
     title: Optional[str] = None
     status: BroadcastStatus
@@ -58,6 +71,9 @@ class BroadcastDto(BaseDto, TimestampMixin):
     buttons: list[BroadcastButtonDto]
     promocode_id: Optional[int] = None
     post_to_channel: bool = False
+    delivery: BroadcastDelivery = BroadcastDelivery.TELEGRAM
+    email_fallback: bool = False
+    email_contents: dict[Locale, BroadcastEmailContentDto] = {}
     channel_chat_id: Optional[int] = None
     channel_message_id: Optional[int] = None
     media_type: Optional[BroadcastMediaType] = None
@@ -81,6 +97,14 @@ class BroadcastDto(BaseDto, TimestampMixin):
     recallable_count: Optional[int] = None
 
     @property
+    def sends_telegram(self) -> bool:
+        return sends_telegram(self.delivery)
+
+    @property
+    def sends_email(self) -> bool:
+        return sends_email(self.delivery, self.email_fallback)
+
+    @property
     def has_media(self) -> bool:
         return self.media_type is not None
 
@@ -96,6 +120,7 @@ class BroadcastDto(BaseDto, TimestampMixin):
 class BroadcastRecipientDto(BaseDto):
     broadcast_id: int
     user_id: int
+    channel: BroadcastChannel
     status: BroadcastRecipientStatus
     attempts: int
     telegram_message_id: Optional[int] = None
@@ -104,6 +129,7 @@ class BroadcastRecipientDto(BaseDto):
     user_name: str
     username: Optional[str] = None
     telegram_id: Optional[int] = None
+    email: Optional[str] = None
     language: Locale
 
 
@@ -112,6 +138,14 @@ class PendingRecipientDto:
     id: int
     user_id: int
     telegram_id: int
+    attempts: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class PendingEmailRecipientDto:
+    id: int
+    user_id: int
+    email: str
     attempts: int
 
 
@@ -135,6 +169,15 @@ class RecipientContextDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RenderedEmailDto:
+    subject: str
+    html: str
+    text: str
+    image_ids: set[int]
+    headers: dict[str, str]
+
+
+@dataclass(frozen=True, kw_only=True)
 class SaveBroadcastDto:
     category: BroadcastCategory
     audience: BroadcastAudienceDto
@@ -144,6 +187,9 @@ class SaveBroadcastDto:
     promocode_id: Optional[int]
     post_to_channel: bool
     title: Optional[str] = None
+    delivery: BroadcastDelivery = BroadcastDelivery.TELEGRAM
+    email_fallback: bool = False
+    email_contents: dict[Locale, BroadcastEmailContentDto] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -166,20 +212,37 @@ class ListBroadcastsDto:
 class ListBroadcastRecipientsDto:
     broadcast_id: int
     status: Optional[BroadcastRecipientStatus] = None
+    channel: Optional[BroadcastChannel] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class PreviewBroadcastEmailDto:
+    broadcast_id: int
+    locale: Locale
+
+
+@dataclass(frozen=True, kw_only=True)
+class SendTestBroadcastEmailDto:
+    broadcast_id: int
+    locale: Locale
+    to: str
 
 
 @dataclass(frozen=True, kw_only=True)
 class PreviewAudienceDto:
     audience: BroadcastAudienceDto
     category: BroadcastCategory
+    delivery: BroadcastDelivery = BroadcastDelivery.TELEGRAM
+    email_fallback: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
 class AudiencePreviewDto:
     total: int
     by_locale: dict[Locale, int]
+    by_channel: dict[BroadcastChannel, int]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -205,3 +268,33 @@ class BroadcastSummaryDto:
     processed_30d: int
     opted_out: int
     reachable_customers: int
+    reachable_by_email: int
+
+
+class EmailImageDto(BaseDto):
+    id: int
+    broadcast_id: int
+    content_type: str
+    extension: str
+    size_bytes: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class AddEmailImageDto:
+    broadcast_id: int
+    content_type: str
+    # the streamed upload; moved into place on success, removed by the caller otherwise
+    source: Path
+    size: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetEmailImageDto:
+    broadcast_id: int
+    image_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class EmailImageFileDto:
+    content_type: str
+    path: Path

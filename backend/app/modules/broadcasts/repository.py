@@ -6,6 +6,7 @@ from typing import cast as typing_cast
 from sqlalchemy import (
     ColumnElement,
     CursorResult,
+    Select,
     Text,
     case,
     cast,
@@ -20,30 +21,39 @@ from sqlalchemy.dialects.postgresql import JSONPATH
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.filters import in_ids
 from app.core.db.models.ad_link import AdLink
-from app.core.db.models.broadcast import Broadcast, BroadcastRecipient
+from app.core.db.models.broadcast import Broadcast, BroadcastEmailImage, BroadcastRecipient
 from app.core.db.models.plan import Plan
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
 from app.core.enums import (
     BroadcastCategory,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastRecipientStatus,
     BroadcastStatus,
-    Locale,
     Role,
     SubscriptionStatus,
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.utils.time import datetime_now, range_end_utc, range_start_utc
-from app.modules.broadcasts.audience import audience_predicate
+from app.modules.broadcasts.audience import (
+    audience_predicate,
+    channel_condition,
+    deliverable_email,
+)
 from app.modules.broadcasts.dto import (
+    AudiencePreviewDto,
     BroadcastAudienceDto,
     BroadcastDto,
     BroadcastRecipientDto,
     BroadcastSummaryDto,
+    EmailImageDto,
     ListBroadcastRecipientsDto,
     ListBroadcastsDto,
+    PendingEmailRecipientDto,
     PendingRecipientDto,
     RecipientContextDto,
     SaveBroadcastDto,
@@ -51,6 +61,8 @@ from app.modules.broadcasts.dto import (
 )
 
 NO_TELEGRAM_ERROR: Final[str] = "no telegram"
+NO_EMAIL_ERROR: Final[str] = "no email"
+UNDELIVERABLE_ERROR: Final[str] = "undeliverable"
 OPTED_OUT_ERROR: Final[str] = "opted out"
 BLOCKED_ERROR: Final[str] = "blocked"
 RECALL_FAILED_ERROR: Final[str] = "recall failed"
@@ -67,6 +79,16 @@ _PROCESSED: Final[tuple[BroadcastRecipientStatus, ...]] = (
     BroadcastRecipientStatus.BLOCKED,
     BroadcastRecipientStatus.RECALLED,
 )
+
+
+def _channel_conditions(
+    delivery: BroadcastDelivery, email_fallback: bool
+) -> dict[BroadcastChannel, ColumnElement[bool]]:
+    conditions = {
+        channel: channel_condition(channel, delivery, email_fallback)
+        for channel in BroadcastChannel
+    }
+    return {channel: c for channel, c in conditions.items() if c is not None}
 
 
 class BroadcastRepository:
@@ -104,6 +126,12 @@ class BroadcastRepository:
             "buttons": [button.model_dump(mode="json") for button in data.buttons],
             "promocode_id": data.promocode_id,
             "post_to_channel": data.post_to_channel,
+            "delivery": data.delivery,
+            "email_fallback": data.email_fallback,
+            "email_contents": {
+                locale.value: content.model_dump(mode="json")
+                for locale, content in data.email_contents.items()
+            },
         }
 
     async def _get_row(self, broadcast_id: int) -> Broadcast:
@@ -181,6 +209,44 @@ class BroadcastRepository:
         await self.session.delete(await self._get_row(broadcast_id))
         await self.session.flush()
 
+    def _to_email_image_dto(self, row: BroadcastEmailImage) -> EmailImageDto:
+        return EmailImageDto.model_validate(row, from_attributes=True)
+
+    async def add_email_image(
+        self, broadcast_id: int, content_type: str, extension: str, size: int
+    ) -> EmailImageDto:
+        row = BroadcastEmailImage(
+            broadcast_id=broadcast_id,
+            content_type=content_type,
+            extension=extension,
+            size_bytes=size,
+        )
+        self.session.add(row)
+        await self.session.flush()
+        return self._to_email_image_dto(row)
+
+    async def list_email_images(self, broadcast_id: int) -> list[EmailImageDto]:
+        rows = await self.session.scalars(
+            select(BroadcastEmailImage)
+            .where(BroadcastEmailImage.broadcast_id == broadcast_id)
+            .order_by(BroadcastEmailImage.id)
+        )
+        return [self._to_email_image_dto(row) for row in rows]
+
+    async def find_email_image(self, broadcast_id: int, image_id: int) -> Optional[EmailImageDto]:
+        row = await self.session.scalar(
+            select(BroadcastEmailImage).where(
+                BroadcastEmailImage.broadcast_id == broadcast_id,
+                BroadcastEmailImage.id == image_id,
+            )
+        )
+        return None if row is None else self._to_email_image_dto(row)
+
+    async def delete_email_images(self, ids: list[int]) -> None:
+        await self.session.execute(
+            delete(BroadcastEmailImage).where(in_ids(BroadcastEmailImage.id, ids))
+        )
+
     async def update_fields(self, broadcast_id: int, **values: object) -> None:
         await self.session.execute(
             update(Broadcast)
@@ -190,73 +256,95 @@ class BroadcastRepository:
         )
 
     async def count_audience(
-        self, audience: BroadcastAudienceDto, category: BroadcastCategory, now: datetime
-    ) -> dict[Locale, int]:
+        self,
+        audience: BroadcastAudienceDto,
+        category: BroadcastCategory,
+        delivery: BroadcastDelivery,
+        email_fallback: bool,
+        now: datetime,
+    ) -> AudiencePreviewDto:
+        predicate = audience_predicate(audience, category, now)
+        channels = _channel_conditions(delivery, email_fallback)
+        by_channel: dict[BroadcastChannel, int] = {}
+        for channel, condition in channels.items():
+            count = await self.session.scalar(select(func.count()).where(predicate, condition))
+            by_channel[channel] = count or 0
         rows = await self.session.execute(
             select(User.language, func.count())
-            .where(audience_predicate(audience, category, now))
+            .where(predicate, or_(*channels.values()))
             .group_by(User.language)
         )
-        return dict(rows.tuples().all())
+        by_locale = dict(rows.tuples().all())
+        return AudiencePreviewDto(
+            total=sum(by_locale.values()), by_locale=by_locale, by_channel=by_channel
+        )
 
     async def materialize(
         self,
         broadcast_id: int,
         audience: BroadcastAudienceDto,
         category: BroadcastCategory,
+        delivery: BroadcastDelivery,
+        email_fallback: bool,
         now: datetime,
     ) -> int:
-        source = (
-            select(
-                literal(broadcast_id),
-                User.id,
-                literal(BroadcastRecipientStatus.PENDING, type_=BroadcastRecipient.status.type),
+        predicate = audience_predicate(audience, category, now)
+        for channel, condition in _channel_conditions(delivery, email_fallback).items():
+            source = (
+                select(
+                    literal(broadcast_id),
+                    User.id,
+                    literal(BroadcastRecipientStatus.PENDING, type_=BroadcastRecipient.status.type),
+                    literal(channel, type_=BroadcastRecipient.channel.type),
+                )
+                .where(predicate, condition)
+                .order_by(User.id)
             )
-            .where(audience_predicate(audience, category, now))
-            .order_by(User.id)
-        )
-        await self.session.execute(
-            pg_insert(BroadcastRecipient)
-            .from_select(["broadcast_id", "user_id", "status"], source)
-            .on_conflict_do_nothing(constraint="uq_broadcast_recipients_user")
-        )
+            await self.session.execute(
+                pg_insert(BroadcastRecipient)
+                .from_select(["broadcast_id", "user_id", "status", "channel"], source)
+                .on_conflict_do_nothing(constraint="uq_broadcast_recipients_user_channel")
+            )
         total = await self.session.scalar(
             select(func.count()).where(BroadcastRecipient.broadcast_id == broadcast_id)
         )
         return int(total or 0)
 
-    async def claim_pending(
-        self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
-    ) -> builtins.list[PendingRecipientDto]:
+    async def _drop_unreachable(
+        self,
+        broadcast_id: int,
+        channel: BroadcastChannel,
+        marketing: bool,
+        unreachable: builtins.list[tuple[ColumnElement[bool], str]],
+    ) -> None:
         # audience was built at materialization; a block or opt-out since then still wins
-        unreachable = [(User.is_blocked.is_(True), BLOCKED_ERROR)]
+        cancel = [(User.is_blocked.is_(True), BLOCKED_ERROR)]
         if marketing:
-            unreachable.append((User.marketing_opt_out.is_(True), OPTED_OUT_ERROR))
-        for condition, error in unreachable:
-            await self.session.execute(
-                update(BroadcastRecipient)
-                .where(
-                    BroadcastRecipient.broadcast_id == broadcast_id,
-                    BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
-                    BroadcastRecipient.user_id.in_(select(User.id).where(condition)),
+            cancel.append((User.marketing_opt_out.is_(True), OPTED_OUT_ERROR))
+        for status, conditions, channels in (
+            (BroadcastRecipientStatus.CANCELED, cancel, tuple(BroadcastChannel)),
+            (BroadcastRecipientStatus.FAILED, unreachable, (channel,)),
+        ):
+            for condition, error in conditions:
+                await self.session.execute(
+                    update(BroadcastRecipient)
+                    .where(
+                        BroadcastRecipient.broadcast_id == broadcast_id,
+                        BroadcastRecipient.channel.in_(channels),
+                        BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
+                        BroadcastRecipient.user_id.in_(select(User.id).where(condition)),
+                    )
+                    .values(status=status, error=error)
                 )
-                .values(status=BroadcastRecipientStatus.CANCELED, error=error)
-            )
-        # a user who lost their telegram_id since materialization can never be reached
-        await self.session.execute(
-            update(BroadcastRecipient)
-            .where(
-                BroadcastRecipient.broadcast_id == broadcast_id,
-                BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
-                BroadcastRecipient.user_id.in_(select(User.id).where(User.telegram_id.is_(None))),
-            )
-            .values(status=BroadcastRecipientStatus.FAILED, error=NO_TELEGRAM_ERROR)
-        )
-        now = datetime_now()
-        claimable = (
+
+    def _claimable(
+        self, broadcast_id: int, channel: BroadcastChannel, limit: int, now: datetime
+    ) -> Select[tuple[int]]:
+        return (
             select(BroadcastRecipient.id)
             .where(
                 BroadcastRecipient.broadcast_id == broadcast_id,
+                BroadcastRecipient.channel == channel,
                 BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
                 or_(
                     BroadcastRecipient.claimed_until.is_(None),
@@ -267,6 +355,19 @@ class BroadcastRepository:
             .limit(limit)
             .with_for_update(skip_locked=True)
         )
+
+    async def claim_pending(
+        self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
+    ) -> builtins.list[PendingRecipientDto]:
+        # a user who lost their telegram_id since materialization can never be reached
+        await self._drop_unreachable(
+            broadcast_id,
+            BroadcastChannel.TELEGRAM,
+            marketing,
+            [(User.telegram_id.is_(None), NO_TELEGRAM_ERROR)],
+        )
+        now = datetime_now()
+        claimable = self._claimable(broadcast_id, BroadcastChannel.TELEGRAM, limit, now)
         rows = await self.session.execute(
             update(BroadcastRecipient)
             .where(BroadcastRecipient.id.in_(claimable), User.id == BroadcastRecipient.user_id)
@@ -287,6 +388,49 @@ class BroadcastRepository:
                 for r in rows
             ),
             key=lambda r: r.id,
+        )
+
+    async def claim_pending_email(
+        self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
+    ) -> builtins.list[PendingEmailRecipientDto]:
+        await self._drop_unreachable(
+            broadcast_id,
+            BroadcastChannel.EMAIL,
+            marketing,
+            [
+                (User.email.is_(None), NO_EMAIL_ERROR),
+                (User.email_undeliverable_at.is_not(None), UNDELIVERABLE_ERROR),
+            ],
+        )
+        now = datetime_now()
+        claimable = self._claimable(broadcast_id, BroadcastChannel.EMAIL, limit, now)
+        rows = await self.session.execute(
+            update(BroadcastRecipient)
+            .where(BroadcastRecipient.id.in_(claimable), User.id == BroadcastRecipient.user_id)
+            .values(claimed_until=now + lease)
+            .returning(
+                BroadcastRecipient.id,
+                BroadcastRecipient.user_id,
+                User.email,
+                BroadcastRecipient.attempts,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        return sorted(
+            (
+                PendingEmailRecipientDto(
+                    id=r.id, user_id=r.user_id, email=r.email, attempts=r.attempts
+                )
+                for r in rows
+            ),
+            key=lambda r: r.id,
+        )
+
+    async def release_claims(self, ids: builtins.list[int]) -> None:
+        await self.session.execute(
+            update(BroadcastRecipient)
+            .where(in_ids(BroadcastRecipient.id, ids))
+            .values(claimed_until=None)
         )
 
     async def mark_recipient(
@@ -496,6 +640,8 @@ class BroadcastRepository:
         ]
         if data.status is not None:
             conditions.append(BroadcastRecipient.status == data.status)
+        if data.channel is not None:
+            conditions.append(BroadcastRecipient.channel == data.channel)
         total = await self.session.scalar(
             select(func.count()).select_from(BroadcastRecipient).where(*conditions)
         )
@@ -512,6 +658,7 @@ class BroadcastRepository:
                 id=row.id,
                 broadcast_id=row.broadcast_id,
                 user_id=row.user_id,
+                channel=row.channel,
                 status=row.status,
                 attempts=row.attempts,
                 telegram_message_id=row.telegram_message_id,
@@ -520,6 +667,7 @@ class BroadcastRepository:
                 user_name=user.name,
                 username=user.username,
                 telegram_id=user.telegram_id,
+                email=user.email,
                 language=user.language,
             )
             for row, user in rows.tuples()
@@ -662,13 +810,16 @@ class BroadcastRepository:
                 BroadcastRecipient.status.in_(_PROCESSED),
             )
         )
-        reachable = (
+        customers = (
             User.role == Role.USER,
             User.deleted_at.is_(None),
             User.is_blocked.is_(False),
-            User.telegram_id.is_not(None),
         )
+        reachable = (*customers, or_(User.telegram_id.is_not(None), deliverable_email()))
         reachable_total = await self.session.scalar(select(func.count()).where(*reachable))
+        by_email = await self.session.scalar(
+            select(func.count()).where(*customers, deliverable_email())
+        )
         opted_out = await self.session.scalar(
             select(func.count()).where(*reachable, User.marketing_opt_out.is_(True))
         )
@@ -679,4 +830,5 @@ class BroadcastRepository:
             processed_30d=processed or 0,
             opted_out=opted_out or 0,
             reachable_customers=reachable_total or 0,
+            reachable_by_email=by_email or 0,
         )

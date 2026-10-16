@@ -139,6 +139,18 @@ async def test_create_get_update_flow(
     assert created.json()["recall_requested"] is False
 
 
+async def test_email_only_broadcast_needs_no_telegram_contents(
+    client: httpx.AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    body = _body()
+    del body["contents"]
+    body["delivery"] = "EMAIL"
+    body["email_contents"] = {"en": {"subject": "Hi", "html": "<p>Body</p>"}}
+    response = await client.post("/api/v1/broadcasts", json=body, headers=admin_headers)
+    assert response.status_code == 201
+    assert response.json()["delivery"] == "EMAIL"
+
+
 async def test_invalid_html_is_400_with_code(
     client: httpx.AsyncClient, admin_headers: dict[str, str]
 ) -> None:
@@ -158,12 +170,13 @@ async def test_list_is_paginated(client: httpx.AsyncClient, admin_headers: dict[
 async def test_preview_audience(client: httpx.AsyncClient, admin_headers: dict[str, str]) -> None:
     response = await client.post(
         "/api/v1/broadcasts/actions/preview-audience",
-        json={"audience": {}, "category": "SERVICE"},
+        json={"audience": {}, "category": "SERVICE", "delivery": "ALL"},
         headers=admin_headers,
     )
     assert response.status_code == 200
     assert response.json()["total"] >= 0
     assert "by_locale" in response.json()
+    assert set(response.json()["by_channel"]) == {"TELEGRAM", "EMAIL"}
 
 
 async def test_unknown_audience_field_is_422(
@@ -291,7 +304,8 @@ async def test_list_recipients_shape(
 ) -> None:
     created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
     response = await client.get(
-        f"/api/v1/broadcasts/{created.json()['id']}/recipients", headers=admin_headers
+        f"/api/v1/broadcasts/{created.json()['id']}/recipients?channel=EMAIL",
+        headers=admin_headers,
     )
     assert response.status_code == 200
     assert response.json() == {"items": [], "total": 0}
@@ -302,6 +316,7 @@ async def test_summary_is_200(client: httpx.AsyncClient, admin_headers: dict[str
     assert response.status_code == 200
     assert response.json()["by_status"]["DRAFT"] == 0
     assert response.json()["next_scheduled_at"] is None
+    assert response.json()["reachable_by_email"] >= 0
 
 
 async def test_list_accepts_repeated_status_and_search(
@@ -376,3 +391,143 @@ async def test_rejected_media_upload_leaves_no_temp_file(
     )
     assert response.status_code == 400
     assert list((config.media_dir / "broadcasts").glob("*.part")) == []
+
+
+async def test_email_image_upload_and_download(
+    client: httpx.AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    body = _body()
+    del body["contents"]
+    body["delivery"] = "EMAIL"
+    body["email_contents"] = {"en": {"subject": "Hi", "html": "<p>Body</p>"}}
+    created = await client.post("/api/v1/broadcasts", json=body, headers=admin_headers)
+    url = f"/api/v1/broadcasts/{created.json()['id']}/email-images"
+    uploaded = await client.post(
+        url, content=b"png-bytes", headers={**admin_headers, "Content-Type": "image/png"}
+    )
+    assert uploaded.status_code == 201
+    assert uploaded.json()["content_type"] == "image/png"
+    assert uploaded.json()["size_bytes"] == 9
+    fetched = await client.get(f"{url}/{uploaded.json()['id']}", headers=admin_headers)
+    assert fetched.status_code == 200
+    assert fetched.content == b"png-bytes"
+    assert fetched.headers["content-type"] == "image/png"
+    assert fetched.headers["cache-control"] == "private, max-age=3600"
+
+
+async def test_email_image_upload_of_unsupported_type_is_400(
+    client: httpx.AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
+    response = await client.post(
+        f"/api/v1/broadcasts/{created.json()['id']}/email-images",
+        content=b"webp",
+        headers={**admin_headers, "Content-Type": "image/webp"},
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "BROADCAST_EMAIL_IMAGE_INVALID"
+
+
+async def test_email_image_routes_need_permission(
+    client: httpx.AsyncClient,
+    admin_headers: dict[str, str],
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    created = await client.post("/api/v1/broadcasts", json=_body(), headers=admin_headers)
+    url = f"/api/v1/broadcasts/{created.json()['id']}/email-images"
+    plain = await _create_user(user_repository, uow, config, Role.USER, "bcplain")
+    session = await session_repository.create(
+        CreateSessionDto(
+            user_id=plain.id,
+            refresh_token_hash=hash_refresh_token("plain-refresh-token"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.DASHBOARD,
+        )
+    )
+    token = create_access_token(plain.id, session.id, config.jwt_secret.get_secret_value())
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "image/png"}
+    assert (await client.post(url, content=b"x", headers=headers)).status_code == 403
+    assert (await client.get(f"{url}/1", headers=headers)).status_code == 403
+
+
+async def _email_broadcast_id(client: httpx.AsyncClient, headers: dict[str, str]) -> int:
+    body = _body()
+    del body["contents"]
+    body["delivery"] = "EMAIL"
+    body["email_contents"] = {"en": {"subject": "Hi { $name }", "html": "<p>Body</p>"}}
+    created = await client.post("/api/v1/broadcasts", json=body, headers=headers)
+    return int(created.json()["id"])
+
+
+async def test_preview_email(client: httpx.AsyncClient, admin_headers: dict[str, str]) -> None:
+    broadcast_id = await _email_broadcast_id(client, admin_headers)
+    response = await client.post(
+        f"/api/v1/broadcasts/{broadcast_id}/actions/preview-email",
+        json={"locale": "en"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["subject"] == "Hi Alex"
+    assert "Body" in response.json()["html"]
+    assert "Body" in response.json()["text"]
+
+
+async def test_send_test_email_without_smtp_is_400(
+    client: httpx.AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    broadcast_id = await _email_broadcast_id(client, admin_headers)
+    response = await client.post(
+        f"/api/v1/broadcasts/{broadcast_id}/actions/send-test-email",
+        json={"locale": "en", "to": "me@example.com"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "EMAIL_NOT_CONFIGURED"
+
+
+async def test_send_test_email_rejects_a_bad_address(
+    client: httpx.AsyncClient, admin_headers: dict[str, str]
+) -> None:
+    broadcast_id = await _email_broadcast_id(client, admin_headers)
+    response = await client.post(
+        f"/api/v1/broadcasts/{broadcast_id}/actions/send-test-email",
+        json={"locale": "en", "to": "nope"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 422
+
+
+async def test_email_preview_routes_need_permission(
+    client: httpx.AsyncClient,
+    admin_headers: dict[str, str],
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    broadcast_id = await _email_broadcast_id(client, admin_headers)
+    plain = await _create_user(user_repository, uow, config, Role.USER, "bcplain2")
+    session = await session_repository.create(
+        CreateSessionDto(
+            user_id=plain.id,
+            refresh_token_hash=hash_refresh_token("plain-refresh-token-2"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.DASHBOARD,
+        )
+    )
+    token = create_access_token(plain.id, session.id, config.jwt_secret.get_secret_value())
+    headers = {"Authorization": f"Bearer {token}"}
+    base = f"/api/v1/broadcasts/{broadcast_id}/actions"
+    preview = await client.post(f"{base}/preview-email", json={"locale": "en"}, headers=headers)
+    send = await client.post(
+        f"{base}/send-test-email", json={"locale": "en", "to": "a@b.co"}, headers=headers
+    )
+    assert preview.status_code == 403
+    assert send.status_code == 403

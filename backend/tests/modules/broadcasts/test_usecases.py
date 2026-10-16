@@ -3,6 +3,7 @@ import os
 import tempfile
 from datetime import timedelta
 from pathlib import Path
+from typing import Final
 
 import httpx
 import pytest
@@ -15,6 +16,8 @@ from app.core.db.models.broadcast import BroadcastRecipient
 from app.core.db.models.promocode import PromocodeActivation
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
+    BroadcastCategory,
+    BroadcastDelivery,
     BroadcastMediaType,
     BroadcastRecipientStatus,
     BroadcastStatus,
@@ -31,6 +34,7 @@ from app.modules.broadcasts.dto import (
     BroadcastAudienceDto,
     BroadcastContentDto,
     BroadcastDto,
+    BroadcastEmailContentDto,
     PreviewAudienceDto,
     SendBroadcastDto,
     SetBroadcastMediaDto,
@@ -56,7 +60,7 @@ from app.modules.broadcasts.usecases import (
 from app.modules.broadcasts.validation import promocode_is_usable
 from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.settings.dto import UpdateBotSettingsDto
+from app.modules.settings.dto import UpdateBotSettingsDto, UpdateEmailSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -94,10 +98,13 @@ def create_use_case(
 def update_use_case(
     broadcast_repository: BroadcastRepository,
     promocode_repository: PromocodeRepository,
+    media_config: AppConfig,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> UpdateBroadcastUseCase:
-    return UpdateBroadcastUseCase(broadcast_repository, promocode_repository, uow, event_publisher)
+    return UpdateBroadcastUseCase(
+        broadcast_repository, promocode_repository, media_config, uow, event_publisher
+    )
 
 
 @pytest.fixture
@@ -476,12 +483,13 @@ def recall_dispatch() -> RecordingDispatch:
 def send_use_case(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
+    config: AppConfig,
     start_dispatch: RecordingDispatch,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> SendBroadcastUseCase:
     return SendBroadcastUseCase(
-        broadcast_repository, settings_repository, start_dispatch, uow, event_publisher
+        broadcast_repository, settings_repository, config, start_dispatch, uow, event_publisher
     )
 
 
@@ -530,7 +538,12 @@ async def _recipients(
         for i in range(len(statuses))
     ]
     await repository.materialize(
-        broadcast.id, BroadcastAudienceDto(user_ids=user_ids), broadcast.category, datetime_now()
+        broadcast.id,
+        BroadcastAudienceDto(user_ids=user_ids),
+        broadcast.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
     )
     rows = await session.scalars(
         select(BroadcastRecipient)
@@ -602,6 +615,90 @@ async def test_send_requires_bot_token(
     with pytest.raises(ValidationError) as caught:
         await send_use_case(admin, SendBroadcastDto(broadcast_id=draft.id))
     assert caught.value.code == ErrorCode.BROADCAST_BOT_NOT_CONFIGURED
+
+
+_EMAIL_ONLY: Final[dict[str, object]] = {
+    "delivery": BroadcastDelivery.EMAIL,
+    "email_contents": {Locale.EN: BroadcastEmailContentDto(subject="Hi", html="<p>x</p>")},
+}
+
+
+@pytest.fixture
+async def with_smtp(settings_repository: SettingsRepository) -> None:
+    await settings_repository.update_email_settings(
+        UpdateEmailSettingsDto(host="smtp.example.com", from_address="shop@example.com")
+    )
+
+
+async def test_send_email_only_without_bot_token(
+    send_use_case: SendBroadcastUseCase,
+    start_dispatch: RecordingDispatch,
+    broadcast_repository: BroadcastRepository,
+    admin: UserDto,
+    with_smtp: None,
+) -> None:
+    draft = await _make(broadcast_repository, **_EMAIL_ONLY)
+    result = await send_use_case(admin, SendBroadcastDto(broadcast_id=draft.id))
+    assert result.status is BroadcastStatus.SCHEDULED
+    assert start_dispatch.messages == [{"broadcast_id": draft.id}]
+
+
+async def test_send_email_without_smtp_fails(
+    send_use_case: SendBroadcastUseCase,
+    broadcast_repository: BroadcastRepository,
+    admin: UserDto,
+) -> None:
+    draft = await _make(broadcast_repository, **_EMAIL_ONLY)
+    with pytest.raises(ValidationError) as caught:
+        await send_use_case(admin, SendBroadcastDto(broadcast_id=draft.id))
+    assert caught.value.code == ErrorCode.EMAIL_NOT_CONFIGURED
+
+
+async def test_send_marketing_email_without_cabinet_url_fails(
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    start_dispatch: RecordingDispatch,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    admin: UserDto,
+    with_smtp: None,
+) -> None:
+    use_case = SendBroadcastUseCase(
+        broadcast_repository,
+        settings_repository,
+        config.model_copy(update={"web_cabinet_url": " "}),
+        start_dispatch,
+        uow,
+        event_publisher,
+    )
+    draft = await _make(broadcast_repository, category=BroadcastCategory.MARKETING, **_EMAIL_ONLY)
+    with pytest.raises(ValidationError) as caught:
+        await use_case(admin, SendBroadcastDto(broadcast_id=draft.id))
+    assert caught.value.code == ErrorCode.BROADCAST_UNSUBSCRIBE_URL_MISSING
+
+
+async def test_send_service_email_without_cabinet_url_ok(
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    config: AppConfig,
+    start_dispatch: RecordingDispatch,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    admin: UserDto,
+    with_smtp: None,
+) -> None:
+    use_case = SendBroadcastUseCase(
+        broadcast_repository,
+        settings_repository,
+        config.model_copy(update={"web_cabinet_url": ""}),
+        start_dispatch,
+        uow,
+        event_publisher,
+    )
+    draft = await _make(broadcast_repository, category=BroadcastCategory.SERVICE, **_EMAIL_ONLY)
+    result = await use_case(admin, SendBroadcastDto(broadcast_id=draft.id))
+    assert result.status is BroadcastStatus.SCHEDULED
 
 
 async def test_send_to_channel_requires_channel(
@@ -946,6 +1043,8 @@ async def _add_recipient(
         broadcast.id,
         BroadcastAudienceDto(user_ids=[customer.id]),
         broadcast.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
         datetime_now(),
     )
 
@@ -1173,3 +1272,61 @@ async def test_rejected_media_leaves_the_upload_for_the_caller_to_remove(
 
     assert data.source.exists()
     data.source.unlink()
+
+
+async def test_test_send_rejects_email_only_broadcast(
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    promocode_repository: PromocodeRepository,
+    translation_repository: TranslationRepository,
+    media_config: AppConfig,
+    uow: UnitOfWork,
+    with_token: None,
+) -> None:
+    actor = await user_repository.create(
+        CreateUserDto(name="Zed", role=Role.ADMIN, login="bc-tester4", telegram_id=9460)
+    )
+    telegram = MockTelegram(ok_response)
+    use_case = _test_use_case(
+        telegram,
+        broadcast_repository,
+        settings_repository,
+        promocode_repository,
+        translation_repository,
+        media_config,
+        uow,
+    )
+    email_only = await _make(broadcast_repository, delivery=BroadcastDelivery.EMAIL, contents={})
+    with pytest.raises(ValidationError) as caught:
+        await use_case(actor, email_only.id)
+    assert caught.value.code == ErrorCode.BROADCAST_DELIVERY_INVALID
+    assert telegram.requests == []
+
+
+async def test_media_rejected_on_email_only_broadcast(
+    media_use_case: SetBroadcastMediaUseCase,
+    broadcast_repository: BroadcastRepository,
+    admin: UserDto,
+) -> None:
+    email_only = await _make(broadcast_repository, delivery=BroadcastDelivery.EMAIL, contents={})
+    with pytest.raises(ValidationError) as caught:
+        await media_use_case(admin, _photo(email_only.id))
+    assert caught.value.code == ErrorCode.BROADCAST_DELIVERY_INVALID
+
+
+async def test_media_can_always_be_removed_from_email_only_broadcast(
+    broadcast_repository: BroadcastRepository,
+    media_config: AppConfig,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    admin: UserDto,
+) -> None:
+    email_only = await _make(broadcast_repository, delivery=BroadcastDelivery.EMAIL, contents={})
+    await broadcast_repository.update_fields(
+        email_only.id, media_type=BroadcastMediaType.PHOTO, media_extension="jpg"
+    )
+    cleared = await DeleteBroadcastMediaUseCase(
+        broadcast_repository, media_config, uow, event_publisher
+    )(admin, email_only.id)
+    assert cleared.media_type is None

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Final, Optional
 
-from sqlalchemy import ColumnElement, and_, delete, func, or_, select, update
+from sqlalchemy import ColumnElement, and_, delete, func, or_, select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -142,10 +142,13 @@ class AccountMergeRepository:
             await self.session.execute(update(column.class_).where(column == s).values({column: t}))
 
         await self._move_deduplicated(
-            BroadcastRecipient.user_id, BroadcastRecipient.broadcast_id, s, t
+            BroadcastRecipient.user_id,
+            (BroadcastRecipient.broadcast_id, BroadcastRecipient.channel),
+            s,
+            t,
         )
         await self._move_deduplicated(
-            AnnouncementView.user_id, AnnouncementView.announcement_id, s, t
+            AnnouncementView.user_id, (AnnouncementView.announcement_id,), s, t
         )
         await self._keep_earliest(
             PaymentWaitlistEntry.user_id, PaymentWaitlistEntry.created_at, s, t
@@ -157,11 +160,15 @@ class AccountMergeRepository:
         await self.session.flush()
 
     async def _move_deduplicated(
-        self, user_col: InstrumentedAttribute[int], key: InstrumentedAttribute[Any], s: int, t: int
+        self,
+        user_col: InstrumentedAttribute[int],
+        keys: tuple[InstrumentedAttribute[Any], ...],
+        s: int,
+        t: int,
     ) -> None:
         model = user_col.class_
-        taken = select(key).where(user_col == t)
-        await self.session.execute(delete(model).where(user_col == s, key.in_(taken)))
+        taken = select(*keys).where(user_col == t)
+        await self.session.execute(delete(model).where(user_col == s, tuple_(*keys).in_(taken)))
         await self.session.execute(update(model).where(user_col == s).values({user_col: t}))
 
     async def _keep_earliest(

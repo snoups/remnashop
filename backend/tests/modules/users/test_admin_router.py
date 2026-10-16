@@ -6,13 +6,17 @@ import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
 from pydantic import ValidationError as PydanticValidationError
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import BlacklistKind, Locale, Role, SessionAudience
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError as DomainValidationError
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.password import PASSWORD_MIN_LENGTH
 from app.core.security.permissions import Permission
@@ -20,9 +24,11 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.providers import get_module_providers
+from app.modules.users import unsubscribe_token
 from app.modules.users.api.schemas import PromoteAdminRequest
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.usecases import UnsubscribeMarketingUseCase
 
 
 class _TestSessionProvider(Provider):
@@ -75,7 +81,7 @@ async def _issue_token(
     session = await session_repository.create(
         CreateSessionDto(
             user_id=user_id,
-            refresh_token_hash=hash_refresh_token("test-refresh-token"),
+            refresh_token_hash=hash_refresh_token(f"test-refresh-token-{user_id}"),
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.now(timezone.utc) + timedelta(days=30),
@@ -737,3 +743,103 @@ def test_promote_request_needs_exactly_one_identifier(payload: dict[str, object]
 
 def test_promote_request_accepts_user_id_alone() -> None:
     assert PromoteAdminRequest.model_validate({"user_id": 7}).user_id == 7
+
+
+_UNSUBSCRIBE_URL = "/api/v1/cabinet/unsubscribe"
+
+
+async def test_unsubscribe_sets_opt_out_idempotently(
+    user_repository: UserRepository, uow: UnitOfWork, config: AppConfig
+) -> None:
+    user = await _create(user_repository, uow, name="sub", email="sub@mail.ru")
+    use_case = UnsubscribeMarketingUseCase(user_repository, uow, config)
+    token = unsubscribe_token(user.id, config.crypt_key.get_secret_value())
+
+    await use_case.execute(token)
+    await use_case.execute(token)
+
+    loaded = await user_repository.find_by_id(user.id)
+    assert loaded is not None and loaded.marketing_opt_out is True
+
+
+@pytest.mark.parametrize("kind", ["garbage", "unknown", "deleted"])
+async def test_unsubscribe_bad_token(
+    user_repository: UserRepository, uow: UnitOfWork, config: AppConfig, kind: str
+) -> None:
+    secret = config.crypt_key.get_secret_value()
+    if kind == "garbage":
+        token = "42.AAAA"
+    elif kind == "unknown":
+        token = unsubscribe_token(999999999, secret)
+    else:
+        user = await _create(user_repository, uow, name="gone", email="gone@mail.ru")
+        async with uow:
+            await user_repository.session.execute(
+                update(User).where(User.id == user.id).values(deleted_at=datetime.now(timezone.utc))
+            )
+        token = unsubscribe_token(user.id, secret)
+
+    with pytest.raises(DomainValidationError) as error:
+        await UnsubscribeMarketingUseCase(user_repository, uow, config).execute(token)
+    assert error.value.code is ErrorCode.UNSUBSCRIBE_TOKEN_INVALID
+
+
+async def test_unsubscribe_route(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    user = await _create(user_repository, uow, name="one-click", email="oc@mail.ru")
+    token = unsubscribe_token(user.id, config.crypt_key.get_secret_value())
+
+    response = await client.post(
+        f"{_UNSUBSCRIBE_URL}?token={token}",
+        content="List-Unsubscribe=One-Click",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert response.status_code == 204
+    loaded = await user_repository.find_by_id(user.id)
+    assert loaded is not None and loaded.marketing_opt_out is True
+
+    bad = await client.post(f"{_UNSUBSCRIBE_URL}?token=1.AAAA")
+    assert bad.status_code == 400
+    assert bad.json()["code"] == ErrorCode.UNSUBSCRIBE_TOKEN_INVALID.name
+
+    assert (await client.get(f"{_UNSUBSCRIBE_URL}?token={token}")).status_code == 405
+
+
+async def test_clear_undeliverable(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    target = await _create(user_repository, uow, name="bounced", email="bounced@mail.ru")
+    async with uow:
+        await user_repository.set_email_undeliverable(target.id, datetime.now(timezone.utc))
+    url = f"/api/v1/users/{target.id}/actions/clear-email-undeliverable"
+
+    response = await client.post(url, headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    assert response.json()["email_undeliverable_at"] is None
+    loaded = await user_repository.find_by_id(target.id)
+    assert loaded is not None and loaded.email_undeliverable_at is None
+
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="norevoke",
+                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
+                name="norevoke",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_revokes=[Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR.value],
+            )
+        )
+    admin_token = await _issue_token(admin.id, session_repository, config)
+    denied = await client.post(url, headers={"Authorization": f"Bearer {admin_token}"})
+    assert denied.status_code == 403

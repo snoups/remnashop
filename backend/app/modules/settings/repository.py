@@ -14,7 +14,7 @@ from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
-from app.core.enums import AppearanceImageKind
+from app.core.enums import AppearanceImageKind, SmtpSecurity
 from app.modules.settings.dto import (
     AccessSettingsDto,
     AppearanceSettingsDto,
@@ -157,6 +157,19 @@ class SettingsRepository:
         row = await self._get_or_create_singleton(EmailSettings)
         apply_partial_update(row, data)
 
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_email_dto(row)
+
+    async def reset_bulk_email_settings(self) -> EmailSettingsDto:
+        row = await self._get_or_create_singleton(EmailSettings)
+        row.bulk_host = None
+        row.bulk_port = 587
+        row.bulk_security = SmtpSecurity.STARTTLS
+        row.bulk_username = None
+        row.bulk_password = None
+        row.bulk_from_address = None
+        row.bulk_from_name = None
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_email_dto(row)

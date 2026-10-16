@@ -18,7 +18,6 @@ class PreviewBroadcastAudienceUseCase(UseCase[PreviewAudienceDto, AudiencePrevie
     async def _execute(self, actor: Actor, data: PreviewAudienceDto) -> AudiencePreviewDto:
         validate_audience(data.audience)
         async with self._uow:
-            by_locale = await self._broadcast_repository.count_audience(
-                data.audience, data.category, datetime_now()
+            return await self._broadcast_repository.count_audience(
+                data.audience, data.category, data.delivery, data.email_fallback, datetime_now()
             )
-        return AudiencePreviewDto(total=sum(by_locale.values()), by_locale=by_locale)

@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut, apiUpload } from "@shared/api/http";
+import { apiDelete, apiGet, apiGetRaw, apiPost, apiPut, apiUpload } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 import type { VariableOption } from "@entities/dialogs/api";
 
@@ -7,7 +7,9 @@ export type BroadcastCategory = "SERVICE" | "MARKETING";
 export type BroadcastRecipientStatus = "PENDING" | "SENT" | "FAILED" | "BLOCKED" | "CANCELED" | "RECALLED";
 export type BroadcastButtonKind = "URL" | "PROMOCODE" | "MENU";
 export type BroadcastMediaType = "PHOTO" | "VIDEO" | "ANIMATION" | "DOCUMENT";
-export type SubscriptionFilter = "ACTIVE" | "TRIAL" | "EXPIRED" | "NONE";
+export type SubscriptionFilter = "ACTIVE" | "TRIAL" | "EXPIRED" | "LIMITED" | "NONE";
+export type BroadcastDelivery = "TELEGRAM" | "EMAIL" | "ALL";
+export type BroadcastChannel = "TELEGRAM" | "EMAIL";
 
 export interface BroadcastAudience {
   user_ids: number[];
@@ -15,17 +17,25 @@ export interface BroadcastAudience {
   plan_ids: number[];
   expires_within_days: number | null;
   expired_within_days: number | null;
+  not_connected_within_days: number | null;
   paid: boolean | null;
   locales: string[];
   registered_from: string | null;
   registered_to: string | null;
   ad_link_ids: number[];
   referred: boolean | null;
+  has_telegram: boolean | null;
+  has_email: boolean | null;
 }
 
 export interface BroadcastContent {
   text: string;
   button_labels: string[];
+}
+
+export interface BroadcastEmailContent {
+  subject: string;
+  html: string;
 }
 
 export interface BroadcastButton {
@@ -40,7 +50,10 @@ export interface Broadcast {
   category: BroadcastCategory;
   audience: BroadcastAudience;
   default_locale: string;
+  delivery: BroadcastDelivery;
+  email_fallback: boolean;
   contents: Record<string, BroadcastContent>;
+  email_contents: Record<string, BroadcastEmailContent>;
   buttons: BroadcastButton[];
   promocode_id: number | null;
   post_to_channel: boolean;
@@ -70,7 +83,10 @@ export interface BroadcastInput {
   category: BroadcastCategory;
   audience: BroadcastAudience;
   default_locale: string;
+  delivery: BroadcastDelivery;
+  email_fallback: boolean;
   contents: Record<string, BroadcastContent>;
+  email_contents: Record<string, BroadcastEmailContent>;
   buttons: BroadcastButton[];
   promocode_id: number | null;
   post_to_channel: boolean;
@@ -82,6 +98,8 @@ export interface BroadcastRecipient {
   user_name: string;
   username: string | null;
   telegram_id: number | null;
+  channel: BroadcastChannel;
+  email: string | null;
   language: string;
   status: BroadcastRecipientStatus;
   attempts: number;
@@ -96,11 +114,13 @@ export interface BroadcastSummary {
   processed_30d: number;
   opted_out: number;
   reachable_customers: number;
+  reachable_by_email: number;
 }
 
 export interface AudiencePreview {
   total: number;
   by_locale: Record<string, number>;
+  by_channel: Partial<Record<BroadcastChannel, number>>;
 }
 
 export const EMPTY_AUDIENCE: BroadcastAudience = {
@@ -109,12 +129,15 @@ export const EMPTY_AUDIENCE: BroadcastAudience = {
   plan_ids: [],
   expires_within_days: null,
   expired_within_days: null,
+  not_connected_within_days: null,
   paid: null,
   locales: [],
   registered_from: null,
   registered_to: null,
   ad_link_ids: [],
   referred: null,
+  has_telegram: null,
+  has_email: null,
 };
 
 export const DEFAULT_PAGE_SIZE = 50;
@@ -179,14 +202,34 @@ export function deleteBroadcastMedia(id: number): Promise<Broadcast> {
   return apiDelete<Broadcast>(`/broadcasts/${id}/media`);
 }
 
+export interface BroadcastEmailImage {
+  id: number;
+  content_type: string;
+  size_bytes: number;
+}
+
+export function uploadEmailImage(broadcastId: number, file: File): Promise<BroadcastEmailImage> {
+  return apiUpload<BroadcastEmailImage>(`/broadcasts/${broadcastId}/email-images`, file, "POST");
+}
+
+export async function fetchEmailImage(broadcastId: number, imageId: number): Promise<Blob> {
+  const response = await apiGetRaw(`/broadcasts/${broadcastId}/email-images/${imageId}`);
+  return response.blob();
+}
+
 export function previewAudience(
   audience: BroadcastAudience,
   category: BroadcastCategory,
+  delivery: BroadcastDelivery,
+  emailFallback: boolean,
   signal?: AbortSignal,
 ): Promise<AudiencePreview> {
-  return apiPost<AudiencePreview, { audience: BroadcastAudience; category: BroadcastCategory }>(
+  return apiPost<
+    AudiencePreview,
+    { audience: BroadcastAudience; category: BroadcastCategory; delivery: BroadcastDelivery; email_fallback: boolean }
+  >(
     "/broadcasts/actions/preview-audience",
-    { audience, category },
+    { audience, category, delivery, email_fallback: emailFallback },
     signal,
   );
 }
@@ -213,8 +256,23 @@ export function sendTestBroadcast(id: number): Promise<void> {
   return apiPost<void, Record<string, never>>(`/broadcasts/${id}/actions/send-test`, {});
 }
 
+export interface BroadcastEmailPreview {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export function previewBroadcastEmail(id: number, locale: string): Promise<BroadcastEmailPreview> {
+  return apiPost<BroadcastEmailPreview, { locale: string }>(`/broadcasts/${id}/actions/preview-email`, { locale });
+}
+
+export function sendTestBroadcastEmail(id: number, locale: string, to: string): Promise<void> {
+  return apiPost<void, { locale: string; to: string }>(`/broadcasts/${id}/actions/send-test-email`, { locale, to });
+}
+
 export interface BroadcastRecipientFilters {
   status?: BroadcastRecipientStatus;
+  channel?: BroadcastChannel;
   page?: number;
   pageSize?: number;
 }
@@ -226,6 +284,7 @@ export function listBroadcastRecipients(
 ): Promise<ListResponse<BroadcastRecipient>> {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
+  if (filters.channel) params.set("channel", filters.channel);
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
   return apiGet<ListResponse<BroadcastRecipient>>(`/broadcasts/${id}/recipients?${params.toString()}`, signal);

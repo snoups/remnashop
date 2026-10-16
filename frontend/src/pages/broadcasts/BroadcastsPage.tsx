@@ -167,7 +167,7 @@ export function BroadcastsPage() {
       </div>
 
       {canViewSummary && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <KpiTile
             label={t("broadcasts.kpi.sending")}
             value={summary ? String(count("SENDING")) : none}
@@ -199,6 +199,12 @@ export function BroadcastsPage() {
                 : undefined
             }
           />
+          <div className="col-span-2 flex lg:col-span-1 [&>*]:flex-1">
+            <KpiTile
+              label={t("broadcasts.kpi.reachableByEmail")}
+              value={summary ? summary.reachable_by_email.toLocaleString(i18n.language) : none}
+            />
+          </div>
         </div>
       )}
 

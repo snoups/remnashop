@@ -6,7 +6,7 @@ import aiosmtplib
 
 from app.core.enums import SmtpSecurity
 from app.modules.email.dto import EmailMessageDto
-from app.modules.settings import AppearanceImageDto, EmailSettingsDto
+from app.modules.settings import AppearanceImageDto, SmtpProfileDto
 
 # a dropped established session (SMTPServerDisconnected, also an OSError) says
 # nothing about the server being unreachable
@@ -17,22 +17,23 @@ _CONNECT_ERRORS: Final[tuple[type[Exception], ...]] = (
 
 
 class EmailSendError(Exception):
-    def __init__(self, message: str, *, connection: bool = False) -> None:
+    def __init__(self, message: str, *, connection: bool = False, auth: bool = False) -> None:
         super().__init__(message)
         self.connection = connection
+        self.auth = auth
 
 
 class SmtpSender:
     async def send(
         self,
-        settings: EmailSettingsDto,
+        profile: SmtpProfileDto,
         message: EmailMessageDto,
         logo: Optional[AppearanceImageDto] = None,
     ) -> None:
-        if settings.host is None or settings.from_address is None:
+        if profile.host is None or profile.from_address is None:
             raise EmailSendError("SMTP is not configured")
         mime = EmailMessage()
-        mime["From"] = formataddr((settings.from_name or "", settings.from_address))
+        mime["From"] = formataddr((profile.from_name or "", profile.from_address))
         mime["To"] = message.to
         mime["Subject"] = message.subject
         mime.set_content(message.text)
@@ -45,12 +46,12 @@ class SmtpSender:
         try:
             await aiosmtplib.send(
                 mime,
-                hostname=settings.host,
-                port=settings.port,
-                username=settings.username,
-                password=settings.password.get_secret_value() if settings.password else None,
-                use_tls=settings.security is SmtpSecurity.TLS,
-                start_tls=settings.security is SmtpSecurity.STARTTLS,
+                hostname=profile.host,
+                port=profile.port,
+                username=profile.username,
+                password=profile.password.get_secret_value() if profile.password else None,
+                use_tls=profile.security is SmtpSecurity.TLS,
+                start_tls=profile.security is SmtpSecurity.STARTTLS,
                 timeout=15,
             )
         except (aiosmtplib.SMTPException, OSError) as error:

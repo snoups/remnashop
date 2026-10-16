@@ -4,6 +4,7 @@ import {
   GitMerge,
   History,
   Lock,
+  MailCheck,
   MonitorSmartphone,
   Receipt,
   RotateCcw,
@@ -190,6 +191,9 @@ function UserDetailsDialogBody({
                   : []),
                 ...(available.includes("bindTelegram")
                   ? [{ label: t("users.telegram.action"), icon: Send, onClick: () => actions.run("bindTelegram", user) }]
+                  : []),
+                ...(available.includes("clearEmailUndeliverable")
+                  ? [{ label: t("users.emailUndeliverable.clear"), icon: MailCheck, onClick: () => actions.run("clearEmailUndeliverable", user) }]
                   : []),
                 ...(available.includes("unblock")
                   ? [{ label: t("users.unblock.action"), icon: Unlock, onClick: () => actions.run("unblock", user) }]

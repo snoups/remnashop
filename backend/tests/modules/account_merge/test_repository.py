@@ -20,6 +20,7 @@ from app.core.db.models import (
 )
 from app.core.enums import (
     BroadcastCategory,
+    BroadcastChannel,
     BroadcastRecipientStatus,
     BroadcastStatus,
     Locale,
@@ -244,6 +245,49 @@ async def test_reassign_dedups_broadcast_recipients(
     assert sorted((r.broadcast_id, r.user_id) for r in rows) == sorted(
         [(shared.id, target.id), (solo.id, target.id)]
     )
+
+
+async def test_reassign_keeps_recipient_rows_of_other_channels(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source = await user_repository.create(CreateUserDto(name="s"))
+    target = await user_repository.create(CreateUserDto(name="t"))
+    broadcast = Broadcast(
+        status=BroadcastStatus.COMPLETED,
+        category=BroadcastCategory.SERVICE,
+        audience={},
+        default_locale=Locale.EN,
+        contents={},
+        buttons=[],
+    )
+    session.add(broadcast)
+    await session.flush()
+    status = BroadcastRecipientStatus.SENT
+    session.add_all(
+        [
+            BroadcastRecipient(
+                broadcast_id=broadcast.id,
+                user_id=source.id,
+                status=status,
+                channel=BroadcastChannel.EMAIL,
+            ),
+            BroadcastRecipient(
+                broadcast_id=broadcast.id,
+                user_id=target.id,
+                status=status,
+                channel=BroadcastChannel.TELEGRAM,
+            ),
+        ]
+    )
+    await session.flush()
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    rows = (await session.scalars(select(BroadcastRecipient))).all()
+    assert sorted((r.user_id, r.channel) for r in rows) == [
+        (target.id, BroadcastChannel.EMAIL),
+        (target.id, BroadcastChannel.TELEGRAM),
+    ]
 
 
 async def test_reassign_dedups_announcement_views(

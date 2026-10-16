@@ -34,6 +34,7 @@ import { bounceTap } from "@shared/lib/bounceState";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { InfoRow } from "@shared/ui/InfoRow";
@@ -118,7 +119,8 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           </InfoRow>
         )}
         <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user.email ?? undefined} mono>
-          {user.email ?? dash}
+          <span className="truncate">{user.email ?? dash}</span>
+          {user.email_undeliverable_at && <Badge tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
         </InfoRow>
         <InfoRow icon={Languages} label={t("users.details.language")} copyValue={language}>
           {language}

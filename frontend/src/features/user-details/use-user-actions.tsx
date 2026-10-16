@@ -6,6 +6,7 @@ import { resetUserReferralCode } from "@entities/referrals/api";
 import {
   type UserListItem,
   blockUser,
+  clearEmailUndeliverable,
   deleteUser,
   unblockUser,
 } from "@entities/user/api";
@@ -27,6 +28,7 @@ export type UserAction =
   | "block"
   | "unblock"
   | "resetReferralCode"
+  | "clearEmailUndeliverable"
   | "merge"
   | "delete";
 
@@ -113,6 +115,9 @@ export function useUserActions({
       ...(user.referral_code && permissions.includes("REFERRALS_CODE_RESET")
         ? ["resetReferralCode" as const]
         : []),
+      ...(user.email_undeliverable_at && permissions.includes("USERS_EMAIL_UNDELIVERABLE_CLEAR")
+        ? ["clearEmailUndeliverable" as const]
+        : []),
       ...(canTouchStaff &&
       permissions.includes("USERS_MERGE") &&
       permissions.includes("USERS_MERGE_PREVIEW")
@@ -145,6 +150,15 @@ export function useUserActions({
     }
   };
 
+  const clearUndeliverable = async (user: UserListItem) => {
+    try {
+      onUpdated(await clearEmailUndeliverable(user.id));
+      toast.success(t("users.emailUndeliverable.cleared"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
+    }
+  };
+
   const remove = async (user: UserListItem) => {
     try {
       await (user.role === "ADMIN"
@@ -158,6 +172,7 @@ export function useUserActions({
 
   const run = (action: UserAction, user: UserListItem) => {
     if (action === "unblock") void setBlocked(user, false);
+    else if (action === "clearEmailUndeliverable") void clearUndeliverable(user);
     // blocking an admin also demotes them and drops their sessions, so confirm first
     else if (action === "block") {
       if (user.role === "ADMIN") setPending({ action: "blockAdmin", user });

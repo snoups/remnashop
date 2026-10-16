@@ -48,6 +48,10 @@ class SetBroadcastMediaUseCase(UseCase[SetBroadcastMediaDto, BroadcastDto]):
 
         async with self._uow:
             current = await lock_editable(self._broadcast_repository, data.broadcast_id)
+            if not current.sends_telegram:
+                raise ValidationError(
+                    "Media needs Telegram delivery", code=ErrorCode.BROADCAST_DELIVERY_INVALID
+                )
             validate_text_lengths(current.contents, has_media=True)
             version = current.media_version + 1
             await self._broadcast_repository.update_fields(

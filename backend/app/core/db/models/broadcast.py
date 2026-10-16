@@ -9,6 +9,8 @@ from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import (
     BroadcastCategory,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastMediaType,
     BroadcastRecipientStatus,
     BroadcastStatus,
@@ -50,18 +52,29 @@ class Broadcast(BaseSql, TimestampMixin):
     failed_count: Mapped[int] = mapped_column(default=0, server_default="0")
     blocked_count: Mapped[int] = mapped_column(default=0, server_default="0")
     recalled_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    delivery: Mapped[BroadcastDelivery] = mapped_column(
+        default=BroadcastDelivery.TELEGRAM, server_default="TELEGRAM"
+    )
+    email_fallback: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # {locale: {subject, html}}, like contents
+    email_contents: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
 class BroadcastRecipient(BaseSql):
     __tablename__ = "broadcast_recipients"
     __table_args__ = (
-        UniqueConstraint("broadcast_id", "user_id", name="uq_broadcast_recipients_user"),
+        UniqueConstraint(
+            "broadcast_id", "user_id", "channel", name="uq_broadcast_recipients_user_channel"
+        ),
         Index("ix_broadcast_recipients_status", "broadcast_id", "status"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     broadcast_id: Mapped[int] = mapped_column(ForeignKey("broadcasts.id", ondelete="CASCADE"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    channel: Mapped[BroadcastChannel] = mapped_column(
+        default=BroadcastChannel.TELEGRAM, server_default="TELEGRAM"
+    )
     status: Mapped[BroadcastRecipientStatus]
     attempts: Mapped[int] = mapped_column(default=0, server_default="0")
     telegram_message_id: Mapped[Optional[int]] = mapped_column(BigInteger)
@@ -69,3 +82,15 @@ class BroadcastRecipient(BaseSql):
     sent_at: Mapped[Optional[datetime]]
     # lease of a deliver batch, so an overlapping batch can't send the row twice
     claimed_until: Mapped[Optional[datetime]]
+
+
+class BroadcastEmailImage(BaseSql, TimestampMixin):
+    __tablename__ = "broadcast_email_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    broadcast_id: Mapped[int] = mapped_column(
+        ForeignKey("broadcasts.id", ondelete="CASCADE"), index=True
+    )
+    content_type: Mapped[str] = mapped_column(String(32))
+    extension: Mapped[str] = mapped_column(String(8))
+    size_bytes: Mapped[int]

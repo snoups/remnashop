@@ -623,6 +623,7 @@
       "UserPersonalDiscountChangedEvent": "Personal discount changed",
       "UserPurchaseDiscountChangedEvent": "Purchase discount changed",
       "UserUnblockedEvent": "User unblocked",
+      "UserEmailUndeliverableClearedEvent": "Undeliverable email mark cleared",
       "UsersBulkUnblockedEvent": "Bulk unblock",
       "TransactionRefundedEvent": "Transaction refunded",
       "TransactionPartiallyRefundedEvent": "Transaction partially refunded",
@@ -936,6 +937,11 @@
       "mergeWith": "Merge with #{{id}}",
       "done": "Telegram ID saved.",
       "error": "Failed to save the Telegram ID."
+    },
+    "emailUndeliverable": {
+      "badge": "Undeliverable",
+      "clear": "Clear undeliverable mark",
+      "cleared": "Undeliverable mark cleared."
     }
   },
   "announcements": {
@@ -1321,6 +1327,34 @@
       "testSending": "Sending…",
       "testSent": "Test email sent."
     },
+    "emailBulk": {
+      "hostLabel": "SMTP host",
+      "portLabel": "Port",
+      "securityLabel": "Encryption",
+      "security": {
+        "STARTTLS": "STARTTLS",
+        "TLS": "TLS",
+        "NONE": "None"
+      },
+      "usernameLabel": "Username",
+      "passwordLabel": "Password",
+      "passwordSet": "Set — leave blank to keep",
+      "passwordUnset": "Not set",
+      "fromAddressLabel": "From address",
+      "fromNameLabel": "From name",
+      "testButton": "Send test email",
+      "testSending": "Sending…",
+      "testSent": "Test email sent.",
+      "title": "Broadcast SMTP",
+      "description": "A separate SMTP server for broadcasts; without it, broadcasts go through the main one",
+      "loadError": "Failed to load broadcast SMTP settings.",
+      "rateLabel": "Emails per minute",
+      "rateHint": "From 1 to 1000. Applies to broadcasts even without a separate server.",
+      "rateInvalid": "Enter a whole number from 1 to 1000.",
+      "resetTitle": "Reset broadcast SMTP?",
+      "resetMessage": "The separate server is removed and broadcasts go through the main SMTP again. The rate limit is kept.",
+      "resetDone": "Broadcast SMTP reset."
+    },
     "cabinetAuth": {
       "title": "Cabinet sign-in",
       "description": "Methods customers can use to sign in to the web cabinet",
@@ -1531,6 +1565,7 @@
     "EMAIL_SETTINGS_VIEW": "View email settings",
     "EMAIL_SETTINGS_MANAGE": "Manage email settings",
     "EMAIL_SETTINGS_TEST": "Send a test email",
+    "EMAIL_SETTINGS_BULK_RESET": "Reset the broadcast SMTP profile",
     "CABINET_AUTH_SETTINGS_VIEW": "View cabinet sign-in methods",
     "CABINET_AUTH_SETTINGS_MANAGE": "Manage cabinet sign-in methods",
     "BANNERS_IMAGE_VIEW": "View banner image",
@@ -1632,6 +1667,10 @@
     "BROADCASTS_MEDIA_DELETE": "Delete broadcast media",
     "BROADCASTS_AUDIENCE_PREVIEW": "Preview broadcast audience",
     "BROADCASTS_SUMMARY_VIEW": "View broadcasts summary",
+    "BROADCASTS_EMAIL_IMAGE_ADD": "Upload images into broadcast emails",
+    "BROADCASTS_EMAIL_IMAGE_VIEW": "View broadcast email images",
+    "BROADCASTS_EMAIL_PREVIEW": "Preview broadcast emails",
+    "BROADCASTS_EMAIL_TEST_SEND": "Send a test broadcast email",
     "TRANSACTIONS_VIEW": "View transactions",
     "TRANSACTIONS_SUMMARY_VIEW": "View transaction summary",
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
@@ -1668,6 +1707,7 @@
     "BLACKLIST_SYNC": "Sync blacklist sources",
     "BLACKLIST_MATCHES_VIEW": "View users matched by the blacklist",
     "USERS_BLOCK": "Block users",
+    "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Clear the undeliverable email mark",
     "USERS_UNBLOCK": "Unblock users",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Unblock all blacklist matches",
     "AD_LINKS_VIEW": "View advertising links",
@@ -3232,6 +3272,11 @@
     "BROADCAST_RECALL_EXPIRED": "Telegram only allows deleting messages within 48 hours.",
     "BROADCAST_RECALL_IN_PROGRESS": "The recall is still running. Try again in a few minutes.",
     "BROADCAST_TITLE_TOO_LONG": "The title is too long.",
+    "BROADCAST_DELIVERY_INVALID": "This delivery option doesn't fit the chosen mode.",
+    "BROADCAST_EMAIL_HTML_INVALID": "The email contains unsupported formatting.",
+    "BROADCAST_EMAIL_IMAGE_INVALID": "The image doesn't fit the email limits.",
+    "BROADCAST_EMAIL_SUBJECT_INVALID": "Fill in the email subject, up to 200 characters.",
+    "BROADCAST_UNSUBSCRIBE_URL_MISSING": "Set the cabinet address: marketing emails need an unsubscribe link.",
     "BANNER_NAME_INVALID": "Invalid banner name.",
     "BANNER_NOT_FOUND": "Banner not found.",
     "BANNER_TOO_LARGE": "The banner file is too large.",
@@ -3437,6 +3482,7 @@
     "TRANSLATION_HAS_PLACEABLES": "Fluent placeables aren't supported here.",
     "TRANSLATION_NOT_FOUND": "Translation not found.",
     "TRIAL_NOT_AVAILABLE": "The trial isn't available.",
+    "UNSUBSCRIBE_TOKEN_INVALID": "The unsubscribe link is invalid.",
     "URL_HOST_NOT_PUBLIC": "The URL must point to a public address.",
     "URL_HOST_UNRESOLVABLE": "The URL host can't be resolved.",
     "URL_NOT_HTTPS": "Enter an https:// URL.",
@@ -3547,7 +3593,8 @@
       "delivered": "Delivered in 30 days",
       "deliveredShare": "{{percent}} of processed",
       "optedOut": "Opted out of promos",
-      "optedOutShare": "{{percent}} of customers with Telegram"
+      "optedOutShare": "{{percent}} of reachable customers",
+      "reachableByEmail": "Reachable by email"
     },
     "filters": {
       "all": "All",
@@ -3642,6 +3689,7 @@
           "ACTIVE": "Active",
           "TRIAL": "Trial",
           "EXPIRED": "Expired",
+          "LIMITED": "Traffic used up",
           "NONE": "No subscription"
         },
         "plans": "Plans",
@@ -3656,7 +3704,10 @@
         "registered": "Registered",
         "from": "From",
         "to": "To",
-        "bothDates": "Set both dates."
+        "bothDates": "Set both dates.",
+        "notConnected": "Not connected to VPN (days)",
+        "hasTelegram": "Telegram",
+        "hasEmail": "Email"
       },
       "channel": {
         "title": "Post to the channel",
@@ -3706,7 +3757,41 @@
       "savedUnscheduled": "Saved. The broadcast is off the schedule.",
       "openCard": "Open card",
       "sent": "Broadcast started.",
-      "scheduled": "Broadcast scheduled."
+      "scheduled": "Broadcast scheduled.",
+      "delivery": {
+        "title": "Delivery",
+        "option": {
+          "TELEGRAM": "Telegram",
+          "EMAIL": "Email only",
+          "ALL": "Telegram and email"
+        },
+        "hint": {
+          "TELEGRAM": "Sent by the bot to customers with Telegram.",
+          "EMAIL": "Sent as an email to customers with a confirmed address.",
+          "ALL": "Customers with Telegram get a message, customers with an email get a letter."
+        },
+        "fallback": {
+          "title": "Email customers without Telegram",
+          "hint": "Those who can’t be reached by the bot get a letter instead."
+        }
+      },
+      "email": {
+        "title": "Email",
+        "subject": "Email subject",
+        "imageHint": "PNG, JPEG or GIF up to 1 MB",
+        "imageSaveFirst": "Images can be added after the first save",
+        "imageError": "Failed to upload the image."
+      },
+      "emailPreview": {
+        "title": "Email preview",
+        "saveFirst": "Save to refresh the preview",
+        "error": "Failed to build the preview.",
+        "noSubject": "No subject",
+        "toPlaceholder": "Address for a test email",
+        "testButton": "Send test email",
+        "testSending": "Sending…",
+        "testSent": "Test email sent."
+      }
     },
     "details": {
       "loadError": "Failed to load the broadcast.",
@@ -3811,6 +3896,14 @@
           "done": "Broadcast deleted."
         }
       }
+    },
+    "channel": {
+      "TELEGRAM": "Telegram",
+      "EMAIL": "Email"
+    },
+    "recipients": {
+      "channel": "Channel",
+      "channelAll": "All channels"
     }
   }
 }

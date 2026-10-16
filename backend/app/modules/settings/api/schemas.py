@@ -166,6 +166,15 @@ class EmailSettingsResponse(BaseModel):
     from_address: Optional[str]
     from_name: Optional[str]
     is_configured: bool
+    bulk_host: Optional[str]
+    bulk_port: int
+    bulk_security: SmtpSecurity
+    bulk_username: Optional[str]
+    is_bulk_password_set: bool
+    bulk_from_address: Optional[str]
+    bulk_from_name: Optional[str]
+    bulk_rate_per_minute: int
+    is_bulk_configured: bool
 
 
 class UpdateEmailSettingsRequest(BaseModel):
@@ -178,6 +187,16 @@ class UpdateEmailSettingsRequest(BaseModel):
         None, min_length=1, max_length=255, pattern=r"^[^@\s]+@[^@\s]+$"
     )
     from_name: Optional[str] = Field(None, max_length=100)
+    bulk_host: Optional[str] = Field(None, min_length=1, max_length=255)
+    bulk_port: Optional[int] = Field(None, ge=1, le=65535)
+    bulk_security: Optional[SmtpSecurity] = None
+    bulk_username: Optional[str] = Field(None, max_length=255)
+    bulk_password: Optional[str] = Field(None, max_length=1024)
+    bulk_from_address: Optional[str] = Field(
+        None, min_length=1, max_length=255, pattern=r"^[^@\s]+@[^@\s]+$"
+    )
+    bulk_from_name: Optional[str] = Field(None, max_length=100)
+    bulk_rate_per_minute: Optional[int] = Field(None, ge=1, le=1000)
 
 
 class CabinetAuthSettingsResponse(BaseModel):

@@ -33,7 +33,7 @@ class CreateBroadcastUseCase(UseCase[SaveBroadcastDto, BroadcastDto]):
 
     async def _execute(self, actor: Actor, data: SaveBroadcastDto) -> BroadcastDto:
         validate_audience(data.audience)
-        validate_broadcast(data, has_media=False)
+        validate_broadcast(data, has_media=False, images={})
         async with self._uow:
             await assert_references(data, self._broadcast_repository, self._promocode_repository)
             created = await self._broadcast_repository.create(data, created_by=actor_user_id(actor))

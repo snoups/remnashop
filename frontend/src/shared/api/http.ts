@@ -265,7 +265,11 @@ export function apiDelete<TResponse, TBody = never>(
   });
 }
 
-export function apiUpload<TResponse>(path: string, body: FormData | Blob): Promise<TResponse> {
+export function apiUpload<TResponse>(
+  path: string,
+  body: FormData | Blob,
+  method: "PUT" | "POST" = "PUT",
+): Promise<TResponse> {
   // a Blob body carries its own type as Content-Type
-  return request<TResponse>(path, { method: "PUT", body });
+  return request<TResponse>(path, { method, body });
 }

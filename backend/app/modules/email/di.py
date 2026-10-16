@@ -2,6 +2,7 @@ from typing import cast
 
 from dishka import Provider, Scope, provide, provide_all
 
+from app.modules.email.batch import SmtpBatchSender
 from app.modules.email.dispatch import SendEmailDispatch
 from app.modules.email.sender import SmtpSender
 from app.modules.email.tasks import send_email_task
@@ -12,6 +13,7 @@ class EmailProvider(Provider):
     scope = Scope.REQUEST
 
     sender = provide(SmtpSender, scope=Scope.APP)
+    batch_sender = provide(SmtpBatchSender, scope=Scope.APP)
     use_cases = provide_all(SendEmailUseCase, SendTestEmailUseCase)
 
     @provide(scope=Scope.APP)

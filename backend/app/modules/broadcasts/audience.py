@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Final
+from typing import Final, Optional
 
 from sqlalchemy import ColumnElement, and_, exists, or_, select
 
@@ -10,12 +10,15 @@ from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.enums import (
     BroadcastCategory,
+    BroadcastChannel,
+    BroadcastDelivery,
     BroadcastSubscriptionFilter,
     Role,
     SubscriptionStatus,
     TransactionStatus,
 )
 from app.core.utils.time import range_end_utc, range_start_utc
+from app.modules.broadcasts.channels import sends_telegram
 from app.modules.broadcasts.dto import BroadcastAudienceDto
 
 _LIVE: Final[tuple[SubscriptionStatus, ...]] = (
@@ -39,6 +42,8 @@ def _subscription_bucket(bucket: BroadcastSubscriptionFilter) -> ColumnElement[b
         return _live(Subscription.is_trial.is_(True))
     if bucket is BroadcastSubscriptionFilter.EXPIRED:
         return and_(_has_subscription(Subscription.status == SubscriptionStatus.EXPIRED), ~_live())
+    if bucket is BroadcastSubscriptionFilter.LIMITED:
+        return _has_subscription(Subscription.status == SubscriptionStatus.LIMITED)
     return ~_has_subscription(Subscription.status != SubscriptionStatus.DELETED)
 
 
@@ -84,6 +89,13 @@ def _subscription_conditions(
             )
         )
         conditions.append(~_live())
+    if audience.not_connected_within_days is not None:
+        conditions.append(
+            _live(
+                Subscription.first_connected_at.is_(None),
+                Subscription.created_at >= now - timedelta(days=audience.not_connected_within_days),
+            )
+        )
     return conditions
 
 
@@ -110,7 +122,26 @@ def _profile_conditions(audience: BroadcastAudienceDto) -> list[ColumnElement[bo
         )
     if audience.referred is not None:
         conditions.append(_flag(_REFERRED, audience.referred))
+    if audience.has_telegram is not None:
+        conditions.append(_flag(User.telegram_id.is_not(None), audience.has_telegram))
+    if audience.has_email is not None:
+        conditions.append(_flag(User.email.is_not(None), audience.has_email))
     return conditions
+
+
+def deliverable_email() -> ColumnElement[bool]:
+    return and_(User.email.is_not(None), User.email_undeliverable_at.is_(None))
+
+
+def channel_condition(
+    channel: BroadcastChannel, delivery: BroadcastDelivery, email_fallback: bool
+) -> Optional[ColumnElement[bool]]:
+    # None: the delivery mode never sends on this channel
+    if channel is BroadcastChannel.TELEGRAM:
+        return User.telegram_id.is_not(None) if sends_telegram(delivery) else None
+    if delivery is BroadcastDelivery.TELEGRAM:
+        return and_(User.telegram_id.is_(None), deliverable_email()) if email_fallback else None
+    return deliverable_email()
 
 
 def audience_predicate(
@@ -120,7 +151,6 @@ def audience_predicate(
         User.role == Role.USER,
         User.deleted_at.is_(None),
         User.is_blocked.is_(False),
-        User.telegram_id.is_not(None),
     ]
     if category is BroadcastCategory.MARKETING:
         conditions.append(User.marketing_opt_out.is_(False))

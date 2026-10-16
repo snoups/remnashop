@@ -554,6 +554,19 @@ def upgrade() -> None:
         sa.Column("password", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("from_address", sa.String(length=255), nullable=True),
         sa.Column("from_name", sa.String(length=100), nullable=True),
+        sa.Column("bulk_host", sa.String(length=255), nullable=True),
+        sa.Column("bulk_port", sa.Integer(), server_default="587", nullable=False),
+        sa.Column(
+            "bulk_security",
+            sa.Enum("STARTTLS", "TLS", "NONE", name="smtpsecurity"),
+            server_default="STARTTLS",
+            nullable=False,
+        ),
+        sa.Column("bulk_username", sa.String(length=255), nullable=True),
+        sa.Column("bulk_password", app.core.db.encrypted_string.EncryptedString(), nullable=True),
+        sa.Column("bulk_from_address", sa.String(length=255), nullable=True),
+        sa.Column("bulk_from_name", sa.String(length=100), nullable=True),
+        sa.Column("bulk_rate_per_minute", sa.Integer(), server_default="60", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1133,6 +1146,7 @@ def upgrade() -> None:
         sa.Column("loyalty_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("loyalty_excluded", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("marketing_opt_out", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("email_undeliverable_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("rules_accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
@@ -1390,6 +1404,19 @@ def upgrade() -> None:
         sa.Column("blocked_count", sa.Integer(), server_default="0", nullable=False),
         sa.Column("recalled_count", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
+            "delivery",
+            sa.Enum("TELEGRAM", "EMAIL", "ALL", name="broadcastdelivery"),
+            server_default="TELEGRAM",
+            nullable=False,
+        ),
+        sa.Column("email_fallback", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "email_contents",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="{}",
+            nullable=False,
+        ),
+        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
@@ -1409,6 +1436,34 @@ def upgrade() -> None:
         op.f("ix_broadcasts_scheduled_at"), "broadcasts", ["scheduled_at"], unique=False
     )
     op.create_index(op.f("ix_broadcasts_status"), "broadcasts", ["status"], unique=False)
+    op.create_table(
+        "broadcast_email_images",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("broadcast_id", sa.Integer(), nullable=False),
+        sa.Column("content_type", sa.String(length=32), nullable=False),
+        sa.Column("extension", sa.String(length=8), nullable=False),
+        sa.Column("size_bytes", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_broadcast_email_images_broadcast_id"),
+        "broadcast_email_images",
+        ["broadcast_id"],
+        unique=False,
+    )
     op.create_table(
         "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -1737,6 +1792,12 @@ def upgrade() -> None:
         sa.Column("broadcast_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column(
+            "channel",
+            sa.Enum("TELEGRAM", "EMAIL", name="broadcastchannel"),
+            server_default="TELEGRAM",
+            nullable=False,
+        ),
+        sa.Column(
             "status",
             sa.Enum(
                 "PENDING",
@@ -1757,7 +1818,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("broadcast_id", "user_id", name="uq_broadcast_recipients_user"),
+        sa.UniqueConstraint(
+            "broadcast_id", "user_id", "channel", name="uq_broadcast_recipients_user_channel"
+        ),
     )
     op.create_index(
         "ix_broadcast_recipients_status",
@@ -2140,6 +2203,10 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
     op.drop_table("event_outbox")
+    op.drop_index(
+        op.f("ix_broadcast_email_images_broadcast_id"), table_name="broadcast_email_images"
+    )
+    op.drop_table("broadcast_email_images")
     op.drop_index(op.f("ix_broadcasts_status"), table_name="broadcasts")
     op.drop_index(op.f("ix_broadcasts_scheduled_at"), table_name="broadcasts")
     op.drop_table("broadcasts")

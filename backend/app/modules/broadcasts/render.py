@@ -15,7 +15,7 @@ from app.modules.broadcasts.telegram_api import OutgoingMedia
 from app.modules.translations import TranslationRepository
 
 UNSUBSCRIBE_KEY: Final[str] = "btn-broadcast.unsubscribe"
-_FALLBACK_UNSUBSCRIBE: Final[str] = "Unsubscribe"
+FALLBACK_UNSUBSCRIBE: Final[str] = "Unsubscribe"
 _DATE_FORMAT: Final[str] = "%d.%m.%Y"
 _MENU_START_PAYLOAD: Final[str] = "menu"
 
@@ -24,6 +24,21 @@ _MENU_START_PAYLOAD: Final[str] = "menu"
 class RenderedMessage:
     text: str
     reply_markup: Optional[dict[str, Any]]
+
+
+def recipient_values(
+    context: RecipientContextDto, now: datetime, promocode_code: Optional[str]
+) -> dict[str, str]:
+    return {
+        "name": context.name,
+        "username": f"@{context.username}" if context.username else "",
+        "plan": context.plan_name or "",
+        "expire_date": context.expire_at.strftime(_DATE_FORMAT) if context.expire_at else "",
+        "days_left": str(max((context.expire_at - now).days, 0)) if context.expire_at else "",
+        "bonus_days": str(context.bonus_days),
+        "points": str(context.points),
+        "promocode": promocode_code or "",
+    }
 
 
 class BroadcastRenderer:
@@ -76,22 +91,13 @@ class BroadcastRenderer:
 
     def render(self, context: RecipientContextDto, now: datetime) -> RenderedMessage:
         locale, content = self._content(context.language)
-        values = {
-            "name": context.name,
-            "username": f"@{context.username}" if context.username else "",
-            "plan": context.plan_name or "",
-            "expire_date": context.expire_at.strftime(_DATE_FORMAT) if context.expire_at else "",
-            "days_left": str(max((context.expire_at - now).days, 0)) if context.expire_at else "",
-            "bonus_days": str(context.bonus_days),
-            "points": str(context.points),
-            "promocode": self._promocode_code or "",
-        }
+        values = recipient_values(context, now, self._promocode_code)
         unsubscribe = None
         if self._broadcast.category is BroadcastCategory.MARKETING:
             unsubscribe = (
                 self._unsubscribe_labels.get(locale)
                 or self._unsubscribe_labels.get(self._broadcast.default_locale)
-                or _FALLBACK_UNSUBSCRIBE
+                or FALLBACK_UNSUBSCRIBE
             )
         return RenderedMessage(
             text=render_text(content.text, values),

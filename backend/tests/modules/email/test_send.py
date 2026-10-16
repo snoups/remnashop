@@ -10,11 +10,11 @@ from app.core.enums import Locale, Role, SmtpSecurity
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, RetryableTaskError, ValidationError
 from app.modules.email import EmailBrandDto
-from app.modules.email.dto import EmailMessageDto
+from app.modules.email.dto import EmailMessageDto, SendTestEmailDto
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_login_code
 from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
-from app.modules.settings import AppearanceImageDto, EmailSettingsDto
+from app.modules.settings import AppearanceImageDto, EmailSettingsDto, SmtpProfileDto
 
 _CONFIGURED = EmailSettingsDto(
     host="smtp.example.com",
@@ -50,15 +50,17 @@ class _Sender:
     def __init__(self, error: Optional[Exception] = None) -> None:
         self.error = error
         self.sent: list[EmailMessageDto] = []
+        self.profiles: list[SmtpProfileDto] = []
         self.calls = 0
 
     async def send(
         self,
-        settings: EmailSettingsDto,
+        settings: SmtpProfileDto,
         message: EmailMessageDto,
         logo: Optional[tuple[bytes, str]] = None,
     ) -> None:
         self.calls += 1
+        self.profiles.append(settings)
         if self.error:
             raise self.error
         self.sent.append(message)
@@ -114,7 +116,8 @@ async def test_sender_uses_tls_flags(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("app.modules.email.sender.aiosmtplib.send", fake_send)
     await SmtpSender().send(
-        _CONFIGURED, EmailMessageDto(to="a@b.c", subject="s", text="t", html="<p>t</p>")
+        _CONFIGURED.profile(bulk=False),
+        EmailMessageDto(to="a@b.c", subject="s", text="t", html="<p>t</p>"),
     )
 
     assert calls["use_tls"] is True and calls["start_tls"] is False
@@ -138,24 +141,26 @@ async def test_send_email_failure_is_retryable(redis: Redis) -> None:
 
 async def test_test_email_goes_to_actor_email() -> None:
     sender = _Sender()
-    await _test_case(_CONFIGURED, sender)(_Actor("me@x.y"))  # type: ignore[arg-type]
+    await _test_case(_CONFIGURED, sender)(_Actor("me@x.y"), SendTestEmailDto(bulk=False))  # type: ignore[arg-type]
     assert [m.to for m in sender.sent] == ["me@x.y"]
 
 
 async def test_test_email_falls_back_to_from_address() -> None:
     sender = _Sender()
-    await _test_case(_CONFIGURED, sender)(_Actor(None))  # type: ignore[arg-type]
+    await _test_case(_CONFIGURED, sender)(_Actor(None), SendTestEmailDto(bulk=False))  # type: ignore[arg-type]
     assert [m.to for m in sender.sent] == ["no-reply@example.com"]
 
 
 async def test_test_email_not_configured() -> None:
     with pytest.raises(ValidationError):
-        await _test_case(EmailSettingsDto(), _Sender())(_Actor(None))  # type: ignore[arg-type]
+        await _test_case(EmailSettingsDto(), _Sender())(_Actor(None), SendTestEmailDto(bulk=False))  # type: ignore[arg-type]
 
 
 async def test_test_email_send_failure_hides_smtp_text() -> None:
     with pytest.raises(ValidationError) as info:
-        await _test_case(_CONFIGURED, _Sender(EmailSendError("secret smtp text")))(_Actor(None))  # type: ignore[arg-type]
+        await _test_case(_CONFIGURED, _Sender(EmailSendError("secret smtp text")))(
+            _Actor(None), SendTestEmailDto(bulk=False)
+        )  # type: ignore[arg-type]
     assert "secret" not in str(info.value)
 
 
@@ -168,7 +173,7 @@ async def test_sender_attaches_inline_logo(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr("app.modules.email.sender.aiosmtplib.send", fake_send)
     settings = EmailSettingsDto(host="h", port=25, security=SmtpSecurity.NONE, from_address="a@b.c")
     await SmtpSender().send(
-        settings,
+        settings.profile(bulk=False),
         EmailMessageDto(to="x@y.z", subject="s", text="t", html='<img src="cid:logo">'),
         logo=AppearanceImageDto(data=b"\x89PNG", content_type="image/png"),
     )
@@ -222,6 +227,7 @@ async def test_missing_logo_still_sends(redis: Redis) -> None:
         (OSError("unreachable"), True),
         (aiosmtplib.SMTPServerDisconnected("dropped"), False),
         (aiosmtplib.SMTPRecipientRefused(550, "no", "a@b.c"), False),
+        (aiosmtplib.SMTPAuthenticationError(535, "bad credentials"), False),
     ],
 )
 async def test_only_connect_phase_failures_count_as_connection(
@@ -233,6 +239,24 @@ async def test_only_connect_phase_failures_count_as_connection(
     monkeypatch.setattr(aiosmtplib, "send", fail)
     with pytest.raises(EmailSendError) as raised:
         await SmtpSender().send(
-            _CONFIGURED, EmailMessageDto(to="a@b.c", subject="s", text="t", html="h")
+            _CONFIGURED.profile(bulk=False),
+            EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"),
         )
     assert raised.value.connection is connection
+
+
+async def test_test_email_uses_bulk_profile() -> None:
+    settings = _CONFIGURED.model_copy(
+        update={"bulk_host": "smtp.bulk", "bulk_from_address": "news@example.com"}
+    )
+    sender = _Sender()
+    await _test_case(settings, sender)(_Actor("me@x.y"), SendTestEmailDto(bulk=True))  # type: ignore[arg-type]
+    assert [(p.host, p.is_bulk) for p in sender.profiles] == [("smtp.bulk", True)]
+
+
+async def test_bulk_test_email_without_bulk_profile_is_not_configured() -> None:
+    sender = _Sender()
+    with pytest.raises(ValidationError) as info:
+        await _test_case(_CONFIGURED, sender)(_Actor("me@x.y"), SendTestEmailDto(bulk=True))  # type: ignore[arg-type]
+    assert info.value.code == ErrorCode.EMAIL_NOT_CONFIGURED
+    assert sender.sent == []

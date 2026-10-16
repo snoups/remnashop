@@ -186,6 +186,10 @@ class CabinetSignIn:
                     referral_code=codes.referral_code,
                 )
             )
+        elif user.email_undeliverable_at is not None:
+            # a received sign-in code proves the address works again
+            async with self._uow:
+                await self._user_repository.set_email_undeliverable(user.id, None)
         return await self.issue_for(user, client_ip, user_agent)
 
     async def oauth(

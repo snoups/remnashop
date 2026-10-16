@@ -11,7 +11,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.broadcasts.events import BroadcastChangedEvent
 from app.modules.broadcasts.repository import BroadcastRepository
-from app.modules.broadcasts.storage import delete_media
+from app.modules.broadcasts.storage import delete_all_email_images, delete_media
 
 
 class DeleteBroadcastUseCase(UseCase[int, None]):
@@ -44,4 +44,5 @@ class DeleteBroadcastUseCase(UseCase[int, None]):
             delete_media(
                 self._config.media_dir, data, current.media_version, current.media_extension
             )
+        delete_all_email_images(self._config.media_dir, data)
         logger.info(f"{actor.log} Deleted broadcast '{data}'")

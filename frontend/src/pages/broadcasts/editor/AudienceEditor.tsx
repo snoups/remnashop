@@ -23,7 +23,8 @@ import { UserRow } from "@shared/ui/UserRow";
 
 export type AudienceMode = "filters" | "users";
 
-const SUBSCRIPTIONS: SubscriptionFilter[] = ["ACTIVE", "TRIAL", "EXPIRED", "NONE"];
+const SUBSCRIPTIONS: SubscriptionFilter[] = ["ACTIVE", "TRIAL", "EXPIRED", "LIMITED", "NONE"];
+const MAX_NOT_CONNECTED_DAYS = 30;
 const DAY_PRESETS = [3, 7, 30, 90];
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_LIMIT = 6;
@@ -152,6 +153,11 @@ export function AudienceEditor({
       chip(days, value === days, t("broadcasts.editor.audience.withinDays", { count: days }), () => apply(days)),
     ),
   ];
+  const triState = (id: string, value: boolean | null, apply: (next: boolean | null) => void) => [
+    chip(`${id}-any`, value === null, t("broadcasts.editor.audience.any"), () => apply(null)),
+    chip(`${id}-yes`, value === true, t("common.yes"), () => apply(true)),
+    chip(`${id}-no`, value === false, t("common.no"), () => apply(false)),
+  ];
   const oneDateOnly = (audience.registered_from === null) !== (audience.registered_to === null);
 
   return (
@@ -203,10 +209,36 @@ export function AudienceEditor({
           <Row label={t("broadcasts.editor.audience.expired")}>
             {dayChips(audience.expired_within_days, (days) => set({ expired_within_days: days }))}
           </Row>
+          <Row label={t("broadcasts.editor.audience.notConnected")}>
+            <div className="w-24">
+              <TextInput
+                type="number"
+                min={1}
+                max={MAX_NOT_CONNECTED_DAYS}
+                inputMode="numeric"
+                disabled={disabled}
+                value={audience.not_connected_within_days ?? ""}
+                placeholder={t("broadcasts.editor.audience.any")}
+                onChange={(event) => {
+                  const days = Math.trunc(Number(event.target.value));
+                  set({
+                    not_connected_within_days:
+                      event.target.value === "" || !Number.isFinite(days)
+                        ? null
+                        : Math.min(Math.max(days, 1), MAX_NOT_CONNECTED_DAYS),
+                  });
+                }}
+              />
+            </div>
+          </Row>
           <Row label={t("broadcasts.editor.audience.paid")}>
-            {chip("any", audience.paid === null, t("broadcasts.editor.audience.any"), () => set({ paid: null }))}
-            {chip("yes", audience.paid === true, t("common.yes"), () => set({ paid: true }))}
-            {chip("no", audience.paid === false, t("common.no"), () => set({ paid: false }))}
+            {triState("paid", audience.paid, (paid) => set({ paid }))}
+          </Row>
+          <Row label={t("broadcasts.editor.audience.hasTelegram")}>
+            {triState("telegram", audience.has_telegram, (has_telegram) => set({ has_telegram }))}
+          </Row>
+          <Row label={t("broadcasts.editor.audience.hasEmail")}>
+            {triState("email", audience.has_email, (has_email) => set({ has_email }))}
           </Row>
           {botLocales.length > 1 && (
             <Row label={t("broadcasts.editor.audience.language")}>

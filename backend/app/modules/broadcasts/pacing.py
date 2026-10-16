@@ -9,3 +9,5 @@ MAX_ATTEMPTS: Final[int] = 3
 MAX_RETRY_AFTER_S: Final[float] = 60.0
 MAX_FLOOD_WAIT_S: Final[float] = 300.0
 CLAIM_LEASE: Final[timedelta] = timedelta(minutes=5)
+# an email batch is bulk_rate_per_minute letters, one batch per window
+EMAIL_BATCH_WINDOW_S: Final[float] = 60.0

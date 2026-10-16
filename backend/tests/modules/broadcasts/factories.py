@@ -55,8 +55,12 @@ async def add_subscription(
     plan_id: int = 1,
     plan_name: str = "Basic",
     expire_at: Optional[datetime] = None,
+    first_connected_at: Optional[datetime] = None,
+    created_at: Optional[datetime] = None,
 ) -> None:
     snapshot = make_plan_snapshot(plan_id=plan_id, name=plan_name, is_trial=is_trial)
+    # an explicit None would bypass the server default
+    extra: dict[str, Any] = {"created_at": created_at} if created_at is not None else {}
     session.add(
         Subscription(
             user_id=user_id,
@@ -70,6 +74,8 @@ async def add_subscription(
             expire_at=expire_at or datetime_now() + timedelta(days=30),
             url="https://example.com/sub",
             plan_snapshot=snapshot.to_json(),
+            first_connected_at=first_connected_at,
+            **extra,
         )
     )
     await session.flush()

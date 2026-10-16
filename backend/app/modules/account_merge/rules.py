@@ -10,7 +10,7 @@ from app.modules.users import UserDto
 # conflict key -> columns that travel together; the first one decides "has a value"
 FIELD_CONFLICTS: Final[dict[str, tuple[str, ...]]] = {
     "telegram": ("telegram_id", "username"),
-    "email": ("email",),
+    "email": ("email", "email_undeliverable_at"),
     "login": ("login", "password_hash", "password_change_required"),
     "name": ("name",),
     "language": ("language",),

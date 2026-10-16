@@ -46,6 +46,7 @@ export interface UserListItem {
   created_at: string | null;
   /** set once the account is soft-deleted; name and contacts are wiped then */
   deleted_at?: string | null;
+  email_undeliverable_at?: string | null;
   // list endpoint only
   active_subscriptions?: number;
   limited_subscriptions?: number;
@@ -131,6 +132,10 @@ export function setUserDiscount(
 
 export function blockUser(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/block`, {});
+}
+
+export function clearEmailUndeliverable(userId: number): Promise<UserListItem> {
+  return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/clear-email-undeliverable`, {});
 }
 
 export function unblockUser(userId: number): Promise<UserListItem> {

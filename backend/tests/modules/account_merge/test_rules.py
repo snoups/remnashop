@@ -108,6 +108,18 @@ def test_merged_fields_sum_and_flags() -> None:
     assert values["language"] == Locale.RU
 
 
+@pytest.mark.parametrize("side", ["source", "target"])
+def test_undeliverable_mark_travels_with_email(side: str) -> None:
+    marked = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    source = _user(id=1, email="a@x.io", email_undeliverable_at=marked)
+    target = _user(id=2, email="b@x.io")
+
+    values = merged_user_fields(source, target, {"email": side})  # type: ignore[dict-item]
+
+    expected = ("a@x.io", marked) if side == "source" else ("b@x.io", None)
+    assert (values["email"], values["email_undeliverable_at"]) == expected
+
+
 def test_merged_fields_take_staff_side_privileges() -> None:
     source = _user(id=1, role=Role.OWNER, ip_allowlist=["1.1.1.1"], login="own")
     target = _user(id=2, role=Role.USER, telegram_id=5)

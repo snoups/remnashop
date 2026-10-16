@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     is_trial_available: bool
     created_at: Optional[datetime]
     deleted_at: Optional[datetime] = None
+    email_undeliverable_at: Optional[datetime] = None
 
     @field_validator("role", "language", mode="before")
     @classmethod

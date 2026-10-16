@@ -40,6 +40,7 @@ class UserDto(BaseDto, TimestampMixin):
     loyalty_discount: int = 0
     loyalty_excluded: bool = False
     marketing_opt_out: bool = False
+    email_undeliverable_at: Optional[datetime] = None
     rules_accepted_at: Optional[datetime] = None
 
     referral_code: Optional[str] = None
@@ -342,6 +343,12 @@ class AdminWithPasswordDto:
 
 @dataclass(frozen=True, kw_only=True)
 class BlockUserDto:
+    user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ClearEmailUndeliverableDto:
     user_id: int
     client_ip: str
 

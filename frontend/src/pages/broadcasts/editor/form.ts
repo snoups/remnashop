@@ -1,5 +1,5 @@
 import { EMPTY_AUDIENCE } from "@entities/broadcasts/api";
-import type { Broadcast, BroadcastButtonKind, BroadcastInput } from "@entities/broadcasts/api";
+import type { Broadcast, BroadcastButtonKind, BroadcastDelivery, BroadcastInput } from "@entities/broadcasts/api";
 
 export type EditorForm = BroadcastInput;
 
@@ -13,7 +13,10 @@ export function toForm(b: Broadcast | null, defaultLocale: string): EditorForm {
       category: "SERVICE",
       audience: EMPTY_AUDIENCE,
       default_locale: defaultLocale,
+      delivery: "TELEGRAM",
+      email_fallback: false,
       contents: { [defaultLocale]: { text: "", button_labels: [] } },
+      email_contents: {},
       buttons: [],
       promocode_id: null,
       post_to_channel: false,
@@ -28,22 +31,44 @@ export function toForm(b: Broadcast | null, defaultLocale: string): EditorForm {
       registered_to: toDate(b.audience.registered_to),
     },
     default_locale: b.default_locale,
+    delivery: b.delivery,
+    email_fallback: b.email_fallback,
     contents: b.contents,
+    email_contents: b.email_contents,
     buttons: b.buttons,
     promocode_id: b.promocode_id,
     post_to_channel: b.post_to_channel,
   };
 }
 
+export const sendsTelegram = (f: EditorForm) => f.delivery !== "EMAIL";
+export const sendsEmail = (f: EditorForm) => f.delivery !== "TELEGRAM" || f.email_fallback;
+
+// mirrors the backend: the fallback only exists for Telegram-only delivery, the channel post never for email-only
+export function setDelivery(f: EditorForm, delivery: BroadcastDelivery): EditorForm {
+  return {
+    ...f,
+    delivery,
+    email_fallback: delivery === "TELEGRAM" && f.email_fallback,
+    post_to_channel: delivery !== "EMAIL" && f.post_to_channel,
+  };
+}
+
+export function setEmailFallback(f: EditorForm, on: boolean): EditorForm {
+  return { ...f, email_fallback: on };
+}
+
 export function addLocale(f: EditorForm, locale: string): EditorForm {
   const labels = f.contents[f.default_locale]?.button_labels ?? [];
-  return { ...f, contents: { ...f.contents, [locale]: { text: "", button_labels: [...labels] } } };
+  const next = { ...f, contents: { ...f.contents, [locale]: { text: "", button_labels: [...labels] } } };
+  return sendsEmail(f) ? { ...next, email_contents: { ...f.email_contents, [locale]: { subject: "", html: "" } } } : next;
 }
 
 export function removeLocale(f: EditorForm, locale: string): EditorForm {
   if (locale === f.default_locale) return f;
   const { [locale]: _removed, ...contents } = f.contents;
-  return { ...f, contents };
+  const { [locale]: _removedEmail, ...email_contents } = f.email_contents;
+  return { ...f, contents, email_contents };
 }
 
 export function addButton(f: EditorForm, kind: BroadcastButtonKind): EditorForm {
@@ -65,6 +90,17 @@ export function removeButton(f: EditorForm, index: number): EditorForm {
 
 export function setText(f: EditorForm, locale: string, text: string): EditorForm {
   return { ...f, contents: { ...f.contents, [locale]: { ...f.contents[locale], text } } };
+}
+
+// a locale added before email delivery was switched on has no email entry yet
+const emailContent = (f: EditorForm, locale: string) => f.email_contents[locale] ?? { subject: "", html: "" };
+
+export function setEmailSubject(f: EditorForm, locale: string, subject: string): EditorForm {
+  return { ...f, email_contents: { ...f.email_contents, [locale]: { ...emailContent(f, locale), subject } } };
+}
+
+export function setEmailHtml(f: EditorForm, locale: string, html: string): EditorForm {
+  return { ...f, email_contents: { ...f.email_contents, [locale]: { ...emailContent(f, locale), html } } };
 }
 
 export function setButtonLabel(f: EditorForm, locale: string, index: number, label: string): EditorForm {

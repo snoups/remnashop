@@ -38,6 +38,7 @@ from app.modules.users.dto import (
     BindTelegramDto,
     BlacklistMatchOrigin,
     BlockUserDto,
+    ClearEmailUndeliverableDto,
     CreateAdminDto,
     DeleteAdminDto,
     DeletedFilter,
@@ -59,6 +60,7 @@ from app.modules.users.schemas import UserResponse
 from app.modules.users.usecases import (
     BindTelegramIdUseCase,
     BlockUserUseCase,
+    ClearEmailUndeliverableUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
     DeleteUserUseCase,
@@ -340,6 +342,24 @@ async def unblock_user(
 ) -> UserResponse:
     updated = await use_case(
         actor, UnblockUserDto(user_id=user_id, client_ip=resolve_client_ip(request))
+    )
+    return UserResponse.model_validate(updated, from_attributes=True)
+
+
+@router.post(
+    "/{user_id:int}/actions/clear-email-undeliverable",
+    response_model=UserResponse,
+    responses=error_responses(404),
+)
+@inject
+async def clear_email_undeliverable(
+    user_id: int,
+    request: Request,
+    use_case: FromDishka[ClearEmailUndeliverableUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserResponse:
+    updated = await use_case(
+        actor, ClearEmailUndeliverableDto(user_id=user_id, client_ip=resolve_client_ip(request))
     )
     return UserResponse.model_validate(updated, from_attributes=True)
 

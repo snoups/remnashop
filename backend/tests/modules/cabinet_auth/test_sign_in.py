@@ -14,6 +14,7 @@ from app.core.enums import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError
+from app.core.utils.time import datetime_now
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
@@ -271,3 +272,16 @@ async def test_email_alias_signs_into_the_existing_account(
     user, _ = await sign_in.email("Ivan.Petrov+1@gmail.com", Locale.EN, InviteCodesDto(), _IP, None)
     assert user.id == existing.id
     assert await _outbox(session, "CabinetUserRegisteredEvent") == []
+
+
+async def test_email_sign_in_clears_undeliverable(
+    sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="Back", email="back@mail.ru"))
+        await user_repository.set_email_undeliverable(existing.id, datetime_now())
+
+    await sign_in.email("back@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
+
+    loaded = await user_repository.find_by_id(existing.id)
+    assert loaded is not None and loaded.email_undeliverable_at is None
