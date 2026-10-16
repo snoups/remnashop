@@ -39,7 +39,7 @@ async def test_start_sends_a_one_time_sign_in_button(
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
     store = DeeplinkStore(redis)
-    start = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
+    start = await store.create(InviteCodesDto())
     message = _Message(f"/start webauth_{start}")
 
     await on_start_webauth(message, IssueBotSignInLinkUseCase(store, config), _Hub(), _USER)  # type: ignore[arg-type]
@@ -47,7 +47,7 @@ async def test_start_sends_a_one_time_sign_in_button(
     assert message.sent[0]["text"] == "ntf-cabinet-login.link"
     button = message.sent[0]["markup"].inline_keyboard[0][0]
     assert button.text == "btn-cabinet-login.open"
-    assert button.url.startswith("https://cabinet.example.com/login/bot?token=")
+    assert button.url.startswith("https://cabinet.example.com/login/bot#token=")
     signin = button.url.split("token=", 1)[1]
     grant = await store.take_signin(signin)
     assert grant is not None and grant.profile.telegram_id == 9
@@ -58,7 +58,7 @@ async def test_second_start_with_the_same_link_says_expired(
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
     store = DeeplinkStore(redis)
-    start = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
+    start = await store.create(InviteCodesDto())
     issue = IssueBotSignInLinkUseCase(store, config)
 
     await on_start_webauth(_Message(f"/start webauth_{start}"), issue, _Hub(), _USER)  # type: ignore[arg-type]
@@ -80,3 +80,19 @@ async def test_start_with_unknown_token_says_expired(redis: Redis, config: AppCo
     )
 
     assert message.sent[0]["text"] == "ntf-cabinet-login.expired"
+
+
+async def test_start_without_a_cabinet_url_sends_no_button(
+    redis: Redis, config: AppConfig, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "")
+    store = DeeplinkStore(redis)
+    start = await store.create(InviteCodesDto())
+    message = _Message(f"/start webauth_{start}")
+
+    await on_start_webauth(message, IssueBotSignInLinkUseCase(store, config), _Hub(), _USER)  # type: ignore[arg-type]
+
+    assert message.sent[0]["text"] == "ntf-cabinet-login.expired"
+    assert message.sent[0]["markup"] is None
+    # the start link isn't spent by a misconfigured cabinet
+    assert await store.peek(start) is not None

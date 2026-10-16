@@ -55,8 +55,8 @@ class UserMiddleware(EventTypedMiddleware):
         if webauth_token := parse_webauth_token(event):
             pending = await (await container.get(DeeplinkStore)).peek(webauth_token)
             if pending is not None:
-                referral_code = pending.codes.referral_code
-                ad_link_code = pending.codes.ad_link_code
+                referral_code = pending.referral_code
+                ad_link_code = pending.ad_link_code
                 channel = AdLinkChannel.WEBCABINET
 
         check_access = await container.get(CheckRegistrationAccessUseCase)

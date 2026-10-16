@@ -157,14 +157,9 @@ async def cabinet_email_verify(
 @inject
 async def cabinet_telegram_deeplink(
     body: InviteCodesRequest,
-    request: Request,
     use_case: FromDishka[RequestDeeplinkUseCase],
 ) -> DeeplinkResponse:
-    ticket = await use_case.execute(
-        InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad),
-        resolve_client_ip(request),
-        request.headers.get("user-agent"),
-    )
+    ticket = await use_case.execute(InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad))
     return DeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
 
 

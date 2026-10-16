@@ -46,13 +46,6 @@ class EmailCodeGrantDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class DeeplinkPendingDto:
-    codes: InviteCodesDto
-    client_ip: str
-    user_agent: str
-
-
-@dataclass(frozen=True, kw_only=True)
 class DeeplinkTicketDto:
     bot_url: str
     expires_in: int

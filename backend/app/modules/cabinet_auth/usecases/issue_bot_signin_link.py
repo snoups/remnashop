@@ -4,7 +4,8 @@ from app.core.config import AppConfig
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.dto import BotSignInGrantDto, TelegramProfileDto
 
-_SIGNIN_PATH: Final[str] = "/login/bot?token="
+# a fragment, not a query: it never reaches a proxy log or a Referer
+_SIGNIN_PATH: Final[str] = "/login/bot#token="
 
 
 class IssueBotSignInLinkUseCase:
@@ -18,10 +19,8 @@ class IssueBotSignInLinkUseCase:
         cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
         if not cabinet_url:
             return None
-        pending = await self._store.take_start(start_token)
-        if pending is None:
+        codes = await self._store.take_start(start_token)
+        if codes is None:
             return None
-        token = await self._store.issue_signin(
-            BotSignInGrantDto(profile=profile, codes=pending.codes)
-        )
+        token = await self._store.issue_signin(BotSignInGrantDto(profile=profile, codes=codes))
         return f"{cabinet_url}{_SIGNIN_PATH}{token}"

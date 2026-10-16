@@ -41,9 +41,9 @@ def _token_from(url: str) -> str:
 
 
 async def test_start_record_is_taken_once(store: DeeplinkStore) -> None:
-    token = await store.create(InviteCodesDto(referral_code="abc"), _IP, "ua")
+    token = await store.create(InviteCodesDto(referral_code="abc"))
     first = await store.take_start(token)
-    assert first is not None and first.codes.referral_code == "abc"
+    assert first is not None and first.referral_code == "abc"
     assert await store.take_start(token) is None
     assert await store.peek(token) is None
 
@@ -60,12 +60,12 @@ async def test_issue_link_builds_a_cabinet_url_and_consumes_the_start(
     store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", f"{_CABINET}/")
-    start = await store.create(InviteCodesDto(ad_link_code="ad1"), _IP, "ua")
+    start = await store.create(InviteCodesDto(ad_link_code="ad1"))
     issue = IssueBotSignInLinkUseCase(store, config)
 
     url = await issue.execute(start, _PROFILE)
 
-    assert url is not None and url.startswith(f"{_CABINET}/login/bot?token=")
+    assert url is not None and url.startswith(f"{_CABINET}/login/bot#token=")
     signin = _token_from(url)
     assert signin != start
     grant = await store.take_signin(signin)
@@ -78,7 +78,7 @@ async def test_issue_link_without_cabinet_url_gives_nothing(
     store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", "  ")
-    start = await store.create(InviteCodesDto(), _IP, "ua")
+    start = await store.create(InviteCodesDto())
     assert await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE) is None
 
 
@@ -103,3 +103,5 @@ async def test_signin_is_refused_when_telegram_is_disabled(
     with pytest.raises(AuthenticationError) as error:
         await sign_in_use_case.execute(token, _IP, "ua")
     assert error.value.code is ErrorCode.CABINET_TELEGRAM_DISABLED
+    # a switched-off method must not burn the link: switching it back on lets it through
+    assert await store.take_signin(token) is not None

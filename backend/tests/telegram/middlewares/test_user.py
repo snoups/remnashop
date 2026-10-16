@@ -347,7 +347,7 @@ async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
     redis: Redis,
 ) -> None:
     store = DeeplinkStore(redis)
-    token = await store.create(InviteCodesDto(referral_code="abc"), "203.0.113.1", "ua")
+    token = await store.create(InviteCodesDto(referral_code="abc"))
     container = _FakeContainer(
         user_repository,
         blacklist_repository,
