@@ -564,6 +564,8 @@
       "categoryPricing": "Цены",
       "categoryPlans": "Планы",
       "categoryPayment": "Платежи",
+      "categoryBroadcast": "Рассылки",
+      "categoryInfrastructure": "Инфраструктура",
       "actor": "Инициатор",
       "actorPlaceholder": "Имя, @username, ID или email",
       "dateFrom": "С",
@@ -706,7 +708,38 @@
       "ShopSettingsChangedEvent": "Настройки магазина изменены",
       "UserRulesAcceptedEvent": "Правила приняты",
       "EmailSettingsChangedEvent": "Настройки почты изменены",
-      "CabinetAuthSettingsChangedEvent": "Настройки входа в кабинет изменены"
+      "CabinetAuthSettingsChangedEvent": "Настройки входа в кабинет изменены",
+      "SubscriptionExpiredAgoEvent": "Подписка истекла давно",
+      "SubscriptionNotConnectedEvent": "Не подключился",
+      "SubscriptionFirstConnectedEvent": "Первое подключение",
+      "SubscriptionTrafficResetEvent": "Трафик сброшен",
+      "SubscriptionRevokedEvent": "Ссылка подписки перевыпущена",
+      "SubscriptionDeviceAddedEvent": "Устройство добавлено",
+      "SubscriptionDeviceRemovedEvent": "Устройство удалено",
+      "TorrentBlockerReportEvent": "Торрент заблокирован",
+      "NodeConnectionLostEvent": "Нода недоступна",
+      "NodeConnectionRestoredEvent": "Нода доступна",
+      "NodeTrafficReachedEvent": "Лимит трафика ноды",
+      "NodeBillingDueEvent": "Оплата ноды",
+      "PanelStartedEvent": "Панель запущена",
+      "PanelLoginFailedEvent": "Неудачный вход в панель",
+      "PanelLoginSucceededEvent": "Вход в панель",
+      "RemnawaveUnavailableEvent": "Панель недоступна",
+      "RemnawaveRestoredEvent": "Панель доступна",
+      "RemnawaveVersionMismatchEvent": "Неподдерживаемая версия панели",
+      "BotStartedEvent": "Бот запущен",
+      "BotStoppedEvent": "Бот остановлен",
+      "TelegramWebhookFailedEvent": "Ошибка webhook",
+      "RequiredChannelCheckFailedEvent": "Ошибка проверки канала",
+      "CabinetSignedInEvent": "Вход в кабинет",
+      "CheckoutCreatedEvent": "Создан платёж",
+      "TransactionExpiredEvent": "Неоплаченный заказ истёк",
+      "MarketingOptOutChangedEvent": "Изменена подписка на рекламу",
+      "BotBlockedByUserEvent": "Клиент заблокировал бота",
+      "LoggedOutEvent": "Выход",
+      "PasskeyRenamedEvent": "Passkey переименован",
+      "AdLinkAttributedEvent": "Пришёл по рекламной ссылке",
+      "BackupCompletedEvent": "Бэкап создан"
     }
   },
   "sidebar": {
@@ -1523,11 +1556,11 @@
       "groups": {
         "security": {
           "title": "Безопасность",
-          "description": "Неудачные входы и подозрение на кражу сессии"
+          "description": "Неудачные входы, входы в панель Remnawave и подозрение на кражу сессии"
         },
         "failures": {
           "title": "Сбои",
-          "description": "Неудачные резервные копии"
+          "description": "Сбои бэкапов, ошибки webhook и проверки канала"
         },
         "broadcasts": {
           "title": "Рассылки",
@@ -1544,6 +1577,18 @@
         "admins": {
           "title": "Администраторы",
           "description": "Создание, удаление и изменение прав администраторов"
+        },
+        "infrastructure": {
+          "title": "Инфраструктура",
+          "description": "Падение и восстановление нод, панели Remnawave и бота"
+        },
+        "customers": {
+          "title": "Клиенты",
+          "description": "Регистрации, первые подключения и блокировки торрентов"
+        },
+        "subscriptions": {
+          "title": "Подписки",
+          "description": "Истекли, закончился трафик, перевыпущены или не подключены"
         }
       },
       "channels": {

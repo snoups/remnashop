@@ -43,3 +43,11 @@ class SessionRevokedEvent(UserEvent):
 class UserSessionRevokedByAdminEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
     session_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class LoggedOutEvent(BaseEvent):
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+    user_id: int
+    session_id: int
+    audience: str

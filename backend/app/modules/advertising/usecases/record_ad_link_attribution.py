@@ -3,17 +3,25 @@ from loguru import logger
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import ConflictError
+from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.advertising.dto import RecordAdLinkAttributionDto
+from app.modules.advertising.events import AdLinkAttributedEvent
 from app.modules.advertising.repository import AdLinkRepository
 
 
 class RecordAdLinkAttributionUseCase(UseCase[RecordAdLinkAttributionDto, None]):
     required_permission = None
 
-    def __init__(self, ad_link_repository: AdLinkRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        ad_link_repository: AdLinkRepository,
+        uow: UnitOfWork,
+        event_publisher: EventPublisher,
+    ) -> None:
         self._ad_link_repository = ad_link_repository
         self._uow = uow
+        self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: RecordAdLinkAttributionDto) -> None:
         async with self._uow:
@@ -31,6 +39,14 @@ class RecordAdLinkAttributionUseCase(UseCase[RecordAdLinkAttributionDto, None]):
             async with self._uow:
                 await self._ad_link_repository.create_attribution(
                     ad_link_id=ad_link.id, user_id=data.user_id, channel=data.channel
+                )
+                await self._event_publisher.publish(
+                    AdLinkAttributedEvent(
+                        user_id=data.user_id,
+                        ad_link_id=ad_link.id,
+                        ad_link_code=ad_link.code,
+                        channel=data.channel.value,
+                    )
                 )
         except ConflictError:
             # a registration event fires once per user; the UNIQUE

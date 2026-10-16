@@ -246,17 +246,34 @@ async def test_new_device_sign_in_publishes_event_but_first_is_silent(
     async with uow:
         existing = await user_repository.create(CreateUserDto(name="Bot user", telegram_id=9100))
 
-    await sign_in.issue_for(existing, _IP, _FF)
+    await sign_in.issue_for(existing, _IP, _FF, CabinetSignInMethod.TELEGRAM)
     assert await _outbox(session, "CabinetNewDeviceSignInEvent") == []
 
-    await sign_in.issue_for(existing, _IP, _FF)
+    await sign_in.issue_for(existing, _IP, _FF, CabinetSignInMethod.TELEGRAM)
     assert await _outbox(session, "CabinetNewDeviceSignInEvent") == []
 
-    await sign_in.issue_for(existing, "198.51.100.7", _FF)
+    await sign_in.issue_for(existing, "198.51.100.7", _FF, CabinetSignInMethod.TELEGRAM)
     [event] = await _outbox(session, "CabinetNewDeviceSignInEvent")
     assert event.payload["browser"] == "Firefox on Linux"
     assert event.payload["user"]["id"] == existing.id
     assert event.ip_address == "198.51.100.7"
+
+
+async def test_every_sign_in_publishes_its_method(
+    sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
+) -> None:
+    async with uow:
+        existing = await user_repository.create(
+            CreateUserDto(name="Ivan", email="ivan@example.com")
+        )
+
+    await sign_in.email("ivan@example.com", Locale.EN, InviteCodesDto(), _IP, _FF)
+    await sign_in.email("ivan@example.com", Locale.EN, InviteCodesDto(), _IP, _FF)
+
+    events = await _outbox(session, "CabinetSignedInEvent")
+    assert [e.payload["method"] for e in events] == ["EMAIL", "EMAIL"]
+    assert events[0].payload["user"]["id"] == existing.id
+    assert events[0].ip_address == _IP
 
 
 async def test_email_alias_signs_into_the_existing_account(

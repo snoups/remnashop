@@ -5,7 +5,11 @@ from dishka import FromDishka
 from fluentogram import TranslatorHub
 from redis.asyncio import Redis
 
-from app.modules.settings import BotRequirementsDto, GetBotRequirementsUseCase
+from app.modules.settings import (
+    BotRequirementsDto,
+    GetBotRequirementsUseCase,
+    ReportBotStatusUseCase,
+)
 from app.modules.users import AcceptRulesUseCase, UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.middlewares.requirements import (
@@ -30,7 +34,11 @@ async def _open_menu(callback: CallbackQuery, dialog_manager: DialogManager) -> 
 
 
 async def _is_subscribed(
-    callback: CallbackQuery, user: UserDto, requirements: BotRequirementsDto, redis: Redis
+    callback: CallbackQuery,
+    user: UserDto,
+    requirements: BotRequirementsDto,
+    redis: Redis,
+    report: ReportBotStatusUseCase,
 ) -> bool:
     channel_id = requirements.channel_id
     if (
@@ -40,7 +48,7 @@ async def _is_subscribed(
         or callback.bot is None
     ):
         return True
-    return await is_channel_member(callback.bot, redis, channel_id, user.telegram_id)
+    return await is_channel_member(callback.bot, redis, channel_id, user.telegram_id, report)
 
 
 @router.callback_query(F.data == RULES_ACCEPT_CALLBACK)
@@ -52,10 +60,11 @@ async def on_rules_accepted(
     get_requirements: FromDishka[GetBotRequirementsUseCase],
     redis: FromDishka[Redis],
     i18n: FromDishka[TranslatorHub],
+    report: FromDishka[ReportBotStatusUseCase],
 ) -> None:
     await accept_rules(user)
     requirements = await get_requirements.system()
-    if not await _is_subscribed(callback, user, requirements, redis):
+    if not await _is_subscribed(callback, user, requirements, redis, report):
         runner = get_translator(i18n, user)
         if isinstance(callback.message, Message):
             await callback.message.delete()
@@ -75,11 +84,12 @@ async def on_channel_check(
     get_requirements: FromDishka[GetBotRequirementsUseCase],
     redis: FromDishka[Redis],
     i18n: FromDishka[TranslatorHub],
+    report: FromDishka[ReportBotStatusUseCase],
 ) -> None:
     requirements = await get_requirements.system()
     if user.telegram_id is not None and requirements.channel_id is not None:
         await redis.delete(channel_member_key(requirements.channel_id, user.telegram_id))
-    if not await _is_subscribed(callback, user, requirements, redis):
+    if not await _is_subscribed(callback, user, requirements, redis, report):
         await callback.answer(
             get_translator(i18n, user).get("ntf-requirements.channel-not-found"),
             show_alert=True,

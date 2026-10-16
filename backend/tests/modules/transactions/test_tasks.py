@@ -34,6 +34,7 @@ from app.modules.transactions.usecases import (
     ReconcilePaidTransactionsUseCase,
 )
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 _confirm_stars = confirm_stars_payment_task.original_func.__dishka_orig_func__
@@ -65,10 +66,46 @@ async def test_prune_expired_transactions_marks_stale_pending_rows_expired(
             )
         )
 
-    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
+    await PruneExpiredTransactionsUseCase(
+        transaction_repository, user_repository, uow, RecordingEventPublisher()
+    ).system()
 
     fetched = await transaction_repository.get_by_id(stale.id)
     assert fetched.status is TransactionStatus.CANCELED
+
+
+async def test_prune_expired_transactions_publishes_each_expired_order(
+    transaction_repository: TransactionRepository, user_repository, uow, user_id, plan_id
+) -> None:
+    async with uow:
+        stale = await transaction_repository.create(
+            CreateTransactionDto(
+                user_id=user_id,
+                plan_id=plan_id,
+                plan_snapshot=make_plan_snapshot(plan_id=plan_id),
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                target_subscription_id=None,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                base_price=Decimal("500"),
+                discount_percent=0,
+                discount_source=DiscountSource.NONE,
+                final_price=Decimal("500"),
+                anchor_base_price=Decimal("500"),
+                anchor_final_price=Decimal("500"),
+                customer_email=None,
+                idempotency_key="stale-event-key",
+                expires_at=datetime_now() - timedelta(minutes=1),
+            )
+        )
+    publisher = RecordingEventPublisher()
+
+    await PruneExpiredTransactionsUseCase(
+        transaction_repository, user_repository, uow, publisher
+    ).system()
+
+    assert [(e.order_id, e.user_id) for e in publisher.events] == [(stale.id, user_id)]  # type: ignore[attr-defined]
 
 
 async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
@@ -100,7 +137,9 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
             )
         )
 
-    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
+    await PruneExpiredTransactionsUseCase(
+        transaction_repository, user_repository, uow, RecordingEventPublisher()
+    ).system()
 
     assert (await user_repository.find_by_id(user_id)).purchase_discount == 20
 
@@ -138,7 +177,9 @@ async def _prune_discounted_order(
                 expires_at=datetime_now() - timedelta(minutes=1),
             )
         )
-    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
+    await PruneExpiredTransactionsUseCase(
+        transaction_repository, user_repository, uow, RecordingEventPublisher()
+    ).system()
     return (await user_repository.find_by_id(user_id)).purchase_discount
 
 

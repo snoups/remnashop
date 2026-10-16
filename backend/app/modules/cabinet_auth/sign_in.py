@@ -21,7 +21,7 @@ from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth.devices import KnownDevices
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.email_domains import is_allowed_domain
-from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
+from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent, CabinetSignedInEvent
 from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository, OAuthProfile
 from app.modules.settings import SettingsRepository
 from app.modules.users import (
@@ -101,6 +101,7 @@ class CabinetSignIn:
         user: UserDto,
         client_ip: str,
         user_agent: Optional[str],
+        method: CabinetSignInMethod,
         session_ttl: int = TTL_30D,
     ) -> tuple[UserDto, IssuedSession]:
         if user.is_blocked:
@@ -112,8 +113,12 @@ class CabinetSignIn:
             audience=SessionAudience.CABINET,
             ttl_seconds=session_ttl,
         )
-        if await self._known_devices.remember(user.id, client_ip, user_agent):
-            async with self._uow:
+        is_new_device = await self._known_devices.remember(user.id, client_ip, user_agent)
+        async with self._uow:
+            await self._event_publisher.publish(
+                CabinetSignedInEvent(user=user, method=method.value, ip_address=client_ip)
+            )
+            if is_new_device:
                 await self._event_publisher.publish(
                     CabinetNewDeviceSignInEvent(
                         user=user,
@@ -152,7 +157,9 @@ class CabinetSignIn:
                 referral_code=codes.referral_code,
             )
         )
-        return await self.issue_for(user, client_ip, user_agent, session_ttl)
+        return await self.issue_for(
+            user, client_ip, user_agent, CabinetSignInMethod.TELEGRAM, session_ttl
+        )
 
     async def email(
         self,
@@ -190,7 +197,7 @@ class CabinetSignIn:
             # a received sign-in code proves the address works again
             async with self._uow:
                 await self._user_repository.set_email_undeliverable(user.id, None)
-        return await self.issue_for(user, client_ip, user_agent)
+        return await self.issue_for(user, client_ip, user_agent, CabinetSignInMethod.EMAIL)
 
     async def oauth(
         self,
@@ -214,7 +221,9 @@ class CabinetSignIn:
             )
         user = await self._user_by_identity(provider, profile.external_id)
         if user is not None:
-            return await self.issue_for(user, client_ip, user_agent)
+            return await self.issue_for(
+                user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+            )
 
         # users.email holds only proven addresses
         verified_email = (
@@ -247,7 +256,9 @@ class CabinetSignIn:
             linked = await self._oauth_identity_repository.list_by_user(user.id)
         if any(identity.provider is provider for identity in linked):
             # another account of this provider is already linked: sign in, keep the link
-            return await self.issue_for(user, client_ip, user_agent)
+            return await self.issue_for(
+                user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+            )
         try:
             async with self._uow:
                 await self._oauth_identity_repository.create(
@@ -264,7 +275,9 @@ class CabinetSignIn:
             if winner is None:
                 raise
             user = winner
-        return await self.issue_for(user, client_ip, user_agent)
+        return await self.issue_for(
+            user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+        )
 
     async def _user_by_identity(
         self, provider: OAuthProvider, external_id: str

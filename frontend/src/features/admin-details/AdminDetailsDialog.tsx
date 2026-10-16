@@ -147,7 +147,7 @@ function AdminDetailsDialogBody({
               </Card>
             )}
             {tab === "sessions" && <SessionsTab userId={admin.id} />}
-            {tab === "events" && <EventsTab actorId={admin.id} />}
+            {tab === "events" && <EventsTab userId={admin.id} by="actor" />}
           </div>
         </motion.div>
       </div>

@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import auto
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AccessMode, SmtpSecurity
+from app.core.enums import AccessMode, SmtpSecurity, UpperStrEnum
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -366,3 +367,17 @@ class UpdateBotRequirementsDto:
 class AppearanceImageDto:
     data: bytes
     content_type: str
+
+
+class BotStatusKind(UpperStrEnum):
+    STARTED = auto()
+    STOPPED = auto()
+    WEBHOOK_FAILED = auto()
+    CHANNEL_CHECK_FAILED = auto()
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReportBotStatusDto:
+    kind: BotStatusKind
+    detail: Optional[str] = None
+    channel_id: Optional[int] = None

@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.config import AppConfig
-from app.core.constants import REDIS_KEY_PREFIX, TTL_7D
+from app.core.constants import REDIS_KEY_PREFIX, TTL_1D, TTL_7D
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import RetryableTaskError
 from app.core.usecase import UseCase
@@ -24,6 +24,14 @@ from app.modules.users import UserDto, UserRepository
 
 # outlives the sweep's retries of one outbox row
 _DEDUP_TTL_S: Final[int] = TTL_7D
+# a torrent client trips the blocker on every connection; one warning a day is enough
+_COOLDOWNS: Final[dict[str, int]] = {"TorrentBlockerReportEvent": TTL_1D}
+
+
+def _cooldown_key(event_type: str, user_id: int) -> Optional[str]:
+    if event_type not in _COOLDOWNS:
+        return None
+    return f"{REDIS_KEY_PREFIX}customer_cooldown:{event_type}:{user_id}"
 
 
 class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
@@ -64,6 +72,11 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             user = await self._user_repository.find_by_id(data.user_id)
         if user is None or user.is_blocked or user.deleted_at is not None:
             return
+        cooldown_key = _cooldown_key(data.event_type, user.id)
+        if cooldown_key is not None and not await self._redis.set(
+            cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
+        ):
+            return
         token, _ = await self._token_source.get_bot_token()
         channels = channels_for(
             data.event_type,
@@ -92,6 +105,9 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
                 continue
             CUSTOMER_NOTIFICATIONS.labels(channel=channel.value, result="queued").inc()
         if first_error is not None:
+            # the retry must not find its own cooldown and give up
+            if cooldown_key is not None:
+                await self._redis.delete(cooldown_key)
             raise first_error
 
     async def _queue(

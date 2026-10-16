@@ -15,7 +15,7 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import STALE_RUN_AFTER, RunBackupDto
 from app.modules.backups.dump import create_assets_dump, create_database_dump
-from app.modules.backups.events import BackupFailedEvent
+from app.modules.backups.events import BackupCompletedEvent, BackupFailedEvent
 from app.modules.backups.provenance import sign_backup_file
 from app.modules.backups.repository import BackupRepository
 
@@ -105,6 +105,9 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
             async with self._uow:
                 await self._backup_repository.mark_completed(
                     run_id, file_path=str(dest), size_bytes=size_bytes, checksum_sha256=checksum
+                )
+                await self._event_publisher.publish(
+                    BackupCompletedEvent(run_id=run_id, kind=kind.value, size_bytes=size_bytes)
                 )
             logger.info(f"Backup run '{run_id}' ('{kind.value}') completed: {dest}")
 

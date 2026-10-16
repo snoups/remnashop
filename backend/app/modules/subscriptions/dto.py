@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 from remnapy.enums import TrafficLimitStrategy
+from remnapy.models.webhook import WebhookPayloadDto
 
 from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
@@ -277,10 +278,8 @@ class SyncSubscriptionStatusDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class PublishLifecycleEventDto:
-    remnawave_user_id: int
-    webhook_event: str
-    hours: Optional[int] = None
+class PublishPanelEventDto:
+    payload: WebhookPayloadDto
 
 
 @dataclass(frozen=True, kw_only=True)

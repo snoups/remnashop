@@ -22,7 +22,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
 )
-from app.core.ports import PromocodeLiveness
+from app.core.ports import EventPublisher, PromocodeLiveness
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -44,6 +44,7 @@ from app.modules.transactions.dto import (
     PriceQuote,
     TransactionDto,
 )
+from app.modules.transactions.events import CheckoutCreatedEvent
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
@@ -81,6 +82,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         get_access_settings_use_case: GetAccessSettingsUseCase,
         waitlist_repository: WaitlistRepository,
         settings_repository: SettingsRepository,
+        event_publisher: EventPublisher,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -96,6 +98,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._get_access_settings_use_case = get_access_settings_use_case
         self._waitlist_repository = waitlist_repository
         self._settings_repository = settings_repository
+        self._event_publisher = event_publisher
 
     @staticmethod
     def _resolve_customer_email(
@@ -152,6 +155,15 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
             order = await self._create_order(actor.id, data, plan, quote, customer_email)
+            await self._event_publisher.publish(
+                CheckoutCreatedEvent(
+                    user=actor,
+                    order_id=order.id,
+                    gateway_type=order.gateway_type.value,
+                    amount=str(order.final_price),
+                    currency=order.currency.value,
+                )
+            )
 
             if is_free:
                 order = await self._transaction_repository.mark_status(

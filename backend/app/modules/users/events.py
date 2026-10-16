@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, Optional
 
-from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, UserEvent
+from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -117,3 +117,11 @@ class PasswordChangedEvent(UserEvent):
 class SecuritySettingsChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
     changed_fields: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MarketingOptOutChangedEvent(SystemEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    user_id: int
+    opted_out: bool
+    source: str

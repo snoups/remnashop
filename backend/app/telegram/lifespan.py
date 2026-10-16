@@ -1,10 +1,12 @@
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from typing import AsyncGenerator, Final, Optional
 
 from aiogram import Bot
 from aiogram.methods import GetWebhookInfo, SetWebhook
+from aiogram.types import WebhookInfo
 from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from fluentogram import TranslatorHub
@@ -15,17 +17,27 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.ports import BotCommandsSync
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
+from app.core.utils.time import datetime_now
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
+from app.modules.settings import BotStatusKind, ReportBotStatusDto, ReportBotStatusUseCase
 from app.modules.translations import TranslationRepository
 from app.telegram.bot_signals import listen_for_bot_signals, live_update_handlers
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.webhook import TelegramWebhookEndpoint
 
+# Telegram keeps the last error indefinitely; only one this recent is news on startup
+_WEBHOOK_ERROR_MAX_AGE: Final[timedelta] = timedelta(minutes=10)
 _BOT_STATE_LABELS: Final[dict[Optional[bool], str]] = {
     True: "Enabled",
     False: "Disabled",
     None: "Unknown",
 }
+
+
+def is_fresh_webhook_error(info: WebhookInfo, now: datetime) -> bool:
+    if not info.last_error_message or info.last_error_date is None:
+        return False
+    return now - info.last_error_date < _WEBHOOK_ERROR_MAX_AGE
 
 
 @asynccontextmanager
@@ -43,14 +55,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await ensure_dialogs_seeded(dialog_repository, translation_repository)
         await (await startup_container.get(BotCommandsSync)).push()
 
+        report_status = await startup_container.get(ReportBotStatusUseCase)
         webhook_url = config.bot.webhook_url(config.domain).get_secret_value()
-        await bot(
-            SetWebhook(
-                url=webhook_url,
-                secret_token=endpoint.secret_token,
-                drop_pending_updates=app.state.drop_pending_updates,
+        try:
+            await bot(
+                SetWebhook(
+                    url=webhook_url,
+                    secret_token=endpoint.secret_token,
+                    drop_pending_updates=app.state.drop_pending_updates,
+                )
             )
-        )
+        except Exception as error:
+            await report_status.system(
+                ReportBotStatusDto(kind=BotStatusKind.WEBHOOK_FAILED, detail=str(error))
+            )
+            raise
         logger.info(f"Webhook set to '{webhook_url}'")
 
         webhook_info = await bot(GetWebhookInfo())
@@ -58,8 +77,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.critical(
                 f"Webhook has a last error message: '{webhook_info.last_error_message}'"
             )
+        if is_fresh_webhook_error(webhook_info, datetime_now()):
+            await report_status.system(
+                ReportBotStatusDto(
+                    kind=BotStatusKind.WEBHOOK_FAILED, detail=webhook_info.last_error_message
+                )
+            )
 
         me = await bot.get_me()
+        await report_status.system(
+            ReportBotStatusDto(kind=BotStatusKind.STARTED, detail=me.username)
+        )
         if not me.supports_inline_queries:
             logger.warning(
                 "Bot is not enabled for inline mode. "
@@ -102,6 +130,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
+    # a lost event must not keep the background tasks below running
+    try:
+        async with container(scope=Scope.REQUEST) as shutdown_container:
+            await (await shutdown_container.get(ReportBotStatusUseCase)).system(
+                ReportBotStatusDto(kind=BotStatusKind.STOPPED)
+            )
+    except Exception:
+        logger.exception("Failed to report the bot stop")
     runtime_heartbeat_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await runtime_heartbeat_task

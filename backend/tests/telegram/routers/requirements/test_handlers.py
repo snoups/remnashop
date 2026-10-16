@@ -81,6 +81,7 @@ async def _accept(
         _GetRequirements(requirements),  # type: ignore[arg-type]
         redis,
         _Hub(),  # type: ignore[arg-type]
+        AsyncMock(),
     )
     accept_rules.assert_awaited_once_with(_USER)
     return message, dialog_manager.start
@@ -123,6 +124,7 @@ async def _check(bot: _Bot, redis: Redis) -> tuple[MagicMock, AsyncMock]:
         _GetRequirements(_CHANNEL),  # type: ignore[arg-type]
         redis,
         _Hub(),  # type: ignore[arg-type]
+        AsyncMock(),
     )
     return callback, dialog_manager.start
 

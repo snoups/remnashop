@@ -35,6 +35,8 @@ def test_defaults_send_critical_groups_everywhere_and_the_rest_to_the_bell(
     every = {NotificationChannel.BELL, NotificationChannel.PUSH, NotificationChannel.TELEGRAM}
     assert channels_for(owner, "security") == every
     assert channels_for(owner, "failures") == every
+    assert channels_for(owner, "infrastructure") == every
+    assert channels_for(owner, "customers") == {NotificationChannel.BELL}
     assert channels_for(owner, "money") == {NotificationChannel.BELL}
     assert channels_for(owner, "unknown-group") == frozenset()
 
@@ -52,7 +54,7 @@ def test_stored_matrix_overrides_defaults_and_drops_unknown_channels(owner: User
 def test_bell_event_types_follow_the_bell_column(owner: UserDto) -> None:
     matrix = {group: [] for group in NOTIFICATION_GROUPS} | {"failures": ["bell"]}
     user = owner.model_copy(update={"notification_channels": matrix})
-    assert bell_event_types(user) == {"BackupFailedEvent", "BonusDaysRenewalStuckEvent"}
+    assert bell_event_types(user) == NOTIFICATION_GROUPS["failures"]
 
 
 def test_group_of_maps_event_types() -> None:

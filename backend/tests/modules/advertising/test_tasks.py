@@ -5,6 +5,7 @@ from app.modules.advertising.repository import AdLinkRepository
 from app.modules.advertising.usecases import RecordAdLinkAttributionUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.events import RecordingEventPublisher
 
 
 async def test_record_attribution_for_active_link(
@@ -18,13 +19,18 @@ async def test_record_attribution_for_active_link(
         )
         user = await user_repository.create(CreateUserDto(name="Active", telegram_id=950_001))
 
-    await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
+    publisher = RecordingEventPublisher()
+    await RecordAdLinkAttributionUseCase(ad_link_repository, uow, publisher).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="task-active", channel=AdLinkChannel.BOT
         )
     )
 
     assert await ad_link_repository.count_attributions(ad_link.id) == 1
+    assert [
+        (e.user_id, e.ad_link_id, e.ad_link_code, e.channel)  # type: ignore[attr-defined]
+        for e in publisher.events
+    ] == [(user.id, ad_link.id, "task-active", "BOT")]
 
 
 async def test_record_attribution_unknown_code_is_a_no_op(
@@ -36,7 +42,7 @@ async def test_record_attribution_unknown_code_is_a_no_op(
         user = await user_repository.create(CreateUserDto(name="Unknown", telegram_id=950_002))
 
     # no exception and no row; without an ad_link id there's nothing to query
-    await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
+    await RecordAdLinkAttributionUseCase(ad_link_repository, uow, RecordingEventPublisher()).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="does-not-exist", channel=AdLinkChannel.BOT
         )
@@ -55,7 +61,7 @@ async def test_record_attribution_inactive_link_is_a_no_op(
         user = await user_repository.create(CreateUserDto(name="Inactive", telegram_id=950_003))
     await ad_link_repository.update(UpdateAdLinkDto(ad_link_id=ad_link.id, is_active=False))
 
-    await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
+    await RecordAdLinkAttributionUseCase(ad_link_repository, uow, RecordingEventPublisher()).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="task-inactive", channel=AdLinkChannel.BOT
         )
@@ -76,7 +82,7 @@ async def test_record_attribution_duplicate_is_swallowed(
             ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
         )
 
-    await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
+    await RecordAdLinkAttributionUseCase(ad_link_repository, uow, RecordingEventPublisher()).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="task-dup", channel=AdLinkChannel.WEBCABINET
         )
@@ -96,7 +102,7 @@ async def test_record_attribution_disallowed_channel_is_a_no_op(
         )
         user = await user_repository.create(CreateUserDto(name="WebOnly", telegram_id=950_009))
 
-    await RecordAdLinkAttributionUseCase(ad_link_repository, uow).system(
+    await RecordAdLinkAttributionUseCase(ad_link_repository, uow, RecordingEventPublisher()).system(
         RecordAdLinkAttributionDto(
             user_id=user.id, ad_link_code="task-web-only", channel=AdLinkChannel.BOT
         )

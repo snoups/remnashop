@@ -392,3 +392,36 @@ async def test_sync_records_first_connected_at_only_once(
     )
     assert stored is not None
     assert abs((stored - first).total_seconds()) < 1
+
+
+async def test_synced_event_carries_the_owner(
+    session: AsyncSession,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    subscription_id = await _create_subscription(
+        subscription_repository, user_repository, 71020, SubscriptionStatus.ACTIVE
+    )
+    subscription = await subscription_repository.get_by_id(subscription_id)
+    use_case = SyncSubscriptionStatusUseCase(
+        subscription_repository,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    await use_case.system(
+        SyncSubscriptionStatusDto(
+            remnawave_user_id=71020, status=SubscriptionStatus.DISABLED, source="webhook"
+        )
+    )
+
+    row = await session.scalar(
+        select(EventOutboxEntry).where(
+            EventOutboxEntry.event_type == "SubscriptionStatusSyncedEvent"
+        )
+    )
+    assert row is not None
+    assert row.payload["user_id"] == subscription.user_id

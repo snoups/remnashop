@@ -1,5 +1,17 @@
 import type { ParseKeys } from "i18next";
-import { Bell, BellRing, CircleAlert, HandCoins, Send, ShieldAlert, ShoppingCart, UserCog } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  CalendarX,
+  CircleAlert,
+  HandCoins,
+  Send,
+  Server,
+  ShieldAlert,
+  ShoppingCart,
+  UserCog,
+  Users,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +42,9 @@ const GROUP_ICONS: Record<string, LucideIcon> = {
   requests: HandCoins,
   money: ShoppingCart,
   admins: UserCog,
+  infrastructure: Server,
+  customers: Users,
+  subscriptions: CalendarX,
 };
 
 const PUSH_ERRORS: Record<Exclude<EnablePushResult, "subscribed">, ParseKeys> = {

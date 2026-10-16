@@ -175,7 +175,7 @@ function UserDetailsDialogBody({
             {tab === "promocodes" && <PromocodesTab userId={user.id} />}
             {tab === "invited" && <InvitedTab userId={user.id} />}
             {tab === "sessions" && <SessionsTab userId={user.id} />}
-            {tab === "events" && <EventsTab actorId={user.id} />}
+            {tab === "events" && <EventsTab userId={user.id} by="target" />}
           </div>
         </motion.div>
       </div>

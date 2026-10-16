@@ -76,6 +76,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
                     old_status=old_status.value,
                     new_status=subscription.status.value,
                     source=data.source,
+                    user_id=subscription.user_id,
                 )
             )
             return subscription

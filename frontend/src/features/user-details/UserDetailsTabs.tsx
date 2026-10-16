@@ -199,12 +199,19 @@ export function SessionsTab({ userId }: { userId: number }) {
   );
 }
 
-export function EventsTab({ actorId }: { actorId: number }) {
+// an admin's tab lists what they did, a customer's everything about them
+export function EventsTab({ userId, by }: { userId: number; by: "actor" | "target" }) {
   const { t, i18n } = useTranslation();
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
-    (id: number, page, signal) => listEventLog({ actorId: id, page, pageSize: EVENTS_PAGE_SIZE }, signal),
-    actorId,
+    (id: number, page, signal) =>
+      listEventLog(
+        by === "actor"
+          ? { actorId: id, page, pageSize: EVENTS_PAGE_SIZE }
+          : { targetId: id, page, pageSize: EVENTS_PAGE_SIZE },
+        signal,
+      ),
+    userId,
   );
 
   return (

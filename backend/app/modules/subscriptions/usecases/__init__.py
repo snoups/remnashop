@@ -28,8 +28,8 @@ from app.modules.subscriptions.usecases.list_own_active_subscriptions import (
 )
 from app.modules.subscriptions.usecases.list_subscriptions import ListSubscriptionsUseCase
 from app.modules.subscriptions.usecases.prune_idempotency_keys import PruneIdempotencyKeysUseCase
-from app.modules.subscriptions.usecases.publish_lifecycle_event import (
-    PublishLifecycleEventUseCase,
+from app.modules.subscriptions.usecases.publish_panel_event import (
+    PublishPanelEventUseCase,
 )
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
 from app.modules.subscriptions.usecases.reconcile_subscriptions import ReconcileSubscriptionsUseCase
@@ -69,7 +69,7 @@ __all__ = [
     "ListOwnActiveSubscriptionsUseCase",
     "ListSubscriptionsUseCase",
     "PruneIdempotencyKeysUseCase",
-    "PublishLifecycleEventUseCase",
+    "PublishPanelEventUseCase",
     "PurchaseSubscriptionUseCase",
     "ReconcileSubscriptionsUseCase",
     "ReissueSubscriptionUseCase",

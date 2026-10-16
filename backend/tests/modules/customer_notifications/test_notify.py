@@ -24,6 +24,8 @@ ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
 ntf-customer-subscription-expiring = Expires soon.
     .title = Expiring
+ntf-customer-torrent-blocker-report = Torrents are forbidden.
+    .title = Torrents
 """
 _PURCHASED = "SubscriptionPurchasedEvent"
 
@@ -204,3 +206,31 @@ def test_counter_is_in_the_worker_registry() -> None:
     assert WORKER_METRICS_REGISTRY.get_sample_value(
         "remnashop_customer_notifications_total", {"channel": "EMAIL", "result": "queued"}
     )
+
+
+async def test_torrent_warning_is_sent_once_a_day_per_user(fx: _Fixture) -> None:
+    first = await fx.create(name="a", telegram_id=8101)
+    second = await fx.create(name="b", telegram_id=8102)
+
+    await fx.notify(first, "TorrentBlockerReportEvent", outbox_id=11)
+    await fx.notify(first, "TorrentBlockerReportEvent", outbox_id=12)
+    await fx.notify(second, "TorrentBlockerReportEvent", outbox_id=13)
+
+    assert [m["user_id"] for m in fx.telegram.messages] == [first.id, second.id]
+
+
+async def test_failed_torrent_warning_can_be_retried(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8103)
+
+    async def boom(**kwargs: Any) -> None:
+        raise RuntimeError("broker down")
+
+    original = fx.telegram.kiq
+    fx.telegram.kiq = boom  # type: ignore[method-assign]
+    with pytest.raises(RetryableTaskError):
+        await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=21)
+
+    fx.telegram.kiq = original  # type: ignore[method-assign]
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=21)
+
+    assert len(fx.telegram.messages) == 1

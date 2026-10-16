@@ -29,6 +29,7 @@ from app.modules.users.api.schemas import PromoteAdminRequest
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnsubscribeMarketingUseCase
+from tests.fakes.events import RecordingEventPublisher
 
 
 class _TestSessionProvider(Provider):
@@ -752,7 +753,8 @@ async def test_unsubscribe_sets_opt_out_idempotently(
     user_repository: UserRepository, uow: UnitOfWork, config: AppConfig
 ) -> None:
     user = await _create(user_repository, uow, name="sub", email="sub@mail.ru")
-    use_case = UnsubscribeMarketingUseCase(user_repository, uow, config)
+    publisher = RecordingEventPublisher()
+    use_case = UnsubscribeMarketingUseCase(user_repository, uow, config, publisher)
     token = unsubscribe_token(user.id, config.crypt_key.get_secret_value())
 
     await use_case.execute(token)
@@ -760,6 +762,7 @@ async def test_unsubscribe_sets_opt_out_idempotently(
 
     loaded = await user_repository.find_by_id(user.id)
     assert loaded is not None and loaded.marketing_opt_out is True
+    assert [(e.user_id, e.source) for e in publisher.events] == [(user.id, "link")]  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize("kind", ["garbage", "unknown", "deleted"])
@@ -780,7 +783,9 @@ async def test_unsubscribe_bad_token(
         token = unsubscribe_token(user.id, secret)
 
     with pytest.raises(DomainValidationError) as error:
-        await UnsubscribeMarketingUseCase(user_repository, uow, config).execute(token)
+        await UnsubscribeMarketingUseCase(
+            user_repository, uow, config, RecordingEventPublisher()
+        ).execute(token)
     assert error.value.code is ErrorCode.UNSUBSCRIBE_TOKEN_INVALID
 
 

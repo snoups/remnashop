@@ -16,7 +16,13 @@ from redis.asyncio import Redis
 
 from app.core.constants import CONTAINER_KEY, REDIS_KEY_PREFIX, USER_KEY
 from app.core.enums import MiddlewareEventType
-from app.modules.settings import BotRequirementsDto, GetBotRequirementsUseCase
+from app.modules.settings import (
+    BotRequirementsDto,
+    BotStatusKind,
+    GetBotRequirementsUseCase,
+    ReportBotStatusDto,
+    ReportBotStatusUseCase,
+)
 from app.modules.users import UserDto
 from app.telegram.broadcast_callbacks import RESUBSCRIBE_CALLBACK, UNSUBSCRIBE_CALLBACK
 from app.telegram.i18n import get_translator
@@ -39,7 +45,13 @@ def channel_member_key(channel_id: int, telegram_id: int) -> str:
     return f"{REDIS_KEY_PREFIX}channel_member:{channel_id}:{telegram_id}"
 
 
-async def is_channel_member(bot: Bot, redis: Redis, channel_id: int, telegram_id: int) -> bool:
+async def is_channel_member(
+    bot: Bot,
+    redis: Redis,
+    channel_id: int,
+    telegram_id: int,
+    report: ReportBotStatusUseCase,
+) -> bool:
     if await redis.exists(channel_member_key(channel_id, telegram_id)):
         return True
     try:
@@ -47,6 +59,16 @@ async def is_channel_member(bot: Bot, redis: Redis, channel_id: int, telegram_id
     except TelegramAPIError as error:
         # a broken channel setup must not lock every customer out
         logger.warning(f"Channel {channel_id} membership check failed: {error}")
+        try:
+            await report.system(
+                ReportBotStatusDto(
+                    kind=BotStatusKind.CHANNEL_CHECK_FAILED,
+                    detail=str(error),
+                    channel_id=channel_id,
+                )
+            )
+        except Exception:
+            logger.exception(f"Failed to report the channel {channel_id} check failure")
         return True
     if member.status in _LEFT_STATUSES:
         return False
@@ -89,7 +111,10 @@ class RequirementsMiddleware(EventTypedMiddleware):
             and user.telegram_id is not None
         ):
             redis = await container.get(Redis)
-            if not await is_channel_member(data["bot"], redis, channel_id, user.telegram_id):
+            report = await container.get(ReportBotStatusUseCase)
+            if not await is_channel_member(
+                data["bot"], redis, channel_id, user.telegram_id, report
+            ):
                 await ask_requirement(
                     event,
                     runner.get("ntf-requirements.channel"),

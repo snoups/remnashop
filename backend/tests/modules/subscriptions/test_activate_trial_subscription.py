@@ -3,7 +3,9 @@ from uuid import uuid4
 
 import pytest
 from remnapy import RemnawaveSDK
+from sqlalchemy import select
 
+from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType
 from app.core.error_codes import ErrorCode
@@ -85,6 +87,11 @@ async def test_activates_a_trial_and_spends_the_flag(
 
     reloaded = await user_repository.find_by_id(actor.id)
     assert reloaded.is_trial_available is False
+    purchased = await subscription_repository.session.scalar(
+        select(EventOutboxEntry).where(EventOutboxEntry.event_type == "SubscriptionPurchasedEvent")
+    )
+    assert purchased is not None
+    assert purchased.payload["is_trial"] is True
 
 
 async def test_rejects_when_the_flag_is_already_spent(

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.core.db.models import (
     CurrencyRate,
+    EventOutboxEntry,
     Plan,
     PricingSettings,
     ShopSettings,
@@ -39,6 +40,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
 )
+from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
 from app.modules.plans.dto import (
@@ -140,6 +142,7 @@ def create_checkout_use_case(
     purchase_dispatch: RecordingDispatch,
     promocode_repository: PromocodeRepository,
     waitlist_repository: WaitlistRepository,
+    event_publisher: EventPublisher,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         plan_repository,
@@ -156,6 +159,7 @@ def create_checkout_use_case(
         GetAccessSettingsUseCase(settings_repository, uow),
         waitlist_repository,
         settings_repository,
+        event_publisher,
     )
 
 
@@ -207,6 +211,33 @@ async def test_create_checkout_creates_a_pending_order_and_returns_confirmation_
 
     assert result.confirmation_url == fake_gateway.confirmation_url
     assert len(fake_gateway.create_payment_calls) == 1
+
+
+async def test_create_checkout_publishes_the_new_order(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    session: AsyncSession,
+) -> None:
+    result = await create_checkout_use_case(
+        actor,
+        CreateCheckoutDto(
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+        ),
+    )
+
+    row = await session.scalar(
+        select(EventOutboxEntry).where(EventOutboxEntry.event_type == "CheckoutCreatedEvent")
+    )
+    assert row is not None
+    assert row.payload["order_id"] == result.order_id
+    assert row.payload["user"]["id"] == actor.id
+    assert row.payload["gateway_type"] == "YOOKASSA"
 
 
 async def test_create_checkout_with_100_percent_discount_skips_the_gateway(
@@ -328,6 +359,7 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
             GetAccessSettingsUseCase(SettingsRepository(session), uow),
             WaitlistRepository(session),
             SettingsRepository(session),
+            RecordingEventPublisher(),
         )
         try:
             await use_case(

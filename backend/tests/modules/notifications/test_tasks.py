@@ -207,3 +207,17 @@ async def test_a_source_counter_left_without_ttl_gets_one(redis: Redis) -> None:
     await _deliver(redis, use_case, 700, _EVENT, ip)
 
     assert await redis.ttl(counter) > 0
+
+
+@pytest.mark.parametrize("event_type", ["PanelLoginFailedEvent", "TorrentBlockerReportEvent"])
+async def test_panel_brute_force_and_torrent_storms_are_coalesced(
+    redis: Redis, event_type: str
+) -> None:
+    await redis.delete(f"{REDIS_KEY_PREFIX}notification_sources:{event_type}")
+    await redis.delete(*_keys(coalesce_scope(event_type, {}, _IP)))
+    use_case = FakeUseCase()
+
+    await _deliver(redis, use_case, 601, event_type)
+    await _deliver(redis, use_case, 602, event_type)
+
+    assert len(use_case.calls) == 1

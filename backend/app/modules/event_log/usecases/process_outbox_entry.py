@@ -10,11 +10,19 @@ from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
 
 
+def _snapshot_id(value: Any) -> Optional[int]:
+    candidate = value.get("id") if isinstance(value, dict) else value
+    return candidate if isinstance(candidate, int) and candidate > 0 else None
+
+
 def _target_id(payload: dict[str, Any]) -> Optional[int]:
-    # ActorTargetEvent's target, as the outbox publisher serialized it
-    target = payload.get("target")
-    target_id = target.get("id") if isinstance(target, dict) else None
-    return target_id if isinstance(target_id, int) and target_id > 0 else None
+    # the account the entry is about: an admin's target, a customer's own
+    # event, or a system event that only carries the id
+    return (
+        _snapshot_id(payload.get("target"))
+        or _snapshot_id(payload.get("user"))
+        or _snapshot_id(payload.get("user_id"))
+    )
 
 
 class ProcessOutboxEntryUseCase(UseCase[int, None]):

@@ -32,6 +32,7 @@ from app.modules.settings.dto import UpdateOAuthSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.events import RecordingEventPublisher
 
 RP_ID = "example.com"
 ORIGIN = "https://example.com"
@@ -205,10 +206,12 @@ async def test_rename_passkey_updates_name(
     actor = await _create_user(user_repository, uow, "owner")
     created = await passkey_repository.create(_create_passkey_dto(actor.id))
 
-    use_case = RenamePasskeyUseCase(passkey_repository, uow)
+    publisher = RecordingEventPublisher()
+    use_case = RenamePasskeyUseCase(passkey_repository, uow, publisher)
     renamed = await use_case(actor, RenamePasskeyDto(id=created.id, name="New name"))
 
     assert renamed.name == "New name"
+    assert [e.credential_name for e in publisher.events] == ["New name"]  # type: ignore[attr-defined]
 
 
 async def test_rename_passkey_rejects_other_users_passkey(
@@ -218,7 +221,7 @@ async def test_rename_passkey_rejects_other_users_passkey(
     other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
     created = await passkey_repository.create(_create_passkey_dto(owner.id))
 
-    use_case = RenamePasskeyUseCase(passkey_repository, uow)
+    use_case = RenamePasskeyUseCase(passkey_repository, uow, RecordingEventPublisher())
     with pytest.raises(NotFoundError):
         await use_case(other, RenamePasskeyDto(id=created.id, name="Hijacked"))
 

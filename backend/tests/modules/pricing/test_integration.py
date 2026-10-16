@@ -38,6 +38,7 @@ from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import make_eligibility
 
 OWNER = UserDto(name="owner", role=Role.OWNER)
@@ -154,6 +155,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         GetAccessSettingsUseCase(SettingsRepository(plan_repository.session), uow),
         WaitlistRepository(plan_repository.session),
         SettingsRepository(plan_repository.session),
+        RecordingEventPublisher(),
     )
     result = await create_checkout(
         user,

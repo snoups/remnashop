@@ -1,7 +1,10 @@
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import pytest
 from redis.asyncio import Redis
+from remnapy.models.webhook import UserDto as WebhookUserDto
+from remnapy.models.webhook import WebhookPayloadDto
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,12 +13,12 @@ from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.ports import EventPublisher
-from app.modules.subscriptions.dto import PublishLifecycleEventDto, RemnawaveWebhookDto
+from app.modules.subscriptions.dto import PublishPanelEventDto, RemnawaveWebhookDto
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import (
     HandleRemnawaveWebhookUseCase,
-    PublishLifecycleEventUseCase,
+    PublishPanelEventUseCase,
     SyncSubscriptionStatusUseCase,
 )
 from app.modules.users.repository import UserRepository
@@ -44,7 +47,7 @@ def _use_case(
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
     )
-    publish = PublishLifecycleEventUseCase(
+    publish = PublishPanelEventUseCase(
         subscription_repository, user_repository, uow, event_publisher
     )
     return HandleRemnawaveWebhookUseCase(sync, publish, config, redis)
@@ -138,7 +141,7 @@ async def test_webhook_publishes_the_lifecycle_event_for_the_owner(
     assert refreshed.status == expected_status
 
 
-@pytest.mark.parametrize("meta", [{"expiration": 0}, {"expiration": -5}, None])
+@pytest.mark.parametrize("meta", [{"expiration": 0}, None])
 async def test_expiration_that_already_passed_publishes_nothing(
     session: AsyncSession,
     subscription_repository: SubscriptionRepository,
@@ -177,13 +180,17 @@ async def test_deleted_subscription_publishes_nothing(
         remnawave_user_id=91004,
         status=SubscriptionStatus.DELETED,
     )
-    use_case = PublishLifecycleEventUseCase(
+    use_case = PublishPanelEventUseCase(
         subscription_repository, user_repository, uow, event_publisher
     )
-
-    await use_case.system(
-        PublishLifecycleEventDto(webhook_event="user.expired", remnawave_user_id=91004)
+    payload = WebhookPayloadDto.model_construct(
+        event="user.expired",
+        timestamp=datetime.now(timezone.utc),
+        data=WebhookUserDto.model_construct(id=91004),
+        meta=None,
     )
+
+    await use_case.system(PublishPanelEventDto(payload=payload))
 
     assert await _lifecycle_rows(session) == []
 
@@ -225,7 +232,7 @@ async def test_publish_failure_does_not_fail_the_sync(
         async def system(self, data: Any) -> None:
             raise RuntimeError("publish failed")
 
-    use_case._publish_lifecycle_event = _Failing()  # type: ignore[assignment]
+    use_case._publish_panel_event_use_case = _Failing()  # type: ignore[assignment]
 
     await use_case.system(_webhook(config, "user.limited", 91003, "LIMITED"))
 

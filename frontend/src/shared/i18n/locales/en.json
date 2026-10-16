@@ -528,6 +528,8 @@
       "categoryPricing": "Pricing",
       "categoryPlans": "Plans",
       "categoryPayment": "Payments",
+      "categoryBroadcast": "Broadcasts",
+      "categoryInfrastructure": "Infrastructure",
       "actor": "Initiator",
       "actorPlaceholder": "Name, @username, ID or email",
       "dateFrom": "From",
@@ -670,7 +672,38 @@
       "ShopSettingsChangedEvent": "Shop settings changed",
       "UserRulesAcceptedEvent": "Rules accepted",
       "EmailSettingsChangedEvent": "Email settings changed",
-      "CabinetAuthSettingsChangedEvent": "Cabinet sign-in settings changed"
+      "CabinetAuthSettingsChangedEvent": "Cabinet sign-in settings changed",
+      "SubscriptionExpiredAgoEvent": "Subscription expired a while ago",
+      "SubscriptionNotConnectedEvent": "Never connected",
+      "SubscriptionFirstConnectedEvent": "First connection",
+      "SubscriptionTrafficResetEvent": "Traffic reset",
+      "SubscriptionRevokedEvent": "Subscription link reissued",
+      "SubscriptionDeviceAddedEvent": "Device added",
+      "SubscriptionDeviceRemovedEvent": "Device removed",
+      "TorrentBlockerReportEvent": "Torrent blocked",
+      "NodeConnectionLostEvent": "Node offline",
+      "NodeConnectionRestoredEvent": "Node online",
+      "NodeTrafficReachedEvent": "Node traffic limit",
+      "NodeBillingDueEvent": "Node payment due",
+      "PanelStartedEvent": "Panel started",
+      "PanelLoginFailedEvent": "Panel sign-in failed",
+      "PanelLoginSucceededEvent": "Panel sign-in",
+      "RemnawaveUnavailableEvent": "Panel unavailable",
+      "RemnawaveRestoredEvent": "Panel available",
+      "RemnawaveVersionMismatchEvent": "Unsupported panel version",
+      "BotStartedEvent": "Bot started",
+      "BotStoppedEvent": "Bot stopped",
+      "TelegramWebhookFailedEvent": "Webhook error",
+      "RequiredChannelCheckFailedEvent": "Channel check failed",
+      "CabinetSignedInEvent": "Cabinet sign-in",
+      "CheckoutCreatedEvent": "Checkout created",
+      "TransactionExpiredEvent": "Unpaid order expired",
+      "MarketingOptOutChangedEvent": "Marketing preference changed",
+      "BotBlockedByUserEvent": "Bot blocked by customer",
+      "LoggedOutEvent": "Signed out",
+      "PasskeyRenamedEvent": "Passkey renamed",
+      "AdLinkAttributedEvent": "Came from an ad link",
+      "BackupCompletedEvent": "Backup completed"
     }
   },
   "sidebar": {
@@ -1477,11 +1510,11 @@
       "groups": {
         "security": {
           "title": "Security",
-          "description": "Failed sign-ins and suspected session theft"
+          "description": "Failed sign-ins, Remnawave panel sign-ins and suspected session theft"
         },
         "failures": {
           "title": "Failures",
-          "description": "Failed backups"
+          "description": "Failed backups, webhook and channel check errors"
         },
         "broadcasts": {
           "title": "Broadcasts",
@@ -1498,6 +1531,18 @@
         "admins": {
           "title": "Admins",
           "description": "Admins created, deleted or given different permissions"
+        },
+        "infrastructure": {
+          "title": "Infrastructure",
+          "description": "Nodes, the Remnawave panel and the bot going down or back up"
+        },
+        "customers": {
+          "title": "Customers",
+          "description": "Registrations, first connections and torrent blocks"
+        },
+        "subscriptions": {
+          "title": "Subscriptions",
+          "description": "Expired, out of traffic, reissued or never connected"
         }
       },
       "channels": {

@@ -11,7 +11,13 @@ from app.core.config import AppConfig
 from app.core.constants import CONTAINER_KEY, USER_KEY
 from app.core.enums import Role
 from app.core.utils.time import datetime_now
-from app.modules.settings import BotRequirementsDto, GetBotRequirementsUseCase
+from app.modules.settings import (
+    BotRequirementsDto,
+    BotStatusKind,
+    GetBotRequirementsUseCase,
+    ReportBotStatusDto,
+    ReportBotStatusUseCase,
+)
 from app.modules.users import UserDto
 from app.telegram.middlewares.requirements import RULES_ACCEPT_CALLBACK, RequirementsMiddleware
 
@@ -38,16 +44,27 @@ class _GetRequirements:
         return self._requirements
 
 
+class _Report:
+    def __init__(self) -> None:
+        self.reports: list[ReportBotStatusDto] = []
+
+    async def system(self, data: ReportBotStatusDto) -> None:
+        self.reports.append(data)
+
+
 class _Container:
     def __init__(self, requirements: BotRequirementsDto, redis: Redis) -> None:
         self._requirements = requirements
         self._redis = redis
+        self.report = _Report()
 
     async def get(self, dependency_type: type) -> Any:
         if dependency_type is TranslatorHub:
             return _Hub()
         if dependency_type is Redis:
             return self._redis
+        if dependency_type is ReportBotStatusUseCase:
+            return self.report
         assert dependency_type is GetBotRequirementsUseCase
         return _GetRequirements(self._requirements)
 
@@ -94,7 +111,12 @@ _CHANNEL = BotRequirementsDto(channel_required=True, channel_id=-100, channel_ur
 
 
 async def _run(
-    event: Any, user: UserDto, requirements: BotRequirementsDto, bot: _Bot, redis: Redis
+    event: Any,
+    user: UserDto,
+    requirements: BotRequirementsDto,
+    bot: _Bot,
+    redis: Redis,
+    container: Optional[_Container] = None,
 ) -> bool:
     called = False
 
@@ -102,7 +124,8 @@ async def _run(
         nonlocal called
         called = True
 
-    data = {USER_KEY: user, CONTAINER_KEY: _Container(requirements, redis), "bot": bot}
+    container = container or _Container(requirements, redis)
+    data = {USER_KEY: user, CONTAINER_KEY: container, "bot": bot}
     await RequirementsMiddleware().middleware_logic(handler, event, data)
     return called
 
@@ -157,7 +180,13 @@ async def test_subscription_is_cached(redis: Redis) -> None:
 
 async def test_broken_channel_setup_lets_customers_through(redis: Redis) -> None:
     user = UserDto(id=1, name="c", telegram_id=44)
-    assert await _run(_message([]), user, _CHANNEL, _Bot(None), redis) is True
+    container = _Container(_CHANNEL, redis)
+
+    assert await _run(_message([]), user, _CHANNEL, _Bot(None), redis, container) is True
+
+    assert [(r.kind, r.channel_id) for r in container.report.reports] == [
+        (BotStatusKind.CHANNEL_CHECK_FAILED, -100)
+    ]
 
 
 async def test_membership_is_cached_per_channel(redis: Redis) -> None:
@@ -173,3 +202,15 @@ async def test_successful_payment_passes_unmet_requirements(redis: Redis) -> Non
     message = _message([])
     object.__setattr__(message, "successful_payment", object())
     assert await _run(message, UserDto(id=1, name="c"), _RULES, _Bot("member"), redis) is True
+
+
+async def test_failed_report_still_lets_customers_through(redis: Redis) -> None:
+    user = UserDto(id=1, name="c", telegram_id=45)
+    container = _Container(_CHANNEL, redis)
+
+    async def boom(data: ReportBotStatusDto) -> None:
+        raise ConnectionError("db down")
+
+    container.report.system = boom  # type: ignore[method-assign]
+
+    assert await _run(_message([]), user, _CHANNEL, _Bot(None), redis, container) is True

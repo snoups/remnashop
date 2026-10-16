@@ -34,6 +34,7 @@ from app.modules.transactions.usecases import (
 )
 from app.modules.users.dto import UpdateUserDto
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 _PAID = ProviderPayment(
@@ -148,7 +149,9 @@ async def _paid_while_order_expires(
             .where(Transaction.id == order.id)
             .values(expires_at=datetime_now() - timedelta(minutes=1))
         )
-    await PruneExpiredTransactionsUseCase(transaction_repository, user_repository, uow).system()
+    await PruneExpiredTransactionsUseCase(
+        transaction_repository, user_repository, uow, RecordingEventPublisher()
+    ).system()
     gate.set()
     await task
     return order

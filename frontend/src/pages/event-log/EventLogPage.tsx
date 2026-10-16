@@ -7,7 +7,9 @@ import {
   Layers,
   Loader2,
   LogIn,
+  Megaphone,
   Package,
+  Server,
   Settings,
   Share2,
   ShieldCheck,
@@ -59,6 +61,8 @@ const CATEGORIES = [
   "AUTH",
   "ADMIN_MANAGEMENT",
   "SETTINGS",
+  "BROADCAST",
+  "INFRASTRUCTURE",
 ] as const;
 const CATEGORY_ICONS: Record<(typeof CATEGORIES)[number], LucideIcon> = {
   AUTH: LogIn,
@@ -71,6 +75,8 @@ const CATEGORY_ICONS: Record<(typeof CATEGORIES)[number], LucideIcon> = {
   PRICING: Coins,
   PLANS: Package,
   PAYMENT: CreditCard,
+  BROADCAST: Megaphone,
+  INFRASTRUCTURE: Server,
 };
 const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], ParseKeys> = {
   AUTH: "eventLog.filters.categoryAuth",
@@ -83,6 +89,8 @@ const CATEGORY_LABEL_KEYS: Record<(typeof CATEGORIES)[number], ParseKeys> = {
   PRICING: "eventLog.filters.categoryPricing",
   PLANS: "eventLog.filters.categoryPlans",
   PAYMENT: "eventLog.filters.categoryPayment",
+  BROADCAST: "eventLog.filters.categoryBroadcast",
+  INFRASTRUCTURE: "eventLog.filters.categoryInfrastructure",
 };
 const FILTER_DEBOUNCE_MS = 200;
 export function EventLogPage() {

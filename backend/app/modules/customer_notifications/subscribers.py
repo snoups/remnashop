@@ -8,13 +8,16 @@ from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssued
 from app.modules.subscriptions import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
+    SubscriptionExpiredAgoEvent,
     SubscriptionExpiredEvent,
     SubscriptionExpiringEvent,
     SubscriptionGrantedEvent,
+    SubscriptionNotConnectedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
     SubscriptionTrafficLimitedEvent,
     SubscriptionTrafficThresholdEvent,
+    TorrentBlockerReportEvent,
 )
 from app.modules.transactions import TransactionPartiallyRefundedEvent, TransactionRefundedEvent
 
@@ -62,6 +65,10 @@ async def _on_expiring(entry: StoredEvent) -> None:
     await _notify(entry, entry.payload["user"]["id"], {"hours": entry.payload["hours"]})
 
 
+async def _on_hours(entry: StoredEvent) -> None:
+    await _notify(entry, entry.payload["user"]["id"], {"hours": entry.payload["hours"]})
+
+
 def _amount(value: str | int) -> str | int:
     # ftl plural selectors only match numbers, a numeric string would fall to [other]
     if isinstance(value, str) and value.isdigit():
@@ -97,6 +104,9 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(SubscriptionExpiredEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficLimitedEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficThresholdEvent, _on_purchase)
+    bus.subscribe(SubscriptionNotConnectedEvent, _on_hours)
+    bus.subscribe(SubscriptionExpiredAgoEvent, _on_hours)
+    bus.subscribe(TorrentBlockerReportEvent, _on_purchase)
     bus.subscribe(CabinetNewDeviceSignInEvent, _on_new_device)
     bus.subscribe(ReferralRewardIssuedEvent, _on_reward)
     bus.subscribe(InviteeRewardIssuedEvent, _on_reward)

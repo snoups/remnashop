@@ -12,6 +12,7 @@ from app.modules.customer_notifications.usecases import (
 from app.modules.notifications import TelegramSendResult
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.events import RecordingEventPublisher
 
 _RESULT: Final[dict[str, TelegramSendResult]] = {}
 
@@ -39,12 +40,16 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str]]:
     return calls
 
 
-async def _run(users: UserRepository, uow: UnitOfWork, token: Optional[str], **fields: Any) -> None:
+async def _run(
+    users: UserRepository, uow: UnitOfWork, token: Optional[str], **fields: Any
+) -> tuple[UserDto, RecordingEventPublisher]:
     async with uow:
         user: UserDto = await users.create(CreateUserDto(name="a", **fields))
         await uow.commit()
-    use_case = SendCustomerTelegramUseCase(users, cast(Any, _Tokens(token)), uow)
+    publisher = RecordingEventPublisher()
+    use_case = SendCustomerTelegramUseCase(users, cast(Any, _Tokens(token)), uow, publisher)
     await use_case.system(SendCustomerTelegramDto(user_id=user.id, text="hi"))
+    return user, publisher
 
 
 async def test_failed_send_is_retryable(
@@ -60,8 +65,9 @@ async def test_forbidden_is_final(
     user_repository: UserRepository, uow: UnitOfWork, sent: list[tuple[int, str]]
 ) -> None:
     _RESULT["value"] = TelegramSendResult.FORBIDDEN
-    await _run(user_repository, uow, "t", telegram_id=9002)
+    user, publisher = await _run(user_repository, uow, "t", telegram_id=9002)
     assert sent == [(9002, "hi")]
+    assert [e.user_id for e in publisher.events] == [user.id]  # type: ignore[attr-defined]
 
 
 async def test_no_token_sends_nothing(

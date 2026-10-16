@@ -18,7 +18,13 @@ class NotificationChannel(StrEnum):
 
 
 COALESCED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
-    {"LoginFailedEvent", "PasskeyLoginFailedEvent", "OAuthLoginFailedEvent"}
+    {
+        "LoginFailedEvent",
+        "PasskeyLoginFailedEvent",
+        "OAuthLoginFailedEvent",
+        "PanelLoginFailedEvent",
+        "TorrentBlockerReportEvent",
+    }
 )
 COALESCE_WINDOW_S: Final[int] = 300
 
@@ -29,9 +35,32 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "LoginFailedEvent",
             "PasskeyLoginFailedEvent",
             "OAuthLoginFailedEvent",
+            "PanelLoginFailedEvent",
+            "PanelLoginSucceededEvent",
         }
     ),
-    "failures": frozenset({"BackupFailedEvent", "BonusDaysRenewalStuckEvent"}),
+    "failures": frozenset(
+        {
+            "BackupFailedEvent",
+            "BonusDaysRenewalStuckEvent",
+            "RequiredChannelCheckFailedEvent",
+            "TelegramWebhookFailedEvent",
+        }
+    ),
+    "infrastructure": frozenset(
+        {
+            "NodeConnectionLostEvent",
+            "NodeConnectionRestoredEvent",
+            "NodeTrafficReachedEvent",
+            "NodeBillingDueEvent",
+            "RemnawaveUnavailableEvent",
+            "RemnawaveRestoredEvent",
+            "RemnawaveVersionMismatchEvent",
+            "PanelStartedEvent",
+            "BotStartedEvent",
+            "BotStoppedEvent",
+        }
+    ),
     "broadcasts": frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
     "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
     "money": frozenset(
@@ -52,13 +81,31 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "AdminPermissionsUpdatedEvent",
         }
     ),
+    "customers": frozenset(
+        {
+            "TelegramUserRegisteredEvent",
+            "CabinetUserRegisteredEvent",
+            "TelegramRegistrationBlockedEvent",
+            "CabinetRegistrationBlockedEvent",
+            "SubscriptionFirstConnectedEvent",
+            "TorrentBlockerReportEvent",
+        }
+    ),
+    "subscriptions": frozenset(
+        {
+            "SubscriptionExpiredEvent",
+            "SubscriptionTrafficLimitedEvent",
+            "SubscriptionRevokedEvent",
+            "SubscriptionNotConnectedEvent",
+        }
+    ),
 }
 
 _ALL_CHANNELS: Final[frozenset[NotificationChannel]] = frozenset(NotificationChannel)
 _CHANNEL_VALUES: Final[frozenset[str]] = frozenset(c.value for c in NotificationChannel)
 # the bell holds the entry; a recipient may lack the event-log permissions
 PUSH_URL: Final[str] = "/dashboard?bell=open"
-_CRITICAL_GROUPS: Final[frozenset[str]] = frozenset({"security", "failures"})
+_CRITICAL_GROUPS: Final[frozenset[str]] = frozenset({"security", "failures", "infrastructure"})
 # critical groups everywhere, the rest only in the bell, until an admin chooses otherwise
 DEFAULT_NOTIFICATION_CHANNELS: Final[dict[str, frozenset[NotificationChannel]]] = {
     group: _ALL_CHANNELS if group in _CRITICAL_GROUPS else frozenset({NotificationChannel.BELL})

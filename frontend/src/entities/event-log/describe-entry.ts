@@ -46,6 +46,8 @@ export const ANONYMOUS_EVENT_TYPES: ReadonlySet<string> = new Set([
   "PasskeyLoginFailedEvent",
   "BootstrapConflictEvent",
   "SessionTheftDetectedEvent",
+  "PanelLoginFailedEvent",
+  "PanelLoginSucceededEvent",
 ]);
 
 // The API-token actor has id 0 (api/dependencies/public.py), the system actor role SYSTEM.

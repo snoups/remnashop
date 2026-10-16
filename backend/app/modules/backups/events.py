@@ -18,3 +18,11 @@ class BackupChangedEvent(ActorEvent):
     action: str
     run_id: Optional[int] = None
     kind: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class BackupCompletedEvent(SystemEvent):
+    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    run_id: int
+    kind: str
+    size_bytes: int

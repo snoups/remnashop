@@ -87,6 +87,21 @@ def _entry(event_type: str, payload: dict[str, Any]) -> StoredEvent:
             {"reward_type": "POINTS", "amount": "12.50"},
         ),
         (
+            subscribers._on_hours,
+            "SubscriptionNotConnectedEvent",
+            {"user": {"id": 7}, "hours": 24},
+            7,
+            {"hours": 24},
+        ),
+        (
+            subscribers._on_hours,
+            "SubscriptionExpiredAgoEvent",
+            {"user": {"id": 7}, "hours": 24},
+            7,
+            {"hours": 24},
+        ),
+        (subscribers._on_purchase, "TorrentBlockerReportEvent", {"user": {"id": 7}}, 7, {}),
+        (
             subscribers._on_reward,
             "InviteeRewardIssuedEvent",
             {"user": {"id": 7}, "reward_type": "EXTRA_DAYS", "amount": 3},

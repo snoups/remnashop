@@ -126,6 +126,14 @@ async def test_run_backup_completes_and_signs_database_dump(
     written = Path(completed.file_path).read_bytes()
     assert written.startswith(dump_bytes)  # provenance trailer appended after
     assert completed.checksum_sha256 == hashlib.sha256(written).hexdigest()
+    published = (
+        await backup_repository.session.scalars(
+            select(EventOutboxEntry).where(EventOutboxEntry.event_type == "BackupCompletedEvent")
+        )
+    ).all()
+    assert [(e.payload["run_id"], e.payload["size_bytes"]) for e in published] == [
+        (run.id, len(written))
+    ]
 
 
 async def test_run_backup_completes_assets_dump(

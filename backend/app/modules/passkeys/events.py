@@ -28,3 +28,9 @@ class PasskeyRegisteredEvent(UserEvent):
 class PasskeyRemovedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
     credential_name: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PasskeyRenamedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+    credential_name: Optional[str]
