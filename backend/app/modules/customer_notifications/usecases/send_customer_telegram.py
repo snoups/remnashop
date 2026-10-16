@@ -6,11 +6,10 @@ from app.core.exceptions import RetryableTaskError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.customer_notifications.dto import SendCustomerTelegramDto
-from app.modules.customer_notifications.events import BotBlockedByUserEvent
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.routing import CustomerChannel
 from app.modules.notifications import BotTokenSource, TelegramSendResult, send_telegram_text
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, mark_bot_blocked
 
 
 class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
@@ -39,6 +38,7 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             user is None
             or user.telegram_id is None
             or user.is_blocked
+            or user.is_bot_blocked
             or user.deleted_at is not None
         ):
             return
@@ -49,6 +49,6 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
         if result is TelegramSendResult.FORBIDDEN:
             logger.info(f"User {user.id} cannot receive bot messages")
             async with self._uow:
-                await self._event_publisher.publish(BotBlockedByUserEvent(user_id=user.id))
+                await mark_bot_blocked(self._user_repository, self._event_publisher, user.id)
         if result is TelegramSendResult.FAILED:
             raise RetryableTaskError(f"Telegram send to user {user.id} failed")

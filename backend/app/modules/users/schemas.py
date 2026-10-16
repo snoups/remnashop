@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     login: Optional[str]
     language: str
     is_blocked: bool
+    is_bot_blocked: bool = False
     personal_discount: int
     purchase_discount: int
     loyalty_discount: int

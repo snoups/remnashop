@@ -45,6 +45,7 @@ from app.modules.broadcasts.validation import promocode_is_usable
 from app.modules.promocodes import PromocodeRepository
 from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationRepository
+from app.modules.users import UserRepository, mark_bot_blocked
 
 _TOKEN_REJECTED: Final[str] = "Bot token was rejected"
 _MEDIA_MISSING: Final[str] = "Media file is missing"
@@ -56,6 +57,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
     def __init__(
         self,
         broadcast_repository: BroadcastRepository,
+        user_repository: UserRepository,
         settings_repository: SettingsRepository,
         promocode_repository: PromocodeRepository,
         translation_repository: TranslationRepository,
@@ -68,6 +70,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         redis: Redis,
     ) -> None:
         self._broadcast_repository = broadcast_repository
+        self._user_repository = user_repository
         self._settings_repository = settings_repository
         self._promocode_repository = promocode_repository
         self._translation_repository = translation_repository
@@ -281,6 +284,9 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
             elif result.outcome is SendOutcome.BLOCKED:
                 await self._broadcast_repository.mark_recipient(
                     recipient.id, BroadcastRecipientStatus.BLOCKED, error=result.error
+                )
+                await mark_bot_blocked(
+                    self._user_repository, self._event_publisher, recipient.user_id
                 )
             elif result.outcome is SendOutcome.FAILED:
                 await self._broadcast_repository.mark_recipient(

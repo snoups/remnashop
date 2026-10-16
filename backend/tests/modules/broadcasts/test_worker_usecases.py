@@ -65,6 +65,7 @@ from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.settings.dto import UpdateBotRequirementsDto, UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations.repository import TranslationRepository
+from app.modules.users.events import BotBlockedByUserEvent
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.broadcasts.factories import MockTelegram, make_customer, ok_response
@@ -167,6 +168,7 @@ def make_start(
 @pytest.fixture
 def make_deliver(
     broadcast_repository: BroadcastRepository,
+    user_repository: UserRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
     translation_repository: TranslationRepository,
@@ -180,6 +182,7 @@ def make_deliver(
     def build(telegram: MockTelegram) -> DeliverBroadcastBatchUseCase:
         return DeliverBroadcastBatchUseCase(
             broadcast_repository,
+            user_repository,
             settings_repository,
             promocode_repository,
             translation_repository,
@@ -458,9 +461,35 @@ async def test_deliver_marks_outcomes_and_completes(
     assert after.completed_at is not None
     assert (after.sent_count, after.blocked_count, after.failed_count) == (1, 1, 1)
     assert _published(publisher) == [
-        _strip(BroadcastCompletedEvent(broadcast_id=broadcast.id, sent=1, failed=1, blocked=1))
+        _strip(BotBlockedByUserEvent(user_id=ids[1])),
+        _strip(BroadcastCompletedEvent(broadcast_id=broadcast.id, sent=1, failed=1, blocked=1)),
     ]
     assert len(telegram.requests) == 3
+    blocked = await user_repository.find_by_id(ids[1])
+    assert blocked is not None and blocked.is_bot_blocked is True
+
+
+async def test_deliver_skips_customers_who_blocked_the_bot(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_deliver: Callable[[MockTelegram], DeliverBroadcastBatchUseCase],
+    with_token: None,
+) -> None:
+    ids = await _customers(session, user_repository, 9660, 2)
+    broadcast = await _sending(broadcast_repository, ids)
+    await user_repository.set_bot_blocked(ids[1], True)
+    telegram = MockTelegram(
+        _by_chat({9660: httpx.Response(200, json={"ok": True, "result": {"message_id": 7}})})
+    )
+
+    await make_deliver(telegram).system(broadcast.id)
+
+    assert await _statuses(session, broadcast.id) == [
+        BroadcastRecipientStatus.SENT,
+        BroadcastRecipientStatus.BLOCKED,
+    ]
+    assert len(telegram.requests) == 1
 
 
 async def test_deliver_transient_error_retries_up_to_three(

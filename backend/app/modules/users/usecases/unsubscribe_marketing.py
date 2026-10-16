@@ -38,6 +38,6 @@ class UnsubscribeMarketingUseCase:
                 return
             await self._user_repository.set_marketing_opt_out(user_id, True)
             await self._event_publisher.publish(
-                MarketingOptOutChangedEvent(user_id=user_id, opted_out=True, source="link")
+                MarketingOptOutChangedEvent(user=user, opted_out=True, source="link")
             )
         logger.info(f"User '{user_id}' unsubscribed from marketing by email link")

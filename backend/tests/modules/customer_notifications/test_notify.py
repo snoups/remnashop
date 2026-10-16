@@ -234,3 +234,14 @@ async def test_failed_torrent_warning_can_be_retried(fx: _Fixture) -> None:
     await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=21)
 
     assert len(fx.telegram.messages) == 1
+
+
+async def test_bot_blocked_customer_gets_email_instead(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8201, email="a@example.com")
+    async with fx.uow:
+        await fx.users.set_bot_blocked(user.id, True)
+
+    await fx.notify(user, "SubscriptionExpiringEvent")
+
+    assert fx.telegram.messages == []
+    assert len(fx.email.messages) == 1

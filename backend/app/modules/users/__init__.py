@@ -1,8 +1,10 @@
+from app.modules.users.bot_blocked import mark_bot_blocked
 from app.modules.users.di import get_users_providers
 from app.modules.users.dto import (
     CreateUserDto,
     RegisterCabinetUserDto,
     RegisterTelegramUserDto,
+    SetBotBlockedDto,
     SetMarketingOptOutDto,
     SetUserDiscountDto,
     UpdateUserDto,
@@ -20,6 +22,7 @@ from app.modules.users.usecases import (
     GetCurrentUserUseCase,
     RegisterCabinetUserUseCase,
     RegisterTelegramUserUseCase,
+    SetBotBlockedUseCase,
     SetMarketingOptOutUseCase,
     SetUserDiscountUseCase,
     UnblockUserUseCase,
@@ -37,6 +40,8 @@ __all__ = [
     "RegisterCabinetUserUseCase",
     "RegisterTelegramUserDto",
     "RegisterTelegramUserUseCase",
+    "SetBotBlockedDto",
+    "SetBotBlockedUseCase",
     "SetMarketingOptOutDto",
     "SetMarketingOptOutUseCase",
     "SetUserDiscountDto",
@@ -51,6 +56,7 @@ __all__ = [
     "assert_manageable",
     "get_users_providers",
     "get_visible_target",
+    "mark_bot_blocked",
     "read_unsubscribe_token",
     "unsubscribe_token",
     "visible_user",

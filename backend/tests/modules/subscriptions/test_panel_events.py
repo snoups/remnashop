@@ -182,6 +182,7 @@ async def test_infrastructure_webhook_publishes_a_system_event(
         _payload("user.created", _user()),
         _payload("node.created", _node()),
         _payload("user.expiration", _user(), WebhookMetaDto(expiration=0)),
+        _payload("user.not_connected", _user()),  # no threshold to tell the customer
         _payload("user.first_connected", _user(rw_id=92999)),  # no shop subscription
     ],
 )

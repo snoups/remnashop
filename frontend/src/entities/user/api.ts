@@ -47,6 +47,7 @@ export interface UserListItem {
   /** set once the account is soft-deleted; name and contacts are wiped then */
   deleted_at?: string | null;
   email_undeliverable_at?: string | null;
+  is_bot_blocked?: boolean;
   // list endpoint only
   active_subscriptions?: number;
   limited_subscriptions?: number;

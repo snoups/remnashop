@@ -96,3 +96,55 @@ async def test_metadata_failure_does_not_mark_the_panel_down(
         await use_case.system()
 
     assert await _types(session) == []
+
+
+class _FlakyPublisher:
+    def __init__(self, inner: EventPublisher) -> None:
+        self._inner = inner
+        self.fail_next = False
+
+    async def publish(self, event: Any) -> None:
+        if self.fail_next:
+            self.fail_next = False
+            raise ConnectionError("db down")
+        await self._inner.publish(event)
+
+
+async def test_a_lost_outage_event_is_published_on_the_next_sample(
+    session: AsyncSession, redis: Redis, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    sdk = _Sdk()
+    publisher = _FlakyPublisher(event_publisher)
+    use_case = SampleRemnawaveOnlineUseCase(sdk, redis, uow, publisher)  # type: ignore[arg-type]
+
+    sdk.system.fail = True
+    with pytest.raises(ConnectionError):
+        await use_case.system()
+    publisher.fail_next = True
+    with pytest.raises(ConnectionError):
+        await use_case.system()
+    with pytest.raises(ConnectionError):
+        await use_case.system()
+    sdk.system.fail = False
+    publisher.fail_next = True
+    with pytest.raises(ConnectionError):
+        await use_case.system()
+    await use_case.system()
+
+    assert await _types(session) == ["RemnawaveUnavailableEvent", "RemnawaveRestoredEvent"]
+
+
+async def test_the_down_flag_expires(
+    redis: Redis, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    sdk = _Sdk()
+    use_case = SampleRemnawaveOnlineUseCase(sdk, redis, uow, event_publisher)  # type: ignore[arg-type]
+
+    sdk.system.fail = True
+    for _ in range(2):
+        with pytest.raises(ConnectionError):
+            await use_case.system()
+
+    keys = [key async for key in redis.scan_iter("*remnawave_down")]
+    assert len(keys) == 1
+    assert await redis.ttl(keys[0]) > 0

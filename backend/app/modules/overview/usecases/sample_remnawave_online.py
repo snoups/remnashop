@@ -10,6 +10,7 @@ from app.core.constants import (
     REDIS_KEY_PREFIX,
     REMNAWAVE_MAX_VERSION,
     REMNAWAVE_MIN_VERSION,
+    TTL_1D,
     TTL_1H,
     TTL_30D,
 )
@@ -54,8 +55,10 @@ class SampleRemnawaveOnlineUseCase(UseCase[None, None]):
             await self._record_failure(error)
             raise
         await self._redis.delete(_FAILURES_KEY)
-        if await self._redis.delete(_DOWN_KEY):
+        # flag goes only after the event is stored, so a failed publish is retried next sample
+        if await self._redis.exists(_DOWN_KEY):
             await self._publish(RemnawaveRestoredEvent())
+            await self._redis.delete(_DOWN_KEY)
         await record_online_sample(self._redis, datetime_now(), int(stats.online_stats.online_now))
         try:
             metadata = await self._remnawave_sdk.system.get_metadata()
@@ -68,8 +71,10 @@ class SampleRemnawaveOnlineUseCase(UseCase[None, None]):
         # a single timeout is not an outage; one event per outage, not per sample
         failures = await self._redis.incr(_FAILURES_KEY)
         await self._redis.expire(_FAILURES_KEY, TTL_1H)
-        if failures >= _DOWN_AFTER_FAILURES and await self._redis.set(_DOWN_KEY, "1", nx=True):
+        if failures >= _DOWN_AFTER_FAILURES and not await self._redis.exists(_DOWN_KEY):
             await self._publish(RemnawaveUnavailableEvent(error=type(error).__name__))
+            # a day-long outage is reported again rather than staying silent forever
+            await self._redis.set(_DOWN_KEY, "1", ex=TTL_1D)
 
     async def _check_version(self, raw: str) -> None:
         try:

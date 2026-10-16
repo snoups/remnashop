@@ -85,6 +85,8 @@ class User(BaseSql, TimestampMixin):
     loyalty_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     loyalty_excluded: Mapped[bool] = mapped_column(default=False, server_default="false")
     marketing_opt_out: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # set by a refused send or a "kicked" chat-member update, cleared by any message to the bot
+    is_bot_blocked: Mapped[bool] = mapped_column(default=False, server_default="false")
     email_undeliverable_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # NULL = never accepted; a date, not a flag, so changed rules can ask again
     rules_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

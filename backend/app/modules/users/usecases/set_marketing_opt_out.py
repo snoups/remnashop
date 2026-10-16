@@ -26,8 +26,6 @@ class SetMarketingOptOutUseCase(UseCase[SetMarketingOptOutDto, None, UserDto]):
                 return
             await self._user_repository.set_marketing_opt_out(actor.id, data.opted_out)
             await self._event_publisher.publish(
-                MarketingOptOutChangedEvent(
-                    user_id=actor.id, opted_out=data.opted_out, source="account"
-                )
+                MarketingOptOutChangedEvent(user=actor, opted_out=data.opted_out, source="account")
             )
         logger.info(f"{actor.log} Set marketing opt-out to {data}")

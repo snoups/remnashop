@@ -40,6 +40,7 @@ class UserDto(BaseDto, TimestampMixin):
     loyalty_discount: int = 0
     loyalty_excluded: bool = False
     marketing_opt_out: bool = False
+    is_bot_blocked: bool = False
     email_undeliverable_at: Optional[datetime] = None
     rules_accepted_at: Optional[datetime] = None
 
@@ -327,6 +328,12 @@ class UpdateOwnProfileDto:
 class UpdateSecuritySettingsDto:
     ip_allowlist: list[str]
     client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetBotBlockedDto:
+    telegram_id: int
+    blocked: bool
 
 
 @dataclass(frozen=True, kw_only=True)

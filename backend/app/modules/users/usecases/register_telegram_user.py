@@ -99,6 +99,8 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         # staff language comes from the dashboard and drives their notifications
         sync_language = data.sync_language and user.role == Role.USER
         language = data.language if sync_language else user.language
+        if user.is_bot_blocked and await self._user_repository.set_bot_blocked(user.id, False):
+            user = user.model_copy(update={"is_bot_blocked": False})
         if (user.name, user.username, user.language) == (name, data.username, language):
             return user
         updated = await self._user_repository.update_telegram_profile(

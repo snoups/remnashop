@@ -120,8 +120,13 @@ class SecuritySettingsChangedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class MarketingOptOutChangedEvent(SystemEvent):
+class BotBlockedByUserEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     user_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class MarketingOptOutChangedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
     opted_out: bool
     source: str

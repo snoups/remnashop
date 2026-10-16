@@ -173,6 +173,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
             </h4>
             <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={String(user.telegram_id)} mono>
               {user.telegram_id}
+              {user.is_bot_blocked && <Badge tone="error">{t("users.botBlocked.badge")}</Badge>}
             </InfoRow>
             <InfoRow
               icon={AtSign}

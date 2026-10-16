@@ -1146,6 +1146,7 @@ def upgrade() -> None:
         sa.Column("loyalty_discount", sa.Integer(), server_default="0", nullable=False),
         sa.Column("loyalty_excluded", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("marketing_opt_out", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("is_bot_blocked", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_undeliverable_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("rules_accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),

@@ -17,7 +17,7 @@ async def test_customer_toggles_own_flag(user_repository: UserRepository, uow: U
     await use_case(user, SetMarketingOptOutDto(opted_out=False))
     loaded = await user_repository.find_by_id(user.id)
     assert loaded is not None and loaded.marketing_opt_out is False
-    assert [(e.user_id, e.opted_out, e.source) for e in publisher.events] == [  # type: ignore[attr-defined]
+    assert [(e.user.id, e.opted_out, e.source) for e in publisher.events] == [  # type: ignore[attr-defined]
         (user.id, True, "account"),
         (user.id, False, "account"),
     ]

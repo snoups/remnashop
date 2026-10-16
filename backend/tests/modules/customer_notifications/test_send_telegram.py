@@ -82,3 +82,18 @@ async def test_user_without_telegram_sends_nothing(
 ) -> None:
     await _run(user_repository, uow, "t", email="a@example.com")
     assert sent == []
+
+
+async def test_forbidden_marks_the_bot_blocked_and_stops_sending(
+    user_repository: UserRepository, uow: UnitOfWork, sent: list[tuple[int, str]]
+) -> None:
+    _RESULT["value"] = TelegramSendResult.FORBIDDEN
+    user, publisher = await _run(user_repository, uow, "t", telegram_id=9004)
+    use_case = SendCustomerTelegramUseCase(user_repository, cast(Any, _Tokens("t")), uow, publisher)
+
+    await use_case.system(SendCustomerTelegramDto(user_id=user.id, text="again"))
+
+    loaded = await user_repository.find_by_id(user.id)
+    assert loaded is not None and loaded.is_bot_blocked is True
+    assert sent == [(9004, "hi")]
+    assert len(publisher.events) == 1

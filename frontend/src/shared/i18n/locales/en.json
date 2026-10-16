@@ -972,6 +972,9 @@
       "done": "Telegram ID saved.",
       "error": "Failed to save the Telegram ID."
     },
+    "botBlocked": {
+      "badge": "Bot blocked"
+    },
     "emailUndeliverable": {
       "badge": "Undeliverable",
       "clear": "Clear undeliverable mark",

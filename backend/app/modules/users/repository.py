@@ -550,6 +550,16 @@ class UserRepository:
         db_user.marketing_opt_out = value
         await self.session.flush()
 
+    async def set_bot_blocked(self, user_id: int, blocked: bool) -> bool:
+        # True only when the flag actually flipped
+        result = await self.session.execute(
+            update(User)
+            .where(User.id == user_id, User.is_bot_blocked.is_not(blocked))
+            .values(is_bot_blocked=blocked)
+            .returning(User.id)
+        )
+        return result.scalar_one_or_none() is not None
+
     async def set_email_undeliverable(self, user_id: int, at: Optional[datetime]) -> None:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

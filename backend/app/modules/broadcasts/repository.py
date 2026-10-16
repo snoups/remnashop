@@ -65,6 +65,7 @@ NO_EMAIL_ERROR: Final[str] = "no email"
 UNDELIVERABLE_ERROR: Final[str] = "undeliverable"
 OPTED_OUT_ERROR: Final[str] = "opted out"
 BLOCKED_ERROR: Final[str] = "blocked"
+BOT_BLOCKED_ERROR: Final[str] = "bot blocked"
 RECALL_FAILED_ERROR: Final[str] = "recall failed"
 SUMMARY_WINDOW: Final[timedelta] = timedelta(days=30)
 # only the message texts, so a search for "text" or "_" doesn't hit the JSON keys
@@ -316,6 +317,7 @@ class BroadcastRepository:
         channel: BroadcastChannel,
         marketing: bool,
         unreachable: builtins.list[tuple[ColumnElement[bool], str]],
+        refused: builtins.list[tuple[ColumnElement[bool], str]],
     ) -> None:
         # audience was built at materialization; a block or opt-out since then still wins
         cancel = [(User.is_blocked.is_(True), BLOCKED_ERROR)]
@@ -324,6 +326,7 @@ class BroadcastRepository:
         for status, conditions, channels in (
             (BroadcastRecipientStatus.CANCELED, cancel, tuple(BroadcastChannel)),
             (BroadcastRecipientStatus.FAILED, unreachable, (channel,)),
+            (BroadcastRecipientStatus.BLOCKED, refused, (channel,)),
         ):
             for condition, error in conditions:
                 await self.session.execute(
@@ -365,6 +368,7 @@ class BroadcastRepository:
             BroadcastChannel.TELEGRAM,
             marketing,
             [(User.telegram_id.is_(None), NO_TELEGRAM_ERROR)],
+            [(User.is_bot_blocked.is_(True), BOT_BLOCKED_ERROR)],
         )
         now = datetime_now()
         claimable = self._claimable(broadcast_id, BroadcastChannel.TELEGRAM, limit, now)
@@ -401,6 +405,7 @@ class BroadcastRepository:
                 (User.email.is_(None), NO_EMAIL_ERROR),
                 (User.email_undeliverable_at.is_not(None), UNDELIVERABLE_ERROR),
             ],
+            [],
         )
         now = datetime_now()
         claimable = self._claimable(broadcast_id, BroadcastChannel.EMAIL, limit, now)

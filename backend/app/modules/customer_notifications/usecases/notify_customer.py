@@ -80,7 +80,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         token, _ = await self._token_source.get_bot_token()
         channels = channels_for(
             data.event_type,
-            telegram_id=user.telegram_id if token else None,
+            telegram_id=user.telegram_id if token and not user.is_bot_blocked else None,
             email=user.email,
         )
         if not channels:

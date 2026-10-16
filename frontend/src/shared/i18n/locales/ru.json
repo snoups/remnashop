@@ -1016,6 +1016,9 @@
       "done": "Telegram ID сохранён.",
       "error": "Не удалось сохранить Telegram ID."
     },
+    "botBlocked": {
+      "badge": "Бот заблокирован"
+    },
     "emailUndeliverable": {
       "badge": "Не доставляется",
       "clear": "Снять отметку о недоставке",

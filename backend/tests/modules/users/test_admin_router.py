@@ -687,6 +687,25 @@ async def test_get_user_returns_list_item_shape(
     assert response.json()["active_subscriptions"] == 0
 
 
+async def test_get_user_shows_a_blocked_bot(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    customer = await _create(user_repository, uow, telegram_id=777002, name="c", role=Role.USER)
+    async with uow:
+        await user_repository.set_bot_blocked(customer.id, True)
+
+    response = await client.get(
+        f"/api/v1/users/{customer.id}", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.json()["is_bot_blocked"] is True
+
+
 async def test_get_user_hides_staff_without_admins_manage(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -762,7 +781,7 @@ async def test_unsubscribe_sets_opt_out_idempotently(
 
     loaded = await user_repository.find_by_id(user.id)
     assert loaded is not None and loaded.marketing_opt_out is True
-    assert [(e.user_id, e.source) for e in publisher.events] == [(user.id, "link")]  # type: ignore[attr-defined]
+    assert [(e.user.id, e.source) for e in publisher.events] == [(user.id, "link")]  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize("kind", ["garbage", "unknown", "deleted"])

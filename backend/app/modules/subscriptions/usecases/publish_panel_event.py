@@ -112,7 +112,9 @@ def _user_event(
             user=owner, subscription_id=subscription_id, hours=-hours
         )
     if event == "user.not_connected":
-        hours = (meta.not_connected_after_hours if meta else None) or 0
+        hours = meta.not_connected_after_hours if meta else None
+        if not hours:
+            return None
         return SubscriptionNotConnectedEvent(
             user=owner, subscription_id=subscription_id, hours=hours
         )
