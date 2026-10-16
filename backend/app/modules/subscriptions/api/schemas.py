@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.enums import AddOnType, Currency, PlanType, SubscriptionStatus
-from app.modules.subscriptions.dto import PlanSnapshot
+from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 
 
 class AddOnEntitlementItem(BaseModel):
@@ -117,3 +117,33 @@ class PublicPlanListResponse(BaseModel):
     items: list[PublicPlanResponse]
     total: int
     anchor_currency: Currency
+
+
+class OwnSubscriptionResponse(BaseModel):
+    id: int
+    status: SubscriptionStatus
+    is_trial: bool
+    expire_at: datetime
+    url: str
+    effective_traffic_limit: int
+    effective_device_limit: int
+    traffic_limit_strategy: TrafficLimitStrategy
+    plan_name: str
+    link_reset_at: Optional[datetime] = None
+
+    @classmethod
+    def from_dto(cls, subscription: SubscriptionDto) -> "OwnSubscriptionResponse":
+        return cls.model_validate(
+            {**subscription.model_dump(), "plan_name": subscription.plan_snapshot.name}
+        )
+
+
+class OwnSubscriptionListResponse(BaseModel):
+    items: list[OwnSubscriptionResponse]
+    total: int
+
+
+class TrialResponse(BaseModel):
+    is_available: bool
+    plan_name: Optional[str] = None
+    duration_days: Optional[int] = None

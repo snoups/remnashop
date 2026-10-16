@@ -4,7 +4,8 @@ from app.modules.users.dto import UserDto
 
 
 class GetCurrentUserUseCase(UseCase[None, UserDto, UserDto]):
-    required_permission = Permission.OWN_ACCOUNT_MANAGE
+    # reading one's own profile is every user's right
+    required_permission = Permission.PUBLIC
 
     async def _execute(self, actor: UserDto, data: None) -> UserDto:
         return actor

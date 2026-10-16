@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
 from app.modules.subscriptions import PlanSnapshot
+from app.modules.transactions.dto import TransactionDto
 
 
 class CreateCheckoutRequest(BaseModel):
@@ -124,3 +125,46 @@ class RefundTransactionRequest(BaseModel):
 class RefundTransactionResponse(BaseModel):
     transaction: TransactionResponse
     rollback_failed: bool
+
+
+class OwnTransactionResponse(BaseModel):
+    id: int
+    status: TransactionStatus
+    final_price: Decimal
+    currency: Currency
+    purchase_type: PurchaseType
+    gateway_type: PaymentGatewayType
+    plan_name: str
+    duration_days: int
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_dto(cls, order: TransactionDto) -> "OwnTransactionResponse":
+        return cls(
+            id=order.id,
+            status=order.status,
+            final_price=order.final_price,
+            currency=order.currency,
+            purchase_type=order.purchase_type,
+            gateway_type=order.gateway_type,
+            plan_name=order.plan_snapshot.name,
+            duration_days=order.duration_days,
+            created_at=order.created_at,
+        )
+
+
+class OwnTransactionListResponse(BaseModel):
+    items: list[OwnTransactionResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class PaymentMethodResponse(BaseModel):
+    gateway_type: PaymentGatewayType
+    currency: Currency
+
+
+class PaymentMethodListResponse(BaseModel):
+    items: list[PaymentMethodResponse]
+    total: int

@@ -69,7 +69,14 @@ class LoginUseCase:
         # one error for an unknown login, a wrong password and a blocked
         # account, so none can be enumerated; verify_password() above always
         # ran, so timing doesn't tell them apart either
-        if user is None or user.password_hash is None or not password_is_valid or user.is_blocked:
+        if (
+            user is None
+            or user.password_hash is None
+            or not password_is_valid
+            or user.is_blocked
+            # the dashboard is staff-only; a customer's login fails like a wrong password
+            or not user.is_privileged
+        ):
             async with self._uow:
                 await self._event_publisher.publish(
                     LoginFailedEvent(login=login, ip_address=client_ip)

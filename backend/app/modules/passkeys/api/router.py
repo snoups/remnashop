@@ -2,6 +2,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response
 
+from app.api.dependencies.public import forbid_cabinet_proxy
 from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import error_responses
 from app.core.config import AppConfig
@@ -15,7 +16,9 @@ from app.modules.passkeys.usecases import (
     VerifyPasskeyAuthenticationUseCase,
 )
 
-router = APIRouter(prefix="/auth/passkeys", tags=["auth"])
+router = APIRouter(
+    prefix="/auth/passkeys", tags=["auth"], dependencies=[Depends(forbid_cabinet_proxy)]
+)
 
 
 @router.get(

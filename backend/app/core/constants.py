@@ -75,8 +75,6 @@ REFRESH_COOKIE_PATH: Final[str] = f"{API_V1}/auth"
 DOCS_PATH: Final[str] = f"{API_V1}/docs"
 DOCS_COOKIE_NAME: Final[str] = "docs_access"
 
-CABINET_API_PREFIX: Final[str] = "/cabinet"
-
 # Set by the web cabinet's nginx, which overwrites both on every request.
 CABINET_CLIENT_IP_HEADER: Final[str] = "x-cabinet-client-ip"
 CABINET_PROXY_SECRET_HEADER: Final[str] = "x-cabinet-proxy-secret"

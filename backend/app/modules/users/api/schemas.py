@@ -7,8 +7,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.core.constants import LOGIN_PATTERN
 from app.core.enums import BlacklistKind, Locale
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.utils.http import validate_ip_allowlist
+from app.modules.users.dto import UserDto
 from app.modules.users.schemas import UserResponse
 
 
@@ -25,6 +26,10 @@ def _enum_as_name(value: object) -> str:
     return str(value)
 
 
+def effective_permission_names(user: UserDto) -> list[str]:
+    return sorted(p.value for p in PermissionPolicy.effective_permissions(user))
+
+
 class CurrentUserResponse(BaseModel):
     id: int
     login: Optional[str]
@@ -33,6 +38,9 @@ class CurrentUserResponse(BaseModel):
     effective_permissions: list[Permission]
     password_change_required: bool
     language: str
+    email: Optional[str]
+    telegram_id: Optional[int]
+    username: Optional[str]
 
     _role_and_language_as_name = field_validator("role", "language", mode="before")(_enum_as_name)
 

@@ -1,10 +1,10 @@
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher, SessionRevoker
 from app.core.security import hash_password, verify_password
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import UpdateOwnProfileDto, UpdateUserDto, UserDto
@@ -13,7 +13,7 @@ from app.modules.users.repository import UserRepository
 
 
 class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
-    required_permission = Permission.OWN_ACCOUNT_MANAGE
+    required_permission = Permission.PUBLIC
 
     def __init__(
         self,
@@ -30,6 +30,12 @@ class UpdateOwnProfileUseCase(UseCase[UpdateOwnProfileDto, UserDto, UserDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: UserDto, data: UpdateOwnProfileDto) -> UserDto:
+        if data.new_password is not None and not PermissionPolicy.has_permission(
+            actor, Permission.OWN_ACCOUNT_MANAGE
+        ):
+            # customers sign in without a password; only staff manage one
+            raise PermissionDeniedError("Password change is not available")
+
         name = None
         if data.name is not None:
             name = clean_display_name(data.name)

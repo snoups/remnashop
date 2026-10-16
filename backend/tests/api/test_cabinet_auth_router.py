@@ -98,7 +98,7 @@ async def test_methods_is_public_and_lowercases_providers(
     assert patched.status_code == 200
     assert patched.json()["telegram_enabled"] is True
 
-    methods = await client.get(f"{API_V1}/cabinet/auth/methods")
+    methods = await client.get(f"{API_V1}/auth/methods")
     assert methods.status_code == 200
     assert methods.json() == {
         "telegram_webapp": False,
@@ -124,7 +124,7 @@ async def test_methods_is_public_and_lowercases_providers(
     )
     assert configured.status_code == 200
     assert configured.json()["is_google_configured"] is True
-    methods = await client.get(f"{API_V1}/cabinet/auth/methods")
+    methods = await client.get(f"{API_V1}/auth/methods")
     assert methods.json()["oauth"] == ["telegram", "google"]
 
     # last: the rollback takes the uncommitted test session with it

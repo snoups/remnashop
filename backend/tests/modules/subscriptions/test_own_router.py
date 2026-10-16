@@ -1,0 +1,176 @@
+from datetime import datetime, timedelta, timezone
+from typing import AsyncIterator
+
+import httpx
+import pytest
+from dishka import Provider, Scope, make_async_container, provide
+from dishka.integrations.fastapi import setup_dishka
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.app import get_app
+from app.core.config import AppConfig
+from app.core.constants import API_V1
+from app.core.db.uow import UnitOfWork
+from app.core.di.providers import get_core_providers
+from app.core.enums import AccessMode, SessionAudience
+from app.core.security import create_access_token, hash_refresh_token
+from app.modules.auth.dto import CreateSessionDto
+from app.modules.auth.repository import SessionRepository
+from app.modules.providers import get_module_providers
+from app.modules.settings.dto import UpdateAccessSettingsDto
+from app.modules.settings.repository import SettingsRepository
+from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users.repository import UserRepository
+from tests.modules.subscriptions.factories import create_subscription
+
+
+class _TestSessionProvider(Provider):
+    scope = Scope.REQUEST
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__()
+        self._session = session
+
+    @provide
+    def get_session(self) -> AsyncSession:
+        return self._session
+
+
+@pytest.fixture
+async def client(session: AsyncSession, config: AppConfig) -> AsyncIterator[httpx.AsyncClient]:
+    container = make_async_container(
+        *get_core_providers(),
+        *get_module_providers(),
+        _TestSessionProvider(session),
+        context={AppConfig: config},
+    )
+    app = get_app(config)
+    setup_dishka(container, app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+    await container.close()
+
+
+async def _bearer(
+    user_id: int, session_repository: SessionRepository, config: AppConfig
+) -> dict[str, str]:
+    session = await session_repository.create(
+        CreateSessionDto(
+            user_id=user_id,
+            refresh_token_hash=hash_refresh_token(f"own-subs-{user_id}"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            audience=SessionAudience.CABINET,
+        )
+    )
+    token = create_access_token(user_id, session.id, config.jwt_secret.get_secret_value())
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def test_lists_only_own_active_subscriptions(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    mine = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77001, remnawave_user_id=77001
+    )
+    await create_subscription(
+        subscription_repository, user_repository, telegram_id=77002, remnawave_user_id=77002
+    )
+    headers = await _bearer(mine.user_id, session_repository, config)
+
+    response = await client.get(f"{API_V1}/subscriptions/me", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    item = body["items"][0]
+    assert item["id"] == mine.id
+    assert item["url"] == mine.url
+    assert item["plan_name"] == mine.plan_snapshot.name
+
+
+async def test_a_foreign_subscription_is_refused_like_a_missing_one(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    mine = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77011, remnawave_user_id=77011
+    )
+    theirs = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77012, remnawave_user_id=77012
+    )
+    headers = await _bearer(mine.user_id, session_repository, config)
+
+    for method, path in (
+        ("GET", f"/subscriptions/me/{theirs.id}/devices"),
+        ("DELETE", f"/subscriptions/me/{theirs.id}/devices/abc"),
+        ("POST", f"/subscriptions/me/{theirs.id}/devices/bulk/delete"),
+        ("POST", f"/subscriptions/me/{theirs.id}/actions/reissue"),
+    ):
+        response = await client.request(method, f"{API_V1}{path}", headers=headers)
+        # the bot's usecases answer a foreign id like a missing one, so ids can't be probed
+        assert response.status_code == 400, path
+        assert response.json()["code"] == "TARGET_SUBSCRIPTION_NOT_OWNED", path
+
+
+async def test_trial_availability_and_auth(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    assert (await client.get(f"{API_V1}/subscriptions/me")).status_code == 401
+
+    mine = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77021, remnawave_user_id=77021
+    )
+    headers = await _bearer(mine.user_id, session_repository, config)
+    trial = await client.get(f"{API_V1}/subscriptions/me/trial", headers=headers)
+    assert trial.status_code == 200
+    assert trial.json()["is_available"] is False  # no trial plan configured in this test
+
+    activate = await client.post(
+        f"{API_V1}/subscriptions/me/actions/activate-trial", headers=headers
+    )
+    assert activate.status_code == 400
+    assert activate.json()["code"] == "TRIAL_NOT_AVAILABLE"
+
+
+async def test_new_customer_routes_are_closed_in_restricted_mode(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    mine = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77031, remnawave_user_id=77031
+    )
+    headers = await _bearer(mine.user_id, session_repository, config)
+    async with uow:
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(mode=AccessMode.RESTRICTED)
+        )
+        await uow.commit()
+
+    for path in (
+        "/subscriptions/me",
+        "/subscriptions/me/trial",
+        "/transactions/me",
+        "/checkout/methods",
+    ):
+        response = await client.get(f"{API_V1}{path}", headers=headers)
+        assert response.status_code == 403, path
+        assert response.json()["code"] == "ACCESS_RESTRICTED", path

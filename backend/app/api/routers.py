@@ -15,7 +15,6 @@ from app.modules.backups.api import admin_router as backups_admin_router
 from app.modules.banners.api import admin_router as banners_admin_router
 from app.modules.blacklist.api import admin_router as blacklist_admin_router
 from app.modules.broadcasts.api import admin_router as broadcasts_admin_router
-from app.modules.cabinet_auth.api import public_router as cabinet_public_router
 from app.modules.cabinet_auth.api import router as cabinet_auth_router
 from app.modules.dialogs.api import admin_router as dialogs_admin_router
 from app.modules.email.api import admin_router as email_admin_router
@@ -28,7 +27,6 @@ from app.modules.loyalty.api import user_router as loyalty_user_router
 from app.modules.notifications.api import admin_router as notifications_admin_router
 from app.modules.notifications.api import settings_router as notifications_settings_router
 from app.modules.oauth.api import admin_router as oauth_admin_router
-from app.modules.oauth.api import router as oauth_router
 from app.modules.overview.api import admin_router as overview_admin_router
 from app.modules.passkeys.api import admin_router as passkeys_admin_router
 from app.modules.passkeys.api import router as passkeys_router
@@ -44,6 +42,7 @@ from app.modules.referrals.api import user_router as referrals_user_router
 from app.modules.settings.api import admin_router as settings_admin_router
 from app.modules.settings.api import router as settings_router
 from app.modules.subscriptions.api import admin_router as subscriptions_admin_router
+from app.modules.subscriptions.api import own_router as subscriptions_own_router
 from app.modules.subscriptions.api import public_router as subscriptions_public_router
 from app.modules.subscriptions.api import router as subscriptions_router
 from app.modules.transactions.api import admin_router as transactions_admin_router
@@ -61,9 +60,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_sessions_router,
     auth_user_sessions_router,
     cabinet_auth_router,
-    cabinet_public_router,
     users_router,
-    oauth_router,
     oauth_admin_router,
     passkeys_router,
     passkeys_admin_router,
@@ -85,6 +82,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     loyalty_user_router,
     subscriptions_admin_router,
     subscriptions_public_router,
+    subscriptions_own_router,
     subscriptions_router,
     backups_admin_router,
     banners_admin_router,

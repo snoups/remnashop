@@ -1,7 +1,8 @@
 import datetime
+import json
 from datetime import timedelta, timezone
 from decimal import Decimal
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 from uuid import uuid4
 
 import httpx
@@ -47,11 +48,15 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
+_YOOKASSA_REQUESTS: list[dict[str, Any]] = []
+
+
 def _yookassa_payment_created(request: httpx.Request) -> httpx.Response:
+    _YOOKASSA_REQUESTS.append(json.loads(request.content))
     return httpx.Response(
         200,
         json={
-            "id": "yk-payment-router-1",
+            "id": f"yk-payment-router-{len(_YOOKASSA_REQUESTS)}",
             "confirmation": {"confirmation_url": "https://yookassa.ru/pay/router-1"},
         },
     )
@@ -212,3 +217,131 @@ async def test_checkout_requires_authentication(client: httpx.AsyncClient, plan:
     )
 
     assert response.status_code == 401
+
+
+async def _customer_headers(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    name: str,
+    audience: SessionAudience,
+) -> dict[str, str]:
+    async with uow:
+        user = await user_repository.create(CreateUserDto(name=name, language=Locale.EN))
+        await uow.commit()
+    session = await session_repository.create(
+        CreateSessionDto(
+            user_id=user.id,
+            refresh_token_hash=hash_refresh_token(f"txn-{name}"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            audience=audience,
+        )
+    )
+    token = create_access_token(user.id, session.id, config.jwt_secret.get_secret_value())
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _enable_yookassa(gateway_repository: GatewayRepository) -> None:
+    await gateway_repository.update_settings(
+        PaymentGatewayType.YOOKASSA, {"shop_id": "1000", "api_key": "test_key"}
+    )
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+
+
+def _checkout_body(plan: PlanDto) -> dict[str, object]:
+    return {
+        "plan_id": plan.id,
+        "duration_days": 30,
+        "currency": "RUB",
+        "purchase_type": "NEW",
+        "gateway_type": "YOOKASSA",
+    }
+
+
+async def test_a_cabinet_checkout_returns_to_the_cabinet(
+    client: httpx.AsyncClient,
+    plan: PlanDto,
+    gateway_repository: GatewayRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com/")
+    await _enable_yookassa(gateway_repository)
+    cabinet = await _customer_headers(
+        user_repository, session_repository, uow, config, "cab-buyer", SessionAudience.CABINET
+    )
+    _YOOKASSA_REQUESTS.clear()
+
+    response = await client.post(f"{API_V1}/checkout", json=_checkout_body(plan), headers=cabinet)
+
+    assert response.status_code == 201
+    order_id = response.json()["order_id"]
+    assert _YOOKASSA_REQUESTS[-1]["confirmation"]["return_url"] == (
+        f"https://cabinet.example.com/payment/result?order_id={order_id}"
+    )
+
+
+async def test_a_dashboard_checkout_keeps_the_old_return_address(
+    client: httpx.AsyncClient,
+    plan: PlanDto,
+    gateway_repository: GatewayRepository,
+    auth_headers: dict[str, str],
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    await _enable_yookassa(gateway_repository)
+    _YOOKASSA_REQUESTS.clear()
+
+    response = await client.post(
+        f"{API_V1}/checkout", json=_checkout_body(plan), headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    assert _YOOKASSA_REQUESTS[-1]["confirmation"]["return_url"] == (
+        f"https://{config.domain.get_secret_value()}"
+    )
+
+
+async def test_own_transactions_list_and_detail(
+    client: httpx.AsyncClient,
+    plan: PlanDto,
+    gateway_repository: GatewayRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    await _enable_yookassa(gateway_repository)
+    mine = await _customer_headers(
+        user_repository, session_repository, uow, config, "txn-mine", SessionAudience.CABINET
+    )
+    theirs = await _customer_headers(
+        user_repository, session_repository, uow, config, "txn-theirs", SessionAudience.CABINET
+    )
+    own_order = (
+        await client.post(f"{API_V1}/checkout", json=_checkout_body(plan), headers=mine)
+    ).json()["order_id"]
+    foreign_order = (
+        await client.post(f"{API_V1}/checkout", json=_checkout_body(plan), headers=theirs)
+    ).json()["order_id"]
+
+    listed = await client.get(f"{API_V1}/transactions/me", headers=mine)
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["items"]] == [own_order]
+    assert listed.json()["items"][0]["plan_name"] == plan.name
+
+    assert (
+        await client.get(f"{API_V1}/transactions/me/{own_order}", headers=mine)
+    ).status_code == 200
+    foreign = await client.get(f"{API_V1}/transactions/me/{foreign_order}", headers=mine)
+    assert foreign.status_code == 404
+    assert foreign.json()["code"] == "PAYMENT_ORDER_NOT_FOUND"
+
+    assert (await client.get(f"{API_V1}/checkout/methods", headers=mine)).status_code == 200

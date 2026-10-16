@@ -2,17 +2,75 @@ from typing import Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
+from app.api.dependencies.public import get_current_session_id, get_profile_user
 from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import error_responses
-from app.core.constants import CABINET_API_PREFIX, TIME_1M
-from app.modules.users.usecases import UnsubscribeMarketingUseCase
+from app.core.constants import TIME_1M
+from app.core.enums import SessionAudience
+from app.core.exceptions import PermissionDeniedError
+from app.core.utils.http import resolve_client_ip
+from app.modules.users.api.schemas import (
+    CurrentUserResponse,
+    UpdateOwnProfileRequest,
+    effective_permission_names,
+)
+from app.modules.users.dto import UpdateOwnProfileDto, UserDto
+from app.modules.users.usecases import (
+    GetCurrentUserUseCase,
+    UnsubscribeMarketingUseCase,
+    UpdateOwnProfileUseCase,
+)
 
 # RFC 8058 one-click POSTs arrive from a few shared mail-provider IPs; the token is an HMAC
 _UNSUBSCRIBE_LIMIT_PER_MINUTE: Final[int] = 600
 
-router = APIRouter(prefix=CABINET_API_PREFIX, tags=["cabinet"])
+router = APIRouter(tags=["users"])
+
+
+def _to_current_user_response(user: UserDto) -> CurrentUserResponse:
+    return CurrentUserResponse.model_validate(
+        {**dict(user), "effective_permissions": effective_permission_names(user)}
+    )
+
+
+@router.get("/users/me", response_model=CurrentUserResponse)
+@inject
+async def get_me(
+    use_case: FromDishka[GetCurrentUserUseCase],
+    actor: UserDto = Depends(get_profile_user),
+) -> CurrentUserResponse:
+    current_user = await use_case(actor)
+    return _to_current_user_response(current_user)
+
+
+@router.patch("/users/me", response_model=CurrentUserResponse, responses=error_responses(400))
+@inject
+async def update_me(
+    payload: UpdateOwnProfileRequest,
+    request: Request,
+    use_case: FromDishka[UpdateOwnProfileUseCase],
+    actor: UserDto = Depends(get_profile_user),
+    session_id: int = Depends(get_current_session_id),
+) -> CurrentUserResponse:
+    if (
+        payload.new_password is not None or payload.current_password is not None
+    ) and request.state.session_audience is SessionAudience.CABINET:
+        # dashboard credentials stay out of reach of the cabinet's domain
+        raise PermissionDeniedError("Password change is not available")
+    updated = await use_case(
+        actor,
+        UpdateOwnProfileDto(
+            name=payload.name,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            language=payload.language,
+            current_session_id=session_id,
+            client_ip=resolve_client_ip(request),
+        ),
+    )
+    return _to_current_user_response(updated)
 
 
 # POST only: mail scanners open links, and RFC 8058 clients POST here themselves

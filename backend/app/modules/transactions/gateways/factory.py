@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.core.config import AppConfig
 from app.core.enums import PaymentGatewayType
 from app.core.error_codes import ErrorCode
@@ -11,7 +13,12 @@ class PaymentGatewayFactory:
         self._config = config
         self._http = http
 
-    def build(self, gateway_type: PaymentGatewayType, settings: dict[str, str]) -> PaymentGateway:
+    def build(
+        self,
+        gateway_type: PaymentGatewayType,
+        settings: dict[str, str],
+        return_url: Optional[str] = None,
+    ) -> PaymentGateway:
         gateway_class = GATEWAY_REGISTRY.get(gateway_type)
         if gateway_class is None:
             raise ValidationError(
@@ -21,6 +28,6 @@ class PaymentGatewayFactory:
         return gateway_class(
             settings=settings,
             webhook_url=self._config.get_webhook(gateway_type),
-            return_url=f"https://{self._config.domain.get_secret_value()}",
+            return_url=return_url or f"https://{self._config.domain.get_secret_value()}",
             http=self._http,
         )

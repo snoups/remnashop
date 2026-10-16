@@ -3518,6 +3518,7 @@
     "PROMOCODE_REWARD_INVALID": "Invalid reward value.",
     "PROMOCODE_REWARD_PLAN_REQUIRED": "Choose a plan and a duration for this reward.",
     "PROMOTE_LOGIN_REQUIRED": "Set a login for this user to make them an admin.",
+    "PROXY_DASHBOARD_FORBIDDEN": "The dashboard isn't available through the cabinet's address",
     "PURCHASE_DISCOUNT_USED": "The discount was already used — try again.",
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",

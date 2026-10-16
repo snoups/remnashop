@@ -10,7 +10,11 @@ from app.modules.auth import IssuedSession, SessionIssuer
 from app.modules.oauth.events import OAuthLoginFailedEvent, OAuthLoginSucceededEvent
 from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
 from app.modules.oauth.providers.registry import get_oauth_client
-from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import (
+    OAuthFlowPurpose,
+    OAuthStateStore,
+    binding_matches,
+)
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto, UserRepository
@@ -42,6 +46,7 @@ class OAuthLoginCallbackUseCase:
         provider: OAuthProvider,
         code: str,
         state: str,
+        binding: Optional[str],
         client_ip: str,
         user_agent: Optional[str],
     ) -> tuple[UserDto, IssuedSession]:
@@ -51,6 +56,7 @@ class OAuthLoginCallbackUseCase:
             state_data is None
             or state_data.purpose != OAuthFlowPurpose.LOGIN
             or state_data.provider != provider
+            or not binding_matches(binding, state_data.binding_hash)
         ):
             async with self._uow:
                 await self._event_publisher.publish(

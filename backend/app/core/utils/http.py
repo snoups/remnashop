@@ -29,15 +29,20 @@ def _is_trusted_proxy(peer: str) -> bool:
     return any(address in network for network in _TRUSTED_PROXY_NETWORKS)
 
 
-def _cabinet_client_ip(request: Request) -> Optional[str]:
-    # the cabinet's nginx overwrites both headers; the secret proves the hop is
-    # that proxy, however many reverse proxies sit between it and us
+def is_cabinet_proxied(request: Request) -> bool:
+    """The request came through the cabinet's nginx: it carries that proxy's secret."""
     app = request.scope.get("app")
     expected = getattr(getattr(app, "state", None), "cabinet_proxy_secret", None)
     presented = request.headers.get(CABINET_PROXY_SECRET_HEADER)
-    if not expected or not presented:
-        return None
-    if not hmac.compare_digest(presented.encode(), expected.encode()):
+    return bool(
+        expected and presented and hmac.compare_digest(presented.encode(), expected.encode())
+    )
+
+
+def _cabinet_client_ip(request: Request) -> Optional[str]:
+    # the cabinet's nginx overwrites both headers; the secret proves the hop is
+    # that proxy, however many reverse proxies sit between it and us
+    if not is_cabinet_proxied(request):
         return None
     try:
         return str(ipaddress.ip_address(request.headers.get(CABINET_CLIENT_IP_HEADER, "")))

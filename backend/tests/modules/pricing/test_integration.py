@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
 from app.core.ports import EventPublisher
@@ -55,7 +56,7 @@ class _FakeFactory(PaymentGatewayFactory):
     def __init__(self) -> None:
         self._gateway = _FakeGateway()
 
-    def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+    def build(self, gateway_type, settings, return_url=None):  # type: ignore[no-untyped-def]
         return self._gateway  # type: ignore[return-value]
 
 
@@ -117,6 +118,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     user_repository: UserRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    config: AppConfig,
 ) -> None:
     async with uow:
         await gateway_repository.update_settings(
@@ -155,6 +157,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         GetAccessSettingsUseCase(SettingsRepository(plan_repository.session), uow),
         WaitlistRepository(plan_repository.session),
         SettingsRepository(plan_repository.session),
+        config,
         RecordingEventPublisher(),
     )
     result = await create_checkout(

@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
+from app.core.config import AppConfig
 from app.core.db.models import (
     CurrencyRate,
     EventOutboxEntry,
@@ -103,7 +104,7 @@ class _FakeFactory(PaymentGatewayFactory):
     def __init__(self, gateway: _FakeGateway) -> None:
         self._gateway = gateway
 
-    def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+    def build(self, gateway_type, settings, return_url=None):  # type: ignore[no-untyped-def]
         self.settings = settings
         return self._gateway  # type: ignore[return-value]
 
@@ -142,6 +143,7 @@ def create_checkout_use_case(
     purchase_dispatch: RecordingDispatch,
     promocode_repository: PromocodeRepository,
     waitlist_repository: WaitlistRepository,
+    config: AppConfig,
     event_publisher: EventPublisher,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
@@ -159,6 +161,7 @@ def create_checkout_use_case(
         GetAccessSettingsUseCase(settings_repository, uow),
         waitlist_repository,
         settings_repository,
+        config,
         event_publisher,
     )
 
@@ -336,7 +339,9 @@ async def test_create_checkout_rejects_a_new_purchase_at_the_subscription_cap(
     assert order_count == 0
 
 
-async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) -> None:
+async def test_concurrent_free_checkouts_stop_at_the_cap(
+    engine: AsyncEngine, config: AppConfig
+) -> None:
     # Separate connections, since an advisory xact lock in one shared session
     # serializes nothing; the seed rows are committed and cleaned up by hand.
     attempts = 3
@@ -359,6 +364,7 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
             GetAccessSettingsUseCase(SettingsRepository(session), uow),
             WaitlistRepository(session),
             SettingsRepository(session),
+            config,
             RecordingEventPublisher(),
         )
         try:

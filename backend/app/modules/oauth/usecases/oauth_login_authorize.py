@@ -11,7 +11,11 @@ from app.modules.oauth.providers.base import (
     build_redirect_uri,
 )
 from app.modules.oauth.providers.registry import get_oauth_client
-from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import (
+    OAuthFlowPurpose,
+    OAuthStateStore,
+    new_binding,
+)
 from app.modules.settings import SettingsRepository
 
 
@@ -28,7 +32,7 @@ class OAuthLoginAuthorizeUseCase:
         self._config = config
         self._uow = uow
 
-    async def execute(self, provider: OAuthProvider) -> str:
+    async def execute(self, provider: OAuthProvider) -> tuple[str, str]:
         if provider in CABINET_ONLY_PROVIDERS:
             raise AuthenticationError(
                 "Provider is not available for dashboard sign-in",
@@ -39,16 +43,19 @@ class OAuthLoginAuthorizeUseCase:
             client = get_oauth_client(provider, settings)
 
             code_verifier = generate_token(48) if client.requires_pkce else None
+        binding, binding_hash = new_binding()
         state = await self._state_store.create(
             provider=provider,
             purpose=OAuthFlowPurpose.LOGIN,
             user_id=None,
             code_verifier=code_verifier,
+            binding_hash=binding_hash,
         )
         redirect_uri = build_redirect_uri(self._config.domain.get_secret_value(), provider)
         try:
-            return await client.authorization_url(redirect_uri, state, code_verifier)
+            url = await client.authorization_url(redirect_uri, state, code_verifier)
         except OAUTH_EXCHANGE_ERRORS as error:
             raise AuthenticationError(
                 "Failed to reach OAuth provider", code=ErrorCode.OAUTH_PROVIDER_UNREACHABLE
             ) from error
+        return url, binding

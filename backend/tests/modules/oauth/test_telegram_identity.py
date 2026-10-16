@@ -11,7 +11,11 @@ from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer, SessionRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.providers.base import OAuthProfile
-from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import (
+    OAuthFlowPurpose,
+    OAuthStateStore,
+    new_binding,
+)
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
@@ -111,11 +115,13 @@ async def test_telegram_login_issues_session_for_staff_user(
 ) -> None:
     monkeypatch.setattr(oauth_login_callback, "get_oauth_client", lambda *_: _FakeClient())
     admin = await _create_user(user_repository, uow, "adm", Role.ADMIN, TELEGRAM_ID)
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.TELEGRAM,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _login_use_case(
         settings_repository,
@@ -129,7 +135,12 @@ async def test_telegram_login_issues_session_for_staff_user(
     )
 
     user, issued = await use_case.execute(
-        OAuthProvider.TELEGRAM, code="c", state=state, client_ip=CLIENT_IP, user_agent=USER_AGENT
+        OAuthProvider.TELEGRAM,
+        code="c",
+        state=state,
+        binding=binding,
+        client_ip=CLIENT_IP,
+        user_agent=USER_AGENT,
     )
 
     assert user.id == admin.id
@@ -149,11 +160,13 @@ async def test_telegram_login_rejects_non_staff_user(
 ) -> None:
     monkeypatch.setattr(oauth_login_callback, "get_oauth_client", lambda *_: _FakeClient())
     await _create_user(user_repository, uow, "usr", Role.USER, TELEGRAM_ID)
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.TELEGRAM,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _login_use_case(
         settings_repository,
@@ -171,6 +184,7 @@ async def test_telegram_login_rejects_non_staff_user(
             OAuthProvider.TELEGRAM,
             code="c",
             state=state,
+            binding=binding,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
@@ -199,11 +213,13 @@ async def test_github_login_rejects_non_staff_user(
             external_login=None,
         )
     )
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.GITHUB,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _login_use_case(
         settings_repository,
@@ -221,6 +237,7 @@ async def test_github_login_rejects_non_staff_user(
             OAuthProvider.GITHUB,
             code="c",
             state=state,
+            binding=binding,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )

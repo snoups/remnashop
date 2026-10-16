@@ -746,7 +746,7 @@ def test_promote_request_accepts_user_id_alone() -> None:
     assert PromoteAdminRequest.model_validate({"user_id": 7}).user_id == 7
 
 
-_UNSUBSCRIBE_URL = "/api/v1/cabinet/unsubscribe"
+_UNSUBSCRIBE_URL = "/api/v1/unsubscribe"
 
 
 async def test_unsubscribe_sets_opt_out_idempotently(

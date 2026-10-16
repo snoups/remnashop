@@ -1,12 +1,26 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
-from app.modules.transactions.api.schemas import CheckoutResponse, CreateCheckoutRequest
-from app.modules.transactions.dto import CreateCheckoutDto
-from app.modules.transactions.usecases import CreateCheckoutUseCase
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.core.enums import SessionAudience
+from app.modules.transactions.api.schemas import (
+    CheckoutResponse,
+    CreateCheckoutRequest,
+    OwnTransactionListResponse,
+    OwnTransactionResponse,
+    PaymentMethodListResponse,
+    PaymentMethodResponse,
+)
+from app.modules.transactions.dto import CreateCheckoutDto, ListOwnTransactionsDto
+from app.modules.transactions.usecases import (
+    CreateCheckoutUseCase,
+    GetOwnTransactionUseCase,
+    ListOwnTransactionsUseCase,
+    ListPaymentMethodsUseCase,
+)
 from app.modules.users import UserDto
 
 router = APIRouter(tags=["transactions"])
@@ -21,6 +35,7 @@ router = APIRouter(tags=["transactions"])
 @inject
 async def create_checkout(
     payload: CreateCheckoutRequest,
+    request: Request,
     use_case: FromDishka[CreateCheckoutUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> CheckoutResponse:
@@ -35,6 +50,51 @@ async def create_checkout(
             target_subscription_id=payload.target_subscription_id,
             customer_email=payload.customer_email,
             plan_code=payload.plan_code,
+            return_to="cabinet"
+            if getattr(request.state, "session_audience", None) is SessionAudience.CABINET
+            else "default",
         ),
     )
     return CheckoutResponse.model_validate(result, from_attributes=True)
+
+
+@router.get("/checkout/methods", response_model=PaymentMethodListResponse)
+@inject
+async def list_checkout_methods(
+    use_case: FromDishka[ListPaymentMethodsUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> PaymentMethodListResponse:
+    methods = await use_case(actor)
+    items = [PaymentMethodResponse.model_validate(m, from_attributes=True) for m in methods]
+    return PaymentMethodListResponse(items=items, total=len(items))
+
+
+@router.get("/transactions/me", response_model=OwnTransactionListResponse)
+@inject
+async def list_own_transactions(
+    use_case: FromDishka[ListOwnTransactionsUseCase],
+    actor: UserDto = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> OwnTransactionListResponse:
+    orders, total = await use_case(actor, ListOwnTransactionsDto(page=page, page_size=page_size))
+    return OwnTransactionListResponse(
+        items=[OwnTransactionResponse.from_dto(o) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get(
+    "/transactions/me/{transaction_id:int}",
+    response_model=OwnTransactionResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_own_transaction(
+    transaction_id: int,
+    use_case: FromDishka[GetOwnTransactionUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> OwnTransactionResponse:
+    return OwnTransactionResponse.from_dto(await use_case(actor, transaction_id))

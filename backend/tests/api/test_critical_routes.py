@@ -178,7 +178,9 @@ async def test_login_failure_does_not_reveal_whether_login_exists(
 
 
 async def test_oauth_authorize_rejects_unconfigured_provider(client: httpx.AsyncClient) -> None:
-    response = await client.get(f"{API_V1}/auth/oauth/GITHUB/authorize")
+    response = await client.post(
+        f"{API_V1}/auth/oauth/GITHUB/authorize", json={"audience": "dashboard"}
+    )
 
     assert response.status_code == 400
 

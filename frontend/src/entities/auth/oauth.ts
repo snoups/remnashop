@@ -11,6 +11,10 @@ export interface OAuthAuthorizeResult {
   authorization_url: string;
 }
 
+export interface OAuthLoginAuthorizeResult {
+  url: string;
+}
+
 export interface OAuthCallbackPayload {
   code: string;
   state: string;
@@ -21,8 +25,10 @@ export interface OAuthIdentity {
   external_login: string | null;
 }
 
-export function getOAuthLoginAuthorizeUrl(provider: OAuthProvider): Promise<OAuthAuthorizeResult> {
-  return apiGet<OAuthAuthorizeResult>(`/auth/oauth/${provider}/authorize`);
+export function getOAuthLoginAuthorizeUrl(provider: OAuthProvider): Promise<OAuthLoginAuthorizeResult> {
+  return apiPost<OAuthLoginAuthorizeResult, { audience: "dashboard" }>(`/auth/oauth/${provider}/authorize`, {
+    audience: "dashboard",
+  });
 }
 
 export function oauthLoginCallback(

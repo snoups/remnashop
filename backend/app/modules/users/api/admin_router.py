@@ -6,12 +6,11 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.admin import require_admin, require_admin_user
-from app.api.dependencies.public import get_current_session_id
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import Role
-from app.core.security.permissions import ROLE_PERMISSIONS, PermissionPolicy
+from app.core.security.permissions import ROLE_PERMISSIONS
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.users.api.schemas import (
@@ -22,17 +21,16 @@ from app.modules.users.api.schemas import (
     BindTelegramRequest,
     BlacklistMatchPageResponse,
     CreateAdminRequest,
-    CurrentUserResponse,
     PromoteAdminRequest,
     SecurityResponse,
     SetDiscountRequest,
     UnblockBlacklistMatchesResponse,
     UpdateAdminRequest,
-    UpdateOwnProfileRequest,
     UpdateSecurityRequest,
     UserListItemResponse,
     UserListStatsResponse,
     UserPageResponse,
+    effective_permission_names,
 )
 from app.modules.users.dto import (
     BindTelegramDto,
@@ -51,7 +49,6 @@ from app.modules.users.dto import (
     SetUserDiscountDto,
     UnblockUserDto,
     UpdateAdminDto,
-    UpdateOwnProfileDto,
     UpdateSecuritySettingsDto,
     UserDto,
     UserSort,
@@ -76,7 +73,6 @@ from app.modules.users.usecases import (
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminUseCase,
-    UpdateOwnProfileUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
 
@@ -84,57 +80,14 @@ router = APIRouter(prefix="/users", tags=["users"])
 admins_router = APIRouter(prefix="/admins", tags=["admins"])
 
 
-def _effective_permissions(user: UserDto) -> list[str]:
-    return sorted(p.value for p in PermissionPolicy.effective_permissions(user))
-
-
-def _to_current_user_response(user: UserDto) -> CurrentUserResponse:
-    return CurrentUserResponse.model_validate(
-        {**dict(user), "effective_permissions": _effective_permissions(user)}
-    )
-
-
 def _to_admin_response(user: UserDto) -> AdminResponse:
     return AdminResponse.model_validate(
         {
             **dict(user),
             "role_permissions": sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, set())),
-            "effective_permissions": _effective_permissions(user),
+            "effective_permissions": effective_permission_names(user),
         }
     )
-
-
-@router.get("/me", response_model=CurrentUserResponse)
-@inject
-async def get_me(
-    use_case: FromDishka[GetCurrentUserUseCase],
-    actor: UserDto = Depends(require_admin_user),
-) -> CurrentUserResponse:
-    current_user = await use_case(actor)
-    return _to_current_user_response(current_user)
-
-
-@router.patch("/me", response_model=CurrentUserResponse, responses=error_responses(400))
-@inject
-async def update_me(
-    payload: UpdateOwnProfileRequest,
-    request: Request,
-    use_case: FromDishka[UpdateOwnProfileUseCase],
-    actor: UserDto = Depends(require_admin_user),
-    session_id: int = Depends(get_current_session_id),
-) -> CurrentUserResponse:
-    updated = await use_case(
-        actor,
-        UpdateOwnProfileDto(
-            name=payload.name,
-            current_password=payload.current_password,
-            new_password=payload.new_password,
-            language=payload.language,
-            current_session_id=session_id,
-            client_ip=resolve_client_ip(request),
-        ),
-    )
-    return _to_current_user_response(updated)
 
 
 @router.get("/me/security", response_model=SecurityResponse)

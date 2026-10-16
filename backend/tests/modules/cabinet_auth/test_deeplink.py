@@ -12,8 +12,8 @@ from app.modules.settings.dto import UpdateBotSettingsDto, UpdateCabinetAuthSett
 from app.modules.settings.repository import SettingsRepository
 
 _IP = "203.0.113.1"
-_BASE = "/api/v1/cabinet/auth/telegram/deeplink"
-_SIGNIN = "/api/v1/cabinet/auth/telegram/signin"
+_BASE = "/api/v1/auth/telegram/deeplink"
+_SIGNIN = "/api/v1/auth/telegram/signin"
 
 
 @pytest.fixture

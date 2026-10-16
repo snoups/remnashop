@@ -42,14 +42,14 @@ export function OAuthLoginButtons({ oauthProviders, oidcDisplayName, compact = f
   const handleClick = async (provider: OAuthProvider) => {
     setPending(provider);
     try {
-      const { authorization_url } = await getOAuthLoginAuthorizeUrl(provider);
-      if (!isHttpsUrl(authorization_url)) {
+      const { url } = await getOAuthLoginAuthorizeUrl(provider);
+      if (!isHttpsUrl(url)) {
         toast.error(t("auth.errors.unsafeAuthorizationUrl"));
         setPending(null);
         return;
       }
       setOAuthFlow("login");
-      window.location.href = authorization_url;
+      window.location.href = url;
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
       setPending(null);

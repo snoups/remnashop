@@ -1,7 +1,11 @@
 from fastapi import Depends, Request, status
 from loguru import logger
 
-from app.api.dependencies.public import get_current_actor, require_user_account
+from app.api.dependencies.public import (
+    forbid_cabinet_proxy,
+    get_current_actor,
+    require_user_account,
+)
 from app.api.errors import ApiError
 from app.core.actor import Actor
 from app.core.enums import SessionAudience
@@ -10,6 +14,7 @@ from app.modules.users import UserDto
 
 
 async def require_admin(request: Request, actor: Actor = Depends(get_current_actor)) -> Actor:
+    forbid_cabinet_proxy(request)
     if not actor.is_privileged:
         logger.warning(f"Non-privileged actor {actor.log} denied admin access")
         raise ApiError(

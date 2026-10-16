@@ -21,7 +21,7 @@ from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 
 _IP = "203.0.113.1"
-_CODE_URL = f"{API_V1}/cabinet/auth/email/code"
+_CODE_URL = f"{API_V1}/auth/email/code"
 
 
 async def _configure(

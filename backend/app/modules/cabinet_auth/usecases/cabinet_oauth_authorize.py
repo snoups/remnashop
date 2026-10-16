@@ -1,4 +1,3 @@
-import secrets
 from typing import Final
 
 from authlib.common.security import generate_token
@@ -8,7 +7,6 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
-from app.modules.cabinet_auth.cookies import hash_binding
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.oauth import (
     OAUTH_EXCHANGE_ERRORS,
@@ -16,6 +14,7 @@ from app.modules.oauth import (
     OAuthStateStore,
     build_cabinet_redirect_uri,
     get_oauth_client,
+    new_binding,
 )
 from app.modules.settings import SettingsRepository
 
@@ -58,13 +57,13 @@ class CabinetOAuthAuthorizeUseCase:
             client = get_oauth_client(provider, settings, require_enabled=False)
 
         code_verifier = generate_token(48) if client.requires_pkce else None
-        binding = secrets.token_urlsafe(32)
+        binding, binding_hash = new_binding()
         state = await self._state_store.create(
             provider=provider,
             purpose=OAuthFlowPurpose.CABINET_LOGIN,
             user_id=None,
             code_verifier=code_verifier,
-            binding_hash=hash_binding(binding),
+            binding_hash=binding_hash,
             referral_code=codes.referral_code,
             ad_link_code=codes.ad_link_code,
         )

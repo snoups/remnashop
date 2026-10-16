@@ -20,12 +20,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import SessionAudience
 from app.core.security import derive_csrf_token, hash_refresh_token
 from app.core.utils.time import datetime_now
+from app.modules.auth import SESSION_COOKIES
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
-from app.modules.cabinet_auth.cookies import (
-    CABINET_CSRF_COOKIE,
-    CABINET_REFRESH_COOKIE,
-)
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.settings.dto import UpdateBotSettingsDto, UpdateCabinetAuthSettingsDto
@@ -34,6 +31,8 @@ from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
 
 _IP = "203.0.113.1"
+_CABINET_REFRESH = SESSION_COOKIES[SessionAudience.CABINET].refresh
+_CABINET_CSRF = SESSION_COOKIES[SessionAudience.CABINET].csrf
 _BOT_TOKEN = "123456:TEST-token"
 
 
@@ -65,23 +64,23 @@ async def test_cabinet_refresh_rotates_a_cabinet_session(
     client: httpx.AsyncClient, sign_in: CabinetSignIn
 ) -> None:
     _, issued = await _sign_in(sign_in)
-    headers = _set_cookies(client, issued, CABINET_REFRESH_COOKIE, CABINET_CSRF_COOKIE)
+    headers = _set_cookies(client, issued, _CABINET_REFRESH, _CABINET_CSRF)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/refresh", headers=headers)
+    response = await client.post(f"{API_V1}/auth/refresh", headers=headers)
 
     assert response.status_code == 200
     body = response.json()
     assert body["access_token"] and body["expires_in"] == TTL_15M
-    assert response.cookies.get(CABINET_REFRESH_COOKIE) not in (None, issued.refresh_token)
+    assert response.cookies.get(_CABINET_REFRESH) not in (None, issued.refresh_token)
 
 
 async def test_cabinet_refresh_rejects_a_missing_csrf_header(
     client: httpx.AsyncClient, sign_in: CabinetSignIn
 ) -> None:
     _, issued = await _sign_in(sign_in)
-    _set_cookies(client, issued, CABINET_REFRESH_COOKIE, CABINET_CSRF_COOKIE)
+    _set_cookies(client, issued, _CABINET_REFRESH, _CABINET_CSRF)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/refresh")
+    response = await client.post(f"{API_V1}/auth/refresh")
 
     assert response.status_code == 403
     assert response.json()["code"] == "CSRF_FAILED"
@@ -91,15 +90,15 @@ async def test_cabinet_refresh_failure_clears_cookies(
     client: httpx.AsyncClient, config: AppConfig
 ) -> None:
     csrf = derive_csrf_token("unknown-refresh-token", config.jwt_secret.get_secret_value())
-    client.cookies.set(CABINET_REFRESH_COOKIE, "unknown-refresh-token")
-    client.cookies.set(CABINET_CSRF_COOKIE, csrf)
+    client.cookies.set(_CABINET_REFRESH, "unknown-refresh-token")
+    client.cookies.set(_CABINET_CSRF, csrf)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/refresh", headers={"X-Csrf-Token": csrf})
+    response = await client.post(f"{API_V1}/auth/refresh", headers={"X-Csrf-Token": csrf})
 
     assert response.status_code == 401
     cleared = response.headers.get_list("set-cookie")
-    assert any(c.startswith(f'{CABINET_REFRESH_COOKIE}=""') for c in cleared)
-    assert any(c.startswith(f'{CABINET_CSRF_COOKIE}=""') for c in cleared)
+    assert any(c.startswith(f'{_CABINET_REFRESH}=""') for c in cleared)
+    assert any(c.startswith(f'{_CABINET_CSRF}=""') for c in cleared)
 
 
 async def test_dashboard_refresh_rejects_a_cabinet_session(
@@ -117,9 +116,9 @@ async def test_cabinet_refresh_rejects_a_dashboard_session(
     client: httpx.AsyncClient, sign_in: CabinetSignIn, container: AsyncContainer
 ) -> None:
     dashboard = await _dashboard_session(sign_in, container)
-    headers = _set_cookies(client, dashboard, CABINET_REFRESH_COOKIE, CABINET_CSRF_COOKIE)
+    headers = _set_cookies(client, dashboard, _CABINET_REFRESH, _CABINET_CSRF)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/refresh", headers=headers)
+    response = await client.post(f"{API_V1}/auth/refresh", headers=headers)
 
     assert response.status_code == 401
 
@@ -131,9 +130,9 @@ async def test_cabinet_logout_keeps_a_dashboard_session(
     session_repository: SessionRepository,
 ) -> None:
     dashboard = await _dashboard_session(sign_in, container)
-    headers = _set_cookies(client, dashboard, CABINET_REFRESH_COOKIE, CABINET_CSRF_COOKIE)
+    headers = _set_cookies(client, dashboard, _CABINET_REFRESH, _CABINET_CSRF)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/logout", headers=headers)
+    response = await client.post(f"{API_V1}/auth/logout", headers=headers)
 
     assert response.status_code == 204
     assert (
@@ -158,45 +157,12 @@ async def test_cabinet_logout_revokes_the_session(
     client: httpx.AsyncClient, sign_in: CabinetSignIn, session_repository: SessionRepository
 ) -> None:
     user, issued = await _sign_in(sign_in)
-    headers = _set_cookies(client, issued, CABINET_REFRESH_COOKIE, CABINET_CSRF_COOKIE)
+    headers = _set_cookies(client, issued, _CABINET_REFRESH, _CABINET_CSRF)
 
-    response = await client.post(f"{API_V1}/cabinet/auth/logout", headers=headers)
+    response = await client.post(f"{API_V1}/auth/logout", headers=headers)
 
     assert response.status_code == 204
     assert await session_repository.list_active_by_user(user.id) == []
-
-
-async def test_cabinet_me_returns_the_profile(
-    client: httpx.AsyncClient, sign_in: CabinetSignIn
-) -> None:
-    user, issued = await _sign_in(sign_in)
-
-    response = await client.get(
-        f"{API_V1}/cabinet/me", headers={"Authorization": f"Bearer {issued.access_token}"}
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "id": user.id,
-        "name": "Ann",
-        "email": None,
-        "telegram_id": 9301,
-        "username": "ann",
-        "language": "en",
-    }
-
-
-async def test_cabinet_me_rejects_a_dashboard_session(
-    client: httpx.AsyncClient, sign_in: CabinetSignIn, container: AsyncContainer
-) -> None:
-    dashboard = await _dashboard_session(sign_in, container)
-
-    response = await client.get(
-        f"{API_V1}/cabinet/me", headers={"Authorization": f"Bearer {dashboard.access_token}"}
-    )
-
-    assert response.status_code == 403
-    assert response.json()["code"] == "SESSION_AUDIENCE_MISMATCH"
 
 
 async def _enable_telegram(settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
@@ -231,13 +197,11 @@ async def test_cabinet_telegram_login_sets_cookies(
 ) -> None:
     await _enable_telegram(settings_repository, uow)
 
-    response = await client.post(
-        f"{API_V1}/cabinet/auth/telegram", json={"init_data": _signed_init_data()}
-    )
+    response = await client.post(f"{API_V1}/auth/telegram", json={"init_data": _signed_init_data()})
 
     assert response.status_code == 200
     assert response.json()["access_token"]
-    assert response.cookies.get(CABINET_REFRESH_COOKIE)
+    assert response.cookies.get(_CABINET_REFRESH)
 
 
 async def test_mini_app_sign_in_lives_seven_days(
@@ -248,13 +212,11 @@ async def test_mini_app_sign_in_lives_seven_days(
 ) -> None:
     await _enable_telegram(settings_repository, uow)
 
-    response = await client.post(
-        f"{API_V1}/cabinet/auth/telegram", json={"init_data": _signed_init_data()}
-    )
+    response = await client.post(f"{API_V1}/auth/telegram", json={"init_data": _signed_init_data()})
 
     assert response.status_code == 200
     set_cookie = next(
-        h for h in response.headers.get_list("set-cookie") if h.startswith(CABINET_REFRESH_COOKIE)
+        h for h in response.headers.get_list("set-cookie") if h.startswith(_CABINET_REFRESH)
     )
     max_age = int(set_cookie.split("Max-Age=")[1].split(";")[0])
     assert TTL_7D - 60 <= max_age <= TTL_7D
@@ -279,7 +241,7 @@ async def test_cabinet_telegram_login_rejects_tampered_data(
     await _enable_telegram(settings_repository, uow)
 
     response = await client.post(
-        f"{API_V1}/cabinet/auth/telegram", json={"init_data": _signed_init_data("1:other")}
+        f"{API_V1}/auth/telegram", json={"init_data": _signed_init_data("1:other")}
     )
 
     assert response.status_code == 401
@@ -290,7 +252,7 @@ async def test_cabinet_telegram_login_limits_only_failures(
     client: httpx.AsyncClient, settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
     await _enable_telegram(settings_repository, uow)
-    url = f"{API_V1}/cabinet/auth/telegram"
+    url = f"{API_V1}/auth/telegram"
 
     for _ in range(5):
         bad = await client.post(url, json={"init_data": _signed_init_data("1:other")})
@@ -310,7 +272,7 @@ async def test_telegram_signin_unknown_token_is_failure_limited(
     client: httpx.AsyncClient, settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
     await _enable_telegram(settings_repository, uow)
-    url = f"{API_V1}/cabinet/auth/telegram/signin"
+    url = f"{API_V1}/auth/telegram/signin"
 
     for _ in range(20):
         response = await client.post(url, json={"token": "x" * 43})
@@ -321,4 +283,4 @@ async def test_telegram_signin_unknown_token_is_failure_limited(
 
 async def test_methods_has_no_per_route_limit(client: httpx.AsyncClient) -> None:
     for _ in range(40):
-        assert (await client.get(f"{API_V1}/cabinet/auth/methods")).status_code == 200
+        assert (await client.get(f"{API_V1}/auth/methods")).status_code == 200

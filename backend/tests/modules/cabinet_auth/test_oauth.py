@@ -444,25 +444,25 @@ async def test_oauth_routes_end_to_end(
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", _CABINET_URL)
     profile_holder["profile"] = OAuthProfile(external_id="g11", login=None, name="Route")
-    base = "/api/v1/cabinet/auth/oauth/google"
+    base = "/api/v1/auth/oauth/google"
 
-    authorized = await client.post(f"{base}/authorize", json={})
+    authorized = await client.post(f"{base}/authorize", json={"audience": "cabinet"})
     assert authorized.status_code == 200
     assert "httponly" in authorized.headers["set-cookie"].lower()
     state = authorized.json()["url"].rsplit("state=", 1)[1]
-    binding = client.cookies.pop("cabinet_oauth")
+    binding = client.cookies.pop("oauth_binding")
 
     missing = await client.post(f"{base}/callback", json={"code": "c", "state": state})
     assert missing.status_code == 401 and missing.json()["code"] == "OAUTH_STATE_INVALID"
 
     # the failed attempt consumed the state; start over
-    authorized = await client.post(f"{base}/authorize", json={})
+    authorized = await client.post(f"{base}/authorize", json={"audience": "cabinet"})
     state = authorized.json()["url"].rsplit("state=", 1)[1]
-    assert client.cookies.get("cabinet_oauth")
+    assert client.cookies.get("oauth_binding")
     done = await client.post(f"{base}/callback", json={"code": "c", "state": state})
     assert done.status_code == 200 and done.json()["access_token"]
     assert client.cookies.get("cabinet_refresh_token")
-    assert not client.cookies.get("cabinet_oauth")
+    assert not client.cookies.get("oauth_binding")
     assert binding
 
 
@@ -470,11 +470,11 @@ async def test_failed_callback_deletes_the_binding_cookie(
     client: httpx.AsyncClient, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(config, "web_cabinet_url", _CABINET_URL)
-    base = "/api/v1/cabinet/auth/oauth/google"
-    await client.post(f"{base}/authorize", json={})
+    base = "/api/v1/auth/oauth/google"
+    await client.post(f"{base}/authorize", json={"audience": "cabinet"})
 
     failed = await client.post(f"{base}/callback", json={"code": "c", "state": "wrong"})
 
     assert failed.status_code == 401 and failed.json()["code"] == "OAUTH_STATE_INVALID"
-    assert 'cabinet_oauth=""' in failed.headers["set-cookie"]
-    assert not client.cookies.get("cabinet_oauth")
+    assert 'oauth_binding=""' in failed.headers["set-cookie"]
+    assert not client.cookies.get("oauth_binding")

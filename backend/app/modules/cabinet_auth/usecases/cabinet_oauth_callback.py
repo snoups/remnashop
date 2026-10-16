@@ -1,4 +1,3 @@
-import hmac
 from typing import Optional
 
 from app.core.config import AppConfig
@@ -7,13 +6,13 @@ from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
-from app.modules.cabinet_auth.cookies import hash_binding
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.oauth import (
     OAUTH_EXCHANGE_ERRORS,
     OAuthFlowPurpose,
     OAuthStateStore,
+    binding_matches,
     build_cabinet_redirect_uri,
     get_oauth_client,
 )
@@ -50,9 +49,7 @@ class CabinetOAuthCallbackUseCase:
             state_data is None
             or state_data.purpose is not OAuthFlowPurpose.CABINET_LOGIN
             or state_data.provider is not provider
-            or not binding
-            or state_data.binding_hash is None
-            or not hmac.compare_digest(hash_binding(binding), state_data.binding_hash)
+            or not binding_matches(binding, state_data.binding_hash)
         ):
             raise AuthenticationError(
                 "Invalid or expired OAuth state", code=ErrorCode.OAUTH_STATE_INVALID

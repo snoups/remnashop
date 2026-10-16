@@ -15,7 +15,11 @@ from app.modules.oauth.events import OAuthLoginFailedEvent
 from app.modules.oauth.providers.base import OAuthProfile
 from app.modules.oauth.providers.oidc import OIDCOAuthClient
 from app.modules.oauth.providers.registry import get_oauth_client
-from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import (
+    OAuthFlowPurpose,
+    OAuthStateStore,
+    new_binding,
+)
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
@@ -136,10 +140,11 @@ async def test_oauth_login_authorize_returns_url_for_configured_provider(
     )
     use_case = OAuthLoginAuthorizeUseCase(settings_repository, oauth_state_store, config, uow)
 
-    url = await use_case.execute(OAuthProvider.GITHUB)
+    url, binding = await use_case.execute(OAuthProvider.GITHUB)
 
     assert url.startswith("https://github.com/login/oauth/authorize")
     assert "state=" in url
+    assert binding
 
 
 async def test_oauth_login_authorize_rejects_unconfigured_provider(
@@ -180,6 +185,7 @@ async def test_oauth_login_callback_rejects_unknown_state(
             OAuthProvider.GITHUB,
             code="code",
             state="unknown-state",
+            binding=None,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
@@ -217,6 +223,7 @@ async def test_oauth_login_callback_rejects_state_from_connect_flow(
             OAuthProvider.GITHUB,
             code="code",
             state=state,
+            binding=None,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
@@ -236,11 +243,13 @@ async def test_oauth_login_callback_rejects_unlinked_identity(
     monkeypatch.setattr(
         oauth_login_callback, "get_oauth_client", lambda provider, settings: _StubOAuthClient()
     )
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.GITHUB,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _oauth_login_callback_use_case(
         settings_repository,
@@ -258,6 +267,7 @@ async def test_oauth_login_callback_rejects_unlinked_identity(
             OAuthProvider.GITHUB,
             code="code",
             state=state,
+            binding=binding,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
@@ -279,11 +289,13 @@ async def test_oauth_login_callback_reports_provider_exchange_failure(
         oauth_login_callback, "get_oauth_client", lambda provider, settings: _FailingOAuthClient()
     )
 
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.GITHUB,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _oauth_login_callback_use_case(
         settings_repository,
@@ -301,6 +313,7 @@ async def test_oauth_login_callback_reports_provider_exchange_failure(
             OAuthProvider.GITHUB,
             code="code",
             state=state,
+            binding=binding,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
@@ -325,7 +338,12 @@ async def test_oauth_login_callback_succeeds_for_linked_identity(
     )
     owner, _ = await _bootstrap_use_case(
         user_repository, uow, config, event_publisher, session_repository
-    ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
+    ).execute(
+        login="admin",
+        password=PASSWORD,
+        client_ip=CLIENT_IP,
+        user_agent=USER_AGENT,
+    )
     await oauth_identity_repository.create(
         CreateOAuthIdentityDto(
             user_id=owner.id,
@@ -334,11 +352,13 @@ async def test_oauth_login_callback_succeeds_for_linked_identity(
             external_login=None,
         )
     )
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.GITHUB,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _oauth_login_callback_use_case(
         settings_repository,
@@ -352,7 +372,12 @@ async def test_oauth_login_callback_succeeds_for_linked_identity(
     )
 
     logged_in_user, issued = await use_case.execute(
-        OAuthProvider.GITHUB, code="code", state=state, client_ip=CLIENT_IP, user_agent=USER_AGENT
+        OAuthProvider.GITHUB,
+        code="code",
+        state=state,
+        binding=binding,
+        client_ip=CLIENT_IP,
+        user_agent=USER_AGENT,
     )
 
     assert logged_in_user.id == owner.id
@@ -826,11 +851,13 @@ async def test_login_callback_refuses_a_sub_fetched_from_a_replaced_oidc_issuer(
 
     client.after_swap.append(_new_issuer_links_the_same_sub)
     monkeypatch.setattr(oauth_login_callback, "get_oauth_client", lambda *_: client)
+    binding, binding_hash = new_binding()
     state = await oauth_state_store.create(
         provider=OAuthProvider.OIDC,
         purpose=OAuthFlowPurpose.LOGIN,
         user_id=None,
         code_verifier=None,
+        binding_hash=binding_hash,
     )
     use_case = _oauth_login_callback_use_case(
         settings_repository,
@@ -848,6 +875,50 @@ async def test_login_callback_refuses_a_sub_fetched_from_a_replaced_oidc_issuer(
             OAuthProvider.OIDC,
             code="code",
             state=state,
+            binding=binding,
             client_ip=CLIENT_IP,
             user_agent=USER_AGENT,
         )
+
+
+async def test_oauth_login_callback_rejects_a_missing_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    oauth_identity_repository: OAuthIdentityRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+) -> None:
+    _, binding_hash = new_binding()
+    state = await oauth_state_store.create(
+        provider=OAuthProvider.GITHUB,
+        purpose=OAuthFlowPurpose.LOGIN,
+        user_id=None,
+        code_verifier=None,
+        binding_hash=binding_hash,
+    )
+    use_case = _oauth_login_callback_use_case(
+        settings_repository,
+        oauth_state_store,
+        oauth_identity_repository,
+        user_repository,
+        uow,
+        config,
+        event_publisher,
+        session_repository,
+    )
+
+    with pytest.raises(AuthenticationError) as error:
+        await use_case.execute(
+            OAuthProvider.GITHUB,
+            code="code",
+            state=state,
+            binding=None,
+            client_ip=CLIENT_IP,
+            user_agent=USER_AGENT,
+        )
+
+    assert error.value.code is ErrorCode.OAUTH_STATE_INVALID

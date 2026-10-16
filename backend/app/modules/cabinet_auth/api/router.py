@@ -5,39 +5,38 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.api.dependencies.public import forbid_cabinet_proxy
 from app.api.dependencies.rate_limit import (
     FailureLimit,
     failure_rate_limit,
     rate_limit,
 )
-from app.api.errors import ApiError, error_responses, status_for
+from app.api.errors import error_responses, status_for
 from app.core.config import AppConfig
-from app.core.constants import CABINET_API_PREFIX, TIME_1M, TTL_15M
+from app.core.constants import TIME_1M, TTL_15M
 from app.core.enums import OAuthProvider, SessionAudience
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AppError, AuthenticationError
+from app.core.exceptions import AppError, AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
-from app.modules.auth import LogoutUseCase, RefreshSessionUseCase, verify_csrf
+from app.modules.auth import (
+    OAUTH_BINDING_COOKIE,
+    clear_oauth_binding_cookie,
+    set_audience_cookies,
+    set_oauth_binding_cookie,
+)
 from app.modules.cabinet_auth.api.schemas import (
     BotSignInRequest,
     CabinetAuthResponse,
     CabinetMethodsResponse,
-    CabinetOAuthAuthorizeResponse,
-    CabinetOAuthCallbackRequest,
     DeeplinkResponse,
     InviteCodesRequest,
+    OAuthAuthorizeRequest,
+    OAuthAuthorizeResponse,
+    OAuthCallbackRequest,
+    OAuthSignInResponse,
     RequestEmailCodeRequest,
     TelegramWebAppLoginRequest,
     VerifyEmailCodeRequest,
-)
-from app.modules.cabinet_auth.cookies import (
-    CABINET_CSRF_COOKIE,
-    CABINET_OAUTH_COOKIE,
-    CABINET_REFRESH_COOKIE,
-    CABINET_REFRESH_PATH,
-    clear_cabinet_cookies,
-    set_cabinet_cookies,
-    set_oauth_cookie,
 )
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.usecases import (
@@ -50,6 +49,12 @@ from app.modules.cabinet_auth.usecases import (
     TelegramWebAppLoginUseCase,
     VerifyEmailCodeUseCase,
 )
+from app.modules.oauth import (
+    OAuthFlowPurpose,
+    OAuthLoginAuthorizeUseCase,
+    OAuthLoginCallbackUseCase,
+    OAuthStateStore,
+)
 
 _BOT_SIGNIN_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.DEEPLINK_EXPIRED})
 _TELEGRAM_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.INVALID_INIT_DATA})
@@ -60,7 +65,7 @@ _OAUTH_CALLBACK_FAILURES: Final[frozenset[ErrorCode]] = frozenset(
     {ErrorCode.OAUTH_STATE_INVALID, ErrorCode.OAUTH_CODE_EXCHANGE_FAILED}
 )
 
-router = APIRouter(prefix=f"{CABINET_API_PREFIX}/auth", tags=["cabinet-auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get(
@@ -99,7 +104,7 @@ async def cabinet_telegram_login(
         if error.code in _TELEGRAM_FAILURES:
             await guard.record_failure()
         raise
-    set_cabinet_cookies(response, issued, config.secure_cookies)
+    set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
     return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
 
 
@@ -142,7 +147,7 @@ async def cabinet_email_verify(
         if error.code in _EMAIL_VERIFY_FAILURES:
             await guard.record_failure()
         raise
-    set_cabinet_cookies(response, issued, config.secure_cookies)
+    set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
     return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
 
 
@@ -190,59 +195,78 @@ async def cabinet_telegram_signin(
         if error.code in _BOT_SIGNIN_FAILURES:
             await guard.record_failure()
         raise
-    set_cabinet_cookies(response, issued, config.secure_cookies)
+    set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
     return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
 
 
 @router.post(
     "/oauth/{provider}/authorize",
-    response_model=CabinetOAuthAuthorizeResponse,
-    dependencies=[
-        Depends(rate_limit(key="cabinet_oauth_authorize", limit=30, window_seconds=TIME_1M))
-    ],
-    responses=error_responses(401),
+    response_model=OAuthAuthorizeResponse,
+    dependencies=[Depends(rate_limit(key="oauth_authorize", limit=30, window_seconds=TIME_1M))],
+    responses=error_responses(400, 401, 403),
 )
 @inject
-async def cabinet_oauth_authorize(
+async def oauth_authorize(
     provider: OAuthProvider,
-    body: InviteCodesRequest,
+    body: OAuthAuthorizeRequest,
+    request: Request,
     response: Response,
-    use_case: FromDishka[CabinetOAuthAuthorizeUseCase],
+    dashboard: FromDishka[OAuthLoginAuthorizeUseCase],
+    cabinet: FromDishka[CabinetOAuthAuthorizeUseCase],
     config: FromDishka[AppConfig],
-) -> CabinetOAuthAuthorizeResponse:
-    url, binding = await use_case.execute(
-        provider, InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad)
-    )
-    set_oauth_cookie(response, binding, config.secure_cookies)
-    return CabinetOAuthAuthorizeResponse(url=url)
+) -> OAuthAuthorizeResponse:
+    if body.audience == "dashboard":
+        forbid_cabinet_proxy(request)
+        try:
+            url, binding = await dashboard.execute(provider)
+        except AuthenticationError as error:
+            raise ValidationError(str(error), code=error.code) from error
+        audience = SessionAudience.DASHBOARD
+    else:
+        url, binding = await cabinet.execute(
+            provider, InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad)
+        )
+        audience = SessionAudience.CABINET
+    set_oauth_binding_cookie(response, binding, config.secure_cookies, audience)
+    return OAuthAuthorizeResponse(url=url)
 
 
 @router.post(
     "/oauth/{provider}/callback",
-    response_model=CabinetAuthResponse,
+    response_model=OAuthSignInResponse,
+    dependencies=[Depends(rate_limit(key="oauth_callback", limit=30, window_seconds=TIME_1M))],
     responses=error_responses(401, 403),
 )
 @inject
-async def cabinet_oauth_callback(
+async def oauth_callback(
     provider: OAuthProvider,
-    body: CabinetOAuthCallbackRequest,
+    body: OAuthCallbackRequest,
     request: Request,
     response: Response,
-    use_case: FromDishka[CabinetOAuthCallbackUseCase],
+    state_store: FromDishka[OAuthStateStore],
+    dashboard: FromDishka[OAuthLoginCallbackUseCase],
+    cabinet: FromDishka[CabinetOAuthCallbackUseCase],
     config: FromDishka[AppConfig],
     guard: FailureLimit = Depends(
-        failure_rate_limit(key="cabinet_oauth_callback_fail", limit=20, window_seconds=TIME_1M)
+        failure_rate_limit(key="oauth_callback_fail", limit=20, window_seconds=TIME_1M)
     ),
-) -> CabinetAuthResponse | JSONResponse:
+) -> OAuthSignInResponse | JSONResponse:
+    binding = request.cookies.get(OAUTH_BINDING_COOKIE)
+    client_ip = resolve_client_ip(request)
+    user_agent = request.headers.get("user-agent")
+    # the state says whose sign-in this is; the flow below spends it
+    is_dashboard = await state_store.peek_purpose(body.state) is OAuthFlowPurpose.LOGIN
+    if is_dashboard:
+        forbid_cabinet_proxy(request)
     try:
-        _, issued = await use_case.execute(
-            provider,
-            body.code,
-            body.state,
-            request.cookies.get(CABINET_OAUTH_COOKIE),
-            resolve_client_ip(request),
-            request.headers.get("user-agent"),
-        )
+        if is_dashboard:
+            user, issued = await dashboard.execute(
+                provider, body.code, body.state, binding, client_ip, user_agent
+            )
+        else:
+            user, issued = await cabinet.execute(
+                provider, body.code, body.state, binding, client_ip, user_agent
+            )
     except AppError as error:
         if error.code in _OAUTH_CALLBACK_FAILURES:
             await guard.record_failure()
@@ -250,77 +274,15 @@ async def cabinet_oauth_callback(
         error_response = JSONResponse(
             status_code=status_for(error), content={"detail": str(error), "code": error.code.value}
         )
-        error_response.delete_cookie(CABINET_OAUTH_COOKIE, path=CABINET_REFRESH_PATH)
+        clear_oauth_binding_cookie(error_response)
         return error_response
-    set_cabinet_cookies(response, issued, config.secure_cookies)
-    response.delete_cookie(CABINET_OAUTH_COOKIE, path=CABINET_REFRESH_PATH)
-    return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
-
-
-@router.post(
-    "/refresh",
-    response_model=CabinetAuthResponse,
-    dependencies=[Depends(rate_limit(key="cabinet_refresh", limit=30, window_seconds=TIME_1M))],
-    responses=error_responses(401, 403),
-)
-@inject
-async def cabinet_refresh(
-    request: Request,
-    response: Response,
-    use_case: FromDishka[RefreshSessionUseCase],
-    config: FromDishka[AppConfig],
-) -> CabinetAuthResponse | JSONResponse:
-    refresh_token = request.cookies.get(CABINET_REFRESH_COOKIE)
-    if not refresh_token:
-        raise ApiError(
-            status.HTTP_401_UNAUTHORIZED, "No refresh token", code=ErrorCode.REFRESH_TOKEN_MISSING
-        )
-    verify_csrf(
-        refresh_token,
-        request,
-        config.jwt_secret.get_secret_value(),
-        csrf_cookie=CABINET_CSRF_COOKIE,
+    audience = SessionAudience.DASHBOARD if is_dashboard else SessionAudience.CABINET
+    set_audience_cookies(response, issued, config.secure_cookies, audience)
+    clear_oauth_binding_cookie(response)
+    return OAuthSignInResponse(
+        access_token=issued.access_token,
+        expires_in=TTL_15M,
+        id=user.id,
+        login=user.login,
+        role=user.role,
     )
-
-    try:
-        issued = await use_case.execute(
-            refresh_token=refresh_token,
-            ip_address=resolve_client_ip(request),
-            user_agent=request.headers.get("user-agent"),
-            audience=SessionAudience.CABINET,
-        )
-    except AuthenticationError as error:
-        error_response = JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"detail": str(error), "code": error.code.value},
-        )
-        clear_cabinet_cookies(error_response)
-        return error_response
-
-    set_cabinet_cookies(response, issued, config.secure_cookies)
-    return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
-
-
-@router.post(
-    "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(rate_limit(key="cabinet_logout", limit=30, window_seconds=TIME_1M))],
-    responses=error_responses(403),
-)
-@inject
-async def cabinet_logout(
-    request: Request,
-    response: Response,
-    use_case: FromDishka[LogoutUseCase],
-    config: FromDishka[AppConfig],
-) -> None:
-    refresh_token = request.cookies.get(CABINET_REFRESH_COOKIE)
-    if refresh_token:
-        verify_csrf(
-            refresh_token,
-            request,
-            config.jwt_secret.get_secret_value(),
-            csrf_cookie=CABINET_CSRF_COOKIE,
-        )
-        await use_case.execute(refresh_token=refresh_token, audience=SessionAudience.CABINET)
-    clear_cabinet_cookies(response)

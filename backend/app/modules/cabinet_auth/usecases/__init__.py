@@ -2,7 +2,6 @@ from app.modules.cabinet_auth.usecases.bot_signin import BotSignInUseCase
 from app.modules.cabinet_auth.usecases.cabinet_oauth_authorize import CabinetOAuthAuthorizeUseCase
 from app.modules.cabinet_auth.usecases.cabinet_oauth_callback import CabinetOAuthCallbackUseCase
 from app.modules.cabinet_auth.usecases.get_cabinet_methods import GetCabinetMethodsUseCase
-from app.modules.cabinet_auth.usecases.get_cabinet_profile import GetCabinetProfileUseCase
 from app.modules.cabinet_auth.usecases.issue_bot_signin_link import IssueBotSignInLinkUseCase
 from app.modules.cabinet_auth.usecases.request_deeplink import RequestDeeplinkUseCase
 from app.modules.cabinet_auth.usecases.request_email_code import RequestEmailCodeUseCase
@@ -14,7 +13,6 @@ __all__ = [
     "CabinetOAuthAuthorizeUseCase",
     "CabinetOAuthCallbackUseCase",
     "GetCabinetMethodsUseCase",
-    "GetCabinetProfileUseCase",
     "IssueBotSignInLinkUseCase",
     "RequestDeeplinkUseCase",
     "RequestEmailCodeUseCase",

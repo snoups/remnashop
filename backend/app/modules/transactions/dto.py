@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Final, Optional
+from typing import TYPE_CHECKING, Final, Literal, Optional
 
 from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
@@ -128,6 +128,7 @@ class CreateCheckoutDto:
     customer_email: Optional[str] = None
     # required for a LINK plan: the link's code is what grants access to it
     plan_code: Optional[str] = None
+    return_to: Literal["default", "cabinet"] = "default"
 
 
 class CheckoutResultDto(BaseDto):
@@ -182,6 +183,12 @@ class ListTransactionsDto:
     created_to: Optional[datetime] = None
     search: Optional[str] = None
     user_id: Optional[int] = None
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListOwnTransactionsDto:
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 

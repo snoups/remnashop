@@ -3,10 +3,12 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from app.api.dependencies.public import forbid_cabinet_proxy
 from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import ApiError, error_responses
 from app.core.config import AppConfig
-from app.core.constants import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, TIME_1M
+from app.core.constants import TIME_1M, TTL_15M
+from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.utils.http import resolve_client_ip
@@ -23,6 +25,12 @@ from app.modules.auth.api.schemas import (
     RefreshResponse,
     StatusResponse,
 )
+from app.modules.auth.session_cookies import (
+    SESSION_COOKIES,
+    clear_audience_cookies,
+    presented_refresh_tokens,
+    set_audience_cookies,
+)
 from app.modules.auth.session_response import (
     AuthResponse,
     set_session_cookies,
@@ -31,11 +39,6 @@ from app.modules.auth.session_response import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _clear_session_cookies(response: Response) -> None:
-    response.delete_cookie(REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
-    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
 
 
 @router.get(
@@ -62,7 +65,10 @@ async def get_auth_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusR
     "/bootstrap",
     response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(rate_limit(key="bootstrap", limit=5, window_seconds=TIME_1M))],
+    dependencies=[
+        Depends(forbid_cabinet_proxy),
+        Depends(rate_limit(key="bootstrap", limit=5, window_seconds=TIME_1M)),
+    ],
     responses=error_responses(409),
 )
 @inject
@@ -87,7 +93,10 @@ async def bootstrap(
 @router.post(
     "/login",
     response_model=AuthResponse,
-    dependencies=[Depends(rate_limit(key="login", limit=10, window_seconds=TIME_1M))],
+    dependencies=[
+        Depends(forbid_cabinet_proxy),
+        Depends(rate_limit(key="login", limit=10, window_seconds=TIME_1M)),
+    ],
     responses=error_responses(401),
 )
 @inject
@@ -122,29 +131,45 @@ async def refresh_session(
     use_case: FromDishka[RefreshSessionUseCase],
     config: FromDishka[AppConfig],
 ) -> RefreshResponse | JSONResponse:
-    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
-    if not refresh_token:
+    presented = presented_refresh_tokens(request)
+    if not presented:
         raise ApiError(
             status.HTTP_401_UNAUTHORIZED, "No refresh token", code=ErrorCode.REFRESH_TOKEN_MISSING
         )
-    verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
+    # each audience's cookie lives on its own path; both at once means something is off
+    if len(presented) > 1:
+        raise ApiError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Ambiguous refresh token",
+            code=ErrorCode.REFRESH_TOKEN_INVALID,
+        )
+    audience, refresh_token = presented[0]
+    if audience is SessionAudience.DASHBOARD:
+        forbid_cabinet_proxy(request)
+    verify_csrf(
+        refresh_token,
+        request,
+        config.jwt_secret.get_secret_value(),
+        csrf_cookie=SESSION_COOKIES[audience].csrf,
+    )
 
     try:
         issued = await use_case.execute(
             refresh_token=refresh_token,
             ip_address=resolve_client_ip(request),
             user_agent=request.headers.get("user-agent"),
+            audience=audience,
         )
     except AuthenticationError as error:
         error_response = JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={"detail": str(error), "code": error.code.value},
         )
-        _clear_session_cookies(error_response)
+        clear_audience_cookies(error_response, audience)
         return error_response
 
-    set_session_cookies(response, issued, config.secure_cookies)
-    return RefreshResponse(access_token=issued.access_token)
+    set_audience_cookies(response, issued, config.secure_cookies, audience)
+    return RefreshResponse(access_token=issued.access_token, expires_in=TTL_15M)
 
 
 @router.post(
@@ -160,8 +185,12 @@ async def logout(
     use_case: FromDishka[LogoutUseCase],
     config: FromDishka[AppConfig],
 ) -> None:
-    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
-    if refresh_token:
-        verify_csrf(refresh_token, request, config.jwt_secret.get_secret_value())
-        await use_case.execute(refresh_token=refresh_token)
-    _clear_session_cookies(response)
+    for audience, refresh_token in presented_refresh_tokens(request):
+        verify_csrf(
+            refresh_token,
+            request,
+            config.jwt_secret.get_secret_value(),
+            csrf_cookie=SESSION_COOKIES[audience].csrf,
+        )
+        await use_case.execute(refresh_token=refresh_token, audience=audience)
+        clear_audience_cookies(response, audience)

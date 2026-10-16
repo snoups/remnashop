@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import API_V1, REDIS_KEY_PREFIX
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
-from app.modules.cabinet_auth.cookies import CABINET_REFRESH_COOKIE
+from app.core.enums import SessionAudience
+from app.modules.auth import SESSION_COOKIES
 from app.modules.cabinet_auth.email_codes import email_key
 from app.modules.settings.dto import (
     UpdateAccessSettingsDto,
@@ -19,8 +20,8 @@ from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 
-_CODE_URL = f"{API_V1}/cabinet/auth/email/code"
-_VERIFY_URL = f"{API_V1}/cabinet/auth/email/verify"
+_CODE_URL = f"{API_V1}/auth/email/code"
+_VERIFY_URL = f"{API_V1}/auth/email/verify"
 
 
 @pytest.fixture(autouse=True)
@@ -90,7 +91,7 @@ async def test_verify_signs_in(
 
     assert response.status_code == 200
     assert response.json()["access_token"]
-    assert CABINET_REFRESH_COOKIE in response.cookies
+    assert SESSION_COOKIES[SessionAudience.CABINET].refresh in response.cookies
 
 
 async def test_verify_wrong_and_missing_code(

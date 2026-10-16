@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from loguru import logger
 
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     DiscountSource,
@@ -82,6 +83,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         get_access_settings_use_case: GetAccessSettingsUseCase,
         waitlist_repository: WaitlistRepository,
         settings_repository: SettingsRepository,
+        config: AppConfig,
         event_publisher: EventPublisher,
     ) -> None:
         self._plan_repository = plan_repository
@@ -98,7 +100,14 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._get_access_settings_use_case = get_access_settings_use_case
         self._waitlist_repository = waitlist_repository
         self._settings_repository = settings_repository
+        self._config = config
         self._event_publisher = event_publisher
+
+    def _return_url(self, data: CreateCheckoutDto, order_id: int) -> Optional[str]:
+        cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
+        if data.return_to != "cabinet" or not cabinet_url:
+            return None
+        return f"{cabinet_url}/payment/result?order_id={order_id}"
 
     @staticmethod
     def _resolve_customer_email(
@@ -174,7 +183,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
                 return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
-        gateway = self._gateway_factory.build(data.gateway_type, gateway_settings)
+        gateway = self._gateway_factory.build(
+            data.gateway_type, gateway_settings, self._return_url(data, order.id)
+        )
         try:
             intent = await gateway.create_payment(order)
         except Exception as error:

@@ -12,7 +12,12 @@ from app.modules.oauth.providers.base import (
     build_redirect_uri,
 )
 from app.modules.oauth.providers.registry import get_oauth_client
-from app.modules.oauth.providers.state_store import OAuthFlowPurpose, OAuthStateStore
+from app.modules.oauth.providers.state_store import (
+    OAuthFlowPurpose,
+    OAuthStateStore,
+    binding_matches,
+    new_binding,
+)
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
     ListOAuthIdentitiesUseCase,
@@ -39,8 +44,10 @@ __all__ = [
     "OAuthLoginCallbackUseCase",
     "OAuthProfile",
     "OAuthStateStore",
+    "binding_matches",
     "build_cabinet_redirect_uri",
     "build_redirect_uri",
     "get_oauth_client",
     "get_oauth_providers",
+    "new_binding",
 ]

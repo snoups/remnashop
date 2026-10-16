@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.enums import Locale
+from app.core.enums import Locale, Role
 
 
 class CabinetMethodsResponse(BaseModel):
@@ -21,15 +21,6 @@ class CabinetMethodsResponse(BaseModel):
 class CabinetAuthResponse(BaseModel):
     access_token: str
     expires_in: int
-
-
-class CabinetProfileResponse(BaseModel):
-    id: int
-    name: str
-    email: Optional[str]
-    telegram_id: Optional[int]
-    username: Optional[str]
-    language: str
 
 
 class TelegramWebAppLoginRequest(BaseModel):
@@ -65,10 +56,24 @@ class DeeplinkResponse(BaseModel):
     expires_in: int
 
 
-class CabinetOAuthAuthorizeResponse(BaseModel):
+class OAuthAuthorizeRequest(BaseModel):
+    audience: Literal["dashboard", "cabinet"]
+    ref: Optional[str] = Field(None, max_length=64)
+    ad: Optional[str] = Field(None, max_length=64)
+
+
+class OAuthAuthorizeResponse(BaseModel):
     url: str
 
 
-class CabinetOAuthCallbackRequest(BaseModel):
+class OAuthSignInResponse(BaseModel):
+    access_token: str
+    expires_in: int
+    id: int
+    login: Optional[str]
+    role: Role
+
+
+class OAuthCallbackRequest(BaseModel):
     code: str = Field(max_length=2048)
     state: str = Field(max_length=256)

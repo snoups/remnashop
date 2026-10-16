@@ -15,7 +15,7 @@ from app.core.enums import Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token, hash_refresh_token
 from app.core.security.permissions import expand_token_scopes
-from app.core.utils.http import is_ip_allowed, resolve_client_ip
+from app.core.utils.http import is_cabinet_proxied, is_ip_allowed, resolve_client_ip
 from app.modules.access import is_restricted_for
 from app.modules.api_tokens import ApiTokenRepository
 from app.modules.auth import SessionRepository
@@ -86,6 +86,7 @@ async def get_current_actor(
             credentials.credentials, api_token_repository, uow, client_ip
         )
         if token_actor is not None:
+            forbid_cabinet_proxy(request)
             return token_actor
         logger.warning(f"Invalid or expired token from IP '{client_ip}'")
         raise ApiError(
@@ -110,6 +111,8 @@ async def get_current_actor(
 
     request.state.session_id = session_id
     request.state.session_audience = session.audience
+    if session.audience is SessionAudience.DASHBOARD:
+        forbid_cabinet_proxy(request)
 
     if actor.ip_allowlist and not is_ip_allowed(client_ip, actor.ip_allowlist):
         logger.warning(f"Actor {actor.log} denied access from disallowed IP '{client_ip}'")
@@ -120,6 +123,18 @@ async def get_current_actor(
         )
 
     return actor
+
+
+def forbid_cabinet_proxy(request: Request) -> None:
+    """Dashboard sign-in and dashboard sessions stay out of reach through the
+    cabinet's domain, so a dashboard locked down at the reverse proxy can't be
+    reached around that lock."""
+    if is_cabinet_proxied(request):
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "Not available through the cabinet",
+            code=ErrorCode.PROXY_DASHBOARD_FORBIDDEN,
+        )
 
 
 def require_user_account(actor: Actor) -> UserDto:
@@ -157,6 +172,21 @@ async def get_current_user(
 def get_cabinet_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
     """Cabinet routes: a customer session, never a dashboard one."""
     if getattr(request.state, "session_audience", None) is not SessionAudience.CABINET:
+        raise ApiError(
+            status.HTTP_403_FORBIDDEN,
+            "This endpoint requires a cabinet session",
+            code=ErrorCode.SESSION_AUDIENCE_MISMATCH,
+        )
+    return user
+
+
+def get_profile_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
+    """/users/me: a cabinet session, or staff in the dashboard; a customer's
+    dashboard session is refused, as is any dashboard session through the cabinet."""
+    if getattr(request.state, "session_audience", None) is SessionAudience.CABINET:
+        return user
+    forbid_cabinet_proxy(request)
+    if not user.is_privileged:
         raise ApiError(
             status.HTTP_403_FORBIDDEN,
             "This endpoint requires a cabinet session",
