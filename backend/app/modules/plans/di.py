@@ -9,6 +9,7 @@ from app.modules.plans.usecases import (
     DeleteAddOnUseCase,
     DeletePlanUseCase,
     GetAddOnUseCase,
+    GetPlanShareUrlsUseCase,
     GetPlanUseCase,
     GetPriceBookUseCase,
     ListAddOnsUseCase,
@@ -39,6 +40,7 @@ class PlansProvider(Provider):
     use_cases = provide_all(
         ListPlansUseCase,
         GetPlanUseCase,
+        GetPlanShareUrlsUseCase,
         CreatePlanUseCase,
         UpdatePlanUseCase,
         DeletePlanUseCase,

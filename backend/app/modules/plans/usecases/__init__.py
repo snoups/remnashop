@@ -5,6 +5,7 @@ from app.modules.plans.usecases.delete_addon import DeleteAddOnUseCase
 from app.modules.plans.usecases.delete_plan import DeletePlanUseCase
 from app.modules.plans.usecases.get_addon import GetAddOnUseCase
 from app.modules.plans.usecases.get_plan import GetPlanUseCase
+from app.modules.plans.usecases.get_plan_share_urls import GetPlanShareUrlsUseCase
 from app.modules.plans.usecases.get_price_book import GetPriceBookUseCase
 from app.modules.plans.usecases.list_addons import ListAddOnsUseCase
 from app.modules.plans.usecases.list_plans import ListPlansUseCase
@@ -29,6 +30,7 @@ __all__ = [
     "DeleteAddOnUseCase",
     "DeletePlanUseCase",
     "GetAddOnUseCase",
+    "GetPlanShareUrlsUseCase",
     "GetPlanUseCase",
     "GetPriceBookUseCase",
     "ListAddOnsUseCase",

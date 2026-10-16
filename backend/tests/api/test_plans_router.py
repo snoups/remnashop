@@ -20,6 +20,7 @@ from app.modules.api_tokens.dto import CreateApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.plans.usecases import get_plan_share_urls
 from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
@@ -223,6 +224,20 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     assert "allowed_emails" not in plan
     assert "allowed_telegram_ids" not in plan
     assert "internal_squads" not in plan
+
+    code = create_response.json()["public_code"]
+    by_code = await client.get(
+        f"{API_V1}/plans/catalog",
+        params={"plan_code": code},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    wrong = await client.get(
+        f"{API_V1}/plans/catalog",
+        params={"plan_code": code + "x"},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert [p["id"] for p in by_code.json()["items"]] == [plan_id]
+    assert wrong.json()["items"] == []
     assert "external_squad" not in plan
     assert "availability" not in plan
     assert "is_active" not in plan
@@ -284,3 +299,33 @@ async def test_plan_switches_default_on_and_can_be_turned_off(
     assert patched.status_code == 200
     assert patched.json()["allow_bonus_days"] is False
     assert patched.json()["allow_promocodes"] is False
+
+
+async def test_share_urls_link_the_plan_into_the_cabinet(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def no_bot(token: str, proxy: object) -> None:
+        return None
+
+    monkeypatch.setattr(get_plan_share_urls, "fetch_bot_username", no_bot)
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    created = await client.post(
+        f"{API_V1}/plans",
+        headers=headers,
+        json={"name": "Shared", "type": "BOTH", "traffic_limit": 1, "device_limit": 1},
+    )
+    plan = created.json()
+
+    share = await client.get(f"{API_V1}/plans/{plan['id']}/share", headers=headers)
+
+    assert share.status_code == 200
+    assert share.json()["webcabinet_url"] == (
+        f"https://cabinet.example.com/purchase?plan={plan['public_code']}"
+    )

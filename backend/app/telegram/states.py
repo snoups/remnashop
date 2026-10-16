@@ -20,6 +20,7 @@ class Purchase(StatesGroup):
     METHOD = State()
     CONFIRM = State()
     PAY = State()
+    LINK_CHOICE = State()
 
 
 class Promocode(StatesGroup):

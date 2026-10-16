@@ -121,6 +121,7 @@ msg-purchase-duration = { $plan_name }: выберите срок:
 msg-purchase-method = Выберите способ оплаты:
 msg-purchase-confirm = { $plan_name } · { $duration_days } дн. · { $price } { $currency_symbol } · { $method }
 msg-purchase-pay = Заказ создан. Нажмите кнопку ниже, чтобы оплатить.
+msg-purchase-link-choice = У вас уже есть подписка { $plan_name }. Продлить её или купить ещё одну?
 
 btn-purchase =
     .duration = { $days } дн. — { $price } { $currency_symbol }
@@ -128,6 +129,8 @@ btn-purchase =
     .pay = Оплатить
     .go-to-payment = Перейти к оплате
     .menu = Главное меню
+    .link-renew = Продлить: { $subscription }
+    .link-new = Купить новую
 
 gateway-name =
     .TELEGRAM_STARS = Telegram Stars

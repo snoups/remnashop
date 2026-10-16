@@ -126,3 +126,12 @@ export interface UpdatePlanDiscountRequest {
 export function updatePlanDiscount(planId: number, payload: UpdatePlanDiscountRequest): Promise<Plan> {
   return apiPut<Plan, UpdatePlanDiscountRequest>(`/plans/${planId}/discount`, payload);
 }
+
+export interface PlanShareUrls {
+  bot_url: string | null;
+  webcabinet_url: string | null;
+}
+
+export function getPlanShareUrls(planId: number, signal?: AbortSignal): Promise<PlanShareUrls> {
+  return apiGet<PlanShareUrls>(`/plans/${planId}/share`, signal);
+}

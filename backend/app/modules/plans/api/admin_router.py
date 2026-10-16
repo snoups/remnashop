@@ -14,6 +14,7 @@ from app.modules.plans.api.schemas import (
     CreatePlanRequest,
     PlanListResponse,
     PlanResponse,
+    PlanShareUrlsResponse,
     PreviewPricingChangeRequest,
     PriceBookResponse,
     PricingDiffResponse,
@@ -59,6 +60,7 @@ from app.modules.plans.usecases import (
     DeleteAddOnUseCase,
     DeletePlanUseCase,
     GetAddOnUseCase,
+    GetPlanShareUrlsUseCase,
     GetPlanUseCase,
     GetPriceBookUseCase,
     ListAddOnsUseCase,
@@ -326,6 +328,20 @@ async def get_plan(
     actor: Actor = Depends(require_admin),
 ) -> PlanResponse:
     return PlanResponse.model_validate(await use_case(actor, plan_id), from_attributes=True)
+
+
+@router.get(
+    "/{plan_id:int}/share", response_model=PlanShareUrlsResponse, responses=error_responses(404)
+)
+@inject
+async def get_plan_share_urls(
+    plan_id: int,
+    use_case: FromDishka[GetPlanShareUrlsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PlanShareUrlsResponse:
+    return PlanShareUrlsResponse.model_validate(
+        await use_case(actor, plan_id), from_attributes=True
+    )
 
 
 @addons_router.get("", response_model=AddOnListResponse)

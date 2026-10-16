@@ -1,6 +1,8 @@
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
@@ -18,6 +20,7 @@ from app.modules.subscriptions.api.schemas import (
 from app.modules.subscriptions.dto import (
     ActivateTrialSubscriptionDto,
     DeleteDeviceDto,
+    ListActivePlansDto,
     SubscriptionRefDto,
 )
 from app.modules.subscriptions.usecases import (
@@ -40,8 +43,9 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 async def list_active_plans(
     use_case: FromDishka[ListActivePlansUseCase],
     actor: UserDto = Depends(get_current_user),
+    plan_code: Optional[str] = Query(None, max_length=64),
 ) -> PublicPlanListResponse:
-    catalog = await use_case(actor)
+    catalog = await use_case(actor, ListActivePlansDto(plan_code=plan_code))
     items = [
         PublicPlanResponse.model_validate(plan, from_attributes=True) for plan in catalog.plans
     ]

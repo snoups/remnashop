@@ -311,6 +311,12 @@ class CatalogPlanDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ListActivePlansDto:
+    # a plan's public code: the catalog shrinks to that one plan, LINK plans included
+    plan_code: Optional[str] = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class PlanCatalogDto:
     plans: list[CatalogPlanDto]
     anchor_currency: Currency

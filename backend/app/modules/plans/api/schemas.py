@@ -29,6 +29,11 @@ class PlanDurationItem(BaseModel):
     overrides: list[PlanPriceItem] = Field(default_factory=list)
 
 
+class PlanShareUrlsResponse(BaseModel):
+    bot_url: Optional[str] = None
+    webcabinet_url: Optional[str] = None
+
+
 class PlanResponse(BaseModel):
     id: int
     public_code: str

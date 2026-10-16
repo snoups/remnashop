@@ -76,6 +76,7 @@ export type Permission =
   | "GATEWAYS_TEST_VIEW"
   | "PLANS_VIEW"
   | "PLANS_DETAIL_VIEW"
+  | "PLANS_SHARE_VIEW"
   | "PLANS_CREATE"
   | "PLANS_UPDATE"
   | "PLANS_DELETE"

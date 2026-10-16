@@ -21,6 +21,8 @@ import {
   type TrafficLimitStrategy,
   updatePlan,
 } from "@entities/plans/api";
+import { usePermissions } from "@entities/user/use-current-user";
+import { PlanShareLinks } from "@features/plan-edit/PlanShareLinks";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -78,6 +80,7 @@ function PlanEditDialogBody({
   onSaved,
 }: Pick<PlanEditDialogProps, "plan" | "anchorCurrency" | "onSaved">) {
   const { t } = useTranslation();
+  const canShare = usePermissions().includes("PLANS_SHARE_VIEW");
   const close = useModalClose();
   const isCreate = plan === null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,6 +218,7 @@ function PlanEditDialogBody({
                   <CopyableValue value={plan.public_code} />
                 </Field>
               )}
+              {plan && canShare && <PlanShareLinks planId={plan.id} />}
               <Field label={t("plans.edit.nameLabel")} htmlFor="plan-name" required>
                 <TextInput
                   id="plan-name"

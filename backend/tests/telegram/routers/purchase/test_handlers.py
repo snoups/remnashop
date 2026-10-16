@@ -439,11 +439,20 @@ def test_purchase_texts_exist_in_each_locale(locale: str) -> None:
 
     assert set(_NOTIFICATION_ATTRIBUTES) <= messages["ntf-purchase"]
     assert {g.value for g in PaymentGatewayType} <= messages["gateway-name"]
-    assert {"pay", "go-to-payment", "menu", "duration", "method"} <= messages["btn-purchase"]
+    assert {
+        "pay",
+        "go-to-payment",
+        "menu",
+        "duration",
+        "method",
+        "link-renew",
+        "link-new",
+    } <= messages["btn-purchase"]
     assert {
         "msg-purchase-plan",
         "msg-purchase-duration",
         "msg-purchase-method",
         "msg-purchase-confirm",
         "msg-purchase-pay",
+        "msg-purchase-link-choice",
     } <= messages.keys()

@@ -8,12 +8,13 @@ from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, PurchaseType
-from app.modules.subscriptions import ListActivePlansUseCase
+from app.modules.subscriptions import ListActivePlansUseCase, ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import format_date, get_translator
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
+    catalog_query,
     format_price,
     plans_for,
     price_in,
@@ -39,7 +40,9 @@ async def plan_getter(
 ) -> dict[str, Any]:
     runner = _runner(dialog_manager, i18n)
     data = dialog_manager.dialog_data
-    catalog = await list_active_plans(dialog_manager.middleware_data[USER_KEY])
+    catalog = await list_active_plans(
+        dialog_manager.middleware_data[USER_KEY], catalog_query(dialog_manager)
+    )
     plans = plans_for(PurchaseType(data["purchase_type"]), catalog, data.get("current_plan_id"))
     return {
         "window_text": render_window_text(runner, "msg-purchase-plan"),
@@ -56,7 +59,9 @@ async def duration_getter(
     **kwargs: Any,
 ) -> dict[str, Any]:
     runner = _runner(dialog_manager, i18n)
-    catalog = await list_active_plans(dialog_manager.middleware_data[USER_KEY])
+    catalog = await list_active_plans(
+        dialog_manager.middleware_data[USER_KEY], catalog_query(dialog_manager)
+    )
     plan = selected_plan(catalog, dialog_manager.dialog_data)
     durations = plan.durations if plan is not None else []
     return {
@@ -140,5 +145,42 @@ async def pay_getter(
         "window_text": render_window_text(runner, "msg-purchase-pay"),
         "payment_url": dialog_manager.dialog_data[PAYMENT_URL_KEY],
         "pay_text": label_with_icon(runner, "btn-purchase.go-to-payment"),
+        "menu_text": label_with_icon(runner, "btn-purchase.menu"),
+    }
+
+
+@inject
+async def link_choice_getter(
+    dialog_manager: DialogManager,
+    list_active_plans: FromDishka[ListActivePlansUseCase],
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    i18n: FromDishka[TranslatorHub],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    runner = _runner(dialog_manager, i18n)
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    catalog = await list_active_plans(user, catalog_query(dialog_manager))
+    plan = selected_plan(catalog, dialog_manager.dialog_data)
+    owned = [
+        s
+        for s in await list_own_active_subscriptions(user)
+        if plan is not None and s.plan_snapshot.plan_id == plan.id
+    ]
+    return {
+        "window_text": render_window_text(runner, "msg-purchase-link-choice", plan_name=plan.name)
+        if plan is not None
+        else render_window_text(runner, "msg-window-gone"),
+        "subscriptions": [
+            {
+                "id": s.id,
+                "label": runner.get(
+                    "btn-purchase.link-renew",
+                    subscription=f"{s.plan_snapshot.name} — {format_date(s.expire_at)}",
+                ),
+            }
+            for s in owned
+        ],
+        "new_text": runner.get("btn-purchase.link-new") if plan is not None else "",
+        "has_plan": plan is not None,
         "menu_text": label_with_icon(runner, "btn-purchase.menu"),
     }

@@ -1,3 +1,6 @@
+import hmac
+from typing import Optional
+
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PlanAvailability
 from app.core.security.permissions import Permission
@@ -8,6 +11,7 @@ from app.modules.subscriptions.dto import (
     CatalogDurationDto,
     CatalogPlanDto,
     CatalogPriceDto,
+    ListActivePlansDto,
     PlanCatalogDto,
 )
 from app.modules.subscriptions.eligibility import PurchaseEligibility
@@ -43,7 +47,7 @@ def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
     )
 
 
-class ListActivePlansUseCase(UseCase[None, PlanCatalogDto, UserDto]):
+class ListActivePlansUseCase(UseCase[ListActivePlansDto, PlanCatalogDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -58,11 +62,19 @@ class ListActivePlansUseCase(UseCase[None, PlanCatalogDto, UserDto]):
         self._eligibility = eligibility
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> PlanCatalogDto:
+    async def _execute(self, actor: UserDto, data: Optional[ListActivePlansDto]) -> PlanCatalogDto:
+        code = data.plan_code if data is not None else None
         async with self._uow:
             plans = await self._plan_repository.list_active()
-            # LINK plans are reachable only by code or link
-            plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
+            if code is None:
+                # LINK plans are reachable only by code or link
+                plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
+            else:
+                plans = [
+                    plan
+                    for plan in plans
+                    if hmac.compare_digest(plan.public_code.encode(), code.encode())
+                ]
             purchasable = await self._eligibility.purchasable(plans, actor)
             rates = await self._pricing_repository.get_rate_table()
         return PlanCatalogDto(

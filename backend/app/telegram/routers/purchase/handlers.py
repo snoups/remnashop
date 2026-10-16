@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Any, Final, Optional
 
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import Data, DialogManager, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
@@ -15,6 +15,7 @@ from app.core.exceptions import AppError
 from app.modules.subscriptions import (
     CatalogDurationDto,
     CatalogPlanDto,
+    ListActivePlansDto,
     ListActivePlansUseCase,
     ListOwnActiveSubscriptionsUseCase,
     PlanCatalogDto,
@@ -32,6 +33,9 @@ from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu, Purchase
 
 PAYMENT_URL_KEY: Final[str] = "payment_url"
+PLAN_CODE_KEY: Final[str] = "plan_code"
+# the link offered renew-or-new, so its back buttons return there
+LINK_CHOICE_KEY: Final[str] = "link_choice"
 _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
     ErrorCode.PAYMENTS_DISABLED: "ntf-purchase.payments-disabled",
     ErrorCode.PLAN_NOT_FOUND: "ntf-purchase.plan-unavailable",
@@ -62,6 +66,13 @@ def plans_for(
     return catalog.plans
 
 
+def catalog_query(manager: DialogManager) -> ListActivePlansDto:
+    code = manager.dialog_data.get(PLAN_CODE_KEY)
+    if code is None and isinstance(manager.start_data, dict):
+        code = manager.start_data.get(PLAN_CODE_KEY)
+    return ListActivePlansDto(plan_code=code)
+
+
 def selected_plan(catalog: PlanCatalogDto, dialog_data: dict[str, Any]) -> Optional[CatalogPlanDto]:
     return next((p for p in catalog.plans if p.id == dialog_data.get("plan_id")), None)
 
@@ -73,6 +84,9 @@ async def start_purchase_steps(
     start = manager.start_data if isinstance(manager.start_data, dict) else {}
     purchase_type = PurchaseType(start.get("purchase_type", PurchaseType.NEW.value))
     manager.dialog_data["purchase_type"] = purchase_type.value
+    code = start.get(PLAN_CODE_KEY)
+    if code is not None:
+        return await _start_by_link(manager, catalog, subscriptions, code)
     target_id = start.get(SELECTED_SUBSCRIPTION_KEY)
     target = next((s for s in subscriptions if s.id == target_id), None)
     if purchase_type is not PurchaseType.NEW and target is None:
@@ -89,6 +103,26 @@ async def start_purchase_steps(
     if not plans_for(purchase_type, catalog, current):
         return "ntf-purchase.no-plans"
     await manager.switch_to(Purchase.PLAN)
+    return None
+
+
+async def _start_by_link(
+    manager: DialogManager,
+    catalog: PlanCatalogDto,
+    subscriptions: list[SubscriptionDto],
+    code: str,
+) -> Optional[str]:
+    # a coded catalog holds at most the linked plan
+    if not catalog.plans:
+        return "ntf-purchase.plan-unavailable"
+    plan = catalog.plans[0]
+    manager.dialog_data[PLAN_CODE_KEY] = code
+    manager.dialog_data["plan_id"] = plan.id
+    if any(s.plan_snapshot.plan_id == plan.id for s in subscriptions):
+        manager.dialog_data[LINK_CHOICE_KEY] = True
+        await manager.switch_to(Purchase.LINK_CHOICE)
+    else:
+        await manager.switch_to(Purchase.DURATION)
     return None
 
 
@@ -166,13 +200,23 @@ async def on_purchase_start(
     user: UserDto = manager.middleware_data[USER_KEY]
     start = start_data if isinstance(start_data, dict) else {}
     is_new = start.get("purchase_type", PurchaseType.NEW.value) == PurchaseType.NEW.value
-    subscriptions = [] if is_new else await list_own_active_subscriptions(user)
-    key = await start_purchase_steps(manager, await list_active_plans(user), subscriptions)
+    by_link = start.get(PLAN_CODE_KEY) is not None
+    needs_subscriptions = by_link or not is_new
+    subscriptions = await list_own_active_subscriptions(user) if needs_subscriptions else []
+    catalog = await list_active_plans(user, catalog_query(manager))
+    key = await start_purchase_steps(manager, catalog, subscriptions)
     if key is None:
         return
+    text = get_translator(i18n, user).get(key)
     if isinstance(manager.event, CallbackQuery):
-        await manager.event.answer(get_translator(i18n, user).get(key), show_alert=True)
-    await manager.done()
+        await manager.event.answer(text, show_alert=True)
+    elif isinstance(manager.event, Message):
+        await manager.event.answer(text)
+    if by_link:
+        # opened from /start: nothing below to return to
+        await manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+    else:
+        await manager.done()
 
 
 async def on_plan_selected(
@@ -194,7 +238,7 @@ async def on_duration_selected(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     key = await select_duration(
         dialog_manager,
-        await list_active_plans(user),
+        await list_active_plans(user, catalog_query(dialog_manager)),
         int(dialog_manager.item_id),  # type: ignore[attr-defined]
         await list_payment_methods(user),
     )
@@ -205,10 +249,34 @@ async def on_duration_selected(
 async def on_duration_back(
     callback: CallbackQuery, widget: Button, dialog_manager: DialogManager
 ) -> None:
-    if dialog_manager.dialog_data.get("purchase_type") == PurchaseType.RENEW.value:
+    data = dialog_manager.dialog_data
+    if data.get(PLAN_CODE_KEY) is not None:
+        if data.get(LINK_CHOICE_KEY):
+            await dialog_manager.switch_to(Purchase.LINK_CHOICE)
+        else:
+            await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+    elif data.get("purchase_type") == PurchaseType.RENEW.value:
         await dialog_manager.done()
     else:
         await dialog_manager.switch_to(Purchase.PLAN)
+
+
+async def on_link_renew(
+    callback: CallbackQuery, widget: Button, dialog_manager: DialogManager
+) -> None:
+    data = dialog_manager.dialog_data
+    data["purchase_type"] = PurchaseType.RENEW.value
+    data[SELECTED_SUBSCRIPTION_KEY] = int(dialog_manager.item_id)  # type: ignore[attr-defined]
+    await dialog_manager.switch_to(Purchase.DURATION)
+
+
+async def on_link_new(
+    callback: CallbackQuery, widget: Button, dialog_manager: DialogManager
+) -> None:
+    data = dialog_manager.dialog_data
+    data["purchase_type"] = PurchaseType.NEW.value
+    data.pop(SELECTED_SUBSCRIPTION_KEY, None)
+    await dialog_manager.switch_to(Purchase.DURATION)
 
 
 async def on_method_selected(
@@ -258,6 +326,7 @@ async def on_confirm(
                 target_subscription_id=None
                 if purchase_type is PurchaseType.NEW
                 else selected_subscription_id(dialog_manager),
+                plan_code=data.get(PLAN_CODE_KEY),
             ),
         )
     except AppError as error:

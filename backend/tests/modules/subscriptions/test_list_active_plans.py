@@ -16,7 +16,7 @@ from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
-from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.dto import CreateSubscriptionDto, ListActivePlansDto
 from app.modules.subscriptions.usecases import ListActivePlansUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -377,3 +377,58 @@ async def test_catalog_reports_the_anchor_currency(
     catalog = await use_case(REGULAR_USER)
 
     assert catalog.anchor_currency is Currency.USD
+
+
+async def _plan_with_access(
+    plan_repository: PlanRepository, code: str, availability: PlanAvailability
+) -> int:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code=code, name=code, type=PlanType.BOTH, traffic_limit=100, device_limit=3
+        )
+    )
+    await _add_minimal_squad(plan_repository, created.id)
+    await _add_minimal_duration(plan_repository, created.id)
+    await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=created.id,
+            availability=availability,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+    return created.id
+
+
+def _use_case(plan_repository: PlanRepository, uow: UnitOfWork) -> ListActivePlansUseCase:
+    return ListActivePlansUseCase(
+        plan_repository,
+        PricingRepository(plan_repository.session),
+        make_eligibility(plan_repository.session),
+        uow,
+    )
+
+
+async def test_plan_code_opens_only_that_plan_including_a_link_plan(
+    plan_repository: PlanRepository, referral_repository: ReferralRepository, uow: UnitOfWork
+) -> None:
+    link_id = await _plan_with_access(plan_repository, "lnkCode1", PlanAvailability.LINK)
+    await _plan_with_access(plan_repository, "allCode1", PlanAvailability.ALL)
+
+    catalog = await _use_case(plan_repository, uow)(
+        REGULAR_USER, ListActivePlansDto(plan_code="lnkCode1")
+    )
+
+    assert [plan.id for plan in catalog.plans] == [link_id]
+
+
+async def test_plan_code_keeps_the_plan_availability_rules(
+    plan_repository: PlanRepository, referral_repository: ReferralRepository, uow: UnitOfWork
+) -> None:
+    await _plan_with_access(plan_repository, "oldCode1", PlanAvailability.EXISTING)
+    use_case = _use_case(plan_repository, uow)
+
+    assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="oldCode1"))).plans == []
+    assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="nope"))).plans == []
+    assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="тест"))).plans == []

@@ -259,3 +259,10 @@ class PricingDiffRow(BaseDto):
 class PricingDiffDto(BaseDto):
     changes: list[PricingDiffRow]
     affected_count: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class PlanShareUrlsDto:
+    # None = the bot isn't configured or the cabinet's address isn't set
+    bot_url: Optional[str] = None
+    webcabinet_url: Optional[str] = None

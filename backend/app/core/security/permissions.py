@@ -108,6 +108,7 @@ class Permission(UpperStrEnum):
     GATEWAYS_TEST_VIEW = auto()
     PLANS_VIEW = auto()
     PLANS_DETAIL_VIEW = auto()
+    PLANS_SHARE_VIEW = auto()
     PLANS_CREATE = auto()
     PLANS_UPDATE = auto()
     PLANS_DELETE = auto()
@@ -326,6 +327,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.GATEWAYS_TEST_VIEW: PermissionMeta(resource="gateways", kind="read"),
     Permission.PLANS_VIEW: PermissionMeta(resource="plans", kind="read"),
     Permission.PLANS_DETAIL_VIEW: PermissionMeta(resource="plans", kind="read"),
+    Permission.PLANS_SHARE_VIEW: PermissionMeta(resource="plans", kind="read"),
     Permission.PLANS_CREATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_UPDATE: PermissionMeta(resource="plans", kind="write"),
     Permission.PLANS_DELETE: PermissionMeta(resource="plans", kind="write"),
@@ -602,6 +604,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
         Permission.PLANS_DETAIL_VIEW,
+        Permission.PLANS_SHARE_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,

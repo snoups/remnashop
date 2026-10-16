@@ -206,6 +206,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.OWN_ACCOUNT_MANAGE,
         Permission.PLANS_VIEW,
         Permission.PLANS_DETAIL_VIEW,
+        Permission.PLANS_SHARE_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,
@@ -384,6 +385,7 @@ def test_plans_permissions_granted_to_admin_by_default() -> None:
     for permission in (
         Permission.PLANS_VIEW,
         Permission.PLANS_DETAIL_VIEW,
+        Permission.PLANS_SHARE_VIEW,
         Permission.PLANS_CREATE,
         Permission.PLANS_UPDATE,
         Permission.PLANS_DELETE,

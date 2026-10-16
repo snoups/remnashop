@@ -7,6 +7,7 @@ from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.getters import (
     confirm_getter,
     duration_getter,
+    link_choice_getter,
     method_getter,
     pay_getter,
     plan_getter,
@@ -16,6 +17,8 @@ from app.telegram.routers.purchase.handlers import (
     on_confirm_back,
     on_duration_back,
     on_duration_selected,
+    on_link_new,
+    on_link_renew,
     on_method_selected,
     on_plan_selected,
     on_purchase_start,
@@ -86,4 +89,19 @@ pay = Window(
     getter=pay_getter,
 )
 
-router = Dialog(plan, duration, method, confirm, pay, on_start=on_purchase_start)
+link_choice = Window(
+    Format("{window_text}"),
+    ListGroup(
+        Button(text=Format("{item[label]}"), id="renew", on_click=on_link_renew),
+        id="owned",
+        item_id_getter=lambda item: item["id"],
+        items="subscriptions",
+    ),
+    Button(Format("{new_text}"), id="new", on_click=on_link_new, when="has_plan"),
+    Start(Format("{menu_text}"), id="menu", state=MainMenu.MAIN, mode=StartMode.RESET_STACK),
+    parse_mode=ParseMode.HTML,
+    state=Purchase.LINK_CHOICE,
+    getter=link_choice_getter,
+)
+
+router = Dialog(plan, duration, method, confirm, pay, link_choice, on_start=on_purchase_start)
