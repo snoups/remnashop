@@ -205,3 +205,28 @@ async def test_email_with_header_steering_characters_is_rejected(
     assert (await client.post(_CODE_URL, json={"email": email})).status_code == 422
     verify = await client.post(_VERIFY_URL, json={"email": email, "code": "123456"})
     assert verify.status_code == 422
+
+
+async def test_alias_shares_the_per_minute_limit(
+    client: httpx.AsyncClient, email_dispatch: RecordingDispatch
+) -> None:
+    assert (
+        await client.post(_CODE_URL, json={"email": "ivan.petrov@gmail.com"})
+    ).status_code == 204
+    assert (
+        await client.post(_CODE_URL, json={"email": "ivanpetrov+x@gmail.com"})
+    ).status_code == 204
+    assert len(email_dispatch.messages) == 1
+
+
+async def test_code_for_an_alias_goes_to_the_accounts_own_address(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await user_repository.create(CreateUserDto(name="Victim", email="victim@mail.ru"))
+    assert (await client.post(_CODE_URL, json={"email": "victim+x@mail.ru"})).status_code == 204
+    [message] = email_dispatch.messages
+    assert message["to"] == "victim@mail.ru"

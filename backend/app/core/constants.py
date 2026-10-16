@@ -138,3 +138,33 @@ MAX_WEBHOOK_BODY_BYTES: Final[int] = 1024 * 1024
 DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
 SEARCH_MAX_LENGTH: Final[int] = 200
+
+DEFAULT_ALLOWED_EMAIL_DOMAINS: Final[tuple[str, ...]] = (
+    "gmail.com",
+    "googlemail.com",
+    "yandex.ru",
+    "ya.ru",
+    "yandex.com",
+    "yandex.by",
+    "yandex.kz",
+    "mail.ru",
+    "inbox.ru",
+    "list.ru",
+    "bk.ru",
+    "internet.ru",
+    "rambler.ru",
+    "ukr.net",
+    "outlook.com",
+    "hotmail.com",
+    "live.com",
+    "icloud.com",
+    "me.com",
+    "yahoo.com",
+    "aol.com",
+    "gmx.de",
+    "gmx.net",
+    "web.de",
+    "t-online.de",
+    "orange.fr",
+    "libero.it",
+)

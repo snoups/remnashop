@@ -11,6 +11,7 @@ from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import BlacklistKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
+from app.core.utils.email import canonical_email
 from app.core.utils.time import datetime_now
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
@@ -164,7 +165,8 @@ class BlacklistRepository:
         if normalized is None:
             return False
         _, emails = await self.all_blocked_identities()
-        return normalized in emails
+        target = canonical_email(normalized)
+        return any(canonical_email(blocked) == target for blocked in emails)
 
     # all_blocked_identities loads every enabled source's full array
     # to answer one membership check. Fine at the current scale (a handful of

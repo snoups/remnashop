@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
-from app.core.constants import API_V1
+from app.core.constants import API_V1, DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role, SessionAudience
@@ -105,6 +105,7 @@ async def test_methods_is_public_and_lowercases_providers(
         "telegram_deeplink": False,
         "email": False,
         "oauth": [],
+        "allowed_email_domains": list(DEFAULT_ALLOWED_EMAIL_DOMAINS),
     }
 
     enabled = await client.patch(

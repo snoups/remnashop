@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 
 from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TTL_10M
 from app.core.enums import Locale
-from app.core.utils.email import normalize_email
+from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.rate_counter import hit_counter
 from app.modules.cabinet_auth.dto import EmailCodeGrantDto, InviteCodesDto
 
@@ -27,7 +27,7 @@ class EmailCodeAttemptsExhausted(Exception):  # noqa: N818
 
 
 def email_key(email: str) -> str:
-    return hashlib.sha256(normalize_email(email).encode()).hexdigest()
+    return hashlib.sha256(canonical_email(email).encode()).hexdigest()
 
 
 def _hash_code(email_hash: str, code: str) -> str:
@@ -52,6 +52,7 @@ class EmailCodeStore:
         payload = {
             "code_hash": _hash_code(email_hash, code),
             "attempts": 0,
+            "email": normalize_email(email),
             "referral_code": codes.referral_code,
             "ad_link_code": codes.ad_link_code,
             "locale": locale.value,
@@ -66,7 +67,9 @@ class EmailCodeStore:
         if raw is None:
             raise EmailCodeExpired
         payload = json.loads(raw)
-        if hmac.compare_digest(payload["code_hash"], _hash_code(email_hash, code)):
+        if payload.get("email") == normalize_email(email) and hmac.compare_digest(
+            payload["code_hash"], _hash_code(email_hash, code)
+        ):
             # getdel: two parallel correct submissions must not both sign in
             if await self._redis.getdel(key) is None:
                 raise EmailCodeExpired

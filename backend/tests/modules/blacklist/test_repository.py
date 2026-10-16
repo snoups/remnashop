@@ -1,3 +1,4 @@
+from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.blacklist.repository import BlacklistRepository
@@ -61,3 +62,12 @@ async def test_all_blocked_identities_unions_manual_and_enabled(
     ids, emails = await blacklist_repository.all_blocked_identities()
     assert ids == {10, 20}
     assert emails == {"m@n.co", "s@t.co"}
+
+
+async def test_alias_of_blocked_email_is_blacklisted(
+    blacklist_repository: BlacklistRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await blacklist_repository.add_entry(BlacklistKind.EMAIL, "Ivan.Petrov@gmail.com")
+        assert await blacklist_repository.is_blacklisted_email("ivanpetrov+2@googlemail.com")
+        assert not await blacklist_repository.is_blacklisted_email("other@gmail.com")

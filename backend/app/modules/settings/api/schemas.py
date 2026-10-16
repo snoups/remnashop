@@ -185,8 +185,8 @@ class CabinetAuthSettingsResponse(BaseModel):
     google_enabled: bool
     yandex_enabled: bool
     email_enabled: bool
-    block_disposable_emails: bool
-    extra_disposable_domains: list[str]
+    restrict_email_domains: bool
+    allowed_email_domains: list[str]
 
 
 class UpdateCabinetAuthSettingsRequest(BaseModel):
@@ -194,15 +194,17 @@ class UpdateCabinetAuthSettingsRequest(BaseModel):
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None
     email_enabled: Optional[bool] = None
-    block_disposable_emails: Optional[bool] = None
-    extra_disposable_domains: Optional[list[str]] = None
+    restrict_email_domains: Optional[bool] = None
+    allowed_email_domains: Optional[list[str]] = None
 
-    @field_validator("extra_disposable_domains")
+    @field_validator("allowed_email_domains")
     @classmethod
     def _normalize_domains(cls, value: Optional[list[str]]) -> Optional[list[str]]:
         if value is None:
             return None
-        return list(dict.fromkeys(d for d in (item.strip().lower() for item in value) if d))
+        return list(
+            dict.fromkeys(d for d in (item.strip().lstrip("@").lower() for item in value) if d)
+        )
 
 
 class BotRequirementsResponse(BaseModel):

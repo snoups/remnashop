@@ -98,3 +98,19 @@ async def test_oauth_list_is_empty_without_cabinet_url(
         )
     no_url = config.model_copy(update={"web_cabinet_url": ""})
     assert (await GetCabinetMethodsUseCase(settings_repository, no_url, uow).execute()).oauth == []
+
+
+async def test_methods_expose_allowed_domains(
+    settings_repository: SettingsRepository, cabinet_config: AppConfig, uow: UnitOfWork
+) -> None:
+    use_case = GetCabinetMethodsUseCase(settings_repository, cabinet_config, uow)
+    methods = await use_case.execute()
+    assert (
+        methods.allowed_email_domains is not None and "gmail.com" in methods.allowed_email_domains
+    )
+
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(restrict_email_domains=False)
+        )
+    assert (await use_case.execute()).allowed_email_domains is None

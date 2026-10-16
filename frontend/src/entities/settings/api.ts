@@ -156,8 +156,8 @@ export interface CabinetAuthSettings {
   google_enabled: boolean;
   yandex_enabled: boolean;
   email_enabled: boolean;
-  block_disposable_emails: boolean;
-  extra_disposable_domains: string[];
+  restrict_email_domains: boolean;
+  allowed_email_domains: string[];
 }
 
 export function getCabinetAuthSettings(signal?: AbortSignal): Promise<CabinetAuthSettings> {

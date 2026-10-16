@@ -34,4 +34,7 @@ class GetCabinetMethodsUseCase:
             telegram_deeplink=telegram,
             email=cabinet.email_enabled and email.is_configured,
             oauth=providers,
+            allowed_email_domains=(
+                cabinet.allowed_email_domains if cabinet.restrict_email_domains else None
+            ),
         )

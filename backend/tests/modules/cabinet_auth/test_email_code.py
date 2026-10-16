@@ -66,3 +66,9 @@ async def test_wrong_attempt_does_not_resurrect_consumed_code(
     monkeypatch.setattr(redis, "get", get_then_consume)
     assert await store.verify("a@b.c", wrong) is None
     assert [key async for key in redis.scan_iter("*cabinet:email_code:*")] == []
+
+
+async def test_code_is_bound_to_the_address_it_was_issued_for(store: EmailCodeStore) -> None:
+    code = await store.issue("ivan+x@mail.ru", InviteCodesDto(), Locale.EN)
+    assert await store.verify("ivan@mail.ru", code) is None
+    assert await store.verify("ivan+x@mail.ru", code) is not None

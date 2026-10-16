@@ -10,6 +10,7 @@ class CabinetMethodsResponse(BaseModel):
     telegram_deeplink: bool
     email: bool
     oauth: list[str]
+    allowed_email_domains: Optional[list[str]]
 
     @field_validator("oauth", mode="before")
     @classmethod

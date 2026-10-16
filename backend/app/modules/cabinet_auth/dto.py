@@ -10,6 +10,7 @@ class CabinetMethodsDto:
     telegram_deeplink: bool
     email: bool
     oauth: list[OAuthProvider]
+    allowed_email_domains: Optional[list[str]]
 
 
 @dataclass(frozen=True, kw_only=True)

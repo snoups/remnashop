@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AccessMode, SmtpSecurity
 
@@ -264,8 +265,10 @@ class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
     google_enabled: bool = False
     yandex_enabled: bool = False
     email_enabled: bool = False
-    block_disposable_emails: bool = False
-    extra_disposable_domains: list[str] = Field(default_factory=list)
+    restrict_email_domains: bool = True
+    allowed_email_domains: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_ALLOWED_EMAIL_DOMAINS)
+    )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -274,8 +277,8 @@ class UpdateCabinetAuthSettingsDto:
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None
     email_enabled: Optional[bool] = None
-    block_disposable_emails: Optional[bool] = None
-    extra_disposable_domains: Optional[list[str]] = None
+    restrict_email_domains: Optional[bool] = None
+    allowed_email_domains: Optional[list[str]] = None
 
 
 class BotRequirementsDto(BaseDto, TimestampMixin):

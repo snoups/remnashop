@@ -12,8 +12,10 @@ from app.core.utils.email import normalize_email
 from app.core.utils.rate_counter import hit_counter
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.email_codes import EmailCodeStore, email_key, fail_budget_exhausted
+from app.modules.cabinet_auth.email_domains import is_allowed_domain
 from app.modules.email import SendEmailDispatch, load_email_brand, render_login_code
 from app.modules.settings import SettingsRepository
+from app.modules.users import UserRepository
 
 _LIMIT_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_limit:"
 _HOUR: Final[int] = TIME_1M * 60
@@ -28,6 +30,7 @@ class RequestEmailCodeUseCase:
         send_email: SendEmailDispatch,
         redis: Redis,
         config: AppConfig,
+        user_repository: UserRepository,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
@@ -35,6 +38,7 @@ class RequestEmailCodeUseCase:
         self._send_email = send_email
         self._redis = redis
         self._config = config
+        self._user_repository = user_repository
         self._uow = uow
 
     async def execute(self, email: str, locale: Locale, codes: InviteCodesDto) -> None:
@@ -46,6 +50,11 @@ class RequestEmailCodeUseCase:
             raise AuthenticationError(
                 "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
             )
+
+        async with self._uow:
+            existing = await self._user_repository.get_by_email(email)
+        if existing is None and not is_allowed_domain(email, cabinet):
+            return
 
         # over a limit the answer stays 204, so the limits don't reveal anything
         digest = email_key(email)
@@ -60,4 +69,7 @@ class RequestEmailCodeUseCase:
         subject, text, html = render_login_code(
             code, locale, brand, self._config.web_cabinet_url.strip() or None
         )
-        await self._send_email.kiq(to=normalize_email(email), subject=subject, text=text, html=html)
+        recipient = existing.email if existing is not None and existing.email else email
+        await self._send_email.kiq(
+            to=normalize_email(recipient), subject=subject, text=text, html=html
+        )

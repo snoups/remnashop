@@ -19,8 +19,8 @@ from app.modules.access import CheckRegistrationAccessDto, CheckRegistrationAcce
 from app.modules.auth import IssuedSession, SessionIssuer
 from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth.devices import KnownDevices
-from app.modules.cabinet_auth.disposable import is_disposable
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
+from app.modules.cabinet_auth.email_domains import is_allowed_domain
 from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
 from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository, OAuthProfile
 from app.modules.settings import SettingsRepository
@@ -168,11 +168,9 @@ class CabinetSignIn:
         if user is None:
             async with self._uow:
                 cabinet = await self._settings_repository.get_cabinet_auth_settings()
-            if cabinet.block_disposable_emails and is_disposable(
-                email, cabinet.extra_disposable_domains
-            ):
+            if not is_allowed_domain(email, cabinet):
                 raise ValidationError(
-                    "Disposable email addresses are not allowed", code=ErrorCode.EMAIL_DISPOSABLE
+                    "Email domain is not allowed", code=ErrorCode.EMAIL_DOMAIN_NOT_ALLOWED
                 )
             async with self._uow:
                 blacklisted = await self._blacklist_repository.is_blacklisted_email(email)

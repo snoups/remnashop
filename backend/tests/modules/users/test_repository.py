@@ -95,7 +95,7 @@ async def test_create_maps_unique_violation_to_conflict(
 async def test_create_leaves_unmapped_violation_unmasked(
     user_repository: UserRepository, uow: UnitOfWork, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delitem(user_repository_module._UNIQUE_VIOLATIONS, "ix_users_email")
+    monkeypatch.delitem(user_repository_module._UNIQUE_VIOLATIONS, "ix_users_email_canonical")
     await _create_user(user_repository, uow, email="a@example.com")
 
     with pytest.raises(IntegrityError):

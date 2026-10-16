@@ -22,7 +22,7 @@ from app.core.db.user_search import user_search_filter
 from app.core.enums import Locale, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.core.utils.email import normalize_email
+from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import (
     CreateUserDto,
@@ -57,7 +57,7 @@ _UNIQUE_VIOLATIONS: Final[dict[str, tuple[str, ErrorCode]]] = {
     "ux_users_single_owner": ("Owner already exists", ErrorCode.OWNER_ALREADY_EXISTS),
     "ix_users_login": ("Login already taken", ErrorCode.LOGIN_TAKEN),
     "ix_users_telegram_id": ("Telegram account already registered", ErrorCode.TELEGRAM_ID_TAKEN),
-    "ix_users_email": ("Email already in use", ErrorCode.EMAIL_TAKEN),
+    "ix_users_email_canonical": ("Email already in use", ErrorCode.EMAIL_TAKEN),
 }
 
 
@@ -189,7 +189,7 @@ class UserRepository:
         return self._to_dto(db_user) if db_user else None
 
     async def get_by_email(self, email: str) -> Optional[UserDto]:
-        stmt = select(User).where(User.email == normalize_email(email))
+        stmt = select(User).where(User.email_canonical == canonical_email(email))
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
 

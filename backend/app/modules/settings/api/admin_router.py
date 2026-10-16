@@ -268,8 +268,8 @@ async def update_cabinet_auth_settings(
             google_enabled=payload.google_enabled,
             yandex_enabled=payload.yandex_enabled,
             email_enabled=payload.email_enabled,
-            block_disposable_emails=payload.block_disposable_emails,
-            extra_disposable_domains=payload.extra_disposable_domains,
+            restrict_email_domains=payload.restrict_email_domains,
+            allowed_email_domains=payload.allowed_email_domains,
         ),
     )
     return CabinetAuthSettingsResponse.model_validate(settings, from_attributes=True)

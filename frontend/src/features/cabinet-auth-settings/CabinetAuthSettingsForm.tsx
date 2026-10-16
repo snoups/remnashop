@@ -33,7 +33,7 @@ export function CabinetAuthSettingsForm() {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("CABINET_AUTH_SETTINGS_MANAGE");
   const [state, , setData] = useAsyncResource(getCabinetAuthSettings);
-  const [pendingKey, setPendingKey] = useState<MethodKey | "disposable" | null>(null);
+  const [pendingKey, setPendingKey] = useState<MethodKey | "domains" | null>(null);
 
   const handleToggle = async (key: MethodKey, next: boolean) => {
     setPendingKey(key);
@@ -47,13 +47,13 @@ export function CabinetAuthSettingsForm() {
   };
 
   const [domainsText, setDomainsText] = useState("");
-  const savedDomains = state.kind === "ready" ? state.data.extra_disposable_domains.join("\n") : null;
+  const savedDomains = state.kind === "ready" ? state.data.allowed_email_domains.join("\n") : null;
   useEffect(() => {
     if (savedDomains !== null) setDomainsText(savedDomains);
   }, [savedDomains]);
 
-  const saveDisposable = async (patch: Partial<CabinetAuthSettings>) => {
-    setPendingKey("disposable");
+  const saveDomains = async (patch: Partial<CabinetAuthSettings>) => {
+    setPendingKey("domains");
     try {
       setData(await updateCabinetAuthSettings(patch));
     } catch (err) {
@@ -107,35 +107,35 @@ export function CabinetAuthSettingsForm() {
               <MailX className="size-4" />
             </div>
             <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
-              {t("settings.cabinetAuth.blockDisposable")}
+              {t("settings.cabinetAuth.restrictDomains")}
             </p>
             <div className="mr-1 flex">
               <Switch
-                checked={state.data.block_disposable_emails}
-                onChange={(value) => void saveDisposable({ block_disposable_emails: value })}
+                checked={state.data.restrict_email_domains}
+                onChange={(value) => void saveDomains({ restrict_email_domains: value })}
                 disabled={!canManage || pendingKey !== null}
               />
             </div>
           </div>
-          {state.data.block_disposable_emails && (
+          {state.data.restrict_email_domains && (
             <Field
-              label={t("settings.cabinetAuth.extraDomains")}
-              htmlFor="cabinet-extra-domains"
-              hint={t("settings.cabinetAuth.extraDomainsHint")}
+              label={t("settings.cabinetAuth.allowedDomains")}
+              htmlFor="cabinet-allowed-domains"
+              hint={t("settings.cabinetAuth.allowedDomainsHint")}
               className="mt-2 px-[12.5px]"
             >
               <TextArea
-                id="cabinet-extra-domains"
+                id="cabinet-allowed-domains"
                 value={domainsText}
                 onChange={(event) => setDomainsText(event.target.value)}
                 onBlur={() => {
                   const next = domainsText.split(/[\s,;]+/).filter(Boolean);
                   if (next.join("\n") !== savedDomains)
-                    void saveDisposable({ extra_disposable_domains: next });
+                    void saveDomains({ allowed_email_domains: next });
                 }}
                 disabled={!canManage}
                 spellCheck={false}
-                rows={3}
+                rows={6}
                 className="mt-1 w-full"
               />
             </Field>

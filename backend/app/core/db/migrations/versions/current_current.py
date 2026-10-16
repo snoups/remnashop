@@ -461,9 +461,9 @@ def upgrade() -> None:
         sa.Column("google_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("yandex_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_enabled", sa.Boolean(), server_default="false", nullable=False),
-        sa.Column("block_disposable_emails", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("restrict_email_domains", sa.Boolean(), server_default="true", nullable=False),
         sa.Column(
-            "extra_disposable_domains",
+            "allowed_email_domains",
             postgresql.JSONB(astext_type=sa.Text()),
             server_default="[]",
             nullable=False,
@@ -1070,6 +1070,7 @@ def upgrade() -> None:
         sa.Column("telegram_id", sa.BigInteger(), nullable=True),
         sa.Column("username", sa.String(length=32), nullable=True),
         sa.Column("email", sa.String(length=255), nullable=True),
+        sa.Column("email_canonical", sa.String(length=255), nullable=True),
         sa.Column("login", sa.String(length=64), nullable=True),
         sa.Column("password_hash", sa.String(length=161), nullable=True),
         sa.Column("name", sa.String(), nullable=False),
@@ -1176,7 +1177,8 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
+    op.create_index(op.f("ix_users_email"), "users", ["email"], unique=False)
+    op.create_index(op.f("ix_users_email_canonical"), "users", ["email_canonical"], unique=True)
     op.create_index(op.f("ix_users_login"), "users", ["login"], unique=True)
     op.create_index(op.f("ix_users_referral_code"), "users", ["referral_code"], unique=True)
     op.create_index(op.f("ix_users_role"), "users", ["role"], unique=False)
@@ -2157,6 +2159,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_role"), table_name="users")
     op.drop_index(op.f("ix_users_referral_code"), table_name="users")
     op.drop_index(op.f("ix_users_login"), table_name="users")
+    op.drop_index(op.f("ix_users_email_canonical"), table_name="users")
     op.drop_index(op.f("ix_users_email"), table_name="users")
     op.drop_table("users")
     op.drop_index(

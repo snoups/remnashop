@@ -256,3 +256,18 @@ async def test_new_device_sign_in_publishes_event_but_first_is_silent(
     assert event.payload["browser"] == "Firefox on Linux"
     assert event.payload["user"]["id"] == existing.id
     assert event.ip_address == "198.51.100.7"
+
+
+async def test_email_alias_signs_into_the_existing_account(
+    sign_in: CabinetSignIn,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        existing = await user_repository.create(
+            CreateUserDto(name="Ivan", email="ivan.petrov@gmail.com")
+        )
+    user, _ = await sign_in.email("Ivan.Petrov+1@gmail.com", Locale.EN, InviteCodesDto(), _IP, None)
+    assert user.id == existing.id
+    assert await _outbox(session, "CabinetUserRegisteredEvent") == []

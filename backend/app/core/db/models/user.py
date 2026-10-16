@@ -13,11 +13,12 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import Locale, Role
+from app.core.utils.email import canonical_email
 
 
 class User(BaseSql, TimestampMixin):
@@ -56,7 +57,8 @@ class User(BaseSql, TimestampMixin):
     telegram_id: Mapped[Optional[int]] = mapped_column(BigInteger, index=True, unique=True)
     username: Mapped[Optional[str]] = mapped_column(String(32), index=True)
 
-    email: Mapped[Optional[str]] = mapped_column(String(255), index=True, unique=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), index=True)
+    email_canonical: Mapped[Optional[str]] = mapped_column(String(255), index=True, unique=True)
     login: Mapped[Optional[str]] = mapped_column(String(64), index=True, unique=True)
     password_hash: Mapped[Optional[str]] = mapped_column(String(161))
 
@@ -102,3 +104,8 @@ class User(BaseSql, TimestampMixin):
     notification_channels: Mapped[Optional[dict[str, list[str]]]] = mapped_column(JSONB)
     # soft delete: the row stays for payment/referral history, personal data is wiped
     deleted_at: Mapped[Optional[datetime]]
+
+    @validates("email")
+    def _sync_email_canonical(self, _key: str, value: Optional[str]) -> Optional[str]:
+        self.email_canonical = canonical_email(value) if value else None
+        return value
