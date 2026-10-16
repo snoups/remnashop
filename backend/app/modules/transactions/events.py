@@ -33,6 +33,13 @@ class TransactionFulfilledManuallyEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class TransactionRefundedManuallyEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    rollback_subscription: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class GatewayTestPaymentCreatedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int

@@ -25,8 +25,10 @@ from app.modules.transactions.usecases import (
     ListTransactionGatewaysUseCase,
     ListTransactionsUseCase,
     NotifyPaymentWaitlistUseCase,
+    PreviewRefundUseCase,
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
+    RefundTransactionUseCase,
     ValidateStarsPreCheckoutUseCase,
 )
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
@@ -59,6 +61,8 @@ class TransactionsProvider(Provider):
         ReconcilePaidTransactionsUseCase,
         ConfirmStarsPaymentUseCase,
         ValidateStarsPreCheckoutUseCase,
+        PreviewRefundUseCase,
+        RefundTransactionUseCase,
     )
     payment_gateway_factory = provide(PaymentGatewayFactory, scope=Scope.APP)
 

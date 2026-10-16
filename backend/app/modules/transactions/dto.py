@@ -12,7 +12,7 @@ from app.core.enums import (
     PurchaseType,
     TransactionStatus,
 )
-from app.modules.subscriptions import PlanSnapshot
+from app.modules.subscriptions import PlanSnapshot, RollbackPreviewDto
 from app.modules.users import UserDto
 
 if TYPE_CHECKING:
@@ -225,3 +225,23 @@ class PaymentAttemptDto:
 @dataclass(frozen=True, kw_only=True)
 class PaymentWaitlistCountDto:
     total: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class RefundTransactionDto:
+    transaction_id: int
+    rollback_subscription: bool
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class RefundPreviewDto:
+    refundable: bool
+    reason: Optional[str]
+    rollback: Optional[RollbackPreviewDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class RefundResultDto:
+    transaction: TransactionWithUserDto
+    rollback_failed: bool

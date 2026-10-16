@@ -1,4 +1,5 @@
 import datetime
+from dataclasses import replace
 from datetime import timedelta, timezone
 from typing import AsyncIterator
 
@@ -13,11 +14,21 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role, SessionAudience, TransactionStatus
+from app.core.enums import (
+    Currency,
+    Locale,
+    PaymentGatewayType,
+    Role,
+    SessionAudience,
+    TransactionStatus,
+)
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.providers import get_module_providers
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateBotSettingsDto
+from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import GetTransactionUseCase, ListTransactionsUseCase
 from app.modules.users.dto import CreateUserDto
@@ -45,12 +56,32 @@ class _TransactionsProvider(Provider):
     get_transaction_use_case = provide(GetTransactionUseCase)
 
 
+class _RefundingGateway:
+    async def refund(self, charge_id: str, telegram_id: int) -> None:
+        return None
+
+
+class _FakeGatewayFactory(PaymentGatewayFactory):
+    def __init__(self) -> None:
+        pass
+
+    def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+        return _RefundingGateway()  # type: ignore[return-value]
+
+
+class _GatewayFactoryProvider(Provider):
+    @provide(scope=Scope.APP)
+    def gateway_factory(self) -> PaymentGatewayFactory:
+        return _FakeGatewayFactory()
+
+
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
     providers = [
         *get_core_providers(),
         *get_module_providers(),
         _TransactionsProvider(),
+        _GatewayFactoryProvider(),
         _TestSessionProvider(session),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
@@ -69,20 +100,21 @@ async def client(
         yield async_client
 
 
-@pytest.fixture
-async def admin_auth_headers(
+async def _auth_headers(
     user_repository: UserRepository,
     session_repository: SessionRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    role: Role,
 ) -> dict[str, str]:
+    login = f"transactions{role.name.lower()}"
     async with uow:
         admin = await user_repository.create(
             CreateUserDto(
-                login="transactionsadmin",
+                login=login,
                 password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
-                name="transactionsadmin",
-                role=Role.ADMIN,
+                name=login,
+                role=role,
                 language=Locale.EN,
             )
         )
@@ -90,7 +122,7 @@ async def admin_auth_headers(
     session = await session_repository.create(
         CreateSessionDto(
             user_id=admin.id,
-            refresh_token_hash=hash_refresh_token("test-refresh-token-transactions-admin"),
+            refresh_token_hash=hash_refresh_token(f"test-refresh-token-{login}"),
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
@@ -99,6 +131,26 @@ async def admin_auth_headers(
     )
     token = create_access_token(admin.id, session.id, config.jwt_secret.get_secret_value())
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def admin_auth_headers(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> dict[str, str]:
+    return await _auth_headers(user_repository, session_repository, uow, config, Role.ADMIN)
+
+
+@pytest.fixture
+async def owner_auth_headers(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> dict[str, str]:
+    return await _auth_headers(user_repository, session_repository, uow, config, Role.OWNER)
 
 
 async def test_list_transactions_requires_admin(client: httpx.AsyncClient) -> None:
@@ -150,6 +202,7 @@ async def test_get_transaction_returns_the_order(
 
     assert response.status_code == 200
     assert response.json()["id"] == created.id
+    assert response.json()["is_test"] is False
     assert response.json()["user"] == {
         "name": "buyer",
         "username": None,
@@ -164,3 +217,80 @@ async def test_get_transaction_returns_404_for_a_missing_id(
     response = await client.get(f"{API_V1}/transactions/999999999", headers=admin_auth_headers)
 
     assert response.status_code == 404
+
+
+async def _paid_stars_order(
+    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> int:
+    async with uow:
+        created = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="admin-router-refund"),
+                gateway_type=PaymentGatewayType.TELEGRAM_STARS,
+                currency=Currency.XTR,
+            )
+        )
+        await transaction_repository.mark_status(
+            created.id, TransactionStatus.PAID, external_payment_id="router-charge"
+        )
+    return created.id
+
+
+async def test_refund_routes_need_the_refund_permission(
+    client: httpx.AsyncClient,
+    admin_auth_headers: dict[str, str],
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    order_id = await _paid_stars_order(transaction_repository, uow, user_id, plan_id)
+
+    preview = await client.get(
+        f"{API_V1}/transactions/{order_id}/refund-preview", headers=admin_auth_headers
+    )
+    refund = await client.post(
+        f"{API_V1}/transactions/{order_id}/actions/refund",
+        json={"rollback_subscription": False},
+        headers=admin_auth_headers,
+    )
+
+    assert preview.status_code == 403
+    assert refund.status_code == 403
+
+
+async def test_owner_previews_and_refunds_a_stars_order(
+    client: httpx.AsyncClient,
+    owner_auth_headers: dict[str, str],
+    transaction_repository: TransactionRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    order_id = await _paid_stars_order(transaction_repository, uow, user_id, plan_id)
+    async with uow:
+        await settings_repository.update_bot_settings(UpdateBotSettingsDto(token="123:abc"))
+
+    preview = await client.get(
+        f"{API_V1}/transactions/{order_id}/refund-preview", headers=owner_auth_headers
+    )
+    refund = await client.post(
+        f"{API_V1}/transactions/{order_id}/actions/refund",
+        json={"rollback_subscription": False},
+        headers=owner_auth_headers,
+    )
+
+    assert preview.status_code == 200
+    assert preview.json() == {
+        "refundable": True,
+        "reason": None,
+        "rollback": {
+            "available": False,
+            "blocked_reason": "not_provisioned",
+            "old_term_expired": False,
+        },
+    }
+    assert refund.status_code == 200
+    assert refund.json()["rollback_failed"] is False
+    assert refund.json()["transaction"]["status"] == "REFUNDED"

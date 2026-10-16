@@ -52,6 +52,7 @@ class TransactionResponse(BaseModel):
     final_price: Decimal
     customer_email: Optional[str]
     idempotency_key: str
+    is_test: bool
     expires_at: datetime
     # the subscription the order provisioned, once reconciliation has seen it
     fulfilled_subscription_id: Optional[int]
@@ -102,3 +103,24 @@ class TestPaymentStatusResponse(BaseModel):
 
 class PaymentWaitlistCountResponse(BaseModel):
     total: int
+
+
+class RollbackPreviewResponse(BaseModel):
+    available: bool
+    blocked_reason: Optional[str]
+    old_term_expired: bool
+
+
+class RefundPreviewResponse(BaseModel):
+    refundable: bool
+    reason: Optional[str]
+    rollback: Optional[RollbackPreviewResponse]
+
+
+class RefundTransactionRequest(BaseModel):
+    rollback_subscription: bool
+
+
+class RefundTransactionResponse(BaseModel):
+    transaction: TransactionResponse
+    rollback_failed: bool

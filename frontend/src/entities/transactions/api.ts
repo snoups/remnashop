@@ -43,6 +43,7 @@ export interface TransactionItem {
   final_price: string;
   customer_email: string | null;
   idempotency_key: string;
+  is_test: boolean;
   expires_at: string;
   created_at: string;
 }
@@ -129,6 +130,32 @@ export function getTransaction(transactionId: number, signal?: AbortSignal): Pro
 /** FAILED/CANCELED become PAID; a PAID order without a subscription is redispatched. */
 export function fulfillTransaction(transactionId: number): Promise<TransactionItem> {
   return apiPost<TransactionItem, Record<string, never>>(`/transactions/${transactionId}/actions/fulfill`, {});
+}
+
+export interface RefundPreview {
+  refundable: boolean;
+  reason: string | null;
+  rollback: { available: boolean; blocked_reason: string | null; old_term_expired: boolean } | null;
+}
+
+export interface RefundResult {
+  transaction: TransactionItem;
+  rollback_failed: boolean;
+}
+
+export function getRefundPreview(transactionId: number): Promise<RefundPreview> {
+  return apiGet<RefundPreview>(`/transactions/${transactionId}/refund-preview`);
+}
+
+export function refundTransaction(transactionId: number, rollbackSubscription: boolean): Promise<RefundResult> {
+  return apiPost<RefundResult, { rollback_subscription: boolean }>(
+    `/transactions/${transactionId}/actions/refund`,
+    { rollback_subscription: rollbackSubscription },
+  );
+}
+
+export function canRefundTransaction(order: TransactionItem): boolean {
+  return order.status === "PAID" && order.gateway_type === "TELEGRAM_STARS" && !order.is_test;
 }
 
 export function canFulfillTransaction(order: TransactionItem): boolean {

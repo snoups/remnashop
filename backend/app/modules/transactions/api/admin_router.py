@@ -3,17 +3,21 @@ from typing import Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.transactions.api.schemas import (
     CreateTestPaymentRequest,
     PaymentWaitlistCountResponse,
+    RefundPreviewResponse,
+    RefundTransactionRequest,
+    RefundTransactionResponse,
     TestPaymentResponse,
     TestPaymentStatusResponse,
     TransactionGatewayListResponse,
@@ -24,6 +28,7 @@ from app.modules.transactions.api.schemas import (
 from app.modules.transactions.dto import (
     GetTransactionSummaryDto,
     ListTransactionsDto,
+    RefundTransactionDto,
     TransactionWithUserDto,
 )
 from app.modules.transactions.usecases import (
@@ -35,6 +40,8 @@ from app.modules.transactions.usecases import (
     GetTransactionUseCase,
     ListTransactionGatewaysUseCase,
     ListTransactionsUseCase,
+    PreviewRefundUseCase,
+    RefundTransactionUseCase,
 )
 from app.modules.users import UserDto
 
@@ -183,3 +190,44 @@ async def fulfill_transaction(
 ) -> TransactionResponse:
     item = await use_case(actor, transaction_id)
     return _to_response(item)
+
+
+@router.get(
+    "/{transaction_id:int}/refund-preview",
+    response_model=RefundPreviewResponse,
+    responses=error_responses(404),
+)
+@inject
+async def preview_transaction_refund(
+    transaction_id: int,
+    use_case: FromDishka[PreviewRefundUseCase],
+    actor: Actor = Depends(require_admin),
+) -> RefundPreviewResponse:
+    preview = await use_case(actor, transaction_id)
+    return RefundPreviewResponse.model_validate(preview, from_attributes=True)
+
+
+@router.post(
+    "/{transaction_id:int}/actions/refund",
+    response_model=RefundTransactionResponse,
+    responses=error_responses(404, 409, 502),
+)
+@inject
+async def refund_transaction(
+    transaction_id: int,
+    payload: RefundTransactionRequest,
+    request: Request,
+    use_case: FromDishka[RefundTransactionUseCase],
+    actor: Actor = Depends(require_admin),
+) -> RefundTransactionResponse:
+    result = await use_case(
+        actor,
+        RefundTransactionDto(
+            transaction_id=transaction_id,
+            rollback_subscription=payload.rollback_subscription,
+            client_ip=resolve_client_ip(request),
+        ),
+    )
+    return RefundTransactionResponse(
+        transaction=_to_response(result.transaction), rollback_failed=result.rollback_failed
+    )

@@ -222,6 +222,24 @@ class PurchaseSubscriptionDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PurchaseRollbackDto:
+    purchase_type: PurchaseType
+    target_subscription_id: Optional[int]
+    fulfilled_subscription_id: Optional[int]
+    duration_days: int
+    price_paid: Decimal
+    currency: Currency
+    has_later_paid_order: bool
+
+
+@dataclass(frozen=True, kw_only=True)
+class RollbackPreviewDto:
+    available: bool
+    blocked_reason: Optional[str]
+    old_term_expired: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class GrantAddOnDto:
     subscription_id: int
     addon_id: int

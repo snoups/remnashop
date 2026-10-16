@@ -13,19 +13,25 @@ import {
   Repeat,
   Send,
   ShoppingCart,
+  Undo2,
   User,
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { RefundDialog } from "@features/transaction-details/RefundDialog";
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
 import {
   PAYMENT_STATUS_BADGE_TONE,
+  type RefundPreview,
   type TransactionItem,
   canFulfillTransaction,
+  canRefundTransaction,
   fulfillTransaction,
+  getRefundPreview,
   hasDiscount,
+  refundTransaction,
 } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
@@ -66,7 +72,14 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
   const [order, setOrder] = useState(initialOrder);
   const [isConfirmingFulfill, setIsConfirmingFulfill] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
-  const canFulfill = usePermissions().includes("TRANSACTIONS_FULFILL") && canFulfillTransaction(order);
+  const [refundPreview, setRefundPreview] = useState<RefundPreview | null>(null);
+  const [isRefunding, setIsRefunding] = useState(false);
+  const permissions = usePermissions();
+  const canRefund =
+    permissions.includes("TRANSACTIONS_REFUND") &&
+    permissions.includes("TRANSACTIONS_REFUND_PREVIEW") &&
+    canRefundTransaction(order);
+  const canFulfill = permissions.includes("TRANSACTIONS_FULFILL") && canFulfillTransaction(order);
   const money = (amount: string) => formatMoney(amount, order.currency, i18n.language, true);
   const symbol = currencySymbol(order.currency);
   const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
@@ -82,6 +95,32 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
       toast.error(getErrorMessage(err, t("transactions.fulfill.error")));
     } finally {
       setIsFulfilling(false);
+    }
+  };
+
+  const openRefund = async () => {
+    setIsRefunding(true);
+    try {
+      setRefundPreview(await getRefundPreview(order.id));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("transactions.refund.error")));
+    } finally {
+      setIsRefunding(false);
+    }
+  };
+
+  const handleRefund = async (rollbackSubscription: boolean) => {
+    setRefundPreview(null);
+    setIsRefunding(true);
+    try {
+      const result = await refundTransaction(order.id, rollbackSubscription);
+      setOrder(result.transaction);
+      if (result.rollback_failed) toast.warning(t("transactions.refund.rollbackFailed"));
+      else toast.success(t("transactions.refund.done"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("transactions.refund.error")));
+    } finally {
+      setIsRefunding(false);
     }
   };
 
@@ -205,6 +244,12 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
       <OpenUserFooter
         links={[{ label: t("users.openUser"), icon: User, user: user && { id: order.user_id } }]}
       >
+        {canRefund && (
+          <Button variant="danger" onClick={() => void openRefund()} disabled={isRefunding}>
+            <Undo2 className="size-3.5" />
+            {t("transactions.refund.button")}
+          </Button>
+        )}
         {canFulfill && (
           <Button variant="accent" onClick={() => setIsConfirmingFulfill(true)} disabled={isFulfilling}>
             <PackageCheck className="size-3.5" />
@@ -212,6 +257,14 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
           </Button>
         )}
       </OpenUserFooter>
+      {refundPreview && (
+        <RefundDialog
+          order={order}
+          preview={refundPreview}
+          onConfirm={(rollback) => void handleRefund(rollback)}
+          onCancel={() => setRefundPreview(null)}
+        />
+      )}
       {isConfirmingFulfill && (
         <ConfirmDialog
           title={t("transactions.fulfill.title")}

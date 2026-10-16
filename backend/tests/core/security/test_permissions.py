@@ -601,3 +601,13 @@ def test_oauth_settings_manage_is_owner_only_by_default() -> None:
     assert Permission.EMAIL_SETTINGS_MANAGE in GRANTABLE_PERMISSIONS
     assert Permission.OAUTH_SETTINGS_MANAGE in ROLE_PERMISSIONS[Role.OWNER]
     assert Permission.OAUTH_SETTINGS_MANAGE in GRANTABLE_PERMISSIONS
+
+
+@pytest.mark.parametrize(
+    "permission", [Permission.TRANSACTIONS_REFUND, Permission.TRANSACTIONS_REFUND_PREVIEW]
+)
+def test_refund_permissions_are_owner_only_and_not_for_tokens(permission: Permission) -> None:
+    assert permission in GRANTABLE_PERMISSIONS
+    assert permission not in ROLE_PERMISSIONS[Role.ADMIN]
+    assert permission in ROLE_PERMISSIONS[Role.OWNER]
+    assert permission not in TOKEN_GRANTABLE_PERMISSIONS

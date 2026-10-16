@@ -60,3 +60,15 @@ class SubscriptionLifecycleService:
             paid, days, restart=lapsed
         )
         return await self._subscription_repository.apply_state(new_state)
+
+    async def shorten_after_refund(
+        self, subscription_id: int, *, days: int, paid: Decimal, now: datetime
+    ) -> SubscriptionDto:
+        dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
+        new_state = _dto_to_state(dto).shorten_after_refund(days, paid, now)
+        return await self._subscription_repository.apply_state(new_state)
+
+    async def restore_after_refund(self, subscription_id: int, now: datetime) -> SubscriptionDto:
+        dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
+        new_state = _dto_to_state(dto).restore_after_refund(now)
+        return await self._subscription_repository.apply_state(new_state)

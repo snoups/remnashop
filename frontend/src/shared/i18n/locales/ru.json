@@ -664,6 +664,7 @@
       "TransactionRefundedEvent": "Возврат транзакции",
       "TransactionPartiallyRefundedEvent": "Частичный возврат транзакции",
       "TransactionFulfilledManuallyEvent": "Ручная выдача подписки",
+      "TransactionRefundedManuallyEvent": "Ручной возврат Stars",
       "BackupFailedEvent": "Ошибка резервного копирования",
       "BonusDaysRenewalStuckEvent": "Бонус-дни не применены",
       "BroadcastChangedEvent": "Рассылка изменена",
@@ -1722,6 +1723,8 @@
     "TRANSACTIONS_DETAIL_VIEW": "Просмотр деталей транзакций",
     "TRANSACTIONS_GATEWAYS_VIEW": "Просмотр шлюзов в транзакциях",
     "TRANSACTIONS_FULFILL": "Выдача подписки по неоплаченной транзакции",
+    "TRANSACTIONS_REFUND": "Возврат Telegram Stars",
+    "TRANSACTIONS_REFUND_PREVIEW": "Просмотр возврата Telegram Stars",
     "REFERRALS_VIEW": "Просмотр рефералов",
     "REFERRALS_INVITED_VIEW": "Просмотр приглашённых пользователя",
     "REFERRALS_REVENUE_VIEW": "Просмотр выручки с приглашённых",
@@ -2833,6 +2836,37 @@
       "success": "Выдача запущена — подписка появится у клиента через несколько секунд.",
       "error": "Не удалось выдать подписку."
     },
+    "refund": {
+      "button": "Вернуть Stars",
+      "title": "Возврат Telegram Stars",
+      "amount": "Клиенту вернётся {{amount}} ⭐",
+      "rollbackLabel": "Откатить подписку",
+      "rollback": {
+        "NEW": "Подписка из этой покупки будет удалена.",
+        "RENEW": "Подписка потеряет {{days}} дн., добавленных этим продлением.",
+        "CHANGE": "Вернётся прежний тариф, новый будет удалён."
+      },
+      "changeLosesCredits": "Дни, аддоны и правки, сделанные после смены, пропадут.",
+      "oldTermExpired": "Срок прежнего тарифа уже закончился — он вернётся истёкшим.",
+      "blocked": {
+        "not_provisioned": "Подписка не была выдана.",
+        "subscription_deleted": "Подписка уже удалена.",
+        "changed_again": "После этой покупки тариф снова меняли.",
+        "renewed_or_changed_later": "После этой покупки подписку продлевали или меняли."
+      },
+      "notRefundable": {
+        "not_paid": "Транзакция не оплачена.",
+        "not_stars": "Транзакция оплачена не Telegram Stars.",
+        "test_order": "Тестовый заказ нельзя вернуть.",
+        "no_charge_id": "У платежа нет идентификатора списания Telegram.",
+        "no_telegram_id": "У клиента нет аккаунта Telegram.",
+        "bot_not_configured": "Бот не настроен."
+      },
+      "confirm": "Вернуть",
+      "done": "Stars возвращены.",
+      "rollbackFailed": "Stars возвращены, но подписку откатить не удалось — исправьте её вручную.",
+      "error": "Не удалось вернуть Stars."
+    },
     "filters": {
       "status": "Статус",
       "gateway": "Шлюз",
@@ -3531,6 +3565,7 @@
     "SUBSCRIPTION_DISABLED": "Подписка отключена.",
     "SUBSCRIPTION_LIMIT_REACHED": "Достигнут лимит подписок.",
     "SUBSCRIPTION_NOT_FOUND": "Подписка не найдена.",
+    "SUBSCRIPTION_ROLLBACK_BLOCKED": "Подписка изменилась после этой покупки, откатить её нельзя.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "Такая смена статуса подписки недопустима.",
     "SVG_UNSAFE": "SVG должен быть простой разметкой с viewBox, без скриптов.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "Новая покупка не может относиться к существующей подписке.",
@@ -3541,6 +3576,7 @@
     "TELEGRAM_ID_TAKEN": "Этот Telegram-аккаунт уже зарегистрирован.",
     "TEST_PAYMENT_NOT_FOUND": "Тестовый платёж не найден.",
     "TOKEN_INVALID": "Сессия истекла — войдите снова.",
+    "TRANSACTION_NOT_REFUNDABLE": "Эту транзакцию нельзя вернуть.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Неподдерживаемая версия файла экспорта.",
     "TRANSLATION_HAS_NEWLINES": "Текст не может содержать переносы строк.",
     "TRANSLATION_HAS_PLACEABLES": "Подстановки Fluent здесь не поддерживаются.",

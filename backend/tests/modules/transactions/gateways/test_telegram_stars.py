@@ -63,6 +63,34 @@ async def test_create_payment_raises_on_a_refusal() -> None:
     assert "TOKEN" not in str(raised.value)
 
 
+async def test_refund_calls_refund_star_payment() -> None:
+    recorder = HttpRecorder(json_response({"ok": True, "result": True}))
+
+    await _gateway(recorder).refund("charge-1", 42)
+
+    assert str(recorder.last.url).endswith("/botTOKEN/refundStarPayment")
+    assert recorder.last_json() == {"user_id": 42, "telegram_payment_charge_id": "charge-1"}
+
+
+async def test_refund_of_an_already_refunded_charge_succeeds() -> None:
+    recorder = HttpRecorder(
+        json_response({"ok": False, "description": "Bad Request: CHARGE_ALREADY_REFUNDED"}, 400)
+    )
+
+    await _gateway(recorder).refund("charge-1", 42)
+
+
+async def test_refund_refusal_raises_without_the_token() -> None:
+    recorder = HttpRecorder(
+        json_response({"ok": False, "description": "Bad Request: CHARGE_NOT_FOUND"}, 400)
+    )
+
+    with pytest.raises(PaymentGatewayError) as raised:
+        await _gateway(recorder).refund("charge-1", 42)
+
+    assert "TOKEN" not in str(raised.value)
+
+
 async def test_webhook_is_refused() -> None:
     with pytest.raises(PaymentGatewayError):
         await _gateway(HttpRecorder(json_response({}))).parse_webhook(webhook({}))

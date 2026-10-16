@@ -1,5 +1,5 @@
 from decimal import ROUND_CEILING
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 import httpx
 import orjson
@@ -22,6 +22,11 @@ BOT_PROXY_SETTING: Final[str] = "bot_proxy"
 # Telegram caps invoice titles at 32 characters
 _TITLE_MAX: Final[int] = 32
 _NO_WEBHOOK: Final[str] = "Telegram Stars has no HTTP webhook"
+_ALREADY_REFUNDED: Final[str] = "CHARGE_ALREADY_REFUNDED"
+
+
+def with_bot_settings(settings: dict[str, str], token: str, proxy: Optional[str]) -> dict[str, str]:
+    return {**settings, BOT_TOKEN_SETTING: token, BOT_PROXY_SETTING: proxy or ""}
 
 
 def stars_amount(order: TransactionDto) -> int:
@@ -37,6 +42,27 @@ class TelegramStarsGateway(PaymentGateway):
             timeout=PROVIDER_API_TIMEOUT_S, proxy=self._optional(BOT_PROXY_SETTING)
         )
 
+    async def _call(self, method: str, body: dict[str, Any]) -> Any:
+        async with self._client() as client:
+            response = await client.post(
+                bot_method_url(self._require(BOT_TOKEN_SETTING), method), json=body
+            )
+        payload = orjson.loads(response.content)
+        if not payload.get("ok"):
+            raise PaymentGatewayError(f"{method} refused: {payload.get('description')}")
+        return payload["result"]
+
+    async def refund(self, charge_id: str, telegram_id: int) -> None:
+        try:
+            await self._call(
+                "refundStarPayment",
+                {"user_id": telegram_id, "telegram_payment_charge_id": charge_id},
+            )
+        except PaymentGatewayError as error:
+            # a retry after a lost answer or a failed DB write must still complete
+            if _ALREADY_REFUNDED not in str(error):
+                raise
+
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         name = order.plan_snapshot.name
         body = {
@@ -46,14 +72,8 @@ class TelegramStarsGateway(PaymentGateway):
             "currency": Currency.XTR.value,
             "prices": [{"label": Currency.XTR.value, "amount": stars_amount(order)}],
         }
-        async with self._client() as client:
-            response = await client.post(
-                bot_method_url(self._require(BOT_TOKEN_SETTING), "createInvoiceLink"), json=body
-            )
-        payload = orjson.loads(response.content)
-        if not payload.get("ok"):
-            raise PaymentGatewayError(f"createInvoiceLink refused: {payload.get('description')}")
-        return PaymentIntent(confirmation_url=str(payload["result"]))
+        result = await self._call("createInvoiceLink", body)
+        return PaymentIntent(confirmation_url=str(result))
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         # paid inside Telegram: successful_payment reaches the bot, not this endpoint

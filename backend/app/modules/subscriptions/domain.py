@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final, Optional
 from uuid import UUID
@@ -140,6 +140,39 @@ class SubscriptionState:
             self,
             plan_snapshot=replace(snap, credit_paid=base_paid + paid, credit_days=base_days + days),
         )
+
+    def shorten_after_refund(self, days: int, paid: Decimal, now: datetime) -> SubscriptionState:
+        """Takes a refunded renewal's term back off, with the credit it added."""
+        if self.status is SubscriptionStatus.DELETED:
+            raise ValidationError(
+                "Cannot shorten a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
+            )
+        expire_at = self.expire_at - timedelta(days=days)
+        status = SubscriptionStatus.EXPIRED if expire_at <= now else self.status
+        assert_transition(self.status, status)
+        snap = self.plan_snapshot
+        return replace(
+            self,
+            status=status,
+            expire_at=expire_at,
+            plan_snapshot=replace(
+                snap,
+                credit_paid=max(snap.effective_credit_paid - paid, Decimal(0)),
+                credit_days=max(snap.effective_credit_days - days, 0),
+            ),
+        )
+
+    def restore_after_refund(self, now: datetime) -> SubscriptionState:
+        """The one way out of DELETED: a refunded plan change puts the replaced
+        row back, so VALID_TRANSITIONS is bypassed on purpose."""
+        if self.status is not SubscriptionStatus.DELETED:
+            raise ValidationError(
+                f"Only a deleted subscription can be restored, not '{self.status}'",
+                code=ErrorCode.SUBSCRIPTION_STATUS_TRANSITION_INVALID,
+            )
+        expired = self.expire_at <= now
+        status = SubscriptionStatus.EXPIRED if expired else SubscriptionStatus.ACTIVE
+        return replace(self, status=status)
 
     def mark_deleted(self) -> SubscriptionState:
         assert_transition(self.status, SubscriptionStatus.DELETED)

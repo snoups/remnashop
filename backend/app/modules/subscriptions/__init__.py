@@ -17,7 +17,9 @@ from app.modules.subscriptions.dto import (
     LiveSubscriptionDto,
     PlanCatalogDto,
     PlanSnapshot,
+    PurchaseRollbackDto,
     PurchaseSubscriptionDto,
+    RollbackPreviewDto,
     SetSubscriptionEnabledDto,
     SubscriptionDto,
     SubscriptionRefDto,
@@ -43,6 +45,7 @@ from app.modules.subscriptions.idempotency_repository import (
     PurchaseIdempotencyRepository,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
@@ -111,11 +114,14 @@ __all__ = [
     "PlanSnapshot",
     "PurchaseEligibility",
     "PurchaseIdempotencyRepository",
+    "PurchaseRollbackDto",
+    "PurchaseRollbackService",
     "PurchaseSubscriptionDispatch",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
     "ReissueSubscriptionUseCase",
     "ResetSubscriptionTrafficUseCase",
+    "RollbackPreviewDto",
     "SetSubscriptionEnabledDto",
     "SetSubscriptionEnabledUseCase",
     "SubscriptionAddOnGrantedEvent",

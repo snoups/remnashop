@@ -6,7 +6,9 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.constants import GB_TO_BYTES
 from app.core.enums import Currency, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import (
     VALID_TRANSITIONS,
     SubscriptionState,
@@ -239,3 +241,60 @@ def test_renewal_credit_restarts_after_a_lapsed_term() -> None:
     assert restarted.plan_snapshot.credit_days == 30
     assert accumulated.plan_snapshot.credit_paid == Decimal("600")
     assert accumulated.plan_snapshot.credit_days == 90
+
+
+def test_shorten_after_refund_moves_expiry_back_and_drops_credit() -> None:
+    now = datetime_now()
+    state = _state(
+        status=SubscriptionStatus.ACTIVE,
+        expire_at=now + timedelta(days=40),
+        plan_snapshot=_snapshot(credit_paid=Decimal("200"), credit_days=40),
+    )
+    shortened = state.shorten_after_refund(30, Decimal("150"), now)
+    assert shortened.expire_at == now + timedelta(days=10)
+    assert shortened.status is SubscriptionStatus.ACTIVE
+    assert shortened.plan_snapshot.credit_paid == Decimal("50")
+    assert shortened.plan_snapshot.credit_days == 10
+
+
+def test_shorten_after_refund_into_the_past_expires() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.ACTIVE, expire_at=now + timedelta(days=5))
+    shortened = state.shorten_after_refund(30, Decimal("0"), now)
+    assert shortened.status is SubscriptionStatus.EXPIRED
+    # credit never goes negative
+    assert shortened.plan_snapshot.credit_days == 0
+
+
+def test_shorten_after_refund_expires_a_limited_subscription() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.LIMITED, expire_at=now + timedelta(days=5))
+    shortened = state.shorten_after_refund(30, Decimal("0"), now)
+    assert shortened.status is SubscriptionStatus.EXPIRED
+
+
+def test_shorten_after_refund_refuses_a_deleted_subscription() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.DELETED, expire_at=now + timedelta(days=40))
+    with pytest.raises(ValidationError):
+        state.shorten_after_refund(30, Decimal("0"), now)
+
+
+def test_restore_after_refund_reactivates_a_deleted_row() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.DELETED, expire_at=now + timedelta(days=3))
+    assert state.restore_after_refund(now).status is SubscriptionStatus.ACTIVE
+
+
+def test_restore_after_refund_with_a_lapsed_term_is_expired() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.DELETED, expire_at=now - timedelta(days=1))
+    assert state.restore_after_refund(now).status is SubscriptionStatus.EXPIRED
+
+
+def test_restore_after_refund_refuses_a_live_row() -> None:
+    now = datetime_now()
+    state = _state(status=SubscriptionStatus.ACTIVE, expire_at=now + timedelta(days=3))
+    with pytest.raises(ValidationError) as exc:
+        state.restore_after_refund(now)
+    assert exc.value.code is ErrorCode.SUBSCRIPTION_STATUS_TRANSITION_INVALID

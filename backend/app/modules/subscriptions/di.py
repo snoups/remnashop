@@ -9,6 +9,7 @@ from app.modules.subscriptions.idempotency_repository import PurchaseIdempotency
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
+from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.subscriptions.tasks import grant_addon_task, purchase_subscription_task
 from app.modules.subscriptions.usecases import (
@@ -54,6 +55,7 @@ class SubscriptionsProvider(Provider):
         SubscriptionLifecycleService,
         PurchaseEligibility,
         PanelSubscriptionRevoker,
+        PurchaseRollbackService,
     )
     use_cases = provide_all(
         ListSubscriptionsUseCase,

@@ -177,6 +177,8 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_DETAIL_VIEW = auto()
     TRANSACTIONS_GATEWAYS_VIEW = auto()
     TRANSACTIONS_FULFILL = auto()
+    TRANSACTIONS_REFUND = auto()
+    TRANSACTIONS_REFUND_PREVIEW = auto()
     REFERRALS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
     REFERRALS_REVENUE_VIEW = auto()
@@ -393,6 +395,8 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
+    Permission.TRANSACTIONS_REFUND: PermissionMeta(resource="transactions", kind="write"),
+    Permission.TRANSACTIONS_REFUND_PREVIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_REVENUE_VIEW: PermissionMeta(resource="referrals", kind="read"),
@@ -473,6 +477,9 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.GATEWAYS_ACTIVE_SET,
         # provisions an order nobody was paid for
         Permission.TRANSACTIONS_FULFILL,
+        # sends money back
+        Permission.TRANSACTIONS_REFUND,
+        Permission.TRANSACTIONS_REFUND_PREVIEW,
         # who gets alerted, and from where
         Permission.NOTIFICATION_SETTINGS_MANAGE,
         # irreversible or bulk

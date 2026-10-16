@@ -47,10 +47,7 @@ from app.modules.transactions.dto import (
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
-from app.modules.transactions.gateways.telegram_stars import (
-    BOT_PROXY_SETTING,
-    BOT_TOKEN_SETTING,
-)
+from app.modules.transactions.gateways.telegram_stars import with_bot_settings
 from app.modules.transactions.pricing import quote_price
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.waitlist_repository import WaitlistRepository
@@ -222,11 +219,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     "Telegram Stars needs a paid purchase first",
                     code=ErrorCode.GATEWAY_NOT_AVAILABLE,
                 )
-            gateway_settings = {
-                **gateway_settings,
-                BOT_TOKEN_SETTING: bot_settings.token.get_secret_value(),
-                BOT_PROXY_SETTING: bot_settings.proxy or "",
-            }
+            gateway_settings = with_bot_settings(
+                gateway_settings, bot_settings.token.get_secret_value(), bot_settings.proxy
+            )
         return gateway_settings
 
     async def _load_purchasable_plan(

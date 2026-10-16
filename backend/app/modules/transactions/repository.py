@@ -196,6 +196,16 @@ class TransactionRepository:
         )
         return bool(await self.session.scalar(stmt))
 
+    async def has_later_paid_order(self, subscription_id: int, after: datetime) -> bool:
+        stmt = select(
+            exists().where(
+                Transaction.target_subscription_id == subscription_id,
+                Transaction.status == TransactionStatus.PAID,
+                Transaction.created_at > after,
+            )
+        )
+        return bool(await self.session.scalar(stmt))
+
     async def mark_status(
         self,
         order_id: int,

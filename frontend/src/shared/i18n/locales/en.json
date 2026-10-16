@@ -628,6 +628,7 @@
       "TransactionRefundedEvent": "Transaction refunded",
       "TransactionPartiallyRefundedEvent": "Transaction partially refunded",
       "TransactionFulfilledManuallyEvent": "Subscription issued manually",
+      "TransactionRefundedManuallyEvent": "Stars refunded manually",
       "BackupFailedEvent": "Backup failed",
       "BonusDaysRenewalStuckEvent": "Bonus days not applied",
       "BroadcastChangedEvent": "Broadcast changed",
@@ -1676,6 +1677,8 @@
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
     "TRANSACTIONS_GATEWAYS_VIEW": "View gateways used in transactions",
     "TRANSACTIONS_FULFILL": "Issue subscription for an unsettled transaction",
+    "TRANSACTIONS_REFUND": "Refund Telegram Stars",
+    "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
     "REFERRALS_VIEW": "View referrals",
     "REFERRALS_INVITED_VIEW": "View a user's invited users",
     "REFERRALS_REVENUE_VIEW": "View revenue from invited users",
@@ -2773,6 +2776,37 @@
       "success": "Issuing started — the subscription will appear for the customer in a few seconds.",
       "error": "Failed to issue the subscription."
     },
+    "refund": {
+      "button": "Refund Stars",
+      "title": "Refund Telegram Stars",
+      "amount": "{{amount}} ⭐ go back to the customer",
+      "rollbackLabel": "Roll back the subscription",
+      "rollback": {
+        "NEW": "The subscription from this purchase is deleted.",
+        "RENEW": "The subscription loses the {{days}} days this renewal added.",
+        "CHANGE": "The previous plan comes back; the new one is deleted."
+      },
+      "changeLosesCredits": "Days, add-ons and edits made after the change are lost.",
+      "oldTermExpired": "The previous plan’s term has ended — it comes back expired.",
+      "blocked": {
+        "not_provisioned": "The subscription was never issued.",
+        "subscription_deleted": "The subscription is already deleted.",
+        "changed_again": "The plan was changed again after this purchase.",
+        "renewed_or_changed_later": "The subscription was renewed or changed after this purchase."
+      },
+      "notRefundable": {
+        "not_paid": "The transaction is not paid.",
+        "not_stars": "The transaction was not paid with Telegram Stars.",
+        "test_order": "A test order can’t be refunded.",
+        "no_charge_id": "The payment has no Telegram charge id.",
+        "no_telegram_id": "The customer has no Telegram account.",
+        "bot_not_configured": "The bot isn’t configured."
+      },
+      "confirm": "Refund",
+      "done": "Stars refunded.",
+      "rollbackFailed": "Stars refunded, but the subscription was not rolled back — fix it manually.",
+      "error": "Failed to refund the Stars."
+    },
     "filters": {
       "status": "Status",
       "gateway": "Gateway",
@@ -3467,6 +3501,7 @@
     "SUBSCRIPTION_DISABLED": "This subscription is disabled.",
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
+    "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can't be rolled back.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn't allowed.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "A new purchase can't target an existing subscription.",
@@ -3477,6 +3512,7 @@
     "TELEGRAM_ID_TAKEN": "This Telegram account is already registered.",
     "TEST_PAYMENT_NOT_FOUND": "Test payment not found.",
     "TOKEN_INVALID": "Your session expired — sign in again.",
+    "TRANSACTION_NOT_REFUNDABLE": "This transaction can't be refunded.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",
     "TRANSLATION_HAS_NEWLINES": "The text can't contain line breaks.",
     "TRANSLATION_HAS_PLACEABLES": "Fluent placeables aren't supported here.",

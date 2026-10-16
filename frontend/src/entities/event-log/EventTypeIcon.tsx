@@ -133,6 +133,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   TransactionRefundedEvent: Undo2,
   TransactionPartiallyRefundedEvent: Undo2,
   TransactionFulfilledManuallyEvent: PackageCheck,
+  TransactionRefundedManuallyEvent: Undo2,
   BackupFailedEvent: DatabaseZap,
   BonusDaysRenewalStuckEvent: DatabaseZap,
   BroadcastChangedEvent: Megaphone,
