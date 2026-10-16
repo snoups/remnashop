@@ -4,20 +4,20 @@ from app.modules.cabinet_auth.dto import CabinetMethodsDto, InviteCodesDto, Tele
 from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.cabinet_auth.usecases import (
-    ConfirmDeeplinkUseCase,
     GetCabinetMethodsUseCase,
     GetCabinetProfileUseCase,
+    IssueBotSignInLinkUseCase,
 )
 
 __all__ = [
     "CabinetMethodsDto",
     "CabinetNewDeviceSignInEvent",
     "CabinetSignIn",
-    "ConfirmDeeplinkUseCase",
     "DeeplinkStore",
     "GetCabinetMethodsUseCase",
     "GetCabinetProfileUseCase",
     "InviteCodesDto",
+    "IssueBotSignInLinkUseCase",
     "TelegramProfileDto",
     "get_cabinet_auth_providers",
 ]

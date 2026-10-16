@@ -4,7 +4,12 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import CurrencyRateTable, PricingRepository, price_for
-from app.modules.subscriptions.dto import CatalogDurationDto, CatalogPlanDto, CatalogPriceDto
+from app.modules.subscriptions.dto import (
+    CatalogDurationDto,
+    CatalogPlanDto,
+    CatalogPriceDto,
+    PlanCatalogDto,
+)
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.users import UserDto
 
@@ -38,7 +43,7 @@ def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
     )
 
 
-class ListActivePlansUseCase(UseCase[None, list[CatalogPlanDto], UserDto]):
+class ListActivePlansUseCase(UseCase[None, PlanCatalogDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -53,11 +58,16 @@ class ListActivePlansUseCase(UseCase[None, list[CatalogPlanDto], UserDto]):
         self._eligibility = eligibility
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[CatalogPlanDto]:
+    async def _execute(self, actor: UserDto, data: None) -> PlanCatalogDto:
         async with self._uow:
             plans = await self._plan_repository.list_active()
             # LINK plans are reachable only by code or link
             plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
             purchasable = await self._eligibility.purchasable(plans, actor)
             rates = await self._pricing_repository.get_rate_table()
-        return [_to_catalog_plan(plan, rates) for plan in purchasable if plan.sellable_durations()]
+        return PlanCatalogDto(
+            plans=[
+                _to_catalog_plan(plan, rates) for plan in purchasable if plan.sellable_durations()
+            ],
+            anchor_currency=rates.anchor,
+        )

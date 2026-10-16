@@ -736,3 +736,36 @@ async def test_count_open_new_orders_drops_paid_orders_past_reconcile(
     )
 
     assert await transaction_repository.count_open_new_orders(user_id, datetime_now()) == counted
+
+
+@pytest.mark.parametrize(
+    ("gateway_type", "final_price", "is_test", "expected"),
+    [
+        (PaymentGatewayType.TELEGRAM_STARS, Decimal("100"), False, False),
+        (PaymentGatewayType.YOOKASSA, Decimal("0"), False, False),
+        (PaymentGatewayType.YOOKASSA, Decimal("100"), True, False),
+        (PaymentGatewayType.YOOKASSA, Decimal("100"), False, True),
+    ],
+)
+async def test_has_paid_purchase(
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+    gateway_type: PaymentGatewayType,
+    final_price: Decimal,
+    is_test: bool,
+    expected: bool,
+) -> None:
+    dto = replace(
+        _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="paid-purchase"),
+        gateway_type=gateway_type,
+        final_price=final_price,
+        is_test=is_test,
+    )
+    async with uow:
+        created = await transaction_repository.create(dto)
+        await transaction_repository.mark_status(created.id, TransactionStatus.PAID)
+
+    async with uow:
+        assert await transaction_repository.has_paid_purchase(user_id) is expected

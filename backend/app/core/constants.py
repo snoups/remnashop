@@ -50,6 +50,9 @@ GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
 
 REDIS_KEY_PREFIX: Final[str] = "remnashop:"
+# one per-account budget for the bot and the cabinet
+POINTS_WITHDRAW_RATE_KEY: Final[str] = "points_withdraw"
+POINTS_WITHDRAW_RATE_LIMIT: Final[int] = 5
 
 TELEGRAM_RESTART_CHANNEL: Final[str] = f"{REDIS_KEY_PREFIX}telegram:restart"
 TELEGRAM_LOGS_KEY: Final[str] = f"{REDIS_KEY_PREFIX}telegram:logs"

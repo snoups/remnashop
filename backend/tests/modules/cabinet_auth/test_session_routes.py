@@ -25,7 +25,6 @@ from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.cabinet_auth.cookies import (
     CABINET_CSRF_COOKIE,
     CABINET_REFRESH_COOKIE,
-    CABINET_WEBAUTH_COOKIE,
 )
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
@@ -307,26 +306,17 @@ async def test_cabinet_telegram_login_limits_only_failures(
     assert blocked.json()["code"] == "RATE_LIMITED"
 
 
-async def test_deeplink_poll_budget_is_per_binding_cookie(client: httpx.AsyncClient) -> None:
-    url = f"{API_V1}/cabinet/auth/telegram/deeplink/poll"
-
-    for binding in ("binding-one", "binding-two"):
-        for _ in range(60):
-            client.cookies.set(CABINET_WEBAUTH_COOKIE, binding, path="/")
-            response = await client.post(url)
-            assert response.status_code != 429
-    client.cookies.set(CABINET_WEBAUTH_COOKIE, "binding-one", path="/")
-    assert (await client.post(url)).status_code == 429
-
-
-async def test_deeplink_poll_without_cookie_is_failure_limited(client: httpx.AsyncClient) -> None:
-    url = f"{API_V1}/cabinet/auth/telegram/deeplink/poll"
+async def test_telegram_signin_unknown_token_is_failure_limited(
+    client: httpx.AsyncClient, settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    await _enable_telegram(settings_repository, uow)
+    url = f"{API_V1}/cabinet/auth/telegram/signin"
 
     for _ in range(20):
-        response = await client.post(url)
+        response = await client.post(url, json={"token": "x" * 43})
         assert response.status_code == 401
         assert response.json()["code"] == "DEEPLINK_EXPIRED"
-    assert (await client.post(url)).status_code == 429
+    assert (await client.post(url, json={"token": "x" * 43})).status_code == 429
 
 
 async def test_methods_has_no_per_route_limit(client: httpx.AsyncClient) -> None:

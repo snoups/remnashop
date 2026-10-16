@@ -1,3 +1,4 @@
+from app.modules.transactions.usecases.confirm_stars_payment import ConfirmStarsPaymentUseCase
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
 from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
@@ -8,6 +9,7 @@ from app.modules.transactions.usecases.get_test_payment_status import GetTestPay
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
 from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
+from app.modules.transactions.usecases.list_payment_methods import ListPaymentMethodsUseCase
 from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
 )
@@ -19,8 +21,12 @@ from app.modules.transactions.usecases.prune_expired_transactions import (
 from app.modules.transactions.usecases.reconcile_paid_transactions import (
     ReconcilePaidTransactionsUseCase,
 )
+from app.modules.transactions.usecases.validate_stars_pre_checkout import (
+    ValidateStarsPreCheckoutUseCase,
+)
 
 __all__ = [
+    "ConfirmStarsPaymentUseCase",
     "CreateCheckoutUseCase",
     "CreateTestPaymentUseCase",
     "FulfillTransactionUseCase",
@@ -29,9 +35,11 @@ __all__ = [
     "GetTransactionSummaryUseCase",
     "GetTransactionUseCase",
     "HandlePaymentWebhookUseCase",
+    "ListPaymentMethodsUseCase",
     "ListTransactionGatewaysUseCase",
     "ListTransactionsUseCase",
     "NotifyPaymentWaitlistUseCase",
     "PruneExpiredTransactionsUseCase",
     "ReconcilePaidTransactionsUseCase",
+    "ValidateStarsPreCheckoutUseCase",
 ]

@@ -116,3 +116,4 @@ class PublicPlanResponse(BaseModel):
 class PublicPlanListResponse(BaseModel):
     items: list[PublicPlanResponse]
     total: int
+    anchor_currency: Currency

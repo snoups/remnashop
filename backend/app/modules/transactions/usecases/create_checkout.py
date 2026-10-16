@@ -26,10 +26,10 @@ from app.core.ports import PromocodeLiveness
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.gateways import GatewayRepository
+from app.modules.gateways import REQUIRE_PAID_PURCHASE_FIELD_KEY, GatewayRepository, gateway_flags
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import PricingRepository
-from app.modules.settings import GetAccessSettingsUseCase
+from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
 from app.modules.subscriptions import (
     PlanSnapshot,
     PurchaseEligibility,
@@ -47,6 +47,10 @@ from app.modules.transactions.dto import (
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
+from app.modules.transactions.gateways.telegram_stars import (
+    BOT_PROXY_SETTING,
+    BOT_TOKEN_SETTING,
+)
 from app.modules.transactions.pricing import quote_price
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.waitlist_repository import WaitlistRepository
@@ -79,6 +83,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         promocode_liveness: PromocodeLiveness,
         get_access_settings_use_case: GetAccessSettingsUseCase,
         waitlist_repository: WaitlistRepository,
+        settings_repository: SettingsRepository,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -93,6 +98,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._promocode_liveness = promocode_liveness
         self._get_access_settings_use_case = get_access_settings_use_case
         self._waitlist_repository = waitlist_repository
+        self._settings_repository = settings_repository
 
     @staticmethod
     def _resolve_customer_email(
@@ -115,7 +121,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             raise PermissionDeniedError("Payments are disabled", code=ErrorCode.PAYMENTS_DISABLED)
 
         async with self._uow:
-            gateway_settings = await self._load_gateway_settings(data)
+            gateway_settings = await self._load_gateway_settings(actor.id, data)
             plan, user = await self._load_purchasable_plan(actor.id, data)
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
@@ -190,12 +196,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
         return CheckoutResultDto(order_id=order.id, confirmation_url=intent.confirmation_url)
 
-    async def _load_gateway_settings(self, data: CreateCheckoutDto) -> dict[str, str]:
-        if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
-            raise ValidationError(
-                "Telegram Stars checkout runs in the bot, not the web API",
-                code=ErrorCode.TELEGRAM_STARS_BOT_ONLY,
-            )
+    async def _load_gateway_settings(self, user_id: int, data: CreateCheckoutDto) -> dict[str, str]:
         if data.gateway_type not in GATEWAY_REGISTRY:
             raise ValidationError(
                 f"Gateway '{data.gateway_type.value}' is not yet supported",
@@ -207,6 +208,25 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 f"Gateway '{data.gateway_type.value}' does not settle '{data.currency.value}'",
                 code=ErrorCode.GATEWAY_CURRENCY_UNSUPPORTED,
             )
+        if data.gateway_type is PaymentGatewayType.TELEGRAM_STARS:
+            bot_settings = await self._settings_repository.get_bot_settings()
+            # without the webhook the bot never sees pre_checkout_query, so the link is dead
+            if not bot_settings.is_configured or bot_settings.token is None:
+                raise ValidationError(
+                    "The bot is not configured", code=ErrorCode.GATEWAY_NOT_AVAILABLE
+                )
+            if gateway_flags(data.gateway_type, gateway_settings).get(
+                REQUIRE_PAID_PURCHASE_FIELD_KEY, False
+            ) and not await self._transaction_repository.has_paid_purchase(user_id):
+                raise ValidationError(
+                    "Telegram Stars needs a paid purchase first",
+                    code=ErrorCode.GATEWAY_NOT_AVAILABLE,
+                )
+            gateway_settings = {
+                **gateway_settings,
+                BOT_TOKEN_SETTING: bot_settings.token.get_secret_value(),
+                BOT_PROXY_SETTING: bot_settings.proxy or "",
+            }
         return gateway_settings
 
     async def _load_purchasable_plan(

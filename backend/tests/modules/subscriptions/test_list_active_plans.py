@@ -2,7 +2,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PlanAvailability, PlanType, Role, SubscriptionStatus
+from app.core.enums import Currency, Locale, PlanAvailability, PlanType, Role, SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -62,7 +62,7 @@ async def test_regular_user_can_list_active_plans(
         uow,
     )
 
-    plans = await use_case(REGULAR_USER)
+    plans = (await use_case(REGULAR_USER)).plans
 
     assert [plan.id for plan in plans] == [created.id]
 
@@ -85,7 +85,7 @@ async def test_list_active_plans_excludes_inactive(
         uow,
     )
 
-    assert await use_case(REGULAR_USER) == []
+    assert (await use_case(REGULAR_USER)).plans == []
 
 
 async def test_list_active_plans_excludes_plan_restricted_to_other_actor(
@@ -117,7 +117,7 @@ async def test_list_active_plans_excludes_plan_restricted_to_other_actor(
         uow,
     )
 
-    assert await use_case(REGULAR_USER) == []
+    assert (await use_case(REGULAR_USER)).plans == []
 
 
 async def test_list_active_plans_includes_plan_allowed_for_actor_telegram_id(
@@ -152,7 +152,7 @@ async def test_list_active_plans_includes_plan_allowed_for_actor_telegram_id(
         uow,
     )
 
-    plans = await use_case(invited_user)
+    plans = (await use_case(invited_user)).plans
 
     assert [plan.id for plan in plans] == [created.id]
 
@@ -190,7 +190,7 @@ async def test_list_active_plans_excludes_link_availability_plan(
         uow,
     )
 
-    assert await use_case(REGULAR_USER) == []
+    assert (await use_case(REGULAR_USER)).plans == []
 
 
 async def test_list_active_plans_includes_new_availability_plan_for_a_fresh_user(
@@ -226,7 +226,7 @@ async def test_list_active_plans_includes_new_availability_plan_for_a_fresh_user
         uow,
     )
 
-    plans = await use_case(REGULAR_USER)
+    plans = (await use_case(REGULAR_USER)).plans
 
     assert [plan.id for plan in plans] == [created.id]
 
@@ -260,7 +260,7 @@ async def test_list_active_plans_excludes_existing_availability_plan_for_a_fresh
         uow,
     )
 
-    assert await use_case(REGULAR_USER) == []
+    assert (await use_case(REGULAR_USER)).plans == []
 
 
 async def test_list_active_plans_includes_existing_availability_plan_for_a_returning_user(
@@ -310,7 +310,7 @@ async def test_list_active_plans_includes_existing_availability_plan_for_a_retur
         uow,
     )
 
-    plans = await use_case(returning_user)
+    plans = (await use_case(returning_user)).plans
 
     assert [plan.id for plan in plans] == [created.id]
 
@@ -355,9 +355,25 @@ async def test_invited_plan_visible_only_to_referred_users(
         uow,
     )
 
-    plans_for_referred = await use_case(referred)
-    plans_for_unreferred = await use_case(unreferred)
+    plans_for_referred = (await use_case(referred)).plans
+    plans_for_unreferred = (await use_case(unreferred)).plans
 
     assert created.id in {p.id for p in plans_for_referred}
     assert created.id not in {p.id for p in plans_for_unreferred}
     assert not hasattr(plans_for_referred[0], "public_code")
+
+
+async def test_catalog_reports_the_anchor_currency(
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+) -> None:
+    use_case = ListActivePlansUseCase(
+        plan_repository,
+        PricingRepository(plan_repository.session),
+        make_eligibility(plan_repository.session),
+        uow,
+    )
+
+    catalog = await use_case(REGULAR_USER)
+
+    assert catalog.anchor_currency is Currency.USD

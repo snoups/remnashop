@@ -1,4 +1,3 @@
-import hashlib
 from typing import Callable, Coroutine, Final
 
 from dishka import FromDishka
@@ -15,7 +14,7 @@ from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token
 from app.core.utils.http import ip_rate_bucket, resolve_client_ip
-from app.core.utils.rate_counter import hit_counter
+from app.core.utils.rate_counter import hit_counter, user_rate_key
 from app.modules.users import UserDto
 
 _GLOBAL_RATE_LIMIT: Final[int] = 300
@@ -106,27 +105,6 @@ def failure_rate_limit(
     return dependency
 
 
-def cookie_rate_limit(
-    *,
-    key: str,
-    cookie: str,
-    limit: int,
-    window_seconds: int,
-) -> Callable[[Request, Redis], Coroutine[None, None, None]]:
-    # Per cookie value, so clients behind one shared IP each get their own
-    # budget; a request without the cookie is the route's own business.
-    @inject
-    async def dependency(request: Request, redis: FromDishka[Redis]) -> None:
-        value = request.cookies.get(cookie)
-        if not value:
-            return
-        digest = hashlib.sha256(value.encode()).hexdigest()
-        redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{digest}"
-        await _enforce(redis, redis_key, limit, window_seconds, key, f"'{key}' by cookie")
-
-    return dependency
-
-
 def user_rate_limit(
     *,
     key: str,
@@ -139,7 +117,7 @@ def user_rate_limit(
     async def dependency(
         redis: FromDishka[Redis], actor: UserDto = Depends(get_current_user)
     ) -> None:
-        redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:user:{actor.id}"
+        redis_key = user_rate_key(key, actor.id)
         await _enforce(redis, redis_key, limit, window_seconds, key, f"'{key}' by user {actor.id}")
 
     return dependency

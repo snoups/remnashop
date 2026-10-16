@@ -15,8 +15,9 @@ def test_all_gateway_types_have_a_catalog_entry() -> None:
     assert set(GATEWAY_FIELD_CATALOG) == set(PaymentGatewayType)
 
 
-def test_telegram_stars_has_no_fields_and_is_always_configured() -> None:
-    assert GATEWAY_FIELD_CATALOG[PaymentGatewayType.TELEGRAM_STARS] == ()
+def test_telegram_stars_has_only_an_optional_flag_and_is_always_configured() -> None:
+    fields = GATEWAY_FIELD_CATALOG[PaymentGatewayType.TELEGRAM_STARS]
+    assert [(f.key, f.required) for f in fields] == [("require_paid_purchase", False)]
     assert is_gateway_configured(PaymentGatewayType.TELEGRAM_STARS, {})
 
 

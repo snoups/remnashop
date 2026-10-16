@@ -184,6 +184,18 @@ class TransactionRepository:
         row = await self.session.scalar(select(Transaction).where(*filters))
         return self._to_dto(row) if row is not None else None
 
+    async def has_paid_purchase(self, user_id: int) -> bool:
+        stmt = select(
+            exists().where(
+                Transaction.user_id == user_id,
+                Transaction.status == TransactionStatus.PAID,
+                Transaction.final_price > 0,
+                Transaction.gateway_type != PaymentGatewayType.TELEGRAM_STARS,
+                Transaction.is_test.is_(False),
+            )
+        )
+        return bool(await self.session.scalar(stmt))
+
     async def mark_status(
         self,
         order_id: int,

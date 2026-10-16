@@ -217,6 +217,7 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     )
 
     assert catalog_response.status_code == 200
+    assert catalog_response.json()["anchor_currency"] == "USD"
     plan = catalog_response.json()["items"][0]
     assert "public_code" not in plan
     assert "allowed_emails" not in plan

@@ -390,6 +390,7 @@ class DialogFlow(StrEnum):
     CHANGE = auto()
     SUBSCRIPTION = auto()
     PROMOCODE = auto()
+    REFERRALS = auto()
     CUSTOM = auto()
 
 

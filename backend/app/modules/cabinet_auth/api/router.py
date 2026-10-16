@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 
 from app.api.dependencies.rate_limit import (
     FailureLimit,
-    cookie_rate_limit,
     failure_rate_limit,
     rate_limit,
 )
@@ -20,6 +19,7 @@ from app.core.exceptions import AppError, AuthenticationError
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import LogoutUseCase, RefreshSessionUseCase, verify_csrf
 from app.modules.cabinet_auth.api.schemas import (
+    BotSignInRequest,
     CabinetAuthResponse,
     CabinetMethodsResponse,
     CabinetOAuthAuthorizeResponse,
@@ -35,24 +35,23 @@ from app.modules.cabinet_auth.cookies import (
     CABINET_OAUTH_COOKIE,
     CABINET_REFRESH_COOKIE,
     CABINET_REFRESH_PATH,
-    CABINET_WEBAUTH_COOKIE,
     clear_cabinet_cookies,
     set_cabinet_cookies,
     set_oauth_cookie,
-    set_webauth_cookie,
 )
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.usecases import (
+    BotSignInUseCase,
     CabinetOAuthAuthorizeUseCase,
     CabinetOAuthCallbackUseCase,
     GetCabinetMethodsUseCase,
-    PollDeeplinkUseCase,
     RequestDeeplinkUseCase,
     RequestEmailCodeUseCase,
     TelegramWebAppLoginUseCase,
     VerifyEmailCodeUseCase,
 )
 
+_BOT_SIGNIN_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.DEEPLINK_EXPIRED})
 _TELEGRAM_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.INVALID_INIT_DATA})
 _EMAIL_VERIFY_FAILURES: Final[frozenset[ErrorCode]] = frozenset(
     {ErrorCode.EMAIL_CODE_INVALID, ErrorCode.EMAIL_CODE_EXPIRED}
@@ -159,63 +158,44 @@ async def cabinet_email_verify(
 async def cabinet_telegram_deeplink(
     body: InviteCodesRequest,
     request: Request,
-    response: Response,
     use_case: FromDishka[RequestDeeplinkUseCase],
-    config: FromDishka[AppConfig],
 ) -> DeeplinkResponse:
     ticket = await use_case.execute(
         InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad),
         resolve_client_ip(request),
         request.headers.get("user-agent"),
     )
-    set_webauth_cookie(response, ticket.binding, config.secure_cookies)
     return DeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
 
 
 @router.post(
-    "/telegram/deeplink/poll",
+    "/telegram/signin",
     response_model=CabinetAuthResponse,
-    responses={
-        **error_responses(401, 403),
-        status.HTTP_202_ACCEPTED: {"description": "Not confirmed yet"},
-    },
     dependencies=[
-        Depends(
-            cookie_rate_limit(
-                key="cabinet_deeplink_poll",
-                cookie=CABINET_WEBAUTH_COOKIE,
-                limit=60,
-                window_seconds=TIME_1M,
-            )
-        )
+        Depends(rate_limit(key="cabinet_telegram_signin", limit=20, window_seconds=TIME_1M))
     ],
+    responses=error_responses(401, 403),
 )
 @inject
-async def cabinet_telegram_deeplink_poll(
+async def cabinet_telegram_signin(
+    body: BotSignInRequest,
     request: Request,
     response: Response,
-    use_case: FromDishka[PollDeeplinkUseCase],
+    use_case: FromDishka[BotSignInUseCase],
     config: FromDishka[AppConfig],
     guard: FailureLimit = Depends(
-        failure_rate_limit(key="cabinet_deeplink_poll_fail", limit=20, window_seconds=TIME_1M)
+        failure_rate_limit(key="cabinet_telegram_signin_fail", limit=20, window_seconds=TIME_1M)
     ),
-) -> CabinetAuthResponse | JSONResponse:
-    binding = request.cookies.get(CABINET_WEBAUTH_COOKIE)
-    if not binding:
-        await guard.record_failure()
-        raise ApiError(
-            status.HTTP_401_UNAUTHORIZED,
-            "The sign-in link has expired",
-            code=ErrorCode.DEEPLINK_EXPIRED,
+) -> CabinetAuthResponse:
+    try:
+        _, issued = await use_case.execute(
+            body.token, resolve_client_ip(request), request.headers.get("user-agent")
         )
-    signed_in = await use_case.execute(
-        binding, resolve_client_ip(request), request.headers.get("user-agent")
-    )
-    if signed_in is None:
-        return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"status": "pending"})
-    _, issued = signed_in
+    except AppError as error:
+        if error.code in _BOT_SIGNIN_FAILURES:
+            await guard.record_failure()
+        raise
     set_cabinet_cookies(response, issued, config.secure_cookies)
-    response.delete_cookie(CABINET_WEBAUTH_COOKIE, path=CABINET_REFRESH_PATH)
     return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
 
 

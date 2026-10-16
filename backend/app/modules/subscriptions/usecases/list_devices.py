@@ -3,12 +3,13 @@ from remnapy import RemnawaveSDK
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.subscriptions.dto import DeviceDto
+from app.modules.subscriptions.dto import DeviceDto, SubscriptionRefDto
+from app.modules.subscriptions.eligibility import get_owned_live_target
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
 
-class ListDevicesUseCase(UseCase[None, list[DeviceDto], UserDto]):
+class ListDevicesUseCase(UseCase[SubscriptionRefDto, list[DeviceDto], UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -21,12 +22,10 @@ class ListDevicesUseCase(UseCase[None, list[DeviceDto], UserDto]):
         self._remnawave_sdk = remnawave_sdk
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> list[DeviceDto]:
+    async def _execute(self, actor: UserDto, data: SubscriptionRefDto) -> list[DeviceDto]:
         async with self._uow:
-            subscription = (
-                await self._subscription_repository.get_single_active_subscription_or_raise(
-                    actor.id
-                )
+            subscription = await get_owned_live_target(
+                self._subscription_repository, data.subscription_id, actor.id
             )
         response = await self._remnawave_sdk.hwid.get_hwid_user(subscription.remnawave_user_id)
         return [

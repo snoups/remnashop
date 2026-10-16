@@ -49,6 +49,7 @@ def _fake_message(answered: list[Any]) -> Message:
         answered.append((text, kwargs))
 
     message = object.__new__(Message)
+    object.__setattr__(message, "successful_payment", None)
     object.__setattr__(message, "answer", _answer)
     return message
 
@@ -100,3 +101,18 @@ async def test_restricted_mode_alerts_on_a_button_press() -> None:
 
     assert called is False
     assert answered == [("Maintenance.", {"show_alert": True})]
+
+
+async def test_restricted_mode_lets_a_successful_payment_through() -> None:
+    message = _fake_message([])
+    object.__setattr__(message, "successful_payment", object())
+    called = False
+
+    async def handler(event: Any, data: dict[str, Any]) -> None:
+        nonlocal called
+        called = True
+
+    data = {USER_KEY: UserDto(name="c"), CONTAINER_KEY: _FakeContainer(AccessMode.RESTRICTED)}
+    await AccessMiddleware().middleware_logic(handler, message, data)
+
+    assert called is True

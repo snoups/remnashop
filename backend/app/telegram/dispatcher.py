@@ -1,4 +1,5 @@
 from aiogram import Dispatcher
+from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram_dialog import BgManagerFactory, setup_dialogs
 from loguru import logger
@@ -22,7 +23,8 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
         json_loads=decode,
         json_dumps=encode,  # bytes, which redis-py accepts as is
     )
-    dispatcher = Dispatcher(storage=storage, config=config)
+    # one bot process, so in-memory locks are enough to run a user's updates one at a time
+    dispatcher = Dispatcher(storage=storage, events_isolation=SimpleEventIsolation(), config=config)
     logger.info("Initialized Dispatcher with Redis storage")
     return dispatcher
 

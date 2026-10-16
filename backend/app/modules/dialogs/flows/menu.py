@@ -13,6 +13,8 @@ def register_menu_metadata() -> None:
     catalog.register_action_key("delete_device")
     catalog.register_action_key("delete_all_devices")
     catalog.register_action_key("reissue_subscription")
+    for key in ("purchase_new", "open_subscriptions", "promocode"):
+        catalog.register_action_key(key)
 
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
     catalog.register_condition("has_device_limit", lambda data: bool(data.get("has_device_limit")))
@@ -21,6 +23,11 @@ def register_menu_metadata() -> None:
         "connectable", lambda data: bool(data.get("connectable")) and bool(data.get("connect_url"))
     )
     catalog.register_condition("has_devices", lambda data: bool(data.get("has_devices")))
+    catalog.register_condition(
+        "has_subscriptions", lambda data: data.get("subscriptions_count", 0) > 0
+    )
+    catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
+    catalog.register_condition("referral_enabled", lambda data: bool(data.get("referral_enabled")))
 
     # the first active subscription's; a user with several gets that one
     catalog.register_variable(
@@ -28,6 +35,13 @@ def register_menu_metadata() -> None:
     )
     catalog.register_variable("user_name", lambda data: data.get("name", ""), category="user")
     catalog.register_variable("user_points", lambda data: data.get("points", ""), category="user")
+    catalog.register_variable("user_id", lambda data: data.get("telegram_id", ""), category="user")
+    catalog.register_variable(
+        "user_bonus_days", lambda data: data.get("bonus_days", 0), category="user"
+    )
+    catalog.register_variable(
+        "subscriptions_count", lambda data: data.get("subscriptions_count", 0), category="user"
+    )
 
     catalog.register_window(
         catalog.CatalogWindow(
@@ -55,13 +69,39 @@ def register_menu_metadata() -> None:
                     visibility_condition="trial_available",
                 ),
                 catalog.CatalogButton(
-                    key="devices",
-                    text_key="btn-menu.devices",
+                    key="subscriptions",
+                    text_key="btn-menu.subscriptions",
                     row=2,
                     column=0,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="open_subscriptions",
+                    visibility_condition="has_subscriptions",
+                ),
+                catalog.CatalogButton(
+                    key="purchase",
+                    text_key="btn-menu.purchase",
+                    row=3,
+                    column=0,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="purchase_new",
+                    visibility_condition="can_purchase",
+                ),
+                catalog.CatalogButton(
+                    key="promocode",
+                    text_key="btn-menu.promocode",
+                    row=4,
+                    column=0,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="promocode",
+                ),
+                catalog.CatalogButton(
+                    key="referrals",
+                    text_key="btn-menu.referrals",
+                    row=4,
+                    column=1,
                     link_type=ButtonLinkType.NAVIGATE,
-                    target_window_key="menu.devices",
-                    visibility_condition="has_device_limit",
+                    target_window_key="referrals.main",
+                    visibility_condition="referral_enabled",
                 ),
             ),
         )
@@ -98,7 +138,7 @@ def register_menu_metadata() -> None:
                     row=2,
                     column=0,
                     link_type=ButtonLinkType.NAVIGATE,
-                    target_window_key="menu.main",
+                    target_window_key="subscriptions.card",
                 ),
             ),
         )

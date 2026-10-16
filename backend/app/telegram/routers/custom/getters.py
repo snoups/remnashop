@@ -54,7 +54,7 @@ async def custom_window_getter(
     )
 
     data: dict[str, Any] = await build_condition_data(
-        user, list_own_active_subscriptions, get_available_trial
+        user, await list_own_active_subscriptions(user), get_available_trial
     )
     data["banner"] = banner
     data["window_text"] = render_window_text(

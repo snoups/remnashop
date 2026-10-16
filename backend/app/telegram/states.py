@@ -3,14 +3,32 @@ from aiogram.fsm.state import State, StatesGroup
 
 class MainMenu(StatesGroup):
     MAIN = State()
+
+
+class Subscriptions(StatesGroup):
+    LIST = State()
+    CARD = State()
     DEVICES = State()
     DEVICE_CONFIRM_DELETE = State()
     DEVICE_CONFIRM_DELETE_ALL = State()
     DEVICE_CONFIRM_REISSUE = State()
 
 
-class Subscription(StatesGroup):
+class Purchase(StatesGroup):
+    PLAN = State()
+    DURATION = State()
+    METHOD = State()
+    CONFIRM = State()
+    PAY = State()
+
+
+class Promocode(StatesGroup):
+    INPUT = State()
+    TARGET = State()
+    CONFIRM = State()
+
+
+class Referrals(StatesGroup):
     MAIN = State()
-    PROMOCODE = State()
-    PROMOCODE_TARGET = State()
-    PROMOCODE_CONFIRM = State()
+    WITHDRAW = State()
+    REDEEM_TARGET = State()

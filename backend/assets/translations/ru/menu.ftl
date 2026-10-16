@@ -13,12 +13,14 @@ btn-menu =
     .trial-paid = Пробный период — { $trial_price }
     .devices = Устройства
     .devices-icon = 📱
-    .subscription = Подписка
-    .subscription-icon = 💳
     .support = Поддержка
     .support-icon = 🆘
     .web-cabinet = Веб-кабинет
     .web-cabinet-icon = 🌐
+    .subscriptions = Мои подписки
+    .purchase = Купить подписку
+    .promocode = Промокод
+    .referrals = Рефералы
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
@@ -29,14 +31,65 @@ btn-devices =
     .confirm-reissue = Да, перевыпустить
     .cancel-reissue = Отмена
 
+msg-subscriptions-list = Ваши подписки. Выберите одну, чтобы увидеть подробности.
+msg-subscription-card =
+    План: { $plan_name }
+    Статус: { $status ->
+        [ACTIVE] Активна
+        [LIMITED] Трафик исчерпан
+        [EXPIRED] Истекла
+        [DISABLED] Отключена
+        [DELETED] Удалена
+       *[other] { $status }
+    }
+    Действует до: { $expire_at }
+    Трафик: { $traffic_limit ->
+        [0] Безлимит
+       *[other] { $traffic_limit } ГБ
+    }
+    Устройства: { $device_limit ->
+        [0] Безлимит
+       *[other] { $device_limit }
+    }
+msg-referrals =
+    Приглашайте друзей и получайте награды.
+
+    1 уровень: { $referrals_level_1 }
+    2 уровень: { $referrals_level_2 }
+    Баллы: { $points }
+    Бонусные дни: { $bonus_days }
+
+    { $referral_url }
+
+btn-subscriptions =
+    .purchase = Купить подписку
+
+btn-subscription =
+    .renew = Продлить
+    .change = Сменить план
+
+msg-referrals-withdraw = Баллов на счёте: { $points }. Введите, сколько вывести:
+msg-referrals-redeem-target = Бонусных дней: { $bonus_days }. Выберите подписку, к которой их добавить:
+
+btn-referrals =
+    .copy = Скопировать ссылку
+    .share = Поделиться ссылкой
+    .withdraw = Вывести баллы
+    .redeem = Обменять бонусные дни
+
 btn-back =
     .general = Назад
     .general-icon = ⬅️
+
+ntf-subscription =
+    .gone = Эта подписка больше недоступна.
 
 ntf-devices =
     .deleted = Устройство удалено.
     .all-deleted = Все устройства удалены.
     .reissued = Ссылка подключения перевыпущена.
+    .reset-disabled = Это действие сейчас отключено.
+    .failed = Что-то пошло не так. Попробуйте позже.
 
 ntf-access =
     .restricted = Сервис временно закрыт на техработы. Загляните позже.
@@ -50,6 +103,65 @@ ntf-common =
     .trial-unavailable = Пробный период недоступен.
     .connect-not-available = Подключение недоступно.
     .access-restricted = Доступ ограничен.
+
+ntf-purchase =
+    .stars-rejected = Этот заказ уже нельзя оплатить. Начните покупку заново.
+    .payments-disabled = Платежи временно недоступны.
+    .plan-unavailable = Этот тариф больше недоступен — выберите другой.
+    .limit-reached = Достигнут лимит подписок.
+    .method-unavailable = Этот способ оплаты сейчас недоступен.
+    .retry = Попробуйте ещё раз.
+    .failed = Не удалось создать платёж. Попробуйте позже.
+    .no-plans = Нет доступных тарифов.
+    .no-methods = Нет доступных способов оплаты.
+    .done = Готово! Подписка скоро появится.
+
+msg-purchase-plan = Выберите тариф:
+msg-purchase-duration = { $plan_name }: выберите срок:
+msg-purchase-method = Выберите способ оплаты:
+msg-purchase-confirm = { $plan_name } · { $duration_days } дн. · { $price } { $currency_symbol } · { $method }
+msg-purchase-pay = Заказ создан. Нажмите кнопку ниже, чтобы оплатить.
+
+btn-purchase =
+    .duration = { $days } дн. — { $price } { $currency_symbol }
+    .method = { $gateway } — { $price } { $currency_symbol }
+    .pay = Оплатить
+    .go-to-payment = Перейти к оплате
+    .menu = Главное меню
+
+gateway-name =
+    .TELEGRAM_STARS = Telegram Stars
+    .YOOKASSA = YooKassa
+    .YOOMONEY = YooMoney
+    .VALUTIX = Valutix
+    .CRYPTOMUS = Cryptomus
+    .HELEKET = Heleket
+    .CRYPTOPAY = CryptoPay
+    .FREEKASSA = FreeKassa
+    .MULENPAY = MulenPay
+    .PAYMASTER = PayMaster
+    .PLATEGA = Platega
+    .ROBOKASSA = RoboKassa
+    .URLPAY = UrlPay
+    .WATA = Wata
+    .ROLLYPAY = RollyPay
+    .ANTILOPAY = Antilopay
+    .PAYPALYCH = Paypalych
+    .RIOPAY = RioPay
+    .AURAPAY = AuraPay
+    .SEVERPAY = SeverPay
+    .LAVA = Lava
+    .CLOUDPAYMENTS = CloudPayments
+    .PAYPEAR = PayPear
+
+ntf-referrals =
+    .invalid-amount = Введите положительное число баллов.
+    .too-many-attempts = Слишком много запросов. Попробуйте через час.
+    .withdraw-failed = Не удалось вывести такую сумму.
+    .withdraw-requested = Запрос на вывод отправлен. Мы свяжемся с вами.
+    .no-subscription = У вас нет активной подписки, к которой можно добавить дни.
+    .days-redeemed = Бонусные дни добавлены к подписке: { $days }.
+    .redeem-failed = Бонусные дни нельзя добавить к этой подписке.
 
 ntf-promocode =
     .not-found = Промокод не найден.
@@ -72,12 +184,6 @@ btn-promocode =
     .confirm-icon = ✅
     .cancel = Отмена
     .cancel-icon = ❌
-
-msg-subscription-main = Раздел покупки подписки скоро появится. Пока доступна активация промокодов.
-
-btn-subscription =
-    .promocode = Активировать промокод
-    .promocode-icon = 🎟
 
 platform-icon =
     .ios = 📱
@@ -109,10 +215,8 @@ btn-requirements =
     .check = Я подписался
 
 ntf-cabinet-login =
-    .confirmed = Вход подтверждён. Вернитесь в браузер.
+    .link = Нажмите кнопку, чтобы войти в веб-кабинет. Ссылка одноразовая и действует 5 минут.
     .expired = Ссылка для входа устарела. Запросите новую в кабинете.
 
-ntf-cabinet-login-ask = Войти в веб-кабинет? Запрос с IP { $ip }, { $agent }. Если это не вы, проигнорируйте сообщение.
-
 btn-cabinet-login =
-    .confirm = Подтвердить
+    .open = Войти в кабинет

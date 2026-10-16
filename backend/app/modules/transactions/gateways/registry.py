@@ -19,6 +19,7 @@ from app.modules.transactions.gateways.riopay import RioPayGateway
 from app.modules.transactions.gateways.robokassa import RobokassaGateway
 from app.modules.transactions.gateways.rollypay import RollyPayGateway
 from app.modules.transactions.gateways.severpay import SeverPayGateway
+from app.modules.transactions.gateways.telegram_stars import TelegramStarsGateway
 from app.modules.transactions.gateways.urlpay import UrlPayGateway
 from app.modules.transactions.gateways.valutix import ValutixGateway
 from app.modules.transactions.gateways.wata import WataGateway
@@ -48,20 +49,11 @@ GATEWAY_REGISTRY: Final[dict[PaymentGatewayType, type[PaymentGateway]]] = {
     PaymentGatewayType.LAVA: LavaGateway,
     PaymentGatewayType.CLOUDPAYMENTS: CloudPaymentsGateway,
     PaymentGatewayType.PAYPALYCH: PaypalychGateway,
-}
-
-# TELEGRAM_STARS docs: https://core.telegram.org/bots/payments-stars
-# Gateways with no HTTP adapter (paid off-site, e.g. inside Telegram) still
-# need a settlement currency for the checkout currency check.
-NON_HTTP_GATEWAY_CURRENCIES: Final[dict[PaymentGatewayType, Currency]] = {
-    PaymentGatewayType.TELEGRAM_STARS: Currency.XTR,
+    PaymentGatewayType.TELEGRAM_STARS: TelegramStarsGateway,
 }
 
 
 def gateway_currency(gateway_type: PaymentGatewayType, settings: dict[str, str]) -> Currency:
-    if gateway_type not in GATEWAY_REGISTRY:
-        return NON_HTTP_GATEWAY_CURRENCIES[gateway_type]
-
     # admin-set currency override, validated in UpdateGatewaySettingsUseCase;
     # an invalid stored value falls back to the class default
     configured = settings.get("currency", "").strip()

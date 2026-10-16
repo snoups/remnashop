@@ -1,50 +1,29 @@
 from aiogram.enums import ParseMode
-from aiogram_dialog import Dialog, StartMode, Window
+from aiogram_dialog import Dialog, Window
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button, ListGroup, Row, Start, SwitchTo
-from aiogram_dialog.widgets.media import DynamicMedia
+from aiogram_dialog.widgets.kbd import Button, Cancel, ListGroup, Row, SwitchTo
 from aiogram_dialog.widgets.text import Format
 
 from app.telegram.routers.promocode.getters import (
     promocode_confirm_getter,
     promocode_input_getter,
     promocode_target_getter,
-    subscription_main_getter,
 )
 from app.telegram.routers.promocode.handlers import (
     on_promocode_confirm,
     on_promocode_input,
     on_target_subscription_selected,
 )
-from app.telegram.states import MainMenu, Subscription
-
-subscription_main = Window(
-    DynamicMedia("banner"),
-    Format("{message}"),
-    Row(
-        SwitchTo(text=Format("{promocode_text}"), id="promocode", state=Subscription.PROMOCODE),
-    ),
-    Row(
-        Start(
-            text=Format("{back_text}"),
-            id="back_to_menu",
-            state=MainMenu.MAIN,
-            mode=StartMode.RESET_STACK,
-        ),
-    ),
-    parse_mode=ParseMode.HTML,
-    state=Subscription.MAIN,
-    getter=subscription_main_getter,
-)
+from app.telegram.states import Promocode
 
 promocode_input = Window(
     Format("{input_message}"),
     MessageInput(on_promocode_input),
     Row(
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.MAIN),
+        Cancel(Format("{cancel_text}"), id="cancel"),
     ),
     parse_mode=ParseMode.HTML,
-    state=Subscription.PROMOCODE,
+    state=Promocode.INPUT,
     getter=promocode_input_getter,
 )
 
@@ -61,10 +40,10 @@ promocode_target = Window(
         items="subscriptions",
     ),
     Row(
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.MAIN),
+        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Promocode.INPUT),
     ),
     parse_mode=ParseMode.HTML,
-    state=Subscription.PROMOCODE_TARGET,
+    state=Promocode.TARGET,
     getter=promocode_target_getter,
 )
 
@@ -73,11 +52,11 @@ promocode_confirm = Window(
     Format("{will_replace_message}"),
     Row(
         Button(text=Format("{confirm_text}"), id="confirm", on_click=on_promocode_confirm),
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Subscription.PROMOCODE),
+        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Promocode.INPUT),
     ),
     parse_mode=ParseMode.HTML,
-    state=Subscription.PROMOCODE_CONFIRM,
+    state=Promocode.CONFIRM,
     getter=promocode_confirm_getter,
 )
 
-router = Dialog(subscription_main, promocode_input, promocode_target, promocode_confirm)
+router = Dialog(promocode_input, promocode_target, promocode_confirm)

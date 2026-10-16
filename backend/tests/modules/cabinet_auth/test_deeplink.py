@@ -1,18 +1,19 @@
 import httpx
 import pytest
-from dishka import AsyncContainer
 from redis.asyncio import Redis
 
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
-from app.modules.cabinet_auth.usecases import ConfirmDeeplinkUseCase, PollDeeplinkUseCase
+from app.modules.cabinet_auth.usecases import IssueBotSignInLinkUseCase
 from app.modules.settings.dto import UpdateBotSettingsDto, UpdateCabinetAuthSettingsDto
 from app.modules.settings.repository import SettingsRepository
 
 _IP = "203.0.113.1"
+_BASE = "/api/v1/cabinet/auth/telegram/deeplink"
+_SIGNIN = "/api/v1/cabinet/auth/telegram/signin"
 
 
 @pytest.fixture
@@ -20,70 +21,35 @@ async def deeplink_store(redis: Redis) -> DeeplinkStore:
     return DeeplinkStore(redis)
 
 
-@pytest.fixture
-async def poll(container: AsyncContainer):  # type: ignore[no-untyped-def]
-    async with container() as request_container:
-        yield await request_container.get(PollDeeplinkUseCase)
-
-
-@pytest.fixture
-async def confirm(container: AsyncContainer):  # type: ignore[no-untyped-def]
-    async with container() as request_container:
-        yield await request_container.get(ConfirmDeeplinkUseCase)
-
-
-async def test_confirmed_token_signs_in_only_with_binding(
-    deeplink_store: DeeplinkStore, poll: PollDeeplinkUseCase, confirm: ConfirmDeeplinkUseCase
+async def test_peek_reads_the_start_record_without_spending_it(
+    deeplink_store: DeeplinkStore,
 ) -> None:
-    token, binding = await deeplink_store.create(InviteCodesDto(referral_code="abc"), _IP, "ua")
-    assert await poll.execute(binding, _IP, "ua") is None
-
-    profile = TelegramProfileDto(telegram_id=7007, name="Ann", username=None, language="en")
-    assert await confirm.execute(token, profile) is True
-    assert await confirm.execute(token, profile) is False
-
-    with pytest.raises(AuthenticationError):
-        await poll.execute("other-binding", _IP, "ua")
-
-    signed_in = await poll.execute(binding, _IP, "ua")
-    assert signed_in is not None
-    user, issued = signed_in
-    assert user.telegram_id == 7007 and issued.access_token
-
-    with pytest.raises(AuthenticationError) as error:
-        await poll.execute(binding, _IP, "ua")
-    assert error.value.code is ErrorCode.DEEPLINK_EXPIRED
-
-
-async def test_peek_sees_only_pending_codes(
-    deeplink_store: DeeplinkStore, confirm: ConfirmDeeplinkUseCase
-) -> None:
-    token, _ = await deeplink_store.create(InviteCodesDto(referral_code="abc"), _IP, "ua")
+    token = await deeplink_store.create(InviteCodesDto(referral_code="abc"), _IP, "ua")
     pending = await deeplink_store.peek(token)
     assert pending is not None and pending.codes.referral_code == "abc"
-    await confirm.execute(
-        token, TelegramProfileDto(telegram_id=1, name="A", username=None, language=None)
-    )
-    assert await deeplink_store.peek(token) is None
+    assert await deeplink_store.peek(token) is not None
     assert await deeplink_store.peek("unknown") is None
 
 
-async def test_poll_without_cookie_is_expired(client: httpx.AsyncClient) -> None:
-    response = await client.post("/api/v1/cabinet/auth/telegram/deeplink/poll")
+async def test_signin_with_unknown_token_is_expired(
+    client: httpx.AsyncClient, settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(telegram_enabled=True)
+        )
+    response = await client.post(_SIGNIN, json={"token": "x" * 43})
     assert response.status_code == 401
     assert response.json()["code"] == ErrorCode.DEEPLINK_EXPIRED.value
 
 
-_BASE = "/api/v1/cabinet/auth/telegram/deeplink"
-
-
-async def test_deeplink_routes_end_to_end(
+async def test_deeplink_then_bot_link_signs_in_once(
     client: httpx.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     settings_repository: SettingsRepository,
     uow: UnitOfWork,
     deeplink_store: DeeplinkStore,
-    confirm: ConfirmDeeplinkUseCase,
+    config: AppConfig,
 ) -> None:
     async def _username(token: str, proxy: object) -> str:
         return "shop_bot"
@@ -91,27 +57,31 @@ async def test_deeplink_routes_end_to_end(
     monkeypatch.setattr(
         "app.modules.cabinet_auth.usecases.request_deeplink.fetch_bot_username", _username
     )
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
             UpdateCabinetAuthSettingsDto(telegram_enabled=True)
         )
         await settings_repository.update_bot_settings(UpdateBotSettingsDto(token="1:abc"))
 
-    response = await client.post(_BASE, json={})
+    response = await client.post(_BASE, json={"ref": "abc"})
     assert response.status_code == 200
-    body = response.json()
-    assert body["bot_url"].startswith("https://t.me/shop_bot?start=webauth_")
-    assert "httponly" in response.headers["set-cookie"].lower()
-    assert client.cookies.get("cabinet_webauth")
+    assert response.json()["bot_url"].startswith("https://t.me/shop_bot?start=webauth_")
+    start = response.json()["bot_url"].rsplit("webauth_", 1)[1]
 
-    poll = await client.post(f"{_BASE}/poll")
-    assert poll.status_code == 202 and poll.json() == {"status": "pending"}
+    # the start token is public (it sits in a t.me URL) and never signs anybody in
+    rejected = await client.post(_SIGNIN, json={"token": start})
+    assert rejected.status_code == 401
 
-    token = body["bot_url"].rsplit("webauth_", 1)[1]
     profile = TelegramProfileDto(telegram_id=7117, name="Ann", username=None, language="en")
-    assert await confirm.execute(token, profile) is True
+    url = await IssueBotSignInLinkUseCase(deeplink_store, config).execute(start, profile)
+    assert url is not None
+    signin = url.split("token=", 1)[1]
 
-    done = await client.post(f"{_BASE}/poll")
+    done = await client.post(_SIGNIN, json={"token": signin})
     assert done.status_code == 200 and done.json()["access_token"]
     assert client.cookies.get("cabinet_refresh_token")
-    assert not client.cookies.get("cabinet_webauth")
+
+    again = await client.post(_SIGNIN, json={"token": signin})
+    assert again.status_code == 401
+    assert again.json()["code"] == ErrorCode.DEEPLINK_EXPIRED.value

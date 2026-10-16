@@ -45,6 +45,10 @@ class RequestEmailCodeRequest(BaseModel):
     ad: Optional[str] = Field(None, max_length=64)
 
 
+class BotSignInRequest(BaseModel):
+    token: str = Field(max_length=128)
+
+
 class VerifyEmailCodeRequest(BaseModel):
     email: str = Field(max_length=255, pattern=_EMAIL_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")

@@ -16,8 +16,10 @@ async def list_active_plans(
     use_case: FromDishka[ListActivePlansUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> PublicPlanListResponse:
+    catalog = await use_case(actor)
     items = [
-        PublicPlanResponse.model_validate(plan, from_attributes=True)
-        for plan in await use_case(actor)
+        PublicPlanResponse.model_validate(plan, from_attributes=True) for plan in catalog.plans
     ]
-    return PublicPlanListResponse(items=items, total=len(items))
+    return PublicPlanListResponse(
+        items=items, total=len(items), anchor_currency=catalog.anchor_currency
+    )

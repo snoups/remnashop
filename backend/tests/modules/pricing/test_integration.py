@@ -99,7 +99,7 @@ async def _rub_catalog_price(
         make_eligibility(plan_repository.session),
         uow,
     )
-    plans = await list_active_plans(OWNER)
+    plans = (await list_active_plans(OWNER)).plans
     catalog_plan = next(p for p in plans if p.id == plan.id)
     item = catalog_plan.durations[0]
     return next(price for price in item.prices if price.currency is Currency.RUB).price
@@ -153,6 +153,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         PromocodeRepository(plan_repository.session),
         GetAccessSettingsUseCase(SettingsRepository(plan_repository.session), uow),
         WaitlistRepository(plan_repository.session),
+        SettingsRepository(plan_repository.session),
     )
     result = await create_checkout(
         user,

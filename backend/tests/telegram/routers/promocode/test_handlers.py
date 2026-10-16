@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from dishka import Provider, Scope, make_async_container
 from fluentogram import TranslatorHub
@@ -16,8 +16,10 @@ from app.telegram.routers.promocode.handlers import (
     _NOTIFICATION_BY_CODE,
     PROMOCODE_INPUT_LIMIT,
     _refusal_key,
+    on_promocode,
     on_promocode_input,
 )
+from app.telegram.states import Promocode
 
 _LOCALES_DIR = Path(__file__).parents[4] / "assets" / "translations"
 
@@ -80,3 +82,9 @@ async def test_promocode_input_is_throttled_per_user(redis: Redis) -> None:
 
     other, _ = await _send_codes(redis, user_id + 1, 1)
     assert other.await_count == 1
+
+
+async def test_promocode_action_opens_the_input() -> None:
+    manager = AsyncMock()
+    await on_promocode(MagicMock(), MagicMock(), manager)
+    manager.start.assert_awaited_once_with(Promocode.INPUT)

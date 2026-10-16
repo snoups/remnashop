@@ -10,6 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import DeleteDeviceDto
+from app.modules.subscriptions.eligibility import get_owned_live_target
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
@@ -37,10 +38,8 @@ class DeleteDeviceUseCase(UseCase[DeleteDeviceDto, None, UserDto]):
                     "Single device reset is disabled", code=ErrorCode.DEVICE_RESET_DISABLED
                 )
 
-            subscription = (
-                await self._subscription_repository.get_single_active_subscription_or_raise(
-                    actor.id
-                )
+            subscription = await get_owned_live_target(
+                self._subscription_repository, data.subscription_id, actor.id
             )
 
             previous = await self._subscription_repository.claim_reset(

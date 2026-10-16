@@ -39,6 +39,7 @@ def _fake_message(answered: list[Any]) -> Message:
         answered.append((text, kwargs))
 
     message = object.__new__(Message)
+    object.__setattr__(message, "successful_payment", None)
     object.__setattr__(message, "answer", _answer)
     return message
 
@@ -102,3 +103,11 @@ async def test_blacklist_middleware_passes_through_missing_user() -> None:
     handler_called = await _run_middleware(message, data)
 
     assert handler_called is True
+
+
+async def test_blacklist_middleware_lets_a_successful_payment_through() -> None:
+    message = _fake_message([])
+    object.__setattr__(message, "successful_payment", object())
+    data = {USER_KEY: _user(is_blocked=True), CONTAINER_KEY: _ExplodingContainer()}
+
+    assert await _run_middleware(message, data) is True

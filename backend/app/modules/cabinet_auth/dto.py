@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import StrEnum, auto
 from typing import Optional
 
 from app.core.enums import Locale, OAuthProvider
@@ -28,6 +27,12 @@ class TelegramProfileDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class BotSignInGrantDto:
+    profile: TelegramProfileDto
+    codes: InviteCodesDto
+
+
+@dataclass(frozen=True, kw_only=True)
 class TelegramWebAppDataDto:
     profile: TelegramProfileDto
     start_param: Optional[str]
@@ -39,12 +44,6 @@ class EmailCodeGrantDto:
     locale: Locale
 
 
-class DeeplinkStatus(StrEnum):
-    PENDING = auto()
-    EXPIRED = auto()
-    CONFIRMED = auto()
-
-
 @dataclass(frozen=True, kw_only=True)
 class DeeplinkPendingDto:
     codes: InviteCodesDto
@@ -53,14 +52,6 @@ class DeeplinkPendingDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class DeeplinkResult:
-    status: DeeplinkStatus
-    profile: Optional[TelegramProfileDto] = None
-    codes: Optional[InviteCodesDto] = None
-
-
-@dataclass(frozen=True, kw_only=True)
 class DeeplinkTicketDto:
     bot_url: str
-    binding: str
     expires_in: int

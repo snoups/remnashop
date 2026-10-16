@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, ClassVar, Final, Optional
 
 from aiogram import BaseMiddleware, Router
-from aiogram.types import TelegramObject
+from aiogram.types import Message, TelegramObject
 from aiogram.types import User as AiogramUser
 from loguru import logger
 
@@ -13,6 +13,11 @@ DEFAULT_UPDATE_TYPES: Final[list[MiddlewareEventType]] = [
     MiddlewareEventType.MESSAGE,
     MiddlewareEventType.CALLBACK_QUERY,
 ]
+
+
+# a charged customer must reach the payment handler whatever gate they fail
+def is_successful_payment(event: TelegramObject) -> bool:
+    return isinstance(event, Message) and event.successful_payment is not None
 
 
 class EventTypedMiddleware(BaseMiddleware, ABC):

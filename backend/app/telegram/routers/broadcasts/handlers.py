@@ -24,7 +24,7 @@ from app.telegram.broadcast_callbacks import (
 )
 from app.telegram.i18n import get_translator
 from app.telegram.routers.promocode.handlers import continue_with_code
-from app.telegram.states import Subscription
+from app.telegram.states import MainMenu, Promocode
 
 _START_PAYLOAD: Final[re.Pattern[str]] = re.compile(rf"{START_PREFIX}([0-9]+)")
 
@@ -68,8 +68,9 @@ async def _open_promocode(
     if code is None:
         return False
     await dialog_manager.start(
-        Subscription.PROMOCODE, mode=StartMode.RESET_STACK, show_mode=ShowMode.SEND
+        MainMenu.MAIN, mode=StartMode.RESET_STACK, show_mode=ShowMode.NO_UPDATE
     )
+    await dialog_manager.start(Promocode.INPUT, show_mode=ShowMode.SEND)
     await continue_with_code(
         code,
         user,

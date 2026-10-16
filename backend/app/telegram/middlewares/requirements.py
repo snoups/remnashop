@@ -20,7 +20,7 @@ from app.modules.settings import BotRequirementsDto, GetBotRequirementsUseCase
 from app.modules.users import UserDto
 from app.telegram.broadcast_callbacks import RESUBSCRIBE_CALLBACK, UNSUBSCRIBE_CALLBACK
 from app.telegram.i18n import get_translator
-from app.telegram.middlewares.base import EventTypedMiddleware
+from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
 
 # here, not under routers/: importing app.telegram.routers pulls in the handlers,
 # which import this module
@@ -67,7 +67,7 @@ class RequirementsMiddleware(EventTypedMiddleware):
         data: dict[str, Any],
     ) -> Any:
         user: Optional[UserDto] = data.get(USER_KEY)
-        if user is None or user.is_privileged:
+        if user is None or user.is_privileged or is_successful_payment(event):
             return await handler(event, data)
         if isinstance(event, CallbackQuery) and event.data in _REQUIREMENT_CALLBACKS:
             return await handler(event, data)

@@ -1193,6 +1193,7 @@
       "testPaymentError": "Failed to create a test payment.",
       "testPaymentBadUrl": "The provider returned an invalid payment link.",
       "flagHints": {
+        "require_paid_purchase": "Customers see Stars only after paying another way at least once.",
         "verify_ip": "Accept notifications only from YooKassa addresses. Turn off only if a proxy in front of the server (e.g. Cloudflare) hides the real IP."
       },
       "title": "Payment gateways",
@@ -1239,6 +1240,7 @@
         "project_id": "Project ID",
         "public_id": "Public ID",
         "public_key": "Public key",
+        "require_paid_purchase": "Only after a paid purchase",
         "secret_id": "Secret ID",
         "secret_key": "Secret key",
         "secret_word_2": "Secret word #2",
@@ -2117,6 +2119,17 @@
       "plan": "Plan",
       "expire_date": "Expiry date",
       "days_left": "Days left",
+      "user_id": "Telegram ID",
+      "user_bonus_days": "Bonus days",
+      "subscriptions_count": "Subscriptions",
+      "referral_url": "Referral link",
+      "plan_name": "Plan",
+      "status": "Status",
+      "expire_at": "Expires",
+      "traffic_limit": "Traffic limit",
+      "device_limit": "Device limit",
+      "referrals_level_1": "Level 1 referrals",
+      "referrals_level_2": "Level 2 referrals",
       "promocode": "Promocode"
     },
     "variableCategories": {
@@ -2124,7 +2137,8 @@
       "subscription": "Subscription",
       "window": "This window",
       "other": "Other",
-      "promo": "Promocode"
+      "promo": "Promocode",
+      "referral": "Referral"
     },
     "description": "Bot window content and navigation",
     "texts": {
@@ -2172,6 +2186,7 @@
         "change": "Plan change",
         "subscription": "Subscription",
         "promocode": "Promocode",
+        "referrals": "Referrals",
         "custom": "Custom"
       },
       "seedBadge": "built-in",
@@ -2184,6 +2199,13 @@
           "device_confirm_delete": "Delete a device",
           "device_confirm_delete_all": "Delete all devices",
           "device_confirm_reissue": "Reissue the link"
+        },
+        "subscriptions": {
+          "list": "Subscriptions",
+          "card": "Subscription"
+        },
+        "referrals": {
+          "main": "Referral program"
         }
       }
     },
@@ -3408,7 +3430,6 @@
     "TARGET_SUBSCRIPTION_REQUIRED": "Choose a subscription.",
     "TELEGRAM_ID_BLACKLISTED": "This Telegram ID is blacklisted.",
     "TELEGRAM_ID_TAKEN": "This Telegram account is already registered.",
-    "TELEGRAM_STARS_BOT_ONLY": "Telegram Stars payments work only in the bot.",
     "TEST_PAYMENT_NOT_FOUND": "Test payment not found.",
     "TOKEN_INVALID": "Your session expired — sign in again.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",

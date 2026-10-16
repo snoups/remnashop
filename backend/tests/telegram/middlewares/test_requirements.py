@@ -71,6 +71,7 @@ def _message(answered: list[Any]) -> Message:
         answered.append(text)
 
     message = object.__new__(Message)
+    object.__setattr__(message, "successful_payment", None)
     object.__setattr__(message, "answer", _answer)
     return message
 
@@ -166,3 +167,9 @@ async def test_membership_is_cached_per_channel(redis: Redis) -> None:
     assert await _run(_message([]), user, _CHANNEL, bot, redis) is True
     assert await _run(_message([]), user, other, bot, redis) is True
     assert bot.calls == 2
+
+
+async def test_successful_payment_passes_unmet_requirements(redis: Redis) -> None:
+    message = _message([])
+    object.__setattr__(message, "successful_payment", object())
+    assert await _run(message, UserDto(id=1, name="c"), _RULES, _Bot("member"), redis) is True

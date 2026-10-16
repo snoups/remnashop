@@ -5,34 +5,12 @@ from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
 
-from app.core.config import AppConfig
-from app.core.constants import DEFAULT_BANNER_NAME, USER_KEY
+from app.core.constants import USER_KEY
 from app.core.enums import PromocodeRewardType
-from app.modules.banners import GetBannerForDisplayUseCase
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
-from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
 from app.telegram.i18n import format_datetime, get_translator
-
-
-@inject
-async def subscription_main_getter(
-    dialog_manager: DialogManager,
-    config: FromDishka[AppConfig],
-    get_banner: FromDishka[GetBannerForDisplayUseCase],
-    i18n: FromDishka[TranslatorHub],
-    **kwargs: Any,
-) -> dict[str, Any]:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-    banner = await get_banner_media(get_banner, config, user, DEFAULT_BANNER_NAME)
-    return {
-        "banner": banner,
-        "message": render_window_text(runner, "msg-subscription-main"),
-        "promocode_text": label_with_icon(runner, "btn-subscription.promocode"),
-        "back_text": label_with_icon(runner, "btn-back.general"),
-    }
 
 
 @inject

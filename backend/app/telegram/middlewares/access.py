@@ -10,7 +10,7 @@ from app.modules.access import is_restricted_for
 from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
-from app.telegram.middlewares.base import EventTypedMiddleware
+from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
 
 
 class AccessMiddleware(EventTypedMiddleware):
@@ -26,7 +26,7 @@ class AccessMiddleware(EventTypedMiddleware):
         data: dict[str, Any],
     ) -> Any:
         user: Optional[UserDto] = data.get(USER_KEY)
-        if user is None:
+        if user is None or is_successful_payment(event):
             return await handler(event, data)
 
         container: AsyncContainer = data[CONTAINER_KEY]

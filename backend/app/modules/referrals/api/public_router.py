@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from app.api.dependencies.public import get_current_user
 from app.api.dependencies.rate_limit import user_rate_limit
 from app.api.errors import error_responses
-from app.core.constants import TIME_1H
+from app.core.constants import POINTS_WITHDRAW_RATE_KEY, POINTS_WITHDRAW_RATE_LIMIT, TIME_1H
 from app.modules.referrals.api.schemas import (
     RedeemBonusDaysRequest,
     RedeemBonusDaysResponse,
@@ -39,7 +39,15 @@ async def get_my_referral_stats(
     "/me/actions/withdraw",
     status_code=status.HTTP_204_NO_CONTENT,
     # each request is an audit-log row an admin works through by hand
-    dependencies=[Depends(user_rate_limit(key="points_withdraw", limit=5, window_seconds=TIME_1H))],
+    dependencies=[
+        Depends(
+            user_rate_limit(
+                key=POINTS_WITHDRAW_RATE_KEY,
+                limit=POINTS_WITHDRAW_RATE_LIMIT,
+                window_seconds=TIME_1H,
+            )
+        )
+    ],
     responses=error_responses(400, 404),
 )
 @inject

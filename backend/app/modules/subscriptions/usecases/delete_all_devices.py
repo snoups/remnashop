@@ -9,11 +9,13 @@ from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings import SettingsRepository
+from app.modules.subscriptions.dto import SubscriptionRefDto
+from app.modules.subscriptions.eligibility import get_owned_live_target
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
 
-class DeleteAllDevicesUseCase(UseCase[None, None, UserDto]):
+class DeleteAllDevicesUseCase(UseCase[SubscriptionRefDto, None, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
@@ -28,7 +30,7 @@ class DeleteAllDevicesUseCase(UseCase[None, None, UserDto]):
         self._settings_repository = settings_repository
         self._uow = uow
 
-    async def _execute(self, actor: UserDto, data: None) -> None:
+    async def _execute(self, actor: UserDto, data: SubscriptionRefDto) -> None:
         async with self._uow:
             shop_settings = await self._settings_repository.get_shop_settings()
             if not shop_settings.device_all_reset_enabled:
@@ -36,10 +38,8 @@ class DeleteAllDevicesUseCase(UseCase[None, None, UserDto]):
                     "All devices reset is disabled", code=ErrorCode.DEVICE_RESET_DISABLED
                 )
 
-            subscription = (
-                await self._subscription_repository.get_single_active_subscription_or_raise(
-                    actor.id
-                )
+            subscription = await get_owned_live_target(
+                self._subscription_repository, data.subscription_id, actor.id
             )
 
             previous = await self._subscription_repository.claim_reset(

@@ -49,7 +49,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
 
     async def _execute(self, actor: UserDto, data: PaymentGatewayType) -> TestPaymentDto:
         gateway_class = GATEWAY_REGISTRY.get(data)
-        if gateway_class is None:
+        if gateway_class is None or data is PaymentGatewayType.TELEGRAM_STARS:
             raise ValidationError(
                 f"Gateway '{data.value}' cannot be tested from the dashboard",
                 code=ErrorCode.GATEWAY_NOT_TESTABLE,

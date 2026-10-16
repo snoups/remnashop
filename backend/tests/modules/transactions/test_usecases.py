@@ -59,6 +59,7 @@ from app.modules.referrals import ReferralRepository
 from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.settings.dto import (
     UpdateAccessSettingsDto,
+    UpdateBotSettingsDto,
     UpdateShopSettingsDto,
 )
 from app.modules.settings.repository import SettingsRepository
@@ -101,6 +102,7 @@ class _FakeFactory(PaymentGatewayFactory):
         self._gateway = gateway
 
     def build(self, gateway_type, settings):  # type: ignore[no-untyped-def]
+        self.settings = settings
         return self._gateway  # type: ignore[return-value]
 
 
@@ -153,6 +155,7 @@ def create_checkout_use_case(
         promocode_repository,
         GetAccessSettingsUseCase(settings_repository, uow),
         waitlist_repository,
+        settings_repository,
     )
 
 
@@ -324,6 +327,7 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(engine: AsyncEngine) ->
             PromocodeRepository(session),
             GetAccessSettingsUseCase(SettingsRepository(session), uow),
             WaitlistRepository(session),
+            SettingsRepository(session),
         )
         try:
             await use_case(
@@ -741,20 +745,84 @@ async def test_checkout_rejects_an_unimplemented_gateway(
         )
 
 
-async def test_checkout_rejects_telegram_stars_from_the_web(
-    create_checkout_use_case: CreateCheckoutUseCase, actor: UserDto, plan: PlanDto
+async def test_checkout_hands_stars_the_bot_token(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    gateway_repository: GatewayRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+    fake_gateway: _FakeGateway,
 ) -> None:
-    with pytest.raises(ValidationError):
-        await create_checkout_use_case(
-            actor,
-            CreateCheckoutDto(
-                plan_id=plan.id,
-                duration_days=30,
-                currency=Currency.XTR,
-                purchase_type=PurchaseType.NEW,
-                gateway_type=PaymentGatewayType.TELEGRAM_STARS,
-            ),
+    async with uow:
+        await settings_repository.update_bot_settings(
+            UpdateBotSettingsDto(token="123:abc", secret_token="hook-secret")
         )
+        await gateway_repository.set_active(PaymentGatewayType.TELEGRAM_STARS, True)
+
+    await create_checkout_use_case(actor, _stars_checkout(plan))
+
+    factory = create_checkout_use_case._gateway_factory
+    assert len(fake_gateway.create_payment_calls) == 1
+    assert factory.settings["bot_token"] == "123:abc"  # type: ignore[attr-defined]
+
+
+def _stars_checkout(plan: PlanDto) -> CreateCheckoutDto:
+    return CreateCheckoutDto(
+        plan_id=plan.id,
+        duration_days=30,
+        currency=Currency.XTR,
+        purchase_type=PurchaseType.NEW,
+        gateway_type=PaymentGatewayType.TELEGRAM_STARS,
+    )
+
+
+async def test_checkout_refuses_stars_while_the_bot_has_no_webhook_secret(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    gateway_repository: GatewayRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+    fake_gateway: _FakeGateway,
+) -> None:
+    async with uow:
+        await settings_repository.update_bot_settings(UpdateBotSettingsDto(token="123:abc"))
+        await gateway_repository.set_active(PaymentGatewayType.TELEGRAM_STARS, True)
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(actor, _stars_checkout(plan))
+
+    assert error.value.code is ErrorCode.GATEWAY_NOT_AVAILABLE
+    assert fake_gateway.create_payment_calls == []
+
+
+async def test_checkout_refuses_stars_before_a_paid_purchase_when_required(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    gateway_repository: GatewayRepository,
+    settings_repository: SettingsRepository,
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    async with uow:
+        await settings_repository.update_bot_settings(
+            UpdateBotSettingsDto(token="123:abc", secret_token="hook-secret")
+        )
+        await gateway_repository.update_settings(
+            PaymentGatewayType.TELEGRAM_STARS, {"require_paid_purchase": "true"}
+        )
+        await gateway_repository.set_active(PaymentGatewayType.TELEGRAM_STARS, True)
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(actor, _stars_checkout(plan))
+
+    assert error.value.code is ErrorCode.GATEWAY_NOT_AVAILABLE
+    count = await transaction_repository.session.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.user_id == actor.id)
+    )
+    assert count == 0
 
 
 async def test_checkout_rejects_an_inactive_gateway(

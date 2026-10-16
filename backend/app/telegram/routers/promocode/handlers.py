@@ -4,7 +4,7 @@ from typing import Final
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.input import MessageInput
-from aiogram_dialog.widgets.kbd import Button
+from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub, TranslatorRunner
@@ -25,7 +25,7 @@ from app.modules.promocodes import (
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
-from app.telegram.states import MainMenu, Subscription
+from app.telegram.states import MainMenu, Promocode
 
 PROMOCODE_INPUT_LIMIT: Final[int] = 10
 PROMOCODE_INPUT_WINDOW_S: Final[int] = 60
@@ -64,7 +64,7 @@ async def continue_with_code(
     dialog_manager.dialog_data["promo_reward"] = promo.reward
 
     if promo.reward_type not in _TARGET_REQUIRED_REWARDS:
-        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
+        await dialog_manager.switch_to(state=Promocode.CONFIRM)
         return
 
     active = await list_own_active_subscriptions(user)
@@ -73,10 +73,18 @@ async def continue_with_code(
         return
     if len(active) == 1:
         dialog_manager.dialog_data["target_subscription_id"] = active[0].id
-        await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
+        await dialog_manager.switch_to(state=Promocode.CONFIRM)
         return
 
-    await dialog_manager.switch_to(state=Subscription.PROMOCODE_TARGET)
+    await dialog_manager.switch_to(state=Promocode.TARGET)
+
+
+async def on_promocode(
+    callback: CallbackQuery,
+    widget: Keyboard,
+    dialog_manager: DialogManager,
+) -> None:
+    await dialog_manager.start(Promocode.INPUT)
 
 
 @inject
@@ -119,7 +127,7 @@ async def on_target_subscription_selected(
 ) -> None:
     subscription_id = int(dialog_manager.item_id)  # type: ignore[attr-defined]
     dialog_manager.dialog_data["target_subscription_id"] = subscription_id
-    await dialog_manager.switch_to(state=Subscription.PROMOCODE_CONFIRM)
+    await dialog_manager.switch_to(state=Promocode.CONFIRM)
 
 
 @inject

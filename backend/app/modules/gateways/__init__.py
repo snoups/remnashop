@@ -6,6 +6,7 @@ from app.modules.gateways.dto import (
 )
 from app.modules.gateways.field_catalog import (
     GATEWAY_FIELD_CATALOG,
+    REQUIRE_PAID_PURCHASE_FIELD_KEY,
     VERIFY_IP_FIELD_KEY,
     GatewayFieldKind,
     GatewayFieldSpec,
@@ -21,6 +22,7 @@ from app.modules.gateways.usecases import (
 
 __all__ = [
     "GATEWAY_FIELD_CATALOG",
+    "REQUIRE_PAID_PURCHASE_FIELD_KEY",
     "VERIFY_IP_FIELD_KEY",
     "GatewayFieldKind",
     "GatewayFieldSpec",

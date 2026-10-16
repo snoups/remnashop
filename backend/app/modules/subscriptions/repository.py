@@ -198,15 +198,6 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id for row in rows])
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
 
-    async def get_single_active_subscription_or_raise(self, user_id: int) -> SubscriptionDto:
-        active = await self.get_active_by_user(user_id)
-        if not active:
-            raise NotFoundError(
-                f"No active subscription for user '{user_id}'",
-                code=ErrorCode.SUBSCRIPTION_NOT_FOUND,
-            )
-        return active[0]
-
     async def has_any_subscription(self, user_id: int, *, include_trial: bool = True) -> bool:
         # Any row ever, regardless of status (including DELETED/EXPIRED) --
         # this answers "has this user ever purchased", not "does one still

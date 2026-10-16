@@ -9,6 +9,7 @@ from app.core.exceptions import ValidationError
 _CURRENCY_FIELD_KEY: Final[str] = "currency"
 # Webhook source-IP check for providers that don't sign their notifications
 VERIFY_IP_FIELD_KEY: Final[str] = "verify_ip"
+REQUIRE_PAID_PURCHASE_FIELD_KEY: Final[str] = "require_paid_purchase"
 _BOOLEAN_VALUES: Final[frozenset[str]] = frozenset({"true", "false"})
 
 
@@ -28,12 +29,14 @@ class GatewayFieldSpec:
 
 
 GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ...]]] = {
-    # No settings (the bot token is enough), so is_gateway_configured() is
-    # always True and it can be enabled with nothing behind it: no adapter in
-    # GATEWAY_REGISTRY, no pre_checkout_query/successful_payment handler in
-    # app/telegram. create_checkout refuses it; wire the bot side up before a
-    # storefront offers it.
-    PaymentGatewayType.TELEGRAM_STARS: (),
+    PaymentGatewayType.TELEGRAM_STARS: (
+        GatewayFieldSpec(
+            key=REQUIRE_PAID_PURCHASE_FIELD_KEY,
+            kind=GatewayFieldKind.BOOLEAN,
+            required=False,
+            default="false",
+        ),
+    ),
     PaymentGatewayType.YOOKASSA: (
         GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
         GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),

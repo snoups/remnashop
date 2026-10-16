@@ -5,12 +5,12 @@ from app.modules.cabinet_auth.devices import KnownDevices
 from app.modules.cabinet_auth.email_codes import EmailCodeStore
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.cabinet_auth.usecases import (
+    BotSignInUseCase,
     CabinetOAuthAuthorizeUseCase,
     CabinetOAuthCallbackUseCase,
-    ConfirmDeeplinkUseCase,
     GetCabinetMethodsUseCase,
     GetCabinetProfileUseCase,
-    PollDeeplinkUseCase,
+    IssueBotSignInLinkUseCase,
     RequestDeeplinkUseCase,
     RequestEmailCodeUseCase,
     TelegramWebAppLoginUseCase,
@@ -22,10 +22,10 @@ class CabinetAuthProvider(Provider):
     scope = Scope.REQUEST
 
     use_cases = provide_all(
+        BotSignInUseCase,
+        IssueBotSignInLinkUseCase,
         CabinetOAuthAuthorizeUseCase,
         CabinetOAuthCallbackUseCase,
-        ConfirmDeeplinkUseCase,
-        PollDeeplinkUseCase,
         RequestDeeplinkUseCase,
         GetCabinetMethodsUseCase,
         GetCabinetProfileUseCase,

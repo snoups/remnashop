@@ -3,9 +3,10 @@ from typing import Any, Optional
 
 from redis.asyncio import Redis
 
+from app.core.config import AppConfig
 from app.core.enums import Locale
-from app.modules.cabinet_auth import ConfirmDeeplinkUseCase, DeeplinkStore, InviteCodesDto
-from app.telegram.routers.cabinet_auth.handlers import on_confirm_webauth, on_start_webauth
+from app.modules.cabinet_auth import DeeplinkStore, InviteCodesDto, IssueBotSignInLinkUseCase
+from app.telegram.routers.cabinet_auth.handlers import on_start_webauth
 
 
 class _Runner:
@@ -19,8 +20,11 @@ class _Hub:
 
 
 class _Message:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, telegram_id: int = 9) -> None:
         self.text = text
+        self.from_user = SimpleNamespace(
+            id=telegram_id, full_name="Ann", username="ann", language_code="en"
+        )
         self.sent: list[dict[str, Any]] = []
 
     async def answer(self, text: str, reply_markup: Optional[Any] = None) -> None:
@@ -30,40 +34,49 @@ class _Message:
 _USER: Any = SimpleNamespace(language=Locale.EN)
 
 
-async def test_start_only_asks_and_never_confirms(redis: Redis) -> None:
+async def test_start_sends_a_one_time_sign_in_button(
+    redis: Redis, config: AppConfig, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
     store = DeeplinkStore(redis)
-    token, _ = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
-    message = _Message(f"/start webauth_{token}")
+    start = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
+    message = _Message(f"/start webauth_{start}")
 
-    await on_start_webauth(message, store, _Hub(), _USER)  # type: ignore[arg-type]
+    await on_start_webauth(message, IssueBotSignInLinkUseCase(store, config), _Hub(), _USER)  # type: ignore[arg-type]
 
-    assert message.sent[0]["text"] == "ntf-cabinet-login-ask"
-    assert message.sent[0]["markup"].inline_keyboard[0][0].callback_data == f"webauth:{token}"
-    assert len(message.sent[0]["markup"].inline_keyboard[0][0].callback_data.encode()) <= 64
-    assert await store.peek(token) is not None
+    assert message.sent[0]["text"] == "ntf-cabinet-login.link"
+    button = message.sent[0]["markup"].inline_keyboard[0][0]
+    assert button.text == "btn-cabinet-login.open"
+    assert button.url.startswith("https://cabinet.example.com/login/bot?token=")
+    signin = button.url.split("token=", 1)[1]
+    grant = await store.take_signin(signin)
+    assert grant is not None and grant.profile.telegram_id == 9
 
 
-async def test_start_with_unknown_token_says_expired(redis: Redis) -> None:
+async def test_second_start_with_the_same_link_says_expired(
+    redis: Redis, config: AppConfig, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    store = DeeplinkStore(redis)
+    start = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
+    issue = IssueBotSignInLinkUseCase(store, config)
+
+    await on_start_webauth(_Message(f"/start webauth_{start}"), issue, _Hub(), _USER)  # type: ignore[arg-type]
+    again = _Message(f"/start webauth_{start}")
+    await on_start_webauth(again, issue, _Hub(), _USER)  # type: ignore[arg-type]
+
+    assert again.sent[0]["text"] == "ntf-cabinet-login.expired"
+    assert again.sent[0]["markup"] is None
+
+
+async def test_start_with_unknown_token_says_expired(redis: Redis, config: AppConfig) -> None:
     message = _Message("/start webauth_" + "x" * 43)
 
-    await on_start_webauth(message, DeeplinkStore(redis), _Hub(), _USER)  # type: ignore[arg-type]
+    await on_start_webauth(
+        message,
+        IssueBotSignInLinkUseCase(DeeplinkStore(redis), config),
+        _Hub(),
+        _USER,  # type: ignore[arg-type]
+    )
 
     assert message.sent[0]["text"] == "ntf-cabinet-login.expired"
-
-
-async def test_callback_confirms_and_edits_the_message(redis: Redis) -> None:
-    store = DeeplinkStore(redis)
-    token, _ = await store.create(InviteCodesDto(), "203.0.113.1", "Firefox")
-    callback: Any = SimpleNamespace(
-        data=f"webauth:{token}",
-        from_user=SimpleNamespace(id=9, full_name="Ann", username=None, language_code="en"),
-        message=None,
-        answer=lambda: _noop(),
-    )
-    await on_confirm_webauth(callback, ConfirmDeeplinkUseCase(store), _Hub(), _USER)  # type: ignore[arg-type]
-
-    assert await store.peek(token) is None  # no longer pending
-
-
-async def _noop() -> None:
-    return None

@@ -11,7 +11,7 @@ from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.modules.subscriptions import GetAvailableTrialUseCase
 from app.modules.subscriptions.usecases import ListOwnActiveSubscriptionsUseCase
 from app.modules.translations.repository import TranslationRepository
-from app.telegram.routers.menu.getters import device_confirm_delete_getter, menu_getter
+from app.telegram.routers.menu.getters import menu_getter
 
 
 def _echo_translator() -> MagicMock:
@@ -25,6 +25,18 @@ def _echo_translator() -> MagicMock:
         return key
 
     return MagicMock(get=get)
+
+
+def _shop_settings() -> MagicMock:
+    usecase = MagicMock()
+    usecase.system = AsyncMock(return_value=MagicMock(max_active_subscriptions=None))
+    return usecase
+
+
+def _referral_settings() -> MagicMock:
+    usecase = MagicMock()
+    usecase.system = AsyncMock(return_value=MagicMock(enabled=True))
+    return usecase
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +80,8 @@ async def test_menu_getter_includes_rendered_buttons(
             subscription_repository, uow
         ),
         get_available_trial=get_available_trial,
+        get_shop_settings=_shop_settings(),
+        get_referral_settings=_referral_settings(),
         i18n=i18n,
         dialog_config_cache=fake_cache,
     )
@@ -76,7 +90,9 @@ async def test_menu_getter_includes_rendered_buttons(
     assert "connect_text" not in data
     assert "trial_text" not in data
     assert "devices_text" not in data
-    assert data["subscription_text"] == "btn-menu.subscription"
+    assert "subscription_text" not in data
+    assert data["can_purchase"] is True
+    assert data["referral_enabled"] is True
 
 
 async def test_menu_getter_passes_name_variable_to_menu_text(
@@ -123,41 +139,10 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
             subscription_repository, uow
         ),
         get_available_trial=get_available_trial,
+        get_shop_settings=_shop_settings(),
+        get_referral_settings=_referral_settings(),
         i18n=i18n,
         dialog_config_cache=fake_cache,
     )
 
     assert captured_kwargs.get("user_name") == "Test"
-
-
-async def test_device_confirm_getter_routes_message_text_through_resolve_variable_kwargs(
-    monkeypatch,
-) -> None:
-    # a saved { $name } in msg-menu-devices-confirm-delete must resolve to its
-    # default, so the getter supplies every registered catalog variable
-    assert "user_name" in catalog.variable_keys()
-
-    dialog_manager = MagicMock()
-    dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN)}
-
-    async def _fake_render(*args, **kwargs):
-        return []
-
-    monkeypatch.setattr("app.telegram.routers.menu.getters.render_dialog_buttons", _fake_render)
-
-    captured_kwargs: dict[str, object] = {}
-
-    def _fake_get(key: str, **kwargs: object) -> str:
-        captured_kwargs.update(kwargs)
-        return key
-
-    i18n = MagicMock()
-    i18n.get_translator_by_locale.return_value = MagicMock(get=_fake_get)
-
-    await device_confirm_delete_getter.__dishka_orig_func__(
-        dialog_manager=dialog_manager,
-        i18n=i18n,
-        dialog_config_cache=MagicMock(),
-    )
-
-    assert "user_name" in captured_kwargs

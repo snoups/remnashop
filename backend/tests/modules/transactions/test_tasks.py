@@ -1,7 +1,11 @@
 from datetime import timedelta
 from decimal import Decimal
+from typing import Final
+from unittest.mock import AsyncMock
 
+import pytest
 from sqlalchemy import update
+from sqlalchemy.exc import OperationalError
 
 from app.core.db.models.transaction import Transaction
 from app.core.enums import (
@@ -13,6 +17,7 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.exceptions import RetryableTaskError
 from app.core.utils.time import datetime_now
 from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
@@ -23,12 +28,15 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
 from app.modules.transactions.dto import CreateTransactionDto, ReconcilePaidTransactionsDto
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.tasks import confirm_stars_payment_task
 from app.modules.transactions.usecases import (
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
 )
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
+
+_confirm_stars = confirm_stars_payment_task.original_func.__dishka_orig_func__
 
 
 async def test_prune_expired_transactions_marks_stale_pending_rows_expired(
@@ -381,3 +389,36 @@ async def _discount_promocode(session) -> int:
         )
     )
     return promo.id
+
+
+def test_confirm_stars_payment_task_is_retry_enabled() -> None:
+    assert confirm_stars_payment_task.labels.get("retry_on_error") is True
+    assert confirm_stars_payment_task.labels.get("max_retries") == 3
+
+
+_STARS_ARGS: Final[dict[str, object]] = {
+    "telegram_id": 1,
+    "payload": "ref",
+    "currency": "XTR",
+    "total_amount": 50,
+    "charge_id": "charge",
+}
+
+
+@pytest.mark.parametrize(
+    "error", [OperationalError("SELECT 1", {}, Exception("down")), ConnectionRefusedError()]
+)
+async def test_confirm_stars_payment_task_retries_transient_failures(error: Exception) -> None:
+    use_case = AsyncMock()
+    use_case.system.side_effect = error
+
+    with pytest.raises(RetryableTaskError):
+        await _confirm_stars(**_STARS_ARGS, use_case=use_case)
+
+
+async def test_confirm_stars_payment_task_does_not_retry_bugs() -> None:
+    use_case = AsyncMock()
+    use_case.system.side_effect = ValueError("bug")
+
+    with pytest.raises(ValueError):
+        await _confirm_stars(**_STARS_ARGS, use_case=use_case)

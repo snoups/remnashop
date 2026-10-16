@@ -8,7 +8,7 @@ from app.core.constants import CONTAINER_KEY, USER_KEY
 from app.core.enums import MiddlewareEventType
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
-from app.telegram.middlewares.base import EventTypedMiddleware
+from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
 
 
 class BlacklistMiddleware(EventTypedMiddleware):
@@ -24,7 +24,7 @@ class BlacklistMiddleware(EventTypedMiddleware):
         data: dict[str, Any],
     ) -> Any:
         user: Optional[UserDto] = data.get(USER_KEY)
-        if user is None or not user.is_blocked:
+        if user is None or not user.is_blocked or is_successful_payment(event):
             return await handler(event, data)
 
         container: AsyncContainer = data[CONTAINER_KEY]

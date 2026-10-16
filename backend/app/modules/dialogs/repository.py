@@ -113,9 +113,10 @@ class DialogRepository:
     ) -> bool:
         existing = await self._get_row(key)
         if existing is not None:
-            # The catalog owns where a seed window sits in its flow, so a reordered
-            # flow has to move the row that is already there.
+            # The catalog owns a seed window's place in its flow and its default layout;
+            # the admin's current buttons stay as they are.
             existing.position = position
+            existing.default_snapshot = default_snapshot
             await self.session.flush()
             return False
         window = DialogWindow(

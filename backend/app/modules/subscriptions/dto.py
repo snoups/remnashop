@@ -294,12 +294,24 @@ class CatalogPlanDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PlanCatalogDto:
+    plans: list[CatalogPlanDto]
+    anchor_currency: Currency
+
+
+@dataclass(frozen=True, kw_only=True)
 class ActivateTrialSubscriptionDto:
     plan: PlanDto
 
 
 @dataclass(frozen=True, kw_only=True)
+class SubscriptionRefDto:
+    subscription_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class DeleteDeviceDto:
+    subscription_id: int
     hwid: str
 
 

@@ -109,6 +109,15 @@ async def get_owned_target(
     return target
 
 
+async def get_owned_live_target(
+    repository: SubscriptionRepository, subscription_id: int, user_id: int
+) -> SubscriptionDto:
+    target = await get_owned_target(repository, subscription_id, user_id)
+    if target.status is SubscriptionStatus.DELETED:
+        raise ValidationError("Subscription is deleted", code=ErrorCode.SUBSCRIPTION_DELETED)
+    return target
+
+
 async def get_live_subscription(
     repository: SubscriptionRepository, subscription_id: int
 ) -> SubscriptionDto:

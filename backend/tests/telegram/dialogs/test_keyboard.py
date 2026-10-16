@@ -20,7 +20,7 @@ from app.telegram.dialogs import state_pool
 from app.telegram.dialogs.di import DialogConfigProvider
 from app.telegram.dialogs.keyboard import ConfigKeyboard
 from app.telegram.dialogs.state_pool import register_seed_state
-from app.telegram.states import MainMenu
+from app.telegram.states import Subscriptions
 
 _SNAPSHOT = {
     "banner_name": "menu",
@@ -536,7 +536,7 @@ async def test_process_item_callback_navigate_to_disabled_window_returns_false(
         "menu.devices", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
     )
     await dialog_repository.update_window("menu.devices", UpdateDialogWindowDto(is_enabled=False))
-    register_seed_state("menu.devices", MainMenu.DEVICES)
+    register_seed_state("menu.devices", Subscriptions.DEVICES)
     window = await dialog_repository.get_by_key_or_raise("menu.main")
     nav_button = next(b for b in window.buttons if b.link_type == ButtonLinkType.NAVIGATE)
 

@@ -1237,6 +1237,7 @@
       "testPaymentError": "Не удалось создать тестовый платёж.",
       "testPaymentBadUrl": "Провайдер вернул некорректную ссылку на оплату.",
       "flagHints": {
+        "require_paid_purchase": "Клиент увидит Stars только после хотя бы одной оплаты другим способом.",
         "verify_ip": "Принимать уведомления только с адресов YooKassa. Выключайте, только если прокси перед сервером (например, Cloudflare) скрывает настоящий IP."
       },
       "title": "Платёжные шлюзы",
@@ -1283,6 +1284,7 @@
         "project_id": "ID проекта",
         "public_id": "Публичный ID",
         "public_key": "Публичный ключ",
+        "require_paid_purchase": "Только после оплаченной покупки",
         "secret_id": "Секретный ID",
         "secret_key": "Секретный ключ",
         "secret_word_2": "Секретное слово №2",
@@ -2163,6 +2165,17 @@
       "plan": "План",
       "expire_date": "Дата окончания",
       "days_left": "Осталось дней",
+      "user_id": "Telegram ID",
+      "user_bonus_days": "Бонусные дни",
+      "subscriptions_count": "Подписок",
+      "referral_url": "Реферальная ссылка",
+      "plan_name": "План",
+      "status": "Статус",
+      "expire_at": "Действует до",
+      "traffic_limit": "Лимит трафика",
+      "device_limit": "Лимит устройств",
+      "referrals_level_1": "Рефералов 1 уровня",
+      "referrals_level_2": "Рефералов 2 уровня",
       "promocode": "Промокод"
     },
     "variableCategories": {
@@ -2170,7 +2183,8 @@
       "subscription": "Подписка",
       "window": "Это окно",
       "other": "Другое",
-      "promo": "Промокод"
+      "promo": "Промокод",
+      "referral": "Реферал"
     },
     "description": "Содержимое и навигация окон бота",
     "texts": {
@@ -2218,6 +2232,7 @@
         "change": "Смена плана",
         "subscription": "Подписка",
         "promocode": "Промокод",
+        "referrals": "Рефералы",
         "custom": "Свои окна"
       },
       "seedBadge": "системное",
@@ -2230,6 +2245,13 @@
           "device_confirm_delete": "Удаление устройства",
           "device_confirm_delete_all": "Удаление всех устройств",
           "device_confirm_reissue": "Перевыпуск ссылки"
+        },
+        "subscriptions": {
+          "list": "Подписки",
+          "card": "Подписка"
+        },
+        "referrals": {
+          "main": "Реферальная программа"
         }
       }
     },
@@ -3472,7 +3494,6 @@
     "TARGET_SUBSCRIPTION_REQUIRED": "Выберите подписку.",
     "TELEGRAM_ID_BLACKLISTED": "Этот Telegram ID в чёрном списке.",
     "TELEGRAM_ID_TAKEN": "Этот Telegram-аккаунт уже зарегистрирован.",
-    "TELEGRAM_STARS_BOT_ONLY": "Оплата Telegram Stars работает только в боте.",
     "TEST_PAYMENT_NOT_FOUND": "Тестовый платёж не найден.",
     "TOKEN_INVALID": "Сессия истекла — войдите снова.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Неподдерживаемая версия файла экспорта.",

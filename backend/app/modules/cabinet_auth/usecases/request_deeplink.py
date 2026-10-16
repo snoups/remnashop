@@ -32,9 +32,8 @@ class RequestDeeplinkUseCase:
             raise AuthenticationError(
                 "The bot is unreachable", code=ErrorCode.OAUTH_PROVIDER_UNREACHABLE
             )
-        token, binding = await self._store.create(codes, client_ip, user_agent)
+        token = await self._store.create(codes, client_ip, user_agent)
         return DeeplinkTicketDto(
             bot_url=f"{T_ME}{username}?start={WEBAUTH_START_PREFIX}{token}",
-            binding=binding,
             expires_in=TTL_5M,
         )

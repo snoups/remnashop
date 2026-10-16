@@ -35,6 +35,12 @@ class PriceQuote:
     plan_discount_percent: int = 0
 
 
+@dataclass(frozen=True, kw_only=True)
+class PaymentMethodDto:
+    gateway_type: PaymentGatewayType
+    currency: Currency
+
+
 class TransactionDto(BaseDto, TimestampMixin):
     user_id: int
     plan_id: Optional[int]
@@ -92,6 +98,23 @@ class CreateTransactionDto:
     idempotency_key: str
     expires_at: datetime
     is_test: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
+class StarsPreCheckoutDto:
+    telegram_id: int
+    payload: str
+    currency: str
+    total_amount: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class StarsPaymentDto:
+    telegram_id: int
+    payload: str
+    currency: str
+    total_amount: int
+    charge_id: str
 
 
 @dataclass(frozen=True, kw_only=True)

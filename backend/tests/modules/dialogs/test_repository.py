@@ -80,6 +80,41 @@ async def test_reset_restores_snapshot(dialog_repository: DialogRepository) -> N
     assert [b.text_key for b in reset.buttons] == ["btn-menu.subscription"]
 
 
+async def test_reseed_refreshes_snapshot_but_keeps_edited_buttons(
+    dialog_repository: DialogRepository,
+) -> None:
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
+    await dialog_repository.replace_buttons(
+        "menu.main",
+        [
+            DialogButtonInputDto(
+                row=0,
+                column=0,
+                text_key="btn-menu.help",
+                link_type=ButtonLinkType.URL,
+                url_value="https://help",
+            )
+        ],
+    )
+    trial = {
+        "key": "trial",
+        "text_key": "btn-menu.trial",
+        "row": 1,
+        "column": 0,
+        "link_type": "action",
+        "action_key": "get_trial",
+    }
+    changed = {"banner_name": "menu", "buttons": [_SNAPSHOT["buttons"][0], trial]}
+
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", changed)
+
+    window = await dialog_repository.get_by_key_or_raise("menu.main")
+    assert [b.text_key for b in window.buttons] == ["btn-menu.help"]
+    assert await dialog_repository.seed_action_keys("menu.main") == {"get_trial"}
+    reset = await dialog_repository.reset_to_snapshot("menu.main")
+    assert [b.text_key for b in reset.buttons] == ["btn-menu.subscription", "btn-menu.trial"]
+
+
 async def test_update_window_clears_banner_only_when_told_to(
     dialog_repository: DialogRepository,
 ) -> None:
