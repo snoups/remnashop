@@ -5,8 +5,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.admin import require_admin_user
-from app.api.dependencies.public import get_current_actor
+from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.system_schemas import (
     GitInfoResponse,
     PermissionCatalogEntryResponse,
@@ -40,7 +39,7 @@ def parse_commit_date(value: Optional[str]) -> Optional[datetime]:
 @inject
 async def get_system_metadata(
     config: FromDishka[AppConfig],
-    _: Actor = Depends(get_current_actor),
+    _: Actor = Depends(require_admin),
 ) -> SystemMetadataResponse:
     # is_official_build gates the update check --
     # only a CI-baked artifact is safe to compare against GitHub releases.

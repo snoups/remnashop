@@ -3,6 +3,7 @@ from typing import Final, Optional
 
 from sqlalchemy import ColumnElement, and_, exists, or_, select
 
+from app.core.db.filters import in_ids
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
 from app.core.db.models.referral import Referral
 from app.core.db.models.subscription import Subscription
@@ -156,7 +157,7 @@ def audience_predicate(
         conditions.append(User.marketing_opt_out.is_(False))
 
     if audience.user_ids:
-        return and_(*conditions, User.id.in_(audience.user_ids))
+        return and_(*conditions, in_ids(User.id, audience.user_ids))
 
     conditions += _subscription_conditions(audience, now)
     conditions += _profile_conditions(audience)

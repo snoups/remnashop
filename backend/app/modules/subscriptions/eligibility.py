@@ -5,13 +5,14 @@ from app.core.actor import Actor
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.security.permissions import PermissionPolicy
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.ports import OpenOrderCounter, ReferrerLookup
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import UserDto, UserRepository, visible_user
 
 
 class PurchaseEligibility:
@@ -52,7 +53,9 @@ class PurchaseEligibility:
             active = await self._subscription_repository.get_active_by_user_for_update(user_id)
         else:
             active = await self._subscription_repository.get_active_by_user(user_id)
-        if len(active) + pending >= max_active:
+        # a NEW purchase upgrades an active trial in place, so the trial holds no slot
+        paid = [subscription for subscription in active if not subscription.is_trial]
+        if len(paid) + pending >= max_active:
             raise ValidationError(
                 f"User '{user_id}' is already at the concurrent-subscription cap",
                 code=ErrorCode.SUBSCRIPTION_LIMIT_REACHED,
@@ -118,17 +121,6 @@ async def get_owned_live_target(
     return target
 
 
-async def get_live_subscription(
-    repository: SubscriptionRepository, subscription_id: int
-) -> SubscriptionDto:
-    subscription = await repository.get_by_id(subscription_id)
-    if subscription.status is SubscriptionStatus.DELETED:
-        raise ValidationError(
-            f"Subscription '{subscription_id}' is deleted", code=ErrorCode.SUBSCRIPTION_DELETED
-        )
-    return subscription
-
-
 async def lock_live_subscription(
     repository: SubscriptionRepository, subscription_id: int
 ) -> SubscriptionDto:
@@ -137,6 +129,48 @@ async def lock_live_subscription(
     if subscription.status is SubscriptionStatus.DELETED:
         raise ValidationError(
             f"Subscription '{subscription_id}' was deleted", code=ErrorCode.SUBSCRIPTION_DELETED
+        )
+    return subscription
+
+
+def _hidden(subscription_id: int) -> NotFoundError:
+    return NotFoundError(
+        f"Subscription '{subscription_id}' not found", code=ErrorCode.SUBSCRIPTION_NOT_FOUND
+    )
+
+
+async def get_visible_subscription(
+    repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    actor: Actor,
+    subscription_id: int,
+) -> SubscriptionDto:
+    # a hidden staff member's subscription answers like a missing one: its url
+    # is that person's VPN access
+    subscription = await repository.get_by_id(subscription_id)
+    owner = await user_repository.find_by_id(subscription.user_id)
+    if owner is not None and visible_user(actor, owner) is None:
+        raise _hidden(subscription_id)
+    return subscription
+
+
+async def get_manageable_subscription(
+    repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    actor: Actor,
+    subscription_id: int,
+) -> SubscriptionDto:
+    """A live subscription the actor may change: staff ones only from a higher
+    role, or the actor's own."""
+    subscription = await get_visible_subscription(
+        repository, user_repository, actor, subscription_id
+    )
+    owner = await user_repository.find_by_id(subscription.user_id)
+    if owner is not None and owner.id != actor.id and not PermissionPolicy.can_manage(actor, owner):
+        raise _hidden(subscription_id)
+    if subscription.status is SubscriptionStatus.DELETED:
+        raise ValidationError(
+            f"Subscription '{subscription_id}' is deleted", code=ErrorCode.SUBSCRIPTION_DELETED
         )
     return subscription
 

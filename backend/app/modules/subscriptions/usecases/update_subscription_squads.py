@@ -13,7 +13,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionSquadsDto
-from app.modules.subscriptions.eligibility import get_live_subscription, subscription_owner
+from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
@@ -38,8 +38,8 @@ class UpdateSubscriptionSquadsUseCase(UseCase[UpdateSubscriptionSquadsDto, Subsc
 
     async def _execute(self, actor: Actor, data: UpdateSubscriptionSquadsDto) -> SubscriptionDto:
         async with self._uow:
-            current = await get_live_subscription(
-                self._subscription_repository, data.subscription_id
+            current = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data.subscription_id
             )
 
         await self._remnawave_sdk.users.update_user(

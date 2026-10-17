@@ -11,7 +11,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SetSubscriptionEnabledDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import (
-    get_live_subscription,
+    get_manageable_subscription,
     lock_live_subscription,
     subscription_owner,
 )
@@ -42,8 +42,8 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
 
     async def _execute(self, actor: Actor, data: SetSubscriptionEnabledDto) -> SubscriptionDto:
         async with self._uow:
-            subscription = await get_live_subscription(
-                self._subscription_repository, data.subscription_id
+            subscription = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data.subscription_id
             )
 
         users = self._remnawave_sdk.users

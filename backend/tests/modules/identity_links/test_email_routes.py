@@ -68,7 +68,7 @@ async def test_login_code_not_accepted_for_link(
         json={"email": "new@gmail.com", "code": _code_of(email_dispatch)},
         headers=headers,
     )
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "EMAIL_CODE_EXPIRED"
 
 
@@ -93,11 +93,11 @@ async def test_wrong_code(
     response = await client.post(
         LINK_VERIFY, json={"email": "new@gmail.com", "code": wrong}, headers=headers
     )
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "EMAIL_CODE_INVALID"
 
 
 async def test_email_disabled(client: httpx.AsyncClient, headers: dict[str, str]) -> None:
     response = await client.post(LINK_CODE, json={"email": "new@gmail.com"}, headers=headers)
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "CABINET_EMAIL_DISABLED"

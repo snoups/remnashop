@@ -20,6 +20,7 @@ from app.modules.providers import get_module_providers
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.subscriptions.factories import create_subscription
 
@@ -177,3 +178,19 @@ async def test_new_customer_routes_are_closed_in_restricted_mode(
         response = await client.get(f"{API_V1}{path}", headers=headers)
         assert response.status_code == 403, path
         assert response.json()["code"] == "ACCESS_RESTRICTED", path
+
+
+async def test_a_cabinet_session_cannot_read_the_build_metadata(
+    client: httpx.AsyncClient,
+    session_repository: SessionRepository,
+    user_repository: UserRepository,
+    config: AppConfig,
+) -> None:
+    customer = await user_repository.create(CreateUserDto(name="curious", telegram_id=95_001))
+
+    response = await client.get(
+        f"{API_V1}/system/metadata",
+        headers=await _bearer(customer.id, session_repository, config),
+    )
+
+    assert response.status_code == 403

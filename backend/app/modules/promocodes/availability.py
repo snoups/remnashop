@@ -6,7 +6,9 @@ from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.promocodes.dto import PromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.promocodes.rules import assert_usable
 from app.modules.subscriptions import PurchaseEligibility, ReferrerLookup, SubscriptionRepository
+from app.modules.users import UserDto
 
 
 async def get_usable_promocode(
@@ -15,10 +17,9 @@ async def get_usable_promocode(
     # the code as a user typed it: an active, unexpired promocode or a refusal
     code = raw_code.strip().upper()
     promo = await promocode_repository.get_by_code(code)
-    if promo is None or not promo.is_active:
+    if promo is None:
         raise NotFoundError(f"Promocode '{code}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND)
-    if promo.expires_at is not None and datetime_now() > promo.expires_at:
-        raise ValidationError(f"Promocode '{code}' has expired", code=ErrorCode.PROMOCODE_EXPIRED)
+    assert_usable(promo, datetime_now())
     return promo
 
 
@@ -90,3 +91,22 @@ async def assert_available_to(
         f"Promocode '{promo.code}' is not available to this user",
         code=ErrorCode.PROMOCODE_NOT_AVAILABLE,
     )
+
+
+def assert_discount_improves(promo: PromocodeDto, user: UserDto) -> None:
+    """A discount code fills one slot; a smaller one would overwrite a better
+    discount the customer already has. Refused before the claim, so the code
+    isn't spent on it."""
+    if promo.reward is None:
+        return
+    if promo.reward_type is PromocodeRewardType.PERSONAL_DISCOUNT:
+        current = user.personal_discount
+    elif promo.reward_type is PromocodeRewardType.PURCHASE_DISCOUNT:
+        current = user.purchase_discount
+    else:
+        return
+    if promo.reward < current:
+        raise ValidationError(
+            f"Promocode '{promo.code}' gives less than the current {current}% discount",
+            code=ErrorCode.PROMOCODE_DISCOUNT_NOT_BETTER,
+        )

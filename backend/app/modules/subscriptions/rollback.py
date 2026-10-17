@@ -1,4 +1,3 @@
-from contextlib import suppress
 from datetime import timedelta
 from decimal import Decimal
 from typing import Optional
@@ -23,7 +22,7 @@ from app.modules.subscriptions.dto import (
 from app.modules.subscriptions.eligibility import subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
-from app.modules.subscriptions.panel import restore
+from app.modules.subscriptions.panel import restore, revert_panel_to_owner
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.users import UserRepository
@@ -163,17 +162,9 @@ class PurchaseRollbackService:
             raise
 
     async def _revert_panel(self, current: SubscriptionDto) -> None:
-        with suppress(Exception):
-            if current.status is SubscriptionStatus.DELETED:
-                # a newer row took over the panel user: put back its config
-                async with self._uow:
-                    live = await self._subscription_repository.get_by_remnawave_user_id(
-                        current.remnawave_user_id
-                    )
-                if live is None or live.status is SubscriptionStatus.DELETED:
-                    return
-                current = live
-            await self._remnawave_sdk.users.update_user(restore(current))
+        await revert_panel_to_owner(
+            self._remnawave_sdk, self._subscription_repository, self._uow, current
+        )
 
     async def _paid_in_snapshot_currency(
         self, data: PurchaseRollbackDto, target: SubscriptionDto

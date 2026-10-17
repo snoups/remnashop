@@ -11,11 +11,10 @@ from app.core.enums import Currency, PurchaseType
 from app.modules.subscriptions import ListActivePlansUseCase, ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
-from app.telegram.i18n import format_date, get_translator
+from app.telegram.i18n import format_date, format_price, get_translator
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
     catalog_query,
-    format_price,
     plans_for,
     price_in,
     selected_plan,

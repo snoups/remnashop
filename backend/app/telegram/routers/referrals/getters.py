@@ -49,7 +49,7 @@ async def referrals_getter(
     runner = get_translator(i18n, user)
     active = await list_own_active_subscriptions(user)
     can_purchase, referral_enabled = await menu_flags(
-        len(active), get_shop_settings, get_referral_settings
+        active, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
         user,

@@ -7,7 +7,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from loguru import logger
 from pydantic import BaseModel
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.error_codes import ErrorCode
@@ -105,6 +107,24 @@ def document_auth_errors(app: FastAPI, auth_dependency: Callable[..., Any]) -> N
                 route.responses.setdefault(status_code, response)
 
 
+_NUMERIC_OUT_OF_RANGE: Final[str] = "22003"
+
+
+def _is_out_of_range(error: DBAPIError) -> bool:
+    # asyncpg refuses an oversized bind parameter itself (an OverflowError under
+    # its DataError); Postgres answers an overflowing expression with 22003
+    candidate: Optional[BaseException] = error
+    seen: set[int] = set()
+    while candidate is not None and id(candidate) not in seen:
+        seen.add(id(candidate))
+        if isinstance(candidate, OverflowError):
+            return True
+        if getattr(candidate, "sqlstate", None) == _NUMERIC_OUT_OF_RANGE:
+            return True
+        candidate = getattr(candidate, "orig", None) or candidate.__cause__
+    return False
+
+
 def status_for(error: AppError) -> int:
     for error_type in type(error).__mro__:
         if error_type in _STATUS_BY_ERROR:
@@ -141,6 +161,18 @@ def register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error", "code": ErrorCode.INTERNAL_ERROR},
+        )
+
+    @app.exception_handler(DBAPIError)
+    async def database_error_handler(_: Request, error: DBAPIError) -> JSONResponse:
+        # an int past the int32 columns' range gets through request validation;
+        # Postgres refusing it is the caller's mistake, anything else is ours
+        if not _is_out_of_range(error):
+            raise error
+        logger.warning(f"Rejected a request with a number out of range: {error.orig}")
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": "A number is out of range", "code": ErrorCode.REQUEST_INVALID},
         )
 
     @app.exception_handler(RequestValidationError)

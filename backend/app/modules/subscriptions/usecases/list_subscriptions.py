@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import ListSubscriptionsDto, SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -23,4 +23,7 @@ class ListSubscriptionsUseCase(UseCase[ListSubscriptionsDto, tuple[list[Subscrip
                 user_id=data.user_id,
                 page=data.page,
                 page_size=data.page_size,
+                hide_staff_from=None
+                if PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
+                else actor.id,
             )

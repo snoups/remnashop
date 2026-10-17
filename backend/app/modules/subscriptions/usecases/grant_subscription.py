@@ -5,8 +5,6 @@ from loguru import logger
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -19,7 +17,7 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.events import SubscriptionGrantedEvent
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
-from app.modules.users import UserRepository
+from app.modules.users import UserRepository, assert_manageable, get_visible_target
 
 
 class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
@@ -41,11 +39,11 @@ class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
 
     async def _execute(self, actor: Actor, data: GrantSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
-            recipient = await self._user_repository.find_by_id(data.user_id)
-            if recipient is None:
-                raise NotFoundError(
-                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
-                )
+            # a live account the actor may manage; an anonymized one answers 404
+            recipient = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
+            assert_manageable(actor, recipient, allow_self=True)
             plan = await self._plan_repository.get_by_id(data.plan_id)
 
         subscription = await self._purchase_subscription_use_case(

@@ -10,7 +10,7 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1, TIME_1M
 from app.core.enums import OAuthProvider, SessionAudience
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AppError
+from app.core.exceptions import AppError, AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
     OAUTH_BINDING_COOKIE,
@@ -54,6 +54,14 @@ _OAUTH_CALLBACK_FAILURES = frozenset(
 _OAUTH_BINDING_PATH = f"{API_V1}/users/me/identities/oauth"
 
 router = APIRouter(prefix="/users/me", tags=["identities"])
+
+
+def _as_input_error(error: AppError) -> AppError:
+    # the session is live here: a 401 would make the cabinet refresh, replay a
+    # spent code or state, then sign the customer out
+    if isinstance(error, AuthenticationError):
+        return ValidationError(str(error), code=error.code)
+    return error
 
 
 @router.get("/identities", response_model=IdentitiesResponse, responses=error_responses(403))
@@ -106,7 +114,7 @@ async def confirm_merge(
     dependencies=[
         Depends(rate_limit(key="cabinet_link_email_code", limit=30, window_seconds=TIME_1M))
     ],
-    responses=error_responses(401, 403),
+    responses=error_responses(400, 403),
 )
 @inject
 async def request_link_email_code(
@@ -114,13 +122,16 @@ async def request_link_email_code(
     use_case: FromDishka[RequestLinkEmailCodeUseCase],
     user: UserDto = Depends(get_cabinet_customer),
 ) -> None:
-    await use_case.execute(user, body.email, body.locale)
+    try:
+        await use_case.execute(user, body.email, body.locale)
+    except AppError as error:
+        raise _as_input_error(error) from error
 
 
 @router.post(
     "/identities/email/verify",
     response_model=LinkResultResponse,
-    responses=error_responses(401, 403, 409),
+    responses=error_responses(400, 403, 409),
 )
 @inject
 async def verify_link_email_code(
@@ -137,7 +148,7 @@ async def verify_link_email_code(
     except AppError as error:
         if error.code in _EMAIL_VERIFY_FAILURES:
             await guard.record_failure()
-        raise
+        raise _as_input_error(error) from error
     return LinkResultResponse.model_validate(result, from_attributes=True)
 
 
@@ -147,14 +158,17 @@ async def verify_link_email_code(
     dependencies=[
         Depends(rate_limit(key="cabinet_link_telegram_deeplink", limit=20, window_seconds=TIME_1M))
     ],
-    responses=error_responses(401, 403),
+    responses=error_responses(400, 403),
 )
 @inject
 async def request_telegram_link(
     use_case: FromDishka[RequestTelegramLinkUseCase],
     user: UserDto = Depends(get_cabinet_customer),
 ) -> DeeplinkResponse:
-    ticket = await use_case.execute(user)
+    try:
+        ticket = await use_case.execute(user)
+    except AppError as error:
+        raise _as_input_error(error) from error
     return DeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
 
 
@@ -164,7 +178,7 @@ async def request_telegram_link(
     dependencies=[
         Depends(rate_limit(key="cabinet_link_telegram_signin", limit=20, window_seconds=TIME_1M))
     ],
-    responses=error_responses(401, 403, 409),
+    responses=error_responses(400, 403, 409),
 )
 @inject
 async def telegram_link_signin(
@@ -183,7 +197,7 @@ async def telegram_link_signin(
     except AppError as error:
         if error.code in _BOT_SIGNIN_FAILURES:
             await guard.record_failure()
-        raise
+        raise _as_input_error(error) from error
     return LinkResultResponse.model_validate(result, from_attributes=True)
 
 
@@ -193,7 +207,7 @@ async def telegram_link_signin(
     dependencies=[
         Depends(rate_limit(key="cabinet_link_oauth_authorize", limit=30, window_seconds=TIME_1M))
     ],
-    responses=error_responses(401, 403),
+    responses=error_responses(400, 403),
 )
 @inject
 async def oauth_link_authorize(
@@ -203,7 +217,10 @@ async def oauth_link_authorize(
     config: FromDishka[AppConfig],
     user: UserDto = Depends(get_cabinet_customer),
 ) -> OAuthAuthorizeResponse:
-    url, binding = await use_case.execute(user, provider)
+    try:
+        url, binding = await use_case.execute(user, provider)
+    except AppError as error:
+        raise _as_input_error(error) from error
     set_oauth_binding_cookie(
         response, binding, config.secure_cookies, SessionAudience.CABINET, _OAUTH_BINDING_PATH
     )
@@ -216,7 +233,7 @@ async def oauth_link_authorize(
     dependencies=[
         Depends(rate_limit(key="cabinet_link_oauth_callback", limit=30, window_seconds=TIME_1M))
     ],
-    responses=error_responses(401, 403, 409),
+    responses=error_responses(400, 403, 409),
 )
 @inject
 async def oauth_link_callback(
@@ -243,6 +260,7 @@ async def oauth_link_callback(
         if error.code in _OAUTH_CALLBACK_FAILURES:
             await guard.record_failure()
         # the state is single-use, so the binding is dead on any failure
+        error = _as_input_error(error)
         error_response = JSONResponse(
             status_code=status_for(error), content={"detail": str(error), "code": error.code.value}
         )

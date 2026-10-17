@@ -417,3 +417,40 @@ def test_docs_trade_a_ticket_for_a_cookie(
     schema = client.get(f"{DOCS_PATH}/openapi.json")
     assert schema.status_code == 200
     assert f"{API_V1}/api-tokens" in schema.json()["paths"]
+
+
+async def test_emoji_art_counts_in_its_own_bucket_not_the_ip_budget(
+    config: AppConfig, protected_route_container: AsyncContainer, redis: Redis
+) -> None:
+    app = get_app(config)
+    setup_dishka(protected_route_container, app)
+    global_key = "remnashop:ratelimit:global:ip:203.0.113.23"
+    emoji_key = "remnashop:ratelimit:emoji:ip:203.0.113.23"
+    await redis.delete(global_key, emoji_key)
+
+    transport = httpx.ASGITransport(app=app, client=("203.0.113.23", 12345))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        responses = [await client.get(f"/api/v1/emoji-packs/thumbnails/{n}") for n in range(301)]
+
+    assert all(r.status_code != 429 for r in responses)
+    assert await redis.get(global_key) is None
+    assert int(await redis.get(emoji_key)) == 301
+    await redis.delete(emoji_key)
+
+
+def test_an_unknown_api_path_is_a_json_404_not_the_spa(
+    config: AppConfig, frontend_dist: Path, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config, frontend_dist=frontend_dist)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    unknown_get = client.get("/api/v1/no-such-thing")
+    unknown_post = client.post("/api/v1/no-such-thing", json={})
+    spa = client.get("/dashboard/users")
+
+    assert unknown_get.status_code == 404
+    assert unknown_get.json()["code"] == "NOT_FOUND"
+    assert unknown_post.status_code == 404
+    assert spa.status_code == 200
+    assert "text/html" in spa.headers["content-type"]

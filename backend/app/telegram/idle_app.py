@@ -23,7 +23,7 @@ def get_idle_app(config: AppConfig) -> FastAPI:
         with contextlib.suppress(asyncio.CancelledError):
             await runtime_heartbeat_task
         restart_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
+        with contextlib.suppress(asyncio.CancelledError, Exception):
             await restart_task
         await redis.aclose()
 

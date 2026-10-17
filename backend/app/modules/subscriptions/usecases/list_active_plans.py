@@ -67,8 +67,13 @@ class ListActivePlansUseCase(UseCase[ListActivePlansDto, PlanCatalogDto, UserDto
         async with self._uow:
             plans = await self._plan_repository.list_active()
             if code is None:
-                # LINK plans are reachable only by code or link
-                plans = [plan for plan in plans if plan.availability != PlanAvailability.LINK]
+                # LINK plans are reachable only by code or link, a trial only by
+                # the trial button (GetAvailableTrialUseCase picks the one to offer)
+                plans = [
+                    plan
+                    for plan in plans
+                    if plan.availability != PlanAvailability.LINK and not plan.is_trial
+                ]
             else:
                 plans = [
                     plan

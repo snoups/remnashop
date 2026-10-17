@@ -1,5 +1,4 @@
 import email.policy
-import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -11,13 +10,11 @@ import aiosmtplib
 
 from app.core.constants import REDIS_KEY_PREFIX, TIME_1M
 from app.core.enums import EmailOutcome, SmtpSecurity
-from app.modules.email.sender import EmailSendError
+from app.modules.email.sender import EmailSendError, mailbox_refused
 from app.modules.settings import SmtpProfileDto
 
 SMTP_PAUSE_SECONDS: Final[int] = TIME_1M
 _TIMEOUT_S: Final[int] = 15
-_PERMANENT: Final[int] = 500
-_ENHANCED_STATUS: Final[re.Pattern[str]] = re.compile(r"^\s*([245])\.(\d{1,3})\.(\d{1,3})")
 # the default SMTP policy wraps at 78 and RFC 2047-encodes a long List-Unsubscribe
 _WIRE_POLICY: Final[email.policy.Policy] = email.policy.SMTP.clone(max_line_length=998)
 
@@ -47,14 +44,6 @@ class OutgoingEmailDto:
 class EmailDeliveryDto:
     outcome: EmailOutcome
     error: Optional[str] = None
-
-
-def _mailbox_refused(code: int, message: str) -> bool:
-    # only a bad mailbox marks the address; policy/blocklist (5.7.x) or a full box can pass
-    if code < _PERMANENT:
-        return False
-    enhanced = _ENHANCED_STATUS.match(message)
-    return enhanced is None or (enhanced.group(1), enhanced.group(2)) == ("5", "1")
 
 
 def build_mime(profile: SmtpProfileDto, email: OutgoingEmailDto) -> EmailMessage:
@@ -90,7 +79,7 @@ class SmtpBatch:
             )
         except aiosmtplib.SMTPRecipientsRefused as error:
             refusal = error.recipients[0] if error.recipients else None
-            if refusal is not None and _mailbox_refused(refusal.code, refusal.message):
+            if refusal is not None and mailbox_refused(refusal.code, refusal.message):
                 return EmailDeliveryDto(outcome=EmailOutcome.REFUSED, error=str(refusal))
             return EmailDeliveryDto(outcome=EmailOutcome.RETRY, error=str(error))
         except aiosmtplib.SMTPServerDisconnected as error:

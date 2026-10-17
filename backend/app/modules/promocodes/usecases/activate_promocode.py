@@ -18,6 +18,7 @@ from app.core.usecase import UseCase
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.promocodes.availability import (
     assert_available_to,
+    assert_discount_improves,
     assert_subscription_reward_grantable,
     get_usable_promocode,
 )
@@ -80,6 +81,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
         await assert_available_to(
             promo, actor, self._subscription_repository, self._referrer_lookup
         )
+        assert_discount_improves(promo, actor)
 
         target: Optional[SubscriptionDto] = None
         reward_plan: Optional[PlanDto] = None

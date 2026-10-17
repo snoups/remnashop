@@ -90,7 +90,8 @@ class DeviceListResponse(BaseModel):
 
 class PublicPlanPriceItem(BaseModel):
     currency: Currency
-    price: Decimal = Field(gt=0)
+    # 0 only for a free trial plan opened by its code
+    price: Decimal = Field(ge=0)
 
 
 class PublicPlanDurationItem(BaseModel):
@@ -154,5 +155,10 @@ class OwnSubscriptionListResponse(BaseModel):
 
 class TrialResponse(BaseModel):
     is_available: bool
+    plan_id: Optional[int] = None
     plan_name: Optional[str] = None
     duration_days: Optional[int] = None
+    # a paid trial is bought through checkout with plan_id, not activated
+    is_free: bool = True
+    price: Optional[Decimal] = None
+    currency: Optional[Currency] = None

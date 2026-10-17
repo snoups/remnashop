@@ -15,6 +15,7 @@ from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_link_code, render_login_code
 from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
 from app.modules.settings import AppearanceImageDto, EmailSettingsDto, SmtpProfileDto
+from app.modules.users import UserDto
 
 _CONFIGURED = EmailSettingsDto(
     host="smtp.example.com",
@@ -36,6 +37,18 @@ class _Repo:
 
     async def get_email_settings(self) -> EmailSettingsDto:
         return self._settings
+
+
+class _Users:
+    def __init__(self, user: Optional[UserDto] = None) -> None:
+        self.user = user
+        self.undeliverable: list[int] = []
+
+    async def get_by_email(self, email: str) -> Optional[UserDto]:
+        return self.user
+
+    async def set_email_undeliverable(self, user_id: int, at: object) -> None:
+        self.undeliverable.append(user_id)
 
 
 class _Uow:
@@ -133,14 +146,14 @@ async def test_sender_uses_tls_flags(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_send_email_skips_when_not_configured(redis: Redis) -> None:
     sender = _Sender()
-    use_case = SendEmailUseCase(_Repo(EmailSettingsDto()), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
+    use_case = SendEmailUseCase(_Repo(EmailSettingsDto()), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]
     await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
     assert sender.sent == []
 
 
 async def test_send_email_failure_is_retryable(redis: Redis) -> None:
     use_case = SendEmailUseCase(
-        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Uow()
+        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Users(), _Uow()
     )  # type: ignore[arg-type]
     with pytest.raises(RetryableTaskError):
         await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
@@ -190,7 +203,7 @@ async def test_sender_attaches_inline_logo(monkeypatch: pytest.MonkeyPatch) -> N
 
 async def test_connection_failure_pauses_smtp(redis: Redis) -> None:
     sender = _Sender(EmailSendError("down", connection=True))
-    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]
     message = EmailMessageDto(to="a@b.c", subject="s", text="t", html="h")
     with pytest.raises(RetryableTaskError):
         await use_case.system(message)
@@ -202,7 +215,7 @@ async def test_connection_failure_pauses_smtp(redis: Redis) -> None:
 
 async def test_other_send_failure_does_not_pause_smtp(redis: Redis) -> None:
     use_case = SendEmailUseCase(
-        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Uow()
+        _Repo(_CONFIGURED), _Sender(EmailSendError("x")), redis, _Logo(), _Users(), _Uow()
     )  # type: ignore[arg-type]
     with pytest.raises(RetryableTaskError):
         await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
@@ -212,7 +225,7 @@ async def test_other_send_failure_does_not_pause_smtp(redis: Redis) -> None:
 async def test_logo_is_read_only_when_html_references_it(redis: Redis) -> None:
     logo = _Logo(found=True)
     sender = _Sender()
-    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, logo, _Uow())  # type: ignore[arg-type]
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, logo, _Users(), _Uow())  # type: ignore[arg-type]
     await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
     assert logo.calls == 0
     await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="cid:logo"))
@@ -221,7 +234,7 @@ async def test_logo_is_read_only_when_html_references_it(redis: Redis) -> None:
 
 async def test_missing_logo_still_sends(redis: Redis) -> None:
     sender = _Sender()
-    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Uow())  # type: ignore[arg-type]
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]
     await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="cid:logo"))
     assert len(sender.sent) == 1
 
@@ -267,3 +280,44 @@ async def test_bulk_test_email_without_bulk_profile_is_not_configured() -> None:
         await _test_case(_CONFIGURED, sender)(_Actor("me@x.y"), SendTestEmailDto(bulk=True))  # type: ignore[arg-type]
     assert info.value.code == ErrorCode.EMAIL_NOT_CONFIGURED
     assert sender.sent == []
+
+
+async def test_a_mailbox_refused_for_good_is_marked_and_not_retried(redis: Redis) -> None:
+    users = _Users(UserDto(id=7, name="a", email="gone@example.com", language=Locale.EN))
+    use_case = SendEmailUseCase(
+        _Repo(_CONFIGURED),
+        _Sender(EmailSendError("550 5.1.1 no such user", refused=True)),
+        redis,
+        _Logo(),
+        users,
+        _Uow(),
+    )  # type: ignore[arg-type]
+
+    await use_case.system(EmailMessageDto(to="Gone@example.com", subject="s", text="t", html="h"))
+
+    assert users.undeliverable == [7]
+
+
+@pytest.mark.parametrize(
+    ("code", "message", "refused"),
+    [
+        (550, "5.1.1 User unknown", True),
+        (550, "5.7.1 Blocked by policy", False),
+        (450, "4.2.2", False),
+    ],
+)
+async def test_sender_tells_a_refused_mailbox_from_other_refusals(
+    monkeypatch: pytest.MonkeyPatch, code: int, message: str, refused: bool
+) -> None:
+    async def refuse(*args: Any, **kwargs: Any) -> None:
+        raise aiosmtplib.SMTPRecipientsRefused(
+            [aiosmtplib.SMTPRecipientRefused(code, message, "a@b.c")]
+        )
+
+    monkeypatch.setattr(aiosmtplib, "send", refuse)
+    with pytest.raises(EmailSendError) as raised:
+        await SmtpSender().send(
+            _CONFIGURED.profile(bulk=False),
+            EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"),
+        )
+    assert raised.value.refused is refused

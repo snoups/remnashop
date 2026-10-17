@@ -99,6 +99,8 @@ ntf-access =
     .payments-restored = Оплата снова доступна — можно завершить покупку.
 
 ntf-common =
+    .lost-context = Меню обновлено, продолжите отсюда.
+    .unknown-error = Что-то пошло не так. Попробуйте ещё раз.
     .cooldown-active = Повторить это действие можно после { $available_at }.
     .trial-unavailable = Пробный период недоступен.
     .connect-not-available = Подключение недоступно.
@@ -170,6 +172,7 @@ ntf-promocode =
     .not-found = Промокод не найден.
     .expired = Срок действия промокода истёк.
     .already-activated = Вы уже активировали этот промокод.
+    .discount-not-better = У вас уже есть скидка не меньше этой — промокод не применён.
     .not-available = Этот промокод вам недоступен.
     .no-target-subscription = У вас нет активной подписки, к которой можно применить этот промокод.
     .activated = Промокод активирован!

@@ -215,7 +215,7 @@ async def test_login_state_rejected_by_link(
         f"{LINK}/google/callback", json={"code": "c", "state": state}, headers=headers
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "OAUTH_STATE_INVALID"
     assert await oauth_identity_repository.list_by_user(me.id) == []
 
@@ -264,7 +264,7 @@ async def test_link_state_of_other_user_rejected(
         f"{LINK}/google/callback", json={"code": "c", "state": state}, headers=headers
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "OAUTH_STATE_INVALID"
 
 
@@ -286,7 +286,7 @@ async def test_missing_binding_rejected(
         f"{LINK}/google/callback", json={"code": "c", "state": state}, headers=headers
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "OAUTH_STATE_INVALID"
     assert 'oauth_binding=""' in response.headers["set-cookie"]
 

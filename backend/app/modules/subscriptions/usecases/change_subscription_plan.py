@@ -19,7 +19,7 @@ from app.modules.subscriptions.dto import (
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
-from app.modules.subscriptions.eligibility import get_live_subscription
+from app.modules.subscriptions.eligibility import get_manageable_subscription
 from app.modules.subscriptions.events import SubscriptionPlanChangedByAdminEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
@@ -47,7 +47,9 @@ class ChangeSubscriptionPlanUseCase(UseCase[ChangeSubscriptionPlanDto, Subscript
 
     async def _execute(self, actor: Actor, data: ChangeSubscriptionPlanDto) -> SubscriptionDto:
         async with self._uow:
-            old = await get_live_subscription(self._subscription_repository, data.subscription_id)
+            old = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data.subscription_id
+            )
             owner = await self._user_repository.find_by_id(old.user_id)
             if owner is None:
                 raise NotFoundError(

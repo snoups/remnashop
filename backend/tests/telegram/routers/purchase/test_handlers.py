@@ -29,11 +29,11 @@ from app.modules.subscriptions import (
 from app.modules.transactions import CheckoutResultDto, CreateCheckoutDto, PaymentMethodDto
 from app.telegram.dialogs import state_pool
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
+from app.telegram.i18n import format_price
 from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
     checkout_error_key,
-    format_price,
     on_confirm,
     on_duration_selected,
     on_method_selected,

@@ -5,7 +5,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.subscriptions.eligibility import get_live_subscription, subscription_owner
+from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
@@ -31,7 +31,9 @@ class DeleteSubscriptionUseCase(UseCase[int, None]):
 
     async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
-            subscription = await get_live_subscription(self._subscription_repository, data)
+            subscription = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data
+            )
             await self._revoker.revoke(subscription)
             subscriber = await subscription_owner(self._user_repository, subscription)
             await self._event_publisher.publish(

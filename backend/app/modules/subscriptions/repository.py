@@ -5,11 +5,13 @@ from sqlalchemy import ColumnElement, Numeric, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
+from app.core.db.filters import in_ids
 from app.core.db.models.addon_entitlement import AddOnEntitlement
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription import Subscription
+from app.core.db.models.user import User
 from app.core.db.partial_update import apply_partial_update
-from app.core.enums import AddOnType, SubscriptionStatus
+from app.core.enums import AddOnType, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import CooldownError, NotFoundError
 from app.core.utils.time import datetime_now
@@ -43,7 +45,7 @@ class SubscriptionRepository:
 
         result = await self.session.execute(
             select(AddOnEntitlement)
-            .where(AddOnEntitlement.subscription_id.in_(subscription_ids))
+            .where(in_ids(AddOnEntitlement.subscription_id, subscription_ids))
             .order_by(AddOnEntitlement.id)
         )
         entitlements_by_subscription: dict[int, list[AddOnEntitlementDto]] = {}
@@ -133,6 +135,7 @@ class SubscriptionRepository:
         user_id: Optional[int] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
+        hide_staff_from: Optional[int] = None,
     ) -> tuple[list[SubscriptionDto], int]:
         # status=None means "the live subscriptions", not "every row ever" --
         # DELETED rows are routine history (trial->paid conversions, plan
@@ -144,6 +147,14 @@ class SubscriptionRepository:
             filters.append(Subscription.status == status)
         if user_id is not None:
             filters.append(Subscription.user_id == user_id)
+        if hide_staff_from is not None:
+            # same rule as visible_user: staff rows are hidden, the viewer's own are not
+            filters.append(
+                or_(
+                    Subscription.user_id.in_(select(User.id).where(User.role == Role.USER)),
+                    Subscription.user_id == hide_staff_from,
+                )
+            )
         if search:
             pattern = f"%{search}%"
             search_filters: list[ColumnElement[bool]] = [

@@ -59,6 +59,7 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel import restore
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
@@ -2049,7 +2050,7 @@ async def test_only_a_paid_purchase_event_carries_the_payment_key(
     assert [row.payload["payment_key"] for row in rows] == ["paid-order-key", None]
 
 
-async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_config(
+async def test_change_that_loses_the_race_gives_the_panel_back_to_the_winner(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
@@ -2089,12 +2090,29 @@ async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_conf
 
     update_calls: list[object] = []
     original_update = remnawave_sdk.users.update_user
+    winner: list[SubscriptionDto] = []
 
     async def update_while_a_concurrent_change_commits(dto: object) -> object:
         update_calls.append(dto)
         if len(update_calls) == 1:
-            # the competing CHANGE commits between this panel call and the row lock
-            await subscription_repository.mark_deleted(old_subscription.id)
+            # the competing CHANGE commits between this panel call and the row lock,
+            # its own row taking over the same panel user
+            async with uow:
+                await subscription_repository.mark_deleted(old_subscription.id)
+                winner.append(
+                    await subscription_repository.create(
+                        CreateSubscriptionDto(
+                            user_id=buyer.id,
+                            remnawave_user_id=old_subscription.remnawave_user_id,
+                            status=SubscriptionStatus.ACTIVE,
+                            traffic_limit=777,
+                            device_limit=7,
+                            expire_at=old_subscription.expire_at + timedelta(days=90),
+                            url=old_subscription.url,
+                            plan_snapshot=make_plan_snapshot(),
+                        )
+                    )
+                )
         return await original_update(dto)  # type: ignore[arg-type]
 
     monkeypatch.setattr(
@@ -2117,7 +2135,8 @@ async def test_change_that_loses_the_race_does_not_revert_the_winners_panel_conf
             ),
         )
 
-    assert len(update_calls) == 1  # no compensating revert onto the winner's identity
+    # the loser's config is undone with the winner's, not its own stale one
+    assert update_calls[1:] == [restore(winner[0])]
 
 
 async def _disabled_subscription(
@@ -3051,3 +3070,180 @@ async def test_a_late_trial_does_not_count_against_a_free_orders_cap(
 
     active = await subscription_repository.get_active_by_user(buyer.id)
     assert [s.id for s in active] == [paid.id]
+
+
+def _purchase_use_case(
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> PurchaseSubscriptionUseCase:
+    return PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+    )
+
+
+def _buy(
+    user: UserDto,
+    plan: PlanDto,
+    *,
+    is_trial: bool = False,
+    target_subscription_id: Optional[int] = None,
+) -> PurchaseSubscriptionDto:
+    price = Decimal(0) if is_trial else Decimal("300.00")
+    days = 3 if is_trial else 30
+    return PurchaseSubscriptionDto(
+        user_id=user.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=price, currency=Currency.RUB, duration_days=days, is_trial=is_trial
+        ),
+        duration_days=days,
+        price_paid=price,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.NEW if target_subscription_id is None else PurchaseType.CHANGE,
+        target_subscription_id=target_subscription_id,
+    )
+
+
+async def test_a_trial_upgrade_that_loses_the_race_gives_the_panel_back_to_the_winner(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 4401)
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    trial_plan = await _create_plan(plan_repository, "race-trial")
+    paid_plan = await _create_plan(plan_repository, "race-trial-paid")
+    trial = await use_case(buyer, _buy(buyer, trial_plan, is_trial=True))
+
+    update_calls: list[object] = []
+    original_update = remnawave_sdk.users.update_user
+    winner: list[SubscriptionDto] = []
+
+    async def update_while_another_upgrade_commits(dto: object) -> object:
+        update_calls.append(dto)
+        if len(update_calls) == 1:
+            async with uow:
+                await subscription_repository.mark_deleted(trial.id)
+                winner.append(
+                    await subscription_repository.create(
+                        CreateSubscriptionDto(
+                            user_id=buyer.id,
+                            remnawave_user_id=trial.remnawave_user_id,
+                            status=SubscriptionStatus.ACTIVE,
+                            traffic_limit=777,
+                            device_limit=7,
+                            expire_at=trial.expire_at + timedelta(days=60),
+                            url=trial.url,
+                            plan_snapshot=make_plan_snapshot(),
+                        )
+                    )
+                )
+        return await original_update(dto)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_while_another_upgrade_commits)
+
+    with pytest.raises(ValidationError):
+        await use_case(buyer, _buy(buyer, paid_plan))
+
+    assert update_calls[1:] == [restore(winner[0])]
+
+
+async def test_a_trial_upgrade_redoes_its_panel_config_over_an_addon_pushed_meanwhile(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 4402)
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    trial_plan = await _create_plan(plan_repository, "addon-trial")
+    paid_plan = await _create_plan(plan_repository, "addon-trial-paid")
+    trial = await use_case(buyer, _buy(buyer, trial_plan, is_trial=True))
+
+    update_calls: list[object] = []
+    original_update = remnawave_sdk.users.update_user
+
+    async def update_while_an_addon_is_granted(dto: object) -> object:
+        update_calls.append(dto)
+        if len(update_calls) == 1:
+            # a promocode's addon lands on the trial and pushes its own limits
+            async with uow:
+                await subscription_repository.grant_entitlement(
+                    subscription_id=trial.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=5
+                )
+        return await original_update(dto)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_while_an_addon_is_granted)
+
+    await use_case(buyer, _buy(buyer, paid_plan))
+
+    # the plan's config is pushed again under the lock, over the addon's
+    assert len(update_calls) == 2
+    assert update_calls[1] == update_calls[0]
+
+
+async def test_a_change_retries_over_an_addon_pushed_meanwhile(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    monkeypatch: pytest.MonkeyPatch,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 4403)
+    use_case = _purchase_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    old_plan = await _create_plan(plan_repository, "addon-change-old")
+    new_plan = await _create_plan(plan_repository, "addon-change-new")
+    old = await use_case(buyer, _buy(buyer, old_plan))
+
+    update_calls: list[object] = []
+    original_update = remnawave_sdk.users.update_user
+
+    async def update_while_an_addon_is_granted(dto: object) -> object:
+        update_calls.append(dto)
+        if len(update_calls) == 1:
+            async with uow:
+                await subscription_repository.grant_entitlement(
+                    subscription_id=old.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=5
+                )
+        return await original_update(dto)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_while_an_addon_is_granted)
+
+    changed = await use_case(
+        buyer,
+        _buy(buyer, new_plan, target_subscription_id=old.id),
+    )
+
+    assert changed.plan_snapshot.plan_id == new_plan.id
+    # first attempt saw the addon under the lock and went again: its config is the last word
+    assert len(update_calls) == 2

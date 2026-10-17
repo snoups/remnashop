@@ -99,6 +99,8 @@ ntf-access =
     .payments-restored = Payments are available again — you can complete your purchase.
 
 ntf-common =
+    .lost-context = The menu was refreshed, carry on from here.
+    .unknown-error = Something went wrong. Please try again.
     .cooldown-active = You can repeat this action after { $available_at }.
     .trial-unavailable = Trial is not available.
     .connect-not-available = Connection is not available.
@@ -170,6 +172,7 @@ ntf-promocode =
     .not-found = Promocode not found.
     .expired = This promocode has expired.
     .already-activated = You've already activated this promocode.
+    .discount-not-better = You already have an equal or bigger discount, so the promocode was not applied.
     .not-available = This promocode isn't available to you.
     .no-target-subscription = You have no active subscription to apply this promocode to.
     .activated = Promocode activated!

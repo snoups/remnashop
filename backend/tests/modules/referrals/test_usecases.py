@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import EventOutboxEntry, User
@@ -781,3 +781,19 @@ async def test_get_user_referral_revenue_leaves_out_hidden_staff(
 
     assert (await use_case(admin, root.id)).paying_count == 1
     assert (await use_case(OWNER, root.id)).paying_count == 2
+
+
+async def test_adjust_user_points_skips_an_anonymized_account(
+    user_repository: UserRepository, uow, event_publisher, session: AsyncSession
+) -> None:
+    target = await _create_user(user_repository, 5010)
+    await session.execute(
+        update(User).where(User.id == target.id).values(deleted_at=datetime_now())
+    )
+    use_case = AdjustUserPointsUseCase(user_repository, uow, event_publisher)
+
+    with pytest.raises(NotFoundError):
+        await use_case(
+            OWNER,
+            AdjustUserPointsDto(user_id=target.id, delta=Decimal("10"), client_ip="127.0.0.1"),
+        )

@@ -77,11 +77,16 @@ async def get_own_trial(
     actor: UserDto = Depends(get_current_user),
 ) -> TrialResponse:
     trial = await use_case(actor)
-    duration = trial.plan.free_trial_duration() if trial.plan is not None else None
+    if trial.plan is None:
+        return TrialResponse(is_available=False)
     return TrialResponse(
-        is_available=trial.is_trial_available and duration is not None,
-        plan_name=trial.plan.name if trial.plan is not None else None,
-        duration_days=duration.days if duration is not None else None,
+        is_available=trial.is_trial_available,
+        plan_id=trial.plan.id,
+        plan_name=trial.plan.name,
+        duration_days=trial.plan.sellable_durations()[0].days,
+        is_free=trial.is_free,
+        price=trial.price,
+        currency=trial.currency,
     )
 
 

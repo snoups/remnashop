@@ -19,6 +19,10 @@ from app.modules.users import UserDto
 
 _GLOBAL_RATE_LIMIT: Final[int] = 300
 _GLOBAL_RATE_LIMIT_WINDOW_S: Final[int] = 60
+# emoji art loads by <img> with no token, a whole pack at once (up to ~400
+# files): its own bucket, so it doesn't eat the IP's budget for the API
+_EMOJI_PREFIX: Final[str] = f"{API_V1}/emoji-packs/"
+_EMOJI_RATE_LIMIT: Final[int] = 3000
 # Payment-gateway callbacks (/payments/{gateway}) are deliberately NOT here:
 # one provider's calls share one IP bucket like the panel's do, but their
 # volume is one call per payment plus retries (nowhere near 300/min), and
@@ -145,17 +149,22 @@ async def global_rate_limit(
     if request.url.path in _RATE_LIMIT_EXEMPT_PATHS:
         return
 
-    identity = _resolve_rate_limit_identity(request, config.jwt_secret.get_secret_value())
-    redis_key = f"{REDIS_KEY_PREFIX}ratelimit:global:{identity}"
+    if request.url.path.startswith(_EMOJI_PREFIX):
+        identity = f"ip:{ip_rate_bucket(resolve_client_ip(request))}"
+        bucket, limit = "emoji", _EMOJI_RATE_LIMIT
+    else:
+        identity = _resolve_rate_limit_identity(request, config.jwt_secret.get_secret_value())
+        bucket, limit = "global", _GLOBAL_RATE_LIMIT
+    redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{bucket}:{identity}"
 
     try:
         await _enforce(
             redis,
             redis_key,
-            _GLOBAL_RATE_LIMIT,
+            limit,
             _GLOBAL_RATE_LIMIT_WINDOW_S,
-            "global",
-            f"global by {identity}",
+            bucket,
+            f"{bucket} by {identity}",
         )
     except HTTPException:
         raise  # the actual 429, not a Redis failure

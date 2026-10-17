@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.subscription import Subscription
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Locale, PlanType, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -38,6 +39,7 @@ from app.modules.subscriptions.dto import (
     AdminDeleteDeviceDto,
     ChangeSubscriptionPlanDto,
     GrantSubscriptionDto,
+    ListSubscriptionsDto,
     SetSubscriptionEnabledDto,
     SubscriptionDto,
     UpdateSubscriptionDto,
@@ -54,7 +56,9 @@ from app.modules.subscriptions.usecases import (
     AdminReissueSubscriptionUseCase,
     ChangeSubscriptionPlanUseCase,
     DeleteSubscriptionUseCase,
+    GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
+    ListSubscriptionsUseCase,
     PurchaseSubscriptionUseCase,
     ResetSubscriptionTrafficUseCase,
     SetSubscriptionEnabledUseCase,
@@ -530,7 +534,9 @@ async def test_admin_device_list_and_delete(
     granted = await _granted(grant_use_case, user_repository, plan_repository, 9801, "devices")
     panel_id = granted.remnawave_user_id
     remnawave_hwid_store[panel_id] = [_device(h, panel_id) for h in ("a", "b", "c")]
-    list_devices = AdminListDevicesUseCase(subscription_repository, remnawave_sdk, uow)
+    list_devices = AdminListDevicesUseCase(
+        subscription_repository, UserRepository(subscription_repository.session), remnawave_sdk, uow
+    )
     delete_one = AdminDeleteDeviceUseCase(
         subscription_repository,
         UserRepository(subscription_repository.session),
@@ -890,3 +896,62 @@ async def test_limits_are_restored_in_the_panel_when_deleted_mid_edit(
     assert remnawave_store[granted.remnawave_user_id]["hwidDeviceLimit"] == devices_before
     row = await subscription_repository.get_by_id(granted.id)
     assert row.device_limit != devices_before + 5
+
+
+async def test_an_admin_can_neither_see_nor_touch_the_owners_own_subscription(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(name="boss", telegram_id=9100, role=Role.OWNER)
+    )
+    admin = await user_repository.create(
+        CreateUserDto(name="helper", telegram_id=9101, role=Role.ADMIN)
+    )
+    plan = await _plan(plan_repository, "ownersvpn")
+    # the owner gives themselves a subscription: their own account is in reach
+    subscription = await grant_use_case(
+        owner, GrantSubscriptionDto(user_id=owner.id, plan_id=plan.id, duration_days=30)
+    )
+    get = GetSubscriptionUseCase(subscription_repository, user_repository, uow)
+    listing = ListSubscriptionsUseCase(subscription_repository, uow)
+    delete = DeleteSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
+
+    with pytest.raises(NotFoundError) as hidden:
+        await get(admin, subscription.id)
+    with pytest.raises(NotFoundError):
+        await delete(admin, subscription.id)
+    items, total = await listing(admin, ListSubscriptionsDto())
+
+    assert hidden.value.code is ErrorCode.SUBSCRIPTION_NOT_FOUND
+    assert subscription.id not in [item.id for item in items]
+    assert (await get(owner, subscription.id)).id == subscription.id
+    owner_items, _ = await listing(owner, ListSubscriptionsDto())
+    assert subscription.id in [item.id for item in owner_items]
+
+
+async def test_grant_to_an_anonymized_account_is_not_found(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    session: AsyncSession,
+) -> None:
+    gone = await user_repository.create(CreateUserDto(name="gone", telegram_id=9102))
+    await session.execute(update(User).where(User.id == gone.id).values(deleted_at=datetime_now()))
+    plan = await _plan(plan_repository, "togone")
+
+    with pytest.raises(NotFoundError):
+        await grant_use_case(
+            OWNER, GrantSubscriptionDto(user_id=gone.id, plan_id=plan.id, duration_days=30)
+        )

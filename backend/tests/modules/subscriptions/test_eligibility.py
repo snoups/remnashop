@@ -4,6 +4,8 @@ from app.core.enums import PlanAvailability, PlanType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.plans.dto import PlanDto
+from app.modules.settings.dto import UpdateShopSettingsDto
+from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.repository import UserRepository
@@ -70,3 +72,29 @@ async def test_purchasable_applies_purchase_history(
 
     assert [plan.public_code for plan in allowed] == ["for-all", "for-existing"]
     assert await eligibility.purchasable([], buyer) == []
+
+
+async def test_an_active_trial_holds_no_slot_a_purchase_would_take(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1, fields_set=frozenset({"max_active_subscriptions"})
+        )
+    )
+    eligibility = make_eligibility(subscription_repository.session)
+    trial = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=91010,
+        remnawave_user_id=91010,
+        is_trial=True,
+    )
+
+    # buying with a trial on: the purchase upgrades the trial, still one subscription
+    await eligibility.assert_below_cap(trial.user_id, lock=True)
+    # a second unpaid order would be the second subscription
+    with pytest.raises(ValidationError):
+        await eligibility.assert_below_cap(trial.user_id, lock=True, pending=1)

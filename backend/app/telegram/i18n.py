@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Final, Optional
 
 from fluent_compiler.bundle import FluentBundle
@@ -62,3 +63,7 @@ def format_datetime(value: Optional[datetime]) -> str:
 
 def format_date(value: Optional[datetime]) -> str:
     return value.strftime(_DATE_FORMAT) if value is not None else "—"
+
+
+def format_price(price: Decimal) -> str:
+    return f"{price:.2f}".removesuffix(".00")

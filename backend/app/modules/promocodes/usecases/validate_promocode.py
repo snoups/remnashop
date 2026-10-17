@@ -7,6 +7,7 @@ from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
 from app.modules.promocodes.availability import (
     assert_available_to,
+    assert_discount_improves,
     assert_subscription_reward_grantable,
     get_usable_promocode,
 )
@@ -60,6 +61,7 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto, UserD
         await assert_available_to(
             promo, actor, self._subscription_repository, self._referrer_lookup
         )
+        assert_discount_improves(promo, actor)
         if promo.reward_type is PromocodeRewardType.SUBSCRIPTION:
             await assert_subscription_reward_grantable(
                 promo,

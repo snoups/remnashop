@@ -88,7 +88,7 @@ async def test_link_signin_rejects_login_grant(
 ) -> None:
     token = await store.issue_signin(BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto()))
     response = await client.post(LINK_SIGNIN, json={"token": token}, headers=headers)
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "DEEPLINK_EXPIRED"
 
 
@@ -100,7 +100,7 @@ async def test_link_signin_other_user_rejected(
         BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto(), link_user_id=me.id + 1000)
     )
     response = await client.post(LINK_SIGNIN, json={"token": token}, headers=headers)
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert response.json()["code"] == "DEEPLINK_EXPIRED"
 
 

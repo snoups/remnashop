@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Optional
 
-from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, UserEvent
+from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, SystemEvent, UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -51,3 +51,13 @@ class LoggedOutEvent(BaseEvent):
     user_id: int
     session_id: int
     audience: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class RescueCliUsedEvent(SystemEvent):
+    """A break-glass action run from `python -m app.cli` on the server."""
+
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+    # reset_owner_access | enable_password_login | restore_backup
+    action: str
+    user_id: Optional[int] = None

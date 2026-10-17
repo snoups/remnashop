@@ -54,10 +54,6 @@ def price_in(duration: CatalogDurationDto, currency: Currency) -> Decimal:
     return next(p.price for p in duration.prices if p.currency is currency)
 
 
-def format_price(price: Decimal) -> str:
-    return f"{price:.2f}".removesuffix(".00")
-
-
 def plans_for(
     purchase_type: PurchaseType, catalog: PlanCatalogDto, current_plan_id: Optional[int]
 ) -> list[CatalogPlanDto]:

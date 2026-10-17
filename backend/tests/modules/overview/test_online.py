@@ -71,3 +71,17 @@ async def test_record_online_sample_prunes_hours_older_than_48h(redis) -> None:
     assert await read_hourly_online_peaks(redis, [old]) == [None]
 
     await redis.delete(*_KEYS)
+
+
+async def test_hours_the_sampler_missed_are_pruned_too(redis) -> None:
+    await redis.delete(*_KEYS)
+    now = datetime(2026, 1, 5, 12, tzinfo=timezone.utc)
+    stranded = now - timedelta(hours=60)  # its exact-48h prune tick never ran
+
+    await record_online_sample(redis, stranded, 9)
+    await record_online_sample(redis, now, 1)
+
+    assert await read_hourly_online_peaks(redis, [stranded]) == [None]
+    assert await read_hourly_online_peaks(redis, [now]) == [1]
+
+    await redis.delete(*_KEYS)

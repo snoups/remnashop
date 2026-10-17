@@ -92,15 +92,16 @@ def _settings(max_active: Optional[int], referral_enabled: bool) -> tuple[MagicM
 
 
 @pytest.mark.parametrize(
-    ("max_active", "count", "expected"),
-    [(None, 5, True), (3, 2, True), (3, 3, False)],
+    ("max_active", "paid", "trials", "expected"),
+    [(None, 5, 0, True), (3, 2, 0, True), (3, 3, 0, False), (1, 0, 1, True)],
 )
 async def test_menu_flags_can_purchase_below_the_cap(
-    max_active: Optional[int], count: int, expected: bool
+    max_active: Optional[int], paid: int, trials: int, expected: bool
 ) -> None:
     shop, referral = _settings(max_active, referral_enabled=True)
+    active = [MagicMock(is_trial=False)] * paid + [MagicMock(is_trial=True)] * trials
 
-    can_purchase, referral_enabled = await menu_flags(count, shop, referral)
+    can_purchase, referral_enabled = await menu_flags(active, shop, referral)
 
     assert can_purchase is expected
     assert referral_enabled is True

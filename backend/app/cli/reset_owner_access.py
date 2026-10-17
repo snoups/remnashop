@@ -2,6 +2,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cli.audit import record_rescue
 from app.core.enums import Role
 from app.core.security import generate_password, hash_password
 from app.modules.auth import SessionRepository
@@ -29,5 +30,6 @@ async def reset_owner_access(session: AsyncSession, pepper: str) -> Optional[tup
     await PasskeyRepository(session).delete_all_by_user(owner.id)
     await OAuthIdentityRepository(session).delete_all_by_user(owner.id)
     await UserRepository(session).clear_telegram_id(owner.id)
+    await record_rescue(session, "reset_owner_access", owner.id)
     await session.commit()
     return owner, password

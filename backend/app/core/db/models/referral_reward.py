@@ -23,7 +23,9 @@ class ReferralReward(BaseSql, TimestampMixin):
     referral_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("referrals.id", ondelete="SET NULL")
     )
-    referrer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    referrer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="SET NULL")
     )

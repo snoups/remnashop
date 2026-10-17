@@ -199,3 +199,11 @@ async def test_has_telegram_and_has_email(
     assert await _match(
         session, BroadcastAudienceDto(has_telegram=False, has_email=True)
     ) & mine == {mail}
+
+
+async def test_a_pasted_id_list_longer_than_asyncpg_takes_parameters(
+    session: AsyncSession, people: dict[str, int]
+) -> None:
+    ids = [people["none"], *range(10_000_000, 10_040_000)]
+
+    assert await _match(session, BroadcastAudienceDto(user_ids=ids)) == {people["none"]}

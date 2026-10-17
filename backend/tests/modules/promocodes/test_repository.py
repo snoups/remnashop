@@ -432,3 +432,31 @@ async def test_is_live_at_the_exact_expiry_instant(
     monkeypatch.setattr(promocode_repository_module, "datetime_now", lambda: edge)
 
     assert await promocode_repository.is_live(promo.id) is True
+
+
+async def test_claim_refuses_a_code_deactivated_after_it_was_read(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    created = await promocode_repository.create(_create_dto("LEAKED"))
+    user_id = await _create_user(user_repository, 1003)
+    # the admin switches it off between the activation's first read and its claim
+    await promocode_repository.update(UpdatePromocodeDto(promocode_id=created.id, is_active=False))
+
+    with pytest.raises(NotFoundError):
+        await promocode_repository.claim_activation(
+            promocode_id=created.id, user_id=user_id, subscription_id=None
+        )
+
+
+async def test_claim_refuses_a_code_expired_after_it_was_read(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    created = await promocode_repository.create(
+        _create_dto("LASTSEC", expires_at=datetime_now() - timedelta(seconds=1))
+    )
+    user_id = await _create_user(user_repository, 1004)
+
+    with pytest.raises(ValidationError):
+        await promocode_repository.claim_activation(
+            promocode_id=created.id, user_id=user_id, subscription_id=None
+        )

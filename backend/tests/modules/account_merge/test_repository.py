@@ -17,6 +17,7 @@ from app.core.db.models import (
     PaymentWaitlistEntry,
     Promocode,
     Referral,
+    Transaction,
 )
 from app.core.enums import (
     BroadcastCategory,
@@ -35,6 +36,7 @@ from app.modules.account_merge.repository import (
 )
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.modules.loyalty.factories import paid_order
 
 
 @pytest.fixture
@@ -391,3 +393,30 @@ async def test_reassign_keeps_a_real_referrer_over_a_deleted_one(
 
     [referral] = (await session.scalars(select(Referral))).all()
     assert (referral.referrer_id, referral.referred_id) == (referrer.id, target.id)
+
+
+async def test_reassign_keeps_a_moved_order_paid_at_its_own_time(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source = await user_repository.create(CreateUserDto(name="s"))
+    target = await user_repository.create(CreateUserDto(name="t"))
+    invited = await user_repository.create(CreateUserDto(name="i"))
+    order_id = await paid_order(session, source.id, "10", days_ago=30)
+    session.add(Referral(referrer_id=source.id, referred_id=invited.id, level=1))
+    await session.flush()
+    paid_at = await session.scalar(select(Transaction.updated_at).where(Transaction.id == order_id))
+    referred_at = await session.scalar(
+        select(Referral.updated_at).where(Referral.referred_id == invited.id)
+    )
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    session.expire_all()
+    order = await session.get_one(Transaction, order_id)
+    referral = await session.scalar(select(Referral).where(Referral.referred_id == invited.id))
+    assert order.user_id == target.id
+    # updated_at of a paid order is when it was paid; revenue and loyalty read it
+    assert order.updated_at == paid_at
+    assert referral is not None
+    assert referral.referrer_id == target.id
+    assert referral.updated_at == referred_at

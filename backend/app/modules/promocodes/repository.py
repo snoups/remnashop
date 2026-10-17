@@ -21,6 +21,7 @@ from app.modules.promocodes.dto import (
     UpdatePromocodeDto,
     UserPromocodeActivationDto,
 )
+from app.modules.promocodes.rules import assert_usable
 
 
 class PromocodeRepository:
@@ -198,6 +199,9 @@ class PromocodeRepository:
             raise NotFoundError(
                 f"Promocode '{promocode_id}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND
             ) from error
+
+        # deactivated or expired since the caller read it
+        assert_usable(self._to_dto(promocode_row), datetime_now())
 
         if promocode_row.max_activations is not None:
             count_result = await self.session.execute(

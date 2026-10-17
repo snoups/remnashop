@@ -21,6 +21,7 @@ from app.modules.subscriptions.panel import (
     new_panel_user,
     reset_traffic_if_paid,
     restore,
+    revert_panel_to_owner,
     subscription_row,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -183,6 +184,12 @@ class NewPurchase:
                         "purchase was in flight",
                         code=ErrorCode.PURCHASE_SUPERSEDED,
                     )
+                if locked_trial.addon_entitlements != trial.addon_entitlements:
+                    # an addon grant pushed the trial's limits over this plan's
+                    # meanwhile; it holds this lock while it pushes, so redo ours
+                    panel_user = await self._remnawave_sdk.users.update_user(
+                        configure_for_plan(trial.remnawave_user_id, plan, expire_at)
+                    )
                 await self._subscription_repository.mark_deleted(trial.id)
                 subscription = await self._subscription_repository.create(
                     # a disabled trial stays disabled: configure_for_plan
@@ -195,6 +202,10 @@ class NewPurchase:
             async with self._uow:
                 return await self._subscription_repository.get_by_id(done.subscription_id)
         except SupersededError:
+            # the row that replaced the trial owns the panel user now
+            await revert_panel_to_owner(
+                self._remnawave_sdk, self._subscription_repository, self._uow, trial
+            )
             raise
         except Exception:
             # best-effort revert, never disable: the panel user still belongs to

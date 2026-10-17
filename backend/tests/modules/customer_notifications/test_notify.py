@@ -9,6 +9,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.exceptions import RetryableTaskError
 from app.core.metrics import WORKER_METRICS_REGISTRY
+from app.core.utils.time import datetime_now
 from app.modules.customer_notifications.dto import NotifyCustomerDto
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.usecases import NotifyCustomerUseCase
@@ -245,3 +246,32 @@ async def test_bot_blocked_customer_gets_email_instead(fx: _Fixture) -> None:
 
     assert fx.telegram.messages == []
     assert len(fx.email.messages) == 1
+
+
+async def test_a_torrent_warning_that_failed_before_sending_is_retried(
+    fx: _Fixture, monkeypatch: Any
+) -> None:
+    user = await fx.create(name="a", telegram_id=8104)
+
+    async def unavailable() -> tuple[Optional[str], Optional[str]]:
+        raise RuntimeError("database blip")
+
+    monkeypatch.setattr(fx.tokens, "get_bot_token", unavailable)
+    with pytest.raises(RetryableTaskError):
+        await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=31)
+    monkeypatch.undo()
+
+    # the failed run left no cooldown behind for the retry to trip over
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=31)
+
+    assert len(fx.telegram.messages) == 1
+
+
+async def test_a_refused_mailbox_gets_no_more_notifications(fx: _Fixture) -> None:
+    user = await fx.create(name="a", email="dead@example.com")
+    async with fx.uow:
+        await fx.users.set_email_undeliverable(user.id, datetime_now())
+
+    await fx.notify(user)
+
+    assert fx.email.messages == []

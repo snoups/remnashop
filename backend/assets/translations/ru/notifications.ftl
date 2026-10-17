@@ -107,6 +107,12 @@ ntf-panel-login-failed = Неудачный вход в панель Remnawave �
     .title = Неудачный вход в панель
 ntf-panel-login-succeeded = Вход в панель Remnawave под «{ $username }». IP: { $ip }
     .title = Вход в панель
+ntf-rescue-cli-used = { $action ->
+        [reset_owner_access] Через консоль восстановления сброшен доступ владельца: новый пароль, очищен IP-allowlist, удалены сессии, passkey и привязки.
+        [enable_password_login] Через консоль восстановления включён вход по паролю.
+       *[restore_backup] Через консоль восстановления база восстановлена из резервной копии.
+    }
+    .title = Консоль восстановления
 ntf-required-channel-check-failed = Бот не может проверить подписку на канал { $channel_id }: { $error }. Пока проблема не решена, клиенты проходят без проверки.
     .title = Ошибка проверки канала
 ntf-telegram-webhook-failed = Ошибка webhook Telegram: { $error }

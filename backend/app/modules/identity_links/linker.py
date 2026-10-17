@@ -89,9 +89,11 @@ class IdentityLinker:
                 return LinkResultDto(status="linked")
 
         counts = await self._merger.check(user, owner_id)
-        other = await self._user_repository.find_by_id(owner_id)
-        assert other is not None
         async with self._uow:
+            other = await self._user_repository.find_by_id(owner_id)
+            if other is None:
+                # merged away or deleted since owner_of read it
+                raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
             oauth_identities = await self._oauth_identity_repository.list_by_user(owner_id)
         identities = build_identities(other, cabinet, oauth_identities)

@@ -51,7 +51,12 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
             user = await self._user_repository.find_by_id(order.user_id)
             unpaid = order.status in _UNPAID_FINAL
             unfulfilled = order.status is TransactionStatus.PAID and order.fulfilled_at is None
-            if order.is_test or user is None or not (unpaid or unfulfilled):
+            if (
+                order.is_test
+                or user is None
+                or user.deleted_at is not None
+                or not (unpaid or unfulfilled)
+            ):
                 raise ConflictError(
                     f"Transaction '{order.id}' can't be fulfilled",
                     code=ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE,

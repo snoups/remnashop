@@ -7,6 +7,7 @@ import pytest
 from fastapi import FastAPI, HTTPException, status
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import DBAPIError
 
 import app as app_package
 from app.api.app import get_app
@@ -203,3 +204,17 @@ def test_every_error_code_is_translated(locale: str) -> None:
     assert sorted(set(ErrorCode) - set(translations)) == []
     assert sorted(set(translations) - set(ErrorCode)) == []
     assert all(re.search(r"\S", text) for text in translations.values())
+
+
+def test_a_database_error_other_than_an_overflow_stays_a_500() -> None:
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/crash")
+    async def crash() -> None:
+        raise DBAPIError("SELECT 1", None, RuntimeError("deadlock detected"))
+
+    response = TestClient(app, raise_server_exceptions=False).get("/crash")
+
+    assert response.status_code == 500
+    assert response.json()["code"] == "INTERNAL_ERROR"

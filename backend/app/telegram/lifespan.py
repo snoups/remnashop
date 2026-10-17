@@ -141,7 +141,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     with contextlib.suppress(asyncio.CancelledError):
         await runtime_heartbeat_task
     bot_signals_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
+    # a listener that died on its own must not stop the shutdown below
+    with contextlib.suppress(asyncio.CancelledError, Exception):
         await bot_signals_task
     await endpoint.shutdown()
     await container.close()

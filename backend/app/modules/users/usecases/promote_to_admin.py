@@ -66,6 +66,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
             password_hash = existing_password_hash
 
         async with self._uow:
+            await self._lock_unchanged(target.id, existing_password_hash)
             updated = await self._user_repository.promote_to_admin(
                 target.id,
                 PromoteAdminDto(
@@ -82,3 +83,17 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
             )
 
         return AdminWithPasswordDto(admin=updated, password=password)
+
+    async def _lock_unchanged(self, user_id: int, password_hash: Optional[str]) -> None:
+        # the hash took a while: re-check under the lock that nothing moved meanwhile
+        fresh = await self._user_repository.find_live_for_update(user_id)
+        if fresh is None:
+            raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
+        if fresh.role != Role.USER:
+            raise ConflictError(
+                "User is already privileged", code=ErrorCode.USER_ALREADY_PRIVILEGED
+            )
+        if fresh.password_hash != password_hash:
+            raise ConflictError(
+                "User changed while being promoted", code=ErrorCode.PROMOTE_TARGET_CHANGED
+            )

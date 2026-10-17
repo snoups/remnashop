@@ -7,7 +7,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.subscriptions.eligibility import get_live_subscription, subscription_owner
+from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
@@ -32,7 +32,9 @@ class AdminDeleteAllDevicesUseCase(UseCase[int, None]):
 
     async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
-            subscription = await get_live_subscription(self._subscription_repository, data)
+            subscription = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data
+            )
         await self._remnawave_sdk.hwid.delete_all_hwid_user(
             DeleteUserAllHwidDeviceRequestDto(user_id=subscription.remnawave_user_id)
         )

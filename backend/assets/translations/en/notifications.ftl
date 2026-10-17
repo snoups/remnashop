@@ -95,6 +95,12 @@ ntf-panel-login-failed = Failed Remnawave panel sign-in as “{ $username }”. 
     .title = Panel sign-in failed
 ntf-panel-login-succeeded = Remnawave panel sign-in as “{ $username }”. IP: { $ip }
     .title = Panel sign-in
+ntf-rescue-cli-used = { $action ->
+        [reset_owner_access] The owner’s access was reset from the rescue console: new password, IP allowlist cleared, sessions, passkeys and linked accounts removed.
+        [enable_password_login] Password sign-in was turned on from the rescue console.
+       *[restore_backup] The database was restored from a backup from the rescue console.
+    }
+    .title = Rescue console
 ntf-required-channel-check-failed = The bot can't check membership in channel { $channel_id }: { $error }. Customers are let through until it's fixed.
     .title = Channel check failed
 ntf-telegram-webhook-failed = Telegram webhook error: { $error }

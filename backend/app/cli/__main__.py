@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 from typing import Final
 
+from app.cli.audit import record_rescue
 from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
@@ -20,6 +21,9 @@ _MENU: Final[str] = """Remnashop Rescue CLI
 async def _enable_password_login() -> None:
     config = AppConfig.get()
     await enable_password_login(config)
+    async with standalone_session(config) as session:
+        await record_rescue(session, "enable_password_login")
+        await session.commit()
     print("Password authentication enabled.")
 
 

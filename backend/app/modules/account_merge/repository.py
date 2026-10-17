@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Union
 
 from sqlalchemy import ColumnElement, and_, delete, func, or_, select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -155,7 +155,7 @@ class AccountMergeRepository:
             PushSubscription.user_id,
             ReferralReward.referrer_id,
         ):
-            await self.session.execute(update(column.class_).where(column == s).values({column: t}))
+            await self._move_owner(column, s, t)
 
         await self._move_deduplicated(
             BroadcastRecipient.user_id,
@@ -176,6 +176,20 @@ class AccountMergeRepository:
         await self._replace_in_promocode_allowlists(s, t)
         await self.session.flush()
 
+    async def _move_owner(
+        self,
+        user_col: Union[InstrumentedAttribute[int], InstrumentedAttribute[Optional[int]]],
+        s: int,
+        t: int,
+    ) -> None:
+        # a change of owner is not an edit of the row: updated_at stays, since a
+        # paid order's updated_at is its paid-at moment every revenue query reads
+        model = user_col.class_
+        values: dict[Any, Any] = {user_col: t}
+        if hasattr(model, "updated_at"):
+            values[model.updated_at] = model.updated_at
+        await self.session.execute(update(model).where(user_col == s).values(values))
+
     async def _move_deduplicated(
         self,
         user_col: InstrumentedAttribute[int],
@@ -186,7 +200,7 @@ class AccountMergeRepository:
         model = user_col.class_
         taken = select(*keys).where(user_col == t)
         await self.session.execute(delete(model).where(user_col == s, tuple_(*keys).in_(taken)))
-        await self.session.execute(update(model).where(user_col == s).values({user_col: t}))
+        await self._move_owner(user_col, s, t)
 
     async def _keep_earliest(
         self,
@@ -203,7 +217,7 @@ class AccountMergeRepository:
         ).all()
         if len(rows) == 2:
             await self.session.execute(delete(model).where(user_col == rows[1][0]))
-        await self.session.execute(update(model).where(user_col == s).values({user_col: t}))
+        await self._move_owner(user_col, s, t)
 
     async def _move_oauth(self, s: int, t: int, sides: dict[str, MergeSide]) -> None:
         source_providers = set(
@@ -223,9 +237,7 @@ class AccountMergeRepository:
                     OAuthIdentity.user_id == loser, OAuthIdentity.provider == provider
                 )
             )
-        await self.session.execute(
-            update(OAuthIdentity).where(OAuthIdentity.user_id == s).values(user_id=t)
-        )
+        await self._move_owner(OAuthIdentity.user_id, s, t)
 
     async def _move_referrals(self, s: int, t: int, sides: dict[str, MergeSide]) -> None:
         await self.session.execute(
@@ -251,12 +263,8 @@ class AccountMergeRepository:
             else:
                 loser = t if sides.get("referred_by") == "source" else s
             await self.session.execute(delete(Referral).where(Referral.referred_id == loser))
-        await self.session.execute(
-            update(Referral).where(Referral.referred_id == s).values(referred_id=t)
-        )
-        await self.session.execute(
-            update(Referral).where(Referral.referrer_id == s).values(referrer_id=t)
-        )
+        await self._move_owner(Referral.referred_id, s, t)
+        await self._move_owner(Referral.referrer_id, s, t)
         # s's upline may run through t's downline: target -> x -> source now loops
         current: Optional[int] = t
         for _ in range(_MAX_CHAIN_WALK):

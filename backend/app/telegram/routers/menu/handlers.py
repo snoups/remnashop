@@ -9,6 +9,7 @@ from fluentogram import TranslatorHub
 from loguru import logger
 
 from app.core.constants import USER_KEY
+from app.core.enums import PurchaseType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.subscriptions import (
     ActivateTrialSubscriptionDto,
@@ -17,7 +18,8 @@ from app.modules.subscriptions import (
 )
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
-from app.telegram.states import MainMenu
+from app.telegram.routers.purchase.handlers import PLAN_CODE_KEY
+from app.telegram.states import MainMenu, Purchase
 
 router = Router(name=__name__)
 
@@ -55,6 +57,14 @@ async def on_get_trial(
 
     if result.plan is None or not result.is_trial_available:
         await callback.answer(runner.get("ntf-common.trial-unavailable"), show_alert=True)
+        return
+
+    if not result.is_free:
+        # a paid trial is bought like any plan, opened the way a plan link opens it
+        await dialog_manager.start(
+            Purchase.PLAN,
+            data={"purchase_type": PurchaseType.NEW.value, PLAN_CODE_KEY: result.plan.public_code},
+        )
         return
 
     try:

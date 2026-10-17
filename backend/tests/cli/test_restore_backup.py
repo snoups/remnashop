@@ -75,6 +75,8 @@ async def test_run_restore_runs_when_confirmed(tmp_path: Path) -> None:
         patch(
             "app.cli.restore_backup.terminate_other_backends", AsyncMock(return_value=3)
         ) as terminate_mock,
+        # its own session would commit into the shared test database
+        patch("app.cli.restore_backup._record_restore", AsyncMock()) as record_mock,
     ):
         await run_restore(
             path,
@@ -85,3 +87,4 @@ async def test_run_restore_runs_when_confirmed(tmp_path: Path) -> None:
 
     terminate_mock.assert_awaited_once()
     restore_mock.assert_awaited_once_with(AppConfig.get(), path)
+    record_mock.assert_awaited_once()

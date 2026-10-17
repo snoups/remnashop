@@ -97,7 +97,7 @@ async def grant_subscription(
 @router.patch(
     "/{subscription_id:int}",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def update_subscription(
@@ -146,7 +146,7 @@ async def update_subscription_squads(
 @router.delete(
     "/{subscription_id:int}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def delete_subscription(
@@ -174,7 +174,7 @@ async def get_subscription(
 @router.post(
     "/{subscription_id:int}/actions/change-plan",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def change_subscription_plan(
@@ -197,7 +197,7 @@ async def change_subscription_plan(
 @router.post(
     "/{subscription_id:int}/actions/enable",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def enable_subscription(
@@ -214,7 +214,7 @@ async def enable_subscription(
 @router.post(
     "/{subscription_id:int}/actions/disable",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def disable_subscription(
@@ -231,7 +231,7 @@ async def disable_subscription(
 @router.post(
     "/{subscription_id:int}/actions/reset-traffic",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def reset_subscription_traffic(
@@ -247,7 +247,7 @@ async def reset_subscription_traffic(
 @router.post(
     "/{subscription_id:int}/actions/reissue",
     response_model=SubscriptionResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def reissue_subscription_link(
@@ -263,7 +263,7 @@ async def reissue_subscription_link(
 @router.get(
     "/{subscription_id:int}/devices",
     response_model=DeviceListResponse,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def list_subscription_devices(
@@ -281,7 +281,7 @@ async def list_subscription_devices(
 @router.delete(
     "/{subscription_id:int}/devices/{hwid}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def delete_subscription_device(
@@ -296,7 +296,7 @@ async def delete_subscription_device(
 @router.post(
     "/{subscription_id:int}/devices/bulk/delete",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def delete_all_subscription_devices(

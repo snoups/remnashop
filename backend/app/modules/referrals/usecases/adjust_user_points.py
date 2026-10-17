@@ -10,7 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import AdjustUserPointsDto
 from app.modules.referrals.events import UserPointsAdjustedEvent
-from app.modules.users import UserDto, UserRepository, get_visible_target
+from app.modules.users import UserDto, UserRepository, assert_manageable, get_visible_target
 
 
 class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
@@ -25,7 +25,10 @@ class AdjustUserPointsUseCase(UseCase[AdjustUserPointsDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: AdjustUserPointsDto) -> UserDto:
         async with self._uow:
-            target = await get_visible_target(self._user_repository, actor, data.user_id)
+            target = await get_visible_target(
+                self._user_repository, actor, data.user_id, for_update=True
+            )
+            assert_manageable(actor, target, allow_self=True)
 
             # Belt-and-braces: the authoritative floor lives in credit_points' own
             # UPDATE predicate (two concurrent debits would both pass a check made

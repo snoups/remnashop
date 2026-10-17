@@ -924,3 +924,12 @@ async def test_pinning_a_renewal_needs_the_current_claim(
         await idempotency_repository.pin_renew_expire_at("pin-1", pinned, new_token)
 
     assert await idempotency_repository.get_pending_renew_expire_at("pin-1") is not None
+
+
+async def test_entitlements_load_for_more_ids_than_asyncpg_takes_parameters(
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    # reconcile hands over every live subscription; IN (...) caps out at 32767 binds
+    loaded = await subscription_repository._load_entitlements(list(range(1, 40_001)))
+
+    assert loaded == {}

@@ -1,3 +1,4 @@
+from contextlib import suppress
 from datetime import datetime
 from typing import Final, Optional
 from uuid import uuid4
@@ -7,6 +8,7 @@ from remnapy import RemnawaveSDK
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
 from app.core.constants import GB_TO_BYTES
+from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
@@ -14,6 +16,7 @@ from app.modules.subscriptions.dto import (
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
+from app.modules.subscriptions.repository import SubscriptionRepository
 
 _PANEL_USERNAME_PREFIX: Final[str] = "rs_"
 
@@ -55,6 +58,26 @@ def restore(subscription: SubscriptionDto) -> UpdateUserRequestDto:
         active_internal_squads=subscription.internal_squads or None,
         external_squad_uuid=subscription.external_squad,
     )
+
+
+async def revert_panel_to_owner(
+    sdk: RemnawaveSDK,
+    repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    current: SubscriptionDto,
+) -> None:
+    """Best effort: puts the panel user back to the row that owns it in the
+    database -- `current`, or the newer row that took the panel user over."""
+    with suppress(Exception):
+        owner: Optional[SubscriptionDto] = None
+        with suppress(Exception):
+            async with uow:
+                owner = await repository.get_by_remnawave_user_id(current.remnawave_user_id)
+        # unreadable database: current is the best guess left
+        owner = owner or current
+        if owner.status is SubscriptionStatus.DELETED:
+            return
+        await sdk.users.update_user(restore(owner))
 
 
 def subscription_row(

@@ -33,6 +33,7 @@ _NOTIFICATION_BY_CODE: Final[dict[ErrorCode, str]] = {
     ErrorCode.PROMOCODE_NOT_FOUND: "ntf-promocode.not-found",
     ErrorCode.PROMOCODE_EXPIRED: "ntf-promocode.expired",
     ErrorCode.PROMOCODE_ALREADY_ACTIVATED: "ntf-promocode.already-activated",
+    ErrorCode.PROMOCODE_DISCOUNT_NOT_BETTER: "ntf-promocode.discount-not-better",
     ErrorCode.TARGET_SUBSCRIPTION_REQUIRED: "ntf-promocode.no-target-subscription",
 }
 _TARGET_REQUIRED_REWARDS: Final[frozenset[PromocodeRewardType]] = frozenset(

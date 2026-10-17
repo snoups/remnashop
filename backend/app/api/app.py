@@ -77,6 +77,15 @@ def _setup_spa_serving(app: FastAPI, frontend_dist: Path) -> None:
         name="frontend-assets",
     )
 
+    # registered after every real route: an unknown API path must not get the SPA's index.html
+    @app.api_route(
+        "/api/{rest:path}",
+        methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        include_in_schema=False,
+    )
+    async def unknown_api_route(rest: str) -> None:
+        raise ApiError(status.HTTP_404_NOT_FOUND, "Not Found", code=ErrorCode.NOT_FOUND)
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str) -> FileResponse:
         candidate = (root / full_path).resolve()

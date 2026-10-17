@@ -8,7 +8,15 @@ from sqlalchemy import select
 from app.core.constants import GB_TO_BYTES
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AddOnType, Currency, Locale, PlanType, PurchaseType, Role
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    Locale,
+    PlanType,
+    PurchaseType,
+    Role,
+    SubscriptionStatus,
+)
 from app.core.exceptions import (
     NotFoundError,
     PermissionDeniedError,
@@ -27,7 +35,11 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.dto import GrantAddOnDto, PurchaseSubscriptionDto
+from app.modules.subscriptions.dto import (
+    CreateSubscriptionDto,
+    GrantAddOnDto,
+    PurchaseSubscriptionDto,
+)
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -281,14 +293,16 @@ async def test_grant_addon_retried_after_panel_failure_does_not_double_grant(
         event_publisher,
         435,
     )
-    addon = await addon_repository.create(
-        CreateAddOnDto(
-            name="traffic-50gb-retry",
-            type=AddOnType.TRAFFIC,
-            amount=50,
-            base_price=Decimal("1.99"),
+    # committed, as in production: the failed attempt rolls its own transaction back
+    async with uow:
+        addon = await addon_repository.create(
+            CreateAddOnDto(
+                name="traffic-50gb-retry",
+                type=AddOnType.TRAFFIC,
+                amount=50,
+                base_price=Decimal("1.99"),
+            )
         )
-    )
     use_case = GrantAddOnUseCase(
         subscription_repository,
         addon_repository,
@@ -373,3 +387,80 @@ async def test_system_can_grant_devices_addon_without_clearing_traffic_limit(
     panel_payload = remnawave_store[granted.remnawave_user_id]
     assert panel_payload["trafficLimitBytes"] == 100 * GB_TO_BYTES
     assert panel_payload["hwidDeviceLimit"] == 5
+
+
+async def _grant_use_case(
+    subscription_repository: SubscriptionRepository,
+    addon_repository: AddOnRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> GrantAddOnUseCase:
+    return GrantAddOnUseCase(
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+
+async def test_an_addon_for_a_replaced_subscription_lands_on_its_successor(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    addon_repository: AddOnRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    buyer, replaced_id = await _create_subscription(
+        plan_repository,
+        subscription_repository,
+        user_repository,
+        settings_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        441,
+    )
+    replaced = await subscription_repository.get_by_id(replaced_id)
+    # a plan change after the promocode was activated: same panel user, bigger plan
+    async with uow:
+        await subscription_repository.mark_deleted(replaced_id)
+        successor = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=buyer.id,
+                remnawave_user_id=replaced.remnawave_user_id,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=500,
+                device_limit=3,
+                expire_at=replaced.expire_at,
+                url=replaced.url,
+                plan_snapshot=replaced.plan_snapshot,
+            )
+        )
+        addon = await addon_repository.create(
+            CreateAddOnDto(
+                name="traffic-50gb-late", type=AddOnType.TRAFFIC, amount=50, base_price=Decimal(1)
+            )
+        )
+    use_case = await _grant_use_case(
+        subscription_repository,
+        addon_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    granted = await use_case.system(GrantAddOnDto(subscription_id=replaced_id, addon_id=addon.id))
+
+    assert granted.id == successor.id
+    assert granted.effective_traffic_limit == 550
+    assert remnawave_store[replaced.remnawave_user_id]["trafficLimitBytes"] == 550 * GB_TO_BYTES
+    assert (await subscription_repository.get_by_id(replaced_id)).addon_entitlements == []

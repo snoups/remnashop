@@ -1,9 +1,11 @@
 from datetime import timedelta
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cli.reset_owner_access import reset_owner_access
 from app.core.config import AppConfig
+from app.core.db.models import EventOutboxEntry
 from app.core.enums import Locale, OAuthProvider, Role, SessionAudience
 from app.core.security import verify_password
 from app.core.utils.time import datetime_now
@@ -114,3 +116,19 @@ async def test_reset_owner_access_unlinks_telegram(
 
     after = await user_repository.find_by_id(owner.id)
     assert after is not None and after.telegram_id is None
+
+
+async def test_reset_owner_access_leaves_an_audit_trail(
+    session: AsyncSession, config: AppConfig, user_repository: UserRepository
+) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
+    )
+
+    await reset_owner_access(session, config.crypt_key.get_secret_value())
+
+    entry = await session.scalar(
+        select(EventOutboxEntry).where(EventOutboxEntry.event_type == "RescueCliUsedEvent")
+    )
+    assert entry is not None
+    assert entry.payload == {"action": "reset_owner_access", "user_id": owner.id}

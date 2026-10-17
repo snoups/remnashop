@@ -23,14 +23,16 @@ from app.modules.subscriptions.panel import (
     configure_for_plan,
     reset_traffic_if_paid,
     restore,
+    revert_panel_to_owner,
     subscription_row,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
 class _TargetMovedError(Exception):
-    """The target's expire_at moved (a renewal committed) after the credit was
-    computed from it."""
+    """The target moved after its panel user was configured from it: a renewal
+    shifted expire_at (the credit is stale), or an addon grant pushed its own
+    limits over this change's."""
 
     def __init__(self, current: SubscriptionDto) -> None:
         self.current = current
@@ -130,7 +132,10 @@ class ChangePurchase:
                         "was in flight",
                         code=ErrorCode.PURCHASE_SUPERSEDED,
                     )
-                if locked_old.expire_at != old.expire_at:
+                if (
+                    locked_old.expire_at != old.expire_at
+                    or locked_old.addon_entitlements != old.addon_entitlements
+                ):
                     raise _TargetMovedError(locked_old)
                 await self._subscription_repository.mark_deleted(old.id)
                 updated = await self._subscription_repository.create(
@@ -155,7 +160,13 @@ class ChangePurchase:
                             payment_key=data.idempotency_key,
                         )
                     )
-        except (SupersededError, _TargetMovedError):
+        except SupersededError:
+            # the row that replaced old owns the panel user now; give it its config back
+            await revert_panel_to_owner(
+                self._remnawave_sdk, self._subscription_repository, self._uow, old
+            )
+            raise
+        except _TargetMovedError:
             raise
         except Exception:
             # no orphan: update_user changed old's own panel user. Best-effort

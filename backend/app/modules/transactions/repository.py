@@ -248,7 +248,6 @@ class TransactionRepository:
         return cast(CursorResult, result).rowcount > 0
 
     async def cancel_expired_pending(self, cutoff: datetime) -> list[TransactionDto]:
-        # a Core update() skips the ORM's onupdate, so updated_at is set by hand
         rows = await self.session.scalars(
             update(Transaction)
             .where(

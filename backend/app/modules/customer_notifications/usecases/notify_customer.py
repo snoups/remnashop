@@ -72,16 +72,12 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             user = await self._user_repository.find_by_id(data.user_id)
         if user is None or user.is_blocked or user.deleted_at is not None:
             return
-        cooldown_key = _cooldown_key(data.event_type, user.id)
-        if cooldown_key is not None and not await self._redis.set(
-            cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
-        ):
-            return
         token, _ = await self._token_source.get_bot_token()
         channels = channels_for(
             data.event_type,
             telegram_id=user.telegram_id if token and not user.is_bot_blocked else None,
-            email=user.email,
+            # a mailbox that refused us for good is skipped until the address is proven again
+            email=user.email if user.email_undeliverable_at is None else None,
         )
         if not channels:
             logger.info(f"No channel to notify user {user.id} about {data.event_type}")
@@ -90,6 +86,13 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         title, body = renderer.render(user.language, f"Customer{data.event_type}", data.args)
         if not body:
             logger.error(f"No customer notification text for {data.event_type}")
+            return
+        # set only once there is something to send: a failure above must leave
+        # the retry free to deliver, and nothing sent must not silence the next one
+        cooldown_key = _cooldown_key(data.event_type, user.id)
+        if cooldown_key is not None and not await self._redis.set(
+            cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
+        ):
             return
         first_error: Optional[Exception] = None
         for channel in channels:

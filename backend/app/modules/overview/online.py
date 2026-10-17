@@ -28,9 +28,13 @@ async def record_online_sample(redis: Redis, moment: datetime, online_now: int) 
         _DAILY_PEAK_KEY, {moment.astimezone(TIMEZONE).date().isoformat(): online_now}, gt=True
     )
     await redis.zadd(_HOURLY_PEAK_KEY, {_hour_member(moment): online_now}, gt=True)
-    # exact-hour prune, a sampler outage leaves older members;
-    # sweep with ZRANGE if the set ever grows
-    await redis.zrem(_HOURLY_PEAK_KEY, _hour_member(moment - _HOURLY_KEEP))
+    # every member past the window, not just the one hour: a sampler outage
+    # would otherwise strand the hours it missed; the set stays ~49 members
+    cutoff = _hour_member(moment - _HOURLY_KEEP)
+    members = await redis.zrange(_HOURLY_PEAK_KEY, 0, -1)
+    stale = [member for member in members if member <= cutoff]
+    if stale:
+        await redis.zrem(_HOURLY_PEAK_KEY, *stale)
 
 
 async def read_latest_online(redis: Redis) -> int:

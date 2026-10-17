@@ -7,7 +7,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto
-from app.modules.subscriptions.eligibility import get_live_subscription, subscription_owner
+from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
@@ -32,7 +32,9 @@ class AdminReissueSubscriptionUseCase(UseCase[int, SubscriptionDto]):
 
     async def _execute(self, actor: Actor, data: int) -> SubscriptionDto:
         async with self._uow:
-            subscription = await get_live_subscription(self._subscription_repository, data)
+            subscription = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data
+            )
 
         panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
             subscription.remnawave_user_id

@@ -1613,6 +1613,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("referred_id", name="uq_referrals_referred_id"),
     )
+    op.create_index(op.f("ix_referrals_referrer_id"), "referrals", ["referrer_id"], unique=False)
     op.create_table(
         "subscriptions",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -2014,6 +2015,9 @@ def upgrade() -> None:
             "payment_key", "referral_id", name="uq_referral_rewards_payment_referral"
         ),
     )
+    op.create_index(
+        op.f("ix_referral_rewards_referrer_id"), "referral_rewards", ["referrer_id"], unique=False
+    )
     op.create_table(
         "subscription_purchase_idempotency",
         sa.Column("key", sa.String(), nullable=False),
@@ -2190,6 +2194,7 @@ def downgrade() -> None:
         table_name="subscription_purchase_idempotency",
     )
     op.drop_table("subscription_purchase_idempotency")
+    op.drop_index(op.f("ix_referral_rewards_referrer_id"), table_name="referral_rewards")
     op.drop_table("referral_rewards")
     op.drop_index(op.f("ix_push_subscriptions_user_id"), table_name="push_subscriptions")
     op.drop_index(op.f("ix_push_subscriptions_session_id"), table_name="push_subscriptions")
@@ -2227,6 +2232,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_subscriptions_remnawave_user_id"), table_name="subscriptions")
     op.drop_index(op.f("ix_subscriptions_expire_at"), table_name="subscriptions")
     op.drop_table("subscriptions")
+    op.drop_index(op.f("ix_referrals_referrer_id"), table_name="referrals")
     op.drop_table("referrals")
     op.drop_table("payment_waitlist")
     op.drop_index(op.f("ix_passkey_credentials_user_id"), table_name="passkey_credentials")

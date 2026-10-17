@@ -192,9 +192,11 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error
 
         async with self._uow:
-            await self._transaction_repository.mark_status(
+            # a webhook that beat us here has stored the payment id and marked it PAID already
+            await self._transaction_repository.mark_status_if(
                 order.id,
                 TransactionStatus.PENDING,
+                current=frozenset({TransactionStatus.PENDING}),
                 external_payment_id=intent.provider_payment_id,
             )
 

@@ -2,6 +2,7 @@ import pytest
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType, PromocodeRewardType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
@@ -128,3 +129,43 @@ async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(
 
     with pytest.raises(ValidationError):
         await use_case(actor, ValidatePromocodeDto(code="PREVIEWPAUSED"))
+
+
+@pytest.mark.parametrize(
+    ("reward_type", "field"),
+    [
+        (PromocodeRewardType.PERSONAL_DISCOUNT, "personal_discount"),
+        (PromocodeRewardType.PURCHASE_DISCOUNT, "purchase_discount"),
+    ],
+)
+async def test_a_smaller_discount_than_the_current_one_is_refused(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    reward_type: PromocodeRewardType,
+    field: str,
+) -> None:
+    await promocode_repository.create(
+        CreatePromocodeDto(code="SMALL5", reward_type=reward_type, reward=5)
+    )
+    actor = await user_repository.create(CreateUserDto(name="discounted"))
+    actor = actor.model_copy(update={field: 30})
+    use_case = ValidatePromocodeUseCase(
+        promocode_repository,
+        subscription_repository,
+        PlanRepository(promocode_repository.session),
+        make_eligibility(promocode_repository.session),
+        ReferralRepository(promocode_repository.session),
+        uow,
+    )
+
+    with pytest.raises(ValidationError) as refused:
+        await use_case(actor, ValidatePromocodeDto(code="SMALL5"))
+    assert refused.value.code is ErrorCode.PROMOCODE_DISCOUNT_NOT_BETTER
+
+    # an equal one still goes through: it may carry a later expiry
+    assert (
+        await use_case(actor.model_copy(update={field: 5}), ValidatePromocodeDto(code="SMALL5"))
+    ).reward == 5

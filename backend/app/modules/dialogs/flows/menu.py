@@ -17,6 +17,9 @@ def register_menu_metadata() -> None:
         catalog.register_action_key(key)
 
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
+    catalog.register_condition(
+        "trial_paid_available", lambda data: bool(data.get("trial_paid_available"))
+    )
     catalog.register_condition("has_device_limit", lambda data: bool(data.get("has_device_limit")))
     # one visibility_condition per button, so both checks fold into this one
     catalog.register_condition(
@@ -41,6 +44,9 @@ def register_menu_metadata() -> None:
     )
     catalog.register_variable(
         "subscriptions_count", lambda data: data.get("subscriptions_count", 0), category="user"
+    )
+    catalog.register_variable(
+        "trial_price", lambda data: data.get("trial_price", ""), category="user"
     )
 
     catalog.register_window(
@@ -67,6 +73,15 @@ def register_menu_metadata() -> None:
                     link_type=ButtonLinkType.ACTION,
                     action_key="get_trial",
                     visibility_condition="trial_available",
+                ),
+                catalog.CatalogButton(
+                    key="trial_paid",
+                    text_key="btn-menu.trial-paid",
+                    row=1,
+                    column=1,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="get_trial",
+                    visibility_condition="trial_paid_available",
                 ),
                 catalog.CatalogButton(
                     key="subscriptions",

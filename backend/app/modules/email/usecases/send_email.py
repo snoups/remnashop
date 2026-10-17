@@ -8,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import AppearanceImageKind
 from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.email.batch import SMTP_PAUSE_SECONDS, smtp_pause_key
 from app.modules.email.dto import EmailMessageDto
 from app.modules.email.sender import EmailSendError, SmtpSender
@@ -16,6 +17,7 @@ from app.modules.settings import (
     GetPublicAppearanceImageUseCase,
     SettingsRepository,
 )
+from app.modules.users import UserRepository
 
 
 class SendEmailUseCase(UseCase[EmailMessageDto, None]):
@@ -27,9 +29,11 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
         sender: SmtpSender,
         redis: Redis,
         get_public_appearance_image_use_case: GetPublicAppearanceImageUseCase,
+        user_repository: UserRepository,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
+        self._user_repository = user_repository
         self._sender = sender
         self._redis = redis
         self._get_public_appearance_image_use_case = get_public_appearance_image_use_case
@@ -54,7 +58,18 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
         try:
             await self._sender.send(settings.profile(bulk=False), data, logo)
         except EmailSendError as error:
+            if error.refused:
+                await self._mark_undeliverable(data.to)
+                logger.warning(f"Email refused for good, not retrying: {error}")
+                return
             if error.connection:
                 await self._redis.set(smtp_pause_key(bulk=False), "1", ex=SMTP_PAUSE_SECONDS)
             logger.warning(f"Email delivery failed, will retry: {error}")
             raise RetryableTaskError(str(error)) from error
+
+    async def _mark_undeliverable(self, address: str) -> None:
+        # same flag a refused broadcast sets: later mail skips the address until it's proven again
+        async with self._uow:
+            user = await self._user_repository.get_by_email(address)
+            if user is not None and user.email == address.lower():
+                await self._user_repository.set_email_undeliverable(user.id, datetime_now())

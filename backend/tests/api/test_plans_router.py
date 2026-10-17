@@ -1,5 +1,6 @@
 import datetime
 from datetime import timedelta, timezone
+from decimal import Decimal
 from typing import AsyncIterator
 
 import httpx
@@ -329,3 +330,72 @@ async def test_share_urls_link_the_plan_into_the_cabinet(
     assert share.json()["webcabinet_url"] == (
         f"https://cabinet.example.com/purchase?plan={plan['public_code']}"
     )
+
+
+async def test_catalog_leaves_trials_to_the_trial_button_but_opens_a_free_one_by_code(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    owner_token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    created = await client.post(
+        f"{API_V1}/plans",
+        headers=owner_headers,
+        json={
+            "name": "Trial",
+            "type": "BOTH",
+            "traffic_limit": 10,
+            "device_limit": 1,
+            "is_trial": True,
+        },
+    )
+    plan_id = created.json()["id"]
+    await client.put(
+        f"{API_V1}/plans/{plan_id}/durations",
+        headers=owner_headers,
+        json={"durations": [{"days": 3, "order_index": 0, "base_price": "0"}]},
+    )
+    await client.put(
+        f"{API_V1}/plans/{plan_id}/squads",
+        headers=owner_headers,
+        json={"internal_squads": ["11111111-1111-1111-1111-111111111111"], "external_squad": None},
+    )
+    await client.patch(f"{API_V1}/plans/{plan_id}", headers=owner_headers, json={"is_active": True})
+    user_headers = {
+        "Authorization": "Bearer "
+        + await _token_for(Role.USER, user_repository, session_repository, uow, config)
+    }
+
+    listed = await client.get(f"{API_V1}/plans/catalog", headers=user_headers)
+    by_code = await client.get(
+        f"{API_V1}/plans/catalog",
+        params={"plan_code": created.json()["public_code"]},
+        headers=user_headers,
+    )
+
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+    assert by_code.status_code == 200
+    [plan] = by_code.json()["items"]
+    assert plan["is_trial"] is True
+    assert {Decimal(p["price"]) for p in plan["durations"][0]["prices"]} == {Decimal(0)}
+
+
+async def test_an_id_past_the_int32_range_is_a_validation_error_not_a_crash(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+
+    response = await client.get(
+        f"{API_V1}/plans/3000000000", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "REQUEST_INVALID"

@@ -1,8 +1,10 @@
 from pathlib import Path
 from typing import Callable, Final
 
+from app.cli.audit import record_rescue
 from app.core.config import AppConfig
 from app.core.constants import BACKUP_DIR
+from app.core.db.standalone import standalone_session
 from app.modules.backups import (
     ProvenanceResult,
     ProvenanceStatus,
@@ -58,9 +60,21 @@ async def run_restore(
     try:
         await restore_database_dump(config, path)
     except RuntimeError:
+        await _record_restore(config)
         print(
             "Restore finished with errors -- check the pg_restore output above. "
             "Restart api/telegram/worker on this host."
         )
         return
+    await _record_restore(config)
     print("Restore complete. Restart api/telegram/worker on this host now.")
+
+
+async def _record_restore(config: AppConfig) -> None:
+    # into the restored database, after the dump replaced the audit log too
+    try:
+        async with standalone_session(config) as session:
+            await record_rescue(session, "restore_backup")
+            await session.commit()
+    except Exception as error:
+        print(f"Could not record the restore in the audit log: {error}")

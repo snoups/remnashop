@@ -360,6 +360,13 @@ class SetSubscriptionEnabledDto:
 class GetAvailableTrialDto:
     plan: Optional[PlanDto]
     is_trial_available: bool
+    # the trial's one duration, priced in the anchor currency; 0 for a free trial
+    price: Decimal = Decimal(0)
+    currency: Optional[Currency] = None
+
+    @property
+    def is_free(self) -> bool:
+        return self.price == 0
 
 
 class DeviceDto(BaseModel):

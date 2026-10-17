@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import Optional
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.actor import SyntheticActor
@@ -67,6 +67,7 @@ from app.modules.users.usecases import (
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
+from app.modules.users.usecases import promote_to_admin as promote_to_admin_module
 from tests.fakes.events import RecordingEventPublisher
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -2188,3 +2189,67 @@ async def test_list_users_filters_blocked_by_origin(
     by_lists, total = await list_use_case(OWNER, ListUsersDto(blocked_by="lists"))
     assert [u.name for u in by_lists] == ["Listed"]
     assert total == 1
+
+
+async def _promote_while(
+    monkeypatch: pytest.MonkeyPatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    meanwhile: dict[str, object],
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Client", role=Role.USER, language=Locale.EN, telegram_id=840_777)
+        )
+    real_hash = promote_to_admin_module.hash_password
+
+    async def hash_while_the_target_changes(password: str, pepper: str) -> str:
+        # another request lands between the check and the write
+        async with uow:
+            await user_repository.session.execute(
+                update(User).where(User.id == target.id).values(**meanwhile)
+            )
+        return await real_hash(password, pepper)
+
+    monkeypatch.setattr(promote_to_admin_module, "hash_password", hash_while_the_target_changes)
+    await PromoteToAdminUseCase(user_repository, uow, config, event_publisher)(
+        OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="raced-admin")
+    )
+
+
+async def test_promote_refuses_an_account_deleted_while_its_password_was_hashed(
+    monkeypatch: pytest.MonkeyPatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    with pytest.raises(NotFoundError):
+        await _promote_while(
+            monkeypatch,
+            user_repository,
+            uow,
+            config,
+            event_publisher,
+            {"deleted_at": datetime_now()},
+        )
+
+
+async def test_promote_refuses_an_account_promoted_while_its_password_was_hashed(
+    monkeypatch: pytest.MonkeyPatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    with pytest.raises(ConflictError):
+        await _promote_while(
+            monkeypatch,
+            user_repository,
+            uow,
+            config,
+            event_publisher,
+            {"role": Role.ADMIN, "login": "first-admin"},
+        )

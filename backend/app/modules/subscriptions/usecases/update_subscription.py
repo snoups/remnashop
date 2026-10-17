@@ -15,7 +15,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionDto
 from app.modules.subscriptions.eligibility import (
-    get_live_subscription,
+    get_manageable_subscription,
     lock_live_subscription,
     subscription_owner,
 )
@@ -53,7 +53,9 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
 
     async def _execute(self, actor: Actor, data: UpdateSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
-            old = await get_live_subscription(self._subscription_repository, data.subscription_id)
+            old = await get_manageable_subscription(
+                self._subscription_repository, self._user_repository, actor, data.subscription_id
+            )
 
         panel_status: Optional[SubscriptionStatus] = None
         touches_panel = any(

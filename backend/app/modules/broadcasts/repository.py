@@ -168,7 +168,7 @@ class BroadcastRepository:
             if not unique:
                 continue
             found = await self.session.scalar(
-                select(func.count()).select_from(model).where(model.id.in_(unique))
+                select(func.count()).select_from(model).where(in_ids(model.id, unique))
             )
             if (found or 0) != len(unique):
                 return True

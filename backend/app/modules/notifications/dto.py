@@ -35,6 +35,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "OAuthLoginFailedEvent",
             "PanelLoginFailedEvent",
             "PanelLoginSucceededEvent",
+            "RescueCliUsedEvent",
         }
     ),
     "failures": frozenset(
