@@ -34,9 +34,13 @@ def _manager(user_bonus_days: int = 0, item_id: str = "") -> AsyncMock:
     return manager
 
 
-def _redis(hits: int) -> AsyncMock:
-    redis = AsyncMock()
-    redis.incr.return_value = hits + 1
+def _redis(hits: int) -> MagicMock:
+    pipe = MagicMock()
+    pipe.execute = AsyncMock(return_value=[hits + 1, True])
+    pipe.__aenter__ = AsyncMock(return_value=pipe)
+    pipe.__aexit__ = AsyncMock(return_value=None)
+    redis = MagicMock()
+    redis.pipeline.return_value = pipe
     return redis
 
 
@@ -119,7 +123,9 @@ async def test_withdraw_shares_the_cabinet_rate_limit_counter() -> None:
         AsyncMock(text="1"), MagicMock(), _manager(), AsyncMock(), redis, _i18n()
     )
 
-    redis.incr.assert_awaited_once_with("remnashop:ratelimit:points_withdraw:user:1")
+    redis.pipeline.return_value.incr.assert_called_once_with(
+        "remnashop:ratelimit:points_withdraw:user:1"
+    )
 
 
 async def test_withdraw_points_opens_the_amount_input() -> None:

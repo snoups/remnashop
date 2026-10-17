@@ -66,24 +66,30 @@ class WarnExpiringPromocodeDiscountsUseCase(UseCase[None, int]):
             if not promocodes:
                 return 0
             users = await self._user_repository.list_with_discounts_from(list(promocodes))
-            for user in users:
-                for promocode_id, percent in _percents(user, set(promocodes)).items():
-                    promocode = promocodes[promocode_id]
-                    key = _warned_key(promocode, user.id)
-                    if await self._redis.exists(key):
-                        continue
-                    assert promocode.expires_at is not None
-                    left = (promocode.expires_at - now).total_seconds()
-                    await self._event_publisher.publish(
-                        PromocodeDiscountExpiringEvent(
-                            user=user,
-                            promocode_id=promocode.id,
-                            code=promocode.code,
-                            percent=percent,
-                            hours=max(1, math.ceil(left / 3600)),
-                        )
+            candidates = [
+                (user, promocodes[promocode_id], percent)
+                for user in users
+                for promocode_id, percent in _percents(user, set(promocodes)).items()
+            ]
+            if not candidates:
+                return 0
+            candidate_keys = [_warned_key(promocode, user.id) for user, promocode, _ in candidates]
+            warned = await self._redis.mget(candidate_keys)
+            for (user, promocode, percent), key, mark in zip(candidates, candidate_keys, warned):
+                if mark is not None:
+                    continue
+                assert promocode.expires_at is not None
+                left = (promocode.expires_at - now).total_seconds()
+                await self._event_publisher.publish(
+                    PromocodeDiscountExpiringEvent(
+                        user=user,
+                        promocode_id=promocode.id,
+                        code=promocode.code,
+                        percent=percent,
+                        hours=max(1, math.ceil(left / 3600)),
                     )
-                    keys.append(key)
+                )
+                keys.append(key)
             if keys:
                 await self._uow.after_commit(partial(self._mark_warned, keys))
         logger.info(f"{actor.log} Warned {len(keys)} customers about expiring promocode discounts")

@@ -50,7 +50,7 @@ services:
     <<: [*common, *logging, *env]
     command: >
       sh -c '
-      ARGS="--save \"\" --appendonly yes --maxmemory 512mb --maxmemory-policy volatile-lru --loglevel warning";
+      ARGS="--save \"\" --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction --loglevel warning";
       if [ -n "$${REDIS_PASSWORD}" ]; then
         exec valkey-server $${ARGS} --requirepass "$${REDIS_PASSWORD}";
       else

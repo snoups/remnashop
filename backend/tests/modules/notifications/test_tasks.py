@@ -183,6 +183,21 @@ async def test_a_burst_that_ends_is_summarised_once_its_window_closes(redis: Red
     assert summary.suppressed == 1
 
 
+async def test_flush_empties_its_index_of_pending_summaries(redis: Redis) -> None:
+    scope = coalesce_scope(_EVENT, {}, _IP)
+    await _reset(redis, scope)
+    use_case = FakeUseCase()
+    await _deliver(redis, use_case, 531, _EVENT, payload={"login": "a"})
+    await _deliver(redis, use_case, 532, _EVENT, payload={"login": "b"})
+    pending = f"{REDIS_KEY_PREFIX}notification_pending"
+    assert await redis.sismember(pending, scope)
+
+    await _close_window(redis, scope)
+    assert await flush_coalesced(redis, use_case) == 1
+
+    assert not await redis.sismember(pending, scope)
+
+
 async def test_sources_past_the_cap_fold_into_one_overflow_alert(redis: Redis) -> None:
     ips = [f"198.51.100.{i}" for i in range(8)]
     await _reset(redis, *(coalesce_scope(_EVENT, {}, ip) for ip in ips), f"{_EVENT}:*")

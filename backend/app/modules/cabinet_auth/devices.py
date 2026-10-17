@@ -20,8 +20,11 @@ class KnownDevices:
         key = f"{_KEY_PREFIX}{user_id}"
         device = f"{device_bucket(ip)}|{describe_user_agent(user_agent)}"
         fingerprint = hashlib.sha256(device.encode()).hexdigest()
-        had_any = await self._redis.zcard(key) > 0
-        added = await self._redis.zadd(key, {fingerprint: datetime_now().timestamp()})
-        await self._redis.zremrangebyrank(key, 0, -_MAX_DEVICES - 1)
-        await self._redis.expire(key, _TTL)
-        return bool(added) and had_any
+        # one MULTI: two parallel sign-ins must not both read an empty set
+        async with self._redis.pipeline(transaction=True) as pipe:
+            pipe.zcard(key)
+            pipe.zadd(key, {fingerprint: datetime_now().timestamp()})
+            pipe.zremrangebyrank(key, 0, -_MAX_DEVICES - 1)
+            pipe.expire(key, _TTL)
+            known, added, _, _ = await pipe.execute()
+        return bool(added) and known > 0

@@ -41,9 +41,11 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=WORKER_METRICS_REGISTRY)
     redis = await container.get(Redis)
-    state.worker_gauges_task = asyncio.create_task(
-        poll_worker_gauges(redis, broker.queue_name, RETRY_SCHEDULE_PREFIX)
-    )
+    if config.metrics_enabled:
+        # the retry gauge SCANs the whole keyspace; nothing reads it with metrics off
+        state.worker_gauges_task = asyncio.create_task(
+            poll_worker_gauges(redis, broker.queue_name, RETRY_SCHEDULE_PREFIX)
+        )
     state.runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "worker"))
 
 

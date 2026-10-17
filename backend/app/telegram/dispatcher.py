@@ -1,4 +1,5 @@
 from aiogram import Dispatcher
+from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram_dialog import BgManagerFactory, setup_dialogs
@@ -18,6 +19,8 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
     # write, so an active dialog never expires early.
     storage = RedisStorage.from_url(
         config.redis.dsn,
+        # aiogram-dialog keeps its stacks and contexts under their own destiny
+        key_builder=DefaultKeyBuilder(with_destiny=True),
         state_ttl=TTL_7D,
         data_ttl=TTL_7D,
         json_loads=decode,

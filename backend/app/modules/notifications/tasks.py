@@ -3,6 +3,7 @@ from typing import Any, Awaitable, Callable, Final, Optional
 import orjson
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
+from redis.asyncio.client import Pipeline
 
 from app.core.broker import broker
 from app.core.constants import REDIS_KEY_PREFIX, TTL_1D
@@ -23,6 +24,8 @@ _WINDOW: Final[str] = f"{REDIS_KEY_PREFIX}notification_window:"
 _SKIPPED: Final[str] = f"{REDIS_KEY_PREFIX}notification_skipped:"
 _LAST: Final[str] = f"{REDIS_KEY_PREFIX}notification_last:"
 _SOURCES: Final[str] = f"{REDIS_KEY_PREFIX}notification_sources:"
+# scopes holding a suppressed count, so the flush needn't SCAN the keyspace
+_PENDING: Final[str] = f"{REDIS_KEY_PREFIX}notification_pending"
 # a botnet or a rotated IPv6 range is many sources: past this many per window they share one
 _MAX_SOURCES_PER_WINDOW: Final[int] = 5
 _OVERFLOW_SUFFIX: Final[str] = ":*"
@@ -63,29 +66,43 @@ async def coalesce(
     redis: Redis, scope: str, payload: dict[str, Any], ip_address: Optional[str]
 ) -> Optional[int]:
     if not await redis.set(_WINDOW + scope, "1", nx=True, ex=COALESCE_WINDOW_S):
-        await redis.incr(_SKIPPED + scope)
-        await redis.expire(_SKIPPED + scope, _SUMMARY_TTL_S)
         last = orjson.dumps({"payload": payload, "ip_address": ip_address})
-        await redis.set(_LAST + scope, last, ex=_SUMMARY_TTL_S)
+        async with redis.pipeline(transaction=True) as pipe:
+            pipe.incr(_SKIPPED + scope)
+            pipe.set(_LAST + scope, last, ex=_SUMMARY_TTL_S)
+            _track_pending(pipe, scope)
+            await pipe.execute()
         return None
-    await redis.delete(_LAST + scope)
-    return int(await redis.getdel(_SKIPPED + scope) or 0)
+    async with redis.pipeline(transaction=True) as pipe:
+        pipe.delete(_LAST + scope)
+        pipe.getdel(_SKIPPED + scope)
+        _, skipped = await pipe.execute()
+    return int(skipped or 0)
 
 
 async def release_window(redis: Redis, scope: str, suppressed: int) -> None:
-    await redis.delete(_WINDOW + scope)
-    if suppressed:
-        await redis.incrby(_SKIPPED + scope, suppressed)
-        await redis.expire(_SKIPPED + scope, _SUMMARY_TTL_S)
+    async with redis.pipeline(transaction=True) as pipe:
+        pipe.delete(_WINDOW + scope)
+        if suppressed:
+            pipe.incrby(_SKIPPED + scope, suppressed)
+            _track_pending(pipe, scope)
+        await pipe.execute()
+
+
+def _track_pending(pipe: Pipeline, scope: str) -> None:
+    pipe.expire(_SKIPPED + scope, _SUMMARY_TTL_S)
+    pipe.sadd(_PENDING, scope)
+    pipe.expire(_PENDING, _SUMMARY_TTL_S)
 
 
 async def flush_coalesced(redis: Redis, use_case: DeliverNotificationUseCase) -> int:
     # a burst that stops is reported once its window closes, not at the next failure
     sent = 0
-    async for key in redis.scan_iter(match=_SKIPPED + "*"):
-        scope = str(key).removeprefix(_SKIPPED)
+    for scope in await redis.smembers(_PENDING):  # type: ignore[misc]
         if await redis.exists(_WINDOW + scope):
             continue
+        # before the reads: a failure suppressed meanwhile adds the scope back
+        await redis.srem(_PENDING, scope)  # type: ignore[misc]
         count = int(await redis.getdel(_SKIPPED + scope) or 0)
         raw = await redis.getdel(_LAST + scope)
         if not count or raw is None:
