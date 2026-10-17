@@ -12,7 +12,6 @@ from app.core.enums import SmtpSecurity
 class EmailSettings(BaseSql, TimestampMixin):
     __tablename__ = "email_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
     host: Mapped[Optional[str]] = mapped_column(String(255))
     port: Mapped[int] = mapped_column(default=587, server_default="587")

@@ -11,7 +11,6 @@ from app.core.db.timestamp import TimestampMixin
 class AppearanceSettings(BaseSql, TimestampMixin):
     __tablename__ = "appearance_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     brand_name: Mapped[Optional[str]] = mapped_column(String(64))

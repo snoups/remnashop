@@ -11,9 +11,8 @@ from app.core.db.timestamp import NOW_FUNC
 from app.core.error_codes import ErrorCode
 from app.modules.subscriptions.domain import SupersededError
 
-# Must exceed the longest webhook-resend window of any payment provider --
-# deleting a still-resendable key turns a replay into a fresh claim (double
-# charge + double provisioning).
+# Must exceed the longest webhook-resend window of any payment provider: a
+# replay of a deleted key is a fresh claim, provisioned a second time.
 IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
 
 

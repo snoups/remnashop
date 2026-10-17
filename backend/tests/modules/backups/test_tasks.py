@@ -239,10 +239,8 @@ async def test_create_assets_dump_excludes_backups_subdir(config, tmp_path: Path
 async def test_create_assets_dump_builds_temp_file_inside_backups_dir(
     config, tmp_path: Path
 ) -> None:
-    # the temp zip MUST be created inside backups_dir, not the system temp dir --
-    # media/ is a separate volume in every real deployment, and os.replace()
-    # across devices raises EXDEV. Asserting the dir= kwarg passed to mkstemp
-    # is what actually guarantees the final os.replace() stays same-device.
+    # the temp zip goes in backups_dir, not the system temp dir: media/ is its
+    # own volume in a real deployment, and os.replace() across devices raises EXDEV
     media_dir = tmp_path / "media"
     media_dir.mkdir()
     config.media_dir = media_dir

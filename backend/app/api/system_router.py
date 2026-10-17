@@ -41,8 +41,7 @@ async def get_system_metadata(
     config: FromDishka[AppConfig],
     _: Actor = Depends(require_admin),
 ) -> SystemMetadataResponse:
-    # is_official_build gates the update check --
-    # only a CI-baked artifact is safe to compare against GitHub releases.
+    # only a CI-built artifact can be compared against GitHub releases
     git = GitInfoResponse(
         commit_sha=config.build.commit,
         commit_date=parse_commit_date(config.build.time),

@@ -67,7 +67,8 @@ async def revert_panel_to_owner(
     current: SubscriptionDto,
 ) -> None:
     """Best effort: puts the panel user back to the row that owns it in the
-    database -- `current`, or the newer row that took the panel user over."""
+    database, `current` or the newer row that took the panel user over."""
+
     with suppress(Exception):
         owner: Optional[SubscriptionDto] = None
         with suppress(Exception):

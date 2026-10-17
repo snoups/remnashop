@@ -1,5 +1,3 @@
-"""Dialog configuration module."""
-
 from app.modules.dialogs import catalog
 from app.modules.dialogs.di import DialogsProvider, get_dialogs_providers
 from app.modules.dialogs.dto import (

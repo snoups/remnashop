@@ -2440,7 +2440,7 @@ async def test_change_credit_is_the_average_rate_over_renewals(
 
     changed = await use_case(buyer, dto(365, "600", PurchaseType.CHANGE, renewed.id))
 
-    # 700 credit at 600/365 per day is about 426 days (the old rule gave 801)
+    # 700 credit at 600/365 per day is about 426 days
     days = (changed.expire_at - datetime_now()).days
     assert 365 + 426 - 4 <= days <= 365 + 426 + 1
 

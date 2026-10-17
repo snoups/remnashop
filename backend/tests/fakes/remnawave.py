@@ -231,10 +231,8 @@ def make_fake_remnawave_transport(
     store: Optional[FakeUserStore] = None,
     hwid_store: Optional[FakeHwidStore] = None,
 ) -> tuple[httpx.MockTransport, FakeUserStore, FakeHwidStore]:
-    """Fakes the /users and /hwid/devices endpoints this plan's usecases
-    actually call. Any other path 404s, on purpose: a usecase reaching for
-    an endpoint this fake doesn't know about should fail loudly in tests,
-    not silently succeed against an accidental default response."""
+    """Fakes the /users and /hwid/devices endpoints. Any other path 404s, so a
+    usecase reaching for an unknown endpoint fails loudly."""
 
     if store is None:
         store = {}

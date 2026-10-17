@@ -41,9 +41,8 @@ def _referral_settings() -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _menu_catalog():
-    # menu_getter now resolves catalog variables (resolve_variable_kwargs), and other
-    # test modules wipe the global catalog via catalog._reset_for_tests(), so pin a
-    # known-registered state here rather than relying on import-time registration.
+    # menu_getter resolves catalog variables, and other test modules wipe the
+    # global catalog, so import-time registration can't be relied on
     catalog._reset_for_tests()
     register_menu_metadata()
     yield

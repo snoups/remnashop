@@ -122,9 +122,8 @@ class ChangePurchase:
 
         try:
             async with self._uow:
-                # Re-fetch under lock and re-validate nothing changed
-                # concurrently (e.g. a second CHANGE/DELETE racing this one)
-                # before committing.
+                # a second plan change or a delete may have raced this one
+
                 locked_old = await self._subscription_repository.get_by_id_for_update(old.id)
                 if locked_old.status is SubscriptionStatus.DELETED:
                     raise SupersededError(

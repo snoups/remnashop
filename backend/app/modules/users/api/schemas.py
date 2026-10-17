@@ -163,7 +163,7 @@ class UpdateAdminRequest(BaseModel):
 
 
 class UpdateOwnProfileRequest(BaseModel):
-    # None means "field omitted, leave unchanged", matching UpdateAdminRequest's convention.
+    # None = field omitted, leave unchanged
     name: Optional[str] = Field(default=None, min_length=1)
     current_password: Optional[str] = None
     new_password: Optional[str] = None

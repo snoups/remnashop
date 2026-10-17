@@ -174,9 +174,7 @@ def text_variable_keys() -> frozenset[str]:
 
 
 def text_keys() -> frozenset[str]:
-    # Every text key a catalog-registered window or button genuinely owns.
-    # Custom windows aren't in the in-process catalog, hence the prefix check
-    # callers layer on top of this set.
+    # Custom windows aren't in the in-process catalog: callers add a prefix check on top.
     keys: set[str] = set()
     for window in _WINDOWS.values():
         keys.update(window.text_keys)

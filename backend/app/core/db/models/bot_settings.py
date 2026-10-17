@@ -11,10 +11,8 @@ from app.core.db.timestamp import TimestampMixin
 class BotSettings(BaseSql, TimestampMixin):
     __tablename__ = "bot_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # Fernet-encrypted (APP_CRYPT_KEY) transparently by EncryptedString.
     token: Mapped[Optional[str]] = mapped_column(EncryptedString())
     secret_token: Mapped[Optional[str]] = mapped_column(EncryptedString())
     # may carry proxy credentials, hence encrypted like the token

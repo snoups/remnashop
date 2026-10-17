@@ -5,8 +5,7 @@ from app.core.constants import API_V1, BOT_WEBHOOK_PATH
 
 
 class BotConfig(BaseConfig, env_prefix="BOT_"):
-    # token/secret_token are dashboard-configured (modules/settings/), not env --
-    # see app/telegram/__main__.py for how they're read at process startup.
+    # token/secret_token are set in the dashboard (modules/settings/), not in env
     host: str = "0.0.0.0"
     port: int = 5001
 

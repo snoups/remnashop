@@ -10,7 +10,6 @@ from app.core.db.timestamp import TimestampMixin
 class BotRequirements(BaseSql, TimestampMixin):
     __tablename__ = "bot_requirements"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
     rules_required: Mapped[bool] = mapped_column(default=False, server_default="false")
     rules_url: Mapped[Optional[str]] = mapped_column()

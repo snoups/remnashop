@@ -33,10 +33,10 @@ def test_valid_init_data() -> None:
 @pytest.mark.parametrize(
     "init_data",
     [
-        _sign(_fields(), token="999:other"),  # чужой бот
-        _sign(_fields()).replace("Ann", "Bob"),  # подмена поля
-        _sign(_fields(auth_date=1_000_000 - 90_000)),  # старше суток
-        "user=%7B%7D",  # нет hash
+        _sign(_fields(), token="999:other"),  # another bot
+        _sign(_fields()).replace("Ann", "Bob"),  # tampered field
+        _sign(_fields(auth_date=1_000_000 - 90_000)),  # older than a day
+        "user=%7B%7D",  # no hash
     ],
 )
 def test_invalid_init_data(init_data: str) -> None:

@@ -56,7 +56,6 @@ from app.modules.users.api import admin_router as users_admin_router
 from app.modules.users.api import admins_router as users_admins_router
 from app.modules.users.api import router as users_router
 
-# Each further module contributes its router here once it has an api/ package.
 ROUTERS: Final[tuple[APIRouter, ...]] = (
     auth_router,
     auth_sessions_router,

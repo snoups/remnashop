@@ -9,7 +9,6 @@ from app.core.db.timestamp import TimestampMixin
 class ShopSettings(BaseSql, TimestampMixin):
     __tablename__ = "shop_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # NULL = unlimited. No column default: SQLAlchemy's `default=` also fires

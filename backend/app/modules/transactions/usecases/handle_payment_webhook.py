@@ -30,10 +30,10 @@ from app.modules.transactions.unpaid_orders import UNPAID_FINAL, give_back_purch
 from app.modules.users import UserRepository
 
 # Final for a paid claim: an order the TTL sweep or a provider CANCELED/FAILED
-# can still receive a late payment, and confirm() re-checks it against the
-# provider anyway. REFUNDED is final because it was paid and provisioned once
-# already, and the provider still reports that original payment as paid --
-# re-confirming it would provision it a second time.
+# can still receive a late payment, and confirm() re-checks it with the
+# provider anyway. A REFUNDED order was provisioned once already and the
+# provider still reports its payment as paid: confirming it again would
+# provision it a second time.
 _TERMINAL_STATUSES: Final[frozenset[TransactionStatus]] = frozenset(
     {TransactionStatus.PAID, TransactionStatus.REFUNDED}
 )

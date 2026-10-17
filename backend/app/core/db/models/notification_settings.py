@@ -11,7 +11,6 @@ from app.core.db.timestamp import TimestampMixin
 class NotificationSettings(BaseSql, TimestampMixin):
     __tablename__ = "notification_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     vapid_public_key: Mapped[Optional[str]] = mapped_column(String(128))

@@ -115,12 +115,9 @@ def test_engines_own_dollar_brace_token_syntax_is_disallowed() -> None:
 
 
 def test_unmatched_brace_without_closing_brace_is_not_caught_here() -> None:
-    # Known, accepted limitation: this function's job is the placeable-KIND
-    # allowlist, not full Fluent syntax validity. Text with an unmatched
-    # opening brace and no closing brace parses as Junk but contains no
-    # matching "}", so it falls through to None here. It's still caught by
-    # the separate FluentBundle.check_messages() compile check the caller
-    # (UpdateDialogTextUseCase) runs on the full candidate text afterward.
+    # only placeable kinds are checked here; the caller's
+    # FluentBundle.check_messages() catches the broken syntax
+
     assert find_disallowed_placeable("Hi { unterminated", _ALLOWED) is None
 
 

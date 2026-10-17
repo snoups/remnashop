@@ -18,10 +18,8 @@ class DatabaseConfig(BaseConfig, env_prefix="DATABASE_"):
     pool_timeout: int = 30
     pool_recycle: int = 1800
 
-    # All four are "give up instead of hanging forever" safety nets --
-    # statement/idle timeouts are enforced by Postgres itself, command/connect
-    # timeouts by the asyncpg driver. Raise them for a higher-latency database
-    # (e.g. a managed cloud Postgres).
+    # Postgres enforces the statement/idle timeouts, asyncpg the command/connect
+    # ones. Raise them for a higher-latency database such as a managed cloud one.
     statement_timeout_ms: int = 60_000
     idle_in_transaction_timeout_ms: int = 300_000
     # above statement_timeout: Postgres cancels first, with its own error

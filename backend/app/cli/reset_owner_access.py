@@ -12,9 +12,8 @@ from app.modules.users import UpdateUserDto, UserDto, UserRepository
 
 
 async def reset_owner_access(session: AsyncSession, pepper: str) -> Optional[tuple[UserDto, str]]:
-    # New password, empty IP allowlist, every session revoked, and every other
-    # way to sign in as the owner (passkeys, linked OAuth accounts, Telegram) removed --
-    # whoever held the old credentials, or planted one of their own, is out too.
+    # Every other way in (passkeys, linked OAuth accounts, Telegram) goes too:
+    # whoever held the old credentials may have planted one of their own.
     # API tokens are left alone.
     owners = await UserRepository(session).list_by_roles([Role.OWNER])
     if not owners:

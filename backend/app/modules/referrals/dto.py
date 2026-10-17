@@ -93,7 +93,7 @@ class ReferralStatsDto:
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateReferralSettingsDto:
-    # None = leave unchanged, matching UpdateUserDto's convention.
+    # None = leave unchanged
     enabled: Optional[bool] = None
     max_level: Optional[int] = None
     accrual_strategy: Optional[ReferralAccrualStrategy] = None

@@ -27,7 +27,7 @@ class Broadcast(BaseSql, TimestampMixin):
     category: Mapped[BroadcastCategory]
     audience: Mapped[dict[str, Any]] = mapped_column(JSONB)
     default_locale: Mapped[Locale]
-    # {locale: {text, button_labels}} — one atomic content bundle per broadcast
+    # {locale: {text, button_labels}}, saved as one bundle
     contents: Mapped[dict[str, Any]] = mapped_column(JSONB)
     buttons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     promocode_id: Mapped[Optional[int]] = mapped_column(

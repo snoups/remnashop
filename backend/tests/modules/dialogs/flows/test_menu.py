@@ -13,9 +13,7 @@ def _clean():
 
 
 def test_importable_without_aiogram(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The entire point of this package: it must not need aiogram to import.
-    # Simulate aiogram being absent (as it genuinely is in the api process's
-    # Docker image) rather than merely unused.
+    # absent, as in the api image, not merely unused
     for name in list(sys.modules):
         if name == "aiogram" or name.startswith("aiogram."):
             monkeypatch.delitem(sys.modules, name, raising=False)

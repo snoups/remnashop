@@ -43,14 +43,13 @@ async def _resolve_api_token_actor(
             code=ErrorCode.IP_NOT_ALLOWED,
         )
 
-    # Unlike interactive sessions (last_used_at only updated on refresh --
-    # see SessionRepository.rotate), token traffic is low-volume/scripted,
-    # and last_used_at is the operator's main signal for "safe to revoke".
+    # every request, unlike sessions (touched on refresh only): token traffic
+    # is light, and last_used_at is what tells an operator a token is safe to revoke
     async with uow:
         await api_token_repository.touch_last_used(token.id)
 
     return SyntheticActor(
-        id=0,  # BaseDto's "not persisted" sentinel, see core/dto.py
+        id=0,  # BaseDto's "not persisted" sentinel
         role=Role.USER,
         name=f"API Token: {token.name}",
         is_privileged=True,
@@ -139,9 +138,8 @@ def forbid_cabinet_proxy(request: Request) -> None:
 
 def require_user_account(actor: Actor) -> UserDto:
     """Customer-facing routes: the actor must be a real user row. An API token
-    authenticates staff automation and has no customer identity behind it --
-    without this it reaches a self-service route as user id 0 and fails on a
-    foreign key instead of being refused."""
+    has no customer behind it and would reach a self-service route as user id 0,
+    failing on a foreign key instead of being refused."""
     if not isinstance(actor, UserDto):
         logger.warning(f"Non-user actor {actor.log} denied access to a customer endpoint")
         raise ApiError(

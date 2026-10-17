@@ -218,10 +218,8 @@ async def test_missing_webhook_secret_returns_503(config: AppConfig, session: As
     unconfigured = config.model_copy(
         update={"remnawave": config.remnawave.model_copy(update={"webhook_secret": None})}
     )
-    # Dishka validates the full provider graph at construction time, so
-    # get_subscriptions_providers() still needs UserRepository resolvable
-    # even though this test never reaches PurchaseSubscriptionUseCase --
-    # same requirement as webhook_container above.
+    # dishka validates the whole graph at construction, so UserRepository has
+    # to resolve even though this test never reaches PurchaseSubscriptionUseCase
     user_repository_provider = Provider(scope=Scope.REQUEST)
     user_repository_provider.provide(UserRepository)
     providers = [

@@ -139,8 +139,6 @@ def assert_plain_translation_value(value: str) -> None:
 def _check_placeable_expression(
     expression: object, allowed_variables: frozenset[str]
 ) -> Optional[str]:
-    """Check a single placeable expression. Helper for find_disallowed_placeable."""
-
     # the serializer's own escapes: a line start (_escape_line_start) or an empty value
     if isinstance(expression, StringLiteral) and (
         expression.value in _LINE_START_SPECIAL or expression.value == ""
@@ -154,24 +152,14 @@ def _check_placeable_expression(
 
 
 def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> Optional[str]:
-    """Check a candidate dialog text value for Fluent placeables: a bare
-    `{ $name }` variable reference is allowed only when `name` is in
-    `allowed_variables` (the catalog's registered variable set); every other
-    kind of placeable (message references, term references, function calls,
-    select expressions) is rejected regardless of what it contains. Returns a
-    human-readable reason for the first disallowed placeable found, or None if
-    the value contains only allowed ones (including none at all).
-
-    A literal `{` or `}` cannot appear in dialog text: any value that fails to
-    parse as a clean Pattern (Junk) and contains both braces is rejected,
-    matching Fluent's own grammar and the general editor's effective behavior.
-    """
-
+    """The reason the first disallowed placeable in a dialog text is refused, or
+    None. Only a bare `{ $name }` with `name` in `allowed_variables` passes;
+    message and term references, functions and selects never do. A value that
+    parses as Junk and holds both braces is refused too."""
     # wrapped exactly as serialize_to_fluent writes it
     wrapped = "placeholder-id = " + _block(text, "    ")
     parsed = FluentParser().parse(wrapped)
 
-    # If parsing produced Junk, check if text contains placeable-like syntax
     if parsed.body and isinstance(parsed.body[0], Junk):
         # Braces in Junk are most likely an inline select expression: Fluent wants
         # each variant on its own indented line, so a one-line attempt parses as

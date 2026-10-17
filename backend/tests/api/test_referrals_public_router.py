@@ -191,9 +191,8 @@ async def test_withdraw_points_is_rate_limited_per_user(
     actor: tuple[UserDto, dict[str, str]],
     redis: Redis,
 ) -> None:
-    # Each request is an audit-log row an admin reads to process payouts --
-    # an unthrottled endpoint lets one user bury real requests, and a new
-    # source address must not reset that budget.
+    # Each request is an audit-log row an admin works through by hand: one user
+    # must not bury the rest, and a new source address must not reset the budget.
     user, headers = actor
     app = get_app(config)
     setup_dishka(test_container, app)

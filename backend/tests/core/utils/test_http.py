@@ -20,9 +20,7 @@ def _make_request(
     *,
     header_pairs: Optional[list[tuple[str, str]]] = None,
 ) -> Request:
-    # header_pairs, not headers, when a test needs the same field name twice:
-    # a dict cannot express it, which is why the duplicate-field-line case went
-    # untested for so long.
+    # header_pairs, not headers, when a test needs the same field name twice
     pairs = header_pairs if header_pairs is not None else list((headers or {}).items())
     scope = {
         "type": "http",

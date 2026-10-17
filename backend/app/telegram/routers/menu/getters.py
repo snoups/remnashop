@@ -39,8 +39,7 @@ async def menu_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     window = await dialog_config_cache.get_window("menu.main")
-    # No banner name means the admin turned the banner off for this window --
-    # not "fall back to something".
+    # no banner name: the admin turned the banner off for this window, no fallback
     banner = (
         await get_banner_media(get_banner, config, user, window.banner_name)
         if window.banner_name

@@ -22,10 +22,8 @@ class PlanSnapshot:
     price_paid: Decimal
     currency: Currency
     duration_days: int
-    # Operational fields, needed to actually provision a Remnawave panel user
-    # (NEW/CHANGE) without a live PlanRepository lookup at provisioning time --
-    # captured once, at checkout/redemption time, when the plan is known to
-    # still exist and be purchasable. See usecases/purchase_subscription/.
+    # captured at checkout or redemption, so provisioning (NEW/CHANGE) never
+    # looks the plan up again
     traffic_limit: int
     device_limit: int
     traffic_limit_strategy: TrafficLimitStrategy

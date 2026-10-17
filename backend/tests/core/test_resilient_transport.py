@@ -88,8 +88,7 @@ async def test_circuit_opens_after_the_failure_threshold_and_fails_fast() -> Non
 
     transport = ResilientTransport(httpx.MockTransport(handler))
     async with _client(transport) as client:
-        # POSTs are never retried, so each call below is exactly one attempt --
-        # _FAILURE_THRESHOLD consecutive POST failures opens the breaker.
+        # a POST is never retried: each call is one attempt toward the threshold
         for _ in range(_FAILURE_THRESHOLD):
             await client.post("/users", json={})
 
@@ -115,9 +114,7 @@ async def test_circuit_closes_again_after_the_recovery_timeout_on_a_successful_p
         return httpx.Response(200)
 
     transport = ResilientTransport(httpx.MockTransport(handler))
-    # Force the breaker open directly rather than re-deriving it via failures --
-    # this test is about the recovery half, not the opening half (already covered
-    # by test_circuit_opens_after_the_failure_threshold_and_fails_fast).
+    # opened by hand: only the recovery is under test here
     transport._consecutive_failures = _FAILURE_THRESHOLD
     transport._opened_at = fake_now[0]
 

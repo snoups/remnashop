@@ -10,8 +10,7 @@ from app.worker.metrics import (
 
 
 def test_worker_metrics_registry_serves_the_outbox_gauges() -> None:
-    # event_log.tasks registers its two gauges onto this shared registry --
-    # confirms the relocation didn't leave them on a registry nothing serves.
+    # event_log.tasks registers its two gauges on the registry the worker serves
     names = {
         sample.name for metric in WORKER_METRICS_REGISTRY.collect() for sample in metric.samples
     }

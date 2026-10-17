@@ -32,9 +32,7 @@ def _catalog():
 async def test_seed_is_idempotent(
     dialog_repository: DialogRepository, translation_repository, settings_repository
 ) -> None:
-    # This test runs against a real, shared dev database (not necessarily empty --
-    # the real api/telegram services may have already activated 'en'), so check
-    # first rather than assuming a pristine locale table.
+    # the shared dev database may have 'en' active already
     if Locale.EN not in await translation_repository.list_active_locales():
         await translation_repository.add_active_locale(Locale.EN)
     await ensure_dialogs_seeded(dialog_repository, translation_repository)
@@ -43,8 +41,7 @@ async def test_seed_is_idempotent(
     windows = await dialog_repository.list_all()
     assert [w.key for w in windows] == ["menu.main"]
     assert len(windows[0].buttons) == 1
-    # "btn-menu.subscription" is message "btn-menu", attribute "subscription" --
-    # not a message id containing a dot, which is not even valid Fluent.
+    # message "btn-menu", attribute "subscription": a dotted message id isn't valid Fluent
     assert await translation_repository.get(Locale.EN, "btn-menu", "subscription") is not None
     assert await translation_repository.get(Locale.EN, "btn-menu.subscription", "") is None
 

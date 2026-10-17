@@ -90,8 +90,7 @@ class User(BaseSql, TimestampMixin):
     email_undeliverable_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # NULL = never accepted; a date, not a flag, so changed rules can ask again
     rules_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    # Nullable: create() always generates one, a soft delete wipes it --
-    # multiple NULLs are fine under a UNIQUE index.
+    # create() always generates one, a soft delete wipes it
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
     bonus_days: Mapped[int] = mapped_column(default=0, server_default="0")

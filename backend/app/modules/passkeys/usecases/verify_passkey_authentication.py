@@ -88,10 +88,8 @@ class VerifyPasskeyAuthenticationUseCase:
                 "Invalid passkey credential", ErrorCode.PASSKEY_INVALID, client_ip
             )
 
-        # credential_id is a WebAuthn-generated, effectively-unguessable
-        # identifier (unlike a login name), so looking it up before running
-        # signature verification isn't a meaningful user-enumeration timing
-        # oracle the way an unknown *login* would be in LoginUseCase.
+        # credential_id is unguessable, unlike a login, so looking it up before
+        # verifying the signature leaks nothing about who has an account
         async with self._uow:
             stored = await self._passkey_repository.get_by_credential_id(credential_id)
         if stored is None:
@@ -131,8 +129,7 @@ class VerifyPasskeyAuthenticationUseCase:
 
         async with self._uow:
             user = await self._user_repository.find_by_id(stored.user_id)
-        # Same generic message whether the user record is gone, blocked or no longer staff --
-        # matches LoginUseCase/OAuthLoginCallbackUseCase's no-enumeration rule.
+        # one message whether the user is gone, blocked or no longer staff
         if user is None or user.is_blocked or not user.is_privileged:
             raise await self._fail(
                 "Passkey not recognized", ErrorCode.PASSKEY_NOT_RECOGNIZED, client_ip, credential_id

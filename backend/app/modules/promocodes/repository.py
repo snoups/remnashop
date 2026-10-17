@@ -185,11 +185,8 @@ class PromocodeRepository:
     async def claim_activation(
         self, promocode_id: int, user_id: int, subscription_id: Optional[int]
     ) -> PromocodeActivationDto:
-        # Locks the promocode row for the rest of this transaction so a
-        # concurrent claim on the same promocode serializes behind this one --
-        # max_activations/already-activated below are read from this locked
-        # row, not from a value the caller read before locking, so the check
-        # is atomic against concurrent claims.
+        # concurrent claims serialize here; max_activations and the
+        # already-activated check below read this locked row, not the caller's copy
         locked = await self.session.execute(
             select(Promocode).where(Promocode.id == promocode_id).with_for_update()
         )

@@ -113,11 +113,8 @@ def test_sync_status_applies_a_legal_transition() -> None:
 
 
 def test_sync_status_accepts_any_panel_status_unconditionally() -> None:
-    # The panel is authoritative. sync_status must accept any status update
-    # from the panel, even if it would violate the general transition table.
-    # E.g. a locally-EXPIRED subscription can receive LIMITED/DISABLED from
-    # the panel (the user was already expired, but the panel wants to mark
-    # them as limited for another reason). sync_status should not reject this.
+    # the panel is authoritative, even past the transition table: an EXPIRED
+    # row may be marked LIMITED/DISABLED there
     state = _state(status=SubscriptionStatus.EXPIRED)
 
     result = state.sync_status(SubscriptionStatus.LIMITED)

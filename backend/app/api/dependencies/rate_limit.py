@@ -23,10 +23,8 @@ _GLOBAL_RATE_LIMIT_WINDOW_S: Final[int] = 60
 # files): its own bucket, so it doesn't eat the IP's budget for the API
 _EMOJI_PREFIX: Final[str] = f"{API_V1}/emoji-packs/"
 _EMOJI_RATE_LIMIT: Final[int] = 3000
-# Payment-gateway callbacks (/payments/{gateway}) are deliberately NOT here:
-# one provider's calls share one IP bucket like the panel's do, but their
-# volume is one call per payment plus retries (nowhere near 300/min), and
-# the route is unauthenticated, so the baseline is worth keeping.
+# Payment-gateway callbacks (/payments/{gateway}) stay limited: one call per
+# payment plus retries is far below 300/min, and the route is unauthenticated.
 _RATE_LIMIT_EXEMPT_PATHS: Final[frozenset[str]] = frozenset(
     {"/health", "/readyz", "/metrics", f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}"}
 )

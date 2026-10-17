@@ -566,9 +566,7 @@ async def test_reset_all_restores_an_edited_button_label(
     uow,
     redis,
 ) -> None:
-    # The label lives in the "trial" attribute of "btn-menu"; a reset that looked
-    # for a message called "btn-menu.trial" silently found nothing and left the
-    # edit in place.
+    # the label is the "trial" attribute of "btn-menu", not a message called "btn-menu.trial"
     await _seed(dialog_repository)
     catalog.register_window(
         catalog.CatalogWindow(
@@ -889,8 +887,7 @@ async def test_update_dialog_text_keeps_multiline_value(
     uow,
     redis,
 ) -> None:
-    # A window body is a Telegram message, so paragraphs are the normal case --
-    # and it has to survive the Fluent round-trip, not just the write.
+    # paragraphs are normal in a window body, and must survive the Fluent round trip
     _register_text_window("msg-window-greeting3")
     if Locale.EN not in await translation_repository.list_active_locales():
         await translation_repository.add_active_locale(Locale.EN)

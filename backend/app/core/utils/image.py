@@ -5,10 +5,10 @@ from typing import Final, Optional
 
 from PIL import Image, UnidentifiedImageError
 
-# Client-declared content-type is not proof of what the file actually is --
-# cross-check against the file's own magic bytes before trusting it. Keyed by
-# lowercase extension so callers can pass any format enum's `.value` (e.g.
-# BannerFormat, AppearanceImageFormat) without a shared enum type.
+# The declared content type proves nothing; the magic bytes are checked too.
+# Keyed by lowercase extension, so any format enum's `.value` (BannerFormat,
+# AppearanceImageFormat) works without a shared enum type.
+
 _MAGIC_BYTES_BY_EXTENSION: Final[dict[str, bytes]] = {
     "jpg": b"\xff\xd8\xff",
     "jpeg": b"\xff\xd8\xff",

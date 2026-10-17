@@ -64,7 +64,7 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
                 )
             ]
             paid = await self._transaction_repository.list_user_ids_with_paid_order(registered)
-            # first_connected_at is only tracked from now on; a payer has used the product
+            # older rows lack first_connected_at; a payer has used the product either way
             connected = await self._subscription_stats.list_user_ids_connected(registered) | paid
             repeat = await self._transaction_repository.list_user_ids_with_multiple_paid_orders(
                 list(paid)

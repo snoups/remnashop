@@ -276,8 +276,8 @@ class TransactionRepository:
         return [self._to_dto(row) for row in rows]
 
     async def mark_fulfilled(self, order_id: int, subscription_id: int) -> None:
-        # updated_at is the paid-at timestamp every revenue query groups by --
-        # pinned to itself, since Core update() still applies its onupdate.
+        # updated_at is the paid-at timestamp every revenue query groups by;
+        # pinned to itself, since Core update() still applies its onupdate
         await self.session.execute(
             update(Transaction)
             .where(Transaction.id == order_id, Transaction.fulfilled_at.is_(None))

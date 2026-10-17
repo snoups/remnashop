@@ -128,9 +128,6 @@ async def admin_headers(
     return await _auth_headers(admin, session_repository, config)
 
 
-# --- sessionless: auth ---
-
-
 async def test_status_allows_login_once_an_owner_exists(
     client: httpx.AsyncClient, owner_headers: dict[str, str]
 ) -> None:
@@ -174,9 +171,6 @@ async def test_login_failure_does_not_reveal_whether_login_exists(
     assert REFRESH_COOKIE_NAME not in wrong_password.cookies
 
 
-# --- sessionless: oauth / passkeys ---
-
-
 async def test_oauth_authorize_rejects_unconfigured_provider(client: httpx.AsyncClient) -> None:
     response = await client.post(
         f"{API_V1}/auth/oauth/GITHUB/authorize", json={"audience": "dashboard"}
@@ -207,9 +201,6 @@ async def test_passkey_verify_rejects_garbage_credential(client: httpx.AsyncClie
 
     assert response.status_code == 401
     assert REFRESH_COOKIE_NAME not in response.cookies
-
-
-# --- sessionless: appearance / emoji ---
 
 
 async def test_public_appearance_needs_no_session(client: httpx.AsyncClient) -> None:
@@ -252,9 +243,6 @@ async def test_emoji_media_404_for_unknown_id_without_session(
 
     assert response.status_code == 404
     assert response.json()["detail"] != "Not Found"
-
-
-# --- customer: promocode activation ---
 
 
 async def test_promocode_activate_requires_session(client: httpx.AsyncClient) -> None:
@@ -305,9 +293,6 @@ async def test_promocode_activate_unknown_code_is_404(
 
     assert response.status_code == 404
     assert response.json()["detail"] != "Not Found"
-
-
-# --- secrets never come back out ---
 
 
 async def test_bot_settings_never_return_the_token(
@@ -403,9 +388,6 @@ async def test_gateway_settings_forbidden_for_plain_admin(
     )
 
     assert response.status_code == 403
-
-
-# --- OWNER-only pricing ---
 
 
 async def test_currency_rate_owner_only(

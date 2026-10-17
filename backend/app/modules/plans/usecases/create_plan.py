@@ -14,8 +14,7 @@ from app.modules.plans.dto import CreatePlanDto, PlanDto
 from app.modules.plans.events import PlanChangedEvent
 from app.modules.plans.repository import PlanRepository
 
-# A LINK plan is bought by its code alone, so it has to be unguessable --
-# random, never chosen by an admin.
+# A LINK plan is bought by its code alone, so it is random, never chosen by an admin.
 _PUBLIC_CODE_ALPHABET: Final[str] = string.ascii_letters + string.digits
 _PUBLIC_CODE_LENGTH: Final[int] = 8
 

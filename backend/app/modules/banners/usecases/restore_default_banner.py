@@ -13,8 +13,7 @@ from app.modules.translations import TranslationRepository
 
 
 class RestoreDefaultBannerUseCase(UseCase[None, BannerDto]):
-    """Puts the picture shipped with the project back as the shared banner --
-    the shared one is replaceable, so it needs a way home."""
+    """Puts the picture shipped with the project back as the shared banner."""
 
     required_permission = Permission.BANNERS_RESTORE_DEFAULT
 

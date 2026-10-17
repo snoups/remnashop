@@ -8,7 +8,6 @@ from app.core.db.timestamp import TimestampMixin
 class Blacklist(BaseSql, TimestampMixin):
     __tablename__ = "blacklist"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # Manual + CASCADE blocks, normalised on write (digits-only ids, lowercased

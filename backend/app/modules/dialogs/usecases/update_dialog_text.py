@@ -75,7 +75,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
 
             # Newlines are fine here, unlike in the general translations editor:
             # serialize_to_fluent() indents continuation lines, and a window's
-            # body is the one piece of bot text that genuinely wants paragraphs.
+            # body is the one piece of bot text that wants paragraphs.
             allowed_variables = catalog.text_variable_keys()
             if window_key and catalog.has_window(window_key):
                 allowed_variables |= set(catalog.get_window(window_key).text_variables)

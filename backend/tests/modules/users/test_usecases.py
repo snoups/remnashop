@@ -78,9 +78,8 @@ REGULAR_USER = UserDto(id=3, name="Bob", role=Role.USER, language=Locale.EN)
 @pytest.fixture(autouse=True)
 async def _seed_actor_row(session: AsyncSession) -> None:
     # event_outbox.actor_id is a real FK into users, and OWNER/ADMIN act on
-    # almost every use case below. Role.USER, not their own role --
-    # ux_users_single_owner would otherwise reject the owner rows several
-    # tests create themselves.
+    # almost every use case below. Stored as Role.USER: ux_users_single_owner
+    # would reject the owner rows several tests create themselves.
     for actor in (OWNER, ADMIN):
         session.add(
             User(

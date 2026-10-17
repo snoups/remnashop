@@ -239,10 +239,8 @@ async def test_claim_activation_concurrent_calls_against_cap_only_one_succeeds(
         _widen_locking_select_race_window(session_b)
 
         async def _claim(session: AsyncSession, user_id: int) -> object:
-            # Commits/rolls back inside the coroutine (not after gather) --
-            # gather runs both concurrently, and the losing session's
-            # SELECT ... FOR UPDATE blocks until the winner's transaction
-            # ends, so the release has to happen before gather returns.
+            # ends its transaction here, not after gather: the loser's FOR UPDATE
+            # waits for the winner's transaction to end
             repo = PromocodeRepository(session)
             try:
                 result = await repo.claim_activation(

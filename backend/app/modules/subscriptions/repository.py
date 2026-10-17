@@ -137,9 +137,8 @@ class SubscriptionRepository:
         page_size: int = DEFAULT_PAGE_SIZE,
         hide_staff_from: Optional[int] = None,
     ) -> tuple[list[SubscriptionDto], int]:
-        # status=None means "the live subscriptions", not "every row ever" --
-        # DELETED rows are routine history (trial->paid conversions, plan
-        # CHANGEs). Pass status=DELETED explicitly to see them.
+        # status=None means the live subscriptions: DELETED rows are routine
+        # history (trial->paid conversions, plan changes), asked for explicitly
         filters: list[ColumnElement[bool]] = []
         if status is None:
             filters.append(Subscription.status != SubscriptionStatus.DELETED)
@@ -210,10 +209,8 @@ class SubscriptionRepository:
         return [self._to_dto(row, entitlements_by_subscription.get(row.id, [])) for row in rows]
 
     async def has_any_subscription(self, user_id: int, *, include_trial: bool = True) -> bool:
-        # Any row ever, regardless of status (including DELETED/EXPIRED) --
-        # this answers "has this user ever purchased", not "does one still
-        # work". Backs PlanAvailability.NEW/EXISTING and
-        # PromocodeAvailability.NEW/EXISTING alike.
+        # any row in any status: "has this user ever purchased", for the
+        # NEW/EXISTING availability of plans and promocodes
         stmt = select(func.count()).select_from(Subscription).where(Subscription.user_id == user_id)
         if not include_trial:
             stmt = stmt.where(Subscription.is_trial.is_(False))
@@ -223,11 +220,10 @@ class SubscriptionRepository:
     async def has_paid_subscription_before(
         self, user_id: int, subscription_id: Optional[int] = None
     ) -> bool:
-        """Whether the user has a paid subscription, created before subscription_id when
-        given -- "is this the user's first paid subscription", where
-        has_any_subscription would also count the one just created, and a later
-        purchase rewarded first would hide this one. A free one (100% discount,
-        promocode grant) doesn't count as paid."""
+        """Whether the user has a paid subscription created before subscription_id,
+        if given: "is this the first paid one", which has_any_subscription can't
+        answer once this one exists. A free one (100% discount, promocode grant)
+        doesn't count."""
         price_paid = Subscription.plan_snapshot["price_paid"].astext.cast(Numeric)
         conditions = [
             Subscription.user_id == user_id,
@@ -319,14 +315,9 @@ class SubscriptionRepository:
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
     async def acquire_purchase_cap_lock(self, user_id: int) -> None:
-        """Serializes concurrent purchase attempts for the same user via a
-        Postgres advisory lock (auto-released at transaction end). Necessary
-        because `SELECT ... FOR UPDATE` in get_active_by_user_for_update only
-        locks rows that already exist; it cannot block a concurrent
-        transaction from inserting a NEW row, so two concurrent purchases could
-        both observe the same under-cap count and both proceed past it. This
-        lock closes that gap: every purchase for a given user_id contends for
-        the same (namespace, user_id) key before either reads the count."""
+        """Serializes one user's purchases until the transaction ends. FOR UPDATE
+        locks only existing rows, so two purchases could otherwise both read an
+        under-cap count and both insert."""
         await self.session.execute(
             select(func.pg_advisory_xact_lock(_SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY, user_id))
         )

@@ -51,10 +51,8 @@ class RenewPurchase:
                     code=ErrorCode.TARGET_SUBSCRIPTION_REQUIRED,
                 )
 
-            # Validate unlocked, call the panel, THEN lock+re-validate+apply --
-            # never hold a row lock across the SDK round-trip: a remote call
-            # inside `async with self._uow:` risks holding a Postgres lock for
-            # the panel's full timeout.
+            # validated unlocked, then the panel call, then lock, re-check and
+            # apply: a row lock held across the panel call lasts up to its timeout
             target = await get_owned_target(
                 self._subscription_repository, data.target_subscription_id, data.user_id
             )
@@ -93,12 +91,9 @@ class RenewPurchase:
                     return await self._subscription_repository.get_by_id(finished_id)
             locked = await self._subscription_repository.get_by_id_for_update(target.id)
             if locked.status is SubscriptionStatus.DELETED:
-                # Deleted (e.g. by a concurrent CHANGE or admin delete) while
-                # the panel call was in flight. The panel's extend_user call
-                # already landed against a real, still-existing panel user --
-                # harmless (no orphan to compensate; the next sync/reconcile
-                # pass corrects the panel-vs-local mismatch), so no cleanup
-                # here, just refuse to reactivate.
+                # deleted by a concurrent plan change or admin while the panel
+                # call ran; the extend landed on a live panel user, so there's
+                # nothing to undo and the next sync settles the difference
                 raise ValidationError(
                     "Subscription was deleted while this renewal was in flight",
                     code=ErrorCode.SUBSCRIPTION_DELETED,

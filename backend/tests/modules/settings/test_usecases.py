@@ -452,8 +452,7 @@ async def test_update_oauth_settings_does_not_publish_event_when_issuer_is_uncha
     )
     issuer_url = "https://keycloak.example.com/realms/stable"
     await update_use_case(OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer_url))
-    # First call above already published one OidcIssuerChangedEvent (None -> issuer_url) --
-    # only re-submitting the SAME issuer_url a second time is under test here.
+    # the first call published one OidcIssuerChangedEvent; the repeat must not
 
     await update_use_case(
         OWNER, UpdateOAuthSettingsDto(oidc_issuer_url=issuer_url, oidc_display_name="Renamed")

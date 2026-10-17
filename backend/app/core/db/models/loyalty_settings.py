@@ -11,7 +11,6 @@ from app.core.db.timestamp import TimestampMixin
 class LoyaltySettings(BaseSql, TimestampMixin):
     __tablename__ = "loyalty_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
     enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")

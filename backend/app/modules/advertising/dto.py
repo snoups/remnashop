@@ -97,7 +97,7 @@ class CreateAdLinkDto:
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateAdLinkDto:
-    # None = leave unchanged, matching UpdatePromocodeDto's convention.
+    # None = leave unchanged
     ad_link_id: int
     name: Optional[str] = None
     cost: Optional[Decimal] = None

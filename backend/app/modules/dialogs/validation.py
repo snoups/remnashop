@@ -27,8 +27,8 @@ def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> Non
             code=ErrorCode.DIALOG_TEXT_EMPTY,
         )
     # Telegram counts UTF-16 code units of the text as sent, where premium
-    # emoji markup is just its glyph. Fluent placeables count as written --
-    # what a variable expands to is only known at render time.
+    # emoji markup is just its glyph. Placeables count as written: what a
+    # variable expands to is only known at render time.
     length = telegram_length(value)
     limit = MAX_CAPTION_LENGTH if has_banner else MAX_TEXT_LENGTH
     if length > limit:

@@ -168,13 +168,8 @@ class _RecordingEventPublisher:
 async def test_concurrent_syncs_on_the_same_row_serialize_last_writer_wins(
     engine: AsyncEngine,
 ) -> None:
-    # A genuine concurrency check needs two independent DB connections --
-    # SQLAlchemy's AsyncSession forbids concurrent use from two coroutines on
-    # one session ("Session is already flushing"), which is what the shared
-    # subscription_repository/uow fixtures this file otherwise uses would be.
-    # Row is committed for real so both connections can see it, then cleaned
-    # up explicitly (in `finally`) since it bypasses the usual
-    # rollback-per-test fixture.
+    # Two connections: one AsyncSession can't run two coroutines at once. The
+    # row is committed so both see it, and removed by hand in `finally`.
     async with engine.connect() as conn_a, engine.connect() as conn_b:
         session_a = AsyncSession(bind=conn_a, expire_on_commit=False)
         session_b = AsyncSession(bind=conn_b, expire_on_commit=False)

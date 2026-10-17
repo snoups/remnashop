@@ -9,9 +9,6 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 
 
 def _dto_to_state(dto: SubscriptionDto) -> SubscriptionState:
-    """Convert a SubscriptionDto to a SubscriptionState. Unlike the
-    repository's _to_state (which parses plan_snapshot from raw JSON), the
-    DTO already has plan_snapshot as a parsed PlanSnapshot object."""
     return SubscriptionState(
         id=dto.id,
         status=dto.status,

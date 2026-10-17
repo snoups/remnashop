@@ -80,10 +80,8 @@ def assert_transition(current: SubscriptionStatus, target: SubscriptionStatus) -
 
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionState:
-    """Behavioural counterpart to SubscriptionDto: the repository maps
-    an ORM row to this before calling a method, and the (possibly changed)
-    result back to a row afterwards. Immutable: every method returns a new
-    instance rather than mutating self."""
+    """Behavioural counterpart to SubscriptionDto: the repository maps a row to
+    it and the returned state back. Every method returns a new instance."""
 
     id: int
     status: SubscriptionStatus
@@ -97,29 +95,22 @@ class SubscriptionState:
     is_trial: bool
 
     def sync_status(self, target: SubscriptionStatus) -> SubscriptionState:
-        """Applies a panel-driven status sync. A no-op if target == current
-        (redelivered webhook / overlapping reconcile pass) or if already
-        DELETED (a locally-deleted subscription is never resurrected by a
-        stale panel event). The panel is authoritative: any other target
-        status is accepted unconditionally."""
+        """The panel is authoritative: any status it reports is taken, except
+        that a DELETED row is never resurrected by a stale panel event."""
         if self.status is SubscriptionStatus.DELETED or target is self.status:
             return self
         return replace(self, status=target)
 
     def sync_expire_at(self, new_expire_at: datetime) -> SubscriptionState:
-        """Applies a panel-driven expire_at. Status is never inferred from it --
-        the panel reports its own status alongside (see sync_status)."""
+        """Status is never inferred from expire_at: the panel reports its own."""
         if self.status is SubscriptionStatus.DELETED:
             return self
         return replace(self, expire_at=new_expire_at)
 
     def reactivate_on_renew(self, new_expire_at: datetime) -> SubscriptionState:
-        """A successful renewal always extends expire_at, and reactivates
-        an EXPIRED subscription back to ACTIVE (the natural "lapsed, paid
-        again" case). LIMITED/DISABLED are left untouched: those reflect
-        panel-side state (traffic exhaustion, admin action) that a renewal
-        payment doesn't by itself resolve; the next sync/reconcile pass
-        corrects them once the panel agrees."""
+        """Extends expire_at and brings an EXPIRED subscription back to ACTIVE.
+        LIMITED/DISABLED stay: a payment doesn't resolve traffic exhaustion or an
+        admin's action, and the next sync corrects them once the panel agrees."""
         if self.status is SubscriptionStatus.DELETED:
             raise ValidationError(
                 "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
@@ -190,9 +181,8 @@ def calculate_proration_credit(
     traffic_limit_strategy: TrafficLimitStrategy,
     used_traffic_bytes: int,
 ) -> Decimal:
-    """Proration credit from the OLD subscription's fields alone. Public so
-    ChangePurchase can compute the new expire_at (base days + credit days)
-    before touching the panel."""
+    """Proration credit from the old subscription's fields alone, so ChangePurchase
+    knows the new expire_at before touching the panel."""
     if is_trial or credit_paid <= 0 or credit_days <= 0:
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)

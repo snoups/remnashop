@@ -11,10 +11,8 @@ from app.core.db.timestamp import TimestampMixin
 class OAuthSettings(BaseSql, TimestampMixin):
     __tablename__ = "oauth_settings"
 
-    # single row, id=1 (core/db/singleton.py)
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # Fernet-encrypted (APP_CRYPT_KEY) transparently by EncryptedString.
     github_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
     github_client_secret: Mapped[Optional[str]] = mapped_column(EncryptedString())
     telegram_client_id: Mapped[Optional[str]] = mapped_column(EncryptedString())

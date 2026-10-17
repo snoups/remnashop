@@ -92,7 +92,7 @@ async def test_custom_window_slot_comes_from_the_window_row(
 async def test_deleting_a_custom_window_leaves_the_others_where_they_were(
     session: AsyncSession, dialog_repository: DialogRepository
 ) -> None:
-    # The whole point of storing the slot: a user sitting in custom.ccc must not
+    # a user sitting in custom.ccc must not
     # get moved into a different window because an earlier one was deleted.
     for key in ("custom.aaa", "custom.bbb", "custom.ccc"):
         await dialog_repository.create_custom_window(

@@ -154,9 +154,8 @@ class DialogRepository:
     async def replace_buttons(
         self, key: str, buttons: list[DialogButtonInputDto]
     ) -> DialogWindowDto:
-        # Lock the window row so two concurrent replace calls can't interleave
-        # their delete/insert and leave a half-written layout. Arbitrary: the
-        # window's own PK row is the natural lock granularity here.
+        # two concurrent replaces must not interleave their delete/insert
+
         row = await self.session.scalar(
             select(DialogWindow).where(DialogWindow.key == key).with_for_update()
         )

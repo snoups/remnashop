@@ -46,12 +46,9 @@ def _optional_translation(runner: TranslatorRunner, key: str) -> Optional[str]:
 
 
 def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
-    """Resolve every registered catalog variable against this render's getter
-    data, for use as **kwargs into a fluentogram runner.get(...) call. Lets
-    window text and button labels use real Fluent `{ $var }` syntax for any
-    catalog-registered variable, the same set url_value's own ${var} token
-    substitution already draws from.
-    """
+    """Every catalog variable resolved against this render's getter data, as
+    runner.get() kwargs: window texts and labels get the same `{ $var }` set
+    that url_value's ${var} substitution draws from."""
     return {key: catalog.get_variable(key)(getter_data) for key in catalog.variable_keys()}
 
 

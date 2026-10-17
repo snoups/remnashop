@@ -575,8 +575,7 @@ async def test_count_paid_since_excludes_pending_and_old_orders(
 async def test_sum_paid_final_price_since_groups_by_currency(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
-    # A generous past `since` (not datetime_now() captured mid-test) --
-    # see the note on Postgres's frozen-per-transaction now() above.
+    # a day back: now() is frozen for the test transaction
     since = datetime_now() - timedelta(days=1)
     async with uow:
         rub_order = await transaction_repository.create(

@@ -1001,7 +1001,7 @@ async def test_activate_traffic_reward_dispatches_the_addon_grant(
     )
     assert activation is not None
     assert grant_dispatch.messages[0]["idempotency_key"] == f"promocode-activation:{activation.id}"
-    # The grant itself is the task's job now, so nothing changed here yet.
+    # the grant is the task's job: nothing changed yet
     unchanged = await subscription_repository.get_by_id(subscription.id)
     assert unchanged.effective_traffic_limit == traffic_before
 
@@ -1045,8 +1045,7 @@ async def test_activate_promocode_zero_reward_personal_discount_is_a_noop(
     event_publisher,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="Frank", telegram_id=305))
-    # Seeded nonzero so "wrote 0" and "never wrote" are distinguishable --
-    # dropping the `if promo.reward:` guard must fail this test.
+    # nonzero, so "wrote 0" and "never wrote" differ
     async with uow:
         await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=40))
     await promocode_repository.create(
@@ -1393,7 +1392,7 @@ async def test_activate_on_a_deleted_plan_is_not_refused_for_the_plan(
         event_publisher,
     )
 
-    # the fake panel has no user behind this row, so the reward step fails —
+    # the fake panel has no user behind this row, so the reward step fails,
     # after the plan checks let it through and the activation was claimed
     with pytest.raises(Exception) as error:
         await use_case(

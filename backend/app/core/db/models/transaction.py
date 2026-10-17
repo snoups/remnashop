@@ -34,12 +34,9 @@ class Transaction(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
-    # SET NULL, not RESTRICT: purchase_subscription_task provisions entirely
-    # from plan_snapshot (captured at checkout time, includes squads/limits) --
-    # it never re-resolves plan_id via PlanRepository, even while a PAID order
-    # is still awaiting provisioning. Unlike Promocode.reward_plan_id (which
-    # IS resolved live, synchronously, at redemption time), nothing here reads
-    # plan_id for anything but display once the order exists.
+    # SET NULL, not RESTRICT: an order is provisioned from plan_snapshot
+    # (squads and limits included), even while still awaiting provisioning;
+    # plan_id is only displayed once the order exists
     plan_id: Mapped[Optional[int]] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"))
     plan_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
     duration_days: Mapped[int]
@@ -73,12 +70,10 @@ class Transaction(BaseSql, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(String(36), unique=True)
 
     expires_at: Mapped[datetime]
-    # Set by reconcile_paid_transactions once a PAID order's subscription is found --
-    # the durable "provisioned" record, unlike the idempotency key it's read
-    # from (pruned after IDEMPOTENCY_KEY_RETENTION_DAYS).
+    # set by reconcile_paid_transactions once a PAID order's subscription is
+    # found; outlives the idempotency key it's read from, which is pruned
     fulfilled_at: Mapped[Optional[datetime]]
-    # the subscription this order provisioned, recorded with fulfilled_at --
-    # a NEW order has no target_subscription_id to tell it otherwise
+    # recorded with fulfilled_at: a NEW order has no target_subscription_id
     fulfilled_subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id", ondelete="SET NULL")
     )

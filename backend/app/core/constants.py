@@ -68,8 +68,7 @@ CUSTOM_DIALOG_WINDOW_SLOTS: Final[int] = 50
 # largest per-type broadcast media cap; the body-size middleware lets this much through
 BROADCAST_MEDIA_MAX_BYTES: Final[int] = 50 * 1024 * 1024
 
-# Shared between auth's /refresh, /logout and oauth's /oauth/{provider}/callback --
-# oauth writes this cookie, auth reads it.
+# oauth's callback writes this cookie, auth's /refresh and /logout read it
 REFRESH_COOKIE_NAME: Final[str] = "refresh_token"
 CSRF_COOKIE_NAME: Final[str] = "csrf_token"
 REFRESH_COOKIE_PATH: Final[str] = f"{API_V1}/auth"

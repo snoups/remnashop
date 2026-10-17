@@ -15,8 +15,6 @@ from app.modules.dialogs.usecases import GetDialogCatalogUseCase, UpdateDialogWi
 from app.modules.users.dto import UserDto
 from tests.fakes.events import RecordingEventPublisher
 
-# Same construction tests/modules/dialogs/test_usecases.py uses for its OWNER actor --
-# not a fixture, a plain module-level constant, matched here for consistency.
 OWNER = UserDto(id=1, login="a", name="a", role=Role.OWNER, language=Locale.EN)
 
 
@@ -28,11 +26,7 @@ def _clean():
 
 
 def test_flows_package_imports_without_aiogram() -> None:
-    # A subprocess, not an in-process sys.modules diff: this file's own module-level
-    # `from app.modules.dialogs import catalog` import already pulls in
-    # app.modules.dialogs.flows (transitively) before any test body runs, which made
-    # an in-process "newly imported" check vacuously pass regardless of what the code
-    # under test actually does. A cold subprocess has no such contamination.
+    # a fresh interpreter: this module's own imports already load the flows package
     code = (
         "import sys\n"
         "sys.modules['aiogram'] = None\n"
@@ -100,8 +94,8 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
         RedisBotSignals(redis),
         RecordingEventPublisher(),
     )
-    # This is the exact round trip the telegram-render-engine review found broken:
-    # read a seed window's own action key back through the admin API's write path.
+    # a seed window's own action key, written back through the admin API
+
     updated = await use_case(
         OWNER,
         UpdateDialogWindowButtonsDto(

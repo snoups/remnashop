@@ -43,12 +43,9 @@ class _SessionProvider(Provider):
 
 
 async def test_api_written_entry_is_visible_to_a_separate_session(config: AppConfig) -> None:
-    # Genuinely cross-process: the entry is written through the real HTTP API on
-    # one engine/session, then read back by a reconcile run on a *second* engine.
-    # A flush-without-commit in the write path is invisible to the reader, which
-    # only a second engine catches.
-    # Both sessions commit for real, so cleanup is explicit rather than the
-    # rolled-back `session` fixture every other test uses.
+    # Written through the HTTP API on one engine, read back by a reconcile run on
+    # a second: a flush without a commit would be invisible to the reader.
+    # Both commit for real, so cleanup is by hand.
     write_engine = create_async_engine(config.database.dsn)
     read_engine = create_async_engine(config.database.dsn)
     try:

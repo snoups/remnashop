@@ -49,8 +49,8 @@ class TelegramWebhookEndpoint:
         return secrets.compare_digest(telegram_secret_token.encode(), self.secret_token.encode())
 
     async def _feed_update(self, bot: Bot, update: Update) -> None:
-        # Bound concurrent update processing so a flood cannot exhaust resources
-        # (DB connections, etc.); excess updates queue on the semaphore.
+        # a flood must not exhaust DB connections; excess updates queue here
+
         async with self._semaphore:
             try:
                 result = await self.dispatcher.feed_update(bot, update)

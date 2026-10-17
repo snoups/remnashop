@@ -76,7 +76,7 @@ def _parse_trailer(tail: bytes) -> _Trailer:
 
 def verify_backup_file(path: Path, crypt_key: str) -> ProvenanceResult:
     with path.open("rb") as f:
-        size = f.seek(0, 2)  # get size via end-of-file seek, avoids a separate stat() call
+        size = f.seek(0, 2)
         f.seek(max(0, size - _TRAILER_SCAN_BYTES))
         tail = f.read()
 

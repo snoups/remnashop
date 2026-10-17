@@ -86,12 +86,8 @@ class NewPurchase:
         try:
             async with self._uow:
                 await self._assert_not_provisioned(data)
-                # Must come before the count-check below: FOR UPDATE on
-                # get_active_by_user_for_update only locks rows that already
-                # exist, so without this advisory lock two concurrent calls
-                # here could both observe the same under-cap count and both
-                # insert, silently exceeding the cap. A trial activation takes
-                # it too, so the late-trial check sees a settled state.
+                # before the count check; a trial activation takes it too, so
+                # the late-trial check below sees a settled state
                 await self._subscription_repository.acquire_purchase_cap_lock(data.user_id)
                 if not data.plan_snapshot.is_trial:
                     # a trial activated while this purchase was in flight gives way to it
