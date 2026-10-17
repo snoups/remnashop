@@ -3,6 +3,7 @@ from typing import Final
 from dishka.integrations.taskiq import FromDishka, inject
 from taskiq import Context, TaskiqDepends
 
+from app.core.broker import broker
 from app.modules.referrals.dto import (
     AssignReferralRewardsDto,
     AttachReferralOnRegistrationDto,
@@ -15,7 +16,6 @@ from app.modules.referrals.usecases import (
     ResumeBonusRenewalUseCase,
     ReverseReferralRewardsUseCase,
 )
-from app.worker.broker import broker
 
 _RESUME_MAX_RETRIES: Final[int] = 10
 

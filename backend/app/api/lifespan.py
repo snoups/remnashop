@@ -9,6 +9,7 @@ from prometheus_client import REGISTRY
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from app.core.broker import broker
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
@@ -19,7 +20,6 @@ from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.translations import TranslationRepository, ensure_translations_seeded
 from app.modules.users import UserRepository
-from app.worker.broker import broker
 
 
 @asynccontextmanager

@@ -2,7 +2,6 @@ from typing import cast
 
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import LoyaltyThresholdRescaler
 from app.modules.loyalty.dispatch import LoyaltyRecalcDispatch
 from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
@@ -13,6 +12,7 @@ from app.modules.loyalty.usecases import (
     SetUserLoyaltyExcludedUseCase,
     UpdateLoyaltySettingsUseCase,
 )
+from app.modules.plans import LoyaltyThresholdRescaler
 
 
 class LoyaltyProvider(Provider):

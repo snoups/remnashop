@@ -1,14 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Final, Optional
+from typing import Any, Final, Optional
 
 from pydantic import SecretStr
 
 from app.core.dto import BaseDto
-
-if TYPE_CHECKING:
-    from app.modules.users import UserDto
+from app.modules.users import UserDto
 
 
 class NotificationChannel(StrEnum):
@@ -120,7 +118,7 @@ def group_of(event_type: str) -> Optional[str]:
     return _GROUP_BY_EVENT_TYPE.get(event_type)
 
 
-def channels_for(user: "UserDto", group: str) -> frozenset[NotificationChannel]:
+def channels_for(user: UserDto, group: str) -> frozenset[NotificationChannel]:
     stored = (user.notification_channels or {}).get(group)
     # also a group added after the admin last saved the matrix
     if stored is None:
@@ -128,7 +126,7 @@ def channels_for(user: "UserDto", group: str) -> frozenset[NotificationChannel]:
     return frozenset(NotificationChannel(c) for c in stored if c in _CHANNEL_VALUES)
 
 
-def bell_event_types(user: "UserDto") -> frozenset[str]:
+def bell_event_types(user: UserDto) -> frozenset[str]:
     return frozenset().union(
         *(
             types
@@ -138,7 +136,7 @@ def bell_event_types(user: "UserDto") -> frozenset[str]:
     )
 
 
-def effective_matrix(user: "UserDto") -> dict[str, list[str]]:
+def effective_matrix(user: UserDto) -> dict[str, list[str]]:
     return {
         group: sorted(channel.value for channel in channels_for(user, group))
         for group in NOTIFICATION_GROUPS

@@ -7,7 +7,7 @@ from taskiq_redis import ListQueueBroker, ListRedisScheduleSource
 from app.core.config import AppConfig
 from app.core.exceptions import RemnawavePanelUnavailableError, RetryableTaskError
 from app.core.json import json_default
-from app.worker.metrics import TaskMetricsMiddleware
+from app.core.metrics import TaskMetricsMiddleware
 
 broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
     ORJSONSerializer(default=json_default)

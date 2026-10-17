@@ -8,9 +8,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import OrderFailer
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
+from app.modules.subscriptions.ports import OrderFailer
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
 from app.modules.users import UserRepository
 

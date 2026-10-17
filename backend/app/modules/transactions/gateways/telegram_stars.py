@@ -7,12 +7,11 @@ import orjson
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
 from app.core.telegram_api import bot_method_url
-from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
     PaymentIntent,
     ProviderPayment,
-    WebhookRequest,
     WebhookSignal,
 )
 from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S

@@ -2,12 +2,11 @@ from app.core.actor import Actor
 from app.core.enums import PromocodeAvailability, PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import ReferrerLookup
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.promocodes.dto import PromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.subscriptions import PurchaseEligibility, SubscriptionRepository
+from app.modules.subscriptions import PurchaseEligibility, ReferrerLookup, SubscriptionRepository
 
 
 async def get_usable_promocode(

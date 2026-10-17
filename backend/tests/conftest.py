@@ -4,7 +4,7 @@ import os
 # docker-service hostnames the real app expects are overridden here.
 # Everything else (secrets, remnawave/bot tokens) comes from the repo-root .env.
 #
-# Must run before the imports below: app.worker.broker builds its broker at
+# Must run before the imports below: app.core.broker builds its broker at
 # import time from AppConfig.get().redis.dsn, and with the docker hostname
 # every .kiq() waits ~5s on DNS before publish() swallows the error.
 os.environ.setdefault("DATABASE_HOST", "localhost")

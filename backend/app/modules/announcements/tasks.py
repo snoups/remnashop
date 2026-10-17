@@ -3,9 +3,9 @@ from typing import Final
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.utils.lock import cron_lock
 from app.modules.announcements.usecases import SyncAnnouncementsUseCase
-from app.worker.broker import broker
 
 _SYNC_INTERVAL_S: Final[int] = 30 * 60
 _SYNC_LOCK_TTL_S: Final[int] = 25 * 60

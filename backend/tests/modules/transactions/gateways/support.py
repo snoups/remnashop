@@ -13,8 +13,8 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
-from app.modules.transactions.dto import TransactionDto
-from app.modules.transactions.gateways.base import PaymentHttpClient, WebhookRequest
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
+from app.modules.transactions.gateways.base import PaymentHttpClient
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 WEBHOOK_URL: Final[str] = "https://shop.example/api/v1/payments/test"

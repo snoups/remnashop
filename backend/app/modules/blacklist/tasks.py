@@ -3,10 +3,10 @@ from typing import Final
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.utils.lock import cron_lock
 from app.modules.blacklist.dispatch import ReconcileBlacklistDispatch
 from app.modules.blacklist.usecases import FetchBlacklistSourcesUseCase
-from app.worker.broker import broker
 
 _SYNC_LOCK_TTL_S: Final[int] = 55 * 60
 

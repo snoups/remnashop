@@ -2,7 +2,6 @@ from typing import cast
 
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import SubscriptionRevoker
 from app.modules.subscriptions.dispatch import GrantAddOnDispatch, PurchaseSubscriptionDispatch
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
@@ -43,6 +42,7 @@ from app.modules.subscriptions.usecases import (
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
 )
+from app.modules.users import SubscriptionRevoker
 
 
 class SubscriptionsProvider(Provider):

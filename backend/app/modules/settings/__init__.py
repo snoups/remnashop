@@ -31,6 +31,7 @@ from app.modules.settings.events import (
     EmailSettingsChangedEvent,
     OidcIssuerChangedEvent,
 )
+from app.modules.settings.ports import OidcIdentityCleaner
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.telegram_status import fetch_bot_status, fetch_bot_username
 from app.modules.settings.usecases import (
@@ -97,6 +98,7 @@ __all__ = [
     "GetPublicAppearanceUseCase",
     "GetShopSettingsUseCase",
     "OAuthSettingsDto",
+    "OidcIdentityCleaner",
     "OidcIssuerChangedEvent",
     "RemoveBotProxyUseCase",
     "ReportBotStatusDto",

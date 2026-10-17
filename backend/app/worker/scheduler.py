@@ -5,10 +5,10 @@ from redis.asyncio import Redis
 from taskiq import TaskiqEvents, TaskiqScheduler, TaskiqState
 from taskiq.schedule_sources import LabelScheduleSource
 
+from app.core.broker import broker, retry_schedule_source
 from app.core.config import AppConfig
 from app.core.logger import setup_logger
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
-from app.worker.broker import broker, retry_schedule_source
 
 scheduler = TaskiqScheduler(
     broker=broker, sources=[LabelScheduleSource(broker), retry_schedule_source]

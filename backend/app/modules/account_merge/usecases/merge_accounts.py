@@ -4,7 +4,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import EventPublisher, SessionRevoker
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.account_merge.dto import MergeAccountsDto
@@ -17,7 +17,7 @@ from app.modules.account_merge.rules import (
     merged_user_fields,
     resolve_sides,
 )
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import SessionRevoker, UserDto, UserRepository
 
 
 class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserDto]):

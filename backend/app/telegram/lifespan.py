@@ -15,12 +15,11 @@ from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.ports import BotCommandsSync
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.core.utils.time import datetime_now
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
 from app.modules.settings import BotStatusKind, ReportBotStatusDto, ReportBotStatusUseCase
-from app.modules.translations import TranslationRepository
+from app.modules.translations import BotCommandsSync, TranslationRepository
 from app.telegram.bot_signals import listen_for_bot_signals, live_update_handlers
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.webhook import TelegramWebhookEndpoint

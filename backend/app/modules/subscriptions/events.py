@@ -1,12 +1,8 @@
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, SystemEvent, UserEvent
-
-if TYPE_CHECKING:
-    from app.modules.users import UserDto
+from app.modules.users import UserDto
 
 
 @dataclass(frozen=True, kw_only=True)

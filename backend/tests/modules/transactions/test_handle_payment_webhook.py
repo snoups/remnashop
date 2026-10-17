@@ -20,13 +20,8 @@ from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
 from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.transactions.dto import CreateTransactionDto, HandleWebhookDto
-from app.modules.transactions.gateways.base import (
-    ProviderPayment,
-    WebhookAck,
-    WebhookRequest,
-    WebhookSignal,
-)
+from app.modules.transactions.dto import CreateTransactionDto, HandleWebhookDto, WebhookRequest
+from app.modules.transactions.gateways.base import ProviderPayment, WebhookAck, WebhookSignal
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.usecases import (
     HandlePaymentWebhookUseCase,

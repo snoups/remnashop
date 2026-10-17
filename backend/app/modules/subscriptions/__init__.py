@@ -60,6 +60,12 @@ from app.modules.subscriptions.idempotency_repository import (
     IDEMPOTENCY_KEY_RETENTION_DAYS,
     PurchaseIdempotencyRepository,
 )
+from app.modules.subscriptions.ports import (
+    OpenOrderCounter,
+    OrderFailer,
+    ReferrerLookup,
+    SpentPurchaseDiscount,
+)
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
@@ -131,6 +137,8 @@ __all__ = [
     "NodeConnectionLostEvent",
     "NodeConnectionRestoredEvent",
     "NodeTrafficReachedEvent",
+    "OpenOrderCounter",
+    "OrderFailer",
     "PanelLoginFailedEvent",
     "PanelLoginSucceededEvent",
     "PanelStartedEvent",
@@ -143,11 +151,13 @@ __all__ = [
     "PurchaseSubscriptionDispatch",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
+    "ReferrerLookup",
     "ReissueSubscriptionUseCase",
     "ResetSubscriptionTrafficUseCase",
     "RollbackPreviewDto",
     "SetSubscriptionEnabledDto",
     "SetSubscriptionEnabledUseCase",
+    "SpentPurchaseDiscount",
     "SubscriptionAddOnGrantedEvent",
     "SubscriptionChangedEvent",
     "SubscriptionDeviceAddedEvent",

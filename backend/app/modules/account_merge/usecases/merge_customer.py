@@ -3,13 +3,13 @@ from loguru import logger
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import EventPublisher, SessionRevoker
+from app.core.ports import EventPublisher
 from app.modules.account_merge.customer import customer_sides, ensure_customer_mergeable
 from app.modules.account_merge.dto import MergeCountsDto
 from app.modules.account_merge.events import AccountsMergedEvent
 from app.modules.account_merge.repository import AccountMergeRepository
 from app.modules.account_merge.rules import merged_user_fields
-from app.modules.users import UserDto, UserRepository
+from app.modules.users import SessionRevoker, UserDto, UserRepository
 
 
 class CustomerAccountMerger:

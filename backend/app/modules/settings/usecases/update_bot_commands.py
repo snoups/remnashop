@@ -2,13 +2,14 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import BotCommandsSync, EventPublisher
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.settings.bot_commands import BOT_COMMANDS
 from app.modules.settings.dto import UpdateBotCommandsDto, UpdateBotCommandsResultDto
 from app.modules.settings.events import BotSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
+from app.modules.translations import BotCommandsSync
 
 
 class UpdateBotCommandsUseCase(UseCase[UpdateBotCommandsDto, UpdateBotCommandsResultDto]):

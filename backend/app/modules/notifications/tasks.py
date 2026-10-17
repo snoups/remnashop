@@ -4,6 +4,7 @@ import orjson
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.constants import REDIS_KEY_PREFIX, TTL_1D
 from app.core.exceptions import RetryableTaskError
 from app.core.utils.lock import cron_lock
@@ -13,7 +14,6 @@ from app.modules.notifications.dto import (
     DeliverNotificationDto,
 )
 from app.modules.notifications.usecases import DeliverNotificationUseCase
-from app.worker.broker import broker
 
 # longer than the outbox sweep keeps retrying a row
 _DELIVERED_TTL_S: Final[int] = TTL_1D

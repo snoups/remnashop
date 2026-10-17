@@ -2,12 +2,13 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.ports import EventPublisher, OidcIdentityCleaner
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.http import assert_public_https_host
 from app.modules.settings.dto import OAuthSettingsDto, UpdateOAuthSettingsDto
 from app.modules.settings.events import OidcIssuerChangedEvent
+from app.modules.settings.ports import OidcIdentityCleaner
 from app.modules.settings.repository import SettingsRepository
 
 

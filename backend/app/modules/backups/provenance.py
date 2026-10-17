@@ -74,14 +74,7 @@ def _parse_trailer(tail: bytes) -> _Trailer:
     return _Trailer(content_hash=content_hash, signature=signature, start_in_tail=idx)
 
 
-def verify_backup_file(path: Path) -> ProvenanceResult:
-    from app.core.config import AppConfig  # noqa: PLC0415 - no config import at module load
-
-    crypt_key = AppConfig.get().crypt_key.get_secret_value()
-    return _verify_with_key(path, crypt_key)
-
-
-def _verify_with_key(path: Path, crypt_key: str) -> ProvenanceResult:
+def verify_backup_file(path: Path, crypt_key: str) -> ProvenanceResult:
     with path.open("rb") as f:
         size = f.seek(0, 2)  # get size via end-of-file seek, avoids a separate stat() call
         f.seek(max(0, size - _TRAILER_SCAN_BYTES))

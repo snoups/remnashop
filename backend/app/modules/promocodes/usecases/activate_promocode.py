@@ -12,7 +12,7 @@ from app.core.enums import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import EventPublisher, ReferrerLookup
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanDto, PlanRepository
@@ -31,6 +31,7 @@ from app.modules.subscriptions import (
     PurchaseEligibility,
     PurchaseSubscriptionDto,
     PurchaseSubscriptionUseCase,
+    ReferrerLookup,
     SubscriptionDto,
     SubscriptionRepository,
     get_owned_target,

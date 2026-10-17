@@ -5,6 +5,7 @@ from loguru import logger
 from redis.asyncio import Redis
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.broker import broker
 from app.core.exceptions import RetryableTaskError
 from app.core.utils.lock import cron_lock
 from app.modules.transactions.dto import ReconcilePaidTransactionsDto, StarsPaymentDto
@@ -14,7 +15,6 @@ from app.modules.transactions.usecases import (
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
 )
-from app.worker.broker import broker
 
 _RECONCILE_LOCK_TTL_S: Final[int] = 14 * 60
 

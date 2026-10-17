@@ -9,6 +9,7 @@ from app.modules.translations.events import (
     LocaleActivatedEvent,
     LocaleDeactivatedEvent,
 )
+from app.modules.translations.ports import BotCommandsSync, DefaultBannerSeed
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.seed import ensure_translations_seeded
 from app.modules.translations.serializer import (
@@ -35,6 +36,8 @@ from app.modules.translations.usecases import (
 
 __all__ = [
     "AddLocaleUseCase",
+    "BotCommandsSync",
+    "DefaultBannerSeed",
     "DefaultLocaleChangedEvent",
     "ExportTranslationsUseCase",
     "ImportTranslationsUseCase",

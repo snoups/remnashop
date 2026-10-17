@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Final, Literal, Optional
+from typing import Final, Literal, Optional
 
 from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
@@ -14,10 +14,6 @@ from app.core.enums import (
 )
 from app.modules.subscriptions import PlanSnapshot, RollbackPreviewDto
 from app.modules.users import UserDto
-
-if TYPE_CHECKING:
-    # gateways.base imports TransactionDto from here
-    from app.modules.transactions.gateways.base import WebhookRequest
 
 # time for the normal dispatch + worker run to finish before an order counts as stuck
 _GRACE_PERIOD: Final[timedelta] = timedelta(minutes=10)
@@ -169,9 +165,16 @@ class GetTransactionSummaryDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class WebhookRequest:
+    body: bytes
+    headers: dict[str, str]
+    client_ip: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
 class HandleWebhookDto:
     gateway_type: PaymentGatewayType
-    request: "WebhookRequest"
+    request: WebhookRequest
 
 
 @dataclass(frozen=True, kw_only=True)

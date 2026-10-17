@@ -3,11 +3,11 @@ from typing import Final, Optional
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.utils.lock import cron_lock
 from app.modules.loyalty.dto import RecalculateLoyaltyDto
 from app.modules.loyalty.usecases import RecalculateLoyaltyDiscountsUseCase
-from app.worker.broker import broker
 
 _FULL_RUN_LOCK_TTL_S: Final[int] = 55 * 60
 _RERUN_KEY: Final[str] = f"{REDIS_KEY_PREFIX}loyalty_recalc_rerun"

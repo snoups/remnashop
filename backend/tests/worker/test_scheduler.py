@@ -1,7 +1,7 @@
 from taskiq import TaskiqScheduler
 from taskiq.schedule_sources import LabelScheduleSource
 
-from app.worker.broker import retry_schedule_source
+from app.core.broker import retry_schedule_source
 from app.worker.scheduler import scheduler
 
 

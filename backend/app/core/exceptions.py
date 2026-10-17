@@ -36,7 +36,7 @@ class CooldownError(AppError):
 
 class RetryableTaskError(Exception):
     """A worker task failed before any side effect left the process, so the
-    broker may run it again (SmartRetryMiddleware in app/worker/broker.py)."""
+    broker may run it again (SmartRetryMiddleware in app/core/broker.py)."""
 
 
 class RemnawavePanelUnavailableError(AppError):

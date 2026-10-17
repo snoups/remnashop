@@ -23,7 +23,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
 )
-from app.core.ports import EventPublisher, PromocodeLiveness
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -50,6 +50,7 @@ from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.gateways.telegram_stars import with_bot_settings
+from app.modules.transactions.ports import PromocodeLiveness
 from app.modules.transactions.pricing import quote_price
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.waitlist_repository import WaitlistRepository

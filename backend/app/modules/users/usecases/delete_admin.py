@@ -3,11 +3,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
-from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker, SubscriptionRevoker
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.dto import DeleteAdminDto
 from app.modules.users.events import AdminDeletedEvent
+from app.modules.users.ports import PasskeyRevoker, SessionRevoker, SubscriptionRevoker
 from app.modules.users.repository import UserRepository
 
 

@@ -2,7 +2,6 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import ReferrerLookup
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans import PlanRepository
@@ -13,7 +12,7 @@ from app.modules.promocodes.availability import (
 )
 from app.modules.promocodes.dto import PromocodeDto, ValidatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.subscriptions import PurchaseEligibility, SubscriptionRepository
+from app.modules.subscriptions import PurchaseEligibility, ReferrerLookup, SubscriptionRepository
 from app.modules.users import UserDto
 
 

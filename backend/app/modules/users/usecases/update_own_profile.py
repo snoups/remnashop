@@ -2,13 +2,14 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
-from app.core.ports import EventPublisher, SessionRevoker
+from app.core.ports import EventPublisher
 from app.core.security import hash_password, verify_password
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import UpdateOwnProfileDto, UpdateUserDto, UserDto
 from app.modules.users.events import PasswordChangedEvent
+from app.modules.users.ports import SessionRevoker
 from app.modules.users.repository import UserRepository
 
 

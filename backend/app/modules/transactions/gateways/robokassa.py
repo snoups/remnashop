@@ -4,14 +4,13 @@ from xml.etree import ElementTree as ET
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
-from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
     PaymentGateway,
     PaymentIntent,
     ProviderPayment,
     WebhookAck,
-    WebhookRequest,
     WebhookSignal,
 )
 from app.modules.transactions.gateways.common import (

@@ -1,7 +1,7 @@
 from dishka.integrations.taskiq import FromDishka, inject
 
+from app.core.broker import broker
 from app.modules.overview.usecases import SampleRemnawaveOnlineUseCase
-from app.worker.broker import broker
 
 
 @broker.task(schedule=[{"cron": "*/5 * * * *"}])

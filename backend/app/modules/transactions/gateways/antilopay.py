@@ -9,13 +9,12 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
-from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
     PaymentGateway,
     PaymentIntent,
     ProviderPayment,
-    WebhookRequest,
     WebhookSignal,
     amount_to_float,
 )

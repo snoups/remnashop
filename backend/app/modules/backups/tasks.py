@@ -4,11 +4,11 @@ from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.enums import BackupKind
 from app.core.utils.lock import cron_lock
 from app.modules.backups.dto import RunBackupDto
 from app.modules.backups.usecases import RunBackupUseCase, RunScheduledBackupUseCase
-from app.worker.broker import broker
 
 _AUTO_BACKUP_LOCK_TTL_S: Final[int] = 55 * 60  # under the hourly cron interval
 

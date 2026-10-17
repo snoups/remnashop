@@ -2,9 +2,8 @@ from taskiq.message import TaskiqMessage
 from taskiq.result import TaskiqResult
 
 import app.modules.event_log.tasks  # noqa: F401 - registers the Gauge whatever the collection order
+from app.core.metrics import WORKER_METRICS_REGISTRY, TaskMetricsMiddleware
 from app.worker.metrics import (
-    WORKER_METRICS_REGISTRY,
-    TaskMetricsMiddleware,
     _sample_queue_depth,
     _sample_scheduled_retries,
 )

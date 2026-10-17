@@ -1,6 +1,5 @@
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import OidcIdentityCleaner
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.oauth.usecases import (
@@ -11,6 +10,7 @@ from app.modules.oauth.usecases import (
     OAuthLoginAuthorizeUseCase,
     OAuthLoginCallbackUseCase,
 )
+from app.modules.settings import OidcIdentityCleaner
 
 
 class OAuthDIProvider(Provider):

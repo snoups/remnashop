@@ -1,9 +1,9 @@
 from dishka.integrations.taskiq import FromDishka, inject
 
+from app.core.broker import broker
 from app.core.enums import AdLinkChannel
 from app.modules.advertising.dto import RecordAdLinkAttributionDto
 from app.modules.advertising.usecases import RecordAdLinkAttributionUseCase
-from app.worker.broker import broker
 
 
 @broker.task

@@ -1,6 +1,5 @@
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import PasskeyRevoker
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.passkeys.usecases import (
@@ -12,6 +11,7 @@ from app.modules.passkeys.usecases import (
     VerifyPasskeyAuthenticationUseCase,
     VerifyPasskeyRegistrationUseCase,
 )
+from app.modules.users import PasskeyRevoker
 
 
 class PasskeysProvider(Provider):

@@ -15,7 +15,7 @@ forbidden_modules =
     app.telegram
 
 [importlinter:contract:modules-layer]
-name = only routers and tasks reach into their process
+name = only routers reach into their process
 type = forbidden
 allow_indirect_imports = True
 source_modules =
@@ -26,7 +26,6 @@ forbidden_modules =
     app.telegram
 ignore_imports =
     app.modules.*.api.** -> app.api.**
-    app.modules.*.tasks -> app.worker.**
 
 [importlinter:contract:usecases-without-sqlalchemy]
 name = usecases do not touch sqlalchemy

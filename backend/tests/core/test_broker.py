@@ -1,9 +1,9 @@
 from taskiq import SmartRetryMiddleware
 from taskiq_redis import ListRedisScheduleSource
 
+from app.core.broker import broker, retry_schedule_source
 from app.core.exceptions import RemnawavePanelUnavailableError, RetryableTaskError
-from app.worker.broker import broker, retry_schedule_source
-from app.worker.metrics import TaskMetricsMiddleware
+from app.core.metrics import TaskMetricsMiddleware
 
 
 def test_broker_has_a_smart_retry_middleware_scoped_to_safe_retries() -> None:

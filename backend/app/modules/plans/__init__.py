@@ -23,6 +23,11 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.events import AddOnChangedEvent
+from app.modules.plans.ports import (
+    AnchorAmountRescaler,
+    LoyaltyThresholdRescaler,
+    PlanReferenceCleaner,
+)
 from app.modules.plans.repository import PlanRepository
 from app.modules.plans.usecases import (
     CreateAddOnUseCase,
@@ -51,6 +56,7 @@ __all__ = [
     "AddOnDto",
     "AddOnPriceOverrideDto",
     "AddOnRepository",
+    "AnchorAmountRescaler",
     "CreateAddOnDto",
     "CreateAddOnUseCase",
     "CreatePlanDto",
@@ -61,9 +67,11 @@ __all__ = [
     "GetPlanUseCase",
     "ListAddOnsUseCase",
     "ListPlansUseCase",
+    "LoyaltyThresholdRescaler",
     "PlanDto",
     "PlanDurationDto",
     "PlanPriceOverrideDto",
+    "PlanReferenceCleaner",
     "PlanRepository",
     "ReorderPlansDto",
     "ReorderPlansUseCase",

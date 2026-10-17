@@ -2,7 +2,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.core.ports import BotCommandsSync, BotSignals, EventPublisher
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.translations.dto import (
@@ -12,6 +12,7 @@ from app.modules.translations.dto import (
     TranslationTextExportDto,
 )
 from app.modules.translations.events import TranslationChangedEvent
+from app.modules.translations.ports import BotCommandsSync
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,

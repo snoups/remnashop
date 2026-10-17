@@ -8,18 +8,11 @@ import httpx
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
-from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
 
 HTTP_TIMEOUT_S: Final[float] = 20.0
 # one pooled client for every provider call, owned by the DI container
 PaymentHttpClient = NewType("PaymentHttpClient", httpx.AsyncClient)
-
-
-@dataclass(frozen=True, kw_only=True)
-class WebhookRequest:
-    body: bytes
-    headers: dict[str, str]
-    client_ip: str = ""
 
 
 @dataclass(frozen=True, kw_only=True)

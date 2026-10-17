@@ -1,6 +1,5 @@
 from dishka import Provider, Scope, alias, provide_all
 
-from app.core.ports import SessionRevoker
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
 from app.modules.auth.usecases import (
@@ -15,6 +14,7 @@ from app.modules.auth.usecases import (
     RevokeSessionUseCase,
     RevokeUserSessionUseCase,
 )
+from app.modules.users import SessionRevoker
 
 
 class AuthProvider(Provider):

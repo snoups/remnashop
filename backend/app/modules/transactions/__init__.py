@@ -10,6 +10,7 @@ from app.modules.transactions.dto import (
     PriceQuote,
     StarsPreCheckoutDto,
     TransactionDto,
+    WebhookRequest,
 )
 from app.modules.transactions.events import (
     CheckoutCreatedEvent,
@@ -22,10 +23,10 @@ from app.modules.transactions.gateways.base import (
     PaymentIntent,
     ProviderPayment,
     WebhookAck,
-    WebhookRequest,
     WebhookSignal,
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
+from app.modules.transactions.ports import PromocodeLiveness
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
@@ -53,6 +54,7 @@ __all__ = [
     "PaymentIntent",
     "PaymentMethodDto",
     "PriceQuote",
+    "PromocodeLiveness",
     "ProviderPayment",
     "StarsPreCheckoutDto",
     "TransactionDto",

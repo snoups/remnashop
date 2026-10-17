@@ -6,11 +6,12 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.core.ports import AnchorAmountRescaler, EventPublisher, LoyaltyThresholdRescaler
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import PriceBookDto, SwitchAnchorCurrencyDto
+from app.modules.plans.ports import AnchorAmountRescaler, LoyaltyThresholdRescaler
 from app.modules.plans.price_book import build_price_book
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (

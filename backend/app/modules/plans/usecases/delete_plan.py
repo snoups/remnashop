@@ -2,10 +2,11 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.ports import EventPublisher, PlanReferenceCleaner
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.plans.events import PlanChangedEvent
+from app.modules.plans.ports import PlanReferenceCleaner
 from app.modules.plans.repository import PlanRepository
 
 

@@ -1,7 +1,7 @@
 from dishka.integrations.taskiq import FromDishka, inject
 
+from app.core.broker import broker
 from app.modules.auth.usecases import PruneStaleSessionsUseCase
-from app.worker.broker import broker
 
 
 @broker.task(schedule=[{"cron": "45 3 * * *"}])

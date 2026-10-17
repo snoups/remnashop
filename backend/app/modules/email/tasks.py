@@ -1,8 +1,8 @@
 from dishka.integrations.taskiq import FromDishka, inject
 
+from app.core.broker import broker
 from app.modules.email.dto import EmailMessageDto
 from app.modules.email.usecases import SendEmailUseCase
-from app.worker.broker import broker
 
 
 @broker.task(retry_on_error=True, max_retries=3)

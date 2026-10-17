@@ -1,6 +1,6 @@
 from dishka import Provider, Scope, alias, provide, provide_all
 
-from app.core.ports import PlanReferenceCleaner, PromocodeLiveness
+from app.modules.plans import PlanReferenceCleaner
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
@@ -16,6 +16,7 @@ from app.modules.promocodes.usecases import (
     ValidatePromocodeUseCase,
     WarnExpiringPromocodeDiscountsUseCase,
 )
+from app.modules.transactions import PromocodeLiveness
 
 
 class PromocodesProvider(Provider):

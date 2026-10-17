@@ -1,12 +1,9 @@
 import asyncio
-from typing import Any, Final
+from typing import Final
 
 from loguru import logger
-from prometheus_client import Gauge, Histogram
+from prometheus_client import Gauge
 from redis.asyncio import Redis
-from taskiq import TaskiqMiddleware
-from taskiq.message import TaskiqMessage
-from taskiq.result import TaskiqResult
 
 from app.core.metrics import WORKER_METRICS_REGISTRY
 
@@ -19,14 +16,6 @@ QUEUE_DEPTH: Final[Gauge] = Gauge(
 SCHEDULED_RETRIES: Final[Gauge] = Gauge(
     "remnashop_taskiq_scheduled_retries",
     "Pending scheduled taskiq retries",
-    registry=WORKER_METRICS_REGISTRY,
-)
-
-TASK_DURATION: Final[Histogram] = Histogram(
-    "remnashop_taskiq_task_duration_seconds",
-    "Taskiq task execution time by task and outcome",
-    labelnames=("task_name", "outcome"),
-    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
     registry=WORKER_METRICS_REGISTRY,
 )
 
@@ -52,11 +41,3 @@ async def poll_worker_gauges(redis: Redis, queue_name: str, retry_schedule_prefi
         except Exception:  # a transient Redis blip must not kill the poller
             logger.warning("Failed to sample taskiq worker gauges")
         await asyncio.sleep(_WORKER_GAUGE_POLL_INTERVAL_S)
-
-
-class TaskMetricsMiddleware(TaskiqMiddleware):
-    async def post_execute(self, message: TaskiqMessage, result: TaskiqResult[Any]) -> None:
-        outcome = "error" if result.is_err else "success"
-        TASK_DURATION.labels(task_name=message.task_name, outcome=outcome).observe(
-            result.execution_time
-        )

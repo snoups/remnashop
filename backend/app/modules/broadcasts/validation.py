@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Final, Optional
+from typing import Final, Optional
 
 from app.core.enums import BroadcastButtonKind, BroadcastDelivery, Locale
 from app.core.error_codes import ErrorCode
@@ -22,11 +22,9 @@ from app.modules.broadcasts.dto import (
     SaveBroadcastDto,
 )
 from app.modules.broadcasts.email_html import email_image_ids, validate_email_html
+from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.storage import MAX_EMAIL_IMAGES_PER_LETTER_BYTES
 from app.modules.promocodes import PromocodeRepository
-
-if TYPE_CHECKING:
-    from app.modules.broadcasts.repository import BroadcastRepository
 
 MAX_TITLE_LENGTH: Final[int] = 120
 MAX_BUTTONS: Final[int] = 10
@@ -236,7 +234,7 @@ async def promocode_is_usable(
 
 async def assert_references(
     data: SaveBroadcastDto,
-    broadcast_repository: "BroadcastRepository",
+    broadcast_repository: BroadcastRepository,
     promocode_repository: PromocodeRepository,
 ) -> None:
     if await broadcast_repository.has_missing_references(data.audience):

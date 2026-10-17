@@ -5,12 +5,11 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
-from app.modules.transactions.dto import TransactionDto
+from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
     PaymentIntent,
     ProviderPayment,
-    WebhookRequest,
     WebhookSignal,
 )
 from app.modules.transactions.gateways.common import (

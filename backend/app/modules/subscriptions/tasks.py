@@ -5,6 +5,7 @@ from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
 from redis.asyncio import Redis
 
+from app.core.broker import broker
 from app.core.enums import Currency, PurchaseType
 from app.core.utils.lock import cron_lock
 from app.modules.subscriptions.dto import GrantAddOnDto, PlanSnapshot, PurchaseSubscriptionDto
@@ -14,7 +15,6 @@ from app.modules.subscriptions.usecases import (
     PruneIdempotencyKeysUseCase,
     ReconcileSubscriptionsUseCase,
 )
-from app.worker.broker import broker
 
 _RECONCILE_LOCK_TTL_S: Final[int] = 29 * 60
 

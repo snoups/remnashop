@@ -3,12 +3,13 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
-from app.core.ports import EventPublisher, PasskeyRevoker, SessionRevoker
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.dto import BlockUserDto, UserDto
 from app.modules.users.events import AdminDemotedEvent, UserBlockedEvent
+from app.modules.users.ports import PasskeyRevoker, SessionRevoker
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 

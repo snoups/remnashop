@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import uvicorn
 from aiogram import Bot
@@ -8,6 +8,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from dishka.integrations.aiogram import setup_dishka as setup_aiogram_dishka
 from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
 from fastapi import FastAPI
+from fluentogram import TranslatorHub
 from loguru import logger
 
 from app.core.config import AppConfig
@@ -20,12 +21,9 @@ from app.telegram.dispatcher import get_bg_manager_factory, get_dispatcher, setu
 from app.telegram.i18n import read_translator_hub
 from app.telegram.idle_app import get_idle_app
 
-if TYPE_CHECKING:
-    from fluentogram import TranslatorHub
-
 
 def build_app(
-    config: AppConfig, bot_settings: BotSettingsDto, translator_hub: Optional["TranslatorHub"]
+    config: AppConfig, bot_settings: BotSettingsDto, translator_hub: Optional[TranslatorHub]
 ) -> FastAPI:
     if bot_settings.token is None or bot_settings.secret_token is None:
         logger.warning(

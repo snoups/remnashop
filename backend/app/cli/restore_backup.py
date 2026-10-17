@@ -36,7 +36,7 @@ async def run_restore(
     confirm_foreign: Callable[[], bool],
     confirm_start: Callable[[], bool],
 ) -> None:
-    result = verify_backup_file(path)
+    result = verify_backup_file(path, config.crypt_key.get_secret_value())
     print(f"Provenance: {format_provenance_message(result)}")
 
     if result.status is not ProvenanceStatus.NATIVE and not confirm_foreign():

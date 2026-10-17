@@ -1,10 +1,11 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.ports import BotCommandsSync, BotSignals, EventPublisher
+from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.events import TranslationChangedEvent
+from app.modules.translations.ports import BotCommandsSync
 from app.modules.translations.repository import TranslationRepository
 
 

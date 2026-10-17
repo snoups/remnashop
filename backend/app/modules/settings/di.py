@@ -1,6 +1,5 @@
 from dishka import Provider, Scope, provide, provide_all
 
-from app.core.ports import BotCommandsSync
 from app.modules.settings.bot_commands_sync import BotCommandsPusher
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import (
@@ -36,6 +35,7 @@ from app.modules.settings.usecases import (
     UploadAppearanceFaviconUseCase,
     UploadAppearanceLogoUseCase,
 )
+from app.modules.translations import BotCommandsSync
 
 
 class SettingsProvider(Provider):

@@ -2,12 +2,12 @@ from typing import Any
 
 from dishka.integrations.taskiq import FromDishka, inject
 
+from app.core.broker import broker
 from app.modules.customer_notifications.dto import NotifyCustomerDto, SendCustomerTelegramDto
 from app.modules.customer_notifications.usecases import (
     NotifyCustomerUseCase,
     SendCustomerTelegramUseCase,
 )
-from app.worker.broker import broker
 
 
 @broker.task(retry_on_error=True, max_retries=3)

@@ -1,11 +1,12 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
-from app.core.ports import BotCommandsSync, EventPublisher
+from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.translations.dto import ActiveLocalesDto
 from app.modules.translations.events import LocaleActivatedEvent
+from app.modules.translations.ports import BotCommandsSync
 from app.modules.translations.repository import TranslationRepository
 
 
