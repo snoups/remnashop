@@ -2,15 +2,18 @@ from typing import Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
+from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
 from app.core.enums import AppearanceImageKind
-from app.modules.settings.api.schemas import AppearanceResponse
+from app.modules.settings.api.schemas import AppearanceResponse, CabinetSettingsResponse
 from app.modules.settings.usecases import (
+    GetCabinetSettingsUseCase,
     GetPublicAppearanceImageUseCase,
     GetPublicAppearanceUseCase,
 )
+from app.modules.users import UserDto
 
 router = APIRouter(prefix="/appearance", tags=["appearance"])
 
@@ -41,3 +44,15 @@ async def get_appearance_logo(use_case: FromDishka[GetPublicAppearanceImageUseCa
 async def get_appearance_favicon(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
     image = await use_case.execute(AppearanceImageKind.FAVICON)
     return Response(content=image.data, media_type=image.content_type, headers=_IMAGE_HEADERS)
+
+
+shop_router = APIRouter(prefix="/shop", tags=["shop"])
+
+
+@shop_router.get("/public-settings", response_model=CabinetSettingsResponse)
+@inject
+async def get_public_shop_settings(
+    use_case: FromDishka[GetCabinetSettingsUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> CabinetSettingsResponse:
+    return CabinetSettingsResponse.model_validate(await use_case(actor), from_attributes=True)

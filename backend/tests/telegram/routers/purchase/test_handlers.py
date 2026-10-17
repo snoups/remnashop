@@ -35,6 +35,7 @@ from app.telegram.routers.purchase.handlers import (
     checkout_error_key,
     format_price,
     on_confirm,
+    on_duration_selected,
     on_method_selected,
     on_purchase_change,
     on_purchase_new,
@@ -366,6 +367,29 @@ async def test_selecting_a_duration_again_forgets_the_created_order(
     await select_duration(manager, catalog_dto, 30, methods)
 
     assert PAYMENT_URL_KEY not in manager.dialog_data
+
+
+async def test_duration_hides_receipt_gateways_from_a_user_without_email() -> None:
+    manager = _manager(dialog_data={"plan_id": 10})
+    manager.item_id = "30"
+    manager.middleware_data[USER_KEY].email = None
+    receipt = PaymentMethodDto(
+        gateway_type=PaymentGatewayType.YOOKASSA, currency=Currency.RUB, requires_email=True
+    )
+    list_active_plans = AsyncMock(
+        return_value=PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+    )
+
+    await on_duration_selected.__dishka_orig_func__(
+        MagicMock(),
+        MagicMock(),
+        manager,
+        list_active_plans=list_active_plans,
+        list_payment_methods=AsyncMock(return_value=[receipt, _STARS_METHOD]),
+        i18n=_i18n(),
+    )
+
+    assert manager.dialog_data["methods"] == [{"gateway_type": "TELEGRAM_STARS", "currency": "XTR"}]
 
 
 async def test_selecting_a_method_again_forgets_the_created_order() -> None:

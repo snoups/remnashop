@@ -32,6 +32,7 @@ from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import ListActivePlansUseCase
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
+from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase
@@ -143,17 +144,22 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     plan = await _create_active_plan(plan_repository, "integration-order-plan")
 
     create_checkout = CreateCheckoutUseCase(
-        plan_repository,
+        CheckoutPricer(
+            plan_repository,
+            user_repository,
+            make_eligibility(plan_repository.session),
+            pricing_repository,
+            uow,
+            PromocodeRepository(plan_repository.session),
+        ),
         user_repository,
         gateway_repository,
         transaction_repository,
         subscription_repository,
         make_eligibility(plan_repository.session),
-        pricing_repository,
         uow,
         _FakeFactory(),
         RecordingDispatch(),
-        PromocodeRepository(plan_repository.session),
         GetAccessSettingsUseCase(SettingsRepository(plan_repository.session), uow),
         WaitlistRepository(plan_repository.session),
         SettingsRepository(plan_repository.session),

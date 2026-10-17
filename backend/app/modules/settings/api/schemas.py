@@ -240,3 +240,11 @@ class UpdateBotRequirementsRequest(BaseModel):
     channel_required: bool = False
     channel_id: Optional[int] = Field(default=None, ge=-INT64_MAX - 1, le=INT64_MAX)
     channel_url: Optional[HttpUrl] = None
+
+
+class CabinetSettingsResponse(BaseModel):
+    max_active_subscriptions: Optional[int]
+    device_single_reset_enabled: bool
+    device_all_reset_enabled: bool
+    link_reset_enabled: bool
+    bot_username: Optional[str]

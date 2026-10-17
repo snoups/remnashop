@@ -63,10 +63,11 @@ async def test_issue_link_builds_a_cabinet_url_and_consumes_the_start(
     start = await store.create(InviteCodesDto(ad_link_code="ad1"))
     issue = IssueBotSignInLinkUseCase(store, config)
 
-    url = await issue.execute(start, _PROFILE)
+    link = await issue.execute(start, _PROFILE)
 
-    assert url is not None and url.startswith(f"{_CABINET}/login/bot#token=")
-    signin = _token_from(url)
+    assert link is not None and not link.is_link
+    assert link.url.startswith(f"{_CABINET}/login/bot#token=")
+    signin = _token_from(link.url)
     assert signin != start
     grant = await store.take_signin(signin)
     assert grant is not None and grant.codes.ad_link_code == "ad1"
@@ -115,10 +116,11 @@ async def test_link_token_url_uses_link_path(
     ticket = await store.peek(start)
     assert ticket is not None and ticket.link_user_id == 42
 
-    url = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
+    link = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
 
-    assert url is not None and url.startswith(f"{_CABINET}/link/bot#token=")
-    grant = await store.take_signin(_token_from(url))
+    assert link is not None and link.is_link
+    assert link.url.startswith(f"{_CABINET}/link/bot#token=")
+    grant = await store.take_signin(_token_from(link.url))
     assert grant is not None and grant.link_user_id == 42 and grant.profile == _PROFILE
 
 

@@ -1,17 +1,13 @@
-import hmac
 from datetime import timedelta
 from functools import partial
 from typing import Final, Optional
 from uuid import uuid4
-
-from loguru import logger
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
-    PlanAvailability,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -28,8 +24,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.gateways import REQUIRE_PAID_PURCHASE_FIELD_KEY, GatewayRepository, gateway_flags
-from app.modules.plans import PlanDto, PlanRepository
-from app.modules.pricing import PricingRepository
+from app.modules.plans import PlanDto
 from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
 from app.modules.subscriptions import (
     PlanSnapshot,
@@ -38,6 +33,7 @@ from app.modules.subscriptions import (
     SubscriptionRepository,
     get_owned_target,
 )
+from app.modules.transactions.checkout_pricing import CheckoutPricer, link_code_matches
 from app.modules.transactions.dto import (
     CheckoutResultDto,
     CreateCheckoutDto,
@@ -50,8 +46,6 @@ from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.gateways.telegram_stars import with_bot_settings
-from app.modules.transactions.ports import PromocodeLiveness
-from app.modules.transactions.pricing import quote_price
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserDto, UserRepository
@@ -59,45 +53,35 @@ from app.modules.users import UserDto, UserRepository
 _ORDER_TTL: Final[timedelta] = timedelta(minutes=30)
 
 
-def _link_code_matches(plan: PlanDto, plan_code: Optional[str]) -> bool:
-    if plan.availability is not PlanAvailability.LINK:
-        return True
-    return plan_code is not None and hmac.compare_digest(plan_code, plan.public_code)
-
-
 class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDto]):
     required_permission = Permission.PUBLIC
 
     def __init__(
         self,
-        plan_repository: PlanRepository,
+        pricer: CheckoutPricer,
         user_repository: UserRepository,
         gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
         subscription_repository: SubscriptionRepository,
         eligibility: PurchaseEligibility,
-        pricing_repository: PricingRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
         purchase_dispatch: PurchaseSubscriptionDispatch,
-        promocode_liveness: PromocodeLiveness,
         get_access_settings_use_case: GetAccessSettingsUseCase,
         waitlist_repository: WaitlistRepository,
         settings_repository: SettingsRepository,
         config: AppConfig,
         event_publisher: EventPublisher,
     ) -> None:
-        self._plan_repository = plan_repository
+        self._pricer = pricer
         self._user_repository = user_repository
         self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
         self._subscription_repository = subscription_repository
         self._eligibility = eligibility
-        self._pricing_repository = pricing_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
         self._purchase_dispatch = purchase_dispatch
-        self._promocode_liveness = promocode_liveness
         self._get_access_settings_use_case = get_access_settings_use_case
         self._waitlist_repository = waitlist_repository
         self._settings_repository = settings_repository
@@ -132,15 +116,14 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
         async with self._uow:
             gateway_settings = await self._load_gateway_settings(actor.id, data)
-            plan, user = await self._load_purchasable_plan(actor.id, data)
+            plan, user = await self._pricer.load_purchasable_plan(
+                actor.id, data.plan_id, data.plan_code
+            )
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
         await self._validate_provisioning_preconditions(actor.id, data)
-        user = await self._drop_dead_promocode_discounts(user)
-
-        async with self._uow:
-            rates = await self._pricing_repository.get_rate_table()
-            quote = quote_price(plan, data.duration_days, data.currency, user, rates)
+        user = await self._pricer.drop_dead_promocode_discounts(user)
+        quote = await self._pricer.quote(plan, data.duration_days, data.currency, user)
 
         is_free = quote.final_price == 0
         if not is_free:
@@ -155,7 +138,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
             if not await self._eligibility.is_purchasable(
                 plan, user, has_open_order=open_orders > 0
-            ) or not _link_code_matches(plan, data.plan_code):
+            ) or not link_code_matches(plan, data.plan_code):
                 raise NotFoundError(
                     f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
                 )
@@ -248,22 +231,6 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
         return gateway_settings
 
-    async def _load_purchasable_plan(
-        self, user_id: int, data: CreateCheckoutDto
-    ) -> tuple[PlanDto, UserDto]:
-        plan = await self._plan_repository.get_by_id(data.plan_id)
-        user = await self._user_repository.find_by_id(user_id)
-        if user is None:
-            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
-
-        if not await self._eligibility.is_purchasable(plan, user) or not _link_code_matches(
-            plan, data.plan_code
-        ):
-            # Same answer as a missing plan: a distinct one would let anyone
-            # walk plan ids and learn which hidden plans exist.
-            raise NotFoundError(f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND)
-        return plan, user
-
     async def _create_order(
         self,
         user_id: int,
@@ -304,27 +271,6 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 expires_at=datetime_now() + _ORDER_TTL,
             )
         )
-
-    async def _drop_dead_promocode_discounts(self, user: UserDto) -> UserDto:
-        sources = {
-            source
-            for source in (user.personal_discount_promocode_id, user.purchase_discount_promocode_id)
-            if source is not None
-        }
-        if not sources:
-            return user
-        async with self._uow:
-            dead = {
-                source for source in sources if not await self._promocode_liveness.is_live(source)
-            }
-            if not dead:
-                return user
-            await self._user_repository.clear_discounts_from(dead, user_id=user.id)
-            refreshed = await self._user_repository.find_by_id(user.id)
-        if refreshed is None:
-            raise NotFoundError(f"User '{user.id}' not found", code=ErrorCode.USER_NOT_FOUND)
-        logger.info(f"{user.log} Dropped discounts from ended promocodes {sorted(dead)}")
-        return refreshed
 
     async def _spend_purchase_discount(self, quote: PriceQuote, user: UserDto) -> None:
         if quote.discount_source is not DiscountSource.PURCHASE:

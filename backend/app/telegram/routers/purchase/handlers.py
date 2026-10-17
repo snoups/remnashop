@@ -240,7 +240,12 @@ async def on_duration_selected(
         dialog_manager,
         await list_active_plans(user, catalog_query(dialog_manager)),
         int(dialog_manager.item_id),  # type: ignore[attr-defined]
-        await list_payment_methods(user),
+        # the bot can't ask for an email, so such methods are not offered
+        [
+            m
+            for m in await list_payment_methods(user)
+            if not (m.requires_email and user.email is None)
+        ],
     )
     if key is not None:
         await callback.answer(get_translator(i18n, user).get(key), show_alert=True)

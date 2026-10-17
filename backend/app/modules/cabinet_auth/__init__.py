@@ -7,6 +7,7 @@ from app.modules.cabinet_auth.api.schemas import (
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.di import get_cabinet_auth_providers
 from app.modules.cabinet_auth.dto import (
+    BotSignInLinkDto,
     CabinetMethodsDto,
     DeeplinkTicketDto,
     InviteCodesDto,
@@ -37,6 +38,7 @@ from app.modules.cabinet_auth.usecases import (
 )
 
 __all__ = [
+    "BotSignInLinkDto",
     "BotSignInRequest",
     "CabinetMethodsDto",
     "CabinetNewDeviceSignInEvent",

@@ -129,12 +129,21 @@ class OwnSubscriptionResponse(BaseModel):
     effective_device_limit: int
     traffic_limit_strategy: TrafficLimitStrategy
     plan_name: str
+    plan_id: int
     link_reset_at: Optional[datetime] = None
+    used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
 
     @classmethod
-    def from_dto(cls, subscription: SubscriptionDto) -> "OwnSubscriptionResponse":
+    def from_dto(
+        cls, subscription: SubscriptionDto, *, used_traffic: Optional[int] = None
+    ) -> "OwnSubscriptionResponse":
         return cls.model_validate(
-            {**subscription.model_dump(), "plan_name": subscription.plan_snapshot.name}
+            {
+                **subscription.model_dump(),
+                "plan_name": subscription.plan_snapshot.name,
+                "plan_id": subscription.plan_snapshot.plan_id,
+                "used_traffic": used_traffic,
+            }
         )
 
 

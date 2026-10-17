@@ -17,6 +17,7 @@ from app.modules.promocodes.usecases import (
     WarnExpiringPromocodeDiscountsUseCase,
 )
 from app.modules.transactions import PromocodeLiveness
+from app.modules.users import PromocodeLiveness as UserPromocodeLiveness
 
 
 class PromocodesProvider(Provider):
@@ -24,6 +25,7 @@ class PromocodesProvider(Provider):
 
     promocode_repository = provide(PromocodeRepository)
     promocode_liveness = alias(source=PromocodeRepository, provides=PromocodeLiveness)
+    user_promocode_liveness = alias(source=PromocodeRepository, provides=UserPromocodeLiveness)
     plan_reference_cleaner = alias(source=PromocodeRepository, provides=PlanReferenceCleaner)
     use_cases = provide_all(
         CreatePromocodeUseCase,

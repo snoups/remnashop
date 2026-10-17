@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 from typing import Any, Final, Optional
 
@@ -9,6 +10,10 @@ from app.modules.settings.dto import BotStatusDto
 _TIMEOUT_SECONDS: Final[float] = 5.0
 # token -> username; a bot's username can't change without a new token
 _USERNAME_CACHE: Final[dict[str, str]] = {}
+# token -> monotonic deadline; while Telegram is down every public-settings call
+# would otherwise wait out the full timeout
+_USERNAME_FAILED_UNTIL: Final[dict[str, float]] = {}
+_FAILURE_TTL_SECONDS: Final[float] = 60.0
 _CHANNEL_ADMIN_STATUSES: Final[frozenset[str]] = frozenset({"administrator", "creator"})
 
 
@@ -42,15 +47,20 @@ async def fetch_bot_status(token: str, proxy: Optional[str]) -> BotStatusDto:
 async def fetch_bot_username(token: str, proxy: Optional[str]) -> Optional[str]:
     if token in _USERNAME_CACHE:
         return _USERNAME_CACHE[token]
+    if _USERNAME_FAILED_UNTIL.get(token, 0.0) > time.monotonic():
+        return None
+    username: Optional[str] = None
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
             response = await client.get(bot_method_url(token, "getMe"))
         payload: dict[str, Any] = response.json()
+        if payload.get("ok"):
+            username = payload.get("result", {}).get("username")
     except (httpx.HTTPError, ValueError):
+        pass
+    if username is None:
+        _USERNAME_FAILED_UNTIL[token] = time.monotonic() + _FAILURE_TTL_SECONDS
         return None
-    if not payload.get("ok"):
-        return None
-    username: str = payload["result"]["username"]
     _USERNAME_CACHE[token] = username
     return username
 

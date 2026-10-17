@@ -73,6 +73,7 @@ from app.modules.subscriptions import (
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
+from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.repository import TransactionRepository
@@ -147,17 +148,22 @@ def create_checkout_use_case(
     event_publisher: EventPublisher,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
-        plan_repository,
+        CheckoutPricer(
+            plan_repository,
+            user_repository,
+            make_eligibility(plan_repository.session),
+            pricing_repository,
+            uow,
+            promocode_repository,
+        ),
         user_repository,
         gateway_repository,
         transaction_repository,
         subscription_repository,
         make_eligibility(plan_repository.session),
-        pricing_repository,
         uow,
         _FakeFactory(fake_gateway),
         purchase_dispatch,
-        promocode_repository,
         GetAccessSettingsUseCase(settings_repository, uow),
         waitlist_repository,
         settings_repository,
@@ -350,17 +356,22 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(
         session = AsyncSession(bind=conn, expire_on_commit=False)
         uow = UnitOfWork(session)
         use_case = CreateCheckoutUseCase(
-            PlanRepository(session),
+            CheckoutPricer(
+                PlanRepository(session),
+                UserRepository(session),
+                make_eligibility(session),
+                PricingRepository(session),
+                uow,
+                PromocodeRepository(session),
+            ),
             UserRepository(session),
             GatewayRepository(session),
             TransactionRepository(session),
             SubscriptionRepository(session),
             make_eligibility(session),
-            PricingRepository(session),
             uow,
             _FakeFactory(_FakeGateway()),
             RecordingDispatch(),
-            PromocodeRepository(session),
             GetAccessSettingsUseCase(SettingsRepository(session), uow),
             WaitlistRepository(session),
             SettingsRepository(session),

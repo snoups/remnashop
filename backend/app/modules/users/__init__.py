@@ -12,7 +12,12 @@ from app.modules.users.dto import (
     UserDto,
 )
 from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
-from app.modules.users.ports import PasskeyRevoker, SessionRevoker, SubscriptionRevoker
+from app.modules.users.ports import (
+    PasskeyRevoker,
+    PromocodeLiveness,
+    SessionRevoker,
+    SubscriptionRevoker,
+)
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import (
     CurrentUserResponse,
@@ -46,6 +51,7 @@ __all__ = [
     "FindTelegramUserUseCase",
     "GetCurrentUserUseCase",
     "PasskeyRevoker",
+    "PromocodeLiveness",
     "RegisterCabinetUserDto",
     "RegisterCabinetUserUseCase",
     "RegisterTelegramUserDto",

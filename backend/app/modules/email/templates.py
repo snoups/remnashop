@@ -18,11 +18,29 @@ _LOGIN_CODE: Final[dict[Locale, tuple[str, str, str]]] = {
     ),
 }
 
+_LINK_CODE: Final[dict[Locale, tuple[str, str, str]]] = {
+    Locale.EN: (
+        "Your linking code: {code}",
+        "Your linking code: {code}",
+        "Enter it in the cabinet to add this email to your account. "
+        "The code is valid for 10 minutes.",
+    ),
+    Locale.RU: (
+        "Код для привязки почты: {code}",
+        "Код для привязки почты: {code}",
+        "Введите его в кабинете, чтобы добавить эту почту к аккаунту. Код действует 10 минут.",
+    ),
+}
 
-def render_login_code(
-    code: str, locale: Locale, brand: EmailBrandDto, cabinet_url: Optional[str]
+
+def _render_code(
+    texts: dict[Locale, tuple[str, str, str]],
+    code: str,
+    locale: Locale,
+    brand: EmailBrandDto,
+    cabinet_url: Optional[str],
 ) -> tuple[str, str, str]:
-    subject, title, body = _LOGIN_CODE.get(locale, _LOGIN_CODE[Locale.EN])
+    subject, title, body = texts.get(locale, texts[Locale.EN])
     text, html = render_email(
         brand=brand.brand,
         color=brand.color,
@@ -33,3 +51,15 @@ def render_login_code(
         button=None,
     )
     return subject.format(code=code), text, html
+
+
+def render_login_code(
+    code: str, locale: Locale, brand: EmailBrandDto, cabinet_url: Optional[str]
+) -> tuple[str, str, str]:
+    return _render_code(_LOGIN_CODE, code, locale, brand, cabinet_url)
+
+
+def render_link_code(
+    code: str, locale: Locale, brand: EmailBrandDto, cabinet_url: Optional[str]
+) -> tuple[str, str, str]:
+    return _render_code(_LINK_CODE, code, locale, brand, cabinet_url)

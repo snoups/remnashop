@@ -75,6 +75,19 @@ class ReferralStatsResponse(BaseModel):
     referrer: Optional[ReferralUserResponse] = None
 
 
+class ReferralProgramResponse(BaseModel):
+    enabled: bool
+    reward_type: ReferralRewardType
+    reward_strategy: ReferralRewardStrategy
+    reward_amounts: dict[int, Decimal]
+    invitee_reward_type: ReferralRewardType
+    invitee_reward_amount: int
+
+
+class OwnReferralStatsResponse(ReferralStatsResponse):
+    program: ReferralProgramResponse
+
+
 class ReferralListItemResponse(BaseModel):
     id: int = Field(validation_alias=AliasPath("referral", "id"))
     level: int = Field(validation_alias=AliasPath("referral", "level"))

@@ -35,6 +35,7 @@ class PriceQuote:
 class PaymentMethodDto:
     gateway_type: PaymentGatewayType
     currency: Currency
+    requires_email: bool = False
 
 
 class TransactionDto(BaseDto, TimestampMixin):
@@ -125,6 +126,14 @@ class CreateCheckoutDto:
     # required for a LINK plan: the link's code is what grants access to it
     plan_code: Optional[str] = None
     return_to: Literal["default", "cabinet"] = "default"
+
+
+@dataclass(frozen=True, kw_only=True)
+class QuoteCheckoutDto:
+    plan_id: int
+    duration_days: int
+    currency: Currency
+    plan_code: Optional[str] = None
 
 
 class CheckoutResultDto(BaseDto):

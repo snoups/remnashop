@@ -34,7 +34,7 @@ async def on_start_webauth(
         runner = i18n.get_translator_by_locale((locale or Locale(i18n.root_locale)).value)
     start = (message.text or "").split(maxsplit=1)[-1].removeprefix(WEBAUTH_START_PREFIX)
     # the link lands only in this chat, so whoever handed out the start link gains nothing
-    url = await issue_link.execute(
+    link = await issue_link.execute(
         start,
         TelegramProfileDto(
             telegram_id=message.from_user.id,
@@ -43,14 +43,15 @@ async def on_start_webauth(
             language=message.from_user.language_code,
         ),
     )
-    if url is None:
+    if link is None:
         await message.answer(runner.get("ntf-cabinet-login.expired"))
         return
+    prefix = "cabinet-link" if link.is_link else "cabinet-login"
     await message.answer(
-        runner.get("ntf-cabinet-login.link"),
+        runner.get(f"ntf-{prefix}.link"),
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=runner.get("btn-cabinet-login.open"), url=url)]
+                [InlineKeyboardButton(text=runner.get(f"btn-{prefix}.open"), url=link.url)]
             ]
         ),
     )

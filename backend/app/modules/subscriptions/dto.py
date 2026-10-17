@@ -144,6 +144,12 @@ class SubscriptionDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class OwnSubscriptionUsageDto:
+    subscription: SubscriptionDto
+    used_traffic: Optional[int]
+
+
+@dataclass(frozen=True, kw_only=True)
 class LiveSubscriptionDto:
     user_id: int
     is_trial: bool

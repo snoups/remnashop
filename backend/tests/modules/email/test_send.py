@@ -12,7 +12,7 @@ from app.core.exceptions import NotFoundError, RetryableTaskError, ValidationErr
 from app.modules.email import EmailBrandDto
 from app.modules.email.dto import EmailMessageDto, SendTestEmailDto
 from app.modules.email.sender import EmailSendError, SmtpSender
-from app.modules.email.templates import render_login_code
+from app.modules.email.templates import render_link_code, render_login_code
 from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
 from app.modules.settings import AppearanceImageDto, EmailSettingsDto, SmtpProfileDto
 
@@ -105,6 +105,13 @@ def test_login_code_template_contains_code() -> None:
 def test_login_code_template_falls_back_to_en() -> None:
     subject, _, _ = render_login_code("123456", Locale.DE, _BRAND, None)
     assert subject == "Your sign-in code: 123456"
+
+
+def test_link_code_template() -> None:
+    subject, text, html = render_link_code("123456", Locale.RU, _BRAND, None)
+    assert subject == "Код для привязки почты: 123456"
+    assert "123456" in text and "123456" in html
+    assert render_link_code("123456", Locale.DE, _BRAND, None)[0] == "Your linking code: 123456"
 
 
 async def test_sender_uses_tls_flags(monkeypatch: pytest.MonkeyPatch) -> None:

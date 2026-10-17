@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 from app.core.config import AppConfig
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
-from app.modules.cabinet_auth.dto import BotSignInGrantDto, TelegramProfileDto
+from app.modules.cabinet_auth.dto import BotSignInGrantDto, BotSignInLinkDto, TelegramProfileDto
 
 # a fragment, not a query: it never reaches a proxy log or a Referer
 _SIGNIN_PATH: Final[str] = "/login/bot#token="
@@ -16,7 +16,9 @@ class IssueBotSignInLinkUseCase:
         self._store = store
         self._config = config
 
-    async def execute(self, start_token: str, profile: TelegramProfileDto) -> Optional[str]:
+    async def execute(
+        self, start_token: str, profile: TelegramProfileDto
+    ) -> Optional[BotSignInLinkDto]:
         cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
         if not cabinet_url:
             return None
@@ -26,5 +28,6 @@ class IssueBotSignInLinkUseCase:
         token = await self._store.issue_signin(
             BotSignInGrantDto(profile=profile, codes=ticket.codes, link_user_id=ticket.link_user_id)
         )
-        path = _SIGNIN_PATH if ticket.link_user_id is None else _LINK_PATH
-        return f"{cabinet_url}{path}{token}"
+        is_link = ticket.link_user_id is not None
+        path = _LINK_PATH if is_link else _SIGNIN_PATH
+        return BotSignInLinkDto(url=f"{cabinet_url}{path}{token}", is_link=is_link)

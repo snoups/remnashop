@@ -7,6 +7,7 @@ from app.modules.settings.usecases.get_bot_requirements import GetBotRequirement
 from app.modules.settings.usecases.get_bot_settings import GetBotSettingsUseCase
 from app.modules.settings.usecases.get_bot_status import GetBotStatusUseCase
 from app.modules.settings.usecases.get_cabinet_auth_settings import GetCabinetAuthSettingsUseCase
+from app.modules.settings.usecases.get_cabinet_settings import GetCabinetSettingsUseCase
 from app.modules.settings.usecases.get_email_settings import GetEmailSettingsUseCase
 from app.modules.settings.usecases.get_oauth_settings import GetOAuthSettingsUseCase
 from app.modules.settings.usecases.get_public_appearance import GetPublicAppearanceUseCase
@@ -44,6 +45,7 @@ __all__ = [
     "GetBotSettingsUseCase",
     "GetBotStatusUseCase",
     "GetCabinetAuthSettingsUseCase",
+    "GetCabinetSettingsUseCase",
     "GetEmailSettingsUseCase",
     "GetOAuthSettingsUseCase",
     "GetPublicAppearanceImageUseCase",

@@ -4,7 +4,13 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.enums import (
+    Currency,
+    DiscountSource,
+    PaymentGatewayType,
+    PurchaseType,
+    TransactionStatus,
+)
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import TransactionDto
 
@@ -23,6 +29,22 @@ class CreateCheckoutRequest(BaseModel):
 class CheckoutResponse(BaseModel):
     order_id: int
     confirmation_url: Optional[str] = None
+
+
+class QuoteCheckoutRequest(BaseModel):
+    plan_id: int
+    duration_days: int = Field(gt=0)
+    currency: Currency
+    plan_code: Optional[str] = Field(default=None, max_length=64)
+
+
+class CheckoutQuoteResponse(BaseModel):
+    base_price: Decimal
+    plan_discount_percent: int
+    discount_percent: int
+    discount_source: DiscountSource
+    final_price: Decimal
+    currency: Currency
 
 
 class TransactionUserResponse(BaseModel):
@@ -163,6 +185,7 @@ class OwnTransactionListResponse(BaseModel):
 class PaymentMethodResponse(BaseModel):
     gateway_type: PaymentGatewayType
     currency: Currency
+    requires_email: bool
 
 
 class PaymentMethodListResponse(BaseModel):

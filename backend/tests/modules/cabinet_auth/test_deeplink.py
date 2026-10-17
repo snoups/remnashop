@@ -74,9 +74,9 @@ async def test_deeplink_then_bot_link_signs_in_once(
     assert rejected.status_code == 401
 
     profile = TelegramProfileDto(telegram_id=7117, name="Ann", username=None, language="en")
-    url = await IssueBotSignInLinkUseCase(deeplink_store, config).execute(start, profile)
-    assert url is not None
-    signin = url.split("token=", 1)[1]
+    link = await IssueBotSignInLinkUseCase(deeplink_store, config).execute(start, profile)
+    assert link is not None
+    signin = link.url.split("token=", 1)[1]
 
     done = await client.post(_SIGNIN, json={"token": signin})
     assert done.status_code == 200 and done.json()["access_token"]

@@ -93,6 +93,9 @@ async def test_lists_only_own_active_subscriptions(
     assert item["id"] == mine.id
     assert item["url"] == mine.url
     assert item["plan_name"] == mine.plan_snapshot.name
+    assert item["plan_id"] == mine.plan_snapshot.plan_id
+    # no panel in router tests: the lookup fails and degrades to None
+    assert item["used_traffic"] is None
 
 
 async def test_a_foreign_subscription_is_refused_like_a_missing_one(

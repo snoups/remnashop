@@ -54,6 +54,12 @@ class CurrentUserResponse(BaseModel):
     email: Optional[str]
     telegram_id: Optional[int]
     username: Optional[str]
+    created_at: Optional[datetime]
+    points: Decimal
+    bonus_days: int
+    personal_discount: int
+    purchase_discount: int
+    loyalty_discount: int
 
     @field_validator("role", "language", mode="before")
     @classmethod

@@ -12,7 +12,7 @@ from app.modules.cabinet_auth import (
     fail_budget_exhausted,
     send_limit_hit,
 )
-from app.modules.email import SendEmailDispatch, load_email_brand, render_login_code
+from app.modules.email import SendEmailDispatch, load_email_brand, render_link_code
 from app.modules.identity_links.email_codes import LinkEmailCodeStore
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
@@ -53,7 +53,7 @@ class RequestLinkEmailCodeUseCase:
             return
 
         code = await self._store.issue(email, InviteCodesDto(), locale)
-        subject, text, html = render_login_code(
+        subject, text, html = render_link_code(
             code, locale, brand, self._config.web_cabinet_url.strip() or None
         )
         await self._send_email.kiq(to=normalize_email(email), subject=subject, text=text, html=html)

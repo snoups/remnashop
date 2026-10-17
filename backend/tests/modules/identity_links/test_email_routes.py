@@ -55,6 +55,7 @@ async def test_link_email_by_code(
     )
     assert response.status_code == 200
     assert response.json()["status"] == "linked"
+    assert email_dispatch.messages[0]["subject"].startswith("Your linking code:")
 
 
 @pytest.mark.usefixtures("email_enabled")

@@ -13,3 +13,7 @@ class SubscriptionRevoker(Protocol):
 
 class PasskeyRevoker(Protocol):
     async def delete_all_by_user(self, user_id: int) -> int: ...
+
+
+class PromocodeLiveness(Protocol):
+    async def is_live(self, promocode_id: int) -> bool: ...

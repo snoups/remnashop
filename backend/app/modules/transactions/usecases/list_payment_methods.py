@@ -31,8 +31,6 @@ class ListPaymentMethodsUseCase(UseCase[None, list[PaymentMethodDto], UserDto]):
                 if gateway_class is None:
                     continue
                 settings = await self._gateway_repository.get_raw_settings(gateway.type)
-                if actor.email is None and gateway_class.requires_customer_email(settings):
-                    continue
                 if gateway_flags(gateway.type, settings).get(
                     REQUIRE_PAID_PURCHASE_FIELD_KEY, False
                 ) and not await self._transaction_repository.has_paid_purchase(actor.id):
@@ -41,6 +39,8 @@ class ListPaymentMethodsUseCase(UseCase[None, list[PaymentMethodDto], UserDto]):
                     PaymentMethodDto(
                         gateway_type=gateway.type,
                         currency=gateway_currency(gateway.type, settings),
+                        # the client decides: ask for an email or hide the method
+                        requires_email=gateway_class.requires_customer_email(settings),
                     )
                 )
         return methods

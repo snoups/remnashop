@@ -223,3 +223,10 @@ ntf-cabinet-login =
 
 btn-cabinet-login =
     .open = Sign in to the cabinet
+
+ntf-cabinet-link =
+    .link = Tap the button to link this Telegram to your web cabinet account. The link is single-use and valid for 5 minutes.
+    .expired = The linking link has expired. Request a new one in the cabinet.
+
+btn-cabinet-link =
+    .open = Link to cabinet

@@ -30,7 +30,7 @@ from app.modules.subscriptions.usecases import (
     GetAvailableTrialUseCase,
     ListActivePlansUseCase,
     ListDevicesUseCase,
-    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUsageUseCase,
     ReissueSubscriptionUseCase,
 )
 from app.modules.users import UserDto
@@ -60,10 +60,13 @@ own_router = APIRouter(prefix="/subscriptions/me", tags=["subscriptions"])
 @own_router.get("", response_model=OwnSubscriptionListResponse)
 @inject
 async def list_own_subscriptions(
-    use_case: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    use_case: FromDishka[ListOwnSubscriptionsUsageUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> OwnSubscriptionListResponse:
-    items = [OwnSubscriptionResponse.from_dto(s) for s in await use_case(actor)]
+    items = [
+        OwnSubscriptionResponse.from_dto(r.subscription, used_traffic=r.used_traffic)
+        for r in await use_case(actor)
+    ]
     return OwnSubscriptionListResponse(items=items, total=len(items))
 
 

@@ -42,6 +42,13 @@ class BotSignInGrantDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class BotSignInLinkDto:
+    url: str
+    # the cabinet asked to link Telegram to an account, not to sign in
+    is_link: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class TelegramWebAppDataDto:
     profile: TelegramProfileDto
     start_param: Optional[str]

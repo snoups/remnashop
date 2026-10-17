@@ -7,19 +7,26 @@ from app.api.errors import error_responses
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.enums import SessionAudience
 from app.modules.transactions.api.schemas import (
+    CheckoutQuoteResponse,
     CheckoutResponse,
     CreateCheckoutRequest,
     OwnTransactionListResponse,
     OwnTransactionResponse,
     PaymentMethodListResponse,
     PaymentMethodResponse,
+    QuoteCheckoutRequest,
 )
-from app.modules.transactions.dto import CreateCheckoutDto, ListOwnTransactionsDto
+from app.modules.transactions.dto import (
+    CreateCheckoutDto,
+    ListOwnTransactionsDto,
+    QuoteCheckoutDto,
+)
 from app.modules.transactions.usecases import (
     CreateCheckoutUseCase,
     GetOwnTransactionUseCase,
     ListOwnTransactionsUseCase,
     ListPaymentMethodsUseCase,
+    QuoteCheckoutUseCase,
 )
 from app.modules.users import UserDto
 
@@ -56,6 +63,36 @@ async def create_checkout(
         ),
     )
     return CheckoutResponse.model_validate(result, from_attributes=True)
+
+
+@router.post(
+    "/checkout/quote",
+    response_model=CheckoutQuoteResponse,
+    responses=error_responses(400, 404),
+)
+@inject
+async def quote_checkout(
+    payload: QuoteCheckoutRequest,
+    use_case: FromDishka[QuoteCheckoutUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> CheckoutQuoteResponse:
+    quote = await use_case(
+        actor,
+        QuoteCheckoutDto(
+            plan_id=payload.plan_id,
+            duration_days=payload.duration_days,
+            currency=payload.currency,
+            plan_code=payload.plan_code,
+        ),
+    )
+    return CheckoutQuoteResponse(
+        base_price=quote.base_price,
+        plan_discount_percent=quote.plan_discount_percent,
+        discount_percent=quote.discount_percent,
+        discount_source=quote.discount_source,
+        final_price=quote.final_price,
+        currency=payload.currency,
+    )
 
 
 @router.get("/checkout/methods", response_model=PaymentMethodListResponse)

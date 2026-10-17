@@ -71,12 +71,17 @@ async def test_lists_only_active_configured_gateways(
 
     assert [m.gateway_type for m in methods] == [PaymentGatewayType.YOOKASSA]
     assert methods[0].currency is Currency.RUB
+    assert methods[0].requires_email is False
 
 
-async def test_hides_a_gateway_that_needs_an_email_the_user_lacks(
+async def test_flags_a_gateway_that_needs_an_email(
     use_case: ListPaymentMethodsUseCase, actor: UserDto, receipt_yookassa: None
 ) -> None:
-    assert await use_case(actor) == []
+    methods = await use_case(actor)
+
+    assert [(m.gateway_type, m.requires_email) for m in methods] == [
+        (PaymentGatewayType.YOOKASSA, True)
+    ]
 
 
 async def test_stars_hidden_until_a_paid_purchase(

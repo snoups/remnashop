@@ -1,7 +1,11 @@
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.referrals.dto import ReferralStatsDto, ReferralStatsRewardDto
+from app.modules.referrals.dto import (
+    ReferralProgramDto,
+    ReferralStatsDto,
+    ReferralStatsRewardDto,
+)
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.users import UserDto
 
@@ -18,6 +22,7 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
             edge = await self._referral_repository.get_by_referred_id(actor.id)
             counts = await self._referral_repository.count_by_level(actor.id)
             rewards = await self._referral_repository.list_rewards_by_referrer(actor.id)
+            settings = await self._referral_repository.get_settings()
             return ReferralStatsDto(
                 referral_code=actor.referral_code,
                 referrer_id=edge.referrer_id if edge is not None else None,
@@ -28,4 +33,12 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
                     ReferralStatsRewardDto(type=r.type, amount=r.amount, created_at=r.created_at)
                     for r in rewards
                 ],
+                program=ReferralProgramDto(
+                    enabled=settings.enabled,
+                    reward_type=settings.reward_type,
+                    reward_strategy=settings.reward_strategy,
+                    reward_amounts=settings.reward_amounts,
+                    invitee_reward_type=settings.invitee_reward_type,
+                    invitee_reward_amount=settings.invitee_reward_amount,
+                ),
             )

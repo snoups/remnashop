@@ -70,11 +70,11 @@ async def test_link_free_telegram(
     ticket = await store.peek(start)
     assert ticket is not None and ticket.link_user_id == me.id
 
-    url = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
-    assert url is not None and url.startswith("https://cabinet.example.com/link/bot#token=")
+    link = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
+    assert link is not None and link.url.startswith("https://cabinet.example.com/link/bot#token=")
 
     done = await client.post(
-        LINK_SIGNIN, json={"token": url.split("token=", 1)[1]}, headers=headers
+        LINK_SIGNIN, json={"token": link.url.split("token=", 1)[1]}, headers=headers
     )
     assert done.status_code == 200
     assert done.json()["status"] == "linked"

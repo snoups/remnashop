@@ -219,6 +219,25 @@ async def test_checkout_requires_authentication(client: httpx.AsyncClient, plan:
     assert response.status_code == 401
 
 
+async def test_quote_returns_the_price_breakdown(
+    client: httpx.AsyncClient, plan: PlanDto, auth_headers: dict[str, str]
+) -> None:
+    body = {"plan_id": plan.id, "duration_days": 30, "currency": "RUB"}
+
+    response = await client.post(f"{API_V1}/checkout/quote", json=body, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert set(response.json()) == {
+        "base_price",
+        "plan_discount_percent",
+        "discount_percent",
+        "discount_source",
+        "final_price",
+        "currency",
+    }
+    assert (await client.post(f"{API_V1}/checkout/quote", json=body)).status_code == 401
+
+
 async def _customer_headers(
     user_repository: UserRepository,
     session_repository: SessionRepository,

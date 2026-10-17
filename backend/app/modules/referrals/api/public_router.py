@@ -7,9 +7,9 @@ from app.api.dependencies.rate_limit import user_rate_limit
 from app.api.errors import error_responses
 from app.core.constants import POINTS_WITHDRAW_RATE_KEY, POINTS_WITHDRAW_RATE_LIMIT, TIME_1H
 from app.modules.referrals.api.schemas import (
+    OwnReferralStatsResponse,
     RedeemBonusDaysRequest,
     RedeemBonusDaysResponse,
-    ReferralStatsResponse,
     WithdrawPointsRequest,
 )
 from app.modules.referrals.dto import (
@@ -26,13 +26,13 @@ from app.modules.users import UserDto
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
 
-@router.get("/me", response_model=ReferralStatsResponse)
+@router.get("/me", response_model=OwnReferralStatsResponse)
 @inject
 async def get_my_referral_stats(
     use_case: FromDishka[GetOwnReferralStatsUseCase],
     actor: UserDto = Depends(get_current_user),
-) -> ReferralStatsResponse:
-    return ReferralStatsResponse.model_validate(await use_case(actor), from_attributes=True)
+) -> OwnReferralStatsResponse:
+    return OwnReferralStatsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.post(

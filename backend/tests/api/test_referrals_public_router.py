@@ -284,3 +284,24 @@ async def test_redeem_bonus_days_rejects_an_absurd_amount(
         headers=headers,
     )
     assert response.status_code == 422
+
+
+async def test_own_stats_carry_the_program(
+    client: httpx.AsyncClient,
+    actor: tuple[UserDto, dict[str, str]],
+    referral_repository: ReferralRepository,
+    uow: UnitOfWork,
+) -> None:
+    _, headers = actor
+    disabled = await client.get(f"{API_V1}/referrals/me", headers=headers)
+    assert disabled.status_code == 200
+    assert disabled.json()["program"]["enabled"] is False
+
+    async with uow:
+        await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=True))
+        await uow.commit()
+    enabled = await client.get(f"{API_V1}/referrals/me", headers=headers)
+    program = enabled.json()["program"]
+    assert program["enabled"] is True
+    assert {"reward_type", "reward_strategy", "reward_amounts"} <= program.keys()
+    assert {"invitee_reward_type", "invitee_reward_amount"} <= program.keys()

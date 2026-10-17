@@ -129,3 +129,19 @@ async def test_link_start_without_an_account_answers_in_the_telegram_language(
     )
     await on_start_webauth(other, issue, fallback, None)  # type: ignore[arg-type]
     assert fallback.locales == ["en"]
+
+
+async def test_link_start_sends_the_linking_wording(
+    redis: Redis, config: AppConfig, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    store = DeeplinkStore(redis)
+    start = await store.create(InviteCodesDto(), link_user_id=42)
+    message = _Message(f"/start webauth_{start}")
+
+    await on_start_webauth(message, IssueBotSignInLinkUseCase(store, config), _Hub(), _USER)  # type: ignore[arg-type]
+
+    assert message.sent[0]["text"] == "ntf-cabinet-link.link"
+    button = message.sent[0]["markup"].inline_keyboard[0][0]
+    assert button.text == "btn-cabinet-link.open"
+    assert button.url.startswith("https://cabinet.example.com/link/bot#token=")

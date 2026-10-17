@@ -42,6 +42,7 @@ from app.modules.referrals.api import public_router as referrals_public_router
 from app.modules.referrals.api import user_router as referrals_user_router
 from app.modules.settings.api import admin_router as settings_admin_router
 from app.modules.settings.api import router as settings_router
+from app.modules.settings.api import shop_router as settings_shop_router
 from app.modules.subscriptions.api import admin_router as subscriptions_admin_router
 from app.modules.subscriptions.api import own_router as subscriptions_own_router
 from app.modules.subscriptions.api import public_router as subscriptions_public_router
@@ -71,6 +72,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     account_merge_admin_router,
     settings_admin_router,
     settings_router,
+    settings_shop_router,
     plans_admin_router,
     plans_addons_router,
     plans_pricing_router,

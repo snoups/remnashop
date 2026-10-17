@@ -62,6 +62,16 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class CabinetSettingsDto:
+    # the part of the shop settings a customer needs, without admin-only cooldowns
+    max_active_subscriptions: Optional[int]
+    device_single_reset_enabled: bool
+    device_all_reset_enabled: bool
+    link_reset_enabled: bool
+    bot_username: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
 class UpdateShopSettingsDto:
     # None in max_active_subscriptions means unlimited; fields_set says which
     # fields the caller sent.

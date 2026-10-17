@@ -68,6 +68,16 @@ class ReferralStatsRewardDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ReferralProgramDto:
+    enabled: bool
+    reward_type: ReferralRewardType
+    reward_strategy: ReferralRewardStrategy
+    reward_amounts: dict[int, Decimal]
+    invitee_reward_type: ReferralRewardType
+    invitee_reward_amount: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class ReferralStatsDto:
     referral_code: Optional[str]
     referrer_id: Optional[int]
@@ -77,6 +87,8 @@ class ReferralStatsDto:
     rewards: list[ReferralStatsRewardDto]
     # admin view only
     referrer: Optional[UserDto] = None
+    # own view only
+    program: Optional[ReferralProgramDto] = None
 
 
 @dataclass(frozen=True, kw_only=True)

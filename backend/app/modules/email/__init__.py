@@ -13,7 +13,7 @@ from app.modules.email.dispatch import SendEmailDispatch
 from app.modules.email.dto import EmailBrandDto, EmailMessageDto
 from app.modules.email.layout import brand_accent, load_email_brand, render_email, render_email_html
 from app.modules.email.sender import EmailSendError
-from app.modules.email.templates import render_login_code
+from app.modules.email.templates import render_link_code, render_login_code
 
 __all__ = [
     "SMTP_PAUSE_SECONDS",
@@ -32,6 +32,7 @@ __all__ = [
     "load_email_brand",
     "render_email",
     "render_email_html",
+    "render_link_code",
     "render_login_code",
     "smtp_pause_key",
 ]

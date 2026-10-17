@@ -12,12 +12,14 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role, SessionAudience
+from app.core.enums import Locale, PromocodeRewardType, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
+from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.providers import get_module_providers
-from app.modules.users.dto import CreateUserDto, UserDto
+from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
 _ME = f"{API_V1}/users/me"
@@ -73,6 +75,67 @@ async def test_a_customer_reads_their_profile_with_a_cabinet_session(
     assert body["telegram_id"] == 88001
     assert body["role"] == "USER"
     assert body["effective_permissions"] == []
+    assert body["created_at"] is not None
+    assert body["points"] == "0"  # Decimal goes out as a JSON string
+    assert body["bonus_days"] == 0
+    assert body["personal_discount"] == 0
+    assert body["purchase_discount"] == 0
+    assert body["loyalty_discount"] == 0
+
+
+async def test_the_profile_hides_a_discount_from_an_ended_promocode(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    promocode_repository: PromocodeRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    user = await _customer(user_repository, uow)
+    async with uow:
+        dead = await promocode_repository.create(
+            CreatePromocodeDto(
+                code="PROFDEAD", reward_type=PromocodeRewardType.PERSONAL_DISCOUNT, reward=20
+            )
+        )
+        await promocode_repository.update(UpdatePromocodeDto(promocode_id=dead.id, is_active=False))
+        live = await promocode_repository.create(
+            CreatePromocodeDto(
+                code="PROFLIVE", reward_type=PromocodeRewardType.PURCHASE_DISCOUNT, reward=15
+            )
+        )
+        await user_repository.update_fields(
+            user.id,
+            UpdateUserDto(
+                personal_discount=20,
+                personal_discount_promocode_id=dead.id,
+                purchase_discount=15,
+                purchase_discount_promocode_id=live.id,
+            ),
+        )
+    headers = await _bearer(user.id, SessionAudience.CABINET, session_repository, config)
+
+    body = (await client.get(_ME, headers=headers)).json()
+
+    assert body["personal_discount"] == 0
+    assert body["purchase_discount"] == 15
+
+
+async def test_the_profile_keeps_a_manual_discount(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    user = await _customer(user_repository, uow)
+    async with uow:
+        await user_repository.update_fields(user.id, UpdateUserDto(personal_discount=10))
+    headers = await _bearer(user.id, SessionAudience.CABINET, session_repository, config)
+
+    body = (await client.get(_ME, headers=headers)).json()
+
+    assert body["personal_discount"] == 10
 
 
 async def test_a_customer_dashboard_session_is_refused(
