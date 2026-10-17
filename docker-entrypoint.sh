@@ -27,9 +27,8 @@ case "$TARGET" in
         exec python -m app.telegram
         ;;
     worker)
-        # Each task module listed here needs its providers registered in
-        # backend/app/worker/container.py's create_worker_container() too --
-        # the two lists are kept in sync by hand, see that file's comment.
+        # A new tasks.py isn't picked up until it's listed here;
+        # tests/worker/test_container.py checks every one is.
         # -w 1: WORKER_STARTUP binds a single metrics HTTP server port and
         # starts a single worker-gauges poller (see app/worker/lifespan.py) --
         # a second child process would collide on the port and double-sample

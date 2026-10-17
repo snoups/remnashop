@@ -1,5 +1,3 @@
-from typing import Final
-
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -15,7 +13,6 @@ from app.api.errors import error_responses, status_for
 from app.core.config import AppConfig
 from app.core.constants import TIME_1M, TTL_15M
 from app.core.enums import OAuthProvider, SessionAudience
-from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
@@ -38,6 +35,12 @@ from app.modules.cabinet_auth.api.schemas import (
     TelegramWebAppLoginRequest,
     VerifyEmailCodeRequest,
 )
+from app.modules.cabinet_auth.attempts import (
+    BOT_SIGNIN_FAILURES,
+    EMAIL_VERIFY_FAILURES,
+    OAUTH_CALLBACK_FAILURES,
+    TELEGRAM_FAILURES,
+)
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.usecases import (
     BotSignInUseCase,
@@ -54,15 +57,6 @@ from app.modules.oauth import (
     OAuthLoginAuthorizeUseCase,
     OAuthLoginCallbackUseCase,
     OAuthStateStore,
-)
-
-_BOT_SIGNIN_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.DEEPLINK_EXPIRED})
-_TELEGRAM_FAILURES: Final[frozenset[ErrorCode]] = frozenset({ErrorCode.INVALID_INIT_DATA})
-_EMAIL_VERIFY_FAILURES: Final[frozenset[ErrorCode]] = frozenset(
-    {ErrorCode.EMAIL_CODE_INVALID, ErrorCode.EMAIL_CODE_EXPIRED}
-)
-_OAUTH_CALLBACK_FAILURES: Final[frozenset[ErrorCode]] = frozenset(
-    {ErrorCode.OAUTH_STATE_INVALID, ErrorCode.OAUTH_CODE_EXCHANGE_FAILED}
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -101,7 +95,7 @@ async def cabinet_telegram_login(
             body.init_data, resolve_client_ip(request), request.headers.get("user-agent")
         )
     except AppError as error:
-        if error.code in _TELEGRAM_FAILURES:
+        if error.code in TELEGRAM_FAILURES:
             await guard.record_failure()
         raise
     set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
@@ -144,7 +138,7 @@ async def cabinet_email_verify(
             body.email, body.code, resolve_client_ip(request), request.headers.get("user-agent")
         )
     except AppError as error:
-        if error.code in _EMAIL_VERIFY_FAILURES:
+        if error.code in EMAIL_VERIFY_FAILURES:
             await guard.record_failure()
         raise
     set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
@@ -192,7 +186,7 @@ async def cabinet_telegram_signin(
             body.token, resolve_client_ip(request), request.headers.get("user-agent")
         )
     except AppError as error:
-        if error.code in _BOT_SIGNIN_FAILURES:
+        if error.code in BOT_SIGNIN_FAILURES:
             await guard.record_failure()
         raise
     set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
@@ -268,7 +262,7 @@ async def oauth_callback(
                 provider, body.code, body.state, binding, client_ip, user_agent
             )
     except AppError as error:
-        if error.code in _OAUTH_CALLBACK_FAILURES:
+        if error.code in OAUTH_CALLBACK_FAILURES:
             await guard.record_failure()
         # the state is single-use, so the binding is dead on any failure
         error_response = JSONResponse(

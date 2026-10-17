@@ -2,19 +2,18 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.constants import EMAIL_PATTERN
 from app.core.enums import Locale
 from app.modules.identity_links.dto import IdentityKind
 
-_EMAIL_PATTERN = r'^[^@\s(),<>;:"]+@[^@\s(),<>;:"]+$'
-
 
 class LinkEmailCodeRequest(BaseModel):
-    email: str = Field(max_length=255, pattern=_EMAIL_PATTERN)
+    email: str = Field(max_length=255, pattern=EMAIL_PATTERN)
     locale: Locale = Locale.EN
 
 
 class LinkEmailVerifyRequest(BaseModel):
-    email: str = Field(max_length=255, pattern=_EMAIL_PATTERN)
+    email: str = Field(max_length=255, pattern=EMAIL_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")
 
 
@@ -26,6 +25,7 @@ class IdentityResponse(BaseModel):
 
 class IdentitiesResponse(BaseModel):
     items: list[IdentityResponse]
+    total: int
 
 
 class MergeRequest(BaseModel):
@@ -45,3 +45,21 @@ class LinkResultResponse(BaseModel):
     merge_token: Optional[str] = None
     expires_in: Optional[int] = None
     other: Optional[MergePreviewResponse] = None
+
+
+class LinkTelegramSignInRequest(BaseModel):
+    token: str = Field(max_length=128)
+
+
+class LinkDeeplinkResponse(BaseModel):
+    bot_url: str
+    expires_in: int
+
+
+class LinkOAuthAuthorizeResponse(BaseModel):
+    url: str
+
+
+class LinkOAuthCallbackRequest(BaseModel):
+    code: str = Field(max_length=2048)
+    state: str = Field(max_length=256)

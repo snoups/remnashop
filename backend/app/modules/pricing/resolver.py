@@ -94,8 +94,7 @@ def convert_for_report(
     # just cut to cents, or the raw quotient ships ~28 digits
     if from_currency == to_currency:
         return amount
-    anchor_amount = amount / rates.for_currency(from_currency).rate
-    return (anchor_amount * rates.for_currency(to_currency).rate).quantize(
+    return rates.convert(amount, from_currency, to_currency).quantize(
         ONE_CENT, rounding=ROUND_HALF_UP
     )
 

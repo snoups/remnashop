@@ -12,6 +12,9 @@ def connect_args(database: DatabaseConfig) -> dict[str, Any]:
     return {
         "server_settings": {
             "jit": "on",
+            # NOW_FUNC writes a zoneless UTC timestamp into timestamptz columns,
+            # read in the session's zone: pinned, so the server default can't shift it
+            "timezone": "UTC",
             "statement_timeout": str(database.statement_timeout_ms),
             "idle_in_transaction_session_timeout": str(database.idle_in_transaction_timeout_ms),
         },

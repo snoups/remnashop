@@ -1,8 +1,7 @@
-from app.modules.cabinet_auth.api.schemas import (
-    BotSignInRequest,
-    DeeplinkResponse,
-    OAuthAuthorizeResponse,
-    OAuthCallbackRequest,
+from app.modules.cabinet_auth.attempts import (
+    BOT_SIGNIN_FAILURES,
+    EMAIL_VERIFY_FAILURES,
+    OAUTH_CALLBACK_FAILURES,
 )
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.di import get_cabinet_auth_providers
@@ -38,15 +37,16 @@ from app.modules.cabinet_auth.usecases import (
 )
 
 __all__ = [
+    "BOT_SIGNIN_FAILURES",
+    "EMAIL_VERIFY_FAILURES",
+    "OAUTH_CALLBACK_FAILURES",
     "BotSignInLinkDto",
-    "BotSignInRequest",
     "CabinetMethodsDto",
     "CabinetNewDeviceSignInEvent",
     "CabinetOAuthAuthorizeUseCase",
     "CabinetOAuthCallbackUseCase",
     "CabinetSignIn",
     "CabinetSignedInEvent",
-    "DeeplinkResponse",
     "DeeplinkStore",
     "DeeplinkTicketDto",
     "EmailCodeAttemptsExhausted",
@@ -56,8 +56,6 @@ __all__ = [
     "GetCabinetMethodsUseCase",
     "InviteCodesDto",
     "IssueBotSignInLinkUseCase",
-    "OAuthAuthorizeResponse",
-    "OAuthCallbackRequest",
     "RequestDeeplinkUseCase",
     "TelegramProfileDto",
     "email_key",

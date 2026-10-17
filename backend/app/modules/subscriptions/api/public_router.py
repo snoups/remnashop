@@ -6,8 +6,6 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
 from app.modules.subscriptions.api.schemas import (
     DeviceItem,
     DeviceListResponse,
@@ -18,7 +16,6 @@ from app.modules.subscriptions.api.schemas import (
     TrialResponse,
 )
 from app.modules.subscriptions.dto import (
-    ActivateTrialSubscriptionDto,
     DeleteDeviceDto,
     ListActivePlansDto,
     SubscriptionRefDto,
@@ -98,15 +95,10 @@ async def get_own_trial(
 )
 @inject
 async def activate_own_trial(
-    available: FromDishka[GetAvailableTrialUseCase],
     activate: FromDishka[ActivateTrialSubscriptionUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> OwnSubscriptionResponse:
-    trial = await available(actor)
-    if not trial.is_trial_available or trial.plan is None:
-        raise ValidationError("Trial is not available", code=ErrorCode.TRIAL_NOT_AVAILABLE)
-    subscription = await activate(actor, ActivateTrialSubscriptionDto(plan=trial.plan))
-    return OwnSubscriptionResponse.from_dto(subscription)
+    return OwnSubscriptionResponse.from_dto(await activate(actor))
 
 
 @own_router.get(

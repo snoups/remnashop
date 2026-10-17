@@ -107,3 +107,22 @@ async def test_connect_callback_answers_bad_state_with_400_not_401(
 
     assert response.status_code == 400
     assert response.json()["code"] == "OAUTH_STATE_INVALID"
+
+
+async def test_connect_authorize_is_a_post(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    # it stores a fresh OAuth state, so it doesn't answer a GET
+    owner = await _create_owner(user_repository, uow, config, "oauthauth1")
+    headers = {
+        "Authorization": f"Bearer {await _issue_token(owner.id, session_repository, config)}"
+    }
+    url = "/api/v1/auth/oauth/github/connect/authorize"
+
+    assert (await client.get(url, headers=headers)).status_code == 405
+    # reaches the usecase: GitHub isn't configured in the test settings
+    assert (await client.post(url, headers=headers)).status_code == 400

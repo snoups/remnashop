@@ -64,7 +64,8 @@ async def test_list_identities(
         "items": [
             {"kind": "TELEGRAM", "linked": True, "label": "@name"},
             {"kind": "EMAIL", "linked": False, "label": None},
-        ]
+        ],
+        "total": 2,
     }
 
     async with uow:

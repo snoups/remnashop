@@ -26,6 +26,7 @@ from app.modules.transactions.gateways.base import (
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.unpaid_orders import UNPAID_FINAL, give_back_purchase_discount
 from app.modules.users import UserRepository
 
 # Final for a paid claim: an order the TTL sweep or a provider CANCELED/FAILED
@@ -35,9 +36,6 @@ from app.modules.users import UserRepository
 # re-confirming it would provision it a second time.
 _TERMINAL_STATUSES: Final[frozenset[TransactionStatus]] = frozenset(
     {TransactionStatus.PAID, TransactionStatus.REFUNDED}
-)
-_UNPAID_FINAL: Final[frozenset[TransactionStatus]] = frozenset(
-    {TransactionStatus.CANCELED, TransactionStatus.FAILED}
 )
 _UNPAID_STATUSES: Final[frozenset[TransactionStatus]] = frozenset(
     {TransactionStatus.PENDING, TransactionStatus.CANCELED}
@@ -153,7 +151,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
     def _refuse(order: TransactionDto, gateway_type: PaymentGatewayType) -> bool:
         if order.status in _TERMINAL_STATUSES:
             return True
-        if order.discount_source is DiscountSource.PURCHASE and order.status in _UNPAID_FINAL:
+        if order.discount_source is DiscountSource.PURCHASE and order.status in UNPAID_FINAL:
             # its one-shot discount went back to the customer when it was
             # canceled; fulfilling it now would let that discount be spent twice
             logger.warning(
@@ -226,7 +224,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
         restores_discount = (
             order.discount_source is DiscountSource.PURCHASE
             and order.status is TransactionStatus.PENDING
-            and status in _UNPAID_FINAL
+            and status in UNPAID_FINAL
         )
         if restores_discount:
             allowed_from = frozenset({TransactionStatus.PENDING})
@@ -235,12 +233,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
                 order.id, status, current=allowed_from
             )
             if changed and restores_discount:
-                await self._user_repository.restore_purchase_discount(
-                    order.user_id,
-                    order.discount_percent,
-                    order.discount_promocode_id,
-                    from_promocode=order.discount_from_promocode,
-                )
+                await give_back_purchase_discount(self._user_repository, order)
             if changed and status is TransactionStatus.REFUNDED:
                 await self._event_publisher.publish(
                     TransactionRefundedEvent(

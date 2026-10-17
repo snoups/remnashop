@@ -245,7 +245,7 @@ async def list_ad_link_attributed_users(
 
 @user_router.get(
     "/{user_id:int}/ad-attribution",
-    response_model=Optional[UserAdAttributionResponse],
+    response_model=UserAdAttributionResponse,
     responses=error_responses(404),
 )
 @inject
@@ -253,11 +253,11 @@ async def get_user_ad_attribution(
     user_id: int,
     use_case: FromDishka[GetUserAdAttributionUseCase],
     actor: Actor = Depends(require_admin),
-) -> Optional[UserAdAttributionResponse]:
+) -> UserAdAttributionResponse:
     attribution = await use_case(actor, user_id)
-    if attribution is None:
-        return None
-    return UserAdAttributionResponse.model_validate(attribution, from_attributes=True)
+    return UserAdAttributionResponse.model_validate(
+        {"attribution": attribution}, from_attributes=True
+    )
 
 
 @router.get(

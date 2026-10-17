@@ -21,7 +21,6 @@ from app.modules.plans.dto import (
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions.dto import ActivateTrialSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -66,7 +65,7 @@ async def test_activates_a_trial_and_spends_the_flag(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
-    plan = await _create_trial_plan(plan_repository)
+    await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-activator"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -78,9 +77,16 @@ async def test_activates_a_trial_and_spends_the_flag(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
     )
-    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+    use_case = ActivateTrialSubscriptionUseCase(
+        user_repository,
+        plan_repository,
+        PricingRepository(subscription_repository.session),
+        make_eligibility(subscription_repository.session),
+        purchase_use_case,
+        uow,
+    )
 
-    subscription = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+    subscription = await use_case(actor)
 
     assert subscription.is_trial is True
     assert subscription.plan_snapshot.price_paid == Decimal("0")
@@ -103,7 +109,7 @@ async def test_rejects_when_the_flag_is_already_spent(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
-    plan = await _create_trial_plan(plan_repository)
+    await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-spent-2"))
     await user_repository.update_fields(actor.id, UpdateUserDto(is_trial_available=False))
     actor = await user_repository.find_by_id(actor.id)
@@ -117,10 +123,17 @@ async def test_rejects_when_the_flag_is_already_spent(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
     )
-    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+    use_case = ActivateTrialSubscriptionUseCase(
+        user_repository,
+        plan_repository,
+        PricingRepository(subscription_repository.session),
+        make_eligibility(subscription_repository.session),
+        purchase_use_case,
+        uow,
+    )
 
     with pytest.raises(ValidationError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+        await use_case(actor)
 
 
 async def test_a_second_activation_with_a_stale_actor_is_rejected(
@@ -134,7 +147,7 @@ async def test_a_second_activation_with_a_stale_actor_is_rejected(
 ) -> None:
     # A double tap: both updates loaded the user before either spent the
     # flag, so both carry is_trial_available=True.
-    plan = await _create_trial_plan(plan_repository)
+    await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-double-tap"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -146,11 +159,18 @@ async def test_a_second_activation_with_a_stale_actor_is_rejected(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
     )
-    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
-    first = await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+    use_case = ActivateTrialSubscriptionUseCase(
+        user_repository,
+        plan_repository,
+        PricingRepository(subscription_repository.session),
+        make_eligibility(subscription_repository.session),
+        purchase_use_case,
+        uow,
+    )
+    first = await use_case(actor)
 
     with pytest.raises(ValidationError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+        await use_case(actor)
 
     active = await subscription_repository.get_active_by_user(actor.id)
     assert [sub.id for sub in active] == [first.id]
@@ -166,7 +186,7 @@ async def test_a_failed_activation_gives_the_trial_back(
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    plan = await _create_trial_plan(plan_repository)
+    await _create_trial_plan(plan_repository)
     actor = await user_repository.create(CreateUserDto(name="trial-panel-down"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -183,10 +203,17 @@ async def test_a_failed_activation_gives_the_trial_back(
         raise RuntimeError("panel down")
 
     monkeypatch.setattr(remnawave_sdk.users, "create_user", _panel_down)
-    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+    use_case = ActivateTrialSubscriptionUseCase(
+        user_repository,
+        plan_repository,
+        PricingRepository(subscription_repository.session),
+        make_eligibility(subscription_repository.session),
+        purchase_use_case,
+        uow,
+    )
 
     with pytest.raises(RuntimeError):
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+        await use_case(actor)
 
     reloaded = await user_repository.find_by_id(actor.id)
     assert reloaded is not None and reloaded.is_trial_available is True
@@ -200,7 +227,7 @@ async def test_a_paid_trial_is_not_activated_for_free(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
-    plan = await _create_trial_plan(plan_repository, price="0.99")
+    await _create_trial_plan(plan_repository, price="0.99")
     actor = await user_repository.create(CreateUserDto(name="paid-trial"))
     purchase_use_case = PurchaseSubscriptionUseCase(
         subscription_repository,
@@ -212,10 +239,17 @@ async def test_a_paid_trial_is_not_activated_for_free(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
     )
-    use_case = ActivateTrialSubscriptionUseCase(user_repository, purchase_use_case, uow)
+    use_case = ActivateTrialSubscriptionUseCase(
+        user_repository,
+        plan_repository,
+        PricingRepository(subscription_repository.session),
+        make_eligibility(subscription_repository.session),
+        purchase_use_case,
+        uow,
+    )
 
     with pytest.raises(ValidationError) as error:
-        await use_case(actor, ActivateTrialSubscriptionDto(plan=plan))
+        await use_case(actor)
 
     assert error.value.code is ErrorCode.TRIAL_NOT_AVAILABLE
     reloaded = await user_repository.find_by_id(actor.id)

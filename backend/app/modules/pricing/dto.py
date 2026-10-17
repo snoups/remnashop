@@ -34,6 +34,12 @@ class CurrencyRateTable:
             )
         return row
 
+    def convert(self, amount: Decimal, source: Currency, target: Currency) -> Decimal:
+        # exact, through the anchor; callers that show the result round it themselves
+        if source is target:
+            return amount
+        return amount / self.for_currency(source).rate * self.for_currency(target).rate
+
 
 class PricingSettingsDto(BaseDto, TimestampMixin):
     anchor_currency: Currency

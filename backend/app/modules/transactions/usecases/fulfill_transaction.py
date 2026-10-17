@@ -1,5 +1,4 @@
 from functools import partial
-from typing import Final
 
 from loguru import logger
 
@@ -16,13 +15,9 @@ from app.modules.transactions.dto import TransactionWithUserDto
 from app.modules.transactions.events import TransactionFulfilledManuallyEvent
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.unpaid_orders import UNPAID_FINAL
 from app.modules.transactions.visibility import visible_transaction
 from app.modules.users import UserRepository
-
-# the gateway reported no payment, the admin confirms it was received after all
-_UNPAID_FINAL: Final[frozenset[TransactionStatus]] = frozenset(
-    {TransactionStatus.FAILED, TransactionStatus.CANCELED}
-)
 
 
 class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
@@ -49,7 +44,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
             # two admins clicking at once: the second waits here and sees the first's result
             order = await self._transaction_repository.get_by_id_for_update(data)
             user = await self._user_repository.find_by_id(order.user_id)
-            unpaid = order.status in _UNPAID_FINAL
+            unpaid = order.status in UNPAID_FINAL
             unfulfilled = order.status is TransactionStatus.PAID and order.fulfilled_at is None
             if (
                 order.is_test
@@ -69,7 +64,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
             else:
                 if unpaid:
                     changed = await self._transaction_repository.mark_status_if(
-                        order.id, TransactionStatus.PAID, current=_UNPAID_FINAL
+                        order.id, TransactionStatus.PAID, current=UNPAID_FINAL
                     )
                     if not changed:
                         raise ConflictError(

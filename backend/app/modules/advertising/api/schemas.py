@@ -111,9 +111,14 @@ class AttributedUserPageResponse(BaseModel):
     total: int
 
 
-class UserAdAttributionResponse(BaseModel):
+class AdAttributionResponse(BaseModel):
     ad_link_id: int
     name: str
     code: str
     channel: AdLinkChannel
     attributed_at: datetime
+
+
+class UserAdAttributionResponse(BaseModel):
+    # an object even when there is none, like the registration snapshot
+    attribution: Optional[AdAttributionResponse]

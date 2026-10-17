@@ -173,11 +173,7 @@ class PurchaseRollbackService:
         if data.price_paid <= 0 or data.currency is currency:
             return data.price_paid
         rates = await self._pricing_repository.get_rate_table()
-        return (
-            data.price_paid
-            / rates.for_currency(data.currency).rate
-            * rates.for_currency(currency).rate
-        )
+        return rates.convert(data.price_paid, data.currency, currency)
 
     async def _publish(self, actor: Actor, subscription: SubscriptionDto) -> None:
         subscriber = await subscription_owner(self._user_repository, subscription)

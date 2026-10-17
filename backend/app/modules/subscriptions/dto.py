@@ -329,11 +329,6 @@ class PlanCatalogDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class ActivateTrialSubscriptionDto:
-    plan: PlanDto
-
-
-@dataclass(frozen=True, kw_only=True)
 class SubscriptionRefDto:
     subscription_id: int
 

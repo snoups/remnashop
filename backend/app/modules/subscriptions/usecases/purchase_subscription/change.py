@@ -214,4 +214,4 @@ class ChangePurchase:
             return amount
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
-        return amount / rates.for_currency(source).rate * rates.for_currency(target).rate
+        return rates.convert(amount, source, target)

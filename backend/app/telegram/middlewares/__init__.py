@@ -5,15 +5,13 @@ from app.telegram.middlewares.base import EventTypedMiddleware
 from app.telegram.middlewares.blacklist import BlacklistMiddleware
 from app.telegram.middlewares.command_gate import CommandGateMiddleware
 from app.telegram.middlewares.error import ErrorMiddleware
+from app.telegram.middlewares.garbage import GarbageMiddleware
 from app.telegram.middlewares.requirements import RequirementsMiddleware
 from app.telegram.middlewares.user import UserMiddleware
 
 __all__ = [
     "setup_middlewares",
 ]
-
-# Not ported yet: Throttling and Garbage need nothing new, they just haven't
-# been carried over.
 
 
 def setup_middlewares(router: Router) -> None:
@@ -28,3 +26,6 @@ def setup_middlewares(router: Router) -> None:
 
     for middleware in outer_middlewares:
         middleware.setup_outer(router=router)
+
+    # inner: only a message some handler took is deleted
+    GarbageMiddleware().setup_inner(router=router)

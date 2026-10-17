@@ -45,7 +45,7 @@ export function listConnectedAccounts(signal?: AbortSignal): Promise<OAuthIdenti
 export function getOAuthConnectAuthorizeUrl(
   provider: OAuthProvider,
 ): Promise<OAuthAuthorizeResult> {
-  return apiGet<OAuthAuthorizeResult>(`/auth/oauth/${provider}/connect/authorize`);
+  return apiPost<OAuthAuthorizeResult, Record<string, never>>(`/auth/oauth/${provider}/connect/authorize`, {});
 }
 
 export function oauthConnectCallback(

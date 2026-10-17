@@ -47,6 +47,7 @@ from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.gateways.telegram_stars import with_bot_settings
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.unpaid_orders import give_back_purchase_discount
 from app.modules.transactions.waitlist_repository import WaitlistRepository
 from app.modules.users import UserDto, UserRepository
 
@@ -180,13 +181,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     TransactionStatus.FAILED,
                     current=frozenset({TransactionStatus.PENDING}),
                 )
-                if failed and order.discount_source is DiscountSource.PURCHASE:
-                    await self._user_repository.restore_purchase_discount(
-                        order.user_id,
-                        order.discount_percent,
-                        order.discount_promocode_id,
-                        from_promocode=order.discount_from_promocode,
-                    )
+                if failed:
+                    await give_back_purchase_discount(self._user_repository, order)
             if isinstance(error, PaymentGatewayError):
                 raise
             raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error

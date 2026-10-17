@@ -24,7 +24,8 @@ class DatabaseConfig(BaseConfig, env_prefix="DATABASE_"):
     # (e.g. a managed cloud Postgres).
     statement_timeout_ms: int = 60_000
     idle_in_transaction_timeout_ms: int = 300_000
-    command_timeout_s: int = 30
+    # above statement_timeout: Postgres cancels first, with its own error
+    command_timeout_s: int = 75
     connect_timeout_s: int = 10
 
     @property

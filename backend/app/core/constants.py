@@ -167,3 +167,6 @@ DEFAULT_ALLOWED_EMAIL_DOMAINS: Final[tuple[str, ...]] = (
     "orange.fr",
     "libero.it",
 )
+
+# an address a customer may type: one @, no spaces or header-breaking characters
+EMAIL_PATTERN: Final[str] = r'^[^@\s(),<>;:"]+@[^@\s(),<>;:"]+$'

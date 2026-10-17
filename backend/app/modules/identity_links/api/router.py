@@ -1,3 +1,5 @@
+from typing import Final
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -9,7 +11,6 @@ from app.api.errors import error_responses, status_for
 from app.core.config import AppConfig
 from app.core.constants import API_V1, TIME_1M
 from app.core.enums import OAuthProvider, SessionAudience
-from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
@@ -18,17 +19,20 @@ from app.modules.auth import (
     set_oauth_binding_cookie,
 )
 from app.modules.cabinet_auth import (
-    BotSignInRequest,
-    DeeplinkResponse,
-    OAuthAuthorizeResponse,
-    OAuthCallbackRequest,
+    BOT_SIGNIN_FAILURES,
+    EMAIL_VERIFY_FAILURES,
+    OAUTH_CALLBACK_FAILURES,
 )
 from app.modules.identity_links.api.schemas import (
     IdentitiesResponse,
     IdentityResponse,
+    LinkDeeplinkResponse,
     LinkEmailCodeRequest,
     LinkEmailVerifyRequest,
+    LinkOAuthAuthorizeResponse,
+    LinkOAuthCallbackRequest,
     LinkResultResponse,
+    LinkTelegramSignInRequest,
     MergeRequest,
 )
 from app.modules.identity_links.dto import IdentityKind
@@ -45,13 +49,8 @@ from app.modules.identity_links.usecases import (
 )
 from app.modules.users import CurrentUserResponse, UserDto, to_current_user_response
 
-_EMAIL_VERIFY_FAILURES = frozenset({ErrorCode.EMAIL_CODE_INVALID, ErrorCode.EMAIL_CODE_EXPIRED})
-_BOT_SIGNIN_FAILURES = frozenset({ErrorCode.DEEPLINK_EXPIRED})
-_OAUTH_CALLBACK_FAILURES = frozenset(
-    {ErrorCode.OAUTH_STATE_INVALID, ErrorCode.OAUTH_CODE_EXCHANGE_FAILED}
-)
 # the sign-in binding cookie lives under /auth; the link one under its own routes
-_OAUTH_BINDING_PATH = f"{API_V1}/users/me/identities/oauth"
+_OAUTH_BINDING_PATH: Final[str] = f"{API_V1}/users/me/identities/oauth"
 
 router = APIRouter(prefix="/users/me", tags=["identities"])
 
@@ -72,7 +71,8 @@ async def list_identities(
 ) -> IdentitiesResponse:
     items = await use_case.execute(user)
     return IdentitiesResponse(
-        items=[IdentityResponse.model_validate(item, from_attributes=True) for item in items]
+        items=[IdentityResponse.model_validate(item, from_attributes=True) for item in items],
+        total=len(items),
     )
 
 
@@ -146,7 +146,7 @@ async def verify_link_email_code(
     try:
         result = await use_case.execute(user, body.email, body.code, resolve_client_ip(request))
     except AppError as error:
-        if error.code in _EMAIL_VERIFY_FAILURES:
+        if error.code in EMAIL_VERIFY_FAILURES:
             await guard.record_failure()
         raise _as_input_error(error) from error
     return LinkResultResponse.model_validate(result, from_attributes=True)
@@ -154,7 +154,7 @@ async def verify_link_email_code(
 
 @router.post(
     "/identities/telegram/deeplink",
-    response_model=DeeplinkResponse,
+    response_model=LinkDeeplinkResponse,
     dependencies=[
         Depends(rate_limit(key="cabinet_link_telegram_deeplink", limit=20, window_seconds=TIME_1M))
     ],
@@ -164,12 +164,12 @@ async def verify_link_email_code(
 async def request_telegram_link(
     use_case: FromDishka[RequestTelegramLinkUseCase],
     user: UserDto = Depends(get_cabinet_customer),
-) -> DeeplinkResponse:
+) -> LinkDeeplinkResponse:
     try:
         ticket = await use_case.execute(user)
     except AppError as error:
         raise _as_input_error(error) from error
-    return DeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
+    return LinkDeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
 
 
 @router.post(
@@ -182,7 +182,7 @@ async def request_telegram_link(
 )
 @inject
 async def telegram_link_signin(
-    body: BotSignInRequest,
+    body: LinkTelegramSignInRequest,
     request: Request,
     use_case: FromDishka[TelegramLinkSignInUseCase],
     user: UserDto = Depends(get_cabinet_customer),
@@ -195,7 +195,7 @@ async def telegram_link_signin(
     try:
         result = await use_case.execute(user, body.token, resolve_client_ip(request))
     except AppError as error:
-        if error.code in _BOT_SIGNIN_FAILURES:
+        if error.code in BOT_SIGNIN_FAILURES:
             await guard.record_failure()
         raise _as_input_error(error) from error
     return LinkResultResponse.model_validate(result, from_attributes=True)
@@ -203,7 +203,7 @@ async def telegram_link_signin(
 
 @router.post(
     "/identities/oauth/{provider}/authorize",
-    response_model=OAuthAuthorizeResponse,
+    response_model=LinkOAuthAuthorizeResponse,
     dependencies=[
         Depends(rate_limit(key="cabinet_link_oauth_authorize", limit=30, window_seconds=TIME_1M))
     ],
@@ -216,7 +216,7 @@ async def oauth_link_authorize(
     use_case: FromDishka[OAuthLinkAuthorizeUseCase],
     config: FromDishka[AppConfig],
     user: UserDto = Depends(get_cabinet_customer),
-) -> OAuthAuthorizeResponse:
+) -> LinkOAuthAuthorizeResponse:
     try:
         url, binding = await use_case.execute(user, provider)
     except AppError as error:
@@ -224,7 +224,7 @@ async def oauth_link_authorize(
     set_oauth_binding_cookie(
         response, binding, config.secure_cookies, SessionAudience.CABINET, _OAUTH_BINDING_PATH
     )
-    return OAuthAuthorizeResponse(url=url)
+    return LinkOAuthAuthorizeResponse(url=url)
 
 
 @router.post(
@@ -238,7 +238,7 @@ async def oauth_link_authorize(
 @inject
 async def oauth_link_callback(
     provider: OAuthProvider,
-    body: OAuthCallbackRequest,
+    body: LinkOAuthCallbackRequest,
     request: Request,
     response: Response,
     use_case: FromDishka[OAuthLinkCallbackUseCase],
@@ -257,7 +257,7 @@ async def oauth_link_callback(
             resolve_client_ip(request),
         )
     except AppError as error:
-        if error.code in _OAUTH_CALLBACK_FAILURES:
+        if error.code in OAUTH_CALLBACK_FAILURES:
             await guard.record_failure()
         # the state is single-use, so the binding is dead on any failure
         error = _as_input_error(error)

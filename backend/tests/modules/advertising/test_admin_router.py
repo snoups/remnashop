@@ -13,9 +13,10 @@ from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.di.providers import get_core_providers
-from app.core.enums import Locale, Role, SessionAudience
+from app.core.enums import AdLinkChannel, Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.permissions import Permission
+from app.modules.advertising.dto import CreateAdLinkDto
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.advertising.usecases import (
     CreateAdLinkUseCase,
@@ -267,3 +268,28 @@ async def test_share_urls_and_qr_follow_allowed_channels(
         headers=admin_auth_headers,
     )
     assert bot_qr.status_code == 404
+
+
+async def test_user_ad_attribution_is_always_an_object(
+    client: httpx.AsyncClient,
+    admin_auth_headers: dict[str, str],
+    user_repository: UserRepository,
+    session: AsyncSession,
+) -> None:
+    unattributed = await user_repository.create(CreateUserDto(name="organic", telegram_id=77_001))
+    attributed = await user_repository.create(CreateUserDto(name="from-ad", telegram_id=77_002))
+    repository = AdLinkRepository(session)
+    link = await repository.create(CreateAdLinkDto(name="Ads", code="router-attr"))
+    await repository.create_attribution(
+        ad_link_id=link.id, user_id=attributed.id, channel=AdLinkChannel.BOT
+    )
+
+    none = await client.get(
+        f"{API_V1}/users/{unattributed.id}/ad-attribution", headers=admin_auth_headers
+    )
+    some = await client.get(
+        f"{API_V1}/users/{attributed.id}/ad-attribution", headers=admin_auth_headers
+    )
+
+    assert none.json() == {"attribution": None}
+    assert some.json()["attribution"]["code"] == "router-attr"

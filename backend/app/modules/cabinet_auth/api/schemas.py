@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.constants import EMAIL_PATTERN
 from app.core.enums import Locale, Role
 
 
@@ -27,11 +28,8 @@ class TelegramWebAppLoginRequest(BaseModel):
     init_data: str = Field(max_length=4096)
 
 
-_EMAIL_PATTERN = r'^[^@\s(),<>;:"]+@[^@\s(),<>;:"]+$'
-
-
 class RequestEmailCodeRequest(BaseModel):
-    email: str = Field(max_length=255, pattern=_EMAIL_PATTERN)
+    email: str = Field(max_length=255, pattern=EMAIL_PATTERN)
     locale: Locale = Locale.EN
     ref: Optional[str] = Field(None, max_length=64)
     ad: Optional[str] = Field(None, max_length=64)
@@ -42,7 +40,7 @@ class BotSignInRequest(BaseModel):
 
 
 class VerifyEmailCodeRequest(BaseModel):
-    email: str = Field(max_length=255, pattern=_EMAIL_PATTERN)
+    email: str = Field(max_length=255, pattern=EMAIL_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")
 
 

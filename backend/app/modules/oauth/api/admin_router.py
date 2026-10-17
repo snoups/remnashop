@@ -39,7 +39,7 @@ async def list_connected_accounts(
     return OAuthIdentityListResponse(items=items, total=len(items))
 
 
-@router.get(
+@router.post(
     "/{provider}/connect/authorize",
     response_model=OAuthAuthorizeResponse,
     responses=error_responses(400),

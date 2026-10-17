@@ -1,7 +1,6 @@
 from app.modules.subscriptions.di import get_subscriptions_providers
 from app.modules.subscriptions.dispatch import GrantAddOnDispatch, PurchaseSubscriptionDispatch
 from app.modules.subscriptions.dto import (
-    ActivateTrialSubscriptionDto,
     AddOnEntitlementDto,
     AdminDeleteDeviceDto,
     CatalogDurationDto,
@@ -100,7 +99,6 @@ from app.modules.subscriptions.usecases import (
 
 __all__ = [
     "IDEMPOTENCY_KEY_RETENTION_DAYS",
-    "ActivateTrialSubscriptionDto",
     "ActivateTrialSubscriptionUseCase",
     "AddOnEntitlementDto",
     "AdminDeleteAllDevicesUseCase",
