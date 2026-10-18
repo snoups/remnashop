@@ -135,6 +135,64 @@ async def test_claim_pending_fails_unreachable_recipients(
     assert total == 1 and failed[0].user_id == a and failed[0].error == "no telegram"
 
 
+async def test_claim_pending_checks_reachability_only_within_the_batch(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+) -> None:
+    first = await make_customer(user_repository, session, telegram_id=8141)
+    later = await make_customer(user_repository, session, telegram_id=8142)
+    created = await broadcast_repository.create(
+        save_dto(audience=BroadcastAudienceDto(user_ids=[first, later])), created_by=None
+    )
+    await broadcast_repository.materialize(
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
+    )
+    await session.execute(update(User).where(User.id == later).values(is_blocked=True))
+
+    claimed = await broadcast_repository.claim_pending(created.id, 1, _LEASE, marketing=False)
+
+    assert [r.user_id for r in claimed] == [first]
+    _, canceled = await broadcast_repository.list_recipients(
+        ListBroadcastRecipientsDto(broadcast_id=created.id, status=R.CANCELED)
+    )
+    assert canceled == 0
+
+
+async def test_claim_pending_skips_a_batch_that_is_all_unreachable(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+) -> None:
+    gone = [await make_customer(user_repository, session, telegram_id=8131 + i) for i in range(2)]
+    reachable = await make_customer(user_repository, session, telegram_id=8139)
+    created = await broadcast_repository.create(
+        save_dto(audience=BroadcastAudienceDto(user_ids=[*gone, reachable])), created_by=None
+    )
+    await broadcast_repository.materialize(
+        created.id,
+        created.audience,
+        created.category,
+        BroadcastDelivery.TELEGRAM,
+        False,
+        datetime_now(),
+    )
+    await session.execute(update(User).where(User.id.in_(gone)).values(is_blocked=True))
+
+    claimed = await broadcast_repository.claim_pending(created.id, 2, _LEASE, marketing=False)
+
+    assert [r.user_id for r in claimed] == [reachable]
+    canceled, total = await broadcast_repository.list_recipients(
+        ListBroadcastRecipientsDto(broadcast_id=created.id, status=R.CANCELED)
+    )
+    assert total == 2 and {r.user_id for r in canceled} == set(gone)
+
+
 @pytest.mark.parametrize(
     ("marketing", "canceled"),
     [(True, {"a": "opted out", "b": "blocked"}), (False, {"b": "blocked"})],

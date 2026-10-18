@@ -1,16 +1,18 @@
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
 from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PurchaseType, SubscriptionStatus
+from app.core.enums import SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import report_amount
-from app.modules.analytics.coverage import coverage_by_user, is_covered, shift_months
+from app.modules.analytics.cache import AnalyticsCache
+from app.modules.analytics.coverage import shift_months
 from app.modules.analytics.dto import (
     ExpiringCustomerDto,
     ExpiringWeekDto,
@@ -21,7 +23,7 @@ from app.modules.analytics.dto import (
 )
 from app.modules.pricing import CurrencyRateTable, PricingRepository
 from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepository
-from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
+from app.modules.transactions import TransactionStatsRepository
 from app.modules.users import UserRepository
 
 _ZERO: Final[Decimal] = Decimal(0)
@@ -44,23 +46,15 @@ def _rate(part: int, whole: int) -> float:
     return part / whole if whole else 0.0
 
 
-def _retention_points(
-    first_paid: dict[int, datetime], coverage: dict[int, _Segments], now: datetime
-) -> list[RetentionPointDto]:
-    points: list[RetentionPointDto] = []
-    for months in _ANNIVERSARIES:
-        anniversaries = {
-            user_id: shift_months(at, months)
-            for user_id, at in first_paid.items()
-            if shift_months(at, months) <= now
-        }
-        kept = sum(is_covered(coverage[user_id], at) for user_id, at in anniversaries.items())
-        points.append(
-            RetentionPointDto(
-                months=months, rate=_rate(kept, len(anniversaries)), eligible=len(anniversaries)
-            )
-        )
-    return points
+def _anniversaries(
+    first_paid: dict[int, datetime], months: int, now: datetime
+) -> dict[int, datetime]:
+    # only payers whose anniversary has already come
+    return {
+        user_id: shift_months(at, months)
+        for user_id, at in first_paid.items()
+        if shift_months(at, months) <= now
+    }
 
 
 def _last_month_starts(now: datetime, count: int) -> list[datetime]:
@@ -69,13 +63,12 @@ def _last_month_starts(now: datetime, count: int) -> list[datetime]:
 
 
 def _monthly_churn(
-    coverage: dict[int, _Segments], months: list[datetime], now: datetime
+    covered: dict[datetime, set[int]], months: list[datetime], now: datetime
 ) -> list[MonthlyChurnDto]:
     rows: list[MonthlyChurnDto] = []
     for start in months:
-        probe = min(shift_months(start, 1), now) - _MICROSECOND
-        base = [segments for segments in coverage.values() if is_covered(segments, start)]
-        churned = sum(not is_covered(segments, probe) for segments in base)
+        base = covered[start]
+        churned = len(base - covered[_churn_probe(start, now)])
         rows.append(
             MonthlyChurnDto(
                 month=start.strftime("%Y-%m"),
@@ -87,15 +80,8 @@ def _monthly_churn(
     return rows
 
 
-def _avg_paid_months(coverage: dict[int, _Segments], now: datetime) -> float:
-    if not coverage:
-        return 0.0
-    total_days = sum(
-        max((min(end, now) - start).total_seconds(), 0.0) / 86400
-        for segments in coverage.values()
-        for start, end in segments
-    )
-    return total_days / len(coverage) / float(_DAYS_PER_MONTH)
+def _churn_probe(month_start: datetime, now: datetime) -> datetime:
+    return min(shift_months(month_start, 1), now) - _MICROSECOND
 
 
 def _week_key(expire_at: datetime, now: datetime) -> str:
@@ -145,19 +131,6 @@ def _active_by_plan(live: list[LiveSubscriptionDto]) -> list[PlanActiveDto]:
     return sorted(rows, key=lambda row: (-row.active, row.plan_name))
 
 
-def _spent_and_renewals(
-    paid: list[PaidTransactionDto],
-) -> tuple[dict[int, Decimal], dict[int, int]]:
-    spent: dict[int, Decimal] = {}
-    renewals: dict[int, int] = {}
-    for row in paid:
-        amount = row.anchor_final_price
-        spent[row.user_id] = spent.get(row.user_id, _ZERO) + amount
-        if row.purchase_type == PurchaseType.RENEW:
-            renewals[row.user_id] = renewals.get(row.user_id, 0) + 1
-    return spent, renewals
-
-
 class GetRetentionUseCase(UseCase[None, RetentionDto]):
     required_permission = Permission.ANALYTICS_RETENTION_VIEW
 
@@ -168,19 +141,43 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         user_repository: UserRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._subscription_stats = subscription_stats
         self._transaction_stats = transaction_stats
         self._user_repository = user_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
+
+    async def _retention_points(
+        self, first_paid: dict[int, datetime], now: datetime
+    ) -> list[RetentionPointDto]:
+        points: list[RetentionPointDto] = []
+        for months in _ANNIVERSARIES:
+            anniversaries = _anniversaries(first_paid, months, now)
+            kept = await self._transaction_stats.users_covered_at_their_points(anniversaries, now)
+            points.append(
+                RetentionPointDto(
+                    months=months,
+                    rate=_rate(len(kept), len(anniversaries)),
+                    eligible=len(anniversaries),
+                )
+            )
+        return points
+
+    async def _avg_paid_months(self, now: datetime) -> float:
+        payers, days = await self._transaction_stats.total_covered_days(now)
+        return days / payers / float(_DAYS_PER_MONTH) if payers else 0.0
 
     async def _top_customers(
-        self,
-        expiring: list[LiveSubscriptionDto],
-        paid: list[PaidTransactionDto],
+        self, expiring: list[LiveSubscriptionDto], now: datetime
     ) -> list[ExpiringCustomerDto]:
-        spent, renewals = _spent_and_renewals(paid)
+        summaries = await self._transaction_stats.payer_summaries(
+            now, user_ids={row.user_id for row in expiring}
+        )
+        spent = {s.user_id: s.spent for s in summaries}
+        renewals = {s.user_id: s.renewals for s in summaries}
         nearest: dict[int, LiveSubscriptionDto] = {}
         for row in sorted(expiring, key=lambda r: r.expire_at):
             nearest.setdefault(row.user_id, row)
@@ -201,23 +198,31 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         ]
 
     async def _execute(self, actor: Actor, data: None) -> RetentionDto:
+        return await self._cache.get_or_compute(
+            "get_retention", data, RetentionDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: None) -> RetentionDto:
         async with self._uow:
             now = datetime_now()
             rates = await self._pricing_repository.get_rate_table()
-            paid = await self._transaction_stats.list_paid(None, now)
-            first_paid, coverage = coverage_by_user(paid)
+            first_paid = await self._transaction_stats.first_paid_at(now)
+            months = _last_month_starts(now, _CHURN_MONTHS)
+            covered = await self._transaction_stats.users_covered_at(
+                {point for start in months for point in (start, _churn_probe(start, now))}, now
+            )
             live = await self._subscription_stats.list_live()
             horizon = now + timedelta(days=_EXPIRING_DAYS)
             window = [row for row in live if now <= row.expire_at < horizon]
             expiring_paid = [row for row in window if not row.is_trial]
             return RetentionDto(
                 report_currency=rates.anchor,
-                points=_retention_points(first_paid, coverage, now),
-                avg_paid_months=_avg_paid_months(coverage, now),
+                points=await self._retention_points(first_paid, now),
+                avg_paid_months=await self._avg_paid_months(now),
                 expiring_paid=len(expiring_paid),
                 expiring_trials=len(window) - len(expiring_paid),
                 expiring_weeks=_expiring_weeks(expiring_paid, now, rates),
-                expiring_top=await self._top_customers(expiring_paid, paid),
+                expiring_top=await self._top_customers(expiring_paid, now),
                 active_by_plan=_active_by_plan(live),
-                monthly_churn=_monthly_churn(coverage, _last_month_starts(now, _CHURN_MONTHS), now),
+                monthly_churn=_monthly_churn(covered, months, now),
             )

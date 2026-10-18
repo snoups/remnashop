@@ -31,7 +31,7 @@ class Broadcast(BaseSql, TimestampMixin):
     contents: Mapped[dict[str, Any]] = mapped_column(JSONB)
     buttons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
     promocode_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("promocodes.id", ondelete="SET NULL")
+        ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
     )
     post_to_channel: Mapped[bool] = mapped_column(default=False, server_default="false")
     channel_chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)

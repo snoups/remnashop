@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import ColumnElement, and_, case, exists, func, not_, select, update
+from sqlalchemy import ColumnElement, and_, case, exists, func, not_, or_, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,6 +69,15 @@ class PromocodeRepository:
     async def list_all(self) -> list[PromocodeDto]:
         result = await self.session.execute(select(Promocode).order_by(Promocode.id))
         return [self._to_dto(row) for row in result.scalars()]
+
+    async def count_total_and_active(self, now: datetime) -> tuple[int, int]:
+        active = Promocode.is_active.is_(True) & or_(
+            Promocode.expires_at.is_(None), Promocode.expires_at > now
+        )
+        total, active_count = (
+            await self.session.execute(select(func.count(), func.count().filter(active)))
+        ).one()
+        return int(total), int(active_count)
 
     async def list_activations(
         self, start: Optional[datetime], end: datetime

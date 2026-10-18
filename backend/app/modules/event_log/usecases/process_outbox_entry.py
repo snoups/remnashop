@@ -8,6 +8,7 @@ from app.core.usecase import UseCase
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.outbox_repository import EventOutboxRepository
 from app.modules.event_log.repository import EventLogRepository
+from app.modules.users import UserDeletedEvent
 
 
 def _snapshot_id(value: Any) -> Optional[int]:
@@ -61,6 +62,13 @@ class ProcessOutboxEntryUseCase(UseCase[int, None]):
                         target_id=_target_id(row.payload),
                     )
                 )
+                deleted_user_id = (
+                    _target_id(row.payload) if row.event_type == UserDeletedEvent.__name__ else None
+                )
+                if deleted_user_id is not None:
+                    # in this transaction, so the deletion's own entry is covered too
+                    await self._event_log_repository.anonymize_user(deleted_user_id)
+                    await self._outbox_repository.anonymize_user(deleted_user_id)
                 error_message = await self._bus.dispatch_stored(
                     StoredEvent(
                         outbox_id=row.id,

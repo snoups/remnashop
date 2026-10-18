@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 
 from app.core.actor import Actor
 from app.core.constants import ONE_CENT, TIMEZONE
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, Role, SubscriptionStatus
+from app.core.enums import Role, SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import report_amount
-from app.modules.analytics.coverage import coverage_by_user, is_covered
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsDto,
     AnalyticsPeriodInfoDto,
@@ -20,25 +21,25 @@ from app.modules.analytics.dto import (
 from app.modules.analytics.period import CONVERSION_WINDOW_DAYS, AnalyticsPeriod, resolve_period
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
-from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
+from app.modules.transactions import PaidTotalsDto, TransactionStatsRepository
 from app.modules.users import UserStatsRepository
+
+
+def _end_point(period: AnalyticsPeriod, now: datetime) -> datetime:
+    # an unfinished period is judged as of now, not its future end
+    return min(period.end, now) - timedelta(microseconds=1)
 
 
 def _period_kpi(
     *,
     period: AnalyticsPeriod,
-    paid: list[PaidTransactionDto],
+    totals: PaidTotalsDto,
+    new_payers: int,
     first_paid: dict[int, datetime],
-    coverage: dict[int, list[tuple[datetime, datetime]]],
+    covered: dict[datetime, set[int]],
     registrations: list[tuple[int, datetime]],
     now: datetime,
 ) -> PeriodKpiDto:
-    in_period = [row for row in paid if period.start <= row.paid_at < period.end]
-    revenue = sum(
-        (row.anchor_final_price for row in in_period),
-        start=Decimal(0),
-    )
-    paying = {row.user_id for row in in_period}
     # registrations shifted back by the window, so each had all of it to pay
     window = timedelta(days=CONVERSION_WINDOW_DAYS)
     cohort = {
@@ -56,20 +57,19 @@ def _period_kpi(
         ).days
         <= CONVERSION_WINDOW_DAYS
     )
-    # an unfinished period is judged as of now, not its future end
-    end_point = min(period.end, now) - timedelta(microseconds=1)
-    base = [user_id for user_id, segments in coverage.items() if is_covered(segments, period.start)]
-    churned = sum(1 for user_id in base if not is_covered(coverage[user_id], end_point))
+    base = covered[period.start]
+    churned = len(base - covered[_end_point(period, now)])
+    revenue = totals.revenue
     return PeriodKpiDto(
         revenue=revenue.quantize(ONE_CENT, rounding=ROUND_HALF_UP),
-        payments=len(in_period),
-        paying_users=len(paying),
+        payments=totals.payments,
+        paying_users=totals.paying_users,
         arppu=(
-            (revenue / len(paying)).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
-            if paying
+            (revenue / totals.paying_users).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+            if totals.paying_users
             else Decimal(0)
         ),
-        new_payers=sum(1 for at in first_paid.values() if period.start <= at < period.end),
+        new_payers=new_payers,
         conversion_cohort=len(cohort),
         converted=converted,
         conversion_rate=converted / len(cohort) if cohort else 0.0,
@@ -89,14 +89,21 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
         transaction_stats: TransactionStatsRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._subscription_stats = subscription_stats
         self._transaction_stats = transaction_stats
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> AnalyticsDto:
+        return await self._cache.get_or_compute(
+            "get_analytics", data, AnalyticsDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: AnalyticsPeriodQueryDto) -> AnalyticsDto:
         async with self._uow:
             now = datetime_now()
             period = resolve_period(
@@ -107,18 +114,30 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
             )
             previous = period.previous
             rates = await self._pricing_repository.get_rate_table()
-            paid = await self._transaction_stats.list_paid(None, period.end)
-            first_paid, coverage = coverage_by_user(paid)
+            stats = self._transaction_stats
             registrations = await self._user_stats.list_registrations(
                 previous.start - timedelta(days=CONVERSION_WINDOW_DAYS), period.end, Role.USER
             )
-
-            revenue_by_currency: dict[Currency, Decimal] = {}
-            for row in paid:
-                if period.start <= row.paid_at < period.end:
-                    revenue_by_currency[row.currency] = (
-                        revenue_by_currency.get(row.currency, Decimal(0)) + row.final_price
-                    )
+            first_paid = await stats.first_paid_at(
+                period.end, user_ids={user_id for user_id, _ in registrations}
+            )
+            covered = await stats.users_covered_at(
+                {point for p in (period, previous) for point in (p.start, _end_point(p, now))},
+                period.end,
+            )
+            kpis = {
+                p: _period_kpi(
+                    period=p,
+                    totals=await stats.paid_totals(p.start, p.end),
+                    new_payers=len(await stats.first_paid_at(p.end, since=p.start)),
+                    first_paid=first_paid,
+                    covered=covered,
+                    registrations=registrations,
+                    now=now,
+                )
+                for p in (period, previous)
+            }
+            revenue_by_currency = await stats.revenue_by_currency(period.start, period.end)
 
             mrr_by_currency = await self._subscription_stats.sum_active_mrr_by_currency()
             mrr = sum(
@@ -139,22 +158,8 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                 report_currency=rates.anchor,
                 revenue_by_currency=revenue_by_currency,
                 conversion_window_days=CONVERSION_WINDOW_DAYS,
-                current=_period_kpi(
-                    period=period,
-                    paid=paid,
-                    first_paid=first_paid,
-                    coverage=coverage,
-                    registrations=registrations,
-                    now=now,
-                ),
-                previous=_period_kpi(
-                    period=previous,
-                    paid=paid,
-                    first_paid=first_paid,
-                    coverage=coverage,
-                    registrations=registrations,
-                    now=now,
-                ),
+                current=kpis[period],
+                previous=kpis[previous],
                 snapshot=SnapshotKpiDto(
                     mrr=mrr,
                     paid_subscriptions=await self._subscription_stats.count_paying(),

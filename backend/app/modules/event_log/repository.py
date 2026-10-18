@@ -1,8 +1,8 @@
 import builtins
 from datetime import datetime
-from typing import Optional
+from typing import Optional, cast
 
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, CursorResult, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
 from app.core.exceptions import NotFoundError
 from app.modules.event_log.dto import EventLogEntryDto
+from app.modules.event_log.retention import SHORT_RETENTION_EVENT_TYPES, anonymize_snapshots
 
 
 def _notification_filters(
@@ -45,6 +46,37 @@ class EventLogRepository:
         row = (await self.session.execute(stmt)).scalar_one_or_none()
         await self.session.flush()
         return self._to_dto(row) if row is not None else None
+
+    async def delete_short_retention_before(self, cutoff: datetime, *, limit: int) -> int:
+        doomed = (
+            select(EventLogEntry.id)
+            .where(
+                EventLogEntry.event_type.in_(SHORT_RETENTION_EVENT_TYPES),
+                EventLogEntry.occurred_at < cutoff,
+            )
+            .limit(limit)
+        )
+        result = await self.session.execute(
+            delete(EventLogEntry).where(EventLogEntry.id.in_(doomed))
+        )
+        return cast(CursorResult, result).rowcount
+
+    async def anonymize_user(self, user_id: int) -> None:
+        # the deleted customer's own entries lose who-and-where, every entry
+        # about them loses the identifying parts of their snapshot
+        await self.session.execute(
+            update(EventLogEntry)
+            .where(EventLogEntry.actor_id == user_id)
+            .values(actor_login=None, actor_name=None, actor_email=None, ip_address=None)
+            # rows loaded in this session (the outbox entry being processed) keep their values
+            .execution_options(synchronize_session=False)
+        )
+        await anonymize_snapshots(
+            self.session,
+            EventLogEntry,
+            user_id,
+            or_(EventLogEntry.actor_id == user_id, EventLogEntry.target_id == user_id),
+        )
 
     async def get_by_id(self, entry_id: int) -> EventLogEntryDto:
         row = await self.session.get(EventLogEntry, entry_id)

@@ -9,7 +9,7 @@ from app.core.db.filters import in_ids
 from app.core.db.models.subscription import Subscription
 from app.core.enums import Currency, SubscriptionStatus
 from app.modules.subscriptions.domain import OWNED_STATUSES
-from app.modules.subscriptions.dto import LiveSubscriptionDto
+from app.modules.subscriptions.dto import LiveSubscriptionDto, SubscriptionOverviewCountsDto
 
 _DEFAULT_TRIAL_DAYS: Final[int] = 7
 _PAYING_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
@@ -24,15 +24,39 @@ class SubscriptionStatsRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def count_by_status(self) -> dict[SubscriptionStatus, int]:
-        rows = (
+    async def overview_counts(
+        self, expiring_from: datetime, expiring_to: datetime
+    ) -> SubscriptionOverviewCountsDto:
+        status = Subscription.status
+        paying = status.in_(_PAYING_STATUSES)
+        row = (
             await self.session.execute(
-                select(Subscription.status, func.count())
-                .where(Subscription.status != SubscriptionStatus.DELETED)
-                .group_by(Subscription.status)
+                select(
+                    func.count().filter(status == SubscriptionStatus.ACTIVE),
+                    func.count().filter(status == SubscriptionStatus.LIMITED),
+                    func.count().filter(status == SubscriptionStatus.EXPIRED),
+                    func.count().filter(status == SubscriptionStatus.DISABLED),
+                    func.count().filter(
+                        status.in_(OWNED_STATUSES),
+                        Subscription.expire_at >= expiring_from,
+                        Subscription.expire_at < expiring_to,
+                    ),
+                    func.count().filter(
+                        status == SubscriptionStatus.ACTIVE, Subscription.is_trial.is_(False)
+                    ),
+                    func.count().filter(paying, Subscription.is_trial.is_(True)),
+                ).where(status != SubscriptionStatus.DELETED)
             )
-        ).tuples()
-        return dict(rows.all())
+        ).one()
+        return SubscriptionOverviewCountsDto(
+            active=row[0],
+            limited=row[1],
+            expired=row[2],
+            disabled=row[3],
+            expiring=row[4],
+            paid_active=row[5],
+            active_trials=row[6],
+        )
 
     async def count_paying(self, *, status: Optional[SubscriptionStatus] = None) -> int:
         statuses = (status,) if status is not None else _PAYING_STATUSES
@@ -55,19 +79,23 @@ class SubscriptionStatsRepository:
             or 0
         )
 
-    async def count_expiring_between(self, start: datetime, end: datetime) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count())
-                .select_from(Subscription)
-                .where(
-                    Subscription.status.in_(OWNED_STATUSES),
-                    Subscription.expire_at >= start,
-                    Subscription.expire_at < end,
+    async def count_expiring_paid(
+        self, now: datetime, until: datetime, urgent_until: datetime
+    ) -> tuple[int, int]:
+        # (expiring before until, of them before urgent_until)
+        total, urgent = (
+            await self.session.execute(
+                select(
+                    func.count(), func.count().filter(Subscription.expire_at < urgent_until)
+                ).where(
+                    Subscription.status.in_(_PAYING_STATUSES),
+                    Subscription.is_trial.is_(False),
+                    Subscription.expire_at >= now,
+                    Subscription.expire_at < until,
                 )
             )
-            or 0
-        )
+        ).one()
+        return int(total), int(urgent)
 
     async def sum_active_mrr_by_currency(self) -> dict[Currency, Decimal]:
         currency_col = Subscription.plan_snapshot["currency"].astext

@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from app.core.actor import Actor
 from app.core.constants import ONE_CENT
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role, SubscriptionStatus
+from app.core.enums import Role
 from app.core.host_metrics import read_host_cpu_percent, read_host_disk, read_host_load
 from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
@@ -83,29 +83,22 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
         )
 
     async def _users(self, today_start: datetime) -> OverviewUsersDto:
-        return OverviewUsersDto(
-            total=await self._user_stats.count_by_role(Role.USER),
-            new_today=await self._user_stats.count_new_since(today_start, Role.USER),
-        )
+        counts = await self._user_stats.count_total_and_new(Role.USER, today_start)
+        return OverviewUsersDto(total=counts.total, new_today=counts.new)
 
     async def _subscriptions(self, today_start: datetime) -> OverviewSubscriptionsDto:
-        by_status = await self._subscription_stats.count_by_status()
-        active = by_status.get(SubscriptionStatus.ACTIVE, 0)
-        limited = by_status.get(SubscriptionStatus.LIMITED, 0)
-        expired = by_status.get(SubscriptionStatus.EXPIRED, 0)
+        counts = await self._subscription_stats.overview_counts(
+            today_start, today_start + timedelta(days=7)
+        )
         return OverviewSubscriptionsDto(
-            total=active + limited + expired,
-            active=active,
-            limited=limited,
-            expired=expired,
-            disabled=by_status.get(SubscriptionStatus.DISABLED, 0),
-            expiring_soon=await self._subscription_stats.count_expiring_between(
-                today_start, today_start + timedelta(days=7)
-            ),
-            paid_active=await self._subscription_stats.count_paying(
-                status=SubscriptionStatus.ACTIVE
-            ),
-            trials=await self._subscription_stats.count_active_trials(),
+            total=counts.active + counts.limited + counts.expired,
+            active=counts.active,
+            limited=counts.limited,
+            expired=counts.expired,
+            disabled=counts.disabled,
+            expiring_soon=counts.expiring,
+            paid_active=counts.paid_active,
+            trials=counts.active_trials,
         )
 
     async def _revenue_today(self, today_start: datetime) -> RevenueTodayDto:

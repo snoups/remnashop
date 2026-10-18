@@ -1,6 +1,7 @@
-from typing import Optional
+from collections.abc import Sequence
+from typing import Final, Optional
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import ARRAY, Text, any_, delete, literal, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,9 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.translations.dto import ActiveLocalesDto, TranslationEntryDto
 from app.modules.translations.serializer import serialize_to_fluent
+
+# five binds a row, well under asyncpg's 32,767-parameter cap
+_SEED_CHUNK: Final[int] = 1000
 
 
 class TranslationRepository:
@@ -116,27 +120,39 @@ class TranslationRepository:
     async def seed_missing(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> None:
-        stmt = (
-            pg_insert(BotTranslation)
-            .values(
-                locale=locale,
-                message_id=message_id,
-                attribute_id=attribute_id,
-                value=value,
-                default_value=value,
-            )
-            .on_conflict_do_nothing(index_elements=["locale", "message_id", "attribute_id"])
-        )
-        await self.session.execute(stmt)
+        await self.seed_missing_many(locale, [(message_id, attribute_id, value)])
 
-    async def delete_blank(self, locale: Locale, message_id: str, attribute_id: str) -> None:
+    async def seed_missing_many(
+        self, locale: Locale, entries: Sequence[tuple[str, str, str]]
+    ) -> None:
+        # (message_id, attribute_id, value) rows, one INSERT per chunk
+        for start in range(0, len(entries), _SEED_CHUNK):
+            rows = [
+                {
+                    "locale": locale,
+                    "message_id": message_id,
+                    "attribute_id": attribute_id,
+                    "value": value,
+                    "default_value": value,
+                }
+                for message_id, attribute_id, value in entries[start : start + _SEED_CHUNK]
+            ]
+            await self.session.execute(
+                pg_insert(BotTranslation)
+                .values(rows)
+                .on_conflict_do_nothing(index_elements=["locale", "message_id", "attribute_id"])
+            )
+
+    async def delete_blank_messages(self, locale: Locale, message_ids: Sequence[str]) -> None:
         # Only a row nobody has typed anything into goes: an
         # edited value is somebody's work, even if the row shouldn't exist.
+        if not message_ids:
+            return
         await self.session.execute(
             delete(BotTranslation).where(
                 BotTranslation.locale == locale,
-                BotTranslation.message_id == message_id,
-                BotTranslation.attribute_id == attribute_id,
+                BotTranslation.message_id == any_(literal(list(message_ids), ARRAY(Text))),
+                BotTranslation.attribute_id == "",
                 BotTranslation.value == "",
             )
         )

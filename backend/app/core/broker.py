@@ -5,13 +5,15 @@ from taskiq.serializers import ORJSONSerializer
 from taskiq_redis import ListQueueBroker, ListRedisScheduleSource
 
 from app.core.config import AppConfig
+from app.core.constants import REDIS_CONNECTION_KWARGS, REDIS_WAIT_CONNECTION_KWARGS
 from app.core.exceptions import RemnawavePanelUnavailableError, RetryableTaskError
 from app.core.json import json_default
 from app.core.metrics import TaskMetricsMiddleware
 
-broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
-    ORJSONSerializer(default=json_default)
-)
+# the worker blocks in BRPOP while idle, so no read timeout here
+broker = ListQueueBroker(
+    url=AppConfig.get().redis.dsn, **REDIS_WAIT_CONNECTION_KWARGS
+).with_serializer(ORJSONSerializer(default=json_default))
 # Built at import time; its Redis connection binds to the first event loop that
 # uses it. pytest-asyncio gives each test its own loop, so tests monkeypatch a
 # task's `.kiq()` (tests/core/test_event_bus.py's `_capture_kiq`) instead of
@@ -22,7 +24,7 @@ broker = ListQueueBroker(url=AppConfig.get().redis.dsn).with_serializer(
 RETRY_SCHEDULE_PREFIX: Final[str] = "taskiq_retry_schedule"
 
 retry_schedule_source = ListRedisScheduleSource(
-    url=AppConfig.get().redis.dsn, prefix=RETRY_SCHEDULE_PREFIX
+    url=AppConfig.get().redis.dsn, prefix=RETRY_SCHEDULE_PREFIX, **REDIS_CONNECTION_KWARGS
 )
 
 # Longer than resilient_transport's _RECOVERY_TIMEOUT_S (30s, counted from the

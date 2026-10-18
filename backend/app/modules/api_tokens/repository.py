@@ -1,11 +1,14 @@
-from typing import Optional
+from datetime import timedelta
+from typing import Final, Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.api_token import ApiToken
 from app.core.utils.time import datetime_now
 from app.modules.api_tokens.dto import ApiTokenDto, CreateApiTokenDto
+
+_TOUCH_INTERVAL: Final[timedelta] = timedelta(minutes=1)
 
 
 class ApiTokenRepository:
@@ -39,10 +42,21 @@ class ApiTokenRepository:
         return self._to_dto(row) if row else None
 
     async def touch_last_used(self, token_id: int) -> None:
-        row = await self.session.get(ApiToken, token_id)
-        if row is not None:
-            row.last_used_at = datetime_now()
-            await self.session.flush()
+        # at most once a window: a polling integration would otherwise rewrite
+        # the row on every request
+        now = datetime_now()
+        await self.session.execute(
+            update(ApiToken)
+            .where(
+                ApiToken.id == token_id,
+                or_(
+                    ApiToken.last_used_at.is_(None),
+                    ApiToken.last_used_at < now - _TOUCH_INTERVAL,
+                ),
+            )
+            .values(last_used_at=now)
+            .execution_options(synchronize_session="fetch")
+        )
 
     # expired tokens stay listed (shown as expired) until revoked
     async def list_not_revoked(self) -> list[ApiTokenDto]:

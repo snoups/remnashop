@@ -1,6 +1,7 @@
 from collections import Counter
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
@@ -11,6 +12,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import median
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -150,6 +152,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
         transaction_stats: TransactionStatsRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._user_repository = user_repository
@@ -157,6 +160,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
         self._transaction_stats = transaction_stats
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _cohort(
         self, period: AnalyticsPeriod, now: datetime
@@ -175,10 +179,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
     async def _new_payers(
         self, period: AnalyticsPeriod
     ) -> tuple[dict[int, datetime], dict[int, datetime], set[int]]:
-        first_paid: dict[int, datetime] = {}
-        for row in await self._transaction_stats.list_paid(None, period.end):
-            first_paid.setdefault(row.user_id, row.paid_at)
-        first_paid = {u: at for u, at in first_paid.items() if at >= period.start}
+        first_paid = await self._transaction_stats.first_paid_at(period.end, since=period.start)
         ids = list(first_paid)
         registered = {
             u.id: u.created_at
@@ -188,6 +189,11 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
         return first_paid, registered, await self._subscription_stats.list_user_ids_with_trial(ids)
 
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> TrialDto:
+        return await self._cache.get_or_compute(
+            "get_trial", data, TrialDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: AnalyticsPeriodQueryDto) -> TrialDto:
         async with self._uow:
             now = datetime_now()
             period = resolve_period(

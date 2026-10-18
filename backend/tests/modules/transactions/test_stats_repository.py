@@ -1,7 +1,9 @@
+import random
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +17,7 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.utils.time import datetime_now
+from app.modules.analytics.coverage import is_covered, paid_coverage
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
@@ -153,3 +156,91 @@ async def test_count_failed_by_gateway_and_stale_pending(
 
     assert failed_by_gateway[PaymentGatewayType.YOOKASSA] == 1
     assert stale_count == 1
+
+
+async def _paid_history(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+    seed: int,
+) -> dict[int, list[tuple[datetime, int]]]:
+    rng = random.Random(seed)
+    base = datetime_now() - timedelta(days=400)
+    history: dict[int, list[tuple[datetime, int]]] = {}
+    for u in range(6):
+        user = await user_repository.create(
+            CreateUserDto(name="cov", telegram_id=862_000 + seed * 10 + u)
+        )
+        payments: list[tuple[datetime, int]] = []
+        for n in range(rng.randint(1, 6)):
+            paid_at = base + timedelta(days=rng.randint(0, 380), hours=rng.randint(0, 23))
+            days = rng.choice((7, 30, 30, 90, 365))
+            async with uow:
+                order = await transaction_repository.create(
+                    _order(user.id, plan_id, f"cov-{seed}-{u}-{n}")
+                )
+            await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+            await session.execute(
+                update(Transaction)
+                .where(Transaction.id == order.id)
+                .values(updated_at=paid_at, duration_days=days)
+            )
+            payments.append((paid_at, days))
+        history[user.id] = payments
+    return history
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3])
+async def test_sql_coverage_matches_the_python_reference(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+    seed: int,
+) -> None:
+    history = await _paid_history(
+        user_repository, transaction_repository, session, uow, plan_id, seed
+    )
+    stats = TransactionStatsRepository(session)
+    now = datetime_now()
+    coverage = {user_id: paid_coverage(p) for user_id, p in history.items()}
+    ours = set(history)
+    points_at = [now + timedelta(days=offset) for offset in range(-400, 400, 13)]
+    covered = await stats.users_covered_at(points_at, now)
+    for point in points_at:
+        expected = {u for u, segments in coverage.items() if is_covered(segments, point)}
+        assert covered[point] & ours == expected, point
+
+    rng = random.Random(seed)
+    points = {u: now - timedelta(days=rng.randint(0, 400)) for u in history}
+    expected_points = {u for u, at in points.items() if is_covered(coverage[u], at)}
+    assert await stats.users_covered_at_their_points(points, now) == expected_points
+
+    payers, days = await stats.total_covered_days(now)
+    assert payers >= len(history)
+
+
+async def test_total_covered_days_matches_the_python_reference(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    stats = TransactionStatsRepository(session)
+    now = datetime_now()
+    before_payers, before_days = await stats.total_covered_days(now)
+    history = await _paid_history(
+        user_repository, transaction_repository, session, uow, plan_id, seed=7
+    )
+    expected = sum(
+        max((min(end, now) - start).total_seconds(), 0.0) / 86400
+        for payments in history.values()
+        for start, end in paid_coverage(payments)
+    )
+    payers, days = await stats.total_covered_days(now)
+    assert payers - before_payers == len(history)
+    assert days - before_days == pytest.approx(expected, abs=1e-3)

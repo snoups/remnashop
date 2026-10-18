@@ -57,10 +57,17 @@ from tests.modules.broadcasts.test_worker_usecases import (
 
 
 class FakeBatch:
-    def __init__(self, outcomes: dict[str, EmailDeliveryDto], sent: list[OutgoingEmailDto]) -> None:
-        self._outcomes, self.sent = outcomes, sent
+    def __init__(
+        self,
+        outcomes: dict[str, EmailDeliveryDto],
+        sent: list[OutgoingEmailDto],
+        drop_after: Optional[int] = None,
+    ) -> None:
+        self._outcomes, self.sent, self._drop_after = outcomes, sent, drop_after
 
     async def send(self, email: OutgoingEmailDto) -> EmailDeliveryDto:
+        if self._drop_after is not None and len(self.sent) >= self._drop_after:
+            raise EmailSendError("connection lost", connection=True)
         self.sent.append(email)
         return self._outcomes.get(email.to, EmailDeliveryDto(outcome=EmailOutcome.SENT))
 
@@ -71,9 +78,10 @@ class FakeBatchSender:
         outcomes: Optional[dict[str, EmailDeliveryDto]] = None,
         connect_error: bool = False,
         auth_error: bool = False,
+        drop_after: Optional[int] = None,
     ) -> None:
         self.outcomes, self.connect_error = outcomes or {}, connect_error
-        self.auth_error = auth_error
+        self.auth_error, self.drop_after = auth_error, drop_after
         self.sent: list[OutgoingEmailDto] = []
         self.profiles: list[SmtpProfileDto] = []
 
@@ -84,7 +92,7 @@ class FakeBatchSender:
             raise EmailSendError("down", connection=True)
         if self.auth_error:
             raise EmailSendError("535 bad credentials", auth=True)
-        yield FakeBatch(self.outcomes, self.sent)
+        yield FakeBatch(self.outcomes, self.sent, self.drop_after)
 
 
 def _metric(result: str) -> float:
@@ -301,6 +309,26 @@ async def test_connection_error_pauses_without_spending_attempts(
     assert healthy.sent == []
     assert healthy.profiles == []
     assert email_dispatch.messages == [{"broadcast_id": broadcast.id}] * 2
+
+
+async def test_connection_lost_mid_batch_keeps_the_letters_already_sent(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_deliver: Callable[..., DeliverBroadcastEmailBatchUseCase],
+    smtp: None,
+) -> None:
+    ids = await _users(session, user_repository, 140, 3)
+    broadcast = await _email_broadcast(broadcast_repository, ids)
+
+    await make_deliver(FakeBatchSender(drop_after=1)).system(broadcast.id)
+
+    statuses = [r.status for r in await _recipients(session, broadcast.id)]
+    assert statuses == [
+        BroadcastRecipientStatus.SENT,
+        BroadcastRecipientStatus.PENDING,
+        BroadcastRecipientStatus.PENDING,
+    ]
 
 
 async def test_auth_error_fails_broadcast(

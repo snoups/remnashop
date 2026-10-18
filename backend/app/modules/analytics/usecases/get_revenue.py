@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
@@ -15,6 +16,7 @@ from app.modules.analytics.aggregates import (
     bucket_starts,
     median,
 )
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     GatewayStatsDto,
@@ -188,13 +190,20 @@ class GetRevenueUseCase(UseCase[GetRevenueDto, RevenueDto]):
         transaction_stats: TransactionStatsRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._transaction_stats = transaction_stats
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: GetRevenueDto) -> RevenueDto:
+        return await self._cache.get_or_compute(
+            "get_revenue", data, RevenueDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: GetRevenueDto) -> RevenueDto:
         async with self._uow:
             period = resolve_period(
                 data.period_from,

@@ -34,6 +34,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -48,6 +49,7 @@ def _use_case(session: AsyncSession, pricing: PricingRepository, uow: UnitOfWork
         ReferralRepository(session),
         pricing,
         uow,
+        PassThroughAnalyticsCache(),
     )
 
 

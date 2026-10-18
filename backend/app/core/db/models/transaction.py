@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
-from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,14 @@ class Transaction(BaseSql, TimestampMixin):
     __table_args__ = (
         # Backs the prune_expired_transactions cron sweep's status+expires_at scan.
         Index("ix_transactions_status_expires_at", "status", "expires_at"),
+        # paid-at range scans: overview revenue, analytics, loyalty, reconciliation
+        Index(
+            "ix_transactions_paid_updated_at",
+            "updated_at",
+            postgresql_where=text(f"status = '{TransactionStatus.PAID.name}' AND NOT is_test"),
+        ),
+        # the admin list's newest-first pages
+        Index("ix_transactions_created_at_id", text("created_at DESC"), text("id DESC")),
         # Per gateway, not global: providers mint their own id namespaces and
         # two of them handing out the same id must not collide (it would fail
         # the checkout that writes the second one, leaving a payment the
@@ -37,12 +45,16 @@ class Transaction(BaseSql, TimestampMixin):
     # SET NULL, not RESTRICT: an order is provisioned from plan_snapshot
     # (squads and limits included), even while still awaiting provisioning;
     # plan_id is only displayed once the order exists
-    plan_id: Mapped[Optional[int]] = mapped_column(ForeignKey("plans.id", ondelete="SET NULL"))
+    plan_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("plans.id", ondelete="SET NULL"), index=True
+    )
     plan_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
     duration_days: Mapped[int]
     currency: Mapped[Currency]
     purchase_type: Mapped[PurchaseType]
-    target_subscription_id: Mapped[Optional[int]] = mapped_column(ForeignKey("subscriptions.id"))
+    target_subscription_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("subscriptions.id"), index=True
+    )
 
     gateway_type: Mapped[PaymentGatewayType]
     external_payment_id: Mapped[Optional[str]] = mapped_column(String(128))
@@ -75,7 +87,7 @@ class Transaction(BaseSql, TimestampMixin):
     fulfilled_at: Mapped[Optional[datetime]]
     # recorded with fulfilled_at: a NEW order has no target_subscription_id
     fulfilled_subscription_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("subscriptions.id", ondelete="SET NULL")
+        ForeignKey("subscriptions.id", ondelete="SET NULL"), index=True
     )
     # Dashboard gateway check: never provisioned, excluded from every revenue query.
     is_test: Mapped[bool] = mapped_column(default=False, server_default="false")

@@ -11,7 +11,8 @@ from app.core.config.database import DatabaseConfig
 def connect_args(database: DatabaseConfig) -> dict[str, Any]:
     return {
         "server_settings": {
-            "jit": "on",
+            # compile time outweighs the gain on our short queries and mid-size aggregates
+            "jit": "off",
             # NOW_FUNC writes a zoneless UTC timestamp into timestamptz columns,
             # read in the session's zone: pinned, so the server default can't shift it
             "timezone": "UTC",

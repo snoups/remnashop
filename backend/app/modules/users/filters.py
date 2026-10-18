@@ -40,5 +40,5 @@ def identity_filter(telegram_ids: set[int], emails: set[str]) -> ColumnElement[b
         User.telegram_id == any_(literal(list(telegram_ids), ARRAY(BigInteger)))
         if telegram_ids
         else false(),
-        func.lower(User.email) == any_(literal(list(emails), ARRAY(Text))) if emails else false(),
+        User.email == any_(literal(list(emails), ARRAY(Text))) if emails else false(),
     )

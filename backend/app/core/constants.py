@@ -3,7 +3,7 @@ from datetime import timezone
 from decimal import Decimal
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import Any, Final
 
 from packaging.version import Version
 
@@ -51,6 +51,20 @@ GOTO_PREFIX: Final[str] = "gt_"
 ENCRYPTED_PREFIX: Final[str] = "enc_"
 
 REDIS_KEY_PREFIX: Final[str] = "remnashop:"
+# a hung Redis fails fast instead of stalling every request on it; dead pooled
+# connections are pinged out before use
+REDIS_WAIT_CONNECTION_KWARGS: Final[dict[str, Any]] = {
+    "socket_connect_timeout": 5,
+    "socket_keepalive": True,
+    "health_check_interval": 30,
+}
+# not for a client that blocks on reads (BRPOP, pub/sub listen): those would
+# time out while simply idle
+REDIS_CONNECTION_KWARGS: Final[dict[str, Any]] = {
+    **REDIS_WAIT_CONNECTION_KWARGS,
+    "socket_timeout": 5,
+    "retry_on_timeout": True,
+}
 # one per-account budget for the bot and the cabinet
 POINTS_WITHDRAW_RATE_KEY: Final[str] = "points_withdraw"
 POINTS_WITHDRAW_RATE_LIMIT: Final[int] = 5

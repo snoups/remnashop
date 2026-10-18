@@ -34,7 +34,12 @@ from app.modules.broadcasts.email_assets import load_email_logo, read_email_imag
 from app.modules.broadcasts.email_html import email_image_ids
 from app.modules.broadcasts.email_render import BroadcastEmailRenderer, unsubscribe_links
 from app.modules.broadcasts.metrics import BROADCAST_EMAILS
-from app.modules.broadcasts.pacing import CLAIM_LEASE, EMAIL_BATCH_WINDOW_S, MAX_ATTEMPTS
+from app.modules.broadcasts.pacing import (
+    CLAIM_LEASE,
+    EMAIL_BATCH_WINDOW_S,
+    GROUP_SIZE,
+    MAX_ATTEMPTS,
+)
 from app.modules.broadcasts.render import load_unsubscribe_labels
 from app.modules.broadcasts.repository import UNDELIVERABLE_ERROR, BroadcastRepository
 from app.modules.broadcasts.validation import promocode_is_usable
@@ -205,18 +210,27 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
         queue: list[PendingEmailRecipientDto],
         compose: Callable[[PendingEmailRecipientDto], Optional[OutgoingEmailDto]],
     ) -> bool:
+        # sent but not yet recorded; written a group at a time
+        unrecorded: list[tuple[PendingEmailRecipientDto, Optional[EmailDeliveryDto]]] = []
         try:
             async with self._batch_sender.open(profile) as batch:
                 while queue:
                     # popped only once sent: a dropped connection releases it with the rest
                     email = compose(queue[0])
                     result = None if email is None else await batch.send(email)
-                    await self._record(broadcast_id, queue.pop(0), result)
+                    unrecorded.append((queue.pop(0), result))
+                    if len(unrecorded) < GROUP_SIZE and queue:
+                        continue
+                    await self._record(broadcast_id, unrecorded)
+                    unrecorded = []
                     await lock.reacquire()
                     if not await self._still_sending(broadcast_id):
                         await self._release(queue)
                         return False
         except EmailSendError as error:
+            # letters that went out before the failure are recorded first, so
+            # failing or releasing the rest can't touch them
+            await self._record(broadcast_id, unrecorded)
             if error.auth:
                 async with self._uow:
                     # fail_pending also fails the rows this batch still holds
@@ -269,40 +283,43 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
     async def _record(
         self,
         broadcast_id: int,
-        recipient: PendingEmailRecipientDto,
-        result: Optional[EmailDeliveryDto],
+        results: list[tuple[PendingEmailRecipientDto, Optional[EmailDeliveryDto]]],
     ) -> None:
-        # None: the user is gone
-        metric: Optional[str]
+        if not results:
+            return
         async with self._uow:
             # broadcast row before recipient rows, the order cancel takes them in
             await self._broadcast_repository.update_fields(broadcast_id)
-            if result is None:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.FAILED, error=_USER_GONE
-                )
-                metric = "failed"
-            elif result.outcome is EmailOutcome.SENT:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.SENT
-                )
-                metric = "sent"
-            elif result.outcome is EmailOutcome.REFUSED:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.FAILED, error=UNDELIVERABLE_ERROR
-                )
-                await self._user_repository.set_email_undeliverable(
-                    recipient.user_id, datetime_now()
-                )
-                metric = "undeliverable"
-            else:
-                await self._broadcast_repository.bump_attempt(
-                    recipient.id, MAX_ATTEMPTS, result.error or "retry"
-                )
-                # counted once, by the bump that gives up on the row
-                metric = "failed" if recipient.attempts + 1 >= MAX_ATTEMPTS else None
-        if metric is not None:
-            BROADCAST_EMAILS.labels(result=metric).inc()
+            metrics = [await self._record_one(recipient, result) for recipient, result in results]
+        for metric in metrics:
+            if metric is not None:
+                BROADCAST_EMAILS.labels(result=metric).inc()
+
+    async def _record_one(
+        self, recipient: PendingEmailRecipientDto, result: Optional[EmailDeliveryDto]
+    ) -> Optional[str]:
+        # None result: the user is gone; returns the metric label, if any
+        if result is None:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.FAILED, error=_USER_GONE
+            )
+            return "failed"
+        if result.outcome is EmailOutcome.SENT:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.SENT
+            )
+            return "sent"
+        if result.outcome is EmailOutcome.REFUSED:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.FAILED, error=UNDELIVERABLE_ERROR
+            )
+            await self._user_repository.set_email_undeliverable(recipient.user_id, datetime_now())
+            return "undeliverable"
+        await self._broadcast_repository.bump_attempt(
+            recipient.id, MAX_ATTEMPTS, result.error or "retry"
+        )
+        # counted once, by the bump that gives up on the row
+        return "failed" if recipient.attempts + 1 >= MAX_ATTEMPTS else None
 
     async def _release(self, rows: list[PendingEmailRecipientDto]) -> None:
         if not rows:

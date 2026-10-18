@@ -10,8 +10,13 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PurchaseType, Role, TransactionStatus
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
+from app.modules.analytics.coverage import is_covered
 from app.modules.analytics.usecases import GetRetentionUseCase
-from app.modules.analytics.usecases.get_retention import _monthly_churn, _retention_points
+from app.modules.analytics.usecases.get_retention import (
+    _anniversaries,
+    _churn_probe,
+    _monthly_churn,
+)
 from app.modules.pricing.repository import PricingRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
@@ -19,6 +24,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.analytics.test_get_analytics import _paid_order_dto
 from tests.modules.subscriptions.factories import create_subscription
 
@@ -35,26 +41,30 @@ def _use_case(
         UserRepository(session),
         pricing_repository,
         uow,
+        PassThroughAnalyticsCache(),
     )
 
 
-def test_retention_points_count_only_passed_anniversaries() -> None:
+def test_anniversaries_only_count_the_ones_already_passed() -> None:
     first_paid = {
         1: datetime(2026, 1, 1, tzinfo=UTC),
         2: datetime(2026, 1, 1, tzinfo=UTC),
         3: datetime(2026, 5, 20, tzinfo=UTC),
     }
-    coverage = {
-        1: [(datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 2, 15, tzinfo=UTC))],
-        2: [(datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 31, tzinfo=UTC))],
-        3: [(datetime(2026, 5, 20, tzinfo=UTC), datetime(2026, 7, 20, tzinfo=UTC))],
+
+    assert _anniversaries(first_paid, 1, NOW) == {
+        1: datetime(2026, 2, 1, tzinfo=UTC),
+        2: datetime(2026, 2, 1, tzinfo=UTC),
     }
+    assert set(_anniversaries(first_paid, 3, NOW)) == {1, 2}
+    assert _anniversaries(first_paid, 6, NOW) == {}
 
-    points = {p.months: p for p in _retention_points(first_paid, coverage, NOW)}
 
-    assert (points[1].eligible, points[1].rate) == (2, 0.5)
-    assert (points[3].eligible, points[3].rate) == (2, 0.0)
-    assert (points[6].eligible, points[6].rate) == (0, 0.0)
+def _covered(
+    coverage: dict[int, list[tuple[datetime, datetime]]], months: list[datetime]
+) -> dict[datetime, set[int]]:
+    points = {p for start in months for p in (start, _churn_probe(start, NOW))}
+    return {p: {u for u, s in coverage.items() if is_covered(s, p)} for p in points}
 
 
 def test_monthly_churn_counts_lapses_inside_each_month() -> None:
@@ -66,7 +76,7 @@ def test_monthly_churn_counts_lapses_inside_each_month() -> None:
         3: [(datetime(2026, 5, 20, tzinfo=UTC), datetime(2026, 6, 5, tzinfo=UTC))],
     }
 
-    rows = _monthly_churn(coverage, [may, june], NOW)
+    rows = _monthly_churn(_covered(coverage, [may, june]), [may, june], NOW)
 
     assert [r.month for r in rows] == ["2026-05", "2026-06"]
     assert (rows[0].base, rows[0].churned, rows[0].rate) == (2, 1, 0.5)
@@ -75,7 +85,8 @@ def test_monthly_churn_counts_lapses_inside_each_month() -> None:
 
 
 def test_monthly_churn_without_base_is_zero() -> None:
-    rows = _monthly_churn({}, [datetime(2026, 6, 1, tzinfo=UTC)], NOW)
+    june = datetime(2026, 6, 1, tzinfo=UTC)
+    rows = _monthly_churn(_covered({}, [june]), [june], NOW)
 
     assert (rows[0].base, rows[0].churned, rows[0].rate) == (0, 0, 0.0)
 

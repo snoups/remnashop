@@ -359,7 +359,7 @@ async def test_list_by_ids_empty_input_returns_empty_list(
     assert await user_repository.list_by_ids([]) == []
 
 
-async def test_count_by_role_only_counts_that_role(
+async def test_count_total_and_new_only_counts_that_role(
     user_repository: UserRepository,
     uow: UnitOfWork,
     user_stats_repository: UserStatsRepository,
@@ -368,11 +368,12 @@ async def test_count_by_role_only_counts_that_role(
     await _create_user(user_repository, uow, telegram_id=810_002, role=Role.USER)
     await _create_user(user_repository, uow, login="admin-810", role=Role.ADMIN)
 
-    assert await user_stats_repository.count_by_role(Role.USER) == 2
-    assert await user_stats_repository.count_by_role(Role.ADMIN) == 1
+    since = datetime_now() - timedelta(days=1)
+    assert (await user_stats_repository.count_total_and_new(Role.USER, since)).total == 2
+    assert (await user_stats_repository.count_total_and_new(Role.ADMIN, since)).total == 1
 
 
-async def test_count_new_since_excludes_users_created_before_cutoff(
+async def test_count_total_and_new_excludes_users_created_before_cutoff(
     user_repository: UserRepository,
     uow: UnitOfWork,
     session: AsyncSession,
@@ -390,9 +391,10 @@ async def test_count_new_since_excludes_users_created_before_cutoff(
 
     assert old_user.created_at is not None
     assert new_user.created_at is not None
-    count = await user_stats_repository.count_new_since(cutoff, Role.USER)
+    counts = await user_stats_repository.count_total_and_new(Role.USER, cutoff)
 
-    assert count == 1
+    assert counts.new == 1
+    assert counts.total == 2
 
 
 async def test_block_matching_handles_more_ids_than_bind_param_cap(

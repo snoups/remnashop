@@ -12,6 +12,7 @@ from app.core.utils.time import datetime_now
 from app.modules.event_log.outbox_repository import OutboxLagStats
 from app.modules.event_log.usecases import (
     ProcessOutboxEntryUseCase,
+    PruneEventLogUseCase,
     PruneOutboxUseCase,
     SweepOutboxUseCase,
 )
@@ -61,4 +62,10 @@ async def sweep_outbox_task(
 @broker.task(schedule=[{"cron": "0 3 * * *"}])
 @inject(patch_module=True)
 async def prune_outbox_task(use_case: FromDishka[PruneOutboxUseCase]) -> None:
+    await use_case.system()
+
+
+@broker.task(schedule=[{"cron": "5 3 * * *"}])
+@inject(patch_module=True)
+async def prune_event_log_task(use_case: FromDishka[PruneEventLogUseCase]) -> None:
     await use_case.system()

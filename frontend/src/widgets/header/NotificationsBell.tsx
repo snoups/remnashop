@@ -13,6 +13,7 @@ import type { EventLogLocationState, Notifications } from "@entities/event-log/a
 import { describeEntry } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
+import { pollWhileVisible } from "@shared/lib/poll-while-visible";
 import { onServiceWorkerMessage } from "@shared/lib/push";
 import { formatRelative } from "@shared/lib/relative-time";
 import { EmptyState } from "@shared/ui/EmptyState";
@@ -85,13 +86,13 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         },
       );
     load();
-    const timer = setInterval(load, POLL_INTERVAL_MS);
+    const stopPolling = pollWhileVisible(load, POLL_INTERVAL_MS);
     const stopListening = onServiceWorkerMessage((message) => {
       if (message.type === "notification") load();
     });
     return () => {
       controller.abort();
-      clearInterval(timer);
+      stopPolling();
       stopListening();
     };
   }, [canView]);
@@ -129,10 +130,10 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         },
       );
     load();
-    const timer = setInterval(load, POLL_INTERVAL_MS);
+    const stopPolling = pollWhileVisible(load, POLL_INTERVAL_MS);
     return () => {
       controller.abort();
-      clearInterval(timer);
+      stopPolling();
     };
   }, []);
 

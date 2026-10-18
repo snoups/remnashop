@@ -52,7 +52,7 @@ class PromocodeActivation(BaseSql):
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     subscription_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("subscriptions.id", ondelete="SET NULL")
+        ForeignKey("subscriptions.id", ondelete="SET NULL"), index=True
     )
     activated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("timezone('UTC', now())")

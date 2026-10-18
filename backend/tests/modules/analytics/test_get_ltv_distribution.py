@@ -22,6 +22,7 @@ from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -57,7 +58,9 @@ async def test_actor_without_analytics_view_is_denied(
     uow: UnitOfWork,
 ) -> None:
     actor = OWNER.model_copy(update={"role": Role.USER})
-    use_case = GetLtvDistributionUseCase(transaction_repository, pricing_repository, uow)
+    use_case = GetLtvDistributionUseCase(
+        transaction_repository, pricing_repository, uow, PassThroughAnalyticsCache()
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(actor)
@@ -94,7 +97,9 @@ async def test_ltv_distribution_excludes_never_paid_users_and_buckets_by_total_s
     await transaction_repository.mark_status(low_order.id, TransactionStatus.PAID)
     await transaction_repository.mark_status(high_order.id, TransactionStatus.PAID)
 
-    use_case = GetLtvDistributionUseCase(transaction_repository, pricing_repository, uow)
+    use_case = GetLtvDistributionUseCase(
+        transaction_repository, pricing_repository, uow, PassThroughAnalyticsCache()
+    )
     distribution = await use_case(OWNER)
 
     total_bucketed_users = sum(bucket.users for bucket in distribution.buckets)
@@ -126,7 +131,9 @@ async def test_ltv_distribution_dedupes_boundaries_when_totals_share_the_same_va
             )
         await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
-    use_case = GetLtvDistributionUseCase(transaction_repository, pricing_repository, uow)
+    use_case = GetLtvDistributionUseCase(
+        transaction_repository, pricing_repository, uow, PassThroughAnalyticsCache()
+    )
     distribution = await use_case(OWNER)
 
     assert len(distribution.buckets) == 1
@@ -169,7 +176,9 @@ async def test_ltv_distribution_tolerates_zero_totals(
             )
         await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
-    use_case = GetLtvDistributionUseCase(transaction_repository, pricing_repository, uow)
+    use_case = GetLtvDistributionUseCase(
+        transaction_repository, pricing_repository, uow, PassThroughAnalyticsCache()
+    )
     distribution = await use_case(OWNER)
 
     assert sum(bucket.users for bucket in distribution.buckets) == 4
@@ -196,9 +205,9 @@ async def test_ltv_distribution_reports_payers_mean_and_median(
             )
         await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
 
-    distribution = await GetLtvDistributionUseCase(transaction_repository, pricing_repository, uow)(
-        OWNER
-    )
+    distribution = await GetLtvDistributionUseCase(
+        transaction_repository, pricing_repository, uow, PassThroughAnalyticsCache()
+    )(OWNER)
 
     assert distribution.payers == 3
     assert distribution.mean == Decimal("400.00")

@@ -165,33 +165,28 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
     ) -> bool:
         for start in range(0, len(queue), GROUP_SIZE):
             group = queue[start : start + GROUP_SIZE]
-            # every send finishes and commits before an error leaves the chain
             outcomes = await asyncio.gather(
-                *(self._send_and_record(broadcast_id, send, r, media) for r in group),
-                return_exceptions=True,
+                *(send(r, media) for r in group), return_exceptions=True
+            )
+            # the whole group commits before an error leaves the chain
+            recorded = await self._record(
+                broadcast_id,
+                [
+                    (recipient, outcome)
+                    for recipient, outcome in zip(group, outcomes)
+                    if not isinstance(outcome, BaseException)
+                ],
             )
             for outcome in outcomes:
                 if isinstance(outcome, BaseException):
                     raise outcome
-            if not all(outcomes):
+            if not recorded:
                 await self._fail(broadcast_id, _TOKEN_REJECTED)
                 return False
             if not await self._still_sending(broadcast_id):
                 return False
             await asyncio.sleep(GROUP_PAUSE_S)
         return True
-
-    async def _send_and_record(
-        self,
-        broadcast_id: int,
-        send: Callable[[PendingRecipientDto, Optional[OutgoingMedia]], Awaitable[SendResult]],
-        recipient: PendingRecipientDto,
-        media: Optional[OutgoingMedia],
-    ) -> bool:
-        result = await send(recipient, media)
-        # sends run concurrently over one session: one transaction at a time
-        async with self._session_lock:
-            return await self._record(broadcast_id, recipient, result)
 
     async def _upload_media(
         self,
@@ -211,7 +206,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
             except FileNotFoundError:
                 await self._fail(broadcast_id, _MEDIA_MISSING)
                 return False, media
-            if not await self._record(broadcast_id, recipient, result):
+            if not await self._record(broadcast_id, [(recipient, result)]):
                 await self._fail(broadcast_id, _TOKEN_REJECTED)
                 return False, media
             if result.file_id:
@@ -269,35 +264,41 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         await self._lock.reacquire()
 
     async def _record(
-        self, broadcast_id: int, recipient: PendingRecipientDto, result: SendResult
+        self, broadcast_id: int, results: list[tuple[PendingRecipientDto, SendResult]]
     ) -> bool:
-        # False: token rejected, recipient left pending for the caller to fail the broadcast
-        if result.outcome is SendOutcome.UNAUTHORIZED:
-            return False
-        async with self._uow:
-            # broadcast row before recipient rows, the order cancel takes them in
-            await self._broadcast_repository.update_fields(broadcast_id)
-            if result.outcome is SendOutcome.SENT:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.SENT, message_id=result.message_id
-                )
-            elif result.outcome is SendOutcome.BLOCKED:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.BLOCKED, error=result.error
-                )
-                await mark_bot_blocked(
-                    self._user_repository, self._event_publisher, recipient.user_id
-                )
-            elif result.outcome is SendOutcome.FAILED:
-                await self._broadcast_repository.mark_recipient(
-                    recipient.id, BroadcastRecipientStatus.FAILED, error=result.error
-                )
-            else:
-                await self._broadcast_repository.bump_attempt(
-                    recipient.id, MAX_ATTEMPTS, result.error or "retry"
-                )
-        await self._lock.reacquire()
-        return True
+        # False: token rejected, those recipients left pending for the caller to
+        # fail the broadcast. One transaction for the group.
+        recorded = [
+            (r, result) for r, result in results if result.outcome is not SendOutcome.UNAUTHORIZED
+        ]
+        if recorded:
+            # a flood-wait heartbeat may still hold the session
+            async with self._session_lock, self._uow:
+                # broadcast row before recipient rows, the order cancel takes them in
+                await self._broadcast_repository.update_fields(broadcast_id)
+                for recipient, result in recorded:
+                    await self._record_one(recipient, result)
+            await self._lock.reacquire()
+        return len(recorded) == len(results)
+
+    async def _record_one(self, recipient: PendingRecipientDto, result: SendResult) -> None:
+        if result.outcome is SendOutcome.SENT:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.SENT, message_id=result.message_id
+            )
+        elif result.outcome is SendOutcome.BLOCKED:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.BLOCKED, error=result.error
+            )
+            await mark_bot_blocked(self._user_repository, self._event_publisher, recipient.user_id)
+        elif result.outcome is SendOutcome.FAILED:
+            await self._broadcast_repository.mark_recipient(
+                recipient.id, BroadcastRecipientStatus.FAILED, error=result.error
+            )
+        else:
+            await self._broadcast_repository.bump_attempt(
+                recipient.id, MAX_ATTEMPTS, result.error or "retry"
+            )
 
     async def _still_sending(self, broadcast_id: int) -> bool:
         async with self._uow:

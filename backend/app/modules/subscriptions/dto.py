@@ -148,6 +148,17 @@ class OwnSubscriptionUsageDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SubscriptionOverviewCountsDto:
+    active: int
+    limited: int
+    expired: int
+    disabled: int
+    expiring: int
+    paid_active: int
+    active_trials: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class LiveSubscriptionDto:
     user_id: int
     is_trial: bool

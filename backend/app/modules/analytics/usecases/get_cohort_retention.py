@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
@@ -7,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.coverage import is_covered, paid_coverage, shift_months
 from app.modules.analytics.dto import CohortRowDto, CohortsDto
 from app.modules.transactions import TransactionRepository
@@ -36,11 +38,18 @@ class GetCohortRetentionUseCase(UseCase[None, CohortsDto]):
         self,
         transaction_repository: TransactionRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._transaction_repository = transaction_repository
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: None) -> CohortsDto:
+        return await self._cache.get_or_compute(
+            "get_cohort_retention", data, CohortsDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: None) -> CohortsDto:
         async with self._uow:
             now = datetime_now()
             today = now.date()

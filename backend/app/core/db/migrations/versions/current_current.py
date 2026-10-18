@@ -1192,9 +1192,27 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        "ix_users_created_at_id",
+        "users",
+        [sa.literal_column("created_at DESC"), sa.literal_column("id DESC")],
+        unique=False,
+    )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=False)
     op.create_index(op.f("ix_users_email_canonical"), "users", ["email_canonical"], unique=True)
     op.create_index(op.f("ix_users_login"), "users", ["login"], unique=True)
+    op.create_index(
+        op.f("ix_users_personal_discount_promocode_id"),
+        "users",
+        ["personal_discount_promocode_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_users_purchase_discount_promocode_id"),
+        "users",
+        ["purchase_discount_promocode_id"],
+        unique=False,
+    )
     op.create_index(op.f("ix_users_referral_code"), "users", ["referral_code"], unique=True)
     op.create_index(op.f("ix_users_role"), "users", ["role"], unique=False)
     op.create_index(op.f("ix_users_telegram_id"), "users", ["telegram_id"], unique=True)
@@ -1434,37 +1452,12 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
+        op.f("ix_broadcasts_promocode_id"), "broadcasts", ["promocode_id"], unique=False
+    )
+    op.create_index(
         op.f("ix_broadcasts_scheduled_at"), "broadcasts", ["scheduled_at"], unique=False
     )
     op.create_index(op.f("ix_broadcasts_status"), "broadcasts", ["status"], unique=False)
-    op.create_table(
-        "broadcast_email_images",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("broadcast_id", sa.Integer(), nullable=False),
-        sa.Column("content_type", sa.String(length=32), nullable=False),
-        sa.Column("extension", sa.String(length=8), nullable=False),
-        sa.Column("size_bytes", sa.Integer(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_broadcast_email_images_broadcast_id"),
-        "broadcast_email_images",
-        ["broadcast_id"],
-        unique=False,
-    )
     op.create_table(
         "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -1501,6 +1494,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(op.f("ix_event_outbox_actor_id"), "event_outbox", ["actor_id"], unique=False)
     op.create_index(op.f("ix_event_outbox_category"), "event_outbox", ["category"], unique=False)
     op.create_index(
         op.f("ix_event_outbox_event_type"), "event_outbox", ["event_type"], unique=False
@@ -1680,6 +1674,37 @@ def upgrade() -> None:
         postgresql_where=sa.text("status != 'DELETED'"),
     )
     op.create_table(
+        "user_registrations",
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "source",
+            sa.Enum(
+                "BOT",
+                "CABINET_TELEGRAM",
+                "CABINET_MINI_APP",
+                "CABINET_BOT_LINK",
+                "CABINET_EMAIL",
+                "CABINET_GOOGLE",
+                "CABINET_YANDEX",
+                name="registrationsource",
+            ),
+            nullable=False,
+        ),
+        sa.Column("start_payload", sa.String(length=64), nullable=True),
+        sa.Column("telegram_language_code", sa.String(length=16), nullable=True),
+        sa.Column("telegram_is_premium", sa.Boolean(), nullable=True),
+        sa.Column("ip_address", sa.String(length=45), nullable=True),
+        sa.Column("user_agent", sa.String(length=512), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("user_id"),
+    )
+    op.create_table(
         "user_sessions",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -1760,37 +1785,6 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_table(
-        "user_registrations",
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column(
-            "source",
-            sa.Enum(
-                "BOT",
-                "CABINET_TELEGRAM",
-                "CABINET_MINI_APP",
-                "CABINET_BOT_LINK",
-                "CABINET_EMAIL",
-                "CABINET_GOOGLE",
-                "CABINET_YANDEX",
-                name="registrationsource",
-            ),
-            nullable=False,
-        ),
-        sa.Column("start_payload", sa.String(length=64), nullable=True),
-        sa.Column("telegram_language_code", sa.String(length=16), nullable=True),
-        sa.Column("telegram_is_premium", sa.Boolean(), nullable=True),
-        sa.Column("ip_address", sa.String(length=45), nullable=True),
-        sa.Column("user_agent", sa.String(length=512), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("user_id"),
-    )
-    op.create_table(
         "addon_entitlements",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("subscription_id", sa.Integer(), nullable=False),
@@ -1818,6 +1812,34 @@ def upgrade() -> None:
         op.f("ix_addon_entitlements_subscription_id"),
         "addon_entitlements",
         ["subscription_id"],
+        unique=False,
+    )
+    op.create_table(
+        "broadcast_email_images",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("broadcast_id", sa.Integer(), nullable=False),
+        sa.Column("content_type", sa.String(length=32), nullable=False),
+        sa.Column("extension", sa.String(length=8), nullable=False),
+        sa.Column("size_bytes", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_broadcast_email_images_broadcast_id"),
+        "broadcast_email_images",
+        ["broadcast_id"],
         unique=False,
     )
     op.create_table(
@@ -1910,7 +1932,10 @@ def upgrade() -> None:
         op.f("ix_event_log_entries_category"), "event_log_entries", ["category"], unique=False
     )
     op.create_index(
-        op.f("ix_event_log_entries_event_type"), "event_log_entries", ["event_type"], unique=False
+        "ix_event_log_entries_event_type_occurred_at",
+        "event_log_entries",
+        ["event_type", sa.literal_column("occurred_at DESC")],
+        unique=False,
     )
     op.create_index(
         op.f("ix_event_log_entries_occurred_at"), "event_log_entries", ["occurred_at"], unique=False
@@ -1939,6 +1964,12 @@ def upgrade() -> None:
         op.f("ix_promocode_activations_promocode_id"),
         "promocode_activations",
         ["promocode_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_promocode_activations_subscription_id"),
+        "promocode_activations",
+        ["subscription_id"],
         unique=False,
     )
     op.create_index(
@@ -2016,7 +2047,16 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
+        op.f("ix_referral_rewards_referral_id"), "referral_rewards", ["referral_id"], unique=False
+    )
+    op.create_index(
         op.f("ix_referral_rewards_referrer_id"), "referral_rewards", ["referrer_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_referral_rewards_subscription_id"),
+        "referral_rewards",
+        ["subscription_id"],
+        unique=False,
     )
     op.create_table(
         "subscription_purchase_idempotency",
@@ -2142,13 +2182,39 @@ def upgrade() -> None:
         sa.UniqueConstraint("idempotency_key"),
     )
     op.create_index(
+        "ix_transactions_created_at_id",
+        "transactions",
+        [sa.literal_column("created_at DESC"), sa.literal_column("id DESC")],
+        unique=False,
+    )
+    op.create_index(
         op.f("ix_transactions_discount_promocode_id"),
         "transactions",
         ["discount_promocode_id"],
         unique=False,
     )
     op.create_index(
+        op.f("ix_transactions_fulfilled_subscription_id"),
+        "transactions",
+        ["fulfilled_subscription_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_transactions_paid_updated_at",
+        "transactions",
+        ["updated_at"],
+        unique=False,
+        postgresql_where=sa.text("status = 'PAID' AND NOT is_test"),
+    )
+    op.create_index(op.f("ix_transactions_plan_id"), "transactions", ["plan_id"], unique=False)
+    op.create_index(
         "ix_transactions_status_expires_at", "transactions", ["status", "expires_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_transactions_target_subscription_id"),
+        "transactions",
+        ["target_subscription_id"],
+        unique=False,
     )
     op.create_index(op.f("ix_transactions_user_id"), "transactions", ["user_id"], unique=False)
     op.create_table(
@@ -2186,42 +2252,60 @@ def downgrade() -> None:
     )
     op.drop_table("addon_grant_idempotency")
     op.drop_index(op.f("ix_transactions_user_id"), table_name="transactions")
+    op.drop_index(op.f("ix_transactions_target_subscription_id"), table_name="transactions")
     op.drop_index("ix_transactions_status_expires_at", table_name="transactions")
+    op.drop_index(op.f("ix_transactions_plan_id"), table_name="transactions")
+    op.drop_index(
+        "ix_transactions_paid_updated_at",
+        table_name="transactions",
+        postgresql_where=sa.text("status = 'PAID' AND NOT is_test"),
+    )
+    op.drop_index(op.f("ix_transactions_fulfilled_subscription_id"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_discount_promocode_id"), table_name="transactions")
+    op.drop_index("ix_transactions_created_at_id", table_name="transactions")
     op.drop_table("transactions")
     op.drop_index(
         op.f("ix_subscription_purchase_idempotency_subscription_id"),
         table_name="subscription_purchase_idempotency",
     )
     op.drop_table("subscription_purchase_idempotency")
+    op.drop_index(op.f("ix_referral_rewards_subscription_id"), table_name="referral_rewards")
     op.drop_index(op.f("ix_referral_rewards_referrer_id"), table_name="referral_rewards")
+    op.drop_index(op.f("ix_referral_rewards_referral_id"), table_name="referral_rewards")
     op.drop_table("referral_rewards")
     op.drop_index(op.f("ix_push_subscriptions_user_id"), table_name="push_subscriptions")
     op.drop_index(op.f("ix_push_subscriptions_session_id"), table_name="push_subscriptions")
     op.drop_table("push_subscriptions")
     op.drop_index(op.f("ix_promocode_activations_user_id"), table_name="promocode_activations")
+    op.drop_index(
+        op.f("ix_promocode_activations_subscription_id"), table_name="promocode_activations"
+    )
     op.drop_index(op.f("ix_promocode_activations_promocode_id"), table_name="promocode_activations")
     op.drop_table("promocode_activations")
     op.drop_index(op.f("ix_event_log_entries_target_id"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_occurred_at"), table_name="event_log_entries")
-    op.drop_index(op.f("ix_event_log_entries_event_type"), table_name="event_log_entries")
+    op.drop_index("ix_event_log_entries_event_type_occurred_at", table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_category"), table_name="event_log_entries")
     op.drop_index(op.f("ix_event_log_entries_actor_id"), table_name="event_log_entries")
     op.drop_table("event_log_entries")
     op.drop_index(op.f("ix_broadcast_recipients_user_id"), table_name="broadcast_recipients")
     op.drop_index("ix_broadcast_recipients_status", table_name="broadcast_recipients")
     op.drop_table("broadcast_recipients")
+    op.drop_index(
+        op.f("ix_broadcast_email_images_broadcast_id"), table_name="broadcast_email_images"
+    )
+    op.drop_table("broadcast_email_images")
     op.drop_index(op.f("ix_addon_entitlements_subscription_id"), table_name="addon_entitlements")
     op.drop_table("addon_entitlements")
     op.drop_index(op.f("ix_ad_link_attributions_ad_link_id"), table_name="ad_link_attributions")
     op.drop_table("ad_link_attributions")
-    op.drop_table("user_registrations")
     op.drop_index(op.f("ix_user_sessions_user_id"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_revoked_at"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_refresh_token_hash"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_previous_refresh_token_hash"), table_name="user_sessions")
     op.drop_index(op.f("ix_user_sessions_expires_at"), table_name="user_sessions")
     op.drop_table("user_sessions")
+    op.drop_table("user_registrations")
     op.drop_index(
         "ux_subscriptions_remnawave_user_id_live",
         table_name="subscriptions",
@@ -2243,13 +2327,11 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_processed_at"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
+    op.drop_index(op.f("ix_event_outbox_actor_id"), table_name="event_outbox")
     op.drop_table("event_outbox")
-    op.drop_index(
-        op.f("ix_broadcast_email_images_broadcast_id"), table_name="broadcast_email_images"
-    )
-    op.drop_table("broadcast_email_images")
     op.drop_index(op.f("ix_broadcasts_status"), table_name="broadcasts")
     op.drop_index(op.f("ix_broadcasts_scheduled_at"), table_name="broadcasts")
+    op.drop_index(op.f("ix_broadcasts_promocode_id"), table_name="broadcasts")
     op.drop_table("broadcasts")
     op.drop_index(op.f("ix_backup_runs_status"), table_name="backup_runs")
     op.drop_index(op.f("ix_backup_runs_kind"), table_name="backup_runs")
@@ -2266,9 +2348,12 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_telegram_id"), table_name="users")
     op.drop_index(op.f("ix_users_role"), table_name="users")
     op.drop_index(op.f("ix_users_referral_code"), table_name="users")
+    op.drop_index(op.f("ix_users_purchase_discount_promocode_id"), table_name="users")
+    op.drop_index(op.f("ix_users_personal_discount_promocode_id"), table_name="users")
     op.drop_index(op.f("ix_users_login"), table_name="users")
     op.drop_index(op.f("ix_users_email_canonical"), table_name="users")
     op.drop_index(op.f("ix_users_email"), table_name="users")
+    op.drop_index("ix_users_created_at_id", table_name="users")
     op.drop_table("users")
     op.drop_index(
         op.f("ix_plan_price_overrides_plan_duration_id"), table_name="plan_price_overrides"

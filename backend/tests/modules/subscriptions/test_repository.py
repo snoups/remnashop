@@ -712,7 +712,7 @@ async def test_delete_stale_idempotency_keys_removes_only_old_rows(
     assert remaining_purchase == {"new-p"}
 
 
-async def test_count_by_status_groups_live_rows_and_excludes_deleted(
+async def test_overview_counts_group_live_rows_and_exclude_deleted(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     subscription_stats_repository: SubscriptionStatsRepository,
@@ -734,14 +734,12 @@ async def test_count_by_status_groups_live_rows_and_excludes_deleted(
             status=status,
         )
 
-    assert await subscription_stats_repository.count_by_status() == {
-        SubscriptionStatus.ACTIVE: 2,
-        SubscriptionStatus.LIMITED: 1,
-        SubscriptionStatus.EXPIRED: 1,
-    }
+    now = datetime_now()
+    counts = await subscription_stats_repository.overview_counts(now, now + timedelta(days=7))
+    assert (counts.active, counts.limited, counts.expired, counts.disabled) == (2, 1, 1, 0)
 
 
-async def test_count_expiring_between_only_counts_live_rows_in_the_window(
+async def test_overview_counts_expiring_only_live_rows_in_the_window(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     subscription_stats_repository: SubscriptionStatsRepository,
@@ -791,10 +789,8 @@ async def test_count_expiring_between_only_counts_live_rows_in_the_window(
         expire_at=now + timedelta(days=2),
     )
 
-    assert (
-        await subscription_stats_repository.count_expiring_between(now, now + timedelta(days=7))
-        == 2
-    )
+    counts = await subscription_stats_repository.overview_counts(now, now + timedelta(days=7))
+    assert counts.expiring == 2
 
 
 async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inactive(

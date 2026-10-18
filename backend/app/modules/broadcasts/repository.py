@@ -6,6 +6,7 @@ from typing import cast as typing_cast
 from sqlalchemy import (
     ColumnElement,
     CursorResult,
+    Row,
     Select,
     Text,
     case,
@@ -20,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONPATH
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.db.filters import in_ids
 from app.core.db.models.ad_link import AdLink
@@ -313,31 +315,33 @@ class BroadcastRepository:
 
     async def _drop_unreachable(
         self,
-        broadcast_id: int,
-        channel: BroadcastChannel,
+        recipient_ids: builtins.list[int],
         marketing: bool,
         unreachable: builtins.list[tuple[ColumnElement[bool], str]],
         refused: builtins.list[tuple[ColumnElement[bool], str]],
     ) -> None:
-        # audience was built at materialization; a block or opt-out since then still wins
+        # audience was built at materialization; a block or opt-out since then
+        # still wins. Only the batch about to go out is checked, so the cost per
+        # batch stays flat however large the broadcast is.
         cancel = [(User.is_blocked.is_(True), BLOCKED_ERROR)]
         if marketing:
             cancel.append((User.marketing_opt_out.is_(True), OPTED_OUT_ERROR))
-        for status, conditions, channels in (
-            (BroadcastRecipientStatus.CANCELED, cancel, tuple(BroadcastChannel)),
-            (BroadcastRecipientStatus.FAILED, unreachable, (channel,)),
-            (BroadcastRecipientStatus.BLOCKED, refused, (channel,)),
+        for status, conditions in (
+            (BroadcastRecipientStatus.CANCELED, cancel),
+            (BroadcastRecipientStatus.FAILED, unreachable),
+            (BroadcastRecipientStatus.BLOCKED, refused),
         ):
             for condition, error in conditions:
                 await self.session.execute(
                     update(BroadcastRecipient)
                     .where(
-                        BroadcastRecipient.broadcast_id == broadcast_id,
-                        BroadcastRecipient.channel.in_(channels),
+                        in_ids(BroadcastRecipient.id, recipient_ids),
                         BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
-                        BroadcastRecipient.user_id.in_(select(User.id).where(condition)),
+                        BroadcastRecipient.user_id == User.id,
+                        condition,
                     )
                     .values(status=status, error=error)
+                    .execution_options(synchronize_session=False)
                 )
 
     def _claimable(
@@ -359,77 +363,86 @@ class BroadcastRepository:
             .with_for_update(skip_locked=True)
         )
 
+    async def _claim(
+        self,
+        broadcast_id: int,
+        channel: BroadcastChannel,
+        limit: int,
+        lease: timedelta,
+        marketing: bool,
+        unreachable: builtins.list[tuple[ColumnElement[bool], str]],
+        refused: builtins.list[tuple[ColumnElement[bool], str]],
+        contact: InstrumentedAttribute[Any],
+    ) -> builtins.list[Row[Any]]:
+        now = datetime_now()
+        # a batch whose every recipient turned unreachable claims nothing: take
+        # the next one, so the chain doesn't stop while rows are still pending
+        while True:
+            candidates = list(
+                await self.session.scalars(self._claimable(broadcast_id, channel, limit, now))
+            )
+            if not candidates:
+                return []
+            await self._drop_unreachable(candidates, marketing, unreachable, refused)
+            rows = (
+                await self.session.execute(
+                    update(BroadcastRecipient)
+                    .where(
+                        in_ids(BroadcastRecipient.id, candidates),
+                        BroadcastRecipient.status == BroadcastRecipientStatus.PENDING,
+                        User.id == BroadcastRecipient.user_id,
+                    )
+                    .values(claimed_until=now + lease)
+                    .returning(
+                        BroadcastRecipient.id,
+                        BroadcastRecipient.user_id,
+                        contact,
+                        BroadcastRecipient.attempts,
+                    )
+                    .execution_options(synchronize_session=False)
+                )
+            ).all()
+            if rows:
+                return sorted(rows, key=lambda r: r[0])
+
     async def claim_pending(
         self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
     ) -> builtins.list[PendingRecipientDto]:
-        # a user who lost their telegram_id since materialization can never be reached
-        await self._drop_unreachable(
+        rows = await self._claim(
             broadcast_id,
             BroadcastChannel.TELEGRAM,
+            limit,
+            lease,
             marketing,
+            # a user who lost their telegram_id since materialization can never be reached
             [(User.telegram_id.is_(None), NO_TELEGRAM_ERROR)],
             [(User.is_bot_blocked.is_(True), BOT_BLOCKED_ERROR)],
+            User.telegram_id,
         )
-        now = datetime_now()
-        claimable = self._claimable(broadcast_id, BroadcastChannel.TELEGRAM, limit, now)
-        rows = await self.session.execute(
-            update(BroadcastRecipient)
-            .where(BroadcastRecipient.id.in_(claimable), User.id == BroadcastRecipient.user_id)
-            .values(claimed_until=now + lease)
-            .returning(
-                BroadcastRecipient.id,
-                BroadcastRecipient.user_id,
-                User.telegram_id,
-                BroadcastRecipient.attempts,
-            )
-            .execution_options(synchronize_session=False)
-        )
-        return sorted(
-            (
-                PendingRecipientDto(
-                    id=r.id, user_id=r.user_id, telegram_id=r.telegram_id, attempts=r.attempts
-                )
-                for r in rows
-            ),
-            key=lambda r: r.id,
-        )
+        return [
+            PendingRecipientDto(id=r[0], user_id=r[1], telegram_id=r[2], attempts=r[3])
+            for r in rows
+        ]
 
     async def claim_pending_email(
         self, broadcast_id: int, limit: int, lease: timedelta, *, marketing: bool
     ) -> builtins.list[PendingEmailRecipientDto]:
-        await self._drop_unreachable(
+        rows = await self._claim(
             broadcast_id,
             BroadcastChannel.EMAIL,
+            limit,
+            lease,
             marketing,
             [
                 (User.email.is_(None), NO_EMAIL_ERROR),
                 (User.email_undeliverable_at.is_not(None), UNDELIVERABLE_ERROR),
             ],
             [],
+            User.email,
         )
-        now = datetime_now()
-        claimable = self._claimable(broadcast_id, BroadcastChannel.EMAIL, limit, now)
-        rows = await self.session.execute(
-            update(BroadcastRecipient)
-            .where(BroadcastRecipient.id.in_(claimable), User.id == BroadcastRecipient.user_id)
-            .values(claimed_until=now + lease)
-            .returning(
-                BroadcastRecipient.id,
-                BroadcastRecipient.user_id,
-                User.email,
-                BroadcastRecipient.attempts,
-            )
-            .execution_options(synchronize_session=False)
-        )
-        return sorted(
-            (
-                PendingEmailRecipientDto(
-                    id=r.id, user_id=r.user_id, email=r.email, attempts=r.attempts
-                )
-                for r in rows
-            ),
-            key=lambda r: r.id,
-        )
+        return [
+            PendingEmailRecipientDto(id=r[0], user_id=r[1], email=r[2], attempts=r[3]) for r in rows
+        ]
 
     async def release_claims(self, ids: builtins.list[int]) -> None:
         await self.session.execute(

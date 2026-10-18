@@ -23,6 +23,7 @@ x-env: &env
 services:
   remnashop-db:
     image: postgres:17
+    command: ["postgres", "-c", "max_connections=${DATABASE_MAX_CONNECTIONS:-200}"]
     container_name: "remnashop-db"
     hostname: remnashop-db
     <<: [*common, *logging, *env]

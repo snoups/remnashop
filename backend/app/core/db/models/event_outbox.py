@@ -18,7 +18,9 @@ class EventOutboxEntry(BaseSql):
     event_type: Mapped[str] = mapped_column(String(128), index=True)
     occurred_at: Mapped[datetime]
 
-    actor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    actor_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     actor_login: Mapped[Optional[str]] = mapped_column(String(64))
     actor_name: Mapped[Optional[str]] = mapped_column(String())
     actor_email: Mapped[Optional[str]] = mapped_column(String())

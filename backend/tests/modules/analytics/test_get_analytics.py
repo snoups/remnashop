@@ -31,6 +31,7 @@ from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.stats_repository import UserStatsRepository
+from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -74,6 +75,7 @@ def _use_case(
         TransactionStatsRepository(session),
         pricing_repository,
         uow,
+        PassThroughAnalyticsCache(),
     )
 
 

@@ -21,13 +21,13 @@ class ReferralReward(BaseSql, TimestampMixin):
     # All SET NULL, not CASCADE: this is the money ledger, and deleting a
     # referrer, the referral or the subscription must not erase a payout.
     referral_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("referrals.id", ondelete="SET NULL")
+        ForeignKey("referrals.id", ondelete="SET NULL"), index=True
     )
     referrer_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     subscription_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("subscriptions.id", ondelete="SET NULL")
+        ForeignKey("subscriptions.id", ondelete="SET NULL"), index=True
     )
     # Transaction.idempotency_key of the payment that earned this reward
     payment_key: Mapped[str] = mapped_column(String(36))

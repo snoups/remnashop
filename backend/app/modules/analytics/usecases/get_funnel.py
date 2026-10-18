@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
@@ -7,6 +8,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -40,6 +42,7 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
         ad_links: AdLinkRepository,
         referrals: ReferralRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._subscription_stats = subscription_stats
@@ -47,8 +50,14 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
         self._ad_links = ad_links
         self._referrals = referrals
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> FunnelDto:
+        return await self._cache.get_or_compute(
+            "get_funnel", data, FunnelDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: AnalyticsPeriodQueryDto) -> FunnelDto:
         async with self._uow:
             period = resolve_period(
                 data.period_from,

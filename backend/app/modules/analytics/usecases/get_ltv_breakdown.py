@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Mapping
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
@@ -10,12 +11,13 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import LtvBreakdownDto, LtvGroupDto, TopPayerDto
 from app.modules.analytics.sources import SourceKind, UserSource, resolve_sources
 from app.modules.pricing import PricingRepository
 from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepository
-from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
+from app.modules.transactions import PayerSummaryDto, TransactionStatsRepository
 from app.modules.users import UserRepository
 
 _ZERO: Final[Decimal] = Decimal(0)
@@ -61,19 +63,6 @@ def _current_plans(live: list[LiveSubscriptionDto]) -> dict[int, str]:
     return {user_id: row.plan_name for user_id, row in latest.items()}
 
 
-def _per_user(
-    paid: list[PaidTransactionDto],
-) -> tuple[dict[int, Decimal], dict[int, int], dict[int, PaidTransactionDto]]:
-    totals: dict[int, Decimal] = {}
-    payments: dict[int, int] = {}
-    last: dict[int, PaidTransactionDto] = {}
-    for row in paid:  # list_paid is ordered by paid_at
-        totals[row.user_id] = totals.get(row.user_id, _ZERO) + row.anchor_final_price
-        payments[row.user_id] = payments.get(row.user_id, 0) + 1
-        last[row.user_id] = row
-    return totals, payments, last
-
-
 class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
     required_permission = Permission.ANALYTICS_LTV_BREAKDOWN_VIEW
 
@@ -86,6 +75,7 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
         referral_repository: ReferralRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._transaction_stats = transaction_stats
         self._subscription_stats = subscription_stats
@@ -94,12 +84,10 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
         self._referral_repository = referral_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _top_payers(
-        self,
-        totals: dict[int, Decimal],
-        payments: dict[int, int],
-        last: dict[int, PaidTransactionDto],
+        self, totals: dict[int, Decimal], payers: dict[int, PayerSummaryDto]
     ) -> list[TopPayerDto]:
         top = sorted(totals, key=lambda user_id: (-totals[user_id], user_id))[:_TOP_LIMIT]
         users = {u.id: u for u in await self._user_repository.list_by_ids(top)}
@@ -110,29 +98,35 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
                 name=users[user_id].name if user_id in users else "",
                 username=users[user_id].username if user_id in users else None,
                 current_plan=plans.get(user_id),
-                payments=payments[user_id],
+                payments=payers[user_id].payments,
                 spent=_cents(totals[user_id]),
-                last_paid_at=last[user_id].paid_at,
+                last_paid_at=payers[user_id].last_paid_at,
             )
             for user_id in top
         ]
 
     async def _execute(self, actor: Actor, data: None) -> LtvBreakdownDto:
+        return await self._cache.get_or_compute(
+            "get_ltv_breakdown", data, LtvBreakdownDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: None) -> LtvBreakdownDto:
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
-            paid = await self._transaction_stats.list_paid(None, datetime_now())
-            totals, payments, last = _per_user(paid)
-            first_plan: dict[int, str] = {}
-            for row in paid:
-                first_plan.setdefault(row.user_id, row.plan_name)
+            payers = {
+                p.user_id: p for p in await self._transaction_stats.payer_summaries(datetime_now())
+            }
+            totals = {user_id: p.spent for user_id, p in payers.items()}
             sources = await resolve_sources(
                 list(totals), ad_links=self._ad_link_repository, referrals=self._referral_repository
             )
             source_groups = {user_id: _source_group(src) for user_id, src in sources.items()}
-            plan_groups: dict[int, _GroupId] = {u: (n, None, None) for u, n in first_plan.items()}
+            plan_groups: dict[int, _GroupId] = {
+                user_id: (p.first_plan_name, None, None) for user_id, p in payers.items()
+            }
             return LtvBreakdownDto(
                 report_currency=rates.anchor,
                 by_first_plan=_groups(totals, plan_groups),
                 by_source=_groups(totals, source_groups),
-                top_payers=await self._top_payers(totals, payments, last),
+                top_payers=await self._top_payers(totals, payers),
             )

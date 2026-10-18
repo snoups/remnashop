@@ -32,6 +32,8 @@ class User(BaseSql, TimestampMixin):
             unique=True,
             postgresql_where=text(f"role = '{Role.OWNER.name}'"),
         ),
+        # newest-first user list, registrations per period
+        Index("ix_users_created_at_id", text("created_at DESC"), text("id DESC")),
         # LOGIN_PATTERN (app/core/constants.py) at the DB level, which also
         # covers rows the API didn't write
         CheckConstraint(
@@ -77,10 +79,10 @@ class User(BaseSql, TimestampMixin):
     purchase_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     # the promocode that set each discount; NULL when an admin set it or it's 0
     personal_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("promocodes.id", ondelete="SET NULL")
+        ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
     )
     purchase_discount_promocode_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("promocodes.id", ondelete="SET NULL")
+        ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
     )
     loyalty_discount: Mapped[int] = mapped_column(default=0, server_default="0")
     loyalty_excluded: Mapped[bool] = mapped_column(default=False, server_default="false")

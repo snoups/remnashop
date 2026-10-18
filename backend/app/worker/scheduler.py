@@ -7,6 +7,7 @@ from taskiq.schedule_sources import LabelScheduleSource
 
 from app.core.broker import broker, retry_schedule_source
 from app.core.config import AppConfig
+from app.core.constants import REDIS_CONNECTION_KWARGS
 from app.core.logger import setup_logger
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 
@@ -26,7 +27,9 @@ async def _setup_logging(state: TaskiqState) -> None:
 # hence a standalone Redis client.
 @broker.on_event(TaskiqEvents.CLIENT_STARTUP)
 async def _start_runtime_heartbeat(state: TaskiqState) -> None:
-    redis = Redis.from_url(AppConfig.get().redis.dsn, decode_responses=True)
+    redis = Redis.from_url(
+        AppConfig.get().redis.dsn, decode_responses=True, **REDIS_CONNECTION_KWARGS
+    )
     state.scheduler_redis = redis
     state.runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "scheduler"))
 

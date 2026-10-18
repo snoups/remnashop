@@ -23,6 +23,7 @@ from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.stats_repository import UserStatsRepository
+from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.analytics.test_get_analytics import _paid_order_dto
 from tests.modules.subscriptions.factories import create_subscription
 
@@ -40,6 +41,7 @@ def _use_case(
         TransactionStatsRepository(session),
         pricing_repository,
         uow,
+        PassThroughAnalyticsCache(),
     )
 
 

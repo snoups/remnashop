@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
 from app.core.enums import Role
-from app.modules.users.dto import UserListStatsDto
+from app.modules.users.dto import UserCountsDto, UserListStatsDto
 from app.modules.users.filters import ACTIVE_SUBSCRIPTIONS
 
 
@@ -48,21 +48,17 @@ class UserStatsRepository:
             total_growth=row[5],
         )
 
-    async def count_by_role(self, role: Role) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count()).where(User.role == role, User.deleted_at.is_(None))
+    async def count_total_and_new(self, role: Role, new_since: datetime) -> UserCountsDto:
+        # total leaves deleted accounts out; new counts every registration since
+        row = (
+            await self.session.execute(
+                select(
+                    func.count().filter(User.deleted_at.is_(None)),
+                    func.count().filter(User.created_at >= new_since),
+                ).where(User.role == role)
             )
-            or 0
-        )
-
-    async def count_new_since(self, cutoff: datetime, role: Role) -> int:
-        return int(
-            await self.session.scalar(
-                select(func.count()).where(User.role == role, User.created_at >= cutoff)
-            )
-            or 0
-        )
+        ).one()
+        return UserCountsDto(total=row[0], new=row[1])
 
     async def earliest_registration(self, role: Role) -> Optional[date]:
         earliest = await self.session.scalar(

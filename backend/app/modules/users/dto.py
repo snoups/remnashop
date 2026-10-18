@@ -179,6 +179,12 @@ class BindTelegramDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class UserCountsDto:
+    total: int
+    new: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class UserListStatsDto:
     total: int
     new: int

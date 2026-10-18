@@ -1,5 +1,6 @@
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
@@ -10,6 +11,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -87,6 +89,7 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
         referral_repository: ReferralRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._user_repository = user_repository
@@ -95,6 +98,7 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
         self._referral_repository = referral_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _top_referrers(
         self,
@@ -126,6 +130,11 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
         ]
 
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> SourcesDto:
+        return await self._cache.get_or_compute(
+            "get_sources", data, SourcesDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: AnalyticsPeriodQueryDto) -> SourcesDto:
         async with self._uow:
             now = datetime_now()
             period = resolve_period(

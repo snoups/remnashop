@@ -105,6 +105,21 @@ async def test_touch_last_used_sets_timestamp(
     assert after.last_used_at is not None
 
 
+async def test_touch_last_used_skips_a_recent_touch(
+    api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    token_id = await _create(api_token_repository, uow, token_hash="touch-twice")
+    await api_token_repository.touch_last_used(token_id)
+    first = await api_token_repository.get_active_by_hash("touch-twice")
+    assert first is not None and first.last_used_at is not None
+
+    await api_token_repository.touch_last_used(token_id)
+
+    second = await api_token_repository.get_active_by_hash("touch-twice")
+    assert second is not None
+    assert second.last_used_at == first.last_used_at
+
+
 async def test_get_active_by_hash_excludes_expired_token(
     api_token_repository: ApiTokenRepository, uow: UnitOfWork
 ) -> None:

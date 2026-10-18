@@ -1,4 +1,5 @@
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
@@ -7,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.analytics.aggregates import median
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
 from app.modules.pricing import PricingRepository
 from app.modules.transactions import TransactionRepository
@@ -62,12 +64,19 @@ class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
         transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: None) -> LtvDistributionDto:
+        return await self._cache.get_or_compute(
+            "get_ltv_distribution", data, LtvDistributionDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: None) -> LtvDistributionDto:
         async with self._uow:
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = rate_table.anchor

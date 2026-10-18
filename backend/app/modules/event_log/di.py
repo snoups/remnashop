@@ -13,6 +13,7 @@ from app.modules.event_log.usecases import (
     ListEventLogUseCase,
     MarkNotificationsReadUseCase,
     ProcessOutboxEntryUseCase,
+    PruneEventLogUseCase,
     PruneOutboxUseCase,
     SweepOutboxUseCase,
 )
@@ -33,6 +34,7 @@ class EventLogProvider(Provider):
         MarkNotificationsReadUseCase,
         ProcessOutboxEntryUseCase,
         SweepOutboxUseCase,
+        PruneEventLogUseCase,
         PruneOutboxUseCase,
     )
 

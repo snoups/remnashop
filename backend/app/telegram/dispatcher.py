@@ -6,7 +6,7 @@ from aiogram_dialog import BgManagerFactory, setup_dialogs
 from loguru import logger
 
 from app.core.config import AppConfig
-from app.core.constants import TTL_7D
+from app.core.constants import REDIS_CONNECTION_KWARGS, TTL_7D
 from app.core.json import decode, encode
 from app.telegram.filters import setup_global_filters
 from app.telegram.middlewares import setup_middlewares
@@ -19,6 +19,7 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
     # write, so an active dialog never expires early.
     storage = RedisStorage.from_url(
         config.redis.dsn,
+        connection_kwargs=REDIS_CONNECTION_KWARGS,
         # aiogram-dialog keeps its stacks and contexts under their own destiny
         key_builder=DefaultKeyBuilder(with_destiny=True),
         state_ttl=TTL_7D,

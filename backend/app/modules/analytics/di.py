@@ -1,5 +1,6 @@
-from dishka import Provider, Scope, provide_all
+from dishka import Provider, Scope, provide, provide_all
 
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.usecases import (
     GetAnalyticsUseCase,
     GetCohortRetentionUseCase,
@@ -17,6 +18,7 @@ from app.modules.analytics.usecases import (
 class AnalyticsProvider(Provider):
     scope = Scope.REQUEST
 
+    analytics_cache = provide(AnalyticsCache, scope=Scope.APP)
     use_cases = provide_all(
         GetAnalyticsUseCase,
         GetFunnelUseCase,

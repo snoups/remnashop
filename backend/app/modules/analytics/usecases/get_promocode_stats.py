@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
@@ -10,6 +11,7 @@ from app.core.enums import PromocodeRewardType, PromocodeStatus, Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
@@ -56,14 +58,21 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
         transaction_stats: TransactionStatsRepository,
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
+        cache: AnalyticsCache,
     ) -> None:
         self._user_stats = user_stats
         self._promocode_repository = promocode_repository
         self._transaction_stats = transaction_stats
         self._pricing_repository = pricing_repository
         self._uow = uow
+        self._cache = cache
 
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> PromocodeStatsDto:
+        return await self._cache.get_or_compute(
+            "get_promocode_stats", data, PromocodeStatsDto, partial(self._compute, data)
+        )
+
+    async def _compute(self, data: AnalyticsPeriodQueryDto) -> PromocodeStatsDto:
         async with self._uow:
             now = datetime_now()
             period = resolve_period(

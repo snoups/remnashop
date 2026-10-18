@@ -11,7 +11,11 @@ from app.modules.users.dto import (
     UpdateUserDto,
     UserDto,
 )
-from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
+from app.modules.users.events import (
+    CabinetUserRegisteredEvent,
+    TelegramUserRegisteredEvent,
+    UserDeletedEvent,
+)
 from app.modules.users.ports import (
     PasskeyRevoker,
     PromocodeLiveness,
@@ -68,6 +72,7 @@ __all__ = [
     "TelegramUserRegisteredEvent",
     "UnblockUserUseCase",
     "UpdateUserDto",
+    "UserDeletedEvent",
     "UserDto",
     "UserRepository",
     "UserResponse",

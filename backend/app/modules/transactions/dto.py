@@ -235,6 +235,24 @@ class PaidTransactionDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PaidTotalsDto:
+    payments: int
+    paying_users: int
+    revenue: Decimal  # anchor currency
+
+
+@dataclass(frozen=True, kw_only=True)
+class PayerSummaryDto:
+    user_id: int
+    payments: int
+    renewals: int
+    spent: Decimal  # anchor currency
+    first_paid_at: datetime
+    last_paid_at: datetime
+    first_plan_name: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class PaymentAttemptDto:
     gateway_type: PaymentGatewayType
     status: TransactionStatus

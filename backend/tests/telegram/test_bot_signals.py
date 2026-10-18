@@ -8,7 +8,8 @@ from redis.asyncio.client import PubSub
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.bot_signals import RedisBotSignals
-from app.core.constants import TRANSLATION_CHANGED_CHANNEL
+from app.core.config import AppConfig
+from app.core.constants import REDIS_CONNECTION_KWARGS, TRANSLATION_CHANGED_CHANNEL
 from app.core.enums import Locale
 from app.modules.translations import strip_serializer_escapes
 from app.telegram import bot_signals
@@ -106,3 +107,45 @@ async def test_listener_subscribes_again_after_losing_redis(
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+
+
+class _CountingRedis:
+    def __init__(self, real: Redis) -> None:
+        self._real = real
+        self.subscriptions = 0
+
+    def pubsub(self) -> PubSub:
+        self.subscriptions += 1
+        return self._real.pubsub()
+
+
+async def test_listener_keeps_its_subscription_through_a_quiet_spell(
+    config: AppConfig,
+) -> None:
+    # the client times reads out fast; a silent channel must not look like a
+    # lost one. Without redis-py's own retry, so a dropped read shows here as a
+    # second subscription instead of a silent reconnect.
+    client = Redis.from_url(
+        config.redis.dsn,
+        decode_responses=True,
+        **{**REDIS_CONNECTION_KWARGS, "socket_timeout": 0.2, "retry_on_timeout": False},
+    )
+    counting = _CountingRedis(client)
+    cache = _SpyCache()
+    task = asyncio.create_task(
+        listen_for_bot_signals(counting, live_update_handlers(cache, _SpyHub()))  # type: ignore[arg-type]
+    )
+    try:
+        await asyncio.sleep(1.5)
+        await RedisBotSignals(client).dialogs_changed()
+        for _ in range(50):
+            if cache.reload_count:
+                break
+            await asyncio.sleep(0.05)
+        assert cache.reload_count == 1
+        assert counting.subscriptions == 1
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        await client.aclose()

@@ -199,17 +199,14 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         if Permission.SUBSCRIPTIONS_VIEW not in perms:
             return []
         now = datetime_now()
-        expiring = [
-            s.expire_at
-            for s in await self._subscription_stats.list_live()
-            if not s.is_trial and now <= s.expire_at < now + _EXPIRING_WITHIN
-        ]
-        urgent = sum(e < now + _EXPIRING_URGENT for e in expiring)
+        count, urgent = await self._subscription_stats.count_expiring_paid(
+            now, now + _EXPIRING_WITHIN, now + _EXPIRING_URGENT
+        )
         return [
             AttentionItemDto(
                 kind=AttentionKind.EXPIRING_PAID,
                 severity="warning",
-                count=len(expiring),
+                count=count,
                 subject=str(urgent),
             )
         ]

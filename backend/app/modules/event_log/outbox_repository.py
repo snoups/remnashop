@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Final, NamedTuple, Optional, cast
 
-from sqlalchemy import CursorResult, delete, func, select
+from sqlalchemy import CursorResult, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models import EventOutboxEntry
 from app.core.utils.time import datetime_now
+from app.modules.event_log.retention import anonymize_snapshots
 
 _MAX_ATTEMPTS: Final[int] = 5
 
@@ -58,6 +59,17 @@ class EventOutboxRepository:
         )
         result = await self.session.execute(stmt)
         return cast(CursorResult, result).rowcount
+
+    async def anonymize_user(self, user_id: int) -> None:
+        # rows still here (14 days) carry the same snapshots as the audit log
+        await self.session.execute(
+            update(EventOutboxEntry)
+            .where(EventOutboxEntry.actor_id == user_id)
+            .values(actor_login=None, actor_name=None, actor_email=None, ip_address=None)
+            # rows loaded in this session (the outbox entry being processed) keep their values
+            .execution_options(synchronize_session=False)
+        )
+        await anonymize_snapshots(self.session, EventOutboxEntry, user_id)
 
     async def count_poisoned(self) -> int:
         stmt = (

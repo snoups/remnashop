@@ -16,13 +16,13 @@ async def ensure_dialogs_seeded(
             catalog.window_snapshot(window.key),
             position=position,
         )
-        text_keys = set(window.text_keys) | {b.text_key for b in window.buttons}
+        text_keys = sorted(set(window.text_keys) | {b.text_key for b in window.buttons})
+        rows = [(*split_message_key(text_key), "") for text_key in text_keys]
+        # Earlier seeds stored a dotted key as a message id of its own, which
+        # shadows the real row everywhere the two are looked up by joined key.
+        dotted = [
+            text_key for text_key, (_, attribute_id, _) in zip(text_keys, rows) if attribute_id
+        ]
         for locale in locales:
-            for text_key in text_keys:
-                message_id, attribute_id = split_message_key(text_key)
-                await translation_repository.seed_missing(locale, message_id, attribute_id, "")
-                if attribute_id:
-                    # Earlier seeds stored the dotted key as a message id of its
-                    # own, which shadows the real row everywhere the two are
-                    # looked up by joined key.
-                    await translation_repository.delete_blank(locale, text_key, "")
+            await translation_repository.seed_missing_many(locale, rows)
+            await translation_repository.delete_blank_messages(locale, dotted)

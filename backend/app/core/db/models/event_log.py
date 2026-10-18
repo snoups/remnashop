@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,11 +11,17 @@ from app.core.events import EventCategory
 
 class EventLogEntry(BaseSql):
     __tablename__ = "event_log_entries"
+    __table_args__ = (
+        # the bell and the type filter: newest entries of a set of types, and pruning by type
+        Index(
+            "ix_event_log_entries_event_type_occurred_at", "event_type", text("occurred_at DESC")
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
     category: Mapped[EventCategory] = mapped_column(index=True)
-    event_type: Mapped[str] = mapped_column(String(128), index=True)
+    event_type: Mapped[str] = mapped_column(String(128))
     occurred_at: Mapped[datetime] = mapped_column(index=True)
 
     # Snapshot, not a live join: demote_admin clears the login, so a join would

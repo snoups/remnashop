@@ -22,6 +22,7 @@ SignalHandler = Callable[[str], Awaitable[None]]
 
 _RECONNECT_MIN_DELAY_S: Final[float] = 1.0
 _RECONNECT_MAX_DELAY_S: Final[float] = 30.0
+_POLL_TIMEOUT_S: Final[float] = 1.0
 
 
 class _Reloadable(Protocol):
@@ -36,8 +37,13 @@ async def listen_for_bot_signals(redis: Redis, handlers: Mapping[str, SignalHand
             async with redis.pubsub() as pubsub:
                 await pubsub.subscribe(*handlers)
                 delay = _RECONNECT_MIN_DELAY_S
-                async for message in pubsub.listen():
-                    if message["type"] != "message":
+                while True:
+                    # an explicit read timeout: listen() would wait under the
+                    # client's socket_timeout and drop the subscription when idle
+                    message = await pubsub.get_message(
+                        ignore_subscribe_messages=True, timeout=_POLL_TIMEOUT_S
+                    )
+                    if message is None or message["type"] != "message":
                         continue
                     channel = message["channel"]
                     try:

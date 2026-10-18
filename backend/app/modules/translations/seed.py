@@ -58,8 +58,7 @@ async def _fill_locales_without_seed(
     # a locale added in the dashboard has no .ftl of its own: keys a release
     # adds reach it in English, otherwise its users hit KeyNotFoundError
     for locale in locales:
-        for message_id, attribute_id, value in en_entries:
-            await translation_repository.seed_missing(locale, message_id, attribute_id, value)
+        await translation_repository.seed_missing_many(locale, en_entries)
 
 
 async def ensure_translations_seeded(
@@ -89,8 +88,7 @@ async def ensure_translations_seeded(
         if locale not in active_locales:
             continue
 
-        for message_id, attribute_id, value in entries:
-            await translation_repository.seed_missing(locale, message_id, attribute_id, value)
+        await translation_repository.seed_missing_many(locale, entries)
 
     await _fill_locales_without_seed(
         translation_repository, active_locales - shipped_locales, en_entries

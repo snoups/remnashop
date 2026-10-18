@@ -6,6 +6,7 @@ from redis.asyncio import ConnectionPool, Redis
 
 from app.core.bot_signals import RedisBotSignals
 from app.core.config import AppConfig
+from app.core.constants import REDIS_CONNECTION_KWARGS
 from app.core.ports import BotSignals
 
 
@@ -17,7 +18,9 @@ class RedisProvider(Provider):
     @provide
     async def get_redis(self, config: AppConfig) -> AsyncGenerator[Redis, None]:
         logger.debug("Connecting to Redis")
-        connection_pool = ConnectionPool.from_url(url=config.redis.dsn, decode_responses=True)
+        connection_pool = ConnectionPool.from_url(
+            url=config.redis.dsn, decode_responses=True, **REDIS_CONNECTION_KWARGS
+        )
         client = Redis(connection_pool=connection_pool)
 
         try:

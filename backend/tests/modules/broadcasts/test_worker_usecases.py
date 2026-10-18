@@ -469,6 +469,37 @@ async def test_deliver_marks_outcomes_and_completes(
     assert blocked is not None and blocked.is_bot_blocked is True
 
 
+async def test_deliver_records_a_group_in_one_transaction(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    make_deliver: Callable[[MockTelegram], DeliverBroadcastBatchUseCase],
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+    with_token: None,
+) -> None:
+    ids = await _customers(session, user_repository, 9660, 3)
+    broadcast = await _sending(broadcast_repository, ids)
+    telegram = MockTelegram(
+        lambda _: httpx.Response(200, json={"ok": True, "result": {"message_id": 1}})
+    )
+    commits = 0
+    real_commit = uow.commit
+
+    async def counting_commit() -> None:
+        nonlocal commits
+        commits += 1
+        await real_commit()
+
+    monkeypatch.setattr(uow, "commit", counting_commit)
+
+    await make_deliver(telegram).system(broadcast.id)
+
+    assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.SENT] * 3
+    # claim, the group's statuses, the still-sending check, the closing counts
+    assert commits == 4
+
+
 async def test_deliver_skips_customers_who_blocked_the_bot(
     session: AsyncSession,
     user_repository: UserRepository,
