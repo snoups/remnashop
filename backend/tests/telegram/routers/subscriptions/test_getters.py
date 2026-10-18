@@ -25,7 +25,16 @@ def _menu_catalog():
 
 
 def _user() -> MagicMock:
-    user = MagicMock(id=1, telegram_id=42, points=0, bonus_days=0, language=Locale.EN)
+    user = MagicMock(
+        id=1,
+        telegram_id=42,
+        points=0,
+        bonus_days=0,
+        language=Locale.EN,
+        personal_discount=0,
+        purchase_discount=0,
+        loyalty_discount=0,
+    )
     user.name = "Test"
     return user
 
@@ -115,7 +124,11 @@ async def test_device_confirm_getter_routes_message_text_through_resolve_variabl
     assert "user_name" in catalog.variable_keys()
 
     dialog_manager = MagicMock()
-    dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN)}
+    dialog_manager.middleware_data = {
+        USER_KEY: MagicMock(
+            id=1, language=Locale.EN, personal_discount=0, purchase_discount=0, loyalty_discount=0
+        )
+    }
 
     async def _fake_render(*args, **kwargs):
         return []

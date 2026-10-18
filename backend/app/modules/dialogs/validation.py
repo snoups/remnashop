@@ -7,7 +7,8 @@ from app.core.exceptions import ValidationError
 from app.core.utils.telegram_text import (
     TELEGRAM_CAPTION_LIMIT,
     TELEGRAM_TEXT_LIMIT,
-    telegram_length,
+    html_text_length,
+    validate_telegram_html,
 )
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
@@ -26,10 +27,11 @@ def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> Non
             f"Window text ({locale}) cannot be empty without a banner",
             code=ErrorCode.DIALOG_TEXT_EMPTY,
         )
-    # Telegram counts UTF-16 code units of the text as sent, where premium
+    validate_telegram_html(value, code=ErrorCode.DIALOG_TEXT_HTML_INVALID)
+    # Telegram counts UTF-16 code units of the visible text, where premium
     # emoji markup is just its glyph. Placeables count as written: what a
     # variable expands to is only known at render time.
-    length = telegram_length(value)
+    length = html_text_length(value)
     limit = MAX_CAPTION_LENGTH if has_banner else MAX_TEXT_LENGTH
     if length > limit:
         raise ValidationError(

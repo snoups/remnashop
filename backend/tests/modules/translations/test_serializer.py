@@ -1,14 +1,20 @@
 import pytest
+from fluent.syntax import FluentParser
+from fluent.syntax.ast import Junk, Message
 from fluent_compiler.bundle import FluentBundle
 
 from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.modules.translations.dto import TranslationEntryDto
 from app.modules.translations.serializer import (
+    assert_valid_bot_html,
     find_disallowed_placeable,
     serialize_to_fluent,
     split_message_key,
     strip_serializer_escapes,
 )
+from tests.seeded_translations import seeded_fluent_source
 
 
 def _entry(message_id: str, attribute_id: str, value: str) -> TranslationEntryDto:
@@ -168,3 +174,26 @@ def test_an_indented_line_starting_with_a_dot_stays_in_the_value() -> None:
     value, errors = FluentBundle.from_string("en", text).format("msg-a")
     assert not errors
     assert strip_serializer_escapes(value).endswith(".note = x")
+
+
+def test_general_editor_checks_html_for_msg_and_frg_only() -> None:
+    with pytest.raises(ValidationError) as exc:
+        assert_valid_bot_html("msg-x", "<div>")
+    assert exc.value.code == ErrorCode.TRANSLATION_HTML_INVALID
+    with pytest.raises(ValidationError):
+        assert_valid_bot_html("frg-x", "<b>")
+    assert_valid_bot_html("btn-x", "<3")
+
+
+@pytest.mark.parametrize("locale", [Locale.EN, Locale.RU])
+def test_every_seeded_message_survives_the_database_round_trip(locale: Locale) -> None:
+    source = seeded_fluent_source(locale)
+    resource = FluentParser().parse(source)
+
+    assert [entry.content[:80] for entry in resource.body if isinstance(entry, Junk)] == []
+    bundle = FluentBundle.from_string(locale.value, text=source)  # type: ignore[no-untyped-call]
+    assert bundle.check_messages() == []
+    for entry in resource.body:
+        assert isinstance(entry, Message)
+        if entry.value is not None:
+            assert bundle.format(entry.id.name)[0]

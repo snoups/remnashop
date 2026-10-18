@@ -1,11 +1,8 @@
 import { Image } from "lucide-react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { BroadcastMediaType } from "@entities/broadcasts/api";
-import { parseTelegramHtml, renderVariablesSample } from "@entities/broadcasts/telegram-html";
-import type { TgNode } from "@entities/broadcasts/telegram-html";
-import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
+import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
@@ -13,65 +10,6 @@ import type { EditorForm } from "@pages/broadcasts/editor/form";
 
 const SAMPLE_DAYS_LEFT = 4;
 const DAY_MS = 24 * 3600 * 1000;
-
-function renderNodes(nodes: TgNode[]): ReactNode[] {
-  return nodes.map((node, index) => {
-    if (typeof node === "string") return node;
-    const children = renderNodes(node.children);
-    switch (node.tag) {
-      case "b":
-        return <b key={index}>{children}</b>;
-      case "i":
-        return <i key={index}>{children}</i>;
-      case "u":
-        return <u key={index}>{children}</u>;
-      case "s":
-        return <s key={index}>{children}</s>;
-      case "code":
-        return (
-          <code key={index} className="font-mono text-[12.5px] text-sky-300">
-            {children}
-          </code>
-        );
-      case "pre":
-        return (
-          <pre key={index} className="my-1 whitespace-pre-wrap rounded-md bg-black/20 p-2 font-mono text-[12.5px] text-sky-300">
-            {children}
-          </pre>
-        );
-      case "blockquote":
-        return (
-          <blockquote key={index} className="my-1 border-l-2 border-sky-400 pl-2">
-            {children}
-          </blockquote>
-        );
-      case "spoiler":
-        return (
-          <span key={index} className="rounded bg-white/25 text-transparent">
-            {children}
-          </span>
-        );
-      case "a":
-        return node.href ? (
-          <a key={index} href={node.href} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
-            {children}
-          </a>
-        ) : (
-          <span key={index}>{children}</span>
-        );
-      case "emoji": {
-        const glyph = node.children.filter((c) => typeof c === "string").join("");
-        return node.emojiId ? (
-          <EmojiThumbnail key={index} glyph={glyph} customEmojiId={node.emojiId} />
-        ) : (
-          <span key={index}>{children}</span>
-        );
-      }
-      default:
-        return null;
-    }
-  });
-}
 
 interface TelegramPreviewProps {
   form: EditorForm;
@@ -95,7 +33,7 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
     points: "120",
     promocode: promocodeCode ?? t("common.none"),
   };
-  const nodes = parseTelegramHtml(renderVariablesSample(content?.text ?? "", values));
+  const text = content?.text ?? "";
   const labels = content?.button_labels ?? [];
   const buttons = [
     ...form.buttons.map((_, index) => labels[index] || t("broadcasts.editor.buttons.label")),
@@ -119,7 +57,7 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
             </div>
           )}
           <div className="whitespace-pre-wrap break-words px-2.5 pb-1.5 pt-2 text-[13.5px] leading-[1.45] text-[#e8ecfb]">
-            {nodes.length > 0 ? renderNodes(nodes) : <span className="text-[#6f7aa3]">{t("broadcasts.editor.preview.empty")}</span>}
+            {text.trim() ? <TelegramHtml value={text} values={values} /> : <span className="text-[#6f7aa3]">{t("broadcasts.editor.preview.empty")}</span>}
           </div>
           <div className="px-2.5 pb-1.5 text-right text-[11px] text-[#6f7aa3]">
             {new Date().toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}

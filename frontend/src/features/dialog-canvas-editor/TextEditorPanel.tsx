@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
+import { sentHtmlLength, sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
 import type { VariableOption } from "@entities/dialogs/api";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
@@ -12,6 +12,7 @@ import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { FormatToolbar } from "@features/dialog-canvas-editor/FormatToolbar";
 import { RichTextField, type RichTextFieldHandle } from "@features/dialog-canvas-editor/RichTextField";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 
@@ -28,6 +29,8 @@ interface TextEditorPanelProps {
   /** A window body is a Telegram message and may have paragraphs; a button
    * label is one line. */
   multiline?: boolean;
+  /** The text is Telegram HTML: formatting toolbar, length counted without tags. */
+  html?: boolean;
   /** false: the multiline field without backdrop blur */
   blurred?: boolean;
   /** Text takes emoji inline, at the cursor. A premium one becomes the markup
@@ -60,6 +63,7 @@ export function TextEditorPanel({
   canUpdate,
   canReset,
   multiline = false,
+  html = false,
   blurred = true,
   emojiInsert = false,
   fieldAction,
@@ -74,7 +78,7 @@ export function TextEditorPanel({
     (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
   );
   const [draft, setDraft] = useState(entry?.value ?? "");
-  const draftLength = sentTextLength(draft);
+  const draftLength = html ? sentHtmlLength(draft) : sentTextLength(draft);
   const isTooLong = maxLength !== undefined && draftLength > maxLength;
   const fieldRef = useRef<HTMLInputElement>(null);
   const richFieldRef = useRef<RichTextFieldHandle>(null);
@@ -142,6 +146,11 @@ export function TextEditorPanel({
 
   return (
     <div>
+      {html && (
+        <div className="mb-1 flex flex-wrap items-center gap-0.5">
+          <FormatToolbar fieldRef={richFieldRef} disabled={!canUpdate} />
+        </div>
+      )}
       <div className="relative">
         {multiline ? (
           <RichTextField

@@ -17,6 +17,7 @@ from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
     assert_plain_translation_value,
+    assert_valid_bot_html,
     serialize_to_fluent,
 )
 
@@ -58,6 +59,7 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
                     skipped += 1
                     continue
                 assert_plain_translation_value(text.value)
+                assert_valid_bot_html(text.message_id, text.value)
                 try:
                     await self._translation_repository.update_value(
                         text.locale, text.message_id, text.attribute_id, text.value

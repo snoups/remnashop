@@ -29,7 +29,16 @@ def _system(value: MagicMock) -> MagicMock:
 
 
 async def _render(code: Optional[str], points: Decimal, bonus_days: int) -> dict:
-    user = MagicMock(id=1, telegram_id=42, points=points, bonus_days=bonus_days, language=Locale.EN)
+    user = MagicMock(
+        id=1,
+        telegram_id=42,
+        points=points,
+        bonus_days=bonus_days,
+        language=Locale.EN,
+        personal_discount=0,
+        purchase_discount=0,
+        loyalty_discount=0,
+    )
     manager = MagicMock()
     manager.middleware_data = {USER_KEY: user}
     stats = MagicMock(

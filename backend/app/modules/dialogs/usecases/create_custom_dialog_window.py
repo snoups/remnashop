@@ -1,3 +1,4 @@
+import html
 from uuid import uuid4
 
 from app.core.actor import Actor
@@ -39,7 +40,9 @@ class CreateCustomDialogWindowUseCase(UseCase[CreateCustomDialogWindowDto, Dialo
             locales = await self._translation_repository.list_active_locales()
 
             for locale in locales:
-                await self._translation_repository.seed_missing(locale, text_key, "", data.name)
+                await self._translation_repository.seed_missing(
+                    locale, text_key, "", html.escape(data.name, quote=False)
+                )
             window = await self._dialog_repository.create_custom_window(
                 key, CreateCustomWindowDto(banner_name=data.banner_name, name=data.name)
             )

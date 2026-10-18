@@ -1,4 +1,64 @@
-msg-main-menu = Главное меню, { $user_name }!
+msg-main-menu =
+    <b>👤 Профиль</b>:
+    <blockquote>• <b>ID</b>: <code>{ $user_id }</code>
+    • <b>Имя</b>: { $user_name }
+    • <b>Скидка</b>: { $user_discount }%</blockquote>
+
+    { $subscription_block }
+frg-menu-subscription =
+    { $is_trial ->
+        [1] <b>🎁 Пробная подписка</b>:
+       *[0] <b>💳 Подписка</b>:
+    }
+    { $status ->
+        [ACTIVE]
+            <blockquote>• <b>Лимит трафика</b>: { $traffic_limit }
+            • <b>Лимит устройств</b>: { $device_limit }
+            • <b>Действует до</b>: { $expire_at }</blockquote>
+        [EXPIRED]
+            <blockquote>• Срок действия истёк.
+
+            <i>{ $is_trial ->
+                [0] Ваша подписка истекла. Продлите её, чтобы продолжить пользоваться сервисом!
+               *[1] Ваш бесплатный пробный период закончился. Оформите подписку, чтобы продолжить пользоваться сервисом!
+            }</i></blockquote>
+        [LIMITED]
+            <blockquote>• Ваш трафик израсходован.
+
+            <i>{ $is_trial ->
+                [0] { $traffic_strategy ->
+                    [NO_RESET] Продлите подписку, чтобы сбросить трафик и продолжить пользоваться сервисом!
+                   *[RESET] Трафик восстановится в начале следующего периода. Вы также можете продлить подписку, чтобы сбросить трафик.
+                }
+               *[1] { $traffic_strategy ->
+                    [NO_RESET] Оформите подписку, чтобы продолжить пользоваться сервисом!
+                   *[RESET] Трафик восстановится в начале следующего периода. Вы также можете оформить подписку, чтобы пользоваться сервисом без ограничений.
+                }
+            }</i></blockquote>
+        [DISABLED]
+            <blockquote>• Ваша подписка отключена.
+
+            <i>Свяжитесь с поддержкой для выяснения причины!</i></blockquote>
+       *[NONE]
+            <blockquote>• У вас нет оформленной подписки.
+
+            <i>{ $trial_available ->
+                [1] 🎁 Для вас доступен бесплатный пробник — нажмите кнопку ниже, чтобы его получить.
+               *[0] ↘️ Чтобы купить доступ, нажмите «Купить подписку».
+            }</i></blockquote>
+    }
+
+    Ещё подписок: { $extra_count } — смотрите «Мои подписки».
+frg-subscription-status = { $status ->
+        [ACTIVE] Активна
+        [LIMITED] Трафик исчерпан
+        [EXPIRED] Истекла
+        [DISABLED] Отключена
+        [DELETED] Удалена
+       *[other] { $status }
+    }
+frg-subscription-unlimited = Безлимит
+frg-subscription-traffic-limit = { $traffic_limit } ГБ
 msg-window-gone = Этот экран больше недоступен.
 msg-paysupport = Чтобы запросить возврат средств, напишите в поддержку.
 msg-menu-devices = Ваши устройства ({ $devices_current }/{ $devices_max })

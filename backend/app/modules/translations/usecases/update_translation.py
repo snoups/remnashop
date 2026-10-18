@@ -10,6 +10,7 @@ from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
     assert_plain_translation_value,
+    assert_valid_bot_html,
     join_message_key,
     serialize_to_fluent,
 )
@@ -34,6 +35,7 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
 
     async def _execute(self, actor: Actor, data: UpdateTranslationDto) -> TranslationEntryDto:
         assert_plain_translation_value(data.value)
+        assert_valid_bot_html(data.message_id, data.value)
 
         async with self._uow:
             existing = await self._translation_repository.list_by_locale(data.locale)

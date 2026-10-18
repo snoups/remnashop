@@ -51,9 +51,14 @@ async def build_condition_data(
         subscription = next((s for s in active if s.id == selected_id), None)
     trial = await get_available_trial(user)
     offers_trial = trial.is_trial_available and trial.plan is not None
+    # the discount checkout applies next: transactions' pricing takes the
+    # largest of the three, capped at 100
+    discount = min(max(user.personal_discount, user.purchase_discount, user.loyalty_discount), 100)
     return {
         "name": user.name,
-        "telegram_id": user.telegram_id or "",
+        # a string, so Fluent doesn't group the digits
+        "telegram_id": str(user.telegram_id) if user.telegram_id else "",
+        "discount": str(discount) if discount > 0 else "",
         "points": str(user.points),
         "bonus_days": user.bonus_days,
         "subscriptions_count": len(active),

@@ -1,24 +1,101 @@
 import html
 import re
-from typing import Any, Optional
+from typing import Any, Final, Optional, TypeVar
 
 from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
 from loguru import logger
 
-from app.core.utils.telegram_text import PREMIUM_EMOJI_RE
+from app.core.utils.telegram_text import (
+    PREMIUM_EMOJI_RE,
+    TELEGRAM_CAPTION_LIMIT,
+    html_text_length,
+)
 from app.modules.dialogs import catalog
 from app.modules.translations import strip_serializer_escapes
 from app.telegram.dialogs.config_cache import DialogConfigCache
 
+_T = TypeVar("_T")
+
+
+class TrustedHtml(str):
+    """Markup render_window_text inserts unescaped: blocks built from ftl fragments."""
+
+
+# sentinels no translation or escaped value contains: _EMPTY marks lines to
+# drop, _VALUE_NEWLINE hides a value's own line breaks so the rule sees only
+# template lines and a multi-line block is kept or dropped whole
+_EMPTY: Final[str] = "\x00empty\x00"
+_VALUE_NEWLINE: Final[str] = "\x00nl\x00"
+_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<[^<>]*>")
+_BLANK_RUN_RE: Final[re.Pattern[str]] = re.compile(r"\n{3,}")
+
+
+def _prepare_value(value: Any) -> Any:
+    if value is None or value == "":
+        return _EMPTY
+    if isinstance(value, TrustedHtml):
+        return value.replace("\n", _VALUE_NEWLINE)
+    if isinstance(value, str):
+        return html.escape(value, quote=False).replace("\n", _VALUE_NEWLINE)
+    return value
+
+
+def _drop_empty_lines(text: str) -> str:
+    # A dropped line keeps its tags, or a `</blockquote>` on it would leave the
+    # message unbalanced and Telegram would reject it. Values are escaped by now,
+    # so every raw `<` belongs to the template or a balanced TrustedHtml block.
+    # A pair opened and closed on the dropped line goes with it.
+    kept: list[str] = []
+    pending = ""
+    for line in text.split("\n"):
+        if _EMPTY not in line:
+            kept.append(pending + line)
+            pending = ""
+            continue
+        opened: list[str] = []
+        for tag in _TAG_RE.findall(line):
+            if not tag.startswith("</"):
+                opened.append(tag)
+            elif opened:
+                opened.pop()
+            elif kept and not pending:
+                kept[-1] += tag
+            else:
+                pending += tag
+        pending += "".join(opened)
+    if pending:
+        if kept:
+            kept[-1] += pending
+        else:
+            kept.append(pending)
+    return _BLANK_RUN_RE.sub("\n\n", "\n".join(kept)).strip("\n")
+
 
 def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str:
-    # Premium emoji needs a custom_emoji entity, and aiogram-dialog's
-    # NewMessage carries no entities, so the window renders as HTML with a
-    # <tg-emoji> tag. Everything else is escaped first, so a variable holding
-    # "<b>" stays literal.
-    escaped = html.escape(strip_serializer_escapes(runner.get(key, **kwargs)), quote=False)
-    return PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', escaped)
+    # Rendered as HTML: the template is admin-edited markup, values are escaped
+    # so a user's display name holding "<b>" stays literal.
+    prepared = {name: _prepare_value(value) for name, value in kwargs.items()}
+    text = _drop_empty_lines(strip_serializer_escapes(runner.get(key, **prepared)))
+    if html_text_length(text) == 0:
+        # Telegram refuses an empty message, so the lines stay with their values empty
+        prepared = {name: "" if value == _EMPTY else value for name, value in prepared.items()}
+        text = strip_serializer_escapes(runner.get(key, **prepared))
+    text = text.replace(_VALUE_NEWLINE, "\n")
+    return PREMIUM_EMOJI_RE.sub(r'<tg-emoji emoji-id="\2">\1</tg-emoji>', text)
+
+
+def fits_caption(text: str) -> bool:
+    return html_text_length(text) <= TELEGRAM_CAPTION_LIMIT
+
+
+def banner_within_caption(banner: Optional[_T], text: str) -> Optional[_T]:
+    """The banner to send with a rendered text, or None when the text is too
+    long for a caption and has to go out as a plain message."""
+    if banner is None or fits_caption(text):
+        return banner
+    logger.warning(f"Window text exceeds the caption limit, sending without banner: {banner}")
+    return None
 
 
 def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Optional[str]:

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.modules.dialogs import catalog, register_all_flow_metadata
+from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.telegram.dialogs import state_pool
 from app.telegram.routers.menu.catalog import register_menu_catalog
 from app.telegram.routers.subscriptions.catalog import register_subscriptions_catalog
@@ -129,3 +130,17 @@ def test_calling_twice_is_idempotent() -> None:
         "referrals.main",
     }
     assert catalog.has_action_handler("get_trial") is True
+
+
+def test_registers_main_menu_text_variables() -> None:
+    register_menu_metadata()
+    menu_only = {
+        "subscription_status",
+        "subscription_traffic_limit",
+        "subscription_device_limit",
+        "subscription_expire_at",
+        "subscription_block",
+    }
+    assert menu_only <= set(catalog.get_window("menu.main").text_variables)
+    assert not menu_only & catalog.text_variable_keys()
+    assert "user_discount" in catalog.text_variable_keys()

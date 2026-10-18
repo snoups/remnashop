@@ -1,6 +1,7 @@
 import pytest
 
 from app.core.enums import ButtonLinkType, DialogWindowKind, Locale
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
@@ -73,4 +74,16 @@ def test_premium_emoji_markup_counts_as_its_glyph() -> None:
         validate_window_text(text, has_banner=True, locale=Locale.EN)
     validate_window_text(
         "a" * (MAX_CAPTION_LENGTH - 2) + "[🙂](emoji:123)", has_banner=True, locale=Locale.EN
+    )
+
+
+def test_window_text_rejects_unclosed_tag() -> None:
+    with pytest.raises(ValidationError) as exc:
+        validate_window_text("<b>x", has_banner=False, locale=Locale.EN)
+    assert exc.value.code == ErrorCode.DIALOG_TEXT_HTML_INVALID
+
+
+def test_window_text_length_ignores_tags() -> None:
+    validate_window_text(
+        "<b>" + "a" * MAX_CAPTION_LENGTH + "</b>", has_banner=True, locale=Locale.EN
     )

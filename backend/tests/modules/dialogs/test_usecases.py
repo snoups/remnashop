@@ -4,6 +4,7 @@ from fluent_compiler.bundle import FluentBundle
 from app.core.bot_signals import RedisBotSignals
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ButtonLinkType, DialogFlow, DialogWindowKind, Locale, Role
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import (
@@ -504,6 +505,26 @@ async def test_create_custom_window_seeds_translation(
     assert result.name == "Hello"
     assert result.key.startswith("custom-")
     assert result.kind == DialogWindowKind.CUSTOM
+
+
+async def test_create_custom_window_seeds_the_name_as_escaped_html(
+    dialog_repository, translation_repository, settings_repository, uow, redis
+) -> None:
+    use_case = CreateCustomDialogWindowUseCase(
+        dialog_repository,
+        translation_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+
+    result = await use_case(OWNER, CreateCustomDialogWindowDto(name="FAQ <beta> & co"))
+
+    entry = await translation_repository.get(Locale.EN, f"msg-dialog-{result.key}", "")
+    assert entry is not None
+    assert entry.value == "FAQ &lt;beta&gt; &amp; co"
 
 
 async def test_delete_custom_window(
@@ -1083,3 +1104,35 @@ async def test_banner_cannot_be_set_over_text_too_long_for_a_caption(
             OWNER,
             ConfigureDialogWindowDto(key="menu.main", banner_name="x", banner_name_provided=True),
         )
+
+
+async def test_update_dialog_text_rejects_invalid_html(
+    dialog_repository: DialogRepository,
+    translation_repository,
+    settings_repository,
+    uow,
+    redis,
+) -> None:
+    _register_text_window("msg-window-html")
+    await dialog_repository.upsert_seed(
+        "menu.text_window", DialogFlow.MENU, None, {"banner_name": None, "buttons": []}
+    )
+    if Locale.EN not in await translation_repository.list_active_locales():
+        await translation_repository.add_active_locale(Locale.EN)
+    await translation_repository.seed_missing(Locale.EN, "msg-window-html", "", "Hi!")
+
+    use_case = UpdateDialogTextUseCase(
+        translation_repository,
+        dialog_repository,
+        uow,
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+    with pytest.raises(ValidationError) as exc:
+        await use_case(
+            OWNER,
+            UpdateDialogTextDto(
+                locale=Locale.EN, message_id="msg-window-html", attribute_id="", value="<b>x"
+            ),
+        )
+    assert exc.value.code == ErrorCode.DIALOG_TEXT_HTML_INVALID

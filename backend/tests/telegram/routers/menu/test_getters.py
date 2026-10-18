@@ -53,7 +53,16 @@ async def test_menu_getter_includes_rendered_buttons(
     config, banner_repository, subscription_repository, uow, monkeypatch
 ) -> None:
     dialog_manager = MagicMock()
-    dialog_manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN, name="Test")}
+    dialog_manager.middleware_data = {
+        USER_KEY: MagicMock(
+            id=1,
+            language=Locale.EN,
+            personal_discount=0,
+            purchase_discount=0,
+            loyalty_discount=0,
+            name="Test",
+        )
+    }
 
     fake_cache = MagicMock()
     fake_cache.get_window = AsyncMock(return_value=MagicMock(banner_name="menu"))
@@ -102,7 +111,9 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
     assert "user_name" in catalog.variable_keys()
 
     # `name` is a reserved MagicMock kwarg, so it must be assigned after construction.
-    user = MagicMock(id=1, language=Locale.EN)
+    user = MagicMock(
+        id=1, language=Locale.EN, personal_discount=0, purchase_discount=0, loyalty_discount=0
+    )
     user.name = "Test"
     dialog_manager = MagicMock()
     dialog_manager.middleware_data = {USER_KEY: user}

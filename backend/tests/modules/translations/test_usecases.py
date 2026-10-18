@@ -440,3 +440,72 @@ async def test_regular_user_cannot_export_translations(
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER)
+
+
+async def test_update_translation_rejects_invalid_html_in_a_window_text(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> None:
+    await _seed(settings_repository, translation_repository)
+    await translation_repository.seed_missing(Locale.EN, "msg-x", "", "Fine")
+    use_case = UpdateTranslationUseCase(
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        await use_case(
+            OWNER,
+            UpdateTranslationDto(
+                locale=Locale.EN, message_id="msg-x", attribute_id="", value="<b>x"
+            ),
+        )
+
+    assert exc.value.code == ErrorCode.TRANSLATION_HTML_INVALID
+    entry = await translation_repository.get(Locale.EN, "msg-x", "")
+    assert entry is not None
+    assert entry.value == "Fine"
+
+
+async def test_import_rejects_the_whole_file_on_invalid_html(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> None:
+    async with uow:
+        await _seed(settings_repository, translation_repository)
+        await translation_repository.seed_missing(Locale.EN, "msg-x", "", "Fine")
+    use_case = ImportTranslationsUseCase(
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        await use_case(
+            OWNER,
+            TranslationsImportDto(
+                version=EXPORT_VERSION,
+                texts=[
+                    TranslationTextExportDto(
+                        locale=Locale.EN, message_id="command", attribute_id="menu", value="Ok"
+                    ),
+                    TranslationTextExportDto(
+                        locale=Locale.EN, message_id="msg-x", attribute_id="", value="<b>x"
+                    ),
+                ],
+            ),
+        )
+
+    assert exc.value.code == ErrorCode.TRANSLATION_HTML_INVALID
+    entry = await translation_repository.get(Locale.EN, "msg-x", "")
+    assert entry is not None
+    assert entry.value == "Fine"

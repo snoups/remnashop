@@ -7,13 +7,13 @@ from app.core.utils.telegram_text import (
     TELEGRAM_CAPTION_LIMIT,
     TELEGRAM_TEXT_LIMIT,
     telegram_length,
+    validate_telegram_html,
 )
 from app.modules.broadcasts.channels import sends_email, sends_telegram
 from app.modules.broadcasts.content import (
     BROADCAST_VARIABLES,
     CHANNEL_VARIABLES,
     used_variables,
-    validate_html,
 )
 from app.modules.broadcasts.dto import (
     BroadcastAudienceDto,
@@ -173,7 +173,7 @@ def _validate_telegram(data: SaveBroadcastDto, *, has_media: bool) -> None:
             )
 
     for locale, content in data.contents.items():
-        validate_html(content.text)
+        validate_telegram_html(content.text, code=ErrorCode.BROADCAST_HTML_INVALID)
         variables = used_variables(content.text)
         unknown = variables - BROADCAST_VARIABLES
         if unknown:

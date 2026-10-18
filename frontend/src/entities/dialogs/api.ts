@@ -203,6 +203,18 @@ export function sentTextLength(value: string): number {
   return value.replace(PREMIUM_EMOJI_RE, "$1").length;
 }
 
+/** A window text is Telegram HTML: tags are not counted, entities count as the character. */
+export function sentHtmlLength(value: string): number {
+  return sentTextLength(
+    value
+      .replace(/<[^>]*>/g, "")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&"),
+  );
+}
+
 export function buttonLimitProblem(
   buttons: DialogButtonItem[],
 ): { kind: "row" | "total"; max: number } | null {

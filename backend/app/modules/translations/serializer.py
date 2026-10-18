@@ -10,6 +10,7 @@ from loguru import logger
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.telegram_text import validate_telegram_html
 from app.modules.translations.dto import TranslationEntryDto
 
 
@@ -63,8 +64,15 @@ def _block(value: str, indent: str) -> str:
     # line sits right after `=`, where these characters are plain text.
     if not value:
         return _EMPTY_VALUE
+    # Inside a placeable a line start is select syntax (`[key]`, `*[other]`), not text.
+    # No allowed placeable holds a brace in a string literal, so counting is enough.
     first, *rest = value.split("\n")
-    return f"\n{indent}".join([first, *map(_escape_line_start, rest)])
+    lines = [first]
+    depth = first.count("{") - first.count("}")
+    for line in rest:
+        lines.append(line if depth > 0 else _escape_line_start(line))
+        depth += line.count("{") - line.count("}")
+    return f"\n{indent}".join(lines)
 
 
 def fluent_value_source(value: str) -> str:
@@ -115,6 +123,15 @@ def contains_placeable(text: str) -> bool:
     return any(
         isinstance(element, Placeable) for pattern in patterns for element in pattern.elements
     )
+
+
+# Window bodies and fragments are sent with parse_mode=HTML; other keys are plain text.
+_HTML_KEY_PREFIXES: Final[tuple[str, ...]] = ("msg-", "frg-")
+
+
+def assert_valid_bot_html(message_id: str, value: str) -> None:
+    if message_id.startswith(_HTML_KEY_PREFIXES):
+        validate_telegram_html(value, code=ErrorCode.TRANSLATION_HTML_INVALID)
 
 
 def assert_plain_translation_value(value: str) -> None:

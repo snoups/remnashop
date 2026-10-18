@@ -392,6 +392,7 @@ export function DialogCanvasEditor() {
               catalog?.window_text_variable_keys[selectedWindow.key],
             )}
             multiline
+            html
             emojiInsert
             // Without a banner the window is a plain message, which cannot be
             // empty; with one it is a photo caption, which is shorter.

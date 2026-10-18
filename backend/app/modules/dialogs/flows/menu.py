@@ -43,6 +43,9 @@ def register_menu_metadata() -> None:
         "user_bonus_days", lambda data: data.get("bonus_days", 0), category="user"
     )
     catalog.register_variable(
+        "user_discount", lambda data: data.get("discount", ""), category="user"
+    )
+    catalog.register_variable(
         "subscriptions_count", lambda data: data.get("subscriptions_count", 0), category="user"
     )
     catalog.register_variable(
@@ -55,6 +58,14 @@ def register_menu_metadata() -> None:
             flow=DialogFlow.MENU,
             text_keys=("msg-main-menu",),
             banner_name=DEFAULT_BANNER_NAME,
+            # rendered with the bot's translator, so only menu_getter has them
+            text_variables=(
+                "subscription_status",
+                "subscription_traffic_limit",
+                "subscription_device_limit",
+                "subscription_expire_at",
+                "subscription_block",
+            ),
             buttons=(
                 catalog.CatalogButton(
                     key="connect",

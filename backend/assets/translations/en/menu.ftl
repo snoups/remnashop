@@ -1,4 +1,64 @@
-msg-main-menu = Main menu, { $user_name }!
+msg-main-menu =
+    <b>👤 Profile</b>:
+    <blockquote>• <b>ID</b>: <code>{ $user_id }</code>
+    • <b>Name</b>: { $user_name }
+    • <b>Discount</b>: { $user_discount }%</blockquote>
+
+    { $subscription_block }
+frg-menu-subscription =
+    { $is_trial ->
+        [1] <b>🎁 Trial subscription</b>:
+       *[0] <b>💳 Subscription</b>:
+    }
+    { $status ->
+        [ACTIVE]
+            <blockquote>• <b>Traffic limit</b>: { $traffic_limit }
+            • <b>Device limit</b>: { $device_limit }
+            • <b>Expires</b>: { $expire_at }</blockquote>
+        [EXPIRED]
+            <blockquote>• Your subscription has expired.
+
+            <i>{ $is_trial ->
+                [0] Renew it to keep using the service!
+               *[1] Your free trial has ended. Buy a subscription to keep using the service!
+            }</i></blockquote>
+        [LIMITED]
+            <blockquote>• Your traffic is used up.
+
+            <i>{ $is_trial ->
+                [0] { $traffic_strategy ->
+                    [NO_RESET] Renew your subscription to reset the traffic and keep using the service!
+                   *[RESET] Traffic is restored at the start of the next period. You can also renew your subscription to reset it now.
+                }
+               *[1] { $traffic_strategy ->
+                    [NO_RESET] Buy a subscription to keep using the service!
+                   *[RESET] Traffic is restored at the start of the next period. You can also buy a subscription to use the service without limits.
+                }
+            }</i></blockquote>
+        [DISABLED]
+            <blockquote>• Your subscription is disabled.
+
+            <i>Contact support to find out why.</i></blockquote>
+       *[NONE]
+            <blockquote>• You have no subscription.
+
+            <i>{ $trial_available ->
+                [1] 🎁 A free trial is available to you — tap the button below to get it.
+               *[0] ↘️ To get access, tap “Buy a subscription”.
+            }</i></blockquote>
+    }
+
+    More subscriptions: { $extra_count } — see “My subscriptions”.
+frg-subscription-status = { $status ->
+        [ACTIVE] Active
+        [LIMITED] Traffic limit reached
+        [EXPIRED] Expired
+        [DISABLED] Disabled
+        [DELETED] Deleted
+       *[other] { $status }
+    }
+frg-subscription-unlimited = Unlimited
+frg-subscription-traffic-limit = { $traffic_limit } GB
 msg-window-gone = This screen is no longer available.
 msg-paysupport = To request a refund, contact support.
 msg-menu-devices = Your devices ({ $devices_current }/{ $devices_max })

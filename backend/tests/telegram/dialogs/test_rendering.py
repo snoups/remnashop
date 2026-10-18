@@ -1,15 +1,20 @@
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.core.enums import DialogFlow
+from app.core.enums import DialogFlow, Locale
+from app.core.utils.telegram_text import TELEGRAM_CAPTION_LIMIT
 from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.rendering import (
+    TrustedHtml,
+    banner_within_caption,
+    fits_caption,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
 )
+from app.telegram.i18n import build_translator_hub
 
 _SNAPSHOT = {
     "banner_name": "menu",
@@ -222,15 +227,114 @@ def test_render_window_text_turns_markup_into_a_tg_emoji_tag() -> None:
     )
 
 
-def test_render_window_text_escapes_everything_else() -> None:
-    # the window renders as HTML for <tg-emoji>, so any unescaped text, a
-    # user's display name included, is an injection point
-    runner = _StubRunner('<a href="http://evil">click</a> & <b>bold</b>')
-    assert render_window_text(runner, "k") == (
-        '&lt;a href="http://evil"&gt;click&lt;/a&gt; &amp; &lt;b&gt;bold&lt;/b&gt;'
+class _TemplateRunner:
+    # substitutes kwargs the way Fluent fills `{ $x }` placeables
+    def __init__(self, template: str) -> None:
+        self._template = template
+
+    def get(self, key: str, **kwargs: object) -> str:
+        text = self._template
+        for name, value in kwargs.items():
+            text = text.replace(f"{{ ${name} }}", str(value))
+        return text
+
+
+def _runner(template: str) -> _TemplateRunner:
+    return _TemplateRunner(template)
+
+
+def test_values_are_escaped_template_is_not() -> None:
+    out = render_window_text(_runner("<b>{ $name }</b>"), "k", name="<i>&")
+    assert out == "<b>&lt;i&gt;&amp;</b>"
+
+
+def test_trusted_html_is_not_escaped() -> None:
+    assert (
+        render_window_text(_runner("{ $block }"), "k", block=TrustedHtml("<b>x</b>")) == "<b>x</b>"
     )
+
+
+def test_line_with_empty_variable_is_dropped() -> None:
+    assert render_window_text(_runner("a\nskidka { $d }%\nb"), "k", d="") == "a\nb"
+
+
+def test_line_with_none_variable_is_dropped() -> None:
+    assert render_window_text(_runner("a\nskidka { $d }%\nb"), "k", d=None) == "a\nb"
+
+
+def test_dropped_line_keeps_its_tags() -> None:
+    tpl = "<b>P</b>:\n<blockquote>• id { $id }\n• name { $n }\n• d { $d }%</blockquote>"
+    out = render_window_text(_runner(tpl), "k", id="", n="Bob", d="")
+    assert out == "<b>P</b>:\n<blockquote>• name Bob</blockquote>"
+
+
+def test_dropped_line_with_a_closed_tag_still_closes_the_quote_on_the_line_above() -> None:
+    tpl = "<blockquote>• n { $n }\n• <b>d</b>: { $d }%</blockquote>\n\nnext"
+    out = render_window_text(_runner(tpl), "k", n="Bob", d="")
+    assert out == "<blockquote>• n Bob</blockquote>\n\nnext"
+
+
+def test_dropped_first_and_last_lines_keep_their_tags() -> None:
+    tpl = "<blockquote>{ $a }\nmid\n{ $b }</blockquote>"
+    assert render_window_text(_runner(tpl), "k", a="", b="") == "<blockquote>mid</blockquote>"
+
+
+def test_blank_lines_collapse() -> None:
+    assert render_window_text(_runner("a\n\n{ $x }\n\nb"), "k", x="") == "a\n\nb"
+
+
+def test_edge_blank_lines_are_trimmed() -> None:
+    assert render_window_text(_runner("{ $x }\n\na\n\n"), "k", x="") == "a"
+
+
+def test_int_values_pass_through() -> None:
+    assert render_window_text(_runner("n={ $n }"), "k", n=0) == "n=0"
+
+
+def test_multiline_block_line_with_empty_variable_is_dropped_whole() -> None:
+    block = TrustedHtml("<blockquote>l1\nl2</blockquote>")
+    tpl = "a\n{ $blk } { $x }\nb"
+    assert render_window_text(_runner(tpl), "k", blk=block, x="") == "a\nb"
+
+
+def test_multiline_block_keeps_its_own_blank_line() -> None:
+    block = TrustedHtml("<blockquote>l1\n\n\nl2</blockquote>")
+    assert render_window_text(_runner("{ $blk }"), "k", blk=block) == block
+
+
+def test_real_fluent_drops_multiline_block_line_without_orphan_bidi_marks() -> None:
+    hub = build_translator_hub(
+        [Locale.EN], {Locale.EN: "k = a\n    { $blk } { $x }\n    b\n"}, Locale.EN
+    )
+    runner = hub.get_translator_by_locale(Locale.EN.value)
+    block = TrustedHtml("<blockquote>l1\nl2</blockquote>")
+    out = render_window_text(runner, "k", blk=block, x="")
+    assert out == "a\nb"
+    shown = render_window_text(runner, "k", blk=block, x="y")
+    assert "l1\nl2" in shown
+    assert shown.count("\u2068") == shown.count("\u2069")
+
+
+def test_fits_caption_counts_text_without_tags() -> None:
+    assert fits_caption("<b>" + "x" * TELEGRAM_CAPTION_LIMIT + "</b>")
+    assert not fits_caption("x" * (TELEGRAM_CAPTION_LIMIT + 1))
+
+
+def test_banner_within_caption_drops_banner_for_long_text() -> None:
+    assert banner_within_caption("banner", "short") == "banner"
+    assert banner_within_caption("banner", "x" * (TELEGRAM_CAPTION_LIMIT + 1)) is None
+    assert banner_within_caption(None, "short") is None
 
 
 def test_render_window_text_ignores_a_malformed_emoji_marker() -> None:
     runner = _StubRunner("[\U0001f381](emoji:not-a-number)")
     assert render_window_text(runner, "k") == "[\U0001f381](emoji:not-a-number)"
+
+
+def test_text_without_any_visible_line_left_keeps_its_lines() -> None:
+    assert render_window_text(_runner("Your link: { $u }"), "k", u="") == "Your link: "
+
+
+def test_quote_without_any_visible_line_left_keeps_its_lines() -> None:
+    tpl = "<blockquote>{ $a }\n{ $b }</blockquote>"
+    assert render_window_text(_runner(tpl), "k", a="", b=None) == "<blockquote>\n</blockquote>"

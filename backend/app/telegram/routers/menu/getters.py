@@ -1,26 +1,88 @@
-from typing import Any
+from typing import Any, Optional
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from fluentogram import TranslatorHub
+from fluentogram import TranslatorHub, TranslatorRunner
+from remnapy.enums import TrafficLimitStrategy
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
 from app.modules.banners import GetBannerForDisplayUseCase
 from app.modules.referrals import GetReferralSettingsUseCase
 from app.modules.settings import GetShopSettingsUseCase
-from app.modules.subscriptions import GetAvailableTrialUseCase, ListOwnActiveSubscriptionsUseCase
+from app.modules.subscriptions import (
+    GetAvailableTrialUseCase,
+    ListOwnActiveSubscriptionsUseCase,
+    SubscriptionDto,
+)
+from app.modules.translations import strip_serializer_escapes
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags
 from app.telegram.dialogs.rendering import (
+    TrustedHtml,
+    banner_within_caption,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
 )
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import format_datetime, get_translator
+
+
+def subscription_menu_values(
+    runner: TranslatorRunner,
+    subscription: Optional[SubscriptionDto],
+    *,
+    extra_count: int,
+    trial_available: bool,
+) -> dict[str, Any]:
+    """menu.main's subscription_* text variables. They need the translator,
+    which catalog resolvers don't get, so they are rendered here."""
+    values: dict[str, Any] = {
+        "subscription_status": "",
+        "subscription_traffic_limit": "",
+        "subscription_device_limit": "",
+        "subscription_expire_at": "",
+    }
+    if subscription is not None:
+        # limits go in as strings, so Fluent doesn't group the digits
+        traffic = subscription.effective_traffic_limit
+        devices = subscription.effective_device_limit
+        unlimited = strip_serializer_escapes(runner.get("frg-subscription-unlimited"))
+        values = {
+            "subscription_status": strip_serializer_escapes(
+                runner.get("frg-subscription-status", status=subscription.status.value)
+            ),
+            "subscription_traffic_limit": (
+                strip_serializer_escapes(
+                    runner.get("frg-subscription-traffic-limit", traffic_limit=str(traffic))
+                )
+                if traffic
+                else unlimited
+            ),
+            "subscription_device_limit": str(devices) if devices else unlimited,
+            "subscription_expire_at": format_datetime(subscription.expire_at),
+        }
+    # no helper for the traffic reset date yet, so the RESET texts name none
+    resets = (
+        subscription is not None
+        and subscription.traffic_limit_strategy != TrafficLimitStrategy.NO_RESET
+    )
+    block = render_window_text(
+        runner,
+        "frg-menu-subscription",
+        status=subscription.status.value if subscription is not None else "NONE",
+        is_trial=int(subscription is not None and subscription.is_trial),
+        traffic_strategy="RESET" if resets else "NO_RESET",
+        trial_available=int(trial_available),
+        traffic_limit=values["subscription_traffic_limit"],
+        device_limit=values["subscription_device_limit"],
+        expire_at=values["subscription_expire_at"],
+        extra_count=str(extra_count) if extra_count > 0 else "",
+    )
+    return {**values, "subscription_block": TrustedHtml(block)}
 
 
 @inject
@@ -57,7 +119,15 @@ async def menu_getter(
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
     )
-    data["banner"] = banner
-    data["menu_text"] = render_window_text(runner, "msg-main-menu", **resolve_variable_kwargs(data))
+    subscription_values = subscription_menu_values(
+        runner,
+        data["subscription"],
+        extra_count=len(active) - 1,
+        trial_available=data["trial_available"],
+    )
+    data["menu_text"] = render_window_text(
+        runner, "msg-main-menu", **subscription_values, **resolve_variable_kwargs(data)
+    )
+    data["banner"] = banner_within_caption(banner, data["menu_text"])
     data["buttons"] = await render_dialog_buttons("menu.main", dialog_config_cache, runner, data)
     return data

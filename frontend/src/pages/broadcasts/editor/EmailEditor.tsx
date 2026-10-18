@@ -37,7 +37,7 @@ import { dropForeignImages, EMAIL_URL_RE, referencedImageIds, toEditorHtml, toSt
 import { sendsTelegram, setEmailHtml, setEmailSubject } from "@pages/broadcasts/editor/form";
 import type { EditorForm } from "@pages/broadcasts/editor/form";
 import { LocaleTabs } from "@pages/broadcasts/editor/LocaleTabs";
-import { UrlPopoverButton } from "@pages/broadcasts/editor/UrlPopoverButton";
+import { UrlPopoverButton } from "@features/dialog-canvas-editor/UrlPopoverButton";
 
 const MAX_SUBJECT_LENGTH = 200;
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif";
