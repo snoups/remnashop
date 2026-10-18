@@ -44,7 +44,7 @@ class GetAdLinkShareUrlsUseCase(UseCase[int, AdLinkShareUrlsDto]):
                 bot_url = f"{T_ME}{username}{_BOT_START_QUERY.format(code=ad_link.code)}"
 
         webcabinet_url: Optional[str] = None
-        cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
+        cabinet_url = self._config.cabinet.url
         if ad_link.allow_webcabinet and cabinet_url:
             webcabinet_url = f"{cabinet_url}/{_WEBCABINET_QUERY.format(code=ad_link.code)}"
 

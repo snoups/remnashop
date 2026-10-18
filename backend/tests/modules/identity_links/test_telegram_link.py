@@ -62,7 +62,7 @@ async def test_link_free_telegram(
     monkeypatch.setattr(
         "app.modules.cabinet_auth.usecases.request_deeplink.fetch_bot_username", _username
     )
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
 
     response = await client.post(LINK_DEEPLINK, headers=headers)
     assert response.status_code == 200

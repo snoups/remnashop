@@ -42,7 +42,7 @@ class GetPlanShareUrlsUseCase(UseCase[int, PlanShareUrlsDto]):
                 bot_url = f"{T_ME}{username}?start={PLAN_START_PREFIX}{plan.public_code}"
 
         webcabinet_url: Optional[str] = None
-        cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
+        cabinet_url = self._config.cabinet.url
         if cabinet_url:
             webcabinet_url = f"{cabinet_url}/{_WEBCABINET_PATH.format(code=plan.public_code)}"
 

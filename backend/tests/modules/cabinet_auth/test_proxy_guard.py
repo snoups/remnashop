@@ -9,6 +9,7 @@ from pydantic import SecretStr
 
 from app.api.app import get_app
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
@@ -27,7 +28,9 @@ _PASSWORD = "correct-horse-battery"
 async def proxied_client(
     config: AppConfig, container: AsyncContainer
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config.model_copy(update={"cabinet_proxy_secret": SecretStr(_SECRET)}))
+    app = get_app(
+        config.model_copy(update={"cabinet": CabinetConfig(proxy_secret=SecretStr(_SECRET))})
+    )
     setup_dishka(container, app)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:

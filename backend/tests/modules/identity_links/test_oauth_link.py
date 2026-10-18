@@ -52,7 +52,7 @@ def profile_holder(monkeypatch: pytest.MonkeyPatch, config: AppConfig) -> dict[s
 
     for module in ("cabinet_oauth_authorize", "cabinet_oauth_callback"):
         monkeypatch.setattr(f"app.modules.cabinet_auth.usecases.{module}.get_oauth_client", _fake)
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     return holder
 
 

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.db.models.broadcast import BroadcastRecipient
 from app.core.db.models.promocode import PromocodeActivation
 from app.core.db.uow import UnitOfWork
@@ -667,7 +668,7 @@ async def test_send_marketing_email_without_cabinet_url_fails(
     use_case = SendBroadcastUseCase(
         broadcast_repository,
         settings_repository,
-        config.model_copy(update={"web_cabinet_url": " "}),
+        config.model_copy(update={"cabinet": CabinetConfig(domain=None)}),
         start_dispatch,
         uow,
         event_publisher,
@@ -691,7 +692,7 @@ async def test_send_service_email_without_cabinet_url_ok(
     use_case = SendBroadcastUseCase(
         broadcast_repository,
         settings_repository,
-        config.model_copy(update={"web_cabinet_url": ""}),
+        config.model_copy(update={"cabinet": CabinetConfig(domain=None)}),
         start_dispatch,
         uow,
         event_publisher,

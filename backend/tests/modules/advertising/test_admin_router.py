@@ -240,7 +240,7 @@ async def test_share_urls_and_qr_follow_allowed_channels(
     config: AppConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com/")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     created = await client.post(
         f"{API_V1}/advertising/links",
         json={"name": "Web", "code": "router-share", "allow_bot": False},

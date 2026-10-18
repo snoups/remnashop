@@ -697,7 +697,7 @@
       "RemnawaveVersionMismatchEvent": "Unsupported panel version",
       "BotStartedEvent": "Bot started",
       "BotStoppedEvent": "Bot stopped",
-      "TelegramWebhookFailedEvent": "Webhook error",
+      "TelegramWebhookFailedEvent": "Telegram webhook error",
       "RequiredChannelCheckFailedEvent": "Channel check failed",
       "CabinetSignedInEvent": "Cabinet sign-in",
       "CheckoutCreatedEvent": "Checkout created",
@@ -1047,6 +1047,7 @@
       "general": "General",
       "access": "Access",
       "bot": "Telegram bot",
+      "cabinet": "Web cabinet",
       "apiTokens": "API tokens",
       "appearance": "Appearance",
       "gateways": "Payment gateways",
@@ -1422,6 +1423,7 @@
       "restrictDomains": "Only allowed email domains",
       "allowedDomains": "Allowed domains",
       "allowedDomainsHint": "New sign-ups by email only from these domains. Existing customers sign in with any address. One domain per line or comma-separated.",
+      "telegramHint": "Client ID and secret are set in “OAuth providers”",
       "methods": {
         "telegram": "Telegram",
         "google": "Google",
@@ -2213,7 +2215,7 @@
         "WEBCABINET": "Download web cabinet QR"
       },
       "botUnavailable": "The bot is not configured",
-      "webUnavailable": "APP_WEB_CABINET_URL is not set",
+      "webUnavailable": "CABINET_DOMAIN is not set",
       "loadError": "Failed to load the links.",
       "qrError": "Failed to download the QR code."
     }
@@ -3258,7 +3260,7 @@
         "copyWebLink": "Copy web cabinet link",
         "qrBot": "Download bot QR",
         "qrWeb": "Download web cabinet QR",
-        "webUnavailable": "APP_WEB_CABINET_URL is not set",
+        "webUnavailable": "CABINET_DOMAIN is not set",
         "trendMonth": "last 30 days",
         "trendWeek": "vs. prior 7 days",
         "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit."

@@ -87,7 +87,7 @@ class CabinetOAuthCallbackUseCase:
                 "Invalid or expired OAuth state", code=ErrorCode.OAUTH_STATE_INVALID
             )
 
-        cabinet_url = self._config.web_cabinet_url.strip()
+        cabinet_url = self._config.cabinet.url
         if not cabinet_url:
             raise AuthenticationError(
                 "The cabinet URL is not configured", code=ErrorCode.OAUTH_PROVIDER_NOT_CONFIGURED

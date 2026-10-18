@@ -87,7 +87,7 @@ class SendTestBroadcastEmailUseCase(UseCase[SendTestBroadcastEmailDto, None, Use
                 "Email image is missing", code=ErrorCode.BROADCAST_EMAIL_IMAGE_INVALID
             )
         brand, logo = await load_email_logo(self._get_public_appearance_image_use_case, brand)
-        cabinet_url = self._config.web_cabinet_url.strip()
+        cabinet_url = self._config.cabinet.url
         renderer = BroadcastEmailRenderer(
             broadcast,
             promocode_code=code,

@@ -733,7 +733,7 @@
       "RemnawaveVersionMismatchEvent": "Неподдерживаемая версия панели",
       "BotStartedEvent": "Бот запущен",
       "BotStoppedEvent": "Бот остановлен",
-      "TelegramWebhookFailedEvent": "Ошибка webhook",
+      "TelegramWebhookFailedEvent": "Ошибка Telegram webhook",
       "RequiredChannelCheckFailedEvent": "Ошибка проверки канала",
       "CabinetSignedInEvent": "Вход в кабинет",
       "CheckoutCreatedEvent": "Создан платёж",
@@ -1091,6 +1091,7 @@
       "general": "Общие",
       "access": "Доступ",
       "bot": "Telegram-бот",
+      "cabinet": "Веб-кабинет",
       "apiTokens": "API-токены",
       "appearance": "Внешний вид",
       "gateways": "Платёжные шлюзы",
@@ -1468,6 +1469,7 @@
       "restrictDomains": "Только разрешённые почтовые домены",
       "allowedDomains": "Разрешённые домены",
       "allowedDomainsHint": "Новые регистрации по почте — только с этих доменов. Существующие клиенты входят с любым адресом. Один домен на строку или через запятую.",
+      "telegramHint": "Client ID и secret задаются в «OAuth-провайдерах»",
       "methods": {
         "telegram": "Telegram",
         "google": "Google",
@@ -2259,7 +2261,7 @@
         "WEBCABINET": "Скачать QR для веб-кабинета"
       },
       "botUnavailable": "Бот не настроен",
-      "webUnavailable": "Не задан APP_WEB_CABINET_URL",
+      "webUnavailable": "Не задан CABINET_DOMAIN",
       "loadError": "Не удалось загрузить ссылки.",
       "qrError": "Не удалось скачать QR-код."
     }
@@ -3322,7 +3324,7 @@
         "copyWebLink": "Скопировать ссылку на веб-кабинет",
         "qrBot": "Скачать QR для бота",
         "qrWeb": "Скачать QR для веб-кабинета",
-        "webUnavailable": "Не задан APP_WEB_CABINET_URL",
+        "webUnavailable": "Не задан CABINET_DOMAIN",
         "trendMonth": "за 30 дней",
         "trendWeek": "к прошлым 7 дн.",
         "cardHeaderDescription": "Дампы базы по расписанию, хранятся на сервере и ротируются по лимиту файлов."

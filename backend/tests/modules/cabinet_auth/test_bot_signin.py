@@ -59,7 +59,7 @@ async def test_signin_token_is_single_use(store: DeeplinkStore) -> None:
 async def test_issue_link_builds_a_cabinet_url_and_consumes_the_start(
     store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", f"{_CABINET}/")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     start = await store.create(InviteCodesDto(ad_link_code="ad1"))
     issue = IssueBotSignInLinkUseCase(store, config)
 
@@ -78,7 +78,7 @@ async def test_issue_link_builds_a_cabinet_url_and_consumes_the_start(
 async def test_issue_link_without_cabinet_url_gives_nothing(
     store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "  ")
+    monkeypatch.setattr(config.cabinet, "domain", None)
     start = await store.create(InviteCodesDto())
     assert await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE) is None
 
@@ -111,7 +111,7 @@ async def test_signin_is_refused_when_telegram_is_disabled(
 async def test_link_token_url_uses_link_path(
     store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", _CABINET)
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     start = await store.create(InviteCodesDto(), link_user_id=42)
     ticket = await store.peek(start)
     assert ticket is not None and ticket.link_user_id == 42

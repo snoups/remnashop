@@ -25,6 +25,7 @@ export default defineConfig({
     include: ["recharts"],
   },
   server: {
+    allowedHosts: process.env.APP_DOMAIN ? [process.env.APP_DOMAIN] : [],
     proxy: {
       "/api": {
         // 127.0.0.1, not localhost: on macOS with AirPlay Receiver enabled, "localhost"

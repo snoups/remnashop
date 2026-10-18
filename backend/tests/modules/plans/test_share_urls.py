@@ -44,7 +44,7 @@ async def test_links_open_the_plan_in_the_bot_and_the_cabinet(
         return "shop_bot"
 
     monkeypatch.setattr(module, "fetch_bot_username", username)
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com/")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     plan_id = await _plan(plan_repository)
     use_case = GetPlanShareUrlsUseCase(plan_repository, _Settings("t"), config, uow)  # type: ignore[arg-type]
 
@@ -60,7 +60,7 @@ async def test_no_bot_and_no_cabinet_give_no_links(
     config: AppConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "")
+    monkeypatch.setattr(config.cabinet, "domain", None)
     plan_id = await _plan(plan_repository)
     use_case = GetPlanShareUrlsUseCase(plan_repository, _Settings(None), config, uow)  # type: ignore[arg-type]
 

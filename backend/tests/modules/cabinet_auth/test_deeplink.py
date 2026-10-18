@@ -57,7 +57,7 @@ async def test_deeplink_then_bot_link_signs_in_once(
     monkeypatch.setattr(
         "app.modules.cabinet_auth.usecases.request_deeplink.fetch_bot_username", _username
     )
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
             UpdateCabinetAuthSettingsDto(telegram_enabled=True)

@@ -133,7 +133,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             has_logo=brand.has_logo,
             title=title,
             body=body,
-            cabinet_url=self._config.web_cabinet_url.strip() or None,
+            cabinet_url=self._config.cabinet.url or None,
             button=renderer.text(user.language, "ntf-customer-open-cabinet"),
         )
         await self._send_email.kiq(to=user.email, subject=title, text=text, html=html)

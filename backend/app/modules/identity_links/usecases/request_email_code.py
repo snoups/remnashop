@@ -54,6 +54,6 @@ class RequestLinkEmailCodeUseCase:
 
         code = await self._store.issue(email, InviteCodesDto(), locale)
         subject, text, html = render_link_code(
-            code, locale, brand, self._config.web_cabinet_url.strip() or None
+            code, locale, brand, self._config.cabinet.url or None
         )
         await self._send_email.kiq(to=normalize_email(email), subject=subject, text=text, html=html)

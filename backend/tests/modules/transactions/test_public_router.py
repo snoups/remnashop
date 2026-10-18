@@ -290,7 +290,7 @@ async def test_a_cabinet_checkout_returns_to_the_cabinet(
     config: AppConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com/")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     await _enable_yookassa(gateway_repository)
     cabinet = await _customer_headers(
         user_repository, session_repository, uow, config, "cab-buyer", SessionAudience.CABINET
@@ -314,7 +314,7 @@ async def test_a_dashboard_checkout_keeps_the_old_return_address(
     config: AppConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     await _enable_yookassa(gateway_repository)
     _YOOKASSA_REQUESTS.clear()
 

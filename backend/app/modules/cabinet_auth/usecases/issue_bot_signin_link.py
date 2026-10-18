@@ -19,7 +19,7 @@ class IssueBotSignInLinkUseCase:
     async def execute(
         self, start_token: str, profile: TelegramProfileDto
     ) -> Optional[BotSignInLinkDto]:
-        cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
+        cabinet_url = self._config.cabinet.url
         if not cabinet_url:
             return None
         ticket = await self._store.take_start(start_token)

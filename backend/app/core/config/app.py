@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Self
+from typing import Self
 
 from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
@@ -7,6 +7,7 @@ from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from app.core.config.base import BaseConfig
 from app.core.config.bot import BotConfig
 from app.core.config.build import BuildConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.config.database import DatabaseConfig
 from app.core.config.log import LogConfig
 from app.core.config.redis import RedisConfig
@@ -31,10 +32,9 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     media_dir: Path = MEDIA_DIR
     origins: StringList = StringList("")
     secure_cookies: bool = True
-    web_cabinet_url: str = ""
-    cabinet_proxy_secret: Optional[SecretStr] = None
 
     bot: BotConfig = Field(default_factory=BotConfig)
+    cabinet: CabinetConfig = Field(default_factory=CabinetConfig)
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)

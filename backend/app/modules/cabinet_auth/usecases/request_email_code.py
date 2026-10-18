@@ -62,7 +62,7 @@ class RequestEmailCodeUseCase:
 
         code = await self._store.issue(email, codes, locale)
         subject, text, html = render_login_code(
-            code, locale, brand, self._config.web_cabinet_url.strip() or None
+            code, locale, brand, self._config.cabinet.url or None
         )
         recipient = existing.email if existing is not None and existing.email else email
         await self._send_email.kiq(

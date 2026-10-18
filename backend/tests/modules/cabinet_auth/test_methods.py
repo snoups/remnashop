@@ -1,6 +1,7 @@
 import pytest
 
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.modules.cabinet_auth.usecases import GetCabinetMethodsUseCase
@@ -15,7 +16,7 @@ from app.modules.settings.repository import SettingsRepository
 
 @pytest.fixture
 def cabinet_config(config: AppConfig) -> AppConfig:
-    return config.model_copy(update={"web_cabinet_url": "https://cabinet.example.com"})
+    return config.model_copy(update={"cabinet": CabinetConfig(domain="cabinet.example.com")})
 
 
 async def test_methods_empty_by_default(
@@ -96,7 +97,7 @@ async def test_oauth_list_is_empty_without_cabinet_url(
         await settings_repository.update_oauth_settings(
             UpdateOAuthSettingsDto(google_client_id="g", google_client_secret="g")
         )
-    no_url = config.model_copy(update={"web_cabinet_url": ""})
+    no_url = config.model_copy(update={"cabinet": CabinetConfig(domain=None)})
     assert (await GetCabinetMethodsUseCase(settings_repository, no_url, uow).execute()).oauth == []
 
 

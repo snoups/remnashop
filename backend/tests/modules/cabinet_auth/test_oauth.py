@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind, OAuthProvider
@@ -33,7 +34,6 @@ from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
 _IP = "203.0.113.1"
-_CABINET_URL = "https://cabinet.example.com/"
 
 
 class _FakeClient:
@@ -56,7 +56,7 @@ class _FakeClient:
 
 @pytest.fixture
 def cabinet_config(config: AppConfig) -> AppConfig:
-    return config.model_copy(update={"web_cabinet_url": _CABINET_URL})
+    return config.model_copy(update={"cabinet": CabinetConfig(domain="cabinet.example.com")})
 
 
 @pytest.fixture
@@ -334,7 +334,7 @@ async def test_authorize_without_cabinet_url_is_not_configured(
     use_case = CabinetOAuthAuthorizeUseCase(
         settings_repository,
         oauth_state_store,
-        config.model_copy(update={"web_cabinet_url": ""}),
+        config.model_copy(update={"cabinet": CabinetConfig(domain=None)}),
         uow,
     )
     with pytest.raises(AuthenticationError) as error:
@@ -442,7 +442,7 @@ async def test_oauth_routes_end_to_end(
     monkeypatch: pytest.MonkeyPatch,
     profile_holder: dict[str, OAuthProfile],
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", _CABINET_URL)
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     profile_holder["profile"] = OAuthProfile(external_id="g11", login=None, name="Route")
     base = "/api/v1/auth/oauth/google"
 
@@ -469,7 +469,7 @@ async def test_oauth_routes_end_to_end(
 async def test_failed_callback_deletes_the_binding_cookie(
     client: httpx.AsyncClient, config: AppConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", _CABINET_URL)
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     base = "/api/v1/auth/oauth/google"
     await client.post(f"{base}/authorize", json={"audience": "cabinet"})
 

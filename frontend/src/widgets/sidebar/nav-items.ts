@@ -6,6 +6,7 @@ import {
   Coins,
   CreditCard,
   Database,
+  Globe,
   KeyRound,
   LayoutGrid,
   Layers,
@@ -67,7 +68,7 @@ export interface SettingsTab {
 }
 
 export const SETTINGS_TABS: SettingsTab[] = [
-  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW", "CABINET_AUTH_SETTINGS_VIEW"] },
+  { key: "general", to: "", icon: SlidersHorizontal, anyOf: ["SHOP_SETTINGS_VIEW", "OAUTH_SETTINGS_VIEW", "NOTIFICATION_SETTINGS_VIEW"] },
   { key: "access", to: "access", icon: ShieldCheck, anyOf: ["ACCESS_SETTINGS_VIEW"] },
   {
     key: "bot",
@@ -75,6 +76,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
     icon: Bot,
     anyOf: ["BOT_SETTINGS_VIEW", "BOT_REQUIREMENTS_VIEW", "BOT_COMMANDS_VIEW", "DIALOGS_CATALOG_VIEW", "TRANSLATIONS_VIEW", "EMOJI_PACKS_VIEW"],
   },
+  { key: "cabinet", to: "cabinet", icon: Globe, anyOf: ["CABINET_AUTH_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW"] },
   { key: "apiTokens", to: "api-tokens", icon: KeyRound, anyOf: ["API_TOKENS_MANAGE"] },
   {
     key: "appearance",

@@ -27,7 +27,7 @@ def get_dispatcher(config: AppConfig) -> Dispatcher:
         json_dumps=encode,  # bytes, which redis-py accepts as is
     )
     # one bot process, so in-memory locks are enough to run a user's updates one at a time
-    dispatcher = Dispatcher(storage=storage, events_isolation=SimpleEventIsolation(), config=config)
+    dispatcher = Dispatcher(storage=storage, events_isolation=SimpleEventIsolation())
     logger.info("Initialized Dispatcher with Redis storage")
     return dispatcher
 

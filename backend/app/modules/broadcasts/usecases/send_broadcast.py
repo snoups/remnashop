@@ -96,10 +96,7 @@ class SendBroadcastUseCase(UseCase[SendBroadcastDto, BroadcastDto]):
         if not email.profile(bulk=True).is_configured:
             raise ValidationError("SMTP is not configured", code=ErrorCode.EMAIL_NOT_CONFIGURED)
         # marketing letters must carry a working unsubscribe link
-        if (
-            broadcast.category is BroadcastCategory.MARKETING
-            and not self._config.web_cabinet_url.strip()
-        ):
+        if broadcast.category is BroadcastCategory.MARKETING and not self._config.cabinet.url:
             raise ValidationError(
                 "Web cabinet URL is not set", code=ErrorCode.BROADCAST_UNSUBSCRIBE_URL_MISSING
             )

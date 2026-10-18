@@ -90,7 +90,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._event_publisher = event_publisher
 
     def _return_url(self, data: CreateCheckoutDto, order_id: int) -> Optional[str]:
-        cabinet_url = self._config.web_cabinet_url.strip().rstrip("/")
+        cabinet_url = self._config.cabinet.url
         if data.return_to != "cabinet" or not cabinet_url:
             return None
         return f"{cabinet_url}/payment/result?order_id={order_id}"

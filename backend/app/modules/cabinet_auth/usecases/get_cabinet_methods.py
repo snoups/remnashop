@@ -22,7 +22,7 @@ class GetCabinetMethodsUseCase:
         telegram = cabinet.telegram_enabled and bot.is_configured
         providers: list[OAuthProvider] = []
         # authorize needs the cabinet URL for its redirect
-        has_cabinet_url = bool(self._config.web_cabinet_url.strip())
+        has_cabinet_url = bool(self._config.cabinet.url)
         if has_cabinet_url and cabinet.telegram_enabled and oauth.is_telegram_configured:
             providers.append(OAuthProvider.TELEGRAM)
         if has_cabinet_url and cabinet.google_enabled and oauth.is_google_configured:

@@ -89,7 +89,7 @@ async def test_methods_is_public_and_lowercases_providers(
     config: AppConfig,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
     patched = await client.patch(

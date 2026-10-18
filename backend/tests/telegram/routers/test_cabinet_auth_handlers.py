@@ -44,7 +44,7 @@ _USER: Any = SimpleNamespace(language=Locale.EN)
 async def test_start_sends_a_one_time_sign_in_button(
     redis: Redis, config: AppConfig, monkeypatch: Any
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     store = DeeplinkStore(redis)
     start = await store.create(InviteCodesDto())
     message = _Message(f"/start webauth_{start}")
@@ -63,7 +63,7 @@ async def test_start_sends_a_one_time_sign_in_button(
 async def test_second_start_with_the_same_link_says_expired(
     redis: Redis, config: AppConfig, monkeypatch: Any
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     store = DeeplinkStore(redis)
     start = await store.create(InviteCodesDto())
     issue = IssueBotSignInLinkUseCase(store, config)
@@ -92,7 +92,7 @@ async def test_start_with_unknown_token_says_expired(redis: Redis, config: AppCo
 async def test_start_without_a_cabinet_url_sends_no_button(
     redis: Redis, config: AppConfig, monkeypatch: Any
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "")
+    monkeypatch.setattr(config.cabinet, "domain", None)
     store = DeeplinkStore(redis)
     start = await store.create(InviteCodesDto())
     message = _Message(f"/start webauth_{start}")
@@ -108,7 +108,7 @@ async def test_start_without_a_cabinet_url_sends_no_button(
 async def test_link_start_without_an_account_answers_in_the_telegram_language(
     redis: Redis, config: AppConfig, monkeypatch: Any
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     store = DeeplinkStore(redis)
     issue = IssueBotSignInLinkUseCase(store, config)
 
@@ -134,7 +134,7 @@ async def test_link_start_without_an_account_answers_in_the_telegram_language(
 async def test_link_start_sends_the_linking_wording(
     redis: Redis, config: AppConfig, monkeypatch: Any
 ) -> None:
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     store = DeeplinkStore(redis)
     start = await store.create(InviteCodesDto(), link_user_id=42)
     message = _Message(f"/start webauth_{start}")

@@ -11,6 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.db.models.broadcast import Broadcast
 from app.core.db.models.user import User
@@ -365,7 +366,7 @@ async def test_marketing_email_has_unsubscribe_header(
         broadcast_repository, ids, category=BroadcastCategory.MARKETING
     )
     sender = FakeBatchSender()
-    config = media_config.model_copy(update={"web_cabinet_url": "https://cab.example"})
+    config = media_config.model_copy(update={"cabinet": CabinetConfig(domain="cab.example")})
 
     await make_deliver(sender, config).system(broadcast.id)
 

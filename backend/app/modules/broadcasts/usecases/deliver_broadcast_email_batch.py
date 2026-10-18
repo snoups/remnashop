@@ -180,7 +180,7 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
                 )
             return False
         brand, logo = await load_email_logo(self._get_public_appearance_image_use_case, brand)
-        cabinet_url = self._config.web_cabinet_url.strip()
+        cabinet_url = self._config.cabinet.url
         renderer = BroadcastEmailRenderer(
             broadcast,
             promocode_code=code,

@@ -1,4 +1,4 @@
-import { ChevronDown, FingerprintPattern, Globe, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
+import { ChevronDown, FingerprintPattern, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,9 +31,6 @@ import { PasskeyGuideDialog } from "./PasskeyGuideDialog";
 import { PasswordLoginGuideDialog } from "./PasswordLoginGuideDialog";
 import { TelegramOAuthGuideDialog } from "./TelegramOAuthGuideDialog";
 
-
-type Provider = "github" | "telegram" | "oidc";
-
 export function OAuthSettingsForm() {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
@@ -42,10 +39,6 @@ export function OAuthSettingsForm() {
   const [githubClientSecret, setGithubClientSecret] = useState("");
   const [telegramClientId, setTelegramClientId] = useState("");
   const [telegramClientSecret, setTelegramClientSecret] = useState("");
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [googleClientSecret, setGoogleClientSecret] = useState("");
-  const [yandexClientId, setYandexClientId] = useState("");
-  const [yandexClientSecret, setYandexClientSecret] = useState("");
   const [oidcDisplayName, setOidcDisplayName] = useState("");
   const [oidcIssuerUrl, setOidcIssuerUrl] = useState("");
   const [oidcClientId, setOidcClientId] = useState("");
@@ -53,6 +46,8 @@ export function OAuthSettingsForm() {
   const [passkeyRpId, setPasskeyRpId] = useState("");
   const [passkeyOrigin, setPasskeyOrigin] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const toggle = async (payload: UpdateOAuthSettingsPayload) => setData(await updateOAuthSettings(payload));
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -62,10 +57,6 @@ export function OAuthSettingsForm() {
       !githubClientSecret &&
       !telegramClientId &&
       !telegramClientSecret &&
-      !googleClientId &&
-      !googleClientSecret &&
-      !yandexClientId &&
-      !yandexClientSecret &&
       !oidcDisplayName &&
       !oidcIssuerUrl &&
       !oidcClientId &&
@@ -84,10 +75,6 @@ export function OAuthSettingsForm() {
         github_client_secret: githubClientSecret || undefined,
         telegram_client_id: telegramClientId || undefined,
         telegram_client_secret: telegramClientSecret || undefined,
-        google_client_id: googleClientId || undefined,
-        google_client_secret: googleClientSecret || undefined,
-        yandex_client_id: yandexClientId || undefined,
-        yandex_client_secret: yandexClientSecret || undefined,
         oidc_display_name: oidcDisplayName || undefined,
         oidc_issuer_url: oidcIssuerUrl || undefined,
         oidc_client_id: oidcClientId || undefined,
@@ -100,10 +87,6 @@ export function OAuthSettingsForm() {
       setGithubClientSecret("");
       setTelegramClientId("");
       setTelegramClientSecret("");
-      setGoogleClientId("");
-      setGoogleClientSecret("");
-      setYandexClientId("");
-      setYandexClientSecret("");
       setOidcDisplayName("");
       setOidcIssuerUrl("");
       setOidcClientId("");
@@ -136,12 +119,12 @@ export function OAuthSettingsForm() {
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
           <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
             <ProviderPanel
-              provider="github"
               icon={GithubIcon}
               label={t("profile.oauthAccounts.github")}
               isConfigured={state.data.is_github_configured}
               isEnabled={state.data.github_enabled}
-              onToggled={setData}
+              onToggle={(next) => toggle({ github_enabled: next })}
+              canToggle={canManage}
               guide={<GithubOAuthGuideDialog />}
               fields={[
                 {
@@ -159,12 +142,12 @@ export function OAuthSettingsForm() {
               ]}
             />
             <ProviderPanel
-              provider="telegram"
               icon={TelegramIcon}
               label={t("profile.oauthAccounts.telegram")}
               isConfigured={state.data.is_telegram_configured}
               isEnabled={state.data.telegram_enabled}
-              onToggled={setData}
+              onToggle={(next) => toggle({ telegram_enabled: next })}
+              canToggle={canManage}
               guide={<TelegramOAuthGuideDialog />}
               fields={[
                 {
@@ -182,52 +165,12 @@ export function OAuthSettingsForm() {
               ]}
             />
             <ProviderPanel
-              icon={Globe}
-              label={t("profile.oauthAccounts.google")}
-              isConfigured={state.data.is_google_configured}
-              hint={t("settings.oauth.redirectHint", { path: "/login/callback/google" })}
-              fields={[
-                {
-                  key: "google_client_id",
-                  label: t("settings.oauth.clientIdLabel"),
-                  value: googleClientId,
-                  onChange: setGoogleClientId,
-                },
-                {
-                  key: "google_client_secret",
-                  label: t("settings.oauth.clientSecretLabel"),
-                  value: googleClientSecret,
-                  onChange: setGoogleClientSecret,
-                },
-              ]}
-            />
-            <ProviderPanel
-              icon={Globe}
-              label={t("profile.oauthAccounts.yandex")}
-              isConfigured={state.data.is_yandex_configured}
-              hint={t("settings.oauth.redirectHint", { path: "/login/callback/yandex" })}
-              fields={[
-                {
-                  key: "yandex_client_id",
-                  label: t("settings.oauth.clientIdLabel"),
-                  value: yandexClientId,
-                  onChange: setYandexClientId,
-                },
-                {
-                  key: "yandex_client_secret",
-                  label: t("settings.oauth.clientSecretLabel"),
-                  value: yandexClientSecret,
-                  onChange: setYandexClientSecret,
-                },
-              ]}
-            />
-            <ProviderPanel
-              provider="oidc"
               icon={KeySquare}
               label={state.data.oidc_display_name ?? t("profile.oauthAccounts.oidcFallback")}
               isConfigured={state.data.is_oidc_configured}
               isEnabled={state.data.oidc_enabled}
-              onToggled={setData}
+              onToggle={(next) => toggle({ oidc_enabled: next })}
+              canToggle={canManage}
               guide={<OidcOAuthGuideDialog />}
               fields={[
                 {
@@ -298,28 +241,30 @@ interface ProviderField {
 }
 
 interface ProviderPanelProps {
-  /** absent for a credentials-only provider: no dashboard sign-in, so no switch */
-  provider?: Provider;
   icon: ComponentType<{ className?: string }>;
   label: string;
   isConfigured: boolean;
   isEnabled?: boolean;
-  onToggled?: (settings: OAuthSettings) => void;
+  /** absent: no switch */
+  onToggle?: (next: boolean) => Promise<void>;
+  canToggle?: boolean;
   hint?: string;
   guide?: ReactNode;
   fields: ProviderField[];
+  footer?: ReactNode;
 }
 
-function ProviderPanel({
-  provider,
+export function ProviderPanel({
   icon: Icon,
   label,
   isConfigured,
   isEnabled,
-  onToggled,
+  onToggle,
+  canToggle = false,
   hint,
   guide,
   fields,
+  footer,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
@@ -327,17 +272,10 @@ function ProviderPanel({
   const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = async (next: boolean) => {
-    if (!provider || !onToggled) return;
+    if (!onToggle) return;
     setIsToggling(true);
     try {
-      const payload: UpdateOAuthSettingsPayload =
-        provider === "github"
-          ? { github_enabled: next }
-          : provider === "telegram"
-            ? { telegram_enabled: next }
-            : { oidc_enabled: next };
-      const settings = await updateOAuthSettings(payload);
-      onToggled(settings);
+      await onToggle(next);
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
@@ -377,12 +315,12 @@ function ProviderPanel({
           />
         </span>
         {guide}
-        {provider && (
+        {onToggle && (
           <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
             <Switch
               checked={isEnabled ?? false}
               onChange={(value) => void handleToggle(value)}
-              disabled={!canManage || isToggling || !isConfigured}
+              disabled={!canToggle || isToggling || !isConfigured}
             />
           </div>
         )}
@@ -424,6 +362,7 @@ function ProviderPanel({
                   )}
                 </Field>
               ))}
+              {footer}
             </div>
           </motion.div>
         )}

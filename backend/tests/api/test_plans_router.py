@@ -314,7 +314,7 @@ async def test_share_urls_link_the_plan_into_the_cabinet(
         return None
 
     monkeypatch.setattr(get_plan_share_urls, "fetch_bot_username", no_bot)
-    monkeypatch.setattr(config, "web_cabinet_url", "https://cabinet.example.com")
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
     headers = {"Authorization": f"Bearer {token}"}
     created = await client.post(

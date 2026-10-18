@@ -45,7 +45,7 @@ class CabinetOAuthAuthorizeUseCase:
                 "Provider is not available for cabinet sign-in",
                 code=ErrorCode.OAUTH_PROVIDER_UNSUPPORTED,
             )
-        cabinet_url = self._config.web_cabinet_url.strip()
+        cabinet_url = self._config.cabinet.url
         if not cabinet_url:
             raise AuthenticationError(
                 "The cabinet URL is not configured", code=ErrorCode.OAUTH_PROVIDER_NOT_CONFIGURED

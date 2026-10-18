@@ -1,17 +1,21 @@
 import { DoorOpen, Globe, Mail, MailX } from "lucide-react";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   getCabinetAuthSettings,
+  getOAuthSettings,
   updateCabinetAuthSettings,
+  updateOAuthSettings,
   type CabinetAuthSettings,
+  type OAuthSettings,
 } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
+import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { ErrorState } from "@shared/ui/EmptyState";
@@ -19,20 +23,30 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Field } from "@shared/ui/Field";
 import { Switch } from "@shared/ui/Switch";
 import { TextArea } from "@shared/ui/TextInput";
+import { ProviderPanel } from "@features/oauth-settings/OAuthSettingsForm";
 
 type MethodKey = "telegram_enabled" | "google_enabled" | "yandex_enabled" | "email_enabled";
 
-const METHODS: { key: MethodKey; label: "telegram" | "google" | "yandex" | "email"; icon: ComponentType<{ className?: string }>; path?: string }[] = [
+type OAuthMethod = "google" | "yandex";
+
+const METHODS: { key: MethodKey; label: "telegram" | OAuthMethod | "email"; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
   { key: "telegram_enabled", label: "telegram", icon: TelegramIcon },
-  { key: "google_enabled", label: "google", icon: Globe, path: "/login/callback/google" },
-  { key: "yandex_enabled", label: "yandex", icon: Globe, path: "/login/callback/yandex" },
+  { key: "google_enabled", label: "google", icon: Globe, oauth: "google" },
+  { key: "yandex_enabled", label: "yandex", icon: Globe, oauth: "yandex" },
   { key: "email_enabled", label: "email", icon: Mail },
 ];
 
 export function CabinetAuthSettingsForm() {
   const { t } = useTranslation();
-  const canManage = usePermissions().includes("CABINET_AUTH_SETTINGS_MANAGE");
+  const permissions = usePermissions();
+  const canManage = permissions.includes("CABINET_AUTH_SETTINGS_MANAGE");
+  const canViewOAuth = permissions.includes("OAUTH_SETTINGS_VIEW");
   const [state, , setData] = useAsyncResource(getCabinetAuthSettings);
+  // Google/Yandex credentials live in OAuth settings; without that permission only the switches show
+  const [oauthState, , setOAuthData] = useAsyncResource((signal) =>
+    canViewOAuth ? getOAuthSettings(signal) : Promise.resolve(null),
+  );
+  const oauthSettings = oauthState.kind === "ready" ? oauthState.data : null;
   const [pendingKey, setPendingKey] = useState<MethodKey | "domains" | null>(null);
 
   const handleToggle = async (key: MethodKey, next: boolean) => {
@@ -75,33 +89,50 @@ export function CabinetAuthSettingsForm() {
       {state.kind === "error" && <ErrorState text={t("settings.cabinetAuth.loadError")} />}
       {state.kind === "ready" && (
         <div className="mt-4 flex flex-col gap-1">
-          {METHODS.map(({ key, label, icon: Icon, path }) => (
-            <div
-              key={key}
-              className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                <Icon className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-foreground">
-                  {t(`settings.cabinetAuth.methods.${label}`)}
-                </p>
-                {path && (
-                  <p className="text-[12px] text-muted-foreground">
-                    {t("settings.oauth.redirectHint", { path })}
+          {METHODS.map(({ key, label, icon: Icon, oauth }) =>
+            oauth && oauthSettings ? (
+              <OAuthMethodPanel
+                key={key}
+                method={oauth}
+                icon={Icon}
+                label={t(`settings.cabinetAuth.methods.${label}`)}
+                oauthSettings={oauthSettings}
+                onSaved={setOAuthData}
+                isEnabled={state.data[key]}
+                onToggle={async (next) => setData(await updateCabinetAuthSettings({ [key]: next }))}
+                canToggle={canManage && pendingKey === null}
+              />
+            ) : (
+              <div
+                key={key}
+                className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+                  <Icon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-foreground">
+                    {t(`settings.cabinetAuth.methods.${label}`)}
                   </p>
-                )}
+                  {oauth && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })}
+                    </p>
+                  )}
+                  {label === "telegram" && (
+                    <p className="text-[12px] text-muted-foreground">{t("settings.cabinetAuth.telegramHint")}</p>
+                  )}
+                </div>
+                <div className="mr-1 flex">
+                  <Switch
+                    checked={state.data[key]}
+                    onChange={(value) => void handleToggle(key, value)}
+                    disabled={!canManage || pendingKey !== null}
+                  />
+                </div>
               </div>
-              <div className="mr-1 flex">
-                <Switch
-                  checked={state.data[key]}
-                  onChange={(value) => void handleToggle(key, value)}
-                  disabled={!canManage || pendingKey !== null}
-                />
-              </div>
-            </div>
-          ))}
+            ),
+          )}
           <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
               <MailX className="size-4" />
@@ -143,5 +174,95 @@ export function CabinetAuthSettingsForm() {
         </div>
       )}
     </Card>
+  );
+}
+
+interface OAuthMethodPanelProps {
+  method: OAuthMethod;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  oauthSettings: OAuthSettings;
+  onSaved: (settings: OAuthSettings) => void;
+  isEnabled: boolean;
+  onToggle: (next: boolean) => Promise<void>;
+  canToggle: boolean;
+}
+
+function OAuthMethodPanel({
+  method,
+  icon,
+  label,
+  oauthSettings,
+  onSaved,
+  isEnabled,
+  onToggle,
+  canToggle,
+}: OAuthMethodPanelProps) {
+  const { t } = useTranslation();
+  const canManageOAuth = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!clientId && !clientSecret) {
+      toast.error(t("settings.oauth.errorEmptyFields"));
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const id = clientId || undefined;
+      const secret = clientSecret || undefined;
+      onSaved(
+        await updateOAuthSettings(
+          method === "google"
+            ? { google_client_id: id, google_client_secret: secret }
+            : { yandex_client_id: id, yandex_client_secret: secret },
+        ),
+      );
+      setClientId("");
+      setClientSecret("");
+      toast.success(t("common.saved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <ProviderPanel
+        icon={icon}
+        label={label}
+        isConfigured={oauthSettings[`is_${method}_configured`]}
+        isEnabled={isEnabled}
+        onToggle={onToggle}
+        canToggle={canToggle}
+        hint={t("settings.oauth.redirectHint", { path: `/login/callback/${method}` })}
+        fields={[
+          {
+            key: `${method}_client_id`,
+            label: t("settings.oauth.clientIdLabel"),
+            value: clientId,
+            onChange: setClientId,
+          },
+          {
+            key: `${method}_client_secret`,
+            label: t("settings.oauth.clientSecretLabel"),
+            value: clientSecret,
+            onChange: setClientSecret,
+          },
+        ]}
+        footer={
+          canManageOAuth && (
+            <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? t("common.saving") : t("common.save")}
+            </Button>
+          )
+        }
+      />
+    </form>
   );
 }

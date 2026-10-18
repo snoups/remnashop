@@ -8,6 +8,7 @@ from pydantic import SecretStr
 
 from app.api.app import get_app
 from app.core.config import AppConfig
+from app.core.config.cabinet import CabinetConfig
 from app.core.constants import API_V1
 from app.core.enums import SessionAudience
 from app.modules.auth import SESSION_COOKIES, IssuedSession, SessionIssuer
@@ -91,7 +92,9 @@ async def test_both_refresh_cookies_at_once_are_refused(
 async def proxied_client(
     config: AppConfig, container: AsyncContainer
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config.model_copy(update={"cabinet_proxy_secret": SecretStr("s3cret")}))
+    app = get_app(
+        config.model_copy(update={"cabinet": CabinetConfig(proxy_secret=SecretStr("s3cret"))})
+    )
     setup_dishka(container, app)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:

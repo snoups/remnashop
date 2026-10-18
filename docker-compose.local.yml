@@ -151,6 +151,7 @@ services:
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     environment:
       VITE_API_PROXY_TARGET: http://remnashop:5000
+      APP_DOMAIN: ${APP_DOMAIN:-}
     restart: unless-stopped
     networks:
       - remnawave-network
