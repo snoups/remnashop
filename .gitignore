@@ -1,27 +1,15 @@
-# Project
+# Editors and OS
 .idea/
 .vscode/
-.code-workspace
-data/*
+*.code-workspace
 .DS_Store
-traefik/
-backend/logs/*
-!backend/logs/.gitkeep
-
-
-# AI
-docs
-notes.txt
-frontend/DESIGN.md
-frontend/README.md
-
 
 # Environment
-.venv/
 .env
+.venv/
 venv/
 
-# Cache
+# Python caches
 __pycache__/
 *.py[cod]
 .cache/
@@ -29,20 +17,11 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .import_linter_cache/
+.grimp_cache/
 
 # Coverage
 .coverage
 htmlcov/
-
-# Backups
-backend/backups/*
-!backend/backups/.gitkeep
-
-# Runtime media: uploads, broadcast media, backups
-backend/media/
-
-# Logs
-*.log
 
 # Build
 build/
@@ -52,5 +31,19 @@ site/
 *.egg-info/
 *.egg
 
+# Runtime: logs, uploads, broadcast media, backups
+*.log
+backend/logs/*
+!backend/logs/.gitkeep
+backend/media/
+
+# Local deployment
+traefik/
+
 # Worktrees
 .worktrees/
+
+docs
+notes.txt
+frontend/DESIGN.md
+frontend/README.md
