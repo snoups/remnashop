@@ -12,6 +12,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     ReferralAccrualStrategy,
     ReferralRewardStrategy,
@@ -74,6 +75,7 @@ async def _paid_order(session: AsyncSession, buyer: int, idempotency_key: str) -
     anchor = (await PricingRepository(session).get_rate_table()).anchor
     order = await TransactionRepository(session).create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=buyer,
             plan_id=None,
             plan_snapshot=make_plan_snapshot(plan_id=1),
@@ -585,6 +587,7 @@ async def test_assign_referral_rewards_percent_points_from_order_price(
     transaction_repository = TransactionRepository(session)
     order = await transaction_repository.create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=buyer,
             plan_id=None,
             plan_snapshot=make_plan_snapshot(plan_id=1),
@@ -642,6 +645,7 @@ async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4112)
     order = await TransactionRepository(referral_repository.session).create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=buyer,
             plan_id=None,
             plan_snapshot=make_plan_snapshot(plan_id=1),
@@ -864,6 +868,7 @@ async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
 
 def _free_order(buyer: int, idempotency_key: str, currency: Currency) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=buyer,
         plan_id=None,
         plan_snapshot=make_plan_snapshot(plan_id=1),

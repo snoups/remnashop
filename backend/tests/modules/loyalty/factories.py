@@ -12,6 +12,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -38,6 +39,7 @@ async def save_settings(session: AsyncSession, **overrides: Any) -> None:
 async def paid_order(session: AsyncSession, user_id: int, amount: str, *, days_ago: int = 1) -> int:
     order = await TransactionRepository(session).create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=user_id,
             plan_id=None,
             plan_snapshot=make_plan_snapshot(),

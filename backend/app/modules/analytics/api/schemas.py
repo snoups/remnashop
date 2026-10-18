@@ -162,6 +162,7 @@ class RevenueResponse(BaseModel):
     series: list[RevenueBucketResponse]
     by_plan: list[RevenueGroupResponse]
     by_duration: list[RevenueGroupResponse]
+    by_channel: list[RevenueGroupResponse]
     gateways: list[GatewayStatsResponse]
 
 

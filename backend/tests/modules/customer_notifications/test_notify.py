@@ -2,11 +2,12 @@ from typing import Any, Optional, cast
 
 import pytest
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale
+from app.core.enums import Locale, PaymentOutcome, PurchaseChannel
 from app.core.exceptions import RetryableTaskError
 from app.core.metrics import WORKER_METRICS_REGISTRY
 from app.core.utils.time import datetime_now
@@ -15,9 +16,11 @@ from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.usecases import NotifyCustomerUseCase
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.settings import SettingsRepository
+from app.modules.transactions import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.modules.customer_notifications.factories import FakeBotSignals, create_order
 
 _FTL = """\
 ntf-customer-open-cabinet = Open cabinet
@@ -25,6 +28,8 @@ ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
 ntf-customer-subscription-expiring = Expires soon.
     .title = Expiring
+ntf-customer-paid-order-not-fulfilled = Not issued.
+    .title = Problem
 ntf-customer-torrent-blocker-report = Torrents are forbidden.
     .title = Torrents
 """
@@ -49,6 +54,7 @@ class _Fixture:
         self,
         users: UserRepository,
         settings: SettingsRepository,
+        orders: TransactionRepository,
         uow: UnitOfWork,
         redis: Redis,
         config: AppConfig,
@@ -56,13 +62,17 @@ class _Fixture:
         self.telegram = RecordingDispatch()
         self.email = RecordingDispatch()
         self.users = users
+        self.orders = orders
         self.uow = uow
         self.tokens = _Tokens("token")
+        self.signals = FakeBotSignals()
         self.use_case = NotifyCustomerUseCase(
             users,
             settings,
+            orders,
             cast(Any, _Renderers()),
             cast(Any, self.tokens),
+            cast(Any, self.signals),
             cast(Any, self.telegram),
             cast(Any, self.email),
             redis,
@@ -76,21 +86,40 @@ class _Fixture:
             await self.uow.commit()
         return user
 
-    async def notify(self, user: UserDto, event_type: str = _PURCHASED, outbox_id: int = 1) -> None:
+    async def notify(
+        self,
+        user: UserDto,
+        event_type: str = _PURCHASED,
+        outbox_id: int = 1,
+        payment_key: Optional[str] = None,
+    ) -> None:
         await self.use_case.system(
-            NotifyCustomerDto(user_id=user.id, event_type=event_type, outbox_id=outbox_id, args={})
+            NotifyCustomerDto(
+                user_id=user.id,
+                event_type=event_type,
+                outbox_id=outbox_id,
+                args={},
+                payment_key=payment_key,
+            )
         )
+
+    async def order(self, user: UserDto, channel: PurchaseChannel, key: str) -> int:
+        order = await create_order(self.orders, self.uow, user_id=user.id, channel=channel, key=key)
+        return order.id
 
 
 @pytest.fixture
 def fx(
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
+    session: AsyncSession,
     uow: UnitOfWork,
     redis: Redis,
     config: AppConfig,
 ) -> _Fixture:
-    return _Fixture(user_repository, settings_repository, uow, redis, config)
+    return _Fixture(
+        user_repository, settings_repository, TransactionRepository(session), uow, redis, config
+    )
 
 
 async def test_telegram_and_email_both_queued(fx: _Fixture) -> None:
@@ -275,3 +304,44 @@ async def test_a_refused_mailbox_gets_no_more_notifications(fx: _Fixture) -> Non
     await fx.notify(user)
 
     assert fx.email.messages == []
+
+
+async def test_bot_order_purchase_shows_window(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8201, email="a@example.com")
+    order_id = await fx.order(user, PurchaseChannel.BOT, "pay-1")
+
+    await fx.notify(user, payment_key="pay-1")
+
+    assert fx.signals.outcomes == [(8201, order_id, PaymentOutcome.SUCCEEDED)]
+    assert fx.telegram.messages == []
+    assert len(fx.email.messages) == 1
+
+
+async def test_bot_order_falls_back_to_text_when_bot_is_down(fx: _Fixture) -> None:
+    fx.signals.receivers = 0
+    user = await fx.create(name="a", telegram_id=8202)
+    await fx.order(user, PurchaseChannel.BOT, "pay-2")
+
+    await fx.notify(user, payment_key="pay-2")
+
+    assert len(fx.telegram.messages) == 1
+
+
+async def test_cabinet_order_purchase_sends_text(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8203)
+    await fx.order(user, PurchaseChannel.CABINET, "pay-3")
+
+    await fx.notify(user, payment_key="pay-3")
+
+    assert fx.signals.outcomes == []
+    assert len(fx.telegram.messages) == 1
+
+
+async def test_not_fulfilled_bot_order_shows_window(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8204)
+    order_id = await fx.order(user, PurchaseChannel.BOT, "pay-4")
+
+    await fx.notify(user, "PaidOrderNotFulfilledEvent", payment_key="pay-4")
+
+    assert fx.signals.outcomes == [(8204, order_id, PaymentOutcome.NOT_FULFILLED)]
+    assert fx.telegram.messages == []

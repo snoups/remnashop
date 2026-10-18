@@ -216,6 +216,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   RequiredChannelCheckFailedEvent: TriangleAlert,
   CabinetSignedInEvent: LogIn,
   CheckoutCreatedEvent: ShoppingCart,
+  TransactionCanceledEvent: Ban,
   TransactionExpiredEvent: Clock,
   MarketingOptOutChangedEvent: MailX,
   BotBlockedByUserEvent: Ban,

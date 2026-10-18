@@ -250,6 +250,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 duration_days=data.duration_days,
                 currency=data.currency,
                 purchase_type=data.purchase_type,
+                channel=data.channel,
                 target_subscription_id=data.target_subscription_id,
                 gateway_type=data.gateway_type,
                 base_price=quote.base_price,

@@ -11,6 +11,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Locale,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     TransactionStatus,
@@ -61,6 +62,8 @@ async def _seed(
     purchase_type: PurchaseType = PurchaseType.NEW,
     gateway: PaymentGatewayType = PaymentGatewayType.YOOKASSA,
     duration_days: int = 30,
+    channel: PurchaseChannel = PurchaseChannel.CABINET,
+    is_test: bool = False,
 ) -> None:
     dto = replace(
         _paid_order_dto(
@@ -72,6 +75,8 @@ async def _seed(
         ),
         purchase_type=purchase_type,
         gateway_type=gateway,
+        channel=channel,
+        is_test=is_test,
     )
     async with uow:
         order = await transaction_repository.create(dto)
@@ -162,3 +167,45 @@ async def test_revenue_on_an_empty_period_is_zero(
     )
     assert revenue.totals.revenue == Decimal(0) and revenue.totals.avg_check == Decimal(0)
     assert revenue.by_plan == [] and revenue.gateways == []
+
+
+async def test_revenue_by_channel(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=850_002))
+    start = _midnight() - timedelta(days=14)
+
+    async def seed(
+        key: str, day: float, price: str, channel: PurchaseChannel, is_test: bool = False
+    ) -> None:
+        await _seed(
+            transaction_repository,
+            session,
+            uow,
+            user_id=user.id,
+            plan_id=plan_id,
+            key=key,
+            at=start + timedelta(days=day),
+            price=price,
+            status=TransactionStatus.PAID,
+            channel=channel,
+            is_test=is_test,
+        )
+
+    await seed("c-bot-1", 1.5, "500", PurchaseChannel.BOT)
+    await seed("c-bot-2", 2.5, "300", PurchaseChannel.BOT)
+    await seed("c-cab", 3.5, "200", PurchaseChannel.CABINET)
+    await seed("c-test", 4.5, "900", PurchaseChannel.CABINET, is_test=True)
+
+    revenue = await _use_case(session, pricing_repository, uow)(
+        OWNER,
+        GetRevenueDto(period_from=start, period_to=start + timedelta(days=13), granularity="week"),
+    )
+
+    by_channel = {g.key: (g.payments, g.revenue) for g in revenue.by_channel}
+    assert by_channel == {"BOT": (2, Decimal("800")), "CABINET": (1, Decimal("200"))}

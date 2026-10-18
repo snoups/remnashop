@@ -34,6 +34,12 @@ class PaymentGatewayType(UpperStrEnum):
     PAYPEAR = auto()
 
 
+class PaymentOutcome(UpperStrEnum):
+    SUCCEEDED = auto()
+    NOT_FULFILLED = auto()
+    CANCELED = auto()
+
+
 class PlanType(UpperStrEnum):
     TRAFFIC = auto()
     DEVICES = auto()
@@ -129,6 +135,11 @@ class PurchaseType(UpperStrEnum):
     NEW = auto()
     RENEW = auto()
     CHANGE = auto()
+
+
+class PurchaseChannel(UpperStrEnum):
+    BOT = auto()
+    CABINET = auto()
 
 
 class ReferralLevel(IntEnum):

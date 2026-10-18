@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, PaymentOutcome, Role
 from app.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
@@ -205,6 +205,11 @@ class _RecordingSignals:
     async def translation_changed(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> None: ...
+
+    async def payment_outcome(
+        self, telegram_id: int, order_id: int, outcome: PaymentOutcome
+    ) -> int:
+        return 0
 
 
 class _RecordingBanner:

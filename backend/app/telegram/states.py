@@ -23,6 +23,12 @@ class Purchase(StatesGroup):
     LINK_CHOICE = State()
 
 
+class PaymentResult(StatesGroup):
+    SUCCESS = State()
+    FAILED = State()
+    CANCELED = State()
+
+
 class Promocode(StatesGroup):
     INPUT = State()
     TARGET = State()

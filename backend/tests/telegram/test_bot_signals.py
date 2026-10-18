@@ -1,20 +1,31 @@
 import asyncio
 import contextlib
 import json
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiogram_dialog import ShowMode, StartMode
 from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.core.bot_signals import RedisBotSignals
 from app.core.config import AppConfig
-from app.core.constants import REDIS_CONNECTION_KWARGS, TRANSLATION_CHANGED_CHANNEL
-from app.core.enums import Locale
+from app.core.constants import (
+    PAYMENT_OUTCOME_CHANNEL,
+    REDIS_CONNECTION_KWARGS,
+    TRANSLATION_CHANGED_CHANNEL,
+)
+from app.core.enums import Locale, PaymentOutcome
 from app.modules.translations import strip_serializer_escapes
 from app.telegram import bot_signals
-from app.telegram.bot_signals import listen_for_bot_signals, live_update_handlers
+from app.telegram.bot_signals import (
+    listen_for_bot_signals,
+    live_update_handlers,
+    payment_outcome_handlers,
+)
 from app.telegram.i18n import build_translator_hub
+from app.telegram.states import PaymentResult
 
 
 class _SpyCache:
@@ -149,3 +160,29 @@ async def test_listener_keeps_its_subscription_through_a_quiet_spell(
         with contextlib.suppress(asyncio.CancelledError):
             await task
         await client.aclose()
+
+
+@pytest.mark.parametrize(
+    ("outcome", "state"),
+    [
+        (PaymentOutcome.SUCCEEDED, PaymentResult.SUCCESS),
+        (PaymentOutcome.NOT_FULFILLED, PaymentResult.FAILED),
+        (PaymentOutcome.CANCELED, PaymentResult.CANCELED),
+    ],
+)
+async def test_payment_outcome_handler_starts_window(outcome, state) -> None:
+    manager = AsyncMock()
+    factory = MagicMock()
+    factory.bg.return_value = manager
+    bot = MagicMock()
+    handler = payment_outcome_handlers(bot, factory)[PAYMENT_OUTCOME_CHANNEL]
+
+    await handler(json.dumps({"telegram_id": 5, "order_id": 7, "outcome": outcome.value}))
+
+    factory.bg.assert_called_once_with(bot=bot, user_id=5, chat_id=5)
+    manager.start.assert_awaited_once_with(
+        state,
+        data={"order_id": 7},
+        mode=StartMode.RESET_STACK,
+        show_mode=ShowMode.DELETE_AND_SEND,
+    )

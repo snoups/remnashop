@@ -110,3 +110,20 @@ class UserMiddleware(EventTypedMiddleware):
             )
         )
         return await handler(event, data)
+
+
+class DialogUserMiddleware(EventTypedMiddleware):
+    # a background dialog start (bg manager) carries only a user id, no message to register from
+    __event_types__ = [MiddlewareEventType.AIOGD_UPDATE]
+
+    async def middleware_logic(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        aiogram_user = self._get_aiogram_user(data)
+        if USER_KEY not in data and aiogram_user is not None:
+            find_user = await data[CONTAINER_KEY].get(FindTelegramUserUseCase)
+            data[USER_KEY] = await find_user.system(aiogram_user.id)
+        return await handler(event, data)

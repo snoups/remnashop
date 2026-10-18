@@ -7,7 +7,13 @@ from loguru import logger
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import DiscountSource, PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.enums import (
+    DiscountSource,
+    PaymentGatewayType,
+    PurchaseChannel,
+    PurchaseType,
+    TransactionStatus,
+)
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PaymentGatewayError, ValidationError
 from app.core.ports import EventPublisher
@@ -93,6 +99,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                     duration_days=0,
                     currency=currency,
                     purchase_type=PurchaseType.NEW,
+                    channel=PurchaseChannel.CABINET,
                     target_subscription_id=None,
                     gateway_type=data,
                     base_price=_TEST_AMOUNT,

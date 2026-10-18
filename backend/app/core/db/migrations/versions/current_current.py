@@ -2095,6 +2095,7 @@ def upgrade() -> None:
         sa.Column(
             "purchase_type", sa.Enum("NEW", "RENEW", "CHANGE", name="purchasetype"), nullable=False
         ),
+        sa.Column("channel", sa.Enum("BOT", "CABINET", name="purchasechannel"), nullable=False),
         sa.Column("target_subscription_id", sa.Integer(), nullable=True),
         sa.Column(
             "gateway_type",

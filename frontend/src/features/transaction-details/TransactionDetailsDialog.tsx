@@ -13,6 +13,7 @@ import {
   Repeat,
   Send,
   ShoppingCart,
+  Smartphone,
   Undo2,
   User,
   Wallet,
@@ -176,6 +177,9 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
             </InfoRow>
             <InfoRow icon={CreditCard} label={t("transactions.details.gateway")} copyValue={gatewayLabel}>
               <DetailValue value={gatewayLabel} />
+            </InfoRow>
+            <InfoRow icon={Smartphone} label={t("transactions.details.channel")}>
+              <DetailValue value={t(`transactions.channel.${order.channel}` as ParseKeys)} />
             </InfoRow>
             <InfoRow icon={CalendarDays} label={t("transactions.details.createdAt")} copyValue={createdAt} mono>
               <DetailValue value={createdAt} />

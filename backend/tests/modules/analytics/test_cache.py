@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from redis.asyncio import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 
+from app.core.constants import REDIS_KEY_PREFIX
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import AnalyticsPeriodQueryDto, CohortsDto
 
@@ -33,6 +34,18 @@ async def test_a_repeat_within_the_ttl_comes_from_the_cache(redis: Redis) -> Non
 
     assert first == second == other
     assert calls == 2  # the second call hit the cache, other params did not
+
+
+async def test_a_stale_cached_payload_is_recomputed(redis: Redis) -> None:
+    cache = AnalyticsCache(redis)
+    report = f"test-{uuid.uuid4()}"
+    key = f"{REDIS_KEY_PREFIX}analytics:{report}:-"
+    await redis.set(key, '{"cohorts": "old shape"}', ex=60)
+
+    async def compute() -> CohortsDto:
+        return CohortsDto(cohorts=[])
+
+    assert await cache.get_or_compute(report, None, CohortsDto, compute) == CohortsDto(cohorts=[])
 
 
 async def test_a_redis_outage_still_computes_the_report() -> None:

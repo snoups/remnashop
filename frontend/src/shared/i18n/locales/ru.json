@@ -428,6 +428,9 @@
       "byPlanDescription": "Деньги, а не число подписок",
       "byDuration": "По длительности",
       "byDurationDescription": "Выручка по сроку подписки",
+      "byChannel": "По каналам",
+      "byChannelDescription": "Выручка по каналу покупки",
+      "channel": "Канал",
       "plan": "Тариф",
       "duration": "Срок",
       "sales": "Продаж",
@@ -741,6 +744,7 @@
       "RequiredChannelCheckFailedEvent": "Ошибка проверки канала",
       "CabinetSignedInEvent": "Вход в кабинет",
       "CheckoutCreatedEvent": "Создан платёж",
+      "TransactionCanceledEvent": "Заказ отменён",
       "TransactionExpiredEvent": "Неоплаченный заказ истёк",
       "MarketingOptOutChangedEvent": "Изменена подписка на рекламу",
       "BotBlockedByUserEvent": "Клиент заблокировал бота",
@@ -2988,6 +2992,10 @@
       "RENEW": "Продление",
       "CHANGE": "Смена плана"
     },
+    "channel": {
+      "BOT": "Бот",
+      "CABINET": "Кабинет"
+    },
     "discountSource": {
       "NONE": "Нет",
       "PERSONAL": "Персональная",
@@ -3009,6 +3017,7 @@
       "createdAt": "Создан",
       "id": "ID",
       "gateway": "Шлюз",
+      "channel": "Канал",
       "sections": {
         "purchase": "Покупка",
         "payment": "Платёж",

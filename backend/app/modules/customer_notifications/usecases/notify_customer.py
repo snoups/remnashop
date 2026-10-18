@@ -7,7 +7,9 @@ from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX, TTL_1D, TTL_7D
 from app.core.db.uow import UnitOfWork
+from app.core.enums import PaymentOutcome, PurchaseChannel
 from app.core.exceptions import RetryableTaskError
+from app.core.ports import BotSignals
 from app.core.usecase import UseCase
 from app.modules.customer_notifications.dispatch import SendCustomerTelegramDispatch
 from app.modules.customer_notifications.dto import NotifyCustomerDto
@@ -20,13 +22,26 @@ from app.modules.notifications import (
     NotificationRendererFactory,
 )
 from app.modules.settings import SettingsRepository
-from app.modules.subscriptions import TorrentBlockerReportEvent
+from app.modules.subscriptions import (
+    SubscriptionChangedEvent,
+    SubscriptionPurchasedEvent,
+    SubscriptionRenewedEvent,
+    TorrentBlockerReportEvent,
+)
+from app.modules.transactions import PaidOrderNotFulfilledEvent, TransactionRepository
 from app.modules.users import UserDto, UserRepository
 
 # outlives the sweep's retries of one outbox row
 _DEDUP_TTL_S: Final[int] = TTL_7D
 # a torrent client trips the blocker on every connection; one warning a day is enough
 _COOLDOWNS: Final[dict[str, int]] = {TorrentBlockerReportEvent.__name__: TTL_1D}
+# a bot order shows these in the bot's own window instead of a Telegram text
+_OUTCOMES: Final[dict[str, PaymentOutcome]] = {
+    SubscriptionPurchasedEvent.__name__: PaymentOutcome.SUCCEEDED,
+    SubscriptionChangedEvent.__name__: PaymentOutcome.SUCCEEDED,
+    SubscriptionRenewedEvent.__name__: PaymentOutcome.SUCCEEDED,
+    PaidOrderNotFulfilledEvent.__name__: PaymentOutcome.NOT_FULFILLED,
+}
 
 
 def _cooldown_key(event_type: str, user_id: int) -> Optional[str]:
@@ -42,8 +57,10 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         self,
         user_repository: UserRepository,
         settings_repository: SettingsRepository,
+        transaction_repository: TransactionRepository,
         renderer_factory: NotificationRendererFactory,
         token_source: BotTokenSource,
+        bot_signals: BotSignals,
         send_telegram: SendCustomerTelegramDispatch,
         send_email: SendEmailDispatch,
         redis: Redis,
@@ -52,8 +69,10 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
     ) -> None:
         self._user_repository = user_repository
         self._settings_repository = settings_repository
+        self._transaction_repository = transaction_repository
         self._renderer_factory = renderer_factory
         self._token_source = token_source
+        self._bot_signals = bot_signals
         self._send_telegram = send_telegram
         self._send_email = send_email
         self._redis = redis
@@ -101,18 +120,43 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             if not await self._redis.set(key, "1", nx=True, ex=_DEDUP_TTL_S):
                 continue
             try:
-                await self._queue(channel, user, renderer, title, body)
+                result = await self._deliver(data, channel, user, renderer, title, body)
             except Exception as error:
                 # a lost mark would silence this channel for the whole TTL
                 await self._redis.delete(key)
                 first_error = first_error or error
                 continue
-            CUSTOMER_NOTIFICATIONS.labels(channel=channel.value, result="queued").inc()
+            CUSTOMER_NOTIFICATIONS.labels(channel=channel.value, result=result).inc()
         if first_error is not None:
             # the retry must not find its own cooldown and give up
             if cooldown_key is not None:
                 await self._redis.delete(cooldown_key)
             raise first_error
+
+    async def _deliver(
+        self,
+        data: NotifyCustomerDto,
+        channel: CustomerChannel,
+        user: UserDto,
+        renderer: NotificationRenderer,
+        title: str,
+        body: str,
+    ) -> str:
+        if channel is CustomerChannel.TELEGRAM and await self._show_window(data, user):
+            return "window"
+        await self._queue(channel, user, renderer, title, body)
+        return "queued"
+
+    async def _show_window(self, data: NotifyCustomerDto, user: UserDto) -> bool:
+        outcome = _OUTCOMES.get(data.event_type)
+        if data.payment_key is None or outcome is None or user.telegram_id is None:
+            return False
+        async with self._uow:
+            order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
+        if order is None or order.channel is not PurchaseChannel.BOT:
+            return False
+        # no bot process listening: the text is the fallback
+        return await self._bot_signals.payment_outcome(user.telegram_id, order.id, outcome) > 0
 
     async def _queue(
         self,

@@ -17,6 +17,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PromocodeRewardType,
+    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -51,6 +52,7 @@ async def test_prune_expired_transactions_marks_stale_pending_rows_expired(
     async with uow:
         stale = await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -85,6 +87,7 @@ async def test_prune_expired_transactions_publishes_each_expired_order(
     async with uow:
         stale = await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -120,6 +123,7 @@ async def test_prune_expired_transactions_gives_back_a_spent_purchase_discount(
         promocode_id = await _discount_promocode(transaction_repository.session)
         await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -162,6 +166,7 @@ async def _prune_discounted_order(
     async with uow:
         await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -222,6 +227,7 @@ async def test_prune_keeps_a_deleted_promocodes_discount_gone(
 
 def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),

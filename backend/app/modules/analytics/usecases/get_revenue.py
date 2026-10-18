@@ -122,10 +122,12 @@ def _build_revenue(
 
     by_plan: dict[str, list[Decimal]] = {}
     by_duration: dict[str, list[Decimal]] = {}
+    by_channel: dict[str, list[Decimal]] = {}
     gateways: dict[PaymentGatewayType, _Gateway] = {}
     for row in current:
         by_plan.setdefault(row.plan_name, []).append(amount[id(row)])
         by_duration.setdefault(str(row.duration_days), []).append(amount[id(row)])
+        by_channel.setdefault(row.channel.value, []).append(amount[id(row)])
         stats = gateways.setdefault(row.gateway_type, _Gateway())
         stats.paid += 1
         stats.revenue += amount[id(row)]
@@ -163,6 +165,7 @@ def _build_revenue(
         ],
         by_plan=_groups(by_plan),
         by_duration=_groups(by_duration),
+        by_channel=_groups(by_channel),
         gateways=sorted(
             (
                 GatewayStatsDto(

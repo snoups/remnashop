@@ -15,6 +15,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     TransactionStatus,
@@ -200,6 +201,7 @@ async def _order(
     async with uow:
         created = await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id),

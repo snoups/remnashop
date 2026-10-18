@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.public import AuthContext, get_auth_context, get_current_user
 from app.api.errors import error_responses
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-from app.core.enums import SessionAudience
+from app.core.enums import PurchaseChannel, SessionAudience
 from app.modules.transactions.api.schemas import (
     CheckoutQuoteResponse,
     CheckoutResponse,
@@ -53,6 +53,7 @@ async def create_checkout(
             duration_days=payload.duration_days,
             currency=payload.currency,
             purchase_type=payload.purchase_type,
+            channel=PurchaseChannel.CABINET,
             gateway_type=payload.gateway_type,
             target_subscription_id=payload.target_subscription_id,
             customer_email=payload.customer_email,

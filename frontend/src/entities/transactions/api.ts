@@ -34,6 +34,7 @@ export interface TransactionItem {
   /** the subscription the order provisioned, once reconciled */
   fulfilled_subscription_id: number | null;
   gateway_type: string;
+  channel: "BOT" | "CABINET";
   external_payment_id: string | null;
   status: TransactionStatus;
   base_price: string;

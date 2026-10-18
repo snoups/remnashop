@@ -15,6 +15,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     TransactionStatus,
@@ -98,6 +99,7 @@ class TransactionRepository:
             duration_days=row.duration_days,
             currency=row.currency,
             purchase_type=row.purchase_type,
+            channel=row.channel,
             target_subscription_id=row.target_subscription_id,
             gateway_type=row.gateway_type,
             external_payment_id=row.external_payment_id,
@@ -129,6 +131,7 @@ class TransactionRepository:
             duration_days=data.duration_days,
             currency=data.currency,
             purchase_type=data.purchase_type,
+            channel=data.channel,
             target_subscription_id=data.target_subscription_id,
             gateway_type=data.gateway_type,
             base_price=data.base_price,
@@ -194,6 +197,19 @@ class TransactionRepository:
                 Transaction.status == TransactionStatus.PAID,
                 Transaction.final_price > 0,
                 Transaction.gateway_type != PaymentGatewayType.TELEGRAM_STARS,
+                Transaction.is_test.is_(False),
+            )
+        )
+        return bool(await self.session.scalar(stmt))
+
+    async def has_newer_order(
+        self, user_id: int, channel: PurchaseChannel, after_order_id: int
+    ) -> bool:
+        stmt = select(
+            exists().where(
+                Transaction.user_id == user_id,
+                Transaction.channel == channel,
+                Transaction.id > after_order_id,
                 Transaction.is_test.is_(False),
             )
         )

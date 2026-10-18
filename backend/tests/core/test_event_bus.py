@@ -20,7 +20,10 @@ from app.modules.auth.events import (
     UserSessionRevokedByAdminEvent,
 )
 from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent
-from app.modules.customer_notifications.tasks import notify_customer_task
+from app.modules.customer_notifications.tasks import (
+    notify_customer_task,
+    show_payment_canceled_task,
+)
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
 from app.modules.notifications.tasks import deliver_notification_task
 from app.modules.oauth.events import (
@@ -53,6 +56,8 @@ from app.modules.subscriptions.events import (
 )
 from app.modules.transactions.events import (
     PaidOrderNotFulfilledEvent,
+    TransactionCanceledEvent,
+    TransactionExpiredEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
@@ -97,8 +102,15 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
             order_id=1, user_id=1, gateway_type="YOOKASSA", amount="5.00", currency="USD"
         ),
         PaidOrderNotFulfilledEvent(
-            order_id=1, user_id=1, gateway_type="YOOKASSA", amount="5.00", currency="USD"
+            order_id=1,
+            user_id=1,
+            payment_key="key-1",
+            gateway_type="YOOKASSA",
+            amount="5.00",
+            currency="USD",
         ),
+        TransactionCanceledEvent(order_id=1, user_id=1),
+        TransactionExpiredEvent(order_id=1, user_id=1),
         SubscriptionExpiringEvent(user=_USER, subscription_id=1, hours=72),
         SubscriptionExpiredEvent(user=_USER, subscription_id=1),
         SubscriptionTrafficLimitedEvent(user=_USER, subscription_id=1),
@@ -256,6 +268,7 @@ async def test_registered_handler_reads_its_real_payload_shape(
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
     monkeypatch.setattr(deliver_notification_task, "kiq", _noop_kiq)
     monkeypatch.setattr(notify_customer_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(show_payment_canceled_task, "kiq", _noop_kiq)
     monkeypatch.setattr(attach_referral_on_registration_task, "kiq", _noop_kiq)
     monkeypatch.setattr(record_ad_link_attribution_task, "kiq", _noop_kiq)
     monkeypatch.setattr(notify_payment_waitlist_task, "kiq", _noop_kiq)

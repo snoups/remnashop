@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -7,9 +8,15 @@ class NotifyCustomerDto:
     event_type: str
     outbox_id: int
     args: dict[str, str | int]
+    payment_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
 class SendCustomerTelegramDto:
     user_id: int
     text: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShowPaymentCanceledDto:
+    order_id: int

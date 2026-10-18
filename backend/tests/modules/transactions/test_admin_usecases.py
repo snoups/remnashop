@@ -9,6 +9,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     RoundingMode,
@@ -40,6 +41,7 @@ from tests.modules.subscriptions.factories import make_plan_snapshot
 
 def _order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),

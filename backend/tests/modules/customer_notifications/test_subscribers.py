@@ -27,11 +27,18 @@ from app.modules.subscriptions import (
     SubscriptionRenewedEvent,
     TorrentBlockerReportEvent,
 )
-from app.modules.transactions import TransactionPartiallyRefundedEvent, TransactionRefundedEvent
+from app.modules.transactions import (
+    PaidOrderNotFulfilledEvent,
+    TransactionCanceledEvent,
+    TransactionExpiredEvent,
+    TransactionPartiallyRefundedEvent,
+    TransactionRefundedEvent,
+)
 from app.modules.users import UserDto
 from tests.fakes.events import stored_event
 
 _KIQ = "app.modules.customer_notifications.tasks.notify_customer_task.kiq"
+_CANCEL_KIQ = "app.modules.customer_notifications.tasks.show_payment_canceled_task.kiq"
 
 
 def _user(user_id: int) -> UserDto:
@@ -157,7 +164,7 @@ async def test_event_enqueues_notification(
     kiq = await _dispatch(event)
 
     kiq.assert_awaited_once_with(
-        user_id=user_id, event_type=event.event_type, outbox_id=5, args=args
+        user_id=user_id, event_type=event.event_type, outbox_id=5, args=args, payment_key=None
     )
 
 
@@ -179,7 +186,48 @@ async def test_merge_notifies_only_on_self_merge(actor_id: int, notified: bool) 
 
     if notified:
         kiq.assert_awaited_once_with(
-            user_id=7, event_type="AccountsMergedEvent", outbox_id=5, args={}
+            user_id=7, event_type="AccountsMergedEvent", outbox_id=5, args={}, payment_key=None
         )
     else:
         kiq.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        SubscriptionPurchasedEvent(
+            user=_user(7), plan_id=1, purchase_type=PurchaseType.NEW, payment_key="k", **_SUB
+        ),
+        SubscriptionChangedEvent(
+            user=_user(7),
+            previous_subscription_id=2,
+            previous_plan_snapshot={},
+            payment_key="k",
+            **_SUB,
+        ),
+        SubscriptionRenewedEvent(user=_user(7), duration_days=30, payment_key="k", **_SUB),
+        PaidOrderNotFulfilledEvent(
+            order_id=1,
+            user_id=7,
+            payment_key="k",
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            amount="10.00",
+            currency=Currency.USD,
+        ),
+    ],
+    ids=lambda event: type(event).__name__,
+)
+async def test_paid_event_passes_payment_key(event: BaseEvent) -> None:
+    kiq = await _dispatch(event)
+
+    assert kiq.await_args.kwargs["payment_key"] == "k"
+
+
+@pytest.mark.parametrize("event_class", [TransactionCanceledEvent, TransactionExpiredEvent])
+async def test_abandoned_order_shows_cancel_window(event_class: type[BaseEvent]) -> None:
+    bus = EventBus()
+    register_subscribers(bus)
+    with patch(_CANCEL_KIQ, new_callable=AsyncMock) as kiq:
+        await bus.dispatch_stored(stored_event(event_class(order_id=4, user_id=7)))  # type: ignore[call-arg]
+
+    kiq.assert_awaited_once_with(order_id=4)

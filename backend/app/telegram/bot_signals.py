@@ -5,6 +5,9 @@ import signal
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Final, Protocol
 
+from aiogram import Bot
+from aiogram.fsm.state import State
+from aiogram_dialog import BgManagerFactory, ShowMode, StartMode
 from fluentogram import TranslatorHub
 from loguru import logger
 from redis.asyncio import Redis
@@ -13,16 +16,24 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from app.core.constants import (
     DIALOG_CONFIG_CHANGED_CHANNEL,
+    PAYMENT_OUTCOME_CHANNEL,
     TELEGRAM_RESTART_CHANNEL,
     TRANSLATION_CHANGED_CHANNEL,
 )
+from app.core.enums import PaymentOutcome
 from app.modules.translations import fluent_value_source
+from app.telegram.states import PaymentResult
 
 SignalHandler = Callable[[str], Awaitable[None]]
 
 _RECONNECT_MIN_DELAY_S: Final[float] = 1.0
 _RECONNECT_MAX_DELAY_S: Final[float] = 30.0
 _POLL_TIMEOUT_S: Final[float] = 1.0
+_OUTCOME_STATES: Final[dict[PaymentOutcome, State]] = {
+    PaymentOutcome.SUCCEEDED: PaymentResult.SUCCESS,
+    PaymentOutcome.NOT_FULFILLED: PaymentResult.FAILED,
+    PaymentOutcome.CANCELED: PaymentResult.CANCELED,
+}
 
 
 class _Reloadable(Protocol):
@@ -84,3 +95,17 @@ def live_update_handlers(cache: _Reloadable, hub: TranslatorHub) -> dict[str, Si
         DIALOG_CONFIG_CHANGED_CHANNEL: reload_dialogs,
         TRANSLATION_CHANGED_CHANNEL: patch_translation,
     }
+
+
+def payment_outcome_handlers(bot: Bot, factory: BgManagerFactory) -> dict[str, SignalHandler]:
+    async def show_outcome(data: str) -> None:
+        payload = json.loads(data)
+        telegram_id = payload["telegram_id"]
+        await factory.bg(bot=bot, user_id=telegram_id, chat_id=telegram_id).start(
+            _OUTCOME_STATES[PaymentOutcome(payload["outcome"])],
+            data={"order_id": payload["order_id"]},
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.DELETE_AND_SEND,
+        )
+
+    return {PAYMENT_OUTCOME_CHANNEL: show_outcome}

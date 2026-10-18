@@ -185,6 +185,7 @@ async def test_get_transaction_returns_the_order(
     assert response.status_code == 200
     assert response.json()["id"] == created.id
     assert response.json()["is_test"] is False
+    assert response.json()["channel"] == "CABINET"
     assert response.json()["user"] == {
         "name": "buyer",
         "username": None,

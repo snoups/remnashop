@@ -27,6 +27,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PlanType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     RoundingMode,
@@ -2805,6 +2806,7 @@ async def _capped_buyer_with_open_order(
     )
     await TransactionRepository(plan_repository.session).create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=buyer.id,
             plan_id=plan.id,
             plan_snapshot=snapshot_from_plan(plan),

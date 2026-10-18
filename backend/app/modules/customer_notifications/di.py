@@ -7,11 +7,17 @@ from app.modules.customer_notifications.tasks import send_customer_telegram_task
 from app.modules.customer_notifications.usecases import (
     NotifyCustomerUseCase,
     SendCustomerTelegramUseCase,
+    ShowPaymentCanceledUseCase,
 )
 
 
 class CustomerNotificationsProvider(Provider):
-    use_cases = provide_all(NotifyCustomerUseCase, SendCustomerTelegramUseCase, scope=Scope.REQUEST)
+    use_cases = provide_all(
+        NotifyCustomerUseCase,
+        SendCustomerTelegramUseCase,
+        ShowPaymentCanceledUseCase,
+        scope=Scope.REQUEST,
+    )
 
     @provide(scope=Scope.APP)
     def send_telegram_dispatch(self) -> SendCustomerTelegramDispatch:

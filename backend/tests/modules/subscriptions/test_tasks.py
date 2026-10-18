@@ -13,6 +13,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PlanType,
+    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -239,6 +240,7 @@ async def test_a_free_order_over_the_cap_fails_instead_of_provisioning(
     transactions = TransactionRepository(user_repository.session)
     order = await transactions.create(
         CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
             user_id=buyer.id,
             plan_id=plan.id,
             plan_snapshot=snapshot,

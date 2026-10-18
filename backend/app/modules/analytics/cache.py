@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from typing import Final, Optional, TypeVar
 
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
@@ -34,7 +34,10 @@ class AnalyticsCache:
             logger.warning(f"Analytics cache read failed, computing '{report}': {error}")
             cached = None
         if cached is not None:
-            return model.model_validate_json(cached)
+            try:
+                return model.model_validate_json(cached)
+            except ValidationError as error:
+                logger.warning(f"Analytics cache payload is stale, computing '{report}': {error}")
         result = await compute()
         try:
             await self._redis.set(key, result.model_dump_json(), ex=_TTL_S)

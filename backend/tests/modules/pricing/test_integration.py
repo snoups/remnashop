@@ -6,7 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, PaymentGatewayType, PlanType, PurchaseType, Role, RoundingMode
+from app.core.enums import (
+    Currency,
+    PaymentGatewayType,
+    PlanType,
+    PurchaseChannel,
+    PurchaseType,
+    Role,
+    RoundingMode,
+)
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewayRepository
 from app.modules.loyalty.repository import LoyaltyRepository
@@ -169,6 +177,7 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
     result = await create_checkout(
         user,
         CreateCheckoutDto(
+            channel=PurchaseChannel.CABINET,
             plan_id=plan.id,
             duration_days=30,
             currency=Currency.RUB,

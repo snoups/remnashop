@@ -208,6 +208,7 @@ export interface Revenue {
   series: RevenueBucket[];
   by_plan: RevenueGroup[];
   by_duration: RevenueGroup[];
+  by_channel: RevenueGroup[];
   gateways: GatewayStats[];
 }
 

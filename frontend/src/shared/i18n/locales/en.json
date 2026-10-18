@@ -404,6 +404,9 @@
       "byPlanDescription": "Money, not the number of subscriptions",
       "byDuration": "By duration",
       "byDurationDescription": "Revenue by subscription length",
+      "byChannel": "By channel",
+      "byChannelDescription": "Revenue by purchase channel",
+      "channel": "Channel",
       "plan": "Plan",
       "duration": "Duration",
       "sales": "Sales",
@@ -705,6 +708,7 @@
       "RequiredChannelCheckFailedEvent": "Channel check failed",
       "CabinetSignedInEvent": "Cabinet sign-in",
       "CheckoutCreatedEvent": "Checkout created",
+      "TransactionCanceledEvent": "Order canceled",
       "TransactionExpiredEvent": "Unpaid order expired",
       "MarketingOptOutChangedEvent": "Marketing preference changed",
       "BotBlockedByUserEvent": "Bot blocked by customer",
@@ -2928,6 +2932,10 @@
       "RENEW": "Renewal",
       "CHANGE": "Change"
     },
+    "channel": {
+      "BOT": "Bot",
+      "CABINET": "Cabinet"
+    },
     "discountSource": {
       "NONE": "None",
       "PERSONAL": "Personal",
@@ -2949,6 +2957,7 @@
       "createdAt": "Created at",
       "id": "ID",
       "gateway": "Gateway",
+      "channel": "Channel",
       "sections": {
         "purchase": "Purchase",
         "payment": "Payment",

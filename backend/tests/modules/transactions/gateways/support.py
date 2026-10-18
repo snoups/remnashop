@@ -9,6 +9,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -43,6 +44,7 @@ def make_order(**overrides: Any) -> TransactionDto:
         "duration_days": 30,
         "currency": Currency.RUB,
         "purchase_type": PurchaseType.NEW,
+        "channel": PurchaseChannel.CABINET,
         "gateway_type": PaymentGatewayType.YOOKASSA,
         "status": TransactionStatus.PENDING,
         "base_price": Decimal("500"),

@@ -13,6 +13,7 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     SubscriptionStatus,
@@ -68,6 +69,7 @@ async def _pay(
     async with uow:
         order = await tx_repo.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=user_id,
                 plan_id=plan_id,
                 plan_snapshot=make_plan_snapshot(plan_id=plan_id, name=plan_name),

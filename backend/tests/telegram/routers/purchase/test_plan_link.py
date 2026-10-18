@@ -91,6 +91,7 @@ async def test_link_to_an_unavailable_plan_answers_and_opens_the_menu() -> None:
         manager,
         list_active_plans=list_active_plans,
         list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
 

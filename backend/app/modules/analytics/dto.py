@@ -199,6 +199,7 @@ class RevenueDto(BaseDto):
     series: list[RevenueBucketDto]
     by_plan: list[RevenueGroupDto]
     by_duration: list[RevenueGroupDto]
+    by_channel: list[RevenueGroupDto]
     gateways: list[GatewayStatsDto]
 
 

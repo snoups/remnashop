@@ -13,6 +13,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PromocodeRewardType,
+    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -32,6 +33,7 @@ from tests.modules.subscriptions.factories import make_plan_snapshot
 
 def _order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -297,7 +299,7 @@ async def test_list_paginated_filters_by_gateway_purchase_type_and_created_from(
                     ).__dict__,
                     "gateway_type": PaymentGatewayType.TELEGRAM_STARS,
                     "purchase_type": PurchaseType.RENEW,
-                }
+                },
             )
         )
         old_yookassa = await transaction_repository.create(
@@ -343,7 +345,7 @@ async def test_list_gateway_types_returns_distinct_non_test_gateways(
                         user_id=user_id, plan_id=plan_id, idempotency_key="gw-test"
                     ).__dict__,
                     "gateway_type": PaymentGatewayType.HELEKET,
-                }
+                },
             )
         )
     await session.execute(
@@ -382,7 +384,7 @@ async def test_cancel_expired_pending_only_touches_expired_pending_rows(
                         user_id=user_id, plan_id=plan_id, idempotency_key="key-bulk-expired"
                     ).__dict__,
                     "expires_at": datetime_now() - timedelta(minutes=1),
-                }
+                },
             )
         )
         future_pending = await transaction_repository.create(
@@ -395,7 +397,7 @@ async def test_cancel_expired_pending_only_touches_expired_pending_rows(
                         user_id=user_id, plan_id=plan_id, idempotency_key="key-bulk-paid"
                     ).__dict__,
                     "expires_at": datetime_now() - timedelta(minutes=1),
-                }
+                },
             )
         )
         await transaction_repository.mark_status(expired_paid.id, TransactionStatus.PAID)
@@ -520,7 +522,7 @@ async def test_user_id_queries_aggregate_across_many_users(
                         "final_price": Decimal("100"),
                         "anchor_base_price": Decimal("100"),
                         "anchor_final_price": Decimal("100"),
-                    }
+                    },
                 )
             )
             await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
@@ -593,7 +595,7 @@ async def test_sum_paid_final_price_since_groups_by_currency(
                     "final_price": Decimal("5"),
                     "anchor_base_price": Decimal("5"),
                     "anchor_final_price": Decimal("5"),
-                }
+                },
             )
         )
     await transaction_repository.mark_status(rub_order.id, TransactionStatus.PAID)
@@ -768,3 +770,35 @@ async def test_has_paid_purchase(
 
     async with uow:
         assert await transaction_repository.has_paid_purchase(user_id) is expected
+
+
+async def test_has_newer_order(
+    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        first = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="newer-1"),
+                channel=PurchaseChannel.BOT,
+            )
+        )
+        await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="newer-2")
+        )
+
+    assert (
+        await transaction_repository.has_newer_order(user_id, PurchaseChannel.BOT, first.id)
+        is False
+    )
+
+    async with uow:
+        await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="newer-3"),
+                channel=PurchaseChannel.BOT,
+            )
+        )
+
+    assert (
+        await transaction_repository.has_newer_order(user_id, PurchaseChannel.BOT, first.id) is True
+    )

@@ -9,6 +9,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -45,6 +46,7 @@ class TransactionDto(BaseDto, TimestampMixin):
     duration_days: int
     currency: Currency
     purchase_type: PurchaseType
+    channel: PurchaseChannel
     target_subscription_id: Optional[int] = None
     gateway_type: PaymentGatewayType
     external_payment_id: Optional[str] = None
@@ -80,6 +82,7 @@ class CreateTransactionDto:
     duration_days: int
     currency: Currency
     purchase_type: PurchaseType
+    channel: PurchaseChannel
     target_subscription_id: Optional[int]
     gateway_type: PaymentGatewayType
     base_price: Decimal
@@ -120,6 +123,7 @@ class CreateCheckoutDto:
     duration_days: int
     currency: Currency
     purchase_type: PurchaseType
+    channel: PurchaseChannel
     gateway_type: PaymentGatewayType
     target_subscription_id: Optional[int] = None
     customer_email: Optional[str] = None
@@ -226,6 +230,7 @@ class PaidTransactionDto:
     plan_name: str
     duration_days: int
     gateway_type: PaymentGatewayType
+    channel: PurchaseChannel
 
     @property
     def user_discount_amount(self) -> Decimal:

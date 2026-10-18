@@ -59,6 +59,7 @@ class TransactionStatsRepository:
             Transaction.duration_days,
             Transaction.gateway_type,
             Transaction.plan_discount_percent,
+            Transaction.channel,
         ).where(*_PAID)
 
     @staticmethod
@@ -78,6 +79,7 @@ class TransactionStatsRepository:
             duration_days=row[11],
             gateway_type=row[12],
             plan_discount_percent=row[13],
+            channel=row[14],
         )
 
     async def list_paid(self, start: Optional[datetime], end: datetime) -> list[PaidTransactionDto]:

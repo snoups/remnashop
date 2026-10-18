@@ -13,6 +13,7 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     RoundingMode,
@@ -156,6 +157,7 @@ async def test_generate_ad_link_code_returns_unused_code(
 
 def _paid_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -304,7 +306,7 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                     "final_price": Decimal("900"),
                     "anchor_base_price": Decimal("10"),
                     "anchor_final_price": Decimal("10"),
-                }
+                },
             )
         )
         usd_order = await transaction_repository.create(
@@ -318,7 +320,7 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
                     "final_price": Decimal("5"),
                     "anchor_base_price": Decimal("5"),
                     "anchor_final_price": Decimal("5"),
-                }
+                },
             )
         )
     await transaction_repository.mark_status(rub_order.id, TransactionStatus.PAID)

@@ -18,6 +18,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PromocodeRewardType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -130,6 +131,7 @@ async def client(
 
 def _pending_order_dto(*, user_id: int, plan_id: int, idempotency_key: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),
@@ -337,6 +339,51 @@ async def test_webhook_failure_marks_a_pending_order(
     assert stub.confirm_calls == 0
     fetched = await transaction_repository.get_by_id(order.id)
     assert fetched.status is TransactionStatus.CANCELED
+
+
+async def _canceled_events(session) -> list[EventOutboxEntry]:
+    return list(
+        (
+            await session.scalars(
+                select(EventOutboxEntry).where(
+                    EventOutboxEntry.event_type == "TransactionCanceledEvent"
+                )
+            )
+        ).all()
+    )
+
+
+async def test_webhook_cancel_from_pending_publishes_event(
+    client, transaction_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await transaction_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-cancel-ev")
+        )
+    _install_stub(monkeypatch, _StubGateway(signal=_canceled_signal("wh-cancel-ev")))
+
+    await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    events = await _canceled_events(session)
+    assert [(e.payload["order_id"], e.payload["user_id"]) for e in events] == [(order.id, user_id)]
+
+
+async def test_webhook_cancel_of_canceled_order_publishes_nothing(
+    client, transaction_repository, uow, session, user_id, plan_id, monkeypatch
+) -> None:
+    async with uow:
+        order = await transaction_repository.create(
+            _pending_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="wh-cancel-2")
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.CANCELED)
+    failed = WebhookSignal(
+        reference="wh-cancel-2", claims_paid=False, reported_status=TransactionStatus.FAILED
+    )
+    _install_stub(monkeypatch, _StubGateway(signal=failed))
+
+    await client.post("/api/v1/payments/yookassa", content=b"{}")
+
+    assert await _canceled_events(session) == []
 
 
 async def test_webhook_failure_never_overwrites_a_paid_order(

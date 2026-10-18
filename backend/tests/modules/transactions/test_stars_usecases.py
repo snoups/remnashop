@@ -9,6 +9,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -36,6 +37,7 @@ def _stars_order(
     *, user_id: int, plan_id: int, source: DiscountSource = DiscountSource.NONE
 ) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),

@@ -12,6 +12,7 @@ from app.core.enums import (
     DiscountSource,
     PaymentGatewayType,
     PromocodeRewardType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -74,6 +75,7 @@ def _pending_order(
 ) -> CreateTransactionDto:
     percent = 20 if source is DiscountSource.PURCHASE else 0
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),

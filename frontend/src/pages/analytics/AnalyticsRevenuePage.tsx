@@ -184,6 +184,18 @@ function Overview({
             empty={empty}
           />
         </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader
+            icon={BarChart3}
+            title={t("analytics.revenue.byChannel")}
+            description={t("analytics.revenue.byChannelDescription")}
+          />
+          <BarRows
+            head={groupHead(t("analytics.revenue.channel"))}
+            rows={groupRows(data.by_channel, (key) => t(`transactions.channel.${key}` as ParseKeys))}
+            empty={empty}
+          />
+        </Card>
       </div>
 
       <Card>

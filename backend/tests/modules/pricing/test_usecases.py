@@ -17,6 +17,7 @@ from app.core.enums import (
     PaymentGatewayType,
     PlanType,
     PriceAdjustScope,
+    PurchaseChannel,
     PurchaseType,
     Role,
     RoundingMode,
@@ -232,6 +233,7 @@ async def test_switch_anchor_rescales_transaction_anchor_amounts(
     async with uow:
         order = await transaction_repository.create(
             CreateTransactionDto(
+                channel=PurchaseChannel.CABINET,
                 user_id=buyer.id,
                 plan_id=None,
                 plan_snapshot=make_plan_snapshot(),

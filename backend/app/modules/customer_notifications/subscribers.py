@@ -1,10 +1,13 @@
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent, UserEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
-from app.modules.customer_notifications.tasks import notify_customer_task
+from app.modules.customer_notifications.tasks import (
+    notify_customer_task,
+    show_payment_canceled_task,
+)
 from app.modules.promocodes import PromocodeDiscountExpiringEvent
 from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
 from app.modules.subscriptions import (
@@ -23,17 +26,28 @@ from app.modules.subscriptions import (
 )
 from app.modules.transactions import (
     PaidOrderNotFulfilledEvent,
+    TransactionCanceledEvent,
+    TransactionExpiredEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
 
 
-async def _notify(entry: StoredEvent, user_id: int, args: dict[str, Any]) -> None:
+async def _notify(
+    entry: StoredEvent,
+    user_id: int,
+    args: dict[str, Any],
+    payment_key: Optional[str] = None,
+) -> None:
     # the system actor owns nothing
     if user_id <= 0:
         return
     await notify_customer_task.kiq(  # type: ignore[call-overload]
-        user_id=user_id, event_type=entry.event_type, outbox_id=entry.outbox_id, args=args
+        user_id=user_id,
+        event_type=entry.event_type,
+        outbox_id=entry.outbox_id,
+        args=args,
+        payment_key=payment_key,
     )
 
 
@@ -41,8 +55,14 @@ async def _on_purchase(event: UserEvent, entry: StoredEvent) -> None:
     await _notify(entry, event.user.id, {})
 
 
+async def _on_paid(
+    event: Union[SubscriptionPurchasedEvent, SubscriptionChangedEvent], entry: StoredEvent
+) -> None:
+    await _notify(entry, event.user.id, {}, event.payment_key)
+
+
 async def _on_renewed(event: SubscriptionRenewedEvent, entry: StoredEvent) -> None:
-    await _notify(entry, event.user.id, {"duration_days": event.duration_days})
+    await _notify(entry, event.user.id, {"duration_days": event.duration_days}, event.payment_key)
 
 
 async def _on_addon(event: SubscriptionAddOnGrantedEvent, entry: StoredEvent) -> None:
@@ -55,12 +75,25 @@ async def _on_granted(event: SubscriptionGrantedEvent, entry: StoredEvent) -> No
 
 
 async def _on_refund(
-    event: Union[
-        TransactionRefundedEvent, TransactionPartiallyRefundedEvent, PaidOrderNotFulfilledEvent
-    ],
+    event: Union[TransactionRefundedEvent, TransactionPartiallyRefundedEvent],
     entry: StoredEvent,
 ) -> None:
     await _notify(entry, event.user_id, {"amount": event.amount, "currency": event.currency})
+
+
+async def _on_not_fulfilled(event: PaidOrderNotFulfilledEvent, entry: StoredEvent) -> None:
+    await _notify(
+        entry,
+        event.user_id,
+        {"amount": event.amount, "currency": event.currency},
+        event.payment_key,
+    )
+
+
+async def _on_abandoned(
+    event: Union[TransactionCanceledEvent, TransactionExpiredEvent], entry: StoredEvent
+) -> None:
+    await show_payment_canceled_task.kiq(order_id=event.order_id)  # type: ignore[call-overload]
 
 
 async def _on_hours(
@@ -106,15 +139,16 @@ async def _on_accounts_merged(event: AccountsMergedEvent, entry: StoredEvent) ->
 
 
 def register_subscribers(bus: EventBus) -> None:
-    bus.subscribe(SubscriptionPurchasedEvent, _on_purchase)
-    bus.subscribe(SubscriptionChangedEvent, _on_purchase)
+    bus.subscribe(SubscriptionPurchasedEvent, _on_paid)
+    bus.subscribe(SubscriptionChangedEvent, _on_paid)
     bus.subscribe(SubscriptionRenewedEvent, _on_renewed)
     bus.subscribe(SubscriptionAddOnGrantedEvent, _on_addon)
     bus.subscribe(SubscriptionGrantedEvent, _on_granted)
     bus.subscribe(TransactionRefundedEvent, _on_refund)
     bus.subscribe(TransactionPartiallyRefundedEvent, _on_refund)
-    # same amount and currency fields as a refund
-    bus.subscribe(PaidOrderNotFulfilledEvent, _on_refund)
+    bus.subscribe(PaidOrderNotFulfilledEvent, _on_not_fulfilled)
+    bus.subscribe(TransactionCanceledEvent, _on_abandoned)
+    bus.subscribe(TransactionExpiredEvent, _on_abandoned)
     bus.subscribe(SubscriptionExpiringEvent, _on_hours)
     bus.subscribe(SubscriptionExpiredEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficLimitedEvent, _on_purchase)

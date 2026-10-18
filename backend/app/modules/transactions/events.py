@@ -33,6 +33,7 @@ class PaidOrderNotFulfilledEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int
+    payment_key: str
     gateway_type: PaymentGatewayType
     amount: str
     currency: Currency
@@ -70,6 +71,13 @@ class CheckoutCreatedEvent(UserEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class TransactionExpiredEvent(SystemEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    user_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class TransactionCanceledEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int

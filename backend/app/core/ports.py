@@ -1,6 +1,6 @@
 from typing import Any, Protocol
 
-from app.core.enums import Locale
+from app.core.enums import Locale, PaymentOutcome
 from app.core.events import BaseEvent
 
 
@@ -21,6 +21,11 @@ class BotSignals(Protocol):
     async def translation_changed(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> None: ...
+
+    # returns how many subscribers took the signal; 0 means no bot process listened
+    async def payment_outcome(
+        self, telegram_id: int, order_id: int, outcome: PaymentOutcome
+    ) -> int: ...
 
 
 class TranslatorRunner(Protocol):

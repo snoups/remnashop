@@ -18,6 +18,7 @@ from app.core.enums import (
     PlanType,
     PromocodeAvailability,
     PromocodeRewardType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     SubscriptionStatus,
@@ -1209,6 +1210,7 @@ async def test_promocode_summary_totals_granted_rewards(
 
 def _order(user_id: int, *, promocode_id: Optional[int], final_price: str) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=None,
         plan_snapshot=make_plan_snapshot(),

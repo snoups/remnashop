@@ -14,6 +14,7 @@ from app.modules.gateways import VERIFY_IP_FIELD_KEY, GatewayRepository, gateway
 from app.modules.subscriptions import PurchaseSubscriptionDispatch
 from app.modules.transactions.dto import HandleWebhookDto, TransactionDto
 from app.modules.transactions.events import (
+    TransactionCanceledEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
@@ -218,15 +219,21 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
                     )
                 )
             return
+        await self._apply_reported_status(order, status, gateway_type, allowed_from)
+
+    async def _apply_reported_status(
+        self,
+        order: TransactionDto,
+        status: TransactionStatus,
+        gateway_type: PaymentGatewayType,
+        allowed_from: frozenset[TransactionStatus],
+    ) -> None:
         # Only the PENDING -> unpaid transition hands a spent purchase discount
         # back: a second CANCELED for an already-canceled order must not restore
         # it again after the customer spent the first restore elsewhere.
-        restores_discount = (
-            order.discount_source is DiscountSource.PURCHASE
-            and order.status is TransactionStatus.PENDING
-            and status in UNPAID_FINAL
-        )
-        if restores_discount:
+        from_pending = order.status is TransactionStatus.PENDING and status in UNPAID_FINAL
+        restores_discount = from_pending and order.discount_source is DiscountSource.PURCHASE
+        if from_pending:
             allowed_from = frozenset({TransactionStatus.PENDING})
         async with self._uow:
             changed = await self._transaction_repository.mark_status_if(
@@ -234,6 +241,10 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
             )
             if changed and restores_discount:
                 await give_back_purchase_discount(self._user_repository, order)
+            if changed and from_pending:
+                await self._event_publisher.publish(
+                    TransactionCanceledEvent(order_id=order.id, user_id=order.user_id)
+                )
             if changed and status is TransactionStatus.REFUNDED:
                 await self._event_publisher.publish(
                     TransactionRefundedEvent(

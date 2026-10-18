@@ -15,6 +15,7 @@ from app.core.enums import (
     Locale,
     PaymentGatewayType,
     PlanType,
+    PurchaseChannel,
     PurchaseType,
 )
 from app.core.error_codes import ErrorCode
@@ -178,6 +179,7 @@ async def test_start_failure_answers_the_callback_and_closes() -> None:
             return_value=PlanCatalogDto(plans=[], anchor_currency=Currency.RUB)
         ),
         list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -196,6 +198,7 @@ async def test_new_purchase_start_does_not_list_subscriptions() -> None:
             return_value=PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
         ),
         list_own_active_subscriptions=list_own,
+        list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -284,6 +287,7 @@ async def test_confirm_with_a_payment_link_opens_the_pay_step() -> None:
     create_checkout.assert_awaited_once_with(
         manager.middleware_data[USER_KEY],
         CreateCheckoutDto(
+            channel=PurchaseChannel.BOT,
             plan_id=10,
             duration_days=30,
             currency=Currency.RUB,
@@ -322,7 +326,7 @@ async def test_confirm_of_a_free_order_returns_to_the_menu() -> None:
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-purchase.done", show_alert=True)
+    callback.answer.assert_awaited_once_with()
     manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
 
 
@@ -444,7 +448,6 @@ _NOTIFICATION_ATTRIBUTES = (
     "failed",
     "no-plans",
     "no-methods",
-    "done",
 )
 
 
@@ -480,3 +483,74 @@ def test_purchase_texts_exist_in_each_locale(locale: str) -> None:
         "msg-purchase-pay",
         "msg-purchase-link-choice",
     } <= messages.keys()
+
+
+async def _retry_start(manager: AsyncMock, methods: list[PaymentMethodDto], plans: list):
+    await on_purchase_start.__dishka_orig_func__(
+        manager.start_data,
+        manager,
+        list_active_plans=AsyncMock(
+            return_value=PlanCatalogDto(plans=plans, anchor_currency=Currency.RUB)
+        ),
+        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_payment_methods=AsyncMock(return_value=methods),
+        i18n=_i18n(),
+    )
+
+
+_RETRY = {"purchase_type": "NEW", "retry_plan_id": 10, "retry_duration_days": 30}
+
+
+async def test_retry_start_skips_to_method() -> None:
+    manager = _manager(start_data=_RETRY)
+
+    await _retry_start(manager, [_RUB_METHOD, _STARS_METHOD], [_plan(id=10)])
+
+    assert manager.dialog_data["duration_days"] == 30
+    manager.switch_to.assert_awaited_once_with(Purchase.METHOD)
+
+
+async def test_retry_start_with_one_method_goes_to_confirm() -> None:
+    manager = _manager(start_data=_RETRY)
+
+    await _retry_start(manager, [_RUB_METHOD], [_plan(id=10)])
+
+    manager.switch_to.assert_awaited_once_with(Purchase.CONFIRM)
+
+
+async def test_retry_with_unavailable_plan_alerts() -> None:
+    manager = _manager(start_data=_RETRY)
+    manager.event = MagicMock(spec=CallbackQuery)
+    manager.event.answer = AsyncMock()
+
+    await _retry_start(manager, [_RUB_METHOD], [_plan(id=11)])
+
+    manager.event.answer.assert_awaited_once_with("ntf-purchase.plan-unavailable", show_alert=True)
+    manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+
+
+def _target(plan_id: int = 10) -> MagicMock:
+    return MagicMock(id=3, plan_snapshot=MagicMock(plan_id=plan_id))
+
+
+async def test_retry_of_a_renewal_checks_the_target() -> None:
+    start = {**_RETRY, "purchase_type": "RENEW", SELECTED_SUBSCRIPTION_KEY: 3}
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+    manager = _manager(start_data=start)
+
+    assert await start_purchase_steps(manager, catalog_dto, [], [_RUB_METHOD]) == (
+        "ntf-subscription.gone"
+    )
+    assert await start_purchase_steps(manager, catalog_dto, [_target()], [_RUB_METHOD]) is None
+    manager.switch_to.assert_awaited_once_with(Purchase.CONFIRM)
+
+
+async def test_retry_of_a_change_to_the_current_plan_is_unavailable() -> None:
+    start = {**_RETRY, "purchase_type": "CHANGE", SELECTED_SUBSCRIPTION_KEY: 3}
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10), _plan(id=11)], anchor_currency=Currency.RUB)
+    manager = _manager(start_data=start)
+
+    assert await start_purchase_steps(manager, catalog_dto, [_target(10)], [_RUB_METHOD]) == (
+        "ntf-purchase.plan-unavailable"
+    )
+    assert await start_purchase_steps(manager, catalog_dto, [_target(11)], [_RUB_METHOD]) is None

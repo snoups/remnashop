@@ -13,6 +13,7 @@ from app.core.enums import (
     DiscountSource,
     Locale,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     Role,
     SubscriptionStatus,
@@ -46,6 +47,7 @@ def _paid_order_dto(
     duration_days: int = 30,
 ) -> CreateTransactionDto:
     return CreateTransactionDto(
+        channel=PurchaseChannel.CABINET,
         user_id=user_id,
         plan_id=plan_id,
         plan_snapshot=make_plan_snapshot(plan_id=plan_id),

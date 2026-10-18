@@ -9,7 +9,7 @@ from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
 
 from app.core.constants import USER_KEY
-from app.core.enums import Currency, PaymentGatewayType, PurchaseType
+from app.core.enums import Currency, PaymentGatewayType, PurchaseChannel, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError
 from app.modules.subscriptions import (
@@ -34,6 +34,8 @@ from app.telegram.states import MainMenu, Purchase
 
 PAYMENT_URL_KEY: Final[str] = "payment_url"
 PLAN_CODE_KEY: Final[str] = "plan_code"
+RETRY_PLAN_KEY: Final[str] = "retry_plan_id"
+RETRY_DURATION_KEY: Final[str] = "retry_duration_days"
 # the link offered renew-or-new, so its back buttons return there
 LINK_CHOICE_KEY: Final[str] = "link_choice"
 _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
@@ -48,6 +50,11 @@ _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
 
 def checkout_error_key(error: AppError) -> str:
     return _ERROR_KEYS.get(error.code, "ntf-purchase.failed")
+
+
+def bot_payment_methods(user: UserDto, methods: list[PaymentMethodDto]) -> list[PaymentMethodDto]:
+    # the bot can't ask for an email, so such methods are not offered
+    return [m for m in methods if not (m.requires_email and user.email is None)]
 
 
 def price_in(duration: CatalogDurationDto, currency: Currency) -> Decimal:
@@ -74,9 +81,13 @@ def selected_plan(catalog: PlanCatalogDto, dialog_data: dict[str, Any]) -> Optio
 
 
 async def start_purchase_steps(
-    manager: DialogManager, catalog: PlanCatalogDto, subscriptions: list[SubscriptionDto]
+    manager: DialogManager,
+    catalog: PlanCatalogDto,
+    subscriptions: list[SubscriptionDto],
+    methods: Optional[list[PaymentMethodDto]] = None,
 ) -> Optional[str]:
-    """Returns a notification key when the purchase can't start."""
+    """Returns a notification key when the purchase can't start. A retry
+    (`methods` given) skips to the order's duration instead of the first step."""
     start = manager.start_data if isinstance(manager.start_data, dict) else {}
     purchase_type = PurchaseType(start.get("purchase_type", PurchaseType.NEW.value))
     manager.dialog_data["purchase_type"] = purchase_type.value
@@ -92,12 +103,20 @@ async def start_purchase_steps(
         if not any(plan.id == target.plan_snapshot.plan_id for plan in catalog.plans):
             return "ntf-purchase.plan-unavailable"
         manager.dialog_data["plan_id"] = target.plan_snapshot.plan_id
+        if methods is not None:
+            return await select_duration(manager, catalog, start[RETRY_DURATION_KEY], methods)
         await manager.switch_to(Purchase.DURATION)
         return None
     current = target.plan_snapshot.plan_id if target is not None else None
     manager.dialog_data["current_plan_id"] = current
-    if not plans_for(purchase_type, catalog, current):
+    offered = plans_for(purchase_type, catalog, current)
+    if not offered:
         return "ntf-purchase.no-plans"
+    if methods is not None:
+        if not any(plan.id == start[RETRY_PLAN_KEY] for plan in offered):
+            return "ntf-purchase.plan-unavailable"
+        manager.dialog_data["plan_id"] = start[RETRY_PLAN_KEY]
+        return await select_duration(manager, catalog, start[RETRY_DURATION_KEY], methods)
     await manager.switch_to(Purchase.PLAN)
     return None
 
@@ -191,16 +210,19 @@ async def on_purchase_start(
     manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],
     list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_payment_methods: FromDishka[ListPaymentMethodsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = manager.middleware_data[USER_KEY]
     start = start_data if isinstance(start_data, dict) else {}
+    retry = start.get(RETRY_PLAN_KEY) is not None
     is_new = start.get("purchase_type", PurchaseType.NEW.value) == PurchaseType.NEW.value
     by_link = start.get(PLAN_CODE_KEY) is not None
     needs_subscriptions = by_link or not is_new
     subscriptions = await list_own_active_subscriptions(user) if needs_subscriptions else []
     catalog = await list_active_plans(user, catalog_query(manager))
-    key = await start_purchase_steps(manager, catalog, subscriptions)
+    methods = bot_payment_methods(user, await list_payment_methods(user)) if retry else None
+    key = await start_purchase_steps(manager, catalog, subscriptions, methods)
     if key is None:
         return
     text = get_translator(i18n, user).get(key)
@@ -208,8 +230,8 @@ async def on_purchase_start(
         await manager.event.answer(text, show_alert=True)
     elif isinstance(manager.event, Message):
         await manager.event.answer(text)
-    if by_link:
-        # opened from /start: nothing below to return to
+    if by_link or retry:
+        # nothing below to return to
         await manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
     else:
         await manager.done()
@@ -236,12 +258,7 @@ async def on_duration_selected(
         dialog_manager,
         await list_active_plans(user, catalog_query(dialog_manager)),
         int(dialog_manager.item_id),  # type: ignore[attr-defined]
-        # the bot can't ask for an email, so such methods are not offered
-        [
-            m
-            for m in await list_payment_methods(user)
-            if not (m.requires_email and user.email is None)
-        ],
+        bot_payment_methods(user, await list_payment_methods(user)),
     )
     if key is not None:
         await callback.answer(get_translator(i18n, user).get(key), show_alert=True)
@@ -323,6 +340,7 @@ async def on_confirm(
                 duration_days=data["duration_days"],
                 currency=Currency(data["currency"]),
                 purchase_type=purchase_type,
+                channel=PurchaseChannel.BOT,
                 gateway_type=PaymentGatewayType(data["gateway_type"]),
                 target_subscription_id=None
                 if purchase_type is PurchaseType.NEW
@@ -334,7 +352,7 @@ async def on_confirm(
         await callback.answer(runner.get(checkout_error_key(error)), show_alert=True)
         return
     if result.confirmation_url is None:
-        await callback.answer(runner.get("ntf-purchase.done"), show_alert=True)
+        await callback.answer()
         await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
         return
     data[PAYMENT_URL_KEY] = result.confirmation_url

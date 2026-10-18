@@ -12,6 +12,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -52,6 +53,7 @@ class Transaction(BaseSql, TimestampMixin):
     duration_days: Mapped[int]
     currency: Mapped[Currency]
     purchase_type: Mapped[PurchaseType]
+    channel: Mapped[PurchaseChannel]
     target_subscription_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("subscriptions.id"), index=True
     )

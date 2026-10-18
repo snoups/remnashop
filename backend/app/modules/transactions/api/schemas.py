@@ -8,6 +8,7 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
@@ -64,6 +65,7 @@ class TransactionResponse(BaseModel):
     duration_days: int
     currency: str
     purchase_type: str
+    channel: PurchaseChannel
     target_subscription_id: Optional[int]
     gateway_type: str
     external_payment_id: Optional[str]

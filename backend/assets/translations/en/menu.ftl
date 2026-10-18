@@ -176,7 +176,6 @@ ntf-purchase =
     .failed = Couldn't create the payment. Please try again later.
     .no-plans = No plans are available.
     .no-methods = No payment methods are available.
-    .done = Done! Your subscription will appear shortly.
 
 msg-purchase-plan = Choose a plan:
 msg-purchase-duration = { $plan_name }: choose a period:
@@ -193,6 +192,25 @@ btn-purchase =
     .menu = Main menu
     .link-renew = Renew: { $subscription }
     .link-new = Buy a new one
+
+msg-payment-result-success =
+    <b>✅ Payment successful!</b>
+
+    { $purchase_type ->
+    [RENEW] Subscription { $plan_name } renewed.
+    [CHANGE] Plan changed to { $plan_name }.
+    *[NEW] Subscription { $plan_name } activated.
+    }
+msg-payment-result-failed =
+    <b>❌ Something went wrong!</b>
+
+    Don't worry, support has already been notified and will contact you shortly. We apologize for the inconvenience.
+msg-payment-result-canceled = <b>Payment canceled.</b> The order is no longer valid — you can place it again.
+
+btn-payment-result =
+    .subscription = My subscription
+    .retry = Try again
+    .menu = Main menu
 
 gateway-name =
     .TELEGRAM_STARS = Telegram Stars
