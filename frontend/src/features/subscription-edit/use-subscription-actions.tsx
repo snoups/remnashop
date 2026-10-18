@@ -1,4 +1,4 @@
-import { Ban, CirclePlay, Link2, RotateCcw } from "lucide-react";
+import { Ban, CirclePlay, Link2, RefreshCw, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -13,6 +13,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import type { ActionMenuItem } from "@shared/ui/ActionMenu";
+import { PanelSyncDialog } from "@features/subscription-edit/PanelSyncDialog";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 export function useSubscriptionActions(
@@ -22,6 +23,7 @@ export function useSubscriptionActions(
   const { t } = useTranslation();
   const permissions = usePermissions();
   const [isConfirmingReissue, setIsConfirmingReissue] = useState(false);
+  const [isSyncingWithPanel, setIsSyncingWithPanel] = useState(false);
 
   const run = async (action: () => Promise<SubscriptionListItem>, done: string) => {
     try {
@@ -56,6 +58,16 @@ export function useSubscriptionActions(
         onClick: () => void run(() => resetSubscriptionTraffic(subscription.id), t("subscriptions.actions.trafficReset")),
       });
     }
+    if (
+      permissions.includes("SUBSCRIPTIONS_PANEL_DIFF_VIEW") &&
+      (permissions.includes("SUBSCRIPTIONS_PULL_FROM_PANEL") || permissions.includes("SUBSCRIPTIONS_PUSH_TO_PANEL"))
+    ) {
+      items.push({
+        label: t("subscriptions.panelSync.menuItem"),
+        icon: RefreshCw,
+        onClick: () => setIsSyncingWithPanel(true),
+      });
+    }
     if (permissions.includes("SUBSCRIPTIONS_LINK_REISSUE")) {
       items.push({
         label: t("subscriptions.actions.reissue"),
@@ -82,5 +94,21 @@ export function useSubscriptionActions(
     />
   ) : null;
 
-  return { items, confirm };
+  const panelSync = isSyncingWithPanel ? (
+    <PanelSyncDialog
+      subscription={subscription}
+      onApplied={apply}
+      onClose={() => setIsSyncingWithPanel(false)}
+    />
+  ) : null;
+
+  return {
+    items,
+    confirm: (
+      <>
+        {confirm}
+        {panelSync}
+      </>
+    ),
+  };
 }

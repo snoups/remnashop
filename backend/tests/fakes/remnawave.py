@@ -191,6 +191,14 @@ def _handle_revoke_subscription(path: str, store: FakeUserStore) -> httpx.Respon
     return httpx.Response(200, json={"response": payload})
 
 
+def _handle_users_stream(store: FakeUserStore) -> httpx.Response:
+    # one page: the fake never holds more than a test's handful of users
+    users = [store[user_id] for user_id in sorted(store)]
+    return httpx.Response(
+        200, json={"response": {"users": users, "nextCursor": None, "hasMore": False}}
+    )
+
+
 def _route_users(
     request: httpx.Request, path: str, store: FakeUserStore, next_id: dict[str, int]
 ) -> Optional[httpx.Response]:
@@ -242,6 +250,8 @@ def make_fake_remnawave_transport(
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
+        if path == "/api/users/stream" and request.method == "GET":
+            return _handle_users_stream(store)
         response = _route_users(request, path, store, next_id) or _route_hwid(
             request, path, hwid_store
         )

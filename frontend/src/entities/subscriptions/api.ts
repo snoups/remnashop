@@ -150,3 +150,58 @@ export function deleteSubscriptionDevice(subscriptionId: number, hwid: string): 
 export function deleteAllSubscriptionDevices(subscriptionId: number): Promise<void> {
   return apiPost<void, Record<string, never>>(`/subscriptions/${subscriptionId}/devices/bulk/delete`, {});
 }
+
+export type PanelSyncDirection = "FROM_PANEL" | "TO_PANEL";
+
+export interface PanelSyncResult {
+  direction: PanelSyncDirection;
+  checked: number;
+  updated: number;
+  failed: number;
+  missing: number;
+  finished_at: string;
+}
+
+export interface PanelSyncDirectionStatus {
+  direction: PanelSyncDirection;
+  running: boolean;
+  last: PanelSyncResult | null;
+}
+
+export interface PanelSyncStatus {
+  from_panel: PanelSyncDirectionStatus;
+  to_panel: PanelSyncDirectionStatus;
+}
+
+export interface PanelFieldDiff {
+  field: string;
+  shop: string;
+  panel: string;
+}
+
+export interface SubscriptionPanelDiff {
+  subscription_id: number;
+  missing_in_panel: boolean;
+  fields: PanelFieldDiff[];
+}
+
+export async function getPanelSyncStatus(signal?: AbortSignal): Promise<PanelSyncStatus> {
+  return apiGet<PanelSyncStatus>("/subscriptions/panel-sync", signal);
+}
+
+export async function startPanelSync(direction: PanelSyncDirection): Promise<PanelSyncDirectionStatus> {
+  const action = direction === "FROM_PANEL" ? "pull" : "push";
+  return apiPost<PanelSyncDirectionStatus, Record<string, never>>(`/subscriptions/panel-sync/actions/${action}`, {});
+}
+
+export async function getSubscriptionPanelDiff(
+  subscriptionId: number,
+  signal?: AbortSignal,
+): Promise<SubscriptionPanelDiff> {
+  return apiGet<SubscriptionPanelDiff>(`/subscriptions/${subscriptionId}/panel-diff`, signal);
+}
+
+export const pullSubscriptionFromPanel = (subscriptionId: number) =>
+  subscriptionAction(subscriptionId, "pull-from-panel");
+export const pushSubscriptionToPanel = (subscriptionId: number) =>
+  subscriptionAction(subscriptionId, "push-to-panel");

@@ -20,6 +20,7 @@ from app.modules.subscriptions.dto import (
     RemnawaveWebhookDto,
     SyncSubscriptionStatusDto,
 )
+from app.modules.subscriptions.panel_config import panel_config
 from app.modules.subscriptions.usecases.publish_panel_event import PublishPanelEventUseCase
 from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
@@ -106,6 +107,8 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
                     source="webhook",
                     expire_at=None if is_deletion else payload.data.expire_at,
                     first_connected_at=payload.data.first_connected_at,
+                    # limits, squads, tag and link changed in the panel come over too
+                    config=None if is_deletion else panel_config(payload.data),
                 )
             )
         except Exception:

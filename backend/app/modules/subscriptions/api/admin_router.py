@@ -14,7 +14,10 @@ from app.modules.subscriptions.api.schemas import (
     DeviceItem,
     DeviceListResponse,
     GrantSubscriptionRequest,
+    PanelSyncDirectionStatusResponse,
+    PanelSyncStatusResponse,
     SubscriptionPageResponse,
+    SubscriptionPanelDiffResponse,
     SubscriptionResponse,
     UpdateSubscriptionRequest,
     UpdateSubscriptionSquadsRequest,
@@ -35,16 +38,63 @@ from app.modules.subscriptions.usecases import (
     AdminReissueSubscriptionUseCase,
     ChangeSubscriptionPlanUseCase,
     DeleteSubscriptionUseCase,
+    GetPanelSyncStatusUseCase,
+    GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
     ListSubscriptionsUseCase,
+    PullSubscriptionFromPanelUseCase,
+    PushSubscriptionToPanelUseCase,
     ResetSubscriptionTrafficUseCase,
     SetSubscriptionEnabledUseCase,
+    StartPanelSyncFromUseCase,
+    StartPanelSyncToUseCase,
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
 )
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+
+
+@router.get("/panel-sync", response_model=PanelSyncStatusResponse)
+@inject
+async def get_panel_sync_status(
+    use_case: FromDishka[GetPanelSyncStatusUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PanelSyncStatusResponse:
+    return PanelSyncStatusResponse.model_validate(await use_case(actor), from_attributes=True)
+
+
+@router.post(
+    "/panel-sync/actions/pull",
+    response_model=PanelSyncDirectionStatusResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(409),
+)
+@inject
+async def start_panel_sync_from_panel(
+    use_case: FromDishka[StartPanelSyncFromUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PanelSyncDirectionStatusResponse:
+    return PanelSyncDirectionStatusResponse.model_validate(
+        await use_case(actor), from_attributes=True
+    )
+
+
+@router.post(
+    "/panel-sync/actions/push",
+    response_model=PanelSyncDirectionStatusResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(409),
+)
+@inject
+async def start_panel_sync_to_panel(
+    use_case: FromDishka[StartPanelSyncToUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PanelSyncDirectionStatusResponse:
+    return PanelSyncDirectionStatusResponse.model_validate(
+        await use_case(actor), from_attributes=True
+    )
 
 
 @router.get("", response_model=SubscriptionPageResponse)
@@ -305,3 +355,51 @@ async def delete_all_subscription_devices(
     actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor, subscription_id)
+
+
+@router.get(
+    "/{subscription_id:int}/panel-diff",
+    response_model=SubscriptionPanelDiffResponse,
+    responses=error_responses(400, 404, 503),
+)
+@inject
+async def get_subscription_panel_diff(
+    subscription_id: int,
+    use_case: FromDishka[GetSubscriptionPanelDiffUseCase],
+    actor: Actor = Depends(require_admin),
+) -> SubscriptionPanelDiffResponse:
+    return SubscriptionPanelDiffResponse.model_validate(
+        await use_case(actor, subscription_id), from_attributes=True
+    )
+
+
+@router.post(
+    "/{subscription_id:int}/actions/pull-from-panel",
+    response_model=SubscriptionResponse,
+    responses=error_responses(400, 404, 503),
+)
+@inject
+async def pull_subscription_from_panel(
+    subscription_id: int,
+    use_case: FromDishka[PullSubscriptionFromPanelUseCase],
+    actor: Actor = Depends(require_admin),
+) -> SubscriptionResponse:
+    return SubscriptionResponse.model_validate(
+        await use_case(actor, subscription_id), from_attributes=True
+    )
+
+
+@router.post(
+    "/{subscription_id:int}/actions/push-to-panel",
+    response_model=SubscriptionResponse,
+    responses=error_responses(400, 404, 409, 503),
+)
+@inject
+async def push_subscription_to_panel(
+    subscription_id: int,
+    use_case: FromDishka[PushSubscriptionToPanelUseCase],
+    actor: Actor = Depends(require_admin),
+) -> SubscriptionResponse:
+    return SubscriptionResponse.model_validate(
+        await use_case(actor, subscription_id), from_attributes=True
+    )

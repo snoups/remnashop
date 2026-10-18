@@ -1,22 +1,18 @@
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Optional
 
 from dishka.integrations.taskiq import FromDishka, inject
-from loguru import logger
-from redis.asyncio import Redis
 
 from app.core.broker import broker
-from app.core.enums import Currency, PurchaseType
-from app.core.utils.lock import cron_lock
+from app.core.enums import Currency, PanelSyncDirection, PurchaseType
 from app.modules.subscriptions.dto import GrantAddOnDto, PlanSnapshot, PurchaseSubscriptionDto
 from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
     GrantAddOnUseCase,
     PruneIdempotencyKeysUseCase,
-    ReconcileSubscriptionsUseCase,
+    SyncAllFromPanelUseCase,
+    SyncAllToPanelUseCase,
 )
-
-_RECONCILE_LOCK_TTL_S: Final[int] = 29 * 60
 
 
 @broker.task(retry_on_error=True, max_retries=3)
@@ -65,18 +61,17 @@ async def grant_addon_task(
     )
 
 
-@broker.task(schedule=[{"cron": "*/30 * * * *"}])
+@broker.task
 @inject(patch_module=True)
-async def reconcile_subscriptions_task(
-    use_case: FromDishka[ReconcileSubscriptionsUseCase], redis: FromDishka[Redis]
+async def run_panel_sync_task(
+    direction: str,
+    from_panel: FromDishka[SyncAllFromPanelUseCase],
+    to_panel: FromDishka[SyncAllToPanelUseCase],
 ) -> None:
-    async with cron_lock(
-        redis, "reconcile_subscriptions", ttl_seconds=_RECONCILE_LOCK_TTL_S
-    ) as acquired:
-        if not acquired:
-            logger.debug("reconcile_subscriptions_task already running, skipping this tick")
-            return
-        await use_case.system()
+    if PanelSyncDirection(direction) is PanelSyncDirection.FROM_PANEL:
+        await from_panel.system()
+    else:
+        await to_panel.system()
 
 
 @broker.task(schedule=[{"cron": "15 3 * * *"}])

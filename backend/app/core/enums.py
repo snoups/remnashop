@@ -96,6 +96,11 @@ class AddOnType(UpperStrEnum):
     DEVICES = auto()
 
 
+class PanelSyncDirection(UpperStrEnum):
+    FROM_PANEL = auto()
+    TO_PANEL = auto()
+
+
 class PromocodeRewardType(UpperStrEnum):
     DURATION = auto()
     TRAFFIC = auto()

@@ -21,3 +21,7 @@ class GrantAddOnDispatch(Protocol):
     async def kiq(
         self, *, subscription_id: int, addon_id: int, idempotency_key: Optional[str] = None
     ) -> object: ...
+
+
+class PanelSyncDispatch(Protocol):
+    async def kiq(self, *, direction: str) -> object: ...

@@ -1,7 +1,14 @@
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Optional
 
-from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, SystemEvent, UserEvent
+from app.core.events import (
+    ActorEvent,
+    ActorTargetEvent,
+    BaseEvent,
+    EventCategory,
+    SystemEvent,
+    UserEvent,
+)
 from app.modules.users import UserDto
 
 
@@ -51,6 +58,36 @@ class SubscriptionStatusSyncedEvent(SystemEvent):
     new_status: str
     source: str
     user_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionConfigSyncedEvent(SystemEvent):
+    """The panel's limits, squads, tag or link were taken into the row."""
+
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    subscription_id: int
+    source: str
+    changed_fields: list[str]
+    removed_addon_types: list[str]
+    user_id: Optional[int] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class PanelSyncStartedEvent(ActorEvent):
+    """An admin started syncing every subscription with the panel."""
+
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    direction: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class PanelSyncCompletedEvent(SystemEvent):
+    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    direction: str
+    checked: int
+    updated: int
+    failed: int
+    missing: int
 
 
 @dataclass(frozen=True, kw_only=True)

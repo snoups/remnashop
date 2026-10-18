@@ -1712,6 +1712,12 @@
     "SUBSCRIPTIONS_DEVICES_VIEW": "View subscription devices",
     "SUBSCRIPTIONS_DEVICES_DELETE": "Delete subscription devices",
     "SUBSCRIPTIONS_DEVICES_DELETE_ALL": "Delete all subscription devices",
+    "SUBSCRIPTIONS_PANEL_DIFF_VIEW": "View differences with the panel",
+    "SUBSCRIPTIONS_PULL_FROM_PANEL": "Take a subscription from the panel",
+    "SUBSCRIPTIONS_PUSH_TO_PANEL": "Send a subscription to the panel",
+    "SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW": "View panel sync status",
+    "SUBSCRIPTIONS_PANEL_SYNC_FROM": "Sync all subscriptions from the panel",
+    "SUBSCRIPTIONS_PANEL_SYNC_TO": "Sync all subscriptions to the panel",
     "ADDONS_VIEW": "View add-ons",
     "ADDONS_DETAIL_VIEW": "View add-on details",
     "ADDONS_CREATE": "Create add-ons",
@@ -3070,6 +3076,45 @@
       "reissueConfirm": "The current link will stop working for the client.",
       "reissued": "Link reissued.",
       "error": "Failed to apply the action."
+    },
+    "panelSync": {
+      "menuItem": "Sync with panel",
+      "title": "Sync with the panel",
+      "loadError": "Failed to compare with the panel.",
+      "inSync": "The subscription matches the panel.",
+      "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted.",
+      "columns": {
+        "field": "Field",
+        "shop": "Shop",
+        "panel": "Panel"
+      },
+      "fieldNames": {
+        "status": "Status",
+        "expire_at": "Expires",
+        "url": "Link",
+        "traffic_limit": "Traffic, GB",
+        "device_limit": "Devices",
+        "traffic_limit_strategy": "Traffic reset",
+        "tag": "Tag",
+        "internal_squads": "Internal squads",
+        "external_squad": "External squad"
+      },
+      "pull": "Take from panel",
+      "push": "Send to panel",
+      "pulled": "Taken from the panel.",
+      "pushed": "Sent to the panel.",
+      "error": "Failed to sync with the panel.",
+      "bulk": {
+        "pull": "From panel",
+        "push": "To panel",
+        "pullTitle": "Sync everything from the panel?",
+        "pullConfirm": "Every subscription that differs takes the panel’s status, expiry, limits, squads, tag and link.",
+        "pushTitle": "Sync everything to the panel?",
+        "pushConfirm": "The panel takes the shop’s configuration and on/off state for every subscription that differs.",
+        "started": "Sync started.",
+        "finished": "Sync finished: {{updated}} updated, {{missing}} missing, {{failed}} failed.",
+        "error": "Failed to start the sync."
+      }
     }
   },
   "donate": {
@@ -3517,6 +3562,7 @@
     "OAUTH_PROVIDER_UNSUPPORTED": "Unsupported sign-in provider.",
     "OAUTH_STATE_INVALID": "The sign-in session expired — try again.",
     "OWNER_ALREADY_EXISTS": "The owner account already exists.",
+    "PANEL_SYNC_RUNNING": "A sync with the panel is already running.",
     "PASSKEYS_DISABLED": "Passkeys are disabled.",
     "PASSKEYS_NOT_CONFIGURED": "Passkeys aren't set up.",
     "PASSKEY_CHALLENGE_EXPIRED": "The passkey request expired — try again.",
@@ -3595,6 +3641,7 @@
     "SUBSCRIPTION_DISABLED": "This subscription is disabled.",
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
+    "SUBSCRIPTION_PANEL_USER_MISSING": "The panel has no user for this subscription.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can't be rolled back.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn't allowed.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",

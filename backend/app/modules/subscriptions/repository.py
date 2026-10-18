@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Final, Literal, Optional
 
-from sqlalchemy import ColumnElement, Numeric, and_, func, or_, select, update
+from sqlalchemy import ColumnElement, Numeric, and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
@@ -20,6 +20,7 @@ from app.modules.subscriptions.dto import (
     AddOnEntitlementDto,
     CreateSubscriptionDto,
     PlanSnapshot,
+    SubscriptionConfigUpdateDto,
     SubscriptionDto,
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
@@ -389,6 +390,27 @@ class SubscriptionRepository:
 
         await self.session.flush()
         return await self.get_by_id(subscription_id)
+
+    async def apply_panel_config(self, data: SubscriptionConfigUpdateDto) -> SubscriptionDto:
+        row = await self._get_or_raise(data.subscription_id)
+        row.url = data.url
+        row.traffic_limit = data.traffic_limit
+        row.device_limit = data.device_limit
+        row.traffic_limit_strategy = data.traffic_limit_strategy
+        row.tag = data.tag
+        row.internal_squads = list(data.internal_squads)
+        row.external_squad = data.external_squad
+        if data.removed_addon_types:
+            await self.session.execute(
+                delete(AddOnEntitlement).where(
+                    AddOnEntitlement.subscription_id == data.subscription_id,
+                    AddOnEntitlement.type.in_(data.removed_addon_types),
+                )
+            )
+        await self.session.flush()
+        await self.session.refresh(row)
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
     async def update_squads(self, data: UpdateSubscriptionSquadsDto) -> SubscriptionDto:
         # local row only; UpdateSubscriptionSquadsUseCase pushes it to the panel

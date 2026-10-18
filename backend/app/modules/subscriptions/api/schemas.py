@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 from remnapy.enums import TrafficLimitStrategy
 
-from app.core.enums import AddOnType, Currency, PlanType, SubscriptionStatus
+from app.core.enums import AddOnType, Currency, PanelSyncDirection, PlanType, SubscriptionStatus
 from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 
 
@@ -162,3 +162,35 @@ class TrialResponse(BaseModel):
     is_free: bool = True
     price: Optional[Decimal] = None
     currency: Optional[Currency] = None
+
+
+class PanelSyncResultResponse(BaseModel):
+    direction: PanelSyncDirection
+    checked: int
+    updated: int
+    failed: int
+    missing: int
+    finished_at: datetime
+
+
+class PanelSyncDirectionStatusResponse(BaseModel):
+    direction: PanelSyncDirection
+    running: bool
+    last: Optional[PanelSyncResultResponse] = None
+
+
+class PanelSyncStatusResponse(BaseModel):
+    from_panel: PanelSyncDirectionStatusResponse
+    to_panel: PanelSyncDirectionStatusResponse
+
+
+class PanelFieldDiffResponse(BaseModel):
+    field: str
+    shop: str
+    panel: str
+
+
+class SubscriptionPanelDiffResponse(BaseModel):
+    subscription_id: int
+    missing_in_panel: bool
+    fields: list[PanelFieldDiffResponse]

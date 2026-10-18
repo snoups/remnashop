@@ -19,9 +19,12 @@ from app.modules.users.repository import UserRepository
 
 # subscription events kept for good: money and access
 _KEPT_SUBSCRIPTION_EVENTS = {
+    "PanelSyncCompletedEvent",
+    "PanelSyncStartedEvent",
     "AddOnChangedEvent",
     "SubscriptionAddOnGrantedEvent",
     "SubscriptionChangedEvent",
+    "SubscriptionConfigSyncedEvent",
     "SubscriptionEditedEvent",
     "SubscriptionGrantedEvent",
     "SubscriptionPlanChangedByAdminEvent",

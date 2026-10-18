@@ -10,7 +10,14 @@ from remnapy.models.webhook import WebhookPayloadDto
 
 from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AddOnType, Currency, PlanType, PurchaseType, SubscriptionStatus
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    PanelSyncDirection,
+    PlanType,
+    PurchaseType,
+    SubscriptionStatus,
+)
 from app.modules.plans import PlanDto
 
 
@@ -284,12 +291,75 @@ class RemnawaveWebhookDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class PanelConfigDto:
+    """What the panel holds for a user, in the subscription row's terms; the
+    limits are the effective ones, add-ons included."""
+
+    url: str
+    traffic_limit: int  # GB, 0 = unlimited
+    device_limit: int  # 0 = unlimited
+    traffic_limit_strategy: TrafficLimitStrategy
+    tag: Optional[str]
+    internal_squads: list[UUID]
+    external_squad: Optional[UUID]
+
+
+@dataclass(frozen=True, kw_only=True)
 class SyncSubscriptionStatusDto:
     remnawave_user_id: int
     status: SubscriptionStatus
     source: str
     expire_at: Optional[datetime] = None
     first_connected_at: Optional[datetime] = None
+    # None: the source only knows status and dates
+    config: Optional[PanelConfigDto] = None
+
+
+class PanelSyncResultDto(BaseDto):
+    direction: PanelSyncDirection
+    checked: int
+    updated: int
+    failed: int
+    # panel users gone (from panel) or rows with no panel user (to panel)
+    missing: int
+    finished_at: datetime
+
+
+class PanelSyncStatusDto(BaseDto):
+    direction: PanelSyncDirection
+    running: bool
+    last: Optional[PanelSyncResultDto] = None
+
+
+class PanelSyncStatusesDto(BaseDto):
+    from_panel: PanelSyncStatusDto
+    to_panel: PanelSyncStatusDto
+
+
+class PanelFieldDiffDto(BaseDto):
+    field: str
+    shop: str
+    panel: str
+
+
+class SubscriptionPanelDiffDto(BaseDto):
+    subscription_id: int
+    missing_in_panel: bool
+    fields: list[PanelFieldDiffDto]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionConfigUpdateDto:
+    subscription_id: int
+    url: str
+    traffic_limit: int
+    device_limit: int
+    traffic_limit_strategy: TrafficLimitStrategy
+    tag: Optional[str]
+    internal_squads: list[UUID]
+    external_squad: Optional[UUID]
+    # add-on types whose grants the panel's lower limit overrode
+    removed_addon_types: frozenset[AddOnType]
 
 
 @dataclass(frozen=True, kw_only=True)

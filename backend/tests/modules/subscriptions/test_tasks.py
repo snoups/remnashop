@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 
 from app.core.db.uow import UnitOfWork
@@ -42,13 +43,13 @@ from app.modules.subscriptions.tasks import (
     grant_addon_task,
     prune_subscription_idempotency_task,
     purchase_subscription_task,
-    reconcile_subscriptions_task,
+    run_panel_sync_task,
 )
 from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
     GrantAddOnUseCase,
     PurchaseSubscriptionUseCase,
-    ReconcileSubscriptionsUseCase,
+    SyncAllFromPanelUseCase,
     SyncSubscriptionStatusUseCase,
 )
 from app.modules.transactions.dto import CreateTransactionDto
@@ -79,14 +80,17 @@ def _reconcile_use_case(
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-) -> ReconcileSubscriptionsUseCase:
+    redis: Redis,
+) -> SyncAllFromPanelUseCase:
     sync = SyncSubscriptionStatusUseCase(
         subscription_repository,
         uow,
         event_publisher,
         SubscriptionLifecycleService(subscription_repository),
     )
-    return ReconcileSubscriptionsUseCase(subscription_repository, remnawave_sdk, sync, uow)
+    return SyncAllFromPanelUseCase(
+        subscription_repository, remnawave_sdk, sync, uow, redis, event_publisher
+    )
 
 
 def test_purchase_and_grant_tasks_are_retry_enabled() -> None:
@@ -96,8 +100,10 @@ def test_purchase_and_grant_tasks_are_retry_enabled() -> None:
     assert grant_addon_task.labels.get("max_retries") == 3
 
 
-def test_reconcile_task_is_not_retry_enabled() -> None:
-    assert reconcile_subscriptions_task.labels.get("retry_on_error") is not True
+def test_panel_sync_task_is_not_retry_enabled_nor_scheduled() -> None:
+    # started by an admin only; a retry would run a second full sync
+    assert run_panel_sync_task.labels.get("retry_on_error") is not True
+    assert not run_panel_sync_task.labels.get("schedule")
 
 
 async def test_purchase_subscription_task_body_creates_a_subscription(
@@ -335,7 +341,7 @@ async def test_grant_addon_task_body_grants_an_entitlement(
     assert granted.effective_traffic_limit == 125
 
 
-async def test_reconcile_syncs_status_that_drifted_on_the_panel(
+async def test_sync_from_panel_syncs_status_that_drifted_on_the_panel(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
@@ -343,6 +349,7 @@ async def test_reconcile_syncs_status_that_drifted_on_the_panel(
     remnawave_store: FakeUserStore,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="reconcile1", telegram_id=91001))
     created = await subscription_repository.create(
@@ -363,19 +370,22 @@ async def test_reconcile_syncs_status_that_drifted_on_the_panel(
     payload["status"] = "LIMITED"
     remnawave_store[91001] = payload
 
-    await _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher).system()
+    await _reconcile_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, redis
+    ).system()
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.LIMITED
 
 
-async def test_reconcile_marks_deleted_when_panel_identity_is_gone(
+async def test_sync_from_panel_marks_deleted_when_panel_identity_is_gone(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="reconcile2", telegram_id=91002))
     created = await subscription_repository.create(
@@ -392,13 +402,15 @@ async def test_reconcile_marks_deleted_when_panel_identity_is_gone(
     )
     # not in remnawave_store, so the fake transport 404s (tests/fakes/remnawave.py)
 
-    await _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher).system()
+    await _reconcile_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, redis
+    ).system()
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.DELETED
 
 
-async def test_reconcile_skips_subscriptions_already_in_sync(
+async def test_sync_from_panel_skips_subscriptions_already_in_sync(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
@@ -406,6 +418,7 @@ async def test_reconcile_skips_subscriptions_already_in_sync(
     remnawave_store: FakeUserStore,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="reconcile3", telegram_id=91003))
     created = await subscription_repository.create(
@@ -424,7 +437,9 @@ async def test_reconcile_skips_subscriptions_already_in_sync(
         user_id=91003, username="rs_test_91003", expire_at=datetime_now() + timedelta(days=30)
     )  # _user_payload defaults to "ACTIVE", like created
 
-    await _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher).system()
+    await _reconcile_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, redis
+    ).system()
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.ACTIVE
@@ -434,13 +449,14 @@ def test_prune_subscription_idempotency_task_carries_a_schedule_label() -> None:
     assert prune_subscription_idempotency_task.labels.get("schedule")
 
 
-async def test_reconcile_keeps_going_after_one_row_fails_to_sync(
+async def test_sync_from_panel_keeps_going_after_one_row_fails_to_sync(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     monkeypatch: pytest.MonkeyPatch,
+    redis: Redis,
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="reconcile-iso", telegram_id=91010))
     created = [
@@ -458,7 +474,9 @@ async def test_reconcile_keeps_going_after_one_row_fails_to_sync(
         )
         for remnawave_user_id in (91011, 91012)
     ]
-    use_case = _reconcile_use_case(subscription_repository, remnawave_sdk, uow, event_publisher)
+    use_case = _reconcile_use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, redis
+    )
     real_sync = use_case._sync_use_case._execute
 
     async def sync_failing_first(actor: object, data: SyncSubscriptionStatusDto) -> object:

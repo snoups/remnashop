@@ -11,6 +11,7 @@ import {
   type SubscriptionStatus,
 } from "@entities/subscriptions/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { PanelSyncButtons } from "@features/panel-sync/PanelSyncButtons";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
@@ -182,6 +183,7 @@ export function SubscriptionsPage() {
             </>
           }
           description={t("subscriptions.description")}
+          aside={<PanelSyncButtons onFinished={reload} />}
         />
 
         {state.kind === "loading" && <Spinner size="page" />}

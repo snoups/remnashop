@@ -6,9 +6,17 @@ from app.core.enums import SubscriptionStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import truncate_to_ms
-from app.modules.subscriptions.dto import SubscriptionDto, SyncSubscriptionStatusDto
-from app.modules.subscriptions.events import SubscriptionStatusSyncedEvent
+from app.modules.subscriptions.dto import (
+    PanelConfigDto,
+    SubscriptionDto,
+    SyncSubscriptionStatusDto,
+)
+from app.modules.subscriptions.events import (
+    SubscriptionConfigSyncedEvent,
+    SubscriptionStatusSyncedEvent,
+)
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel_config import changed_config_fields, config_update
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -42,41 +50,65 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
                     data.remnawave_user_id, data.first_connected_at
                 )
 
-            old_status = subscription.status
-            status_drifted = subscription.status is not data.status
-            expire_at_drifted = (
-                data.expire_at is not None
-                and subscription.status is not SubscriptionStatus.DELETED
-                and truncate_to_ms(subscription.expire_at) != truncate_to_ms(data.expire_at)
-            )
-            if not status_drifted and not expire_at_drifted:
-                return subscription
-
-            if status_drifted:
-                subscription = await self._lifecycle_service.sync_status(
-                    subscription.id, data.status
-                )
-            if expire_at_drifted and subscription.status is not SubscriptionStatus.DELETED:
-                # the panel owns expire_at: this pulls in a renewal that landed
-                # there but not in our commit; status is whatever the panel
-                # reported, a renewal arrives as ACTIVE
-                assert data.expire_at is not None
-                subscription = await self._lifecycle_service.sync_expire_at(
-                    subscription.id, data.expire_at
-                )
-
-            if subscription.status is old_status and not expire_at_drifted:
-                # sync_status() was a no-op (already DELETED) and nothing else
-                # moved
-                return subscription
-
-            await self._event_publisher.publish(
-                SubscriptionStatusSyncedEvent(
-                    subscription_id=subscription.id,
-                    old_status=old_status.value,
-                    new_status=subscription.status.value,
-                    source=data.source,
-                    user_id=subscription.user_id,
-                )
-            )
+            subscription = await self._sync_status(subscription, data)
+            if data.config is not None and subscription.status is not SubscriptionStatus.DELETED:
+                subscription = await self._sync_config(subscription, data.config, data.source)
             return subscription
+
+    async def _sync_status(
+        self, subscription: SubscriptionDto, data: SyncSubscriptionStatusDto
+    ) -> SubscriptionDto:
+        old_status = subscription.status
+        status_drifted = subscription.status is not data.status
+        expire_at_drifted = (
+            data.expire_at is not None
+            and subscription.status is not SubscriptionStatus.DELETED
+            and truncate_to_ms(subscription.expire_at) != truncate_to_ms(data.expire_at)
+        )
+        if not status_drifted and not expire_at_drifted:
+            return subscription
+
+        if status_drifted:
+            subscription = await self._lifecycle_service.sync_status(subscription.id, data.status)
+        if expire_at_drifted and subscription.status is not SubscriptionStatus.DELETED:
+            # the panel owns expire_at: this pulls in a renewal that landed
+            # there but not in our commit; status is whatever the panel
+            # reported, a renewal arrives as ACTIVE
+            assert data.expire_at is not None
+            subscription = await self._lifecycle_service.sync_expire_at(
+                subscription.id, data.expire_at
+            )
+
+        if subscription.status is old_status and not expire_at_drifted:
+            # sync_status() was a no-op (already DELETED) and nothing else moved
+            return subscription
+
+        await self._event_publisher.publish(
+            SubscriptionStatusSyncedEvent(
+                subscription_id=subscription.id,
+                old_status=old_status.value,
+                new_status=subscription.status.value,
+                source=data.source,
+                user_id=subscription.user_id,
+            )
+        )
+        return subscription
+
+    async def _sync_config(
+        self, subscription: SubscriptionDto, config: PanelConfigDto, source: str
+    ) -> SubscriptionDto:
+        update = config_update(subscription, config)
+        changed = changed_config_fields(subscription, update)
+        if not changed:
+            return subscription
+        subscription = await self._subscription_repository.apply_panel_config(update)
+        await self._event_publisher.publish(
+            SubscriptionConfigSyncedEvent(
+                subscription_id=subscription.id,
+                source=source,
+                changed_fields=changed,
+                removed_addon_types=sorted(t.value for t in update.removed_addon_types),
+                user_id=subscription.user_id,
+            )
+        )
+        return subscription
