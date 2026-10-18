@@ -21,7 +21,11 @@ from app.modules.subscriptions import (
     SubscriptionTrafficThresholdEvent,
     TorrentBlockerReportEvent,
 )
-from app.modules.transactions import TransactionPartiallyRefundedEvent, TransactionRefundedEvent
+from app.modules.transactions import (
+    PaidOrderNotFulfilledEvent,
+    TransactionPartiallyRefundedEvent,
+    TransactionRefundedEvent,
+)
 
 
 async def _notify(entry: StoredEvent, user_id: int, args: dict[str, Any]) -> None:
@@ -121,6 +125,8 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(SubscriptionGrantedEvent, _on_granted)
     bus.subscribe(TransactionRefundedEvent, _on_refund)
     bus.subscribe(TransactionPartiallyRefundedEvent, _on_refund)
+    # same amount and currency fields as a refund
+    bus.subscribe(PaidOrderNotFulfilledEvent, _on_refund)
     bus.subscribe(SubscriptionExpiringEvent, _on_expiring)
     bus.subscribe(SubscriptionExpiredEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficLimitedEvent, _on_purchase)

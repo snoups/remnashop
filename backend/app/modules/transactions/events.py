@@ -26,6 +26,18 @@ class TransactionPartiallyRefundedEvent(SystemEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class PaidOrderNotFulfilledEvent(SystemEvent):
+    """Paid, past the grace period, and still no subscription; the sweep keeps retrying."""
+
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    user_id: int
+    gateway_type: str
+    amount: str
+    currency: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class TransactionFulfilledManuallyEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int

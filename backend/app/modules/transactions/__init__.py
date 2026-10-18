@@ -17,6 +17,7 @@ from app.modules.transactions.dto import (
 )
 from app.modules.transactions.events import (
     CheckoutCreatedEvent,
+    PaidOrderNotFulfilledEvent,
     TransactionExpiredEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
@@ -51,6 +52,7 @@ __all__ = [
     "GetPaymentWaitlistCountUseCase",
     "HandlePaymentWebhookUseCase",
     "ListPaymentMethodsUseCase",
+    "PaidOrderNotFulfilledEvent",
     "PaidTotalsDto",
     "PaidTransactionDto",
     "PayerSummaryDto",

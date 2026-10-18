@@ -69,6 +69,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "TransactionRefundedEvent",
             "TransactionPartiallyRefundedEvent",
             "TransactionFulfilledManuallyEvent",
+            "PaidOrderNotFulfilledEvent",
         }
     ),
     "admins": frozenset(

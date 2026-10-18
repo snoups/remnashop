@@ -19,6 +19,7 @@ ALWAYS_BOTH: Final[frozenset[str]] = frozenset(
         "SubscriptionGrantedEvent",
         "TransactionRefundedEvent",
         "TransactionPartiallyRefundedEvent",
+        "PaidOrderNotFulfilledEvent",
         "CabinetNewDeviceSignInEvent",
         "AccountsMergedEvent",
     }

@@ -2,11 +2,15 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Final
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import update
+from redis.asyncio import Redis
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import OperationalError
 
+from app.core.constants import REDIS_KEY_PREFIX
+from app.core.db.models import EventOutboxEntry
 from app.core.db.models.transaction import Transaction
 from app.core.enums import (
     Currency,
@@ -18,6 +22,7 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.exceptions import RetryableTaskError
+from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
@@ -244,6 +249,8 @@ async def test_reconcile_paid_transactions_redispatches_when_no_subscription_is_
     user_id,
     plan_id,
     idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -254,7 +261,7 @@ async def test_reconcile_paid_transactions_redispatches_when_no_subscription_is_
     dispatch = RecordingDispatch()
 
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert len(dispatch.messages) == 1
@@ -271,6 +278,8 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
     user_id,
     plan_id,
     idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -295,7 +304,7 @@ async def test_reconcile_paid_transactions_skips_when_a_subscription_is_already_
     dispatch = RecordingDispatch()
 
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
@@ -311,6 +320,8 @@ async def test_reconcile_paid_transactions_ignores_orders_that_are_not_paid(
     user_id,
     plan_id,
     idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         await transaction_repository.create(
@@ -320,7 +331,7 @@ async def test_reconcile_paid_transactions_ignores_orders_that_are_not_paid(
     dispatch = RecordingDispatch()
 
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
@@ -366,6 +377,8 @@ async def test_reconcile_paid_transactions_does_not_redispatch_after_idempotency
     user_id,
     plan_id,
     idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     await _create_linked_paid_order(
         transaction_repository,
@@ -380,14 +393,14 @@ async def test_reconcile_paid_transactions_does_not_redispatch_after_idempotency
     dispatch = RecordingDispatch()
 
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
     async with uow:
         await PurchaseIdempotencyRepository(subscription_repository.session).delete_stale(
             datetime_now() + timedelta(days=1)
         )
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
@@ -401,6 +414,8 @@ async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempoten
     user_id,
     plan_id,
     idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         order = await transaction_repository.create(
@@ -416,7 +431,7 @@ async def test_reconcile_paid_transactions_skips_orders_older_than_the_idempoten
     dispatch = RecordingDispatch()
 
     await ReconcilePaidTransactionsUseCase(
-        transaction_repository, idempotency_repository, uow, dispatch
+        transaction_repository, idempotency_repository, uow, dispatch, event_publisher, redis
     ).system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
 
     assert dispatch.messages == []
@@ -463,3 +478,40 @@ async def test_confirm_stars_payment_task_does_not_retry_bugs() -> None:
 
     with pytest.raises(ValueError):
         await _confirm_stars(**_STARS_ARGS, use_case=use_case)
+
+
+async def test_a_stuck_paid_order_is_reported_once_across_sweeps(
+    transaction_repository: TransactionRepository,
+    uow,
+    user_id,
+    plan_id,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    event_publisher: EventPublisher,
+    redis: Redis,
+    session,
+) -> None:
+    async with uow:
+        order = await transaction_repository.create(
+            _paid_order_dto(user_id=user_id, plan_id=plan_id, idempotency_key=str(uuid4()))
+        )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    await redis.delete(f"{REDIS_KEY_PREFIX}paid_not_fulfilled_reported:{order.id}")
+    use_case = ReconcilePaidTransactionsUseCase(
+        transaction_repository,
+        idempotency_repository,
+        uow,
+        RecordingDispatch(),
+        event_publisher,
+        redis,
+    )
+
+    for _ in range(2):
+        await use_case.system(ReconcilePaidTransactionsDto(grace_period=timedelta(seconds=0)))
+
+    reported = await session.scalar(
+        select(func.count()).where(
+            EventOutboxEntry.event_type == "PaidOrderNotFulfilledEvent",
+            EventOutboxEntry.payload["order_id"].astext == str(order.id),
+        )
+    )
+    assert reported == 1
