@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Literal
 
+from app.core.enums import ReferralRewardType
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
@@ -14,7 +15,7 @@ class ReferralAttachedEvent(UserEvent):
 class ReferralRewardIssuedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     level: int
-    reward_type: str
+    reward_type: ReferralRewardType
     amount: str
 
 
@@ -38,7 +39,7 @@ class ReferralCodeResetEvent(ActorTargetEvent):
 @dataclass(frozen=True, kw_only=True)
 class ReferralSettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
-    action: str
+    action: Literal["reset", "update"]
     changed_fields: list[str] = field(default_factory=list)
 
 
@@ -58,7 +59,7 @@ class UserBonusDaysAdjustedEvent(ActorTargetEvent):
 @dataclass(frozen=True, kw_only=True)
 class InviteeRewardIssuedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
-    reward_type: str
+    reward_type: ReferralRewardType
     amount: int
 
 
@@ -66,7 +67,7 @@ class InviteeRewardIssuedEvent(UserEvent):
 class ReferralRewardReversedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     amount: str
-    reward_type: str
+    reward_type: ReferralRewardType
     payment_key: str
 
 

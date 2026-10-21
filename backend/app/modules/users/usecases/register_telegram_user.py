@@ -65,7 +65,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                 event: UserEvent = (
                     CabinetUserRegisteredEvent(
                         user=user,
-                        method=CabinetSignInMethod.TELEGRAM.value,
+                        method=CabinetSignInMethod.TELEGRAM,
                         ad_link_code=data.ad_link_code,
                         referral_code=data.referral_code,
                     )

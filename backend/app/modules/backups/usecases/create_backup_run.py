@@ -50,7 +50,7 @@ class CreateBackupRunUseCase(UseCase[StartBackupRunDto, BackupRunDto]):
                 CreateBackupRunDto(kind=data.kind, triggered_by=actor_user_id(actor))
             )
             await self._event_publisher.publish(
-                BackupChangedEvent(actor=actor, action="run", run_id=run.id, kind=data.kind.value)
+                BackupChangedEvent(actor=actor, action="run", run_id=run.id, kind=data.kind)
             )
             await self._uow.after_commit(
                 partial(self._run_backup_dispatch.kiq, kind=data.kind.value, run_id=run.id)

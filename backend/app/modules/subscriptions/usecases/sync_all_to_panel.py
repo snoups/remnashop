@@ -83,7 +83,7 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         async with self._uow:
             await self._event_publisher.publish(
                 PanelSyncCompletedEvent(
-                    direction=result.direction.value,
+                    direction=result.direction,
                     checked=result.checked,
                     updated=result.updated,
                     failed=result.failed,

@@ -118,7 +118,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
             # the claim is the activation, recorded even if the reward then fails
             await self._event_publisher.publish(
                 PromocodeActivatedEvent(
-                    user=actor, promocode_id=promo.id, reward_type=promo.reward_type.value
+                    user=actor, promocode_id=promo.id, reward_type=promo.reward_type
                 )
             )
 

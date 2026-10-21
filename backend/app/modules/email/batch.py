@@ -10,11 +10,10 @@ import aiosmtplib
 
 from app.core.constants import REDIS_KEY_PREFIX, TIME_1M
 from app.core.enums import EmailOutcome, SmtpSecurity
-from app.modules.email.sender import EmailSendError, mailbox_refused
+from app.modules.email.sender import SMTP_TIMEOUT_S, EmailSendError, mailbox_refused
 from app.modules.settings import SmtpProfileDto
 
 SMTP_PAUSE_SECONDS: Final[int] = TIME_1M
-_TIMEOUT_S: Final[int] = 15
 # the default SMTP policy wraps at 78 and RFC 2047-encodes a long List-Unsubscribe
 _WIRE_POLICY: Final[email.policy.Policy] = email.policy.SMTP.clone(max_line_length=998)
 
@@ -99,7 +98,7 @@ class SmtpBatchSender:
             port=profile.port,
             use_tls=profile.security is SmtpSecurity.TLS,
             start_tls=profile.security is SmtpSecurity.STARTTLS,
-            timeout=_TIMEOUT_S,
+            timeout=SMTP_TIMEOUT_S,
         )
         try:
             await client.connect()

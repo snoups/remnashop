@@ -1,22 +1,52 @@
-from typing import Any, Final
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Final, Optional
 
-_API_URL: Final[str] = "https://api.telegram.org"
-_DEFAULT_RETRY_AFTER_S: Final[float] = 1.0
+from aiogram import Bot
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.session.base import BaseSession
+from aiogram.exceptions import AiogramError, DetailedAiogramError
+from aiogram.utils.token import TokenValidationError, validate_token
+from python_socks import ProxyError
+
+_DEFAULT_TIMEOUT_S: Final[float] = 10.0
+# what a Bot API call outside the bot process can raise: the API's own answer,
+# a network or decode failure (both aiogram's), a malformed token, a dead proxy
+BOT_API_ERRORS: Final[tuple[type[Exception], ...]] = (
+    AiogramError,
+    TokenValidationError,
+    ProxyError,
+    OSError,
+)
 
 
-def bot_method_url(token: str, method: str) -> str:
-    return f"{_API_URL}/bot{token}/{method}"
+def bot_api_error_text(error: Exception) -> str:
+    # Telegram's own description where there is one ("Unauthorized")
+    if isinstance(error, DetailedAiogramError):
+        return error.message
+    return str(error) or type(error).__name__
 
 
-def bot_file_url(token: str, file_path: str) -> str:
-    return f"{_API_URL}/file/bot{token}/{file_path}"
-
-
-def retry_after_seconds(payload: dict[str, Any]) -> float:
-    # a 429 carries parameters.retry_after; anything malformed waits the default
-    parameters = payload.get("parameters")
-    value: Any = parameters.get("retry_after") if isinstance(parameters, dict) else None
+def is_bot_token(token: str) -> bool:
+    # aiogram refuses to build a Bot for a malformed token
     try:
-        return float(value)
-    except (TypeError, ValueError):
-        return _DEFAULT_RETRY_AFTER_S
+        return validate_token(token)
+    except TokenValidationError:
+        return False
+
+
+def bot_session(proxy: Optional[str], timeout: float) -> BaseSession:
+    return AiohttpSession(proxy=proxy, timeout=timeout)
+
+
+@asynccontextmanager
+async def bot_client(
+    token: str, proxy: Optional[str], *, timeout: float = _DEFAULT_TIMEOUT_S
+) -> AsyncIterator[Bot]:
+    """A Bot for calls made outside the telegram process; its HTTP session is
+    closed on exit. Every caller passes the dashboard's bot proxy."""
+    bot = Bot(token=token, session=bot_session(proxy, timeout))
+    try:
+        yield bot
+    finally:
+        await bot.session.close()

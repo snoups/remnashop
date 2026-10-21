@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Final, Optional
 
-import orjson
 from dishka.integrations.taskiq import FromDishka, inject
+from pydantic import TypeAdapter
 from redis.asyncio import Redis
 from redis.asyncio.client import Pipeline
 
@@ -62,11 +63,20 @@ async def bounded_scope(redis: Redis, event_type: str, scope: str) -> str:
     return scope if opened <= _MAX_SOURCES_PER_WINDOW else f"{event_type}{_OVERFLOW_SUFFIX}"
 
 
+@dataclass(frozen=True, kw_only=True)
+class _SuppressedEvent:
+    payload: dict[str, Any]
+    ip_address: Optional[str]
+
+
+_LAST_ADAPTER: Final[TypeAdapter[_SuppressedEvent]] = TypeAdapter(_SuppressedEvent)
+
+
 async def coalesce(
     redis: Redis, scope: str, payload: dict[str, Any], ip_address: Optional[str]
 ) -> Optional[int]:
     if not await redis.set(_WINDOW + scope, "1", nx=True, ex=COALESCE_WINDOW_S):
-        last = orjson.dumps({"payload": payload, "ip_address": ip_address})
+        last = _LAST_ADAPTER.dump_json(_SuppressedEvent(payload=payload, ip_address=ip_address))
         async with redis.pipeline(transaction=True) as pipe:
             pipe.incr(_SKIPPED + scope)
             pipe.set(_LAST + scope, last, ex=_SUMMARY_TTL_S)
@@ -107,14 +117,14 @@ async def flush_coalesced(redis: Redis, use_case: DeliverNotificationUseCase) ->
         raw = await redis.getdel(_LAST + scope)
         if not count or raw is None:
             continue
-        last = orjson.loads(raw)
+        last = _LAST_ADAPTER.validate_json(raw)
         # the last suppressed failure is shown; the rest are counted under it
         await use_case.system(
             DeliverNotificationDto(
                 event_type=scope.split(":", 1)[0],
-                payload=last["payload"],
+                payload=last.payload,
                 actor_id=None,
-                ip_address=last["ip_address"],
+                ip_address=last.ip_address,
                 suppressed=count - 1,
                 sources_merged=scope.endswith(_OVERFLOW_SUFFIX),
             )

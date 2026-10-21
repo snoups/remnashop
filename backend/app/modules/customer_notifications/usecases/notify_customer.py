@@ -20,12 +20,13 @@ from app.modules.notifications import (
     NotificationRendererFactory,
 )
 from app.modules.settings import SettingsRepository
+from app.modules.subscriptions import TorrentBlockerReportEvent
 from app.modules.users import UserDto, UserRepository
 
 # outlives the sweep's retries of one outbox row
 _DEDUP_TTL_S: Final[int] = TTL_7D
 # a torrent client trips the blocker on every connection; one warning a day is enough
-_COOLDOWNS: Final[dict[str, int]] = {"TorrentBlockerReportEvent": TTL_1D}
+_COOLDOWNS: Final[dict[str, int]] = {TorrentBlockerReportEvent.__name__: TTL_1D}
 
 
 def _cooldown_key(event_type: str, user_id: int) -> Optional[str]:

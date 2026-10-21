@@ -17,7 +17,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 from starlette.types import Scope
 
-from app.api.dependencies.public import get_current_actor
+from app.api.dependencies.public import get_auth_context
 from app.api.dependencies.rate_limit import global_rate_limit
 from app.api.errors import (
     GLOBAL_ERROR_RESPONSES,
@@ -194,7 +194,7 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     app.include_router(system_router, prefix=API_V1)
 
     register_error_handlers(app)
-    document_auth_errors(app, get_current_actor)
+    document_auth_errors(app, get_auth_context)
 
     _setup_docs(app, config)
 

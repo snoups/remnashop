@@ -19,6 +19,7 @@ from app.core.enums import (
     SubscriptionStatus,
 )
 from app.modules.plans import PlanDto
+from app.modules.subscriptions.events import StatusSyncSource
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -308,7 +309,7 @@ class PanelConfigDto:
 class SyncSubscriptionStatusDto:
     remnawave_user_id: int
     status: SubscriptionStatus
-    source: str
+    source: StatusSyncSource
     expire_at: Optional[datetime] = None
     first_connected_at: Optional[datetime] = None
     # None: the source only knows status and dates

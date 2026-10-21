@@ -39,7 +39,7 @@ class AddBlacklistEntryUseCase(UseCase[BlacklistEntryInputDto, BlacklistDto]):
             added = await self._blacklist_repository.add_entry(data.kind, data.value)
             if added:
                 await self._event_publisher.publish(
-                    BlacklistEntryAddedEvent(actor=actor, kind=data.kind.value, value=normalized)
+                    BlacklistEntryAddedEvent(actor=actor, kind=data.kind, value=normalized)
                 )
                 await self._uow.after_commit(self._reconcile_dispatch.kiq)
 

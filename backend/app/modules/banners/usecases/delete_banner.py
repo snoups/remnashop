@@ -37,8 +37,6 @@ class DeleteBannerUseCase(UseCase[BannerKeyDto, None]):
 
             await self._banner_repository.delete(data.name, data.locale)
             await self._event_publisher.publish(
-                BannerChangedEvent(
-                    actor=actor, action="delete", name=data.name, locale=data.locale.value
-                )
+                BannerChangedEvent(actor=actor, action="delete", name=data.name, locale=data.locale)
             )
         delete_banner_file(self._config.media_dir, data.name, data.locale, banner.extension)

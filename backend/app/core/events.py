@@ -1,12 +1,13 @@
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from enum import auto
-from typing import Any, ClassVar, Optional
-from uuid import UUID, uuid4
+from typing import Annotated, Any, ClassVar, Final, Optional, TypeVar, get_type_hints
+
+from pydantic import BeforeValidator, PlainSerializer, TypeAdapter
 
 from app.core.actor import Actor
-from app.core.enums import UpperStrEnum
+from app.core.enums import Role, UpperStrEnum
 from app.core.utils.time import datetime_now
 
 
@@ -27,7 +28,6 @@ class EventCategory(UpperStrEnum):
 
 @dataclass(frozen=True, kw_only=True)
 class BaseEvent:
-    event_id: UUID = field(default_factory=uuid4)
     occurred_at: datetime = field(default_factory=datetime_now)
     ip_address: Optional[str] = None
     category: ClassVar[EventCategory]
@@ -68,6 +68,98 @@ class StoredEvent:
     actor_name: Optional[str]
     actor_email: Optional[str]
     ip_address: Optional[str]
+
+
+def _role_from_name(value: object) -> object:
+    return Role[value] if isinstance(value, str) else value
+
+
+# stored by name ("ADMIN"), as the audit log has always shown it
+_StoredRole = Annotated[
+    Role, BeforeValidator(_role_from_name), PlainSerializer(str, return_type=str)
+]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActorSnapshot:
+    """The identity an event stores for an Actor; what a subscriber gets back."""
+
+    id: int
+    login: Optional[str]
+    name: str
+    role: _StoredRole
+    telegram_id: Optional[int]
+    username: Optional[str]
+    email: Optional[str]
+    # not stored: an event records who acted, not what they were allowed
+    permission_grants: ClassVar[Optional[list[str]]] = None
+    permission_revokes: ClassVar[Optional[list[str]]] = None
+
+    @classmethod
+    def of(cls, actor: Actor) -> "ActorSnapshot":
+        return cls(
+            id=actor.id,
+            login=actor.login,
+            name=actor.name,
+            role=actor.role,
+            telegram_id=actor.telegram_id,
+            username=actor.username,
+            email=actor.email,
+        )
+
+    @property
+    def is_privileged(self) -> bool:
+        return self.role.includes(Role.ADMIN)
+
+    @property
+    def log(self) -> str:
+        return f"[{self.role}:{self.id}:{self.login or self.name}]"
+
+    def to_payload(self) -> dict[str, Any]:
+        payload: dict[str, Any] = _SNAPSHOT_ADAPTER.dump_python(self, mode="json")
+        return payload
+
+
+_SNAPSHOT_ADAPTER: Final[TypeAdapter[ActorSnapshot]] = TypeAdapter(ActorSnapshot)
+
+
+E = TypeVar("E", bound=BaseEvent)
+# stored in the outbox row's own columns, not in the payload
+EVENT_ROW_FIELDS: Final[frozenset[str]] = frozenset({"occurred_at", "ip_address"})
+
+
+def _stored_type(hint: Any) -> Any:
+    # an Actor is stored as its snapshot, and comes back as one
+    if hint is Actor:
+        return ActorSnapshot
+    if hint == Optional[Actor]:
+        return Optional[ActorSnapshot]
+    return hint
+
+
+_ADAPTERS: Final[dict[type[BaseEvent], tuple[tuple[str, TypeAdapter[Any]], ...]]] = {}
+
+
+def _payload_adapters(event_type: type[BaseEvent]) -> tuple[tuple[str, TypeAdapter[Any]], ...]:
+    if event_type not in _ADAPTERS:
+        hints = get_type_hints(event_type)
+        _ADAPTERS[event_type] = tuple(
+            (f.name, TypeAdapter(_stored_type(hints[f.name])))
+            for f in fields(event_type)
+            if f.name not in EVENT_ROW_FIELDS
+        )
+    return _ADAPTERS[event_type]
+
+
+def restore_event(event_type: type[E], entry: StoredEvent) -> E:
+    """Rebuilds the event an outbox row was written from; a field missing from an
+    older row takes its default."""
+    values: dict[str, Any] = {
+        name: adapter.validate_python(entry.payload[name])
+        for name, adapter in _payload_adapters(event_type)
+        if name in entry.payload
+    }
+    return event_type(occurred_at=entry.occurred_at, ip_address=entry.ip_address, **values)
 
 
 def changed_fields(before: object, after: object, names: Iterable[str]) -> list[str]:

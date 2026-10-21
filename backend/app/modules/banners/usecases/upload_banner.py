@@ -84,9 +84,7 @@ class UploadBannerUseCase(UseCase[UploadBannerFileDto, BannerDto]):
                 )
             )
             await self._event_publisher.publish(
-                BannerChangedEvent(
-                    actor=actor, action="upload", name=data.name, locale=data.locale.value
-                )
+                BannerChangedEvent(actor=actor, action="upload", name=data.name, locale=data.locale)
             )
         # files change only after the row commits: a failed commit must not
         # leave the row pointing at a file already overwritten or deleted

@@ -1,20 +1,21 @@
 from dataclasses import dataclass
-from typing import ClassVar, Optional
+from typing import ClassVar, Literal, Optional
 
+from app.core.enums import BlacklistKind
 from app.core.events import ActorEvent, BaseEvent, EventCategory
 
 
 @dataclass(frozen=True, kw_only=True)
 class BlacklistEntryAddedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    kind: str
+    kind: BlacklistKind
     value: str
 
 
 @dataclass(frozen=True, kw_only=True)
 class BlacklistEntryRemovedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    kind: str
+    kind: BlacklistKind
     value: str
 
 
@@ -27,5 +28,5 @@ class BlacklistReconciledEvent(BaseEvent):
 @dataclass(frozen=True, kw_only=True)
 class BlacklistSourceChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    action: str
+    action: Literal["add", "disable", "enable", "remove", "sync"]
     source_id: Optional[int] = None

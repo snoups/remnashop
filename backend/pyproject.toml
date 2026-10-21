@@ -38,15 +38,14 @@ dependencies = [
     "packaging>=25.0",
     "pywebpush>=2.3.0",
     "aiosmtplib>=5.1.3",
+    # every process talks to the Bot API through aiogram; the dialog UI stays in the extra
+    "aiogram~=3.25.0",
+    "aiohttp-socks>=0.10.0",
 ]
 
 [project.optional-dependencies]
-# Only the `telegram` process needs these -- pulling them into the base
-# dependency set costs every other process ~85MB RSS for aiogram+aiohttp
-# alone, whether or not it ever touches Telegram.
+# Only the `telegram` process renders dialogs and translations.
 telegram = [
-    "aiogram~=3.25.0",
-    "aiohttp-socks>=0.10.0",
     "aiogram-dialog~=2.5.0",
     "fluentogram~=1.2.1",
 ]

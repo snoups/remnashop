@@ -1,4 +1,3 @@
-import httpx
 import pytest
 from redis.asyncio import Redis
 
@@ -28,6 +27,7 @@ from app.modules.translations.usecases import (
 )
 from app.modules.users.dto import UserDto
 from tests.fakes.events import RecordingEventPublisher
+from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
 from tests.modules.settings.factories import make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
@@ -201,15 +201,9 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )
 
-    pushed: list[dict] = []
-
-    async def _capturing_post(self: httpx.AsyncClient, url: str, *, json: dict) -> httpx.Response:
-        pushed.append(json)
-        return httpx.Response(
-            200, json={"ok": True, "result": True}, request=httpx.Request("POST", url)
-        )
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", _capturing_post)
+    session = use_fake_bot(
+        monkeypatch, FakeBotSession({"SetMyCommands": True, "DeleteMyCommands": True})
+    )
 
     use_case = UpdateTranslationUseCase(
         translation_repository,
@@ -225,8 +219,9 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
         ),
     )
 
+    pushed = session.called("SetMyCommands")
     assert pushed
-    assert pushed[0]["commands"][0]["description"] == "New text"
+    assert pushed[0].commands[0].description == "New text"
 
 
 async def test_owner_can_reset_translation_to_default(

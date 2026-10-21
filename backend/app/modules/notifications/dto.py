@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
+from enum import StrEnum, auto
 from typing import Any, Final, Optional
 
 from pydantic import SecretStr
@@ -15,6 +15,18 @@ class NotificationChannel(StrEnum):
     TELEGRAM = "telegram"
 
 
+class NotificationGroup(StrEnum):
+    SECURITY = auto()
+    FAILURES = auto()
+    INFRASTRUCTURE = auto()
+    BROADCASTS = auto()
+    REQUESTS = auto()
+    MONEY = auto()
+    ADMINS = auto()
+    CUSTOMERS = auto()
+    SUBSCRIPTIONS = auto()
+
+
 COALESCED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
     {
         "LoginFailedEvent",
@@ -26,8 +38,8 @@ COALESCED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
 )
 COALESCE_WINDOW_S: Final[int] = 300
 
-NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
-    "security": frozenset(
+NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
+    NotificationGroup.SECURITY: frozenset(
         {
             "SessionTheftDetectedEvent",
             "LoginFailedEvent",
@@ -38,7 +50,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "RescueCliUsedEvent",
         }
     ),
-    "failures": frozenset(
+    NotificationGroup.FAILURES: frozenset(
         {
             "BackupFailedEvent",
             "BonusDaysRenewalStuckEvent",
@@ -46,7 +58,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "TelegramWebhookFailedEvent",
         }
     ),
-    "infrastructure": frozenset(
+    NotificationGroup.INFRASTRUCTURE: frozenset(
         {
             "NodeConnectionLostEvent",
             "NodeConnectionRestoredEvent",
@@ -60,9 +72,9 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "BotStoppedEvent",
         }
     ),
-    "broadcasts": frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
-    "requests": frozenset({"PointsWithdrawalRequestedEvent"}),
-    "money": frozenset(
+    NotificationGroup.BROADCASTS: frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
+    NotificationGroup.REQUESTS: frozenset({"PointsWithdrawalRequestedEvent"}),
+    NotificationGroup.MONEY: frozenset(
         {
             "SubscriptionPurchasedEvent",
             "SubscriptionRenewedEvent",
@@ -72,7 +84,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "PaidOrderNotFulfilledEvent",
         }
     ),
-    "admins": frozenset(
+    NotificationGroup.ADMINS: frozenset(
         {
             "AdminCreatedEvent",
             "AdminDeletedEvent",
@@ -81,7 +93,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "AdminPermissionsUpdatedEvent",
         }
     ),
-    "customers": frozenset(
+    NotificationGroup.CUSTOMERS: frozenset(
         {
             "TelegramUserRegisteredEvent",
             "CabinetUserRegisteredEvent",
@@ -91,7 +103,7 @@ NOTIFICATION_GROUPS: Final[dict[str, frozenset[str]]] = {
             "TorrentBlockerReportEvent",
         }
     ),
-    "subscriptions": frozenset(
+    NotificationGroup.SUBSCRIPTIONS: frozenset(
         {
             "SubscriptionExpiredEvent",
             "SubscriptionTrafficLimitedEvent",
@@ -105,22 +117,24 @@ _ALL_CHANNELS: Final[frozenset[NotificationChannel]] = frozenset(NotificationCha
 _CHANNEL_VALUES: Final[frozenset[str]] = frozenset(c.value for c in NotificationChannel)
 # the bell holds the entry; a recipient may lack the event-log permissions
 PUSH_URL: Final[str] = "/dashboard?bell=open"
-_CRITICAL_GROUPS: Final[frozenset[str]] = frozenset({"security", "failures", "infrastructure"})
+_CRITICAL_GROUPS: Final[frozenset[NotificationGroup]] = frozenset(
+    {NotificationGroup.SECURITY, NotificationGroup.FAILURES, NotificationGroup.INFRASTRUCTURE}
+)
 # critical groups everywhere, the rest only in the bell, until an admin chooses otherwise
-DEFAULT_NOTIFICATION_CHANNELS: Final[dict[str, frozenset[NotificationChannel]]] = {
+DEFAULT_NOTIFICATION_CHANNELS: Final[dict[NotificationGroup, frozenset[NotificationChannel]]] = {
     group: _ALL_CHANNELS if group in _CRITICAL_GROUPS else frozenset({NotificationChannel.BELL})
     for group in NOTIFICATION_GROUPS
 }
-_GROUP_BY_EVENT_TYPE: Final[dict[str, str]] = {
+_GROUP_BY_EVENT_TYPE: Final[dict[str, NotificationGroup]] = {
     event_type: group for group, types in NOTIFICATION_GROUPS.items() for event_type in types
 }
 
 
-def group_of(event_type: str) -> Optional[str]:
+def group_of(event_type: str) -> Optional[NotificationGroup]:
     return _GROUP_BY_EVENT_TYPE.get(event_type)
 
 
-def channels_for(user: UserDto, group: str) -> frozenset[NotificationChannel]:
+def channels_for(user: UserDto, group: NotificationGroup) -> frozenset[NotificationChannel]:
     stored = (user.notification_channels or {}).get(group)
     # also a group added after the admin last saved the matrix
     if stored is None:

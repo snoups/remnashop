@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import partial
 from typing import Final, Optional
 
-import httpx
+from aiogram import Bot
 from redis.asyncio import Redis
 from redis.asyncio.lock import Lock
 from redis.exceptions import LockNotOwnedError
@@ -143,8 +143,8 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         media = outgoing_media(self._config.media_dir, broadcast)
         now = datetime_now()
         queue = list(pending)
-        async with self._client_factory.open(bot.proxy) as client:
-            send = partial(self._send, client, token, renderer, contexts, now, data)
+        async with self._client_factory.open(token, bot.proxy) as client:
+            send = partial(self._send, client, renderer, contexts, now, data)
             if media is not None and media.file_id is None:
                 uploaded, media = await self._upload_media(data, queue, media, send)
                 if not uploaded:
@@ -221,8 +221,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
 
     async def _send(
         self,
-        client: httpx.AsyncClient,
-        token: str,
+        client: Bot,
         renderer: BroadcastRenderer,
         contexts: dict[int, RecipientContextDto],
         now: datetime,
@@ -237,7 +236,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         waited = 0.0
         while True:
             result = await send_broadcast_message(
-                client, token, recipient.telegram_id, message.text, message.reply_markup, media
+                client, recipient.telegram_id, message.text, message.reply_markup, media
             )
             # a flood wait is not the recipient's fault: no attempt spent until the cap
             if result.outcome is not SendOutcome.RETRY or result.retry_after is None:

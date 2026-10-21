@@ -81,7 +81,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
                         actor=actor,
                         target=user,
                         order_id=order.id,
-                        previous_status=order.status.value,
+                        previous_status=order.status,
                     )
                 )
                 await self._uow.after_commit(

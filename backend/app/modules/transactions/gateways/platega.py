@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import PlategaSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -31,17 +32,18 @@ _REPORTED_STATUSES: Final[dict[str, TransactionStatus]] = {
 
 
 # Docs: https://docs.platega.io/
-class PlategaGateway(PaymentGateway):
+class PlategaGateway(PaymentGateway[PlategaSettings]):
+    settings_model = PlategaSettings
     currency = Currency.RUB
 
     def _headers(self) -> dict[str, str]:
         return {
-            "X-MerchantId": self._require("merchant_id"),
-            "X-Secret": self._require("api_key"),
+            "X-MerchantId": self.settings.merchant_id,
+            "X-Secret": self.settings.api_key.get_secret_value(),
         }
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
-        payment_method = self._optional("payment_method")
+        payment_method = self.settings.payment_method
         payload: dict[str, object] = {
             "paymentDetails": {
                 "amount": amount_to_float(order.final_price),
@@ -80,8 +82,8 @@ class PlategaGateway(PaymentGateway):
         merchant_id = request.headers.get("x-merchantid", "")
         secret = request.headers.get("x-secret", "")
         if not (
-            safe_equals(merchant_id, self._require("merchant_id"))
-            and safe_equals(secret, self._require("api_key"))
+            safe_equals(merchant_id, self.settings.merchant_id)
+            and safe_equals(secret, self.settings.api_key.get_secret_value())
         ):
             raise PaymentGatewayError("Invalid Platega webhook credentials")
 

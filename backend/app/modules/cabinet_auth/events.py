@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+from app.core.enums import CabinetSignInMethod
 from app.core.events import BaseEvent, EventCategory, UserEvent
 
 
@@ -19,4 +20,4 @@ class CabinetNewDeviceSignInEvent(UserEvent):
 @dataclass(frozen=True, kw_only=True)
 class CabinetSignedInEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
-    method: str
+    method: CabinetSignInMethod

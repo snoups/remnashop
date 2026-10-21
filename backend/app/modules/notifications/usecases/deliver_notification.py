@@ -12,6 +12,7 @@ from app.modules.notifications.dto import (
     PUSH_URL,
     DeliverNotificationDto,
     NotificationChannel,
+    NotificationGroup,
     PushMessage,
     channels_for,
     group_of,
@@ -29,7 +30,7 @@ MAX_BODY_LENGTH: Final[int] = 1000
 
 
 def _wanted_channels(
-    user: UserDto, group: str, actor_id: Optional[int]
+    user: UserDto, group: NotificationGroup, actor_id: Optional[int]
 ) -> frozenset[NotificationChannel]:
     if user.is_blocked or user.deleted_at is not None or user.id == actor_id:
         return frozenset()

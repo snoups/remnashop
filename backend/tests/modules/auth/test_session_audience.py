@@ -2,6 +2,7 @@ import pytest
 from starlette.requests import Request
 
 from app.api.dependencies.admin import require_admin
+from app.api.dependencies.public import AuthContext
 from app.api.errors import ApiError
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
@@ -68,10 +69,10 @@ async def test_require_admin_rejects_cabinet_session(
     async with uow:
         actor = await user_repository.get_by_login("aud-admin")
     assert actor is not None
-    request = Request({"type": "http", "headers": [], "state": {}})
-    request.state.session_audience = SessionAudience.CABINET
+    request = Request({"type": "http", "headers": []})
+    auth = AuthContext(actor=actor, session_id=1, audience=SessionAudience.CABINET)
 
     with pytest.raises(ApiError) as error:
-        await require_admin(request, actor)
+        await require_admin(request, auth)
 
     assert error.value.code is ErrorCode.SESSION_AUDIENCE_MISMATCH

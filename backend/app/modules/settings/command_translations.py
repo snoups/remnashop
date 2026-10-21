@@ -1,18 +1,20 @@
-from typing import Any, Final, Optional
+from collections.abc import Awaitable
+from typing import Final, Optional
 
-import httpx
+from aiogram.exceptions import TelegramAPIError, TelegramNetworkError
+from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
 from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
 from app.core.enums import Locale
-from app.core.telegram_api import bot_method_url
+from app.core.telegram_api import bot_client
 from app.modules.settings.bot_commands import BOT_COMMANDS
 from app.modules.settings.dto import BotCommandDto
 
 _TIMEOUT_SECONDS: Final[float] = 10.0
 # outranks the default scope in private chats, so commands set there earlier
 # would otherwise shadow ours
-_PRIVATE_CHATS_SCOPE: Final[dict[str, str]] = {"type": "all_private_chats"}
+_PRIVATE_CHATS_SCOPE: Final[BotCommandScopeAllPrivateChats] = BotCommandScopeAllPrivateChats()
 
 
 async def push_bot_commands_to_telegram(
@@ -23,9 +25,9 @@ async def push_bot_commands_to_telegram(
     translations_by_locale: dict[Locale, str],
     default_locale: Locale,
 ) -> bool:
-    # Plain Bot API call and bare fluent_compiler bundles, not aiogram/fluentogram:
-    # this runs in the api process too (every translation write re-pushes), and
-    # those two live under the telegram extra.
+    # bare fluent_compiler bundles, not fluentogram: this runs in the api process
+    # too (every translation write re-pushes), and fluentogram lives under the
+    # telegram extra
     assert token is not None
     by_command = {item.command: item for item in BOT_COMMANDS}
     locales: list[Optional[str]] = [locale.value for locale in active_locales] + [None]
@@ -46,26 +48,29 @@ async def push_bot_commands_to_telegram(
             return str(text)
 
         ok = True
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
+        async with bot_client(token, proxy, timeout=_TIMEOUT_SECONDS) as bot:
             for lang in locales:
-                payload: dict[str, Any] = {
-                    "commands": [
-                        {
-                            "command": item.command,
-                            "description": describe(
-                                lang or default_locale.value,
-                                by_command[item.command].description_key,
-                            ),
-                        }
-                        for item in commands
-                    ],
-                    "scope": _PRIVATE_CHATS_SCOPE,
-                }
-                language: dict[str, Any] = {} if lang is None else {"language_code": lang}
-                ok &= await _call(client, token, "setMyCommands", payload | language)
+                bot_commands = [
+                    BotCommand(
+                        command=item.command,
+                        description=describe(
+                            lang or default_locale.value, by_command[item.command].description_key
+                        ),
+                    )
+                    for item in commands
+                ]
+                ok &= await _accepted(
+                    bot.set_my_commands(
+                        commands=bot_commands, scope=_PRIVATE_CHATS_SCOPE, language_code=lang
+                    ),
+                    "setMyCommands",
+                    lang,
+                )
                 # clears commands an older push left in the default scope,
                 # which also shows them in groups
-                ok &= await _call(client, token, "deleteMyCommands", language)
+                ok &= await _accepted(
+                    bot.delete_my_commands(language_code=lang), "deleteMyCommands", lang
+                )
     except Exception:
         logger.exception("Failed to push bot commands to Telegram")
         return False
@@ -74,27 +79,25 @@ async def push_bot_commands_to_telegram(
 
 async def delete_bot_commands_for_locale(token: str, proxy: Optional[str], locale: Locale) -> bool:
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy) as client:
-            return await _call(
-                client,
-                token,
+        async with bot_client(token, proxy, timeout=_TIMEOUT_SECONDS) as bot:
+            return await _accepted(
+                bot.delete_my_commands(scope=_PRIVATE_CHATS_SCOPE, language_code=locale.value),
                 "deleteMyCommands",
-                {"scope": _PRIVATE_CHATS_SCOPE, "language_code": locale.value},
+                locale.value,
             )
     except Exception:
         logger.exception(f"Failed to delete bot commands for locale '{locale}'")
         return False
 
 
-async def _call(
-    client: httpx.AsyncClient, token: str, method: str, payload: dict[str, Any]
-) -> bool:
-    response = await client.post(bot_method_url(token, method), json=payload)
-    body: dict[str, Any] = response.json()
-    if body.get("ok"):
-        return True
-    logger.error(
-        f"Telegram '{method}' failed for language "
-        f"'{payload.get('language_code', 'default')}': {body.get('description')}"
-    )
-    return False
+async def _accepted(call: Awaitable[bool], method: str, lang: Optional[str]) -> bool:
+    # Telegram refusing one language doesn't stop the others; a network failure does
+    try:
+        return await call
+    except TelegramNetworkError:
+        raise
+    except TelegramAPIError as error:
+        logger.error(
+            f"Telegram '{method}' failed for language '{lang or 'default'}': {error.message}"
+        )
+        return False

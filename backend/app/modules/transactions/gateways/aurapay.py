@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import AuraPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -28,14 +29,15 @@ _MAX_LIFETIME_MINUTES: Final[int] = 43200
 
 
 # Docs: https://docs.aurapay.tech/
-class AuraPayGateway(PaymentGateway):
+class AuraPayGateway(PaymentGateway[AuraPaySettings]):
+    settings_model = AuraPaySettings
     currency = Currency.RUB
 
     def _headers(self) -> dict[str, str]:
         return {
             "Content-Type": "application/json",
-            "X-ApiKey": self._require("api_key"),
-            "X-ShopId": self._require("shop_id"),
+            "X-ApiKey": self.settings.api_key.get_secret_value(),
+            "X-ShopId": self.settings.shop_id,
         }
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
@@ -84,7 +86,7 @@ class AuraPayGateway(PaymentGateway):
         concatenated = "".join(
             "" if value is None else str(value) for _, value in sorted(data.items())
         )
-        return hmac_hex(self._require("secret_key"), concatenated.encode("utf-8"))
+        return hmac_hex(self.settings.secret_key.get_secret_value(), concatenated.encode("utf-8"))
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not order.external_payment_id:

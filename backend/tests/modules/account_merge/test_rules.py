@@ -99,13 +99,13 @@ def test_merged_fields_sum_and_flags() -> None:
 
     values = merged_user_fields(source, target, {"language": "source"})
 
-    assert values["points"] == Decimal(12)
-    assert values["bonus_days"] == 4
-    assert values["is_trial_available"] is False
-    assert values["is_blocked"] is True
-    assert values["rules_accepted_at"] == accepted
-    assert values["telegram_id"] == 10 and values["username"] == "s"
-    assert values["language"] == Locale.RU
+    assert values.points == Decimal(12)
+    assert values.bonus_days == 4
+    assert values.is_trial_available is False
+    assert values.is_blocked is True
+    assert values.rules_accepted_at == accepted
+    assert values.telegram_id == 10 and values.username == "s"
+    assert values.language == Locale.RU
 
 
 @pytest.mark.parametrize("side", ["source", "target"])
@@ -117,7 +117,7 @@ def test_undeliverable_mark_travels_with_email(side: str) -> None:
     values = merged_user_fields(source, target, {"email": side})  # type: ignore[dict-item]
 
     expected = ("a@x.io", marked) if side == "source" else ("b@x.io", None)
-    assert (values["email"], values["email_undeliverable_at"]) == expected
+    assert (values.email, values.email_undeliverable_at) == expected
 
 
 def test_merged_fields_take_staff_side_privileges() -> None:
@@ -126,10 +126,10 @@ def test_merged_fields_take_staff_side_privileges() -> None:
 
     values = merged_user_fields(source, target, {})
 
-    assert values["role"] == Role.OWNER
-    assert values["ip_allowlist"] == ["1.1.1.1"]
-    assert values["login"] == "own"
-    assert values["telegram_id"] == 5
+    assert values.role == Role.OWNER
+    assert values.ip_allowlist == ["1.1.1.1"]
+    assert values.login == "own"
+    assert values.telegram_id == 5
 
 
 @pytest.mark.parametrize("owner_side", ["source", "target"])
@@ -138,7 +138,7 @@ def test_staff_side_decides_block_flag(owner_side: str) -> None:
     customer = _user(id=2, is_blocked=True)
     source, target = (owner, customer) if owner_side == "source" else (customer, owner)
 
-    assert merged_user_fields(source, target, {})["is_blocked"] is False
+    assert merged_user_fields(source, target, {}).is_blocked is False
 
 
 def test_staff_side_without_login_keeps_no_login() -> None:
@@ -147,7 +147,7 @@ def test_staff_side_without_login_keeps_no_login() -> None:
 
     values = merged_user_fields(source, target, {})
 
-    assert values["login"] is None and values["password_hash"] is None
+    assert values.login is None and values.password_hash is None
 
 
 def test_no_oauth_conflict_when_staff_side_exists() -> None:

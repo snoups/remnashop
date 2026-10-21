@@ -4,7 +4,7 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer, Provider, Scope, provide
 from dishka.integrations.fastapi import setup_dishka
 from remnapy import RemnawaveSDK
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,18 +13,17 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, PlanType, Role, SessionAudience, SubscriptionStatus
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
-from app.modules.providers import get_module_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.container import make_test_container
 from tests.fakes.remnawave import FakeUserStore, _user_payload, make_fake_remnawave_transport
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
@@ -50,29 +49,11 @@ def remnawave_store() -> FakeUserStore:
     return {}
 
 
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
-
-
 @pytest.fixture
 async def test_container(
     session: AsyncSession, config: AppConfig, remnawave_store: FakeUserStore
 ) -> AsyncIterator[AsyncContainer]:
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _TestSessionProvider(session),
-        _TestRemnawaveProvider(remnawave_store),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
+    container = make_test_container(session, config, _TestRemnawaveProvider(remnawave_store))
     yield container
     await container.close()
 

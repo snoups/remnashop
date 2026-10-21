@@ -5,6 +5,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import RollyPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -36,11 +37,12 @@ def _is_paid(data: dict[str, Any]) -> bool:
 
 
 # Docs: https://docs.rollypay.io/
-class RollyPayGateway(PaymentGateway):
+class RollyPayGateway(PaymentGateway[RollyPaySettings]):
+    settings_model = RollyPaySettings
     currency = Currency.RUB
 
     def _headers(self) -> dict[str, str]:
-        return {"X-API-Key": self._require("api_key"), "X-Nonce": uuid.uuid4().hex}
+        return {"X-API-Key": self.settings.api_key.get_secret_value(), "X-Nonce": uuid.uuid4().hex}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
@@ -75,7 +77,9 @@ class RollyPayGateway(PaymentGateway):
         if not signature or not timestamp:
             raise PaymentGatewayError("RollyPay webhook missing signature/timestamp headers")
         message = timestamp.encode("utf-8") + b"." + request.body
-        if not safe_equals(hmac_hex(self._require("signing_secret"), message), signature):
+        if not safe_equals(
+            hmac_hex(self.settings.signing_secret.get_secret_value(), message), signature
+        ):
             raise PaymentGatewayError("Invalid RollyPay webhook signature")
 
         data = parse_json(request.body, "RollyPay")

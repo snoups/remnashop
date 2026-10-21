@@ -76,9 +76,9 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
                 PaidOrderNotFulfilledEvent(
                     order_id=order.id,
                     user_id=order.user_id,
-                    gateway_type=order.gateway_type.value,
+                    gateway_type=order.gateway_type,
                     amount=str(order.final_price),
-                    currency=order.currency.value,
+                    currency=order.currency,
                 )
             )
         logger.warning(f"Paid order '{order.id}' is still not fulfilled; reported")

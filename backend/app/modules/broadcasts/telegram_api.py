@@ -1,22 +1,28 @@
-import json
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from enum import auto
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Union
 
-import httpx
+from aiogram import Bot
+from aiogram.enums import ParseMode
+from aiogram.exceptions import (
+    TelegramAPIError,
+    TelegramEntityTooLarge,
+    TelegramForbiddenError,
+    TelegramNetworkError,
+    TelegramRetryAfter,
+    TelegramServerError,
+    TelegramUnauthorizedError,
+)
+from aiogram.methods import SendAnimation, SendDocument, SendPhoto, SendVideo, TelegramMethod
+from aiogram.types import FSInputFile, InlineKeyboardMarkup, Message
 from loguru import logger
 
 from app.core.enums import BroadcastMediaType, UpperStrEnum
-from app.core.telegram_api import bot_method_url, retry_after_seconds
+from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
 
 _TIMEOUT_SECONDS: Final[float] = 30.0
-_METHOD_BY_MEDIA: Final[dict[BroadcastMediaType, tuple[str, str]]] = {
-    BroadcastMediaType.PHOTO: ("sendPhoto", "photo"),
-    BroadcastMediaType.VIDEO: ("sendVideo", "video"),
-    BroadcastMediaType.ANIMATION: ("sendAnimation", "animation"),
-    BroadcastMediaType.DOCUMENT: ("sendDocument", "document"),
-}
 
 
 class SendOutcome(UpperStrEnum):
@@ -45,100 +51,123 @@ class SendResult:
 
 
 class TelegramClientFactory:
-    def open(self, proxy: Optional[str]) -> httpx.AsyncClient:
-        return httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, proxy=proxy)
+    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[Bot]:
+        return bot_client(token, proxy, timeout=_TIMEOUT_SECONDS)
 
 
-def _file_id(result: dict[str, Any], field: str) -> Optional[str]:
-    value = result.get(field)
-    if isinstance(value, list) and value:
-        value = value[-1]  # photo sizes: largest last
-    return value.get("file_id") if isinstance(value, dict) else None
+def _failure(error: Exception) -> SendResult:
+    text = bot_api_error_text(error)
+    if isinstance(error, TelegramRetryAfter):
+        return SendResult(outcome=SendOutcome.RETRY, error=text, retry_after=error.retry_after)
+    if isinstance(error, TelegramUnauthorizedError):
+        return SendResult(outcome=SendOutcome.UNAUTHORIZED, error=text)
+    if isinstance(error, TelegramForbiddenError):
+        return SendResult(outcome=SendOutcome.BLOCKED, error=text)
+    if isinstance(error, TelegramEntityTooLarge):
+        return SendResult(outcome=SendOutcome.FAILED, error=text)
+    if isinstance(error, (TelegramServerError, TelegramNetworkError)) or not isinstance(
+        error, TelegramAPIError
+    ):
+        # a 5xx, a dropped connection, a garbled reply: worth another attempt
+        return SendResult(outcome=SendOutcome.RETRY, error=text)
+    return SendResult(outcome=SendOutcome.FAILED, error=text)
 
 
-def _result(status_code: int, payload: dict[str, Any], field: str) -> SendResult:
-    if payload.get("ok"):
-        result = payload.get("result")
-        if not isinstance(result, dict):
-            result = {}
-        return SendResult(
-            outcome=SendOutcome.SENT,
-            message_id=result.get("message_id"),
-            file_id=_file_id(result, field) if field else None,
+def _media_method(
+    media_type: BroadcastMediaType,
+    chat_id: int,
+    file: Union[str, FSInputFile],
+    caption: str,
+    markup: Optional[InlineKeyboardMarkup],
+) -> TelegramMethod[Message]:
+    if media_type is BroadcastMediaType.PHOTO:
+        return SendPhoto(
+            chat_id=chat_id,
+            photo=file,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=markup,
         )
-    description = str(payload.get("description") or status_code)
-    if status_code == 429:
-        return SendResult(
-            outcome=SendOutcome.RETRY, error=description, retry_after=retry_after_seconds(payload)
+    if media_type is BroadcastMediaType.VIDEO:
+        return SendVideo(
+            chat_id=chat_id,
+            video=file,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=markup,
         )
-    if status_code == 401:
-        return SendResult(outcome=SendOutcome.UNAUTHORIZED, error=description)
-    if status_code == 403:
-        return SendResult(outcome=SendOutcome.BLOCKED, error=description)
-    if status_code >= 500:
-        return SendResult(outcome=SendOutcome.RETRY, error=description)
-    return SendResult(outcome=SendOutcome.FAILED, error=description)
+    if media_type is BroadcastMediaType.ANIMATION:
+        return SendAnimation(
+            chat_id=chat_id,
+            animation=file,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=markup,
+        )
+    return SendDocument(
+        chat_id=chat_id,
+        document=file,
+        caption=caption,
+        parse_mode=ParseMode.HTML,
+        reply_markup=markup,
+    )
+
+
+def _media_file_id(message: Message, media_type: BroadcastMediaType) -> Optional[str]:
+    if media_type is BroadcastMediaType.PHOTO:
+        return message.photo[-1].file_id if message.photo else None  # largest last
+    if media_type is BroadcastMediaType.VIDEO:
+        return message.video.file_id if message.video else None
+    if media_type is BroadcastMediaType.ANIMATION:
+        return message.animation.file_id if message.animation else None
+    return message.document.file_id if message.document else None
 
 
 async def send_broadcast_message(
-    client: httpx.AsyncClient,
-    token: str,
+    bot: Bot,
     chat_id: int,
     text: str,
     reply_markup: Optional[dict[str, Any]],
     media: Optional[OutgoingMedia],
 ) -> SendResult:
-    fields: dict[str, Any] = {"chat_id": chat_id, "parse_mode": "HTML"}
-    if reply_markup is not None:
-        fields["reply_markup"] = reply_markup
-    method, field = ("sendMessage", "") if media is None else _METHOD_BY_MEDIA[media.media_type]
-    url = bot_method_url(token, method)
+    markup = InlineKeyboardMarkup.model_validate(reply_markup) if reply_markup else None
+    if media is not None and media.file_id is None and not (media.path and media.path.is_file()):
+        # the caller skips the post; inside the send it would read as a network failure
+        raise FileNotFoundError(media.path)
     try:
         if media is None:
-            response = await client.post(url, json={**fields, "text": text})
-        elif media.file_id is not None:
-            response = await client.post(
-                url, json={**fields, "caption": text, field: media.file_id}
+            message = await bot.send_message(
+                chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=markup
             )
+            return SendResult(outcome=SendOutcome.SENT, message_id=message.message_id)
+        if media.file_id is not None:
+            file: Union[str, FSInputFile] = media.file_id
         else:
             assert media.path is not None
-            form = {k: json.dumps(v) if isinstance(v, dict) else str(v) for k, v in fields.items()}
-            form["caption"] = text
-            with media.path.open("rb") as handle:
-                response = await client.post(
-                    url, data=form, files={field: (media.path.name, handle, media.content_type)}
-                )
-        payload = response.json()
-    except (httpx.HTTPError, ValueError) as error:
-        return SendResult(outcome=SendOutcome.RETRY, error=type(error).__name__)
-    if not isinstance(payload, dict):
-        return SendResult(outcome=SendOutcome.RETRY, error="Unexpected response")
-    return _result(response.status_code, payload, field)
+            file = FSInputFile(media.path, filename=media.path.name)
+        message = await bot(_media_method(media.media_type, chat_id, file, text, markup))
+    except BOT_API_ERRORS as error:
+        return _failure(error)
+    return SendResult(
+        outcome=SendOutcome.SENT,
+        message_id=message.message_id,
+        file_id=_media_file_id(message, media.media_type),
+    )
 
 
-async def get_bot_username(client: httpx.AsyncClient, token: str) -> Optional[str]:
+async def get_bot_username(bot: Bot) -> Optional[str]:
     try:
-        payload = (await client.post(bot_method_url(token, "getMe"))).json()
-    except (httpx.HTTPError, ValueError) as error:
-        logger.info(f"getMe failed: {type(error).__name__}")
+        username = (await bot.get_me()).username
+    except BOT_API_ERRORS as error:
+        logger.info(f"getMe failed: {bot_api_error_text(error)}")
         return None
-    result = payload.get("result") if isinstance(payload, dict) else None
-    username = result.get("username") if isinstance(result, dict) else None
-    return username if isinstance(username, str) and username else None
+    return username or None
 
 
-async def delete_telegram_message(
-    client: httpx.AsyncClient, token: str, chat_id: int, message_id: int
-) -> SendResult:
+async def delete_telegram_message(bot: Bot, chat_id: int, message_id: int) -> SendResult:
     try:
-        response = await client.post(
-            bot_method_url(token, "deleteMessage"),
-            json={"chat_id": chat_id, "message_id": message_id},
-        )
-        payload = response.json()
-    except (httpx.HTTPError, ValueError) as error:
-        logger.info(f"deleteMessage {chat_id}/{message_id} failed: {type(error).__name__}")
-        return SendResult(outcome=SendOutcome.RETRY, error=type(error).__name__)
-    if not isinstance(payload, dict):
-        return SendResult(outcome=SendOutcome.RETRY, error="Unexpected response")
-    return _result(response.status_code, payload, "")
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except BOT_API_ERRORS as error:
+        logger.info(f"deleteMessage {chat_id}/{message_id} failed: {bot_api_error_text(error)}")
+        return _failure(error)
+    return SendResult(outcome=SendOutcome.SENT)

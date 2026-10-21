@@ -128,7 +128,7 @@ class CabinetSignIn:
         is_new_device = await self._known_devices.remember(user.id, client_ip, user_agent)
         async with self._uow:
             await self._event_publisher.publish(
-                CabinetSignedInEvent(user=user, method=method.value, ip_address=client_ip)
+                CabinetSignedInEvent(user=user, method=method, ip_address=client_ip)
             )
             if is_new_device:
                 await self._event_publisher.publish(

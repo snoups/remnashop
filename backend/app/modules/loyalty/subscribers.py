@@ -1,5 +1,5 @@
 from app.core.event_bus import EventBus
-from app.core.events import StoredEvent
+from app.core.events import StoredEvent, UserEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
 from app.modules.subscriptions import (
@@ -10,21 +10,21 @@ from app.modules.subscriptions import (
 from app.modules.transactions import TransactionRefundedEvent
 
 
-async def _recalculate_buyer(entry: StoredEvent) -> None:
+async def _recalculate_buyer(event: UserEvent, entry: StoredEvent) -> None:
     await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[entry.payload["user"]["id"]]
+        user_ids=[event.user.id]
     )
 
 
-async def _recalculate_refunded(entry: StoredEvent) -> None:
+async def _recalculate_refunded(event: TransactionRefundedEvent, entry: StoredEvent) -> None:
     await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[entry.payload["user_id"]]
+        user_ids=[event.user_id]
     )
 
 
-async def _recalculate_merged(entry: StoredEvent) -> None:
+async def _recalculate_merged(event: AccountsMergedEvent, entry: StoredEvent) -> None:
     await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[entry.payload["target"]["id"]]
+        user_ids=[event.target.id]
     )
 
 

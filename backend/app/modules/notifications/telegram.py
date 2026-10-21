@@ -1,18 +1,17 @@
 import asyncio
 from enum import auto
-from typing import Any, Final, Optional
+from typing import Final, Optional
 
-import httpx
+from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from loguru import logger
 
 from app.core.enums import UpperStrEnum
-from app.core.telegram_api import bot_method_url, retry_after_seconds
+from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
 
 # an alert waits out a short flood-wait once; a long one fails the delivery
 _MAX_RETRY_AFTER_S: Final[float] = 30.0
 TELEGRAM_TIMEOUT_SECONDS: Final[float] = 10.0
-_RATE_LIMITED: Final[int] = 429
-_FORBIDDEN: Final[int] = 403
 
 
 class TelegramSendResult(UpperStrEnum):
@@ -22,26 +21,15 @@ class TelegramSendResult(UpperStrEnum):
     FAILED = auto()
 
 
-async def _post(client: httpx.AsyncClient, token: str, chat_id: int, text: str) -> dict[str, Any]:
-    response = await client.post(
-        bot_method_url(token, "sendMessage"),
-        json={"chat_id": chat_id, "text": text},
-    )
-    payload: dict[str, Any] = response.json()
-    return payload
-
-
-async def _post_with_retry(
-    client: httpx.AsyncClient, token: str, chat_id: int, text: str
-) -> dict[str, Any]:
-    payload = await _post(client, token, chat_id, text)
-    if payload.get("error_code") == _RATE_LIMITED:
-        retry_after = retry_after_seconds(payload)
-        if retry_after > _MAX_RETRY_AFTER_S:
-            return payload
-        await asyncio.sleep(retry_after)
-        payload = await _post(client, token, chat_id, text)
-    return payload
+async def _send_with_retry(bot: Bot, chat_id: int, text: str) -> None:
+    # plain text: logins and error messages in the payload are user-controlled
+    try:
+        await bot.send_message(chat_id=chat_id, text=text)
+    except TelegramRetryAfter as error:
+        if error.retry_after > _MAX_RETRY_AFTER_S:
+            raise
+        await asyncio.sleep(error.retry_after)
+        await bot.send_message(chat_id=chat_id, text=text)
 
 
 async def send_telegram_text(
@@ -50,24 +38,19 @@ async def send_telegram_text(
     chat_id: int,
     text: str,
     *,
-    client: Optional[httpx.AsyncClient] = None,
+    bot: Optional[Bot] = None,
 ) -> TelegramSendResult:
-    # plain text: logins and error messages in the payload are user-controlled
     try:
-        if client is None:
-            async with httpx.AsyncClient(
-                timeout=TELEGRAM_TIMEOUT_SECONDS, proxy=proxy
-            ) as own_client:
-                payload = await _post_with_retry(own_client, token, chat_id, text)
+        if bot is None:
+            async with bot_client(token, proxy, timeout=TELEGRAM_TIMEOUT_SECONDS) as own_bot:
+                await _send_with_retry(own_bot, chat_id, text)
         else:
-            payload = await _post_with_retry(client, token, chat_id, text)
-    except (httpx.HTTPError, ValueError) as error:
-        logger.warning(f"Telegram notification to {chat_id} failed: {type(error).__name__}")
-        return TelegramSendResult.FAILED
-    if not payload.get("ok"):
-        logger.info(f"Telegram notification to {chat_id} refused: {payload.get('description')}")
-        if payload.get("error_code") == _FORBIDDEN:
-            return TelegramSendResult.FORBIDDEN
+            await _send_with_retry(bot, chat_id, text)
+    except TelegramForbiddenError as error:
+        logger.info(f"Telegram notification to {chat_id} refused: {error.message}")
+        return TelegramSendResult.FORBIDDEN
+    except BOT_API_ERRORS as error:
+        logger.warning(f"Telegram notification to {chat_id} failed: {bot_api_error_text(error)}")
         return TelegramSendResult.FAILED
     return TelegramSendResult.SENT
 
@@ -78,7 +61,7 @@ async def send_telegram_message(
     chat_id: int,
     text: str,
     *,
-    client: Optional[httpx.AsyncClient] = None,
+    bot: Optional[Bot] = None,
 ) -> bool:
-    result = await send_telegram_text(token, proxy, chat_id, text, client=client)
+    result = await send_telegram_text(token, proxy, chat_id, text, bot=bot)
     return result is TelegramSendResult.SENT

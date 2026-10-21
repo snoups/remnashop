@@ -2,6 +2,20 @@ from enum import auto
 from typing import Final, Optional
 
 from app.core.enums import UpperStrEnum
+from app.modules.account_merge import AccountsMergedEvent
+from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
+from app.modules.subscriptions import (
+    SubscriptionAddOnGrantedEvent,
+    SubscriptionChangedEvent,
+    SubscriptionGrantedEvent,
+    SubscriptionPurchasedEvent,
+    SubscriptionRenewedEvent,
+)
+from app.modules.transactions import (
+    PaidOrderNotFulfilledEvent,
+    TransactionPartiallyRefundedEvent,
+    TransactionRefundedEvent,
+)
 
 
 class CustomerChannel(UpperStrEnum):
@@ -11,18 +25,19 @@ class CustomerChannel(UpperStrEnum):
 
 # money and account security: worth a receipt by email even when the bot delivered it
 ALWAYS_BOTH: Final[frozenset[str]] = frozenset(
-    {
-        "SubscriptionPurchasedEvent",
-        "SubscriptionRenewedEvent",
-        "SubscriptionChangedEvent",
-        "SubscriptionAddOnGrantedEvent",
-        "SubscriptionGrantedEvent",
-        "TransactionRefundedEvent",
-        "TransactionPartiallyRefundedEvent",
-        "PaidOrderNotFulfilledEvent",
-        "CabinetNewDeviceSignInEvent",
-        "AccountsMergedEvent",
-    }
+    event.__name__
+    for event in (
+        SubscriptionPurchasedEvent,
+        SubscriptionRenewedEvent,
+        SubscriptionChangedEvent,
+        SubscriptionAddOnGrantedEvent,
+        SubscriptionGrantedEvent,
+        TransactionRefundedEvent,
+        TransactionPartiallyRefundedEvent,
+        PaidOrderNotFulfilledEvent,
+        CabinetNewDeviceSignInEvent,
+        AccountsMergedEvent,
+    )
 )
 
 

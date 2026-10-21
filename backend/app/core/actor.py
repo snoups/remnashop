@@ -15,6 +15,7 @@ class Actor(Protocol):
     login: Optional[str]
     email: Optional[str]
     telegram_id: Optional[int]
+    username: Optional[str]
 
     @property
     def is_privileged(self) -> bool: ...
@@ -35,6 +36,7 @@ class SyntheticActor:
     login: Optional[str] = None
     email: Optional[str] = None
     telegram_id: Optional[int] = None
+    username: Optional[str] = None
 
 
 SYSTEM_ACTOR: Final[SyntheticActor] = SyntheticActor(

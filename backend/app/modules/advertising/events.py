@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 
+from app.core.enums import AdLinkChannel
 from app.core.events import ActorEvent, EventCategory, SystemEvent
 
 
 @dataclass(frozen=True, kw_only=True)
 class AdLinkChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    action: str
+    action: Literal["create", "delete", "update"]
     ad_link_id: int
 
 
@@ -17,4 +18,4 @@ class AdLinkAttributedEvent(SystemEvent):
     user_id: int
     ad_link_id: int
     ad_link_code: str
-    channel: str
+    channel: AdLinkChannel

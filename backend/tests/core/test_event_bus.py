@@ -4,10 +4,12 @@ from typing import Any, ClassVar
 
 import pytest
 
-from app.core.enums import Locale, OAuthProvider, Role
+from app.core.enums import CabinetSignInMethod, Locale, OAuthProvider, ReferralRewardType, Role
 from app.core.event_bus import EventBus
 from app.core.events import BaseEvent, EventCategory, StoredEvent
 from app.core.outbox_event_publisher import _build_payload
+from app.modules.account_merge.events import AccountsMergedEvent
+from app.modules.advertising.tasks import record_ad_link_attribution_task
 from app.modules.auth.events import (
     BootstrapConflictEvent,
     LoginFailedEvent,
@@ -27,24 +29,36 @@ from app.modules.oauth.events import (
     OAuthLoginFailedEvent,
     OAuthLoginSucceededEvent,
 )
+from app.modules.promocodes.events import PromocodeDiscountExpiringEvent
 from app.modules.referrals.events import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
-from app.modules.referrals.tasks import assign_referral_rewards_task, reverse_referral_rewards_task
+from app.modules.referrals.tasks import (
+    assign_referral_rewards_task,
+    attach_referral_on_registration_task,
+    reverse_referral_rewards_task,
+)
+from app.modules.settings.events import AccessSettingsChangedEvent
 from app.modules.subscriptions.events import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
+    SubscriptionExpiredAgoEvent,
     SubscriptionExpiredEvent,
     SubscriptionExpiringEvent,
     SubscriptionGrantedEvent,
+    SubscriptionNotConnectedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
     SubscriptionTrafficLimitedEvent,
     SubscriptionTrafficThresholdEvent,
+    TorrentBlockerReportEvent,
 )
 from app.modules.transactions.events import (
+    PaidOrderNotFulfilledEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
+from app.modules.transactions.tasks import notify_payment_waitlist_task
 from app.modules.users.dto import UserDto
+from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
 from app.worker.subscribers import register_all_subscribers
 
 _USER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
@@ -82,6 +96,9 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         TransactionPartiallyRefundedEvent(
             order_id=1, user_id=1, gateway_type="YOOKASSA", amount="5.00", currency="USD"
         ),
+        PaidOrderNotFulfilledEvent(
+            order_id=1, user_id=1, gateway_type="YOOKASSA", amount="5.00", currency="USD"
+        ),
         SubscriptionExpiringEvent(user=_USER, subscription_id=1, hours=72),
         SubscriptionExpiredEvent(user=_USER, subscription_id=1),
         SubscriptionTrafficLimitedEvent(user=_USER, subscription_id=1),
@@ -93,8 +110,24 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         SubscriptionGrantedEvent(
             actor=_USER, target=_TARGET, subscription_id=1, plan_id=1, duration_days=30
         ),
-        ReferralRewardIssuedEvent(user=_USER, level=1, reward_type="DAYS", amount="7"),
-        InviteeRewardIssuedEvent(user=_USER, reward_type="DAYS", amount=7),
+        ReferralRewardIssuedEvent(
+            user=_USER, level=1, reward_type=ReferralRewardType.EXTRA_DAYS, amount="7"
+        ),
+        InviteeRewardIssuedEvent(user=_USER, reward_type=ReferralRewardType.EXTRA_DAYS, amount=7),
+        AccessSettingsChangedEvent(actor=_USER, payments_reenabled=True),
+        AccountsMergedEvent(actor=_USER, target=_TARGET, source=_USER, choices={"name": "target"}),
+        PromocodeDiscountExpiringEvent(
+            user=_USER, promocode_id=1, code="SALE", percent=10, hours=24
+        ),
+        SubscriptionExpiredAgoEvent(user=_USER, subscription_id=1, hours=24),
+        SubscriptionNotConnectedEvent(user=_USER, subscription_id=1, hours=24),
+        TorrentBlockerReportEvent(
+            user=_USER, subscription_id=1, node_name="n", destination="d", blocked_until="t"
+        ),
+        TelegramUserRegisteredEvent(user=_USER, ad_link_code="yt", referral_code="AB12CD34"),
+        CabinetUserRegisteredEvent(
+            user=_USER, method=CabinetSignInMethod.EMAIL, ad_link_code="yt", referral_code="AB"
+        ),
     ]
 }
 
@@ -125,7 +158,7 @@ async def test_dispatch_stored_delivers_to_the_subscribed_handler() -> None:
     bus = EventBus()
     received: list[StoredEvent] = []
 
-    async def handler(entry: StoredEvent) -> None:
+    async def handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         received.append(entry)
 
     bus.subscribe(_ProbeEvent, handler)
@@ -138,7 +171,7 @@ async def test_dispatch_stored_ignores_unrelated_event_types() -> None:
     bus = EventBus()
     received: list[StoredEvent] = []
 
-    async def handler(entry: StoredEvent) -> None:
+    async def handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         received.append(entry)
 
     bus.subscribe(_ProbeEvent, handler)
@@ -151,10 +184,10 @@ async def test_one_failing_handler_does_not_stop_another() -> None:
     bus = EventBus()
     received: list[StoredEvent] = []
 
-    async def failing_handler(entry: StoredEvent) -> None:
+    async def failing_handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         raise RuntimeError("boom")
 
-    async def working_handler(entry: StoredEvent) -> None:
+    async def working_handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         received.append(entry)
 
     bus.subscribe(_ProbeEvent, failing_handler)
@@ -168,7 +201,7 @@ async def test_one_failing_handler_does_not_stop_another() -> None:
 async def test_dispatch_stored_returns_none_when_every_handler_succeeds() -> None:
     bus = EventBus()
 
-    async def handler(entry: StoredEvent) -> None:
+    async def handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         pass
 
     bus.subscribe(_ProbeEvent, handler)
@@ -180,7 +213,7 @@ async def test_dispatch_stored_returns_none_when_every_handler_succeeds() -> Non
 async def test_shutdown_clears_handlers() -> None:
     bus = EventBus()
 
-    async def handler(entry: StoredEvent) -> None:
+    async def handler(event: _ProbeEvent, entry: StoredEvent) -> None:
         pass
 
     bus.subscribe(_ProbeEvent, handler)
@@ -194,6 +227,19 @@ def test_register_all_subscribers_registers_auth_handlers() -> None:
     register_all_subscribers(bus)
 
     assert "LoginFailedEvent" in bus._handlers
+
+
+def test_every_typed_subscription_has_a_sample_event() -> None:
+    bus = EventBus()
+    register_all_subscribers(bus)
+    # subscribe() wraps the handler; subscribe_stored() handlers read the raw row
+    typed = {
+        event_type
+        for event_type, handlers in bus._handlers.items()
+        if any(hasattr(handler, "__wrapped__") for handler in handlers)
+    }
+
+    assert typed - set(_REGISTERED_EVENTS) == set()
 
 
 @pytest.mark.parametrize("event_type", list(_REGISTERED_EVENTS), ids=list(_REGISTERED_EVENTS))
@@ -210,6 +256,9 @@ async def test_registered_handler_reads_its_real_payload_shape(
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _noop_kiq)
     monkeypatch.setattr(deliver_notification_task, "kiq", _noop_kiq)
     monkeypatch.setattr(notify_customer_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(attach_referral_on_registration_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(record_ad_link_attribution_task, "kiq", _noop_kiq)
+    monkeypatch.setattr(notify_payment_waitlist_task, "kiq", _noop_kiq)
 
     bus = EventBus()
     register_all_subscribers(bus)

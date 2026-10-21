@@ -124,9 +124,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                 external_payment_id=intent.provider_payment_id,
             )
             await self._event_publisher.publish(
-                GatewayTestPaymentCreatedEvent(
-                    actor=actor, order_id=order.id, gateway_type=data.value
-                )
+                GatewayTestPaymentCreatedEvent(actor=actor, order_id=order.id, gateway_type=data)
             )
         logger.info(f"{actor.log} Created test transaction '{order.id}' on gateway '{data.value}'")
         return TestPaymentDto(order_id=order.id, confirmation_url=intent.confirmation_url)

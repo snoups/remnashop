@@ -8,6 +8,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import FreeKassaSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -54,7 +55,8 @@ async def _resolve_server_ip(webhook_url: str) -> str:
 
 
 # Docs: https://docs.freekassa.net/
-class FreeKassaGateway(PaymentGateway):
+class FreeKassaGateway(PaymentGateway[FreeKassaSettings]):
+    settings_model = FreeKassaSettings
     currency = Currency.RUB
     ack = WebhookAck(body="YES")
 
@@ -64,17 +66,17 @@ class FreeKassaGateway(PaymentGateway):
 
     def _signed(self, params: dict[str, Any]) -> dict[str, Any]:
         joined = "|".join(str(value) for _, value in sorted(params.items()))
-        signature = hmac_hex(self._require("api_key"), joined.encode("utf-8"))
+        signature = hmac_hex(self.settings.api_key.get_secret_value(), joined.encode("utf-8"))
         return {**params, "signature": signature}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         email = order.customer_email or f"user_{order.idempotency_key}@telegram.org"
         data = self._signed(
             {
-                "shopId": int(self._require("shop_id")),
+                "shopId": int(self.settings.shop_id),
                 "nonce": time.time_ns(),
                 "paymentId": order.idempotency_key,
-                "i": int(self._require("payment_system_id")),
+                "i": int(self.settings.payment_system_id),
                 "email": email,
                 "ip": await _resolve_server_ip(self._webhook_url),
                 "amount": f"{order.final_price:.2f}",
@@ -102,14 +104,15 @@ class FreeKassaGateway(PaymentGateway):
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         data = parse_form(request.body, "FreeKassa")
         merchant_id = data.get("MERCHANT_ID", "")
-        if merchant_id != self._require("shop_id"):
+        if merchant_id != self.settings.shop_id:
             raise PaymentGatewayError("FreeKassa webhook MERCHANT_ID does not match shop_id")
 
         order_ref = data.get("MERCHANT_ORDER_ID")
         if not order_ref:
             raise PaymentGatewayError("FreeKassa webhook missing 'MERCHANT_ORDER_ID'")
 
-        raw = f"{merchant_id}:{data.get('AMOUNT', '')}:{self._require('secret_word_2')}:{order_ref}"
+        secret = self.settings.secret_word_2.get_secret_value()
+        raw = f"{merchant_id}:{data.get('AMOUNT', '')}:{secret}:{order_ref}"
         if not safe_equals(md5_hex(raw), data.get("SIGN", ""), ignore_case=True):
             raise PaymentGatewayError("Invalid FreeKassa webhook signature")
 
@@ -121,7 +124,7 @@ class FreeKassaGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         params = self._signed(
             {
-                "shopId": int(self._require("shop_id")),
+                "shopId": int(self.settings.shop_id),
                 "nonce": time.time_ns(),
                 "paymentId": order.idempotency_key,
             }

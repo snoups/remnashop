@@ -5,7 +5,7 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer, Provider, Scope, provide
 from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +13,6 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import (
     Currency,
     Locale,
@@ -25,7 +24,6 @@ from app.core.enums import (
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.providers import get_module_providers
 from app.modules.settings import SettingsRepository
 from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
@@ -33,19 +31,8 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import GetTransactionUseCase, ListTransactionsUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.container import make_test_container
 from tests.modules.transactions.test_repository import _order_dto
-
-
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
 
 
 class _TransactionsProvider(Provider):
@@ -77,14 +64,9 @@ class _GatewayFactoryProvider(Provider):
 
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _TransactionsProvider(),
-        _GatewayFactoryProvider(),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
+    container = make_test_container(
+        session, config, _TransactionsProvider(), _GatewayFactoryProvider()
+    )
     yield container
     await container.close()
 

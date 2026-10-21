@@ -6,6 +6,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import CryptoPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -29,11 +30,12 @@ _PAID_UPDATE: Final[str] = "invoice_paid"
 
 
 # Docs: https://help.cr.bot/ru/articles/10279948-crypto-pay-api
-class CryptoPayGateway(PaymentGateway):
+class CryptoPayGateway(PaymentGateway[CryptoPaySettings]):
+    settings_model = CryptoPaySettings
     currency = Currency.USD
 
     def _headers(self) -> dict[str, str]:
-        return {"Crypto-Pay-API-Token": self._require("api_key")}
+        return {"Crypto-Pay-API-Token": self.settings.api_key.get_secret_value()}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
@@ -66,7 +68,7 @@ class CryptoPayGateway(PaymentGateway):
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         signature = request.headers.get("crypto-pay-api-signature", "")
-        secret = hashlib.sha256(self._require("api_key").encode("utf-8")).digest()
+        secret = hashlib.sha256(self.settings.api_key.get_secret_value().encode("utf-8")).digest()
         expected = hmac.new(secret, request.body, hashlib.sha256).hexdigest()
         if not signature or not safe_equals(expected, signature):
             raise PaymentGatewayError("Invalid CryptoPay webhook signature")

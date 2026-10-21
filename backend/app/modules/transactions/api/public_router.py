@@ -1,8 +1,8 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, status
 
-from app.api.dependencies.public import get_current_user
+from app.api.dependencies.public import AuthContext, get_auth_context, get_current_user
 from app.api.errors import error_responses
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.enums import SessionAudience
@@ -42,9 +42,9 @@ router = APIRouter(tags=["transactions"])
 @inject
 async def create_checkout(
     payload: CreateCheckoutRequest,
-    request: Request,
     use_case: FromDishka[CreateCheckoutUseCase],
     actor: UserDto = Depends(get_current_user),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> CheckoutResponse:
     result = await use_case(
         actor,
@@ -57,9 +57,7 @@ async def create_checkout(
             target_subscription_id=payload.target_subscription_id,
             customer_email=payload.customer_email,
             plan_code=payload.plan_code,
-            return_to="cabinet"
-            if getattr(request.state, "session_audience", None) is SessionAudience.CABINET
-            else "default",
+            return_to="cabinet" if auth.audience is SessionAudience.CABINET else "default",
         ),
     )
     return CheckoutResponse.model_validate(result, from_attributes=True)

@@ -19,4 +19,4 @@ async def _deliver(entry: StoredEvent) -> None:
 def register_subscribers(bus: EventBus) -> None:
     for event_types in NOTIFICATION_GROUPS.values():
         for event_type in event_types:
-            bus.subscribe(event_type, _deliver)
+            bus.subscribe_stored(event_type, _deliver)

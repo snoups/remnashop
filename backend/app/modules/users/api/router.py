@@ -4,7 +4,12 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, Request, status
 
-from app.api.dependencies.public import get_current_session_id, get_profile_user
+from app.api.dependencies.public import (
+    AuthContext,
+    get_auth_context,
+    get_current_session_id,
+    get_profile_user,
+)
 from app.api.dependencies.rate_limit import rate_limit
 from app.api.errors import error_responses
 from app.core.constants import TIME_1M
@@ -44,10 +49,11 @@ async def update_me(
     use_case: FromDishka[UpdateOwnProfileUseCase],
     actor: UserDto = Depends(get_profile_user),
     session_id: int = Depends(get_current_session_id),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> CurrentUserResponse:
     if (
         payload.new_password is not None or payload.current_password is not None
-    ) and request.state.session_audience is SessionAudience.CABINET:
+    ) and auth.audience is SessionAudience.CABINET:
         # dashboard credentials stay out of reach of the cabinet's domain
         raise PermissionDeniedError("Password change is not available")
     updated = await use_case(

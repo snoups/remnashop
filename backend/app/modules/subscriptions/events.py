@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, Literal, Optional, TypeAlias
 
+from app.core.actor import Actor
+from app.core.enums import AddOnType, PanelSyncDirection, PurchaseType, SubscriptionStatus
 from app.core.events import (
     ActorEvent,
     ActorTargetEvent,
@@ -9,7 +11,23 @@ from app.core.events import (
     SystemEvent,
     UserEvent,
 )
-from app.modules.users import UserDto
+
+SubscriptionEditAction: TypeAlias = Literal[
+    "delete",
+    "delete_all_devices",
+    "delete_device",
+    "disable",
+    "enable",
+    "pull_from_panel",
+    "push_to_panel",
+    "refund_rollback",
+    "reissue",
+    "reset_traffic",
+    "squads",
+    "update",
+]
+
+StatusSyncSource: TypeAlias = Literal["admin_pull", "panel_sync", "webhook"]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -17,7 +35,7 @@ class SubscriptionPurchasedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     subscription_id: int
     plan_id: int
-    purchase_type: str
+    purchase_type: PurchaseType
     # The paid order's idempotency key; None for trial/promocode/referral grants.
     payment_key: Optional[str] = None
     is_trial: bool = False
@@ -44,7 +62,7 @@ class SubscriptionChangedEvent(UserEvent):
 class SubscriptionAddOnGrantedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     # the subscription's owner; `user` is the system actor on the promocode path
-    target: Optional[UserDto]
+    target: Optional[Actor]
     subscription_id: int
     addon_id: int
     amount: int
@@ -54,9 +72,9 @@ class SubscriptionAddOnGrantedEvent(UserEvent):
 class SubscriptionStatusSyncedEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     subscription_id: int
-    old_status: str
-    new_status: str
-    source: str
+    old_status: SubscriptionStatus
+    new_status: SubscriptionStatus
+    source: StatusSyncSource
     user_id: Optional[int] = None
 
 
@@ -66,9 +84,9 @@ class SubscriptionConfigSyncedEvent(SystemEvent):
 
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     subscription_id: int
-    source: str
+    source: StatusSyncSource
     changed_fields: list[str]
-    removed_addon_types: list[str]
+    removed_addon_types: list[AddOnType]
     user_id: Optional[int] = None
 
 
@@ -77,13 +95,13 @@ class PanelSyncStartedEvent(ActorEvent):
     """An admin started syncing every subscription with the panel."""
 
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    direction: str
+    direction: PanelSyncDirection
 
 
 @dataclass(frozen=True, kw_only=True)
 class PanelSyncCompletedEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    direction: str
+    direction: PanelSyncDirection
     checked: int
     updated: int
     failed: int
@@ -227,7 +245,7 @@ class SubscriptionEditedEvent(ActorTargetEvent):
     """An admin's manual change to a subscription, outside any purchase."""
 
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
-    action: str
+    action: SubscriptionEditAction
     subscription_id: int
     changed_fields: list[str] = field(default_factory=list)
 

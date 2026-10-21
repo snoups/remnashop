@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+from app.core.enums import Currency, PaymentGatewayType, TransactionStatus
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
@@ -10,9 +11,9 @@ class TransactionRefundedEvent(SystemEvent):
     order_id: int
     user_id: int
     payment_key: str
-    gateway_type: str
+    gateway_type: PaymentGatewayType
     amount: str
-    currency: str
+    currency: Currency
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -20,9 +21,9 @@ class TransactionPartiallyRefundedEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int
-    gateway_type: str
+    gateway_type: PaymentGatewayType
     amount: str
-    currency: str
+    currency: Currency
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,16 +33,16 @@ class PaidOrderNotFulfilledEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int
-    gateway_type: str
+    gateway_type: PaymentGatewayType
     amount: str
-    currency: str
+    currency: Currency
 
 
 @dataclass(frozen=True, kw_only=True)
 class TransactionFulfilledManuallyEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
-    previous_status: str
+    previous_status: TransactionStatus
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,16 +56,16 @@ class TransactionRefundedManuallyEvent(ActorTargetEvent):
 class GatewayTestPaymentCreatedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
-    gateway_type: str
+    gateway_type: PaymentGatewayType
 
 
 @dataclass(frozen=True, kw_only=True)
 class CheckoutCreatedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
-    gateway_type: str
+    gateway_type: PaymentGatewayType
     amount: str
-    currency: str
+    currency: Currency
 
 
 @dataclass(frozen=True, kw_only=True)

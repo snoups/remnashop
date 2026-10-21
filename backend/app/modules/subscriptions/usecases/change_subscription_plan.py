@@ -4,6 +4,7 @@ from decimal import Decimal
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import TIME_1D
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
@@ -58,7 +59,7 @@ class ChangeSubscriptionPlanUseCase(UseCase[ChangeSubscriptionPlanDto, Subscript
             plan = await self._plan_repository.get_by_id(data.plan_id)
 
         if data.duration_days is None:
-            remaining_days = (old.expire_at - datetime_now()).total_seconds() / 86400
+            remaining_days = (old.expire_at - datetime_now()).total_seconds() / TIME_1D
             duration_days = max(1, math.ceil(remaining_days))
         else:
             duration_days = data.duration_days

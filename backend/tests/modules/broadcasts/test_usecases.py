@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 from datetime import timedelta
@@ -942,9 +941,9 @@ async def test_test_send_renders_for_actor(
     draft = await _make(broadcast_repository)
     await use_case(actor, draft.id)
     assert len(telegram.requests) == 1
-    body = json.loads(telegram.requests[0].content)
-    assert body["chat_id"] == 9450
-    assert "Alice" in body["text"]
+    [sent] = telegram.requests
+    assert sent.chat_id == 9450
+    assert "Alice" in sent.text
 
 
 async def test_test_send_failure_is_reported(

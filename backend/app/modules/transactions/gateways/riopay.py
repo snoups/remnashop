@@ -1,9 +1,11 @@
-from typing import ClassVar, Final, Optional
+from typing import ClassVar, Final, Optional, Protocol
 
 import orjson
+from pydantic import SecretStr
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import GatewaySettings, RioPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -28,14 +30,23 @@ _REPORTED_STATUSES: Final[dict[str, TransactionStatus]] = {
 }
 
 
+class _RioPayFamilySettings(Protocol):
+    # RioPay calls its token api_token, Valutix api_key
+    @property
+    def token(self) -> SecretStr: ...
+
+    @property
+    def service_id(self) -> Optional[str]: ...
+
+
 # Docs: https://docs.riopay.online/ru/docs
-class RioPayGateway(PaymentGateway):
+class RioPayGateway(PaymentGateway[_RioPayFamilySettings]):
+    settings_model: ClassVar[type[GatewaySettings]] = RioPaySettings
     currency = Currency.RUB
     API_BASE: ClassVar[str] = "https://api.riopay.online"
-    TOKEN_SETTING: ClassVar[str] = "api_token"
 
     def _token(self) -> str:
-        return self._require(self.TOKEN_SETTING)
+        return self.settings.token.get_secret_value()
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload: dict[str, object] = {
@@ -47,7 +58,7 @@ class RioPayGateway(PaymentGateway):
             "failUrl": self._return_url,
             "callbackUrl": self._webhook_url,
         }
-        service_id = self._optional("service_id")
+        service_id = self.settings.service_id
         if service_id:
             payload["serviceId"] = int(service_id)
 

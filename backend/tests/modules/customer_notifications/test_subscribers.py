@@ -3,134 +3,179 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.events import EventCategory, StoredEvent
-from app.core.utils.time import datetime_now
-from app.modules.customer_notifications import subscribers
+from app.core.actor import SyntheticActor
+from app.core.enums import (
+    Currency,
+    Locale,
+    PaymentGatewayType,
+    PurchaseType,
+    ReferralRewardType,
+    Role,
+)
+from app.core.event_bus import EventBus
+from app.core.events import BaseEvent
+from app.modules.account_merge import AccountsMergedEvent
+from app.modules.customer_notifications.subscribers import register_subscribers
+from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
+from app.modules.subscriptions import (
+    SubscriptionAddOnGrantedEvent,
+    SubscriptionChangedEvent,
+    SubscriptionExpiredAgoEvent,
+    SubscriptionGrantedEvent,
+    SubscriptionNotConnectedEvent,
+    SubscriptionPurchasedEvent,
+    SubscriptionRenewedEvent,
+    TorrentBlockerReportEvent,
+)
+from app.modules.transactions import TransactionPartiallyRefundedEvent, TransactionRefundedEvent
+from app.modules.users import UserDto
+from tests.fakes.events import stored_event
 
 _KIQ = "app.modules.customer_notifications.tasks.notify_customer_task.kiq"
 
 
-def _entry(event_type: str, payload: dict[str, Any]) -> StoredEvent:
-    return StoredEvent(
-        outbox_id=5,
-        category=EventCategory.SUBSCRIPTION,
-        event_type=event_type,
-        occurred_at=datetime_now(),
-        payload=payload,
-        actor_id=None,
-        actor_login=None,
-        actor_name=None,
-        actor_email=None,
-        ip_address=None,
+def _user(user_id: int) -> UserDto:
+    return UserDto(
+        id=user_id, login=f"u{user_id}", name=f"u{user_id}", role=Role.USER, language=Locale.EN
     )
 
 
+_SYSTEM = SyntheticActor(id=0, role=Role.SYSTEM, name="SYSTEM", is_privileged=True, log="[SYSTEM]")
+_SUB: dict[str, Any] = {"subscription_id": 1}
+
+
+async def _dispatch(event: BaseEvent) -> AsyncMock:
+    bus = EventBus()
+    register_subscribers(bus)
+    with patch(_KIQ, new_callable=AsyncMock) as kiq:
+        assert await bus.dispatch_stored(stored_event(event)) is None
+    return kiq
+
+
 @pytest.mark.parametrize(
-    ("handler", "event_type", "payload", "user_id", "args"),
+    ("event", "user_id", "args"),
     [
-        (subscribers._on_purchase, "SubscriptionPurchasedEvent", {"user": {"id": 7}}, 7, {}),
-        (subscribers._on_purchase, "SubscriptionChangedEvent", {"user": {"id": 7}}, 7, {}),
         (
-            subscribers._on_renewed,
-            "SubscriptionRenewedEvent",
-            {"user": {"id": 7}, "duration_days": 30},
+            SubscriptionPurchasedEvent(
+                user=_user(7), plan_id=1, purchase_type=PurchaseType.NEW, **_SUB
+            ),
+            7,
+            {},
+        ),
+        (
+            SubscriptionChangedEvent(
+                user=_user(7), previous_subscription_id=2, previous_plan_snapshot={}, **_SUB
+            ),
+            7,
+            {},
+        ),
+        (
+            SubscriptionRenewedEvent(user=_user(7), duration_days=30, **_SUB),
             7,
             {"duration_days": 30},
         ),
         (
-            subscribers._on_addon,
-            "SubscriptionAddOnGrantedEvent",
-            {"user": {"id": 0}, "target": {"id": 9}},
+            SubscriptionAddOnGrantedEvent(
+                user=_SYSTEM, target=_user(9), addon_id=1, amount=10, **_SUB
+            ),
             9,
             {},
         ),
         (
-            subscribers._on_addon,
-            "SubscriptionAddOnGrantedEvent",
-            {"user": {"id": 7}, "target": None},
+            SubscriptionAddOnGrantedEvent(
+                user=_user(7), target=None, addon_id=1, amount=10, **_SUB
+            ),
             7,
             {},
         ),
         (
-            subscribers._on_granted,
-            "SubscriptionGrantedEvent",
-            {"target": {"id": 9}, "duration_days": 5},
+            SubscriptionGrantedEvent(
+                actor=_user(1), target=_user(9), plan_id=1, duration_days=5, **_SUB
+            ),
             9,
             {"duration_days": 5},
         ),
         (
-            subscribers._on_refund,
-            "TransactionRefundedEvent",
-            {"user_id": 3, "amount": "10.00", "currency": "USD"},
+            TransactionRefundedEvent(
+                order_id=1,
+                user_id=3,
+                payment_key="k",
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                amount="10.00",
+                currency=Currency.USD,
+            ),
             3,
-            {"amount": "10.00", "currency": "USD"},
+            {"amount": "10.00", "currency": Currency.USD},
         ),
         (
-            subscribers._on_refund,
-            "TransactionPartiallyRefundedEvent",
-            {"user_id": 3, "amount": "1.00", "currency": "USD"},
+            TransactionPartiallyRefundedEvent(
+                order_id=1,
+                user_id=3,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                amount="1.00",
+                currency=Currency.USD,
+            ),
             3,
-            {"amount": "1.00", "currency": "USD"},
+            {"amount": "1.00", "currency": Currency.USD},
         ),
         (
-            subscribers._on_reward,
-            "ReferralRewardIssuedEvent",
-            {"user": {"id": 7}, "level": 1, "reward_type": "EXTRA_DAYS", "amount": "5"},
+            ReferralRewardIssuedEvent(
+                user=_user(7), level=1, reward_type=ReferralRewardType.EXTRA_DAYS, amount="5"
+            ),
             7,
-            {"reward_type": "EXTRA_DAYS", "amount": 5},
+            {"reward_type": ReferralRewardType.EXTRA_DAYS, "amount": 5},
         ),
         (
-            subscribers._on_reward,
-            "ReferralRewardIssuedEvent",
-            {"user": {"id": 7}, "level": 2, "reward_type": "POINTS", "amount": "12.50"},
+            ReferralRewardIssuedEvent(
+                user=_user(7), level=2, reward_type=ReferralRewardType.POINTS, amount="12.50"
+            ),
             7,
-            {"reward_type": "POINTS", "amount": "12.50"},
+            {"reward_type": ReferralRewardType.POINTS, "amount": "12.50"},
+        ),
+        (SubscriptionNotConnectedEvent(user=_user(7), hours=24, **_SUB), 7, {"hours": 24}),
+        (SubscriptionExpiredAgoEvent(user=_user(7), hours=24, **_SUB), 7, {"hours": 24}),
+        (
+            TorrentBlockerReportEvent(
+                user=_user(7), node_name="n", destination="d", blocked_until="t", **_SUB
+            ),
+            7,
+            {},
         ),
         (
-            subscribers._on_hours,
-            "SubscriptionNotConnectedEvent",
-            {"user": {"id": 7}, "hours": 24},
+            InviteeRewardIssuedEvent(
+                user=_user(7), reward_type=ReferralRewardType.EXTRA_DAYS, amount=3
+            ),
             7,
-            {"hours": 24},
-        ),
-        (
-            subscribers._on_hours,
-            "SubscriptionExpiredAgoEvent",
-            {"user": {"id": 7}, "hours": 24},
-            7,
-            {"hours": 24},
-        ),
-        (subscribers._on_purchase, "TorrentBlockerReportEvent", {"user": {"id": 7}}, 7, {}),
-        (
-            subscribers._on_reward,
-            "InviteeRewardIssuedEvent",
-            {"user": {"id": 7}, "reward_type": "EXTRA_DAYS", "amount": 3},
-            7,
-            {"reward_type": "EXTRA_DAYS", "amount": 3},
+            {"reward_type": ReferralRewardType.EXTRA_DAYS, "amount": 3},
         ),
     ],
+    ids=lambda value: type(value).__name__ if isinstance(value, BaseEvent) else "",
 )
 async def test_event_enqueues_notification(
-    handler: Any, event_type: str, payload: dict[str, Any], user_id: int, args: dict[str, Any]
+    event: BaseEvent, user_id: int, args: dict[str, Any]
 ) -> None:
-    with patch(_KIQ, new_callable=AsyncMock) as kiq:
-        await handler(_entry(event_type, payload))
+    kiq = await _dispatch(event)
 
-    kiq.assert_awaited_once_with(user_id=user_id, event_type=event_type, outbox_id=5, args=args)
+    kiq.assert_awaited_once_with(
+        user_id=user_id, event_type=event.event_type, outbox_id=5, args=args
+    )
 
 
 async def test_system_actor_owner_is_skipped() -> None:
-    with patch(_KIQ, new_callable=AsyncMock) as kiq:
-        await subscribers._on_purchase(_entry("SubscriptionPurchasedEvent", {"user": {"id": 0}}))
+    event = SubscriptionPurchasedEvent(
+        user=_SYSTEM, plan_id=1, purchase_type=PurchaseType.NEW, **_SUB
+    )
+
+    kiq = await _dispatch(event)
 
     kiq.assert_not_awaited()
 
 
 @pytest.mark.parametrize(("actor_id", "notified"), [(7, True), (1, False)])
 async def test_merge_notifies_only_on_self_merge(actor_id: int, notified: bool) -> None:
-    payload = {"actor": {"id": actor_id}, "target": {"id": 7}, "source": {"id": 8}}
-    with patch(_KIQ, new_callable=AsyncMock) as kiq:
-        await subscribers._on_accounts_merged(_entry("AccountsMergedEvent", payload))
+    event = AccountsMergedEvent(actor=_user(actor_id), target=_user(7), source=_user(8))
+
+    kiq = await _dispatch(event)
 
     if notified:
         kiq.assert_awaited_once_with(

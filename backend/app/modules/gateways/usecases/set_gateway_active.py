@@ -39,7 +39,7 @@ class SetGatewayActiveUseCase(UseCase[SetGatewayActiveDto, PaymentGatewayDto]):
                 GatewayChangedEvent(
                     actor=actor,
                     action="enable" if data.is_active else "disable",
-                    gateway_type=data.type.value,
+                    gateway_type=data.type,
                     is_active=gateway.is_active,
                 )
             )

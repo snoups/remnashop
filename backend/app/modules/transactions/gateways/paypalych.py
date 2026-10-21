@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import PaypalychSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -36,16 +37,17 @@ def _parse_postback(body: bytes) -> dict[str, str]:
 
 
 # Docs: https://pally.info/reference/api
-class PaypalychGateway(PaymentGateway):
+class PaypalychGateway(PaymentGateway[PaypalychSettings]):
+    settings_model = PaypalychSettings
     currency = Currency.RUB
 
     def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._require('api_token')}"}
+        return {"Authorization": f"Bearer {self.settings.api_token.get_secret_value()}"}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
             "amount": f"{order.final_price:.2f}",
-            "shop_id": self._require("shop_id"),
+            "shop_id": self.settings.shop_id,
             "currency_in": order.currency.value,
             "type": "normal",
             "order_id": order.idempotency_key,
@@ -80,7 +82,7 @@ class PaypalychGateway(PaymentGateway):
                 "Pal24 webhook missing 'InvId'/'OutSum'/'Status'/'SignatureValue'"
             )
 
-        expected = md5_hex(f"{out_sum}:{inv_id}:{self._require('api_token')}")
+        expected = md5_hex(f"{out_sum}:{inv_id}:{self.settings.api_token.get_secret_value()}")
         if not safe_equals(expected, signature, ignore_case=True):
             raise PaymentGatewayError("Invalid Pal24 webhook signature")
 

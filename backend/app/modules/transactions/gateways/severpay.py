@@ -5,6 +5,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import SeverPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -35,14 +36,18 @@ _MAX_LIFETIME_MINUTES: Final[int] = 4320
 
 
 # Docs: https://docs.severpay.io/en/
-class SeverPayGateway(PaymentGateway):
+class SeverPayGateway(PaymentGateway[SeverPaySettings]):
+    settings_model = SeverPaySettings
     currency = Currency.RUB
     ack = WebhookAck(body='{"status": true}', media_type="application/json")
 
     def _signed(self, payload: dict[str, Any]) -> dict[str, Any]:
-        body = {**payload, "mid": int(self._require("mid")), "salt": uuid.uuid4().hex}
+        body = {**payload, "mid": int(self.settings.mid), "salt": uuid.uuid4().hex}
         ordered = dict(sorted(body.items()))
-        return {**ordered, "sign": hmac_hex(self._require("token"), compact_json(ordered))}
+        return {
+            **ordered,
+            "sign": hmac_hex(self.settings.token.get_secret_value(), compact_json(ordered)),
+        }
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = self._signed(
@@ -101,7 +106,7 @@ class SeverPayGateway(PaymentGateway):
     def _webhook_signature_valid(self, data: dict[str, Any], received: str) -> bool:
         # The docs' PHP handler hashes json_encode() output (escaped "/" and
         # non-ASCII); their Python sample hashes unescaped JSON.
-        token = self._require("token")
+        token = self.settings.token.get_secret_value()
         candidates = (signing_json(data, escape_unicode=True), compact_json(data))
         return any(
             safe_equals(hmac_hex(token, candidate), received, ignore_case=True)

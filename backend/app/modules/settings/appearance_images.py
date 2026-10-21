@@ -12,7 +12,7 @@ from app.core.ports import EventPublisher
 from app.core.utils.image import matches_image_magic_bytes, read_image_size, read_svg_size
 from app.modules.settings.appearance_storage import delete_appearance_image, save_appearance_image
 from app.modules.settings.dto import AppearanceSettingsDto, UploadAppearanceImageDto
-from app.modules.settings.events import AppearanceSettingsChangedEvent
+from app.modules.settings.events import AppearanceAction, AppearanceSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
 
@@ -23,6 +23,14 @@ class _ImageLimits:
     max_bytes: int
 
 
+_UPLOAD_ACTIONS: Final[dict[AppearanceImageKind, AppearanceAction]] = {
+    AppearanceImageKind.LOGO: "logo_upload",
+    AppearanceImageKind.FAVICON: "favicon_upload",
+}
+_DELETE_ACTIONS: Final[dict[AppearanceImageKind, AppearanceAction]] = {
+    AppearanceImageKind.LOGO: "logo_delete",
+    AppearanceImageKind.FAVICON: "favicon_delete",
+}
 _LIMITS_BY_KIND: Final[dict[AppearanceImageKind, _ImageLimits]] = {
     AppearanceImageKind.LOGO: _ImageLimits(min_side=128, max_side=1024, max_bytes=1024 * 1024),
     AppearanceImageKind.FAVICON: _ImageLimits(min_side=32, max_side=512, max_bytes=256 * 1024),
@@ -108,7 +116,7 @@ async def upload_appearance_image(
             kind, data.content_type, image_format.value
         )
         await event_publisher.publish(
-            AppearanceSettingsChangedEvent(actor=actor, action=f"{kind.value.lower()}_upload")
+            AppearanceSettingsChangedEvent(actor=actor, action=_UPLOAD_ACTIONS[kind])
         )
     # files change only after the row commits: a failed commit must not
     # leave the row pointing at a file already overwritten or deleted
@@ -134,7 +142,7 @@ async def remove_appearance_image(
             )
         settings = await settings_repository.clear_appearance_image(kind)
         await event_publisher.publish(
-            AppearanceSettingsChangedEvent(actor=actor, action=f"{kind.value.lower()}_delete")
+            AppearanceSettingsChangedEvent(actor=actor, action=_DELETE_ACTIONS[kind])
         )
     delete_appearance_image(config.media_dir, kind, meta[0])
     return settings

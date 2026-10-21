@@ -4,14 +4,12 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer
 from dishka.integrations.fastapi import setup_dishka
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role, SessionAudience
 from app.core.events import EventCategory
 from app.core.security import create_access_token, hash_password, hash_refresh_token
@@ -19,33 +17,8 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.event_log.dto import EventLogEntryDto
 from app.modules.event_log.repository import EventLogRepository
-from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
-
-
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
-
-
-@pytest.fixture
-async def test_container(session: AsyncSession, config: AppConfig) -> AsyncContainer:
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
-    yield container
-    await container.close()
 
 
 @pytest.fixture

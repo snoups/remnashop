@@ -17,6 +17,7 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
+from dishka import AsyncContainer
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -57,6 +58,7 @@ from app.modules.translations.repository import TranslationRepository
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.repository import UserRepository
 from app.modules.users.stats_repository import UserStatsRepository
+from tests.fakes.container import make_test_container
 from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.remnawave import FakeHwidStore, FakeUserStore, make_fake_remnawave_transport
 from tests.modules.subscriptions.factories import make_eligibility
@@ -312,3 +314,10 @@ def remnawave_sdk(
     transport, _, _ = make_fake_remnawave_transport(remnawave_store, remnawave_hwid_store)
     client = httpx.AsyncClient(transport=transport, base_url="http://fake-panel.test/api")
     return RemnawaveSDK(client=client)
+
+
+@pytest.fixture
+async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
+    container = make_test_container(session, config)
+    yield container
+    await container.close()

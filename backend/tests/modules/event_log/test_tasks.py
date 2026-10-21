@@ -74,7 +74,7 @@ async def test_process_outbox_entry_records_failure_when_a_handler_raises(
     await session.flush()
     bus = EventBus()
 
-    async def failing_handler(stored_event: object) -> None:
+    async def failing_handler(event: object, entry: object) -> None:
         raise RuntimeError("boom")
 
     bus.subscribe(LoginFailedEvent, failing_handler)
@@ -148,7 +148,7 @@ async def test_sweep_processes_good_rows_even_when_a_sibling_row_fails(
 
     bus = EventBus()
 
-    async def failing_handler(entry: object) -> None:
+    async def failing_handler(event: object, entry: object) -> None:
         raise RuntimeError("boom")
 
     bus.subscribe(LoginFailedEvent, failing_handler)
@@ -225,7 +225,7 @@ async def test_process_outbox_entry_retry_succeeds_without_doubling_the_audit_ro
     bus = EventBus()
     calls = {"n": 0}
 
-    async def flaky_handler(stored_event: object) -> None:
+    async def flaky_handler(event: object, entry: object) -> None:
         calls["n"] += 1
         if calls["n"] == 1:
             raise RuntimeError("boom")

@@ -1,10 +1,12 @@
 import hashlib
-from typing import ClassVar, Final, Optional
+from typing import ClassVar, Final, Optional, Protocol
 
 import orjson
+from pydantic import SecretStr
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import GatewaySettings, MulenPaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -22,19 +24,35 @@ _PAID_STATUS_CODE: Final[int] = 3
 _PAID_CALLBACK_STATUS: Final[str] = "success"
 
 
+class _MulenPayFamilySettings(Protocol):
+    # MulenPay and UrlPay share the fields, the dashboard lists them in a different order
+    @property
+    def api_key(self) -> SecretStr: ...
+
+    @property
+    def secret_key(self) -> SecretStr: ...
+
+    @property
+    def shop_id(self) -> str: ...
+
+    @property
+    def vat_code(self) -> Optional[str]: ...
+
+
 # Docs: https://docs.mulenpay.com/
-class MulenPayGateway(PaymentGateway):
+class MulenPayGateway(PaymentGateway[_MulenPayFamilySettings]):
+    settings_model: ClassVar[type[GatewaySettings]] = MulenPaySettings
     currency = Currency.RUB
     API_BASE: ClassVar[str] = "https://mulenpay.ru/api"
 
     def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._require('api_key')}"}
+        return {"Authorization": f"Bearer {self.settings.api_key.get_secret_value()}"}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         currency = order.currency.value.lower()
         amount = f"{order.final_price:.2f}"
-        shop_id = int(self._require("shop_id"))
-        vat_code = self._optional("vat_code")
+        shop_id = int(self.settings.shop_id)
+        vat_code = self.settings.vat_code
         payload: dict[str, object] = {
             "currency": currency,
             "amount": amount,
@@ -104,5 +122,5 @@ class MulenPayGateway(PaymentGateway):
         )
 
     def _sign(self, currency: str, amount: str, shop_id: int) -> str:
-        raw = f"{currency}{amount}{shop_id}{self._require('secret_key')}"
+        raw = f"{currency}{amount}{shop_id}{self.settings.secret_key.get_secret_value()}"
         return hashlib.sha1(raw.encode("utf-8")).hexdigest()

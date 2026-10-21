@@ -238,7 +238,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                     ReferralRewardIssuedEvent(
                         user=referrer,
                         level=hop.level,
-                        reward_type=reward_type.value,
+                        reward_type=reward_type,
                         amount=str(amount),
                     )
                 )

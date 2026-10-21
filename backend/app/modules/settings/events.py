@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Literal, TypeAlias
 
 from app.core.events import ActorEvent, EventCategory, SystemEvent
+
+AppearanceAction: TypeAlias = Literal[
+    "favicon_delete", "favicon_upload", "logo_delete", "logo_upload", "reset", "update"
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -43,14 +47,14 @@ class BotRequirementsChangedEvent(ActorEvent):
 @dataclass(frozen=True, kw_only=True)
 class BotSettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    action: str
+    action: Literal["commands", "proxy_remove", "proxy_set", "restart", "update"]
     changed_fields: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
 class AppearanceSettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    action: str
+    action: AppearanceAction
     changed_fields: list[str] = field(default_factory=list)
 
 

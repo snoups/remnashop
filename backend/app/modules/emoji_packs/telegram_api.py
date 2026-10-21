@@ -1,10 +1,12 @@
 import asyncio
 import re
-from typing import Any, Final, Optional
+from typing import Final, Optional
 
-import httpx
+from aiogram import Bot
+from aiogram.enums import StickerType
+from aiogram.types import Sticker, StickerSet
 
-from app.core.telegram_api import bot_file_url, bot_method_url
+from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
 from app.modules.emoji_packs.dto import EmojiPackItemDto, FetchedEmojiPack
 
 _TIMEOUT_S: Final[float] = 10.0
@@ -13,7 +15,6 @@ _TIMEOUT_S: Final[float] = 10.0
 _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:https?://)?(?:t\.me/addemoji/)?([A-Za-z0-9_]{1,64})/?(?:\?.*)?$"
 )
-_CUSTOM_EMOJI_TYPE: Final[str] = "custom_emoji"
 _DOWNLOAD_CONCURRENCY: Final[int] = 8
 _GZIP_MAGIC: Final[bytes] = b"\x1f\x8b"
 LOTTIE_KIND: Final[str] = "lottie"
@@ -28,88 +29,63 @@ def parse_set_name(link: str) -> str:
 
 
 async def fetch_emoji_pack(token: str, proxy: Optional[str], set_name: str) -> FetchedEmojiPack:
-    # Plain HTTP rather than aiogram: the api process does not install the
-    # telegram extra, so importing Bot here would break it outright.
-    async with httpx.AsyncClient(timeout=_TIMEOUT_S, proxy=proxy) as client:
-        response = await client.post(
-            bot_method_url(token, "getStickerSet"), json={"name": set_name}
-        )
-        payload = response.json()
-        pack = parse_emoji_pack_payload(payload, set_name)
-        artwork = await _download_artwork(client, token, payload["result"]["stickers"])
-
-    return FetchedEmojiPack(
-        set_name=pack.set_name,
-        title=pack.title,
-        items=[
-            item.model_copy(update=artwork.get(item.custom_emoji_id, {})) for item in pack.items
-        ],
-    )
-
-
-def parse_emoji_pack_payload(payload: dict, set_name: str) -> FetchedEmojiPack:
-    if not payload.get("ok"):
-        raise ValueError(payload.get("description") or "Telegram rejected the request")
-
-    result = payload["result"]
-    if result.get("sticker_type") != _CUSTOM_EMOJI_TYPE:
-        raise ValueError(f"'{set_name}' is a sticker set, not an emoji pack")
-
-    return FetchedEmojiPack(
-        set_name=result["name"],
-        title=result["title"],
-        items=[
-            EmojiPackItemDto(
-                custom_emoji_id=sticker["custom_emoji_id"],
-                # Telegram guarantees an emoji on a custom_emoji sticker, but a
-                # missing one would only cost this entry its fallback glyph.
-                fallback_emoji=sticker.get("emoji", ""),
+    try:
+        async with bot_client(token, proxy, timeout=_TIMEOUT_S) as bot:
+            sticker_set = await bot.get_sticker_set(name=set_name)
+            emoji = custom_emoji_stickers(sticker_set, set_name)
+            semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
+            items = await asyncio.gather(
+                *(_with_artwork(bot, semaphore, sticker, emoji_id) for sticker, emoji_id in emoji)
             )
-            for sticker in result.get("stickers", [])
-            if sticker.get("custom_emoji_id")
-        ],
-    )
+    except BOT_API_ERRORS as error:
+        raise ValueError(bot_api_error_text(error)) from error
+    return FetchedEmojiPack(set_name=sticker_set.name, title=sticker_set.title, items=list(items))
 
 
-async def _download_artwork(
-    client: httpx.AsyncClient, token: str, stickers: list[dict[str, Any]]
-) -> dict[str, dict[str, Any]]:
+def custom_emoji_stickers(sticker_set: StickerSet, set_name: str) -> list[tuple[Sticker, str]]:
+    """Each sticker that can be referenced, with its custom emoji id."""
+    if sticker_set.sticker_type != StickerType.CUSTOM_EMOJI:
+        raise ValueError(f"'{set_name}' is a sticker set, not an emoji pack")
+    return [
+        (sticker, sticker.custom_emoji_id)
+        for sticker in sticker_set.stickers
+        if sticker.custom_emoji_id
+    ]
+
+
+async def _with_artwork(
+    bot: Bot, semaphore: asyncio.Semaphore, sticker: Sticker, custom_emoji_id: str
+) -> EmojiPackItemDto:
     # Two files per emoji: the static .webp thumbnail any browser draws, and
     # the animation (gzipped lottie .tgs or .webm), which the dashboard plays
     # and an <img> can't.
-    semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
-
-    async def download(file_id: Optional[str]) -> Optional[bytes]:
-        if file_id is None:
-            return None
-        async with semaphore:
-            try:
-                info = await client.get(
-                    bot_method_url(token, "getFile"), params={"file_id": file_id}
-                )
-                file_path = info.json()["result"]["file_path"]
-                file = await client.get(bot_file_url(token, file_path))
-                file.raise_for_status()
-            except (httpx.HTTPError, KeyError):
-                # Losing a file costs that emoji its artwork, not the import.
-                return None
-            return file.content
-
-    async def artwork_of(sticker: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        thumbnail, animation = await asyncio.gather(
-            download((sticker.get("thumbnail") or sticker.get("thumb") or {}).get("file_id")),
-            download(sticker.get("file_id")),
-        )
-        return sticker["custom_emoji_id"], {
-            "thumbnail": thumbnail,
-            "animation": animation,
-            "animation_kind": _animation_kind(animation),
-        }
-
-    downloaded = await asyncio.gather(
-        *(artwork_of(sticker) for sticker in stickers if sticker.get("custom_emoji_id"))
+    thumbnail_id = sticker.thumbnail.file_id if sticker.thumbnail else None
+    thumbnail, animation = await asyncio.gather(
+        _download(bot, semaphore, thumbnail_id), _download(bot, semaphore, sticker.file_id)
     )
-    return dict(downloaded)
+    return EmojiPackItemDto(
+        custom_emoji_id=custom_emoji_id,
+        # Telegram guarantees an emoji on a custom_emoji sticker, but a missing
+        # one would only cost this entry its fallback glyph.
+        fallback_emoji=sticker.emoji or "",
+        thumbnail=thumbnail,
+        animation=animation,
+        animation_kind=_animation_kind(animation),
+    )
+
+
+async def _download(
+    bot: Bot, semaphore: asyncio.Semaphore, file_id: Optional[str]
+) -> Optional[bytes]:
+    if file_id is None:
+        return None
+    async with semaphore:
+        try:
+            content = await bot.download(file_id)
+        except BOT_API_ERRORS:
+            # Losing a file costs that emoji its artwork, not the import.
+            return None
+    return content.read() if content is not None else None
 
 
 def _animation_kind(animation: Optional[bytes]) -> Optional[str]:

@@ -1,11 +1,11 @@
 import hashlib
 import hmac
-import json
 import secrets
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import auto
 from typing import Final, Optional
 
+from pydantic import TypeAdapter
 from redis.asyncio import Redis
 
 from app.core.constants import REDIS_KEY_PREFIX, TTL_10M
@@ -48,6 +48,9 @@ class OAuthState:
     ad_link_code: Optional[str] = None
 
 
+_STATE_ADAPTER: Final[TypeAdapter[OAuthState]] = TypeAdapter(OAuthState)
+
+
 class OAuthStateStore:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
@@ -72,8 +75,9 @@ class OAuthStateStore:
             referral_code=referral_code,
             ad_link_code=ad_link_code,
         )
-        payload = json.dumps(asdict(oauth_state))
-        await self._redis.set(f"{_KEY_PREFIX}{state}", payload, ex=TTL_10M)
+        await self._redis.set(
+            f"{_KEY_PREFIX}{state}", _STATE_ADAPTER.dump_json(oauth_state), ex=TTL_10M
+        )
         return state
 
     async def peek_purpose(self, state: str) -> Optional[OAuthFlowPurpose]:
@@ -81,15 +85,11 @@ class OAuthStateStore:
         payload = await self._redis.get(f"{_KEY_PREFIX}{state}")
         if payload is None:
             return None
-        return OAuthFlowPurpose(json.loads(payload)["purpose"])
+        return _STATE_ADAPTER.validate_json(payload).purpose
 
     async def consume(self, state: str) -> Optional[OAuthState]:
         key = f"{_KEY_PREFIX}{state}"
         payload = await self._redis.getdel(key)
         if payload is None:
             return None
-
-        data = json.loads(payload)
-        data["provider"] = OAuthProvider(data["provider"])
-        data["purpose"] = OAuthFlowPurpose(data["purpose"])
-        return OAuthState(**data)
+        return _STATE_ADAPTER.validate_json(payload)

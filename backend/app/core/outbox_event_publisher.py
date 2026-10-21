@@ -1,33 +1,23 @@
 import contextlib
 import dataclasses
 from functools import partial
-from typing import Any, Final, Optional
+from typing import Any, Optional
 
 from app.core.actor import Actor, actor_user_id
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
-from app.core.events import ActorEvent, BaseEvent, UserEvent
+from app.core.events import EVENT_ROW_FIELDS, ActorEvent, ActorSnapshot, BaseEvent, UserEvent
 from app.core.ports import OutboxEntryDispatch
-
-_SKIPPED_PAYLOAD_FIELDS: Final[set[str]] = {"event_id", "occurred_at", "ip_address"}
 
 
 def _sanitize_user(user: Actor) -> dict[str, Any]:
-    return {
-        "id": user.id,
-        "login": user.login,
-        "name": user.name,
-        "role": str(user.role),
-        "telegram_id": user.telegram_id,
-        "username": getattr(user, "username", None),  # not on SyntheticActor
-        "email": user.email,
-    }
+    return ActorSnapshot.of(user).to_payload()
 
 
 def _build_payload(event: BaseEvent) -> dict[str, Any]:
     payload: dict[str, Any] = {}
     for f in dataclasses.fields(event):
-        if f.name in _SKIPPED_PAYLOAD_FIELDS:
+        if f.name in EVENT_ROW_FIELDS:
             continue
         value = getattr(event, f.name)
         payload[f.name] = _sanitize_user(value) if isinstance(value, Actor) else value

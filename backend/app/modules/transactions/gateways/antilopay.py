@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import AntilopaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -37,12 +38,13 @@ _NOT_FOUND_CODE: Final[int] = 8
 
 
 # Docs: https://doc.antilopay.com/AntilopayAPI.pdf
-class AntilopayGateway(PaymentGateway):
+class AntilopayGateway(PaymentGateway[AntilopaySettings]):
+    settings_model = AntilopaySettings
     currency = Currency.RUB
 
     def _private_key(self) -> RSAPrivateKey:
         try:
-            der = base64.b64decode(self._require("private_key").strip())
+            der = base64.b64decode(self.settings.private_key.get_secret_value().strip())
             key = serialization.load_der_private_key(der, password=None)
         except (ValueError, binascii.Error) as error:
             raise PaymentGatewayError("Malformed Antilopay private key") from error
@@ -54,7 +56,7 @@ class AntilopayGateway(PaymentGateway):
         signature = self._private_key().sign(body, padding.PKCS1v15(), hashes.SHA256())
         return {
             "Content-Type": "application/json",
-            "X-Apay-Secret-Id": self._require("secret_id"),
+            "X-Apay-Secret-Id": self.settings.secret_id,
             "X-Apay-Sign": base64.b64encode(signature).decode("ascii"),
             "X-Apay-Sign-Version": "1",
         }
@@ -74,7 +76,7 @@ class AntilopayGateway(PaymentGateway):
         data = await self._post(
             "payment/create",
             {
-                "project_identificator": self._require("project_id"),
+                "project_identificator": self.settings.project_id,
                 "amount": amount_to_float(order.final_price),
                 "order_id": order.idempotency_key,
                 "currency": order.currency.value.lower(),
@@ -101,7 +103,7 @@ class AntilopayGateway(PaymentGateway):
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         signature = request.headers.get("x-apay-callback", "")
-        public_key = load_rsa_public_key(self._require("public_key"))
+        public_key = load_rsa_public_key(self.settings.public_key.get_secret_value())
         if not signature or not rsa_verify(public_key, signature, request.body, hashes.SHA256()):
             raise PaymentGatewayError("Invalid Antilopay webhook signature")
 
@@ -122,7 +124,7 @@ class AntilopayGateway(PaymentGateway):
         data = await self._post(
             "payment/check",
             {
-                "project_identificator": self._require("project_id"),
+                "project_identificator": self.settings.project_id,
                 "order_id": order.idempotency_key,
             },
             timeout=PROVIDER_API_TIMEOUT_S,

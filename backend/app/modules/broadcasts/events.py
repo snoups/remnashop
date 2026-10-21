@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from app.core.events import ActorEvent, EventCategory, SystemEvent
 
@@ -7,7 +7,9 @@ from app.core.events import ActorEvent, EventCategory, SystemEvent
 @dataclass(frozen=True, kw_only=True)
 class BroadcastChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.BROADCAST
-    action: str
+    action: Literal[
+        "add_email_image", "create", "delete", "delete_media", "retry", "set_media", "update"
+    ]
     broadcast_id: int
 
 

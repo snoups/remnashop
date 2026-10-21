@@ -34,6 +34,7 @@ from app.modules.account_merge.repository import (
     UNTOUCHED_USER_FKS,
     AccountMergeRepository,
 )
+from app.modules.account_merge.rules import merged_user_fields
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.modules.loyalty.factories import paid_order
@@ -181,8 +182,9 @@ async def test_merge_moves_source_telegram_to_target(
     source = await user_repository.create(CreateUserDto(name="s", telegram_id=900))
     target = await user_repository.create(CreateUserDto(name="t"))
 
+    merged_fields = merged_user_fields(source, target, {})
     await user_repository.anonymize(source.id)
-    await merge_repository.write_target(target.id, {"telegram_id": 900, "username": None})
+    await merge_repository.write_target(target.id, merged_fields)
 
     merged = await user_repository.find_by_id(target.id)
     assert merged is not None and merged.telegram_id == 900

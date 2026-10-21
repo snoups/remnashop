@@ -51,7 +51,7 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
             )
             for stale_id in stale:
                 await self._event_publisher.publish(
-                    BackupFailedEvent(run_id=stale_id, kind=kind.value, error=_STALE_RUN_ERROR)
+                    BackupFailedEvent(run_id=stale_id, kind=kind, error=_STALE_RUN_ERROR)
                 )
         for stale_id in stale:
             logger.warning(f"Backup run '{stale_id}' ('{kind.value}') was stranded, failed it")
@@ -71,7 +71,7 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
             async with self._uow:
                 await self._backup_repository.mark_failed(run_id, error=error)
                 await self._event_publisher.publish(
-                    BackupFailedEvent(run_id=run_id, kind=kind.value, error=error)
+                    BackupFailedEvent(run_id=run_id, kind=kind, error=error)
                 )
             logger.warning(f"Backup run '{run_id}' rejected: '{kind.value}' already running")
             return
@@ -107,7 +107,7 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
                     run_id, file_path=str(dest), size_bytes=size_bytes, checksum_sha256=checksum
                 )
                 await self._event_publisher.publish(
-                    BackupCompletedEvent(run_id=run_id, kind=kind.value, size_bytes=size_bytes)
+                    BackupCompletedEvent(run_id=run_id, kind=kind, size_bytes=size_bytes)
                 )
             logger.info(f"Backup run '{run_id}' ('{kind.value}') completed: {dest}")
 
@@ -118,7 +118,7 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
             async with self._uow:
                 await self._backup_repository.mark_failed(run_id, error=str(exc))
                 await self._event_publisher.publish(
-                    BackupFailedEvent(run_id=run_id, kind=kind.value, error=str(exc))
+                    BackupFailedEvent(run_id=run_id, kind=kind, error=str(exc))
                 )
             return
 

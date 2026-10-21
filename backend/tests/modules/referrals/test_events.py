@@ -1,38 +1,30 @@
 from unittest.mock import AsyncMock, patch
 
-from app.core.events import EventCategory, StoredEvent
-from app.core.utils.time import datetime_now
-from app.modules.referrals.subscribers import _on_user_registered
+from app.core.enums import Locale, Role
+from app.core.event_bus import EventBus
+from app.modules.referrals.subscribers import register_subscribers
+from app.modules.users import TelegramUserRegisteredEvent, UserDto
+from tests.fakes.events import stored_event
 
 _KIQ = "app.modules.referrals.tasks.attach_referral_on_registration_task.kiq"
+_USER = UserDto(id=42, login=None, name="u", role=Role.USER, language=Locale.EN)
 
 
-def _entry(payload: dict) -> StoredEvent:
-    return StoredEvent(
-        outbox_id=1,
-        category=EventCategory.USER,
-        event_type="TelegramUserRegisteredEvent",
-        occurred_at=datetime_now(),
-        payload=payload,
-        actor_id=None,
-        actor_login=None,
-        actor_name=None,
-        actor_email=None,
-        ip_address=None,
-    )
+async def _dispatch(event: TelegramUserRegisteredEvent) -> AsyncMock:
+    bus = EventBus()
+    register_subscribers(bus)
+    with patch(_KIQ, new_callable=AsyncMock) as mock_kiq:
+        assert await bus.dispatch_stored(stored_event(event)) is None
+    return mock_kiq
 
 
 async def test_on_user_registered_enqueues_attach_when_code_present() -> None:
-    entry = _entry({"user": {"id": 42}, "referral_code": "AB12CD34"})
-
-    with patch(_KIQ, new_callable=AsyncMock) as mock_kiq:
-        await _on_user_registered(entry)
+    mock_kiq = await _dispatch(TelegramUserRegisteredEvent(user=_USER, referral_code="AB12CD34"))
 
     mock_kiq.assert_awaited_once_with(user_id=42, referral_code="AB12CD34")
 
 
 async def test_on_user_registered_skips_when_code_absent() -> None:
-    with patch(_KIQ, new_callable=AsyncMock) as mock_kiq:
-        await _on_user_registered(_entry({"user": {"id": 42}, "ad_link_code": "yt"}))
+    mock_kiq = await _dispatch(TelegramUserRegisteredEvent(user=_USER, ad_link_code="yt"))
 
     mock_kiq.assert_not_awaited()

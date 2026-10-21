@@ -212,9 +212,9 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
                     TransactionPartiallyRefundedEvent(
                         order_id=order.id,
                         user_id=order.user_id,
-                        gateway_type=gateway_type.value,
+                        gateway_type=gateway_type,
                         amount=str(signal.refund_amount),
-                        currency=order.currency.value,
+                        currency=order.currency,
                     )
                 )
             return
@@ -240,9 +240,9 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
                         order_id=order.id,
                         user_id=order.user_id,
                         payment_key=order.idempotency_key,
-                        gateway_type=gateway_type.value,
+                        gateway_type=gateway_type,
                         amount=str(order.final_price),
-                        currency=order.currency.value,
+                        currency=order.currency,
                     )
                 )
         if not changed:

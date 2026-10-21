@@ -12,6 +12,7 @@ from app.modules.subscriptions.dto import (
     SyncSubscriptionStatusDto,
 )
 from app.modules.subscriptions.events import (
+    StatusSyncSource,
     SubscriptionConfigSyncedEvent,
     SubscriptionStatusSyncedEvent,
 )
@@ -86,8 +87,8 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
         await self._event_publisher.publish(
             SubscriptionStatusSyncedEvent(
                 subscription_id=subscription.id,
-                old_status=old_status.value,
-                new_status=subscription.status.value,
+                old_status=old_status,
+                new_status=subscription.status,
                 source=data.source,
                 user_id=subscription.user_id,
             )
@@ -95,7 +96,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
         return subscription
 
     async def _sync_config(
-        self, subscription: SubscriptionDto, config: PanelConfigDto, source: str
+        self, subscription: SubscriptionDto, config: PanelConfigDto, source: StatusSyncSource
     ) -> SubscriptionDto:
         update = config_update(subscription, config)
         changed = changed_config_fields(subscription, update)
@@ -107,7 +108,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
                 subscription_id=subscription.id,
                 source=source,
                 changed_fields=changed,
-                removed_addon_types=sorted(t.value for t in update.removed_addon_types),
+                removed_addon_types=sorted(update.removed_addon_types),
                 user_id=subscription.user_id,
             )
         )

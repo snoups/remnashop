@@ -5,6 +5,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import CryptomusSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
@@ -35,17 +36,20 @@ _REPORTED_STATUSES: Final[dict[str, TransactionStatus]] = {
 
 
 # Docs: https://doc.cryptomus.com/
-class CryptomusGateway(PaymentGateway):
+class CryptomusGateway(PaymentGateway[CryptomusSettings]):
+    settings_model = CryptomusSettings
     currency = Currency.USD
     API_BASE: ClassVar[str] = "https://api.cryptomus.com"
 
     def _sign(self, body: bytes) -> str:
-        return md5_hex(base64.b64encode(body).decode("ascii") + self._require("api_key"))
+        return md5_hex(
+            base64.b64encode(body).decode("ascii") + self.settings.api_key.get_secret_value()
+        )
 
     def _signed(self, payload: dict[str, Any]) -> tuple[bytes, dict[str, str]]:
         body = orjson.dumps(payload)
         headers = {
-            "merchant": self._require("merchant_id"),
+            "merchant": self.settings.merchant_id,
             "sign": self._sign(body),
             "Content-Type": "application/json",
         }

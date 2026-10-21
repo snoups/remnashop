@@ -2,12 +2,14 @@ import ipaddress
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import ClassVar, Final, NewType, Optional
+from functools import cached_property
+from typing import ClassVar, Final, Generic, NewType, Optional, TypeVar, cast
 
 import httpx
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import GatewaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 
 HTTP_TIMEOUT_S: Final[float] = 20.0
@@ -69,8 +71,13 @@ def amount_to_float(value: Decimal) -> float:
     return float(f"{value:.2f}")
 
 
-class PaymentGateway(ABC):
+# the settings a gateway reads: its model, or a Protocol a family of models shares
+S = TypeVar("S")
+
+
+class PaymentGateway(ABC, Generic[S]):
     currency: Currency
+    settings_model: ClassVar[type[GatewaySettings]]
     ack: WebhookAck = WebhookAck()
     # Source networks of a provider that doesn't sign its notifications; empty
     # means the signature (or the confirm() re-fetch) is the only check.
@@ -84,10 +91,16 @@ class PaymentGateway(ABC):
         return_url: str,
         http: PaymentHttpClient,
     ) -> None:
-        self._settings = settings
+        self._values = settings
         self._http = http
         self._webhook_url = webhook_url
         self._return_url = return_url
+
+    @cached_property
+    def settings(self) -> S:
+        # parsed on first use, so a gateway is still built for a webhook or a
+        # listing before an admin has filled every field
+        return cast(S, self.settings_model.from_values(self._values))
 
     @classmethod
     def requires_customer_email(cls, settings: dict[str, str]) -> bool:
@@ -101,15 +114,6 @@ class PaymentGateway(ABC):
         except ValueError:
             return False
         return any(address in ipaddress.ip_network(net) for net in self.trusted_networks)
-
-    def _require(self, key: str) -> str:
-        value = self._settings.get(key)
-        if not value:
-            raise PaymentGatewayError(f"{type(self).__name__}: missing required setting '{key}'")
-        return value
-
-    def _optional(self, key: str) -> Optional[str]:
-        return self._settings.get(key) or None
 
     @abstractmethod
     async def create_payment(self, order: TransactionDto) -> PaymentIntent: ...

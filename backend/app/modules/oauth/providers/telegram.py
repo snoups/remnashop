@@ -1,7 +1,6 @@
-import base64
-import json
 from typing import Any, Final, Optional, cast
 
+import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.modules.oauth.providers.base import OAuthProfile
@@ -13,9 +12,7 @@ _TOKEN_ENDPOINT: Final[str] = "https://oauth.telegram.org/token"
 def _decode_id_token_payload(id_token: str) -> dict[str, Any]:
     # the token response comes server-to-server over TLS, authenticated by
     # client_secret, so the payload is decoded without a signature check
-    payload_segment = id_token.split(".")[1]
-    padded = payload_segment + "=" * (-len(payload_segment) % 4)
-    result: dict[str, Any] = json.loads(base64.urlsafe_b64decode(padded))
+    result: dict[str, Any] = jwt.decode(id_token, options={"verify_signature": False})
     return result
 
 

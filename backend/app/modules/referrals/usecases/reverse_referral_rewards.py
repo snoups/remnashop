@@ -61,7 +61,7 @@ class ReverseReferralRewardsUseCase(UseCase[ReverseReferralRewardsDto, None]):
                     ReferralRewardReversedEvent(
                         user=referrer,
                         amount=str(taken),
-                        reward_type=reward.type.value,
+                        reward_type=reward.type,
                         payment_key=data.payment_key,
                     )
                 )

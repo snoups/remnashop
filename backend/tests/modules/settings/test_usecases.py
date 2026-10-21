@@ -2,8 +2,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
-import httpx
 import pytest
+from aiogram.methods import SetMyCommands
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +67,7 @@ from app.modules.settings.usecases import (
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import UserDto
 from tests.fakes.events import RecordingEventPublisher
+from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
 from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS, make_bot_commands_sync
 
 OWNER = UserDto(id=1, login="admin", name="admin", role=Role.OWNER, language=Locale.EN)
@@ -705,14 +706,11 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
 def _capture_command_pushes(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     pushed: list[dict] = []
 
-    async def _capturing_post(self: httpx.AsyncClient, url: str, *, json: dict) -> httpx.Response:
-        if url.endswith("/setMyCommands"):
-            pushed.append(json)
-        return httpx.Response(
-            200, json={"ok": True, "result": True}, request=httpx.Request("POST", url)
-        )
+    def _set(method: SetMyCommands) -> bool:
+        pushed.append(method.model_dump(mode="json", exclude_none=True))
+        return True
 
-    monkeypatch.setattr(httpx.AsyncClient, "post", _capturing_post)
+    use_fake_bot(monkeypatch, FakeBotSession({"SetMyCommands": _set, "DeleteMyCommands": True}))
     return pushed
 
 

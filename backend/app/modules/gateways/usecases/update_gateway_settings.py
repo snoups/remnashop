@@ -37,7 +37,7 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
                 GatewayChangedEvent(
                     actor=actor,
                     action="settings",
-                    gateway_type=data.type.value,
+                    gateway_type=data.type,
                     changed_fields=sorted(data.values),
                 )
             )

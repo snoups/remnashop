@@ -70,7 +70,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
             await self._user_repository.credit_points(user.id, Decimal(amount))
         await self._event_publisher.publish(
             InviteeRewardIssuedEvent(
-                user=user, reward_type=settings.invitee_reward_type.value, amount=amount
+                user=user, reward_type=settings.invitee_reward_type, amount=amount
             )
         )
 

@@ -1,5 +1,4 @@
 import asyncio
-import json
 from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
@@ -7,6 +6,8 @@ from typing import Any
 
 import httpx
 import pytest
+from aiogram.methods import DeleteMessage, GetMe, SendMessage, SendPhoto
+from aiogram.types import FSInputFile
 from redis.asyncio import Redis
 from redis.asyncio.lock import Lock
 from redis.exceptions import LockNotOwnedError
@@ -68,10 +69,16 @@ from app.modules.translations.repository import TranslationRepository
 from app.modules.users.events import BotBlockedByUserEvent
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
-from tests.modules.broadcasts.factories import MockTelegram, make_customer, ok_response
+from tests.modules.broadcasts.factories import (
+    BOT_USER,
+    MockTelegram,
+    make_customer,
+    message_result,
+    ok_response,
+)
 from tests.modules.broadcasts.test_repository import save_dto
 
-Responder = Callable[[httpx.Request], httpx.Response]
+Responder = Callable[[Any], httpx.Response]
 
 
 def _store_jpeg(media_dir: Path, broadcast_id: int) -> None:
@@ -266,8 +273,8 @@ async def _statuses(session: AsyncSession, broadcast_id: int) -> list[BroadcastR
     return [r.status for r in await _recipients(session, broadcast_id)]
 
 
-def _chat_id(request: httpx.Request) -> int:
-    return int(json.loads(request.content)["chat_id"])
+def _chat_id(method: Any) -> int:
+    return int(method.chat_id)
 
 
 def _by_chat(responses: dict[int, httpx.Response]) -> Responder:
@@ -418,7 +425,7 @@ async def test_start_posts_to_channel(
     await make_start(telegram).system(broadcast.id)
 
     assert len(telegram.requests) == 1
-    assert telegram.requests[0].url.path == "/bot123:abc/sendMessage"
+    assert isinstance(telegram.requests[0], SendMessage)
     assert _chat_id(telegram.requests[0]) == -100500
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert (after.channel_chat_id, after.channel_message_id) == (-100500, 100)
@@ -438,7 +445,7 @@ async def test_deliver_marks_outcomes_and_completes(
     telegram = MockTelegram(
         _by_chat(
             {
-                9650: httpx.Response(200, json={"ok": True, "result": {"message_id": 7}}),
+                9650: httpx.Response(200, json={"ok": True, "result": message_result(7)}),
                 9651: _error(403, "Forbidden: bot was blocked by the user"),
                 9652: _error(400, "Bad Request: chat not found"),
             }
@@ -481,7 +488,7 @@ async def test_deliver_records_a_group_in_one_transaction(
     ids = await _customers(session, user_repository, 9660, 3)
     broadcast = await _sending(broadcast_repository, ids)
     telegram = MockTelegram(
-        lambda _: httpx.Response(200, json={"ok": True, "result": {"message_id": 1}})
+        lambda _: httpx.Response(200, json={"ok": True, "result": message_result(1)})
     )
     commits = 0
     real_commit = uow.commit
@@ -511,7 +518,7 @@ async def test_deliver_skips_customers_who_blocked_the_bot(
     broadcast = await _sending(broadcast_repository, ids)
     await user_repository.set_bot_blocked(ids[1], True)
     telegram = MockTelegram(
-        _by_chat({9660: httpx.Response(200, json={"ok": True, "result": {"message_id": 7}})})
+        _by_chat({9660: httpx.Response(200, json={"ok": True, "result": message_result(7)})})
     )
 
     await make_deliver(telegram).system(broadcast.id)
@@ -566,7 +573,7 @@ async def test_deliver_waits_on_429(
     answers = iter(
         [
             httpx.Response(429, json={"ok": False, "parameters": {"retry_after": 120}}),
-            httpx.Response(200, json={"ok": True, "result": {"message_id": 1}}),
+            httpx.Response(200, json={"ok": True, "result": message_result(1)}),
         ]
     )
     telegram = MockTelegram(lambda request: next(answers))
@@ -611,20 +618,23 @@ async def test_deliver_uploads_media_once(
     await _photo(broadcast_repository, broadcast.id)
     _store_jpeg(media_config.media_dir, broadcast.id)
 
-    def respond(request: httpx.Request) -> httpx.Response:
-        if request.headers["content-type"].startswith("multipart/form-data"):
-            photo = [{"file_id": "small"}, {"file_id": "F"}]
+    def _size(file_id: str) -> dict[str, object]:
+        return {"file_id": file_id, "file_unique_id": file_id, "width": 1, "height": 1}
+
+    def respond(method: Any) -> httpx.Response:
+        if isinstance(method.photo, FSInputFile):
+            photo = [_size("small"), _size("F")]
         else:
-            assert json.loads(request.content)["photo"] == "F"
-            photo = [{"file_id": "F"}]
-        return httpx.Response(200, json={"ok": True, "result": {"message_id": 1, "photo": photo}})
+            assert method.photo == "F"
+            photo = [_size("F")]
+        return httpx.Response(200, json={"ok": True, "result": message_result(1, photo=photo)})
 
     telegram = MockTelegram(respond)
     await make_deliver(telegram).system(broadcast.id)
 
-    kinds = [r.headers["content-type"].split(";")[0] for r in telegram.requests]
-    assert kinds == ["multipart/form-data", "application/json", "application/json"]
-    assert all(r.url.path.endswith("/sendPhoto") for r in telegram.requests)
+    uploads = [isinstance(r.photo, FSInputFile) for r in telegram.requests]
+    assert uploads == [True, False, False]
+    assert all(isinstance(r, SendPhoto) for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.SENT] * 3
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.media_file_id == "F"
@@ -783,12 +793,9 @@ async def test_recall_deletes_and_marks(
         broadcast_repository, settings_repository, telegram, recall_dispatch, uow
     ).system(broadcast.id)
 
-    deleted = sorted(
-        (body["chat_id"], body["message_id"])
-        for body in (json.loads(r.content) for r in telegram.requests)
-    )
+    deleted = sorted((r.chat_id, r.message_id) for r in telegram.requests)
     assert deleted == [(-100500, 77), (9730, 11), (9731, 12)]
-    assert all(r.url.path.endswith("/deleteMessage") for r in telegram.requests)
+    assert all(isinstance(r, DeleteMessage) for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.RECALLED] * 2
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.recalled_count == 2
@@ -1066,11 +1073,13 @@ async def test_prune_keeps_counts(
     assert after.total_count == 2
 
 
-def _getme(username: object) -> Callable[[httpx.Request], httpx.Response]:
-    def respond(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("/getMe"):
-            return httpx.Response(200, json={"ok": True, "result": {"username": username}})
-        return ok_response(request)
+def _getme(username: object) -> Callable[[Any], httpx.Response]:
+    def respond(method: Any) -> httpx.Response:
+        if isinstance(method, GetMe):
+            return httpx.Response(
+                200, json={"ok": True, "result": {**BOT_USER, "username": username}}
+            )
+        return ok_response(method)
 
     return respond
 
@@ -1110,9 +1119,10 @@ async def _channel_post_markup(
     )
     telegram = MockTelegram(_getme(username))
     await make_start(telegram).system(broadcast.id)
-    sent = next(r for r in telegram.requests if r.url.path.endswith("/sendMessage"))
-    markup = json.loads(sent.content).get("reply_markup") or {}
-    return markup.get("inline_keyboard", [])
+    sent = next(r for r in telegram.requests if isinstance(r, SendMessage))
+    if sent.reply_markup is None:
+        return []
+    return sent.reply_markup.model_dump(exclude_none=True)["inline_keyboard"]
 
 
 async def test_channel_post_links_menu_to_the_bot(
@@ -1144,10 +1154,10 @@ async def test_channel_post_without_username_drops_menu_button(
 
 
 async def test_get_bot_username_parses_get_me() -> None:
-    async with MockTelegram(_getme("shop_bot")).open(None) as client:
-        assert await get_bot_username(client, "t") == "shop_bot"
-    async with MockTelegram(_getme(None)).open(None) as client:
-        assert await get_bot_username(client, "t") is None
+    async with MockTelegram(_getme("shop_bot")).open("123:abc", None) as client:
+        assert await get_bot_username(client) == "shop_bot"
+    async with MockTelegram(_getme(None)).open("123:abc", None) as client:
+        assert await get_bot_username(client) is None
 
 
 async def test_stop_by_cancel_counts_the_in_flight_group(
@@ -1327,10 +1337,10 @@ async def test_deliver_records_each_send_and_releases_lock_on_error(
     ids = await _customers(session, user_repository, 9860, 3)
     broadcast = await _sending(broadcast_repository, ids)
 
-    def respond(request: httpx.Request) -> httpx.Response:
-        if _chat_id(request) == 9862:
+    def respond(method: Any) -> httpx.Response:
+        if _chat_id(method) == 9862:
             raise RuntimeError("boom")
-        return ok_response(request)
+        return ok_response(method)
 
     with pytest.raises(RuntimeError):
         await make_deliver(MockTelegram(respond)).system(broadcast.id)

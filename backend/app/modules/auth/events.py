@@ -1,7 +1,11 @@
 from dataclasses import dataclass
-from typing import ClassVar, Optional
+from typing import ClassVar, Literal, Optional, TypeAlias
 
 from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, SystemEvent, UserEvent
+
+RescueCliAction: TypeAlias = Literal[
+    "enable_password_login", "reset_owner_access", "restore_backup"
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -59,5 +63,5 @@ class RescueCliUsedEvent(SystemEvent):
 
     category: ClassVar[EventCategory] = EventCategory.AUTH
     # reset_owner_access | enable_password_login | restore_backup
-    action: str
+    action: RescueCliAction
     user_id: Optional[int] = None

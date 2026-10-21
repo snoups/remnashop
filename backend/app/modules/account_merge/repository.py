@@ -24,7 +24,14 @@ from app.core.db.models import (
     UserRegistration,
 )
 from app.core.enums import SubscriptionStatus
-from app.modules.account_merge.dto import MergeCountsDto, MergeLinksDto, MergeSide
+from app.modules.account_merge.dto import (
+    MergeConflictKey,
+    MergeCountsDto,
+    MergedUserDto,
+    MergeLinksDto,
+    MergeSide,
+    oauth_conflict_key,
+)
 from app.modules.users import UserDto
 
 REASSIGNED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
@@ -231,7 +238,7 @@ class AccountMergeRepository:
             )
         )
         for provider in source_providers & target_providers:
-            loser = t if sides.get(f"oauth:{provider}") == "source" else s
+            loser = t if sides.get(oauth_conflict_key(provider)) == "source" else s
             await self.session.execute(
                 delete(OAuthIdentity).where(
                     OAuthIdentity.user_id == loser, OAuthIdentity.provider == provider
@@ -261,7 +268,7 @@ class AccountMergeRepository:
             elif referrers[s] is None:
                 loser = s
             else:
-                loser = t if sides.get("referred_by") == "source" else s
+                loser = t if sides.get(MergeConflictKey.REFERRED_BY) == "source" else s
             await self.session.execute(delete(Referral).where(Referral.referred_id == loser))
         await self._move_owner(Referral.referred_id, s, t)
         await self._move_owner(Referral.referrer_id, s, t)
@@ -285,10 +292,35 @@ class AccountMergeRepository:
             ids = promocode.allowed_user_ids or []
             promocode.allowed_user_ids = list(dict.fromkeys(t if i == s else i for i in ids))
 
-    async def write_target(self, target_id: int, values: dict[str, object]) -> UserDto:
+    async def write_target(self, target_id: int, merged: MergedUserDto) -> UserDto:
         db_user = await self.session.get_one(User, target_id)
-        for name, value in values.items():
-            setattr(db_user, name, value)
+        db_user.telegram_id = merged.telegram_id
+        db_user.username = merged.username
+        db_user.email = merged.email
+        db_user.email_undeliverable_at = merged.email_undeliverable_at
+        db_user.login = merged.login
+        db_user.password_hash = merged.password_hash
+        db_user.password_change_required = merged.password_change_required
+        db_user.name = merged.name
+        db_user.language = merged.language
+        db_user.personal_discount = merged.personal_discount
+        db_user.personal_discount_promocode_id = merged.personal_discount_promocode_id
+        db_user.purchase_discount = merged.purchase_discount
+        db_user.purchase_discount_promocode_id = merged.purchase_discount_promocode_id
+        db_user.role = merged.role
+        db_user.permission_grants = merged.permission_grants
+        db_user.permission_revokes = merged.permission_revokes
+        db_user.ip_allowlist = merged.ip_allowlist
+        db_user.notification_channels = merged.notification_channels
+        db_user.notifications_seen_at = merged.notifications_seen_at
+        db_user.notifications_cleared_at = merged.notifications_cleared_at
+        db_user.points = merged.points
+        db_user.bonus_days = merged.bonus_days
+        db_user.is_trial_available = merged.is_trial_available
+        db_user.is_blocked = merged.is_blocked
+        db_user.marketing_opt_out = merged.marketing_opt_out
+        db_user.loyalty_excluded = merged.loyalty_excluded
+        db_user.rules_accepted_at = merged.rules_accepted_at
         await self.session.flush()
         await self.session.refresh(db_user)
         return UserDto.model_validate(db_user, from_attributes=True)

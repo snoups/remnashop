@@ -13,43 +13,40 @@ from app.modules.auth.events import (
 )
 
 
-async def _log_owner_bootstrapped(entry: StoredEvent) -> None:
-    logger.info(f"Owner bootstrapped: login='{entry.payload['user']['login']}'")
+async def _log_owner_bootstrapped(event: OwnerBootstrappedEvent, entry: StoredEvent) -> None:
+    logger.info(f"Owner bootstrapped: login='{event.user.login}'")
 
 
-async def _log_login_succeeded(entry: StoredEvent) -> None:
-    logger.info(f"Successful login for login='{entry.payload['user']['login']}'")
+async def _log_login_succeeded(event: LoginSucceededEvent, entry: StoredEvent) -> None:
+    logger.info(f"Successful login for login='{event.user.login}'")
 
 
-async def _log_login_failed(entry: StoredEvent) -> None:
-    logger.warning(f"Failed login attempt for login='{entry.payload['login']}'")
+async def _log_login_failed(event: LoginFailedEvent, entry: StoredEvent) -> None:
+    logger.warning(f"Failed login attempt for login='{event.login}'")
 
 
-async def _log_bootstrap_conflict(entry: StoredEvent) -> None:
-    logger.warning(
-        f"Bootstrap attempted with login='{entry.payload['login']}' but an owner already exists"
-    )
+async def _log_bootstrap_conflict(event: BootstrapConflictEvent, entry: StoredEvent) -> None:
+    logger.warning(f"Bootstrap attempted with login='{event.login}' but an owner already exists")
 
 
-async def _log_session_theft_detected(entry: StoredEvent) -> None:
+async def _log_session_theft_detected(event: SessionTheftDetectedEvent, entry: StoredEvent) -> None:
     logger.warning(
         f"Refresh token reuse detected outside grace window: "
-        f"user_id={entry.payload['user_id']} session_id={entry.payload['session_id']} "
+        f"user_id={event.user_id} session_id={event.session_id} "
         "-- session revoked"
     )
 
 
-async def _log_session_revoked(entry: StoredEvent) -> None:
-    logger.info(
-        f"Session {entry.payload['session_id']} revoked "
-        f"for login='{entry.payload['user']['login']}'"
-    )
+async def _log_session_revoked(event: SessionRevokedEvent, entry: StoredEvent) -> None:
+    logger.info(f"Session {event.session_id} revoked for login='{event.user.login}'")
 
 
-async def _log_user_session_revoked_by_admin(entry: StoredEvent) -> None:
+async def _log_user_session_revoked_by_admin(
+    event: UserSessionRevokedByAdminEvent, entry: StoredEvent
+) -> None:
     logger.info(
-        f"Session {entry.payload['session_id']} of login='{entry.payload['target']['login']}' "
-        f"revoked by login='{entry.payload['actor']['login']}'"
+        f"Session {event.session_id} of login='{event.target.login}' "
+        f"revoked by login='{event.actor.login}'"
     )
 
 

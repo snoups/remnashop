@@ -5,7 +5,7 @@ from typing import AsyncIterator, Optional
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer, Provider, Scope, provide
 from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
-from app.core.di.providers import get_core_providers
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -25,11 +24,11 @@ from app.core.enums import (
 from app.core.utils.time import datetime_now
 from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
-from app.modules.providers import get_module_providers
 from app.modules.subscriptions import PurchaseSubscriptionDispatch
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.gateways.base import ProviderPayment, WebhookAck, WebhookSignal
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
+from tests.fakes.container import make_test_container
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
@@ -92,18 +91,6 @@ def _install_stub(monkeypatch: pytest.MonkeyPatch, stub: _StubGateway) -> None:
     )
 
 
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
-
-
 class _DispatchProvider(Provider):
     scope = Scope.APP
 
@@ -125,13 +112,7 @@ def purchase_dispatch() -> RecordingDispatch:
 async def test_container(
     session: AsyncSession, config: AppConfig, purchase_dispatch: RecordingDispatch
 ) -> AsyncIterator[AsyncContainer]:
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _DispatchProvider(purchase_dispatch),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
+    container = make_test_container(session, config, _DispatchProvider(purchase_dispatch))
     yield container
     await container.close()
 

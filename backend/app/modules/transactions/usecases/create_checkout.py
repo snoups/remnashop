@@ -153,9 +153,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 CheckoutCreatedEvent(
                     user=actor,
                     order_id=order.id,
-                    gateway_type=order.gateway_type.value,
+                    gateway_type=order.gateway_type,
                     amount=str(order.final_price),
-                    currency=order.currency.value,
+                    currency=order.currency,
                 )
             )
 

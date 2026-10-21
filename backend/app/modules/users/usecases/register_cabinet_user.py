@@ -54,7 +54,7 @@ class RegisterCabinetUserUseCase(UseCase[RegisterCabinetUserDto, UserDto]):
                     if is_blocked
                     else CabinetUserRegisteredEvent(
                         user=user,
-                        method=data.method.value,
+                        method=data.method,
                         ad_link_code=data.ad_link_code,
                         referral_code=data.referral_code,
                     )

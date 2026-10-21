@@ -16,6 +16,7 @@ _CONNECT_ERRORS: Final[tuple[type[Exception], ...]] = (
     aiosmtplib.SMTPConnectTimeoutError,
 )
 
+SMTP_TIMEOUT_S: Final[int] = 15
 _PERMANENT: Final[int] = 500
 _ENHANCED_STATUS: Final[re.Pattern[str]] = re.compile(r"^\s*([245])\.(\d{1,3})\.(\d{1,3})")
 
@@ -73,7 +74,7 @@ class SmtpSender:
                 password=profile.password.get_secret_value() if profile.password else None,
                 use_tls=profile.security is SmtpSecurity.TLS,
                 start_tls=profile.security is SmtpSecurity.STARTTLS,
-                timeout=15,
+                timeout=SMTP_TIMEOUT_S,
             )
         except aiosmtplib.SMTPRecipientsRefused as error:
             refusal = error.recipients[0] if error.recipients else None

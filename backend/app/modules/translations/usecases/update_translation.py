@@ -65,7 +65,7 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
                 TranslationChangedEvent(
                     actor=actor,
                     action="update",
-                    locale=data.locale.value,
+                    locale=data.locale,
                     key=join_message_key(data.message_id, data.attribute_id),
                 )
             )

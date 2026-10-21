@@ -5,6 +5,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import YooKassaSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -26,20 +27,23 @@ _REPORTED_EVENTS: Final[dict[str, TransactionStatus]] = {
 _REFUND_EVENT_PREFIX: Final[str] = "refund."
 
 
-def _build_receipt(order: TransactionDto, settings: dict[str, str]) -> Optional[dict[str, object]]:
-    if not order.customer_email or not settings.get("vat_code"):
+def _build_receipt(
+    order: TransactionDto, settings: YooKassaSettings
+) -> Optional[dict[str, object]]:
+    if not order.customer_email or settings.vat_code is None:
         return None
     item: dict[str, object] = {
         "description": f"Subscription plan #{order.plan_id}, {order.duration_days}d",
         "quantity": "1.00",
         "amount": {"value": f"{order.final_price:.2f}", "currency": order.currency.value},
-        "vat_code": int(settings["vat_code"]),
+        "vat_code": int(settings.vat_code),
     }
     return {"customer": {"email": order.customer_email}, "items": [item]}
 
 
 # Docs: https://yookassa.ru/developers
-class YooKassaGateway(PaymentGateway):
+class YooKassaGateway(PaymentGateway[YooKassaSettings]):
+    settings_model = YooKassaSettings
     currency = Currency.RUB
     # https://yookassa.ru/developers/using-api/webhooks#ip
     trusted_networks = (
@@ -57,10 +61,14 @@ class YooKassaGateway(PaymentGateway):
 
     @classmethod
     def requires_customer_email(cls, settings: dict[str, str]) -> bool:
-        return bool(settings.get("vat_code"))
+        # asked before checkout checks the form is complete, so an incomplete one is no receipt
+        try:
+            return YooKassaSettings.from_values(settings).vat_code is not None
+        except PaymentGatewayError:
+            return False
 
     def _auth(self) -> tuple[str, str]:
-        return self._require("shop_id"), self._require("api_key")
+        return self.settings.shop_id, self.settings.api_key.get_secret_value()
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         body: dict[str, object] = {
@@ -70,7 +78,7 @@ class YooKassaGateway(PaymentGateway):
             "description": f"Order #{order.id}",
             "metadata": {"order_ref": order.idempotency_key},
         }
-        receipt = _build_receipt(order, self._settings)
+        receipt = _build_receipt(order, self.settings)
         if receipt is not None:
             body["receipt"] = receipt
 

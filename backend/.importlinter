@@ -29,6 +29,21 @@ forbidden_modules =
 ignore_imports =
     app.modules.*.api.** -> app.api.**
 
+# installed only with the `telegram` extra, so api and worker can't import them
+[importlinter:contract:telegram-extra]
+name = only the telegram process uses the telegram extra
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.core
+    app.modules
+    app.api
+    app.worker
+    app.cli
+forbidden_modules =
+    aiogram_dialog
+    fluentogram
+
 [importlinter:contract:usecases-without-sqlalchemy]
 name = usecases do not touch sqlalchemy
 type = forbidden

@@ -1,11 +1,20 @@
-from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 
-from app.core.events import EventCategory, StoredEvent
-from app.modules.loyalty.subscribers import _recalculate_merged
+from app.core.enums import Locale, Role
+from app.core.event_bus import EventBus
+from app.modules.account_merge import AccountsMergedEvent
+from app.modules.loyalty.subscribers import register_subscribers
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
+from app.modules.users import UserDto
+from tests.fakes.events import stored_event
+
+
+def _user(user_id: int, role: Role = Role.USER) -> UserDto:
+    return UserDto(
+        id=user_id, login=f"u{user_id}", name=f"u{user_id}", role=role, language=Locale.EN
+    )
 
 
 async def test_merge_recalculates_target_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -15,19 +24,10 @@ async def test_merge_recalculates_target_only(monkeypatch: pytest.MonkeyPatch) -
         calls.append(kwargs)
 
     monkeypatch.setattr(recalculate_loyalty_discounts_task, "kiq", _kiq)
-    entry = StoredEvent(
-        outbox_id=1,
-        category=next(iter(EventCategory)),
-        event_type="AccountsMergedEvent",
-        occurred_at=datetime.now(timezone.utc),
-        payload={"target": {"id": 7}, "source": {"id": 8}},
-        actor_id=None,
-        actor_login=None,
-        actor_name=None,
-        actor_email=None,
-        ip_address=None,
-    )
+    bus = EventBus()
+    register_subscribers(bus)
+    event = AccountsMergedEvent(actor=_user(1, Role.ADMIN), target=_user(7), source=_user(8))
 
-    await _recalculate_merged(entry)
+    await bus.dispatch_stored(stored_event(event))
 
     assert calls == [{"user_ids": [7]}]

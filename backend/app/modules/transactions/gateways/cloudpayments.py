@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import CloudPaymentsSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -29,12 +30,13 @@ _DECLINED_STATUS: Final[str] = "Declined"
 
 
 # Docs: https://developers.cloudpayments.ru/
-class CloudPaymentsGateway(PaymentGateway):
+class CloudPaymentsGateway(PaymentGateway[CloudPaymentsSettings]):
+    settings_model = CloudPaymentsSettings
     currency = Currency.RUB
     ack = WebhookAck(body='{"code": 0}', media_type="application/json")
 
     def _auth(self) -> tuple[str, str]:
-        return self._require("public_id"), self._require("api_secret")
+        return self.settings.public_id, self.settings.api_secret.get_secret_value()
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
@@ -66,7 +68,7 @@ class CloudPaymentsGateway(PaymentGateway):
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         signature = request.headers.get("content-hmac")
-        expected = hmac_b64(self._require("api_secret"), request.body)
+        expected = hmac_b64(self.settings.api_secret.get_secret_value(), request.body)
         if not signature or not safe_equals(expected, signature):
             raise PaymentGatewayError("Invalid CloudPayments webhook signature")
 

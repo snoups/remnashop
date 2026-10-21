@@ -3,7 +3,7 @@ from typing import Final, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-SERVER_OWNED_FIELDS: Final[set[str]] = {"id", "created_at", "updated_at"}
+SERVER_OWNED_FIELDS: Final[frozenset[str]] = frozenset({"id", "created_at", "updated_at"})
 
 
 class BaseDto(BaseModel):

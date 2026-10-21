@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import LavaSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
@@ -27,7 +28,8 @@ _MAX_EXPIRE_MINUTES: Final[int] = 7200
 
 
 # Docs: https://developer.lava.ru/
-class LavaGateway(PaymentGateway):
+class LavaGateway(PaymentGateway[LavaSettings]):
+    settings_model = LavaSettings
     currency = Currency.RUB
 
     def _signed(self, payload: dict[str, Any]) -> tuple[bytes, dict[str, str]]:
@@ -36,7 +38,7 @@ class LavaGateway(PaymentGateway):
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Signature": hmac_hex(self._require("secret_key"), body),
+            "Signature": hmac_hex(self.settings.secret_key.get_secret_value(), body),
         }
         return body, headers
 
@@ -45,7 +47,7 @@ class LavaGateway(PaymentGateway):
             {
                 "sum": amount_to_float(order.final_price),
                 "orderId": order.idempotency_key,
-                "shopId": self._require("shop_id"),
+                "shopId": self.settings.shop_id,
                 "hookUrl": self._webhook_url,
                 "successUrl": self._return_url,
                 "failUrl": self._return_url,
@@ -68,7 +70,7 @@ class LavaGateway(PaymentGateway):
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         signature = request.headers.get("signature", "").strip()
-        expected = hmac_hex(self._require("webhook_secret"), request.body)
+        expected = hmac_hex(self.settings.webhook_secret.get_secret_value(), request.body)
         if not signature or not safe_equals(expected, signature, ignore_case=True):
             raise PaymentGatewayError("Invalid Lava webhook signature")
 
@@ -86,7 +88,7 @@ class LavaGateway(PaymentGateway):
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         body, headers = self._signed(
-            {"shopId": self._require("shop_id"), "orderId": order.idempotency_key}
+            {"shopId": self.settings.shop_id, "orderId": order.idempotency_key}
         )
         response = await self._http.post(
             f"{_API_BASE}/business/invoice/status",

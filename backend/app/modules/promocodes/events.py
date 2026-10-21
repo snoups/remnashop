@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 
+from app.core.enums import PromocodeRewardType
 from app.core.events import ActorEvent, EventCategory, UserEvent
 
 
@@ -8,13 +9,13 @@ from app.core.events import ActorEvent, EventCategory, UserEvent
 class PromocodeActivatedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.PROMOCODE
     promocode_id: int
-    reward_type: str
+    reward_type: PromocodeRewardType
 
 
 @dataclass(frozen=True, kw_only=True)
 class PromocodeChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PROMOCODE
-    action: str
+    action: Literal["create", "delete", "update"]
     promocode_id: int
 
 

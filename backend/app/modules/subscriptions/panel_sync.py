@@ -23,7 +23,7 @@ from app.modules.subscriptions.dto import (
     SubscriptionDto,
     SyncSubscriptionStatusDto,
 )
-from app.modules.subscriptions.events import PanelSyncStartedEvent
+from app.modules.subscriptions.events import PanelSyncStartedEvent, StatusSyncSource
 from app.modules.subscriptions.panel import restore
 from app.modules.subscriptions.panel_config import (
     changed_config_fields,
@@ -51,7 +51,7 @@ async def panel_users(sdk: RemnawaveSDK) -> AsyncIterator[UserResponseDto]:
 
 
 def from_panel(
-    user: Optional[UserResponseDto], remnawave_user_id: int, source: str
+    user: Optional[UserResponseDto], remnawave_user_id: int, source: StatusSyncSource
 ) -> SyncSubscriptionStatusDto:
     """What the row should take from the panel; a missing panel user deletes it."""
     if user is None:
@@ -186,9 +186,7 @@ async def start_panel_sync(
     await claim_panel_sync(redis, direction)
     try:
         async with uow:
-            await event_publisher.publish(
-                PanelSyncStartedEvent(actor=actor, direction=direction.value)
-            )
+            await event_publisher.publish(PanelSyncStartedEvent(actor=actor, direction=direction))
             await uow.after_commit(partial(dispatch.kiq, direction=direction.value))
     except BaseException:
         await release_panel_sync(redis, direction)

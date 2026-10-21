@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Final, Optional, Protocol
 
 import httpx
+import jwt
 from authlib.integrations.base_client.errors import OAuthError
 
 from app.core.enums import OAuthProvider
@@ -9,12 +10,14 @@ from app.core.exceptions import ValidationError
 
 # What fetch_identity() can raise when the provider round-trip goes wrong: a
 # rejected/expired code (OAuthError), a non-2xx or unreachable provider (httpx),
-# a response missing the claims we index into (KeyError), or the issuer/redirect
-# resolving to a non-public host (ValidationError, from the SSRF guard).
+# a response missing the claims we index into (KeyError), a malformed id_token
+# (PyJWTError), or the issuer/redirect resolving to a non-public host
+# (ValidationError, from the SSRF guard).
 OAUTH_EXCHANGE_ERRORS: Final[tuple[type[Exception], ...]] = (
     OAuthError,
     httpx.HTTPError,
     KeyError,
+    jwt.PyJWTError,
     ValidationError,
 )
 

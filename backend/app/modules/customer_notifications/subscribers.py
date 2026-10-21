@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, Union
 
 from app.core.event_bus import EventBus
-from app.core.events import StoredEvent
+from app.core.events import StoredEvent, UserEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
 from app.modules.customer_notifications.tasks import notify_customer_task
@@ -37,42 +37,39 @@ async def _notify(entry: StoredEvent, user_id: int, args: dict[str, Any]) -> Non
     )
 
 
-async def _on_purchase(entry: StoredEvent) -> None:
-    await _notify(entry, entry.payload["user"]["id"], {})
+async def _on_purchase(event: UserEvent, entry: StoredEvent) -> None:
+    await _notify(entry, event.user.id, {})
 
 
-async def _on_renewed(entry: StoredEvent) -> None:
-    await _notify(
-        entry, entry.payload["user"]["id"], {"duration_days": entry.payload["duration_days"]}
-    )
+async def _on_renewed(event: SubscriptionRenewedEvent, entry: StoredEvent) -> None:
+    await _notify(entry, event.user.id, {"duration_days": event.duration_days})
 
 
-async def _on_addon(entry: StoredEvent) -> None:
+async def _on_addon(event: SubscriptionAddOnGrantedEvent, entry: StoredEvent) -> None:
     # the owner is `target`; `user` is the system actor on the promocode path
-    owner = entry.payload.get("target") or entry.payload["user"]
-    await _notify(entry, owner["id"], {})
+    await _notify(entry, (event.target or event.user).id, {})
 
 
-async def _on_granted(entry: StoredEvent) -> None:
-    await _notify(
-        entry, entry.payload["target"]["id"], {"duration_days": entry.payload["duration_days"]}
-    )
+async def _on_granted(event: SubscriptionGrantedEvent, entry: StoredEvent) -> None:
+    await _notify(entry, event.target.id, {"duration_days": event.duration_days})
 
 
-async def _on_refund(entry: StoredEvent) -> None:
-    await _notify(
-        entry,
-        entry.payload["user_id"],
-        {"amount": entry.payload["amount"], "currency": entry.payload["currency"]},
-    )
+async def _on_refund(
+    event: Union[
+        TransactionRefundedEvent, TransactionPartiallyRefundedEvent, PaidOrderNotFulfilledEvent
+    ],
+    entry: StoredEvent,
+) -> None:
+    await _notify(entry, event.user_id, {"amount": event.amount, "currency": event.currency})
 
 
-async def _on_expiring(entry: StoredEvent) -> None:
-    await _notify(entry, entry.payload["user"]["id"], {"hours": entry.payload["hours"]})
-
-
-async def _on_hours(entry: StoredEvent) -> None:
-    await _notify(entry, entry.payload["user"]["id"], {"hours": entry.payload["hours"]})
+async def _on_hours(
+    event: Union[
+        SubscriptionExpiringEvent, SubscriptionNotConnectedEvent, SubscriptionExpiredAgoEvent
+    ],
+    entry: StoredEvent,
+) -> None:
+    await _notify(entry, event.user.id, {"hours": event.hours})
 
 
 def _amount(value: str | int) -> str | int:
@@ -82,39 +79,30 @@ def _amount(value: str | int) -> str | int:
     return value
 
 
-async def _on_discount_expiring(entry: StoredEvent) -> None:
+async def _on_discount_expiring(event: PromocodeDiscountExpiringEvent, entry: StoredEvent) -> None:
     await _notify(
         entry,
-        entry.payload["user"]["id"],
-        {
-            "code": entry.payload["code"],
-            "percent": entry.payload["percent"],
-            "hours": entry.payload["hours"],
-        },
+        event.user.id,
+        {"code": event.code, "percent": event.percent, "hours": event.hours},
     )
 
 
-async def _on_reward(entry: StoredEvent) -> None:
+async def _on_reward(
+    event: Union[ReferralRewardIssuedEvent, InviteeRewardIssuedEvent], entry: StoredEvent
+) -> None:
     await _notify(
-        entry,
-        entry.payload["user"]["id"],
-        {"reward_type": entry.payload["reward_type"], "amount": _amount(entry.payload["amount"])},
+        entry, event.user.id, {"reward_type": event.reward_type, "amount": _amount(event.amount)}
     )
 
 
-async def _on_new_device(entry: StoredEvent) -> None:
-    await _notify(
-        entry,
-        entry.payload["user"]["id"],
-        {"browser": entry.payload["browser"], "ip": entry.ip_address or "—"},
-    )
+async def _on_new_device(event: CabinetNewDeviceSignInEvent, entry: StoredEvent) -> None:
+    await _notify(entry, event.user.id, {"browser": event.browser, "ip": event.ip_address or "—"})
 
 
-async def _on_accounts_merged(entry: StoredEvent) -> None:
+async def _on_accounts_merged(event: AccountsMergedEvent, entry: StoredEvent) -> None:
     # an admin merge is not the customer's own doing, no notice
-    target_id = entry.payload["target"]["id"]
-    if entry.payload["actor"]["id"] == target_id:
-        await _notify(entry, target_id, {})
+    if event.actor.id == event.target.id:
+        await _notify(entry, event.target.id, {})
 
 
 def register_subscribers(bus: EventBus) -> None:
@@ -127,7 +115,7 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(TransactionPartiallyRefundedEvent, _on_refund)
     # same amount and currency fields as a refund
     bus.subscribe(PaidOrderNotFulfilledEvent, _on_refund)
-    bus.subscribe(SubscriptionExpiringEvent, _on_expiring)
+    bus.subscribe(SubscriptionExpiringEvent, _on_hours)
     bus.subscribe(SubscriptionExpiredEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficLimitedEvent, _on_purchase)
     bus.subscribe(SubscriptionTrafficThresholdEvent, _on_purchase)

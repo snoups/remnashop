@@ -3,17 +3,15 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer
 from dishka.integrations.fastapi import setup_dishka
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import BlacklistKind, Locale, RegistrationSource, Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError as DomainValidationError
@@ -23,41 +21,12 @@ from app.core.security.permissions import Permission
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
-from app.modules.providers import get_module_providers
 from app.modules.users import unsubscribe_token
 from app.modules.users.api.schemas import PromoteAdminRequest
 from app.modules.users.dto import CreateUserDto, RegistrationSnapshotDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnsubscribeMarketingUseCase
 from tests.fakes.events import RecordingEventPublisher
-
-
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
-
-
-@pytest.fixture
-async def test_container(session: AsyncSession, config: AppConfig) -> AsyncContainer:
-    # create_api_container()'s provider list (app/core/di/container.py), copied
-    # since dishka can't read it back off a container. The last provider for a
-    # type wins, so _TestSessionProvider replaces only the AsyncSession factory
-    # with the test's own session.
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
-    yield container
-    await container.close()
 
 
 @pytest.fixture

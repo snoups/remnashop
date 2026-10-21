@@ -15,7 +15,7 @@ from app.modules.subscriptions.eligibility import (
     lock_live_subscription,
     subscription_owner,
 )
-from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.events import SubscriptionEditAction, SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
@@ -52,7 +52,7 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
         else:
             panel_status = (await users.disable_user(subscription.remnawave_user_id)).status
 
-        action = "enable" if data.enabled else "disable"
+        action: SubscriptionEditAction = "enable" if data.enabled else "disable"
         try:
             async with self._uow:
                 await lock_live_subscription(self._subscription_repository, subscription.id)

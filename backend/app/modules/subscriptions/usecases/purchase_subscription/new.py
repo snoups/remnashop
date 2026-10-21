@@ -230,7 +230,7 @@ class NewPurchase:
                 user=actor,
                 subscription_id=subscription.id,
                 plan_id=data.plan_snapshot.plan_id,
-                purchase_type=data.purchase_type.value,
+                purchase_type=data.purchase_type,
                 payment_key=data.idempotency_key,
                 is_trial=data.plan_snapshot.is_trial,
             )

@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 
 from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import WataSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -55,11 +56,12 @@ def clear_public_key_cache() -> None:
 
 
 # Docs: https://api.wata.pro/
-class WataGateway(PaymentGateway):
+class WataGateway(PaymentGateway[WataSettings]):
+    settings_model = WataSettings
     currency = Currency.USD
 
     def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._require('api_key')}"}
+        return {"Authorization": f"Bearer {self.settings.api_key.get_secret_value()}"}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
@@ -128,7 +130,7 @@ class WataGateway(PaymentGateway):
         )
 
     async def _public_key(self) -> RSAPublicKey:
-        api_key = self._require("api_key")
+        api_key = self.settings.api_key.get_secret_value()
         cached = _public_key_cache.get(api_key)
         if cached is not None and cached[0] > monotonic():
             return cached[1]

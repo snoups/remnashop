@@ -4,7 +4,7 @@ from typing import AsyncIterator, Final
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer
 from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,6 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1, REFRESH_COOKIE_NAME
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.permissions import Permission
@@ -20,24 +19,12 @@ from app.modules.api_tokens.dto import CreateApiTokenDto
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
-from app.modules.providers import get_module_providers
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.container import make_test_container
 
 _PASSWORD: Final[str] = "Sup3rSecurePassword12345"
 _SVG_LOGO: Final[bytes] = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"></svg>'
-
-
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
 
 
 @pytest.fixture
@@ -49,14 +36,8 @@ def app_config(config: AppConfig, tmp_path: Path) -> AppConfig:
 async def test_container(
     session: AsyncSession, app_config: AppConfig
 ) -> AsyncIterator[AsyncContainer]:
-    # Mirrors create_api_container() so every router below resolves its real
-    # usecase graph; _TestSessionProvider goes last to win the AsyncSession.
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: app_config})
+    # mirrors create_api_container() so every router below resolves its real usecase graph
+    container = make_test_container(session, app_config)
     yield container
     await container.close()
 

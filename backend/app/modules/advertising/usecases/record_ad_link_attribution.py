@@ -45,7 +45,7 @@ class RecordAdLinkAttributionUseCase(UseCase[RecordAdLinkAttributionDto, None]):
                         user_id=data.user_id,
                         ad_link_id=ad_link.id,
                         ad_link_code=ad_link.code,
-                        channel=data.channel.value,
+                        channel=data.channel,
                     )
                 )
         except ConflictError:

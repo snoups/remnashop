@@ -26,7 +26,7 @@ class DeleteBackupRunUseCase(UseCase[int, None]):
             run = await self._backup_repository.get_run(data)
             await self._backup_repository.delete_run(data)
             await self._event_publisher.publish(
-                BackupChangedEvent(actor=actor, action="delete", run_id=data, kind=run.kind.value)
+                BackupChangedEvent(actor=actor, action="delete", run_id=data, kind=run.kind)
             )
         # unlink only after the delete commits, so a rollback keeps the file
         if run.file_path:

@@ -70,10 +70,9 @@ class SendTestBroadcastUseCase(UseCase[int, None, UserDto]):
         ).render(contexts[actor.id], datetime_now())
         media = outgoing_media(self._config.media_dir, broadcast)
         try:
-            async with self._client_factory.open(bot.proxy) as client:
+            async with self._client_factory.open(bot.token.get_secret_value(), bot.proxy) as client:
                 result = await send_broadcast_message(
                     client,
-                    bot.token.get_secret_value(),
                     actor.telegram_id,
                     message.text,
                     message.reply_markup,

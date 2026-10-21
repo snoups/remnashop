@@ -1,11 +1,11 @@
 import asyncio
 from typing import Final
 
-import httpx
 from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.telegram_api import bot_client, is_bot_token
 from app.core.usecase import UseCase
 from app.modules.notifications.dto import SendTelegramTextsDto
 from app.modules.notifications.sources import BotTokenSource, NotificationRendererFactory
@@ -38,7 +38,7 @@ class SendTelegramTextsUseCase(UseCase[SendTelegramTextsDto, set[int]]):
 
     async def _execute(self, actor: Actor, data: SendTelegramTextsDto) -> set[int]:
         token, proxy = await self._token_source.get_bot_token()
-        if token is None:
+        if token is None or not is_bot_token(token):
             logger.warning("Bot is not configured, Telegram texts were not sent")
             return set()
 
@@ -47,7 +47,7 @@ class SendTelegramTextsUseCase(UseCase[SendTelegramTextsDto, set[int]]):
         renderer = await self._renderer_factory.build()
 
         done = set(data.user_ids) - {user.id for user in users}
-        async with httpx.AsyncClient(timeout=TELEGRAM_TIMEOUT_SECONDS, proxy=proxy) as client:
+        async with bot_client(token, proxy, timeout=TELEGRAM_TIMEOUT_SECONDS) as bot:
             for user in users:
                 if user.telegram_id is None or user.is_blocked or user.deleted_at is not None:
                     done.add(user.id)
@@ -56,9 +56,7 @@ class SendTelegramTextsUseCase(UseCase[SendTelegramTextsDto, set[int]]):
                 if text is None:
                     logger.error(f"Translation '{data.key}' is missing, Telegram texts stopped")
                     break
-                result = await send_telegram_text(
-                    token, proxy, user.telegram_id, text, client=client
-                )
+                result = await send_telegram_text(token, proxy, user.telegram_id, text, bot=bot)
                 if result is not TelegramSendResult.FAILED:
                     done.add(user.id)
                 await asyncio.sleep(_SEND_PAUSE_S)

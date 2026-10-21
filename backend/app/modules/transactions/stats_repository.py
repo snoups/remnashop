@@ -19,6 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import TIME_1D
 from app.core.db.filters import in_ids
 from app.core.db.models.transaction import Transaction
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
@@ -258,7 +259,7 @@ class TransactionStatsRepository:
                 select(func.count(coverage.c.user_id.distinct()), func.coalesce(func.sum(added), 0))
             )
         ).one()
-        return int(payers), float(seconds) / 86400
+        return int(payers), float(seconds) / TIME_1D
 
     async def first_paid_at(
         self,

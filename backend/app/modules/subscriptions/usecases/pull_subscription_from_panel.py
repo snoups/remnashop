@@ -12,7 +12,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
-from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.events import StatusSyncSource, SubscriptionEditedEvent
 from app.modules.subscriptions.panel_sync import from_panel
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.sync_subscription_status import (
@@ -20,7 +20,7 @@ from app.modules.subscriptions.usecases.sync_subscription_status import (
 )
 from app.modules.users import UserRepository
 
-_SOURCE: Final[str] = "admin_pull"
+_SOURCE: Final[StatusSyncSource] = "admin_pull"
 
 
 class PullSubscriptionFromPanelUseCase(UseCase[int, SubscriptionDto]):

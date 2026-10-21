@@ -42,7 +42,9 @@ class UpdateNotificationChannelsUseCase(
                 f"Unknown notification groups or channels: {', '.join(sorted(unknown))}",
                 code=ErrorCode.NOTIFICATION_CHANNELS_INVALID,
             )
-        matrix = {group: sorted(set(requested.get(group, []))) for group in NOTIFICATION_GROUPS}
+        matrix = {
+            group.value: sorted(set(requested.get(group, []))) for group in NOTIFICATION_GROUPS
+        }
         async with self._uow:
             await self._user_repository.set_notification_channels(actor.id, matrix)
             updated = actor.model_copy(update={"notification_channels": matrix})

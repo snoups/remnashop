@@ -14,7 +14,7 @@ from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import PanelSyncResultDto
-from app.modules.subscriptions.events import PanelSyncCompletedEvent
+from app.modules.subscriptions.events import PanelSyncCompletedEvent, StatusSyncSource
 from app.modules.subscriptions.panel_sync import (
     differs_from_panel,
     finish_panel_sync,
@@ -26,7 +26,7 @@ from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
 
-_SOURCE: Final[str] = "panel_sync"
+_SOURCE: Final[StatusSyncSource] = "panel_sync"
 
 
 class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
@@ -104,7 +104,7 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         async with self._uow:
             await self._event_publisher.publish(
                 PanelSyncCompletedEvent(
-                    direction=result.direction.value,
+                    direction=result.direction,
                     checked=result.checked,
                     updated=result.updated,
                     failed=result.failed,

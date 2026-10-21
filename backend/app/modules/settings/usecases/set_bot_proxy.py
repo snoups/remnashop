@@ -14,9 +14,9 @@ from app.modules.settings.dto import BotSettingsDto, SetBotProxyDto
 from app.modules.settings.events import BotSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
-# What both clients accept: aiohttp-socks (bot process) and httpx[socks] (api).
-# httpx has no socks4, python-socks no https; neither knows socks5h, but both
-# resolve DNS on the proxy side for socks5 anyway, so it's the same thing.
+# What aiogram's session (aiohttp-socks) accepts in every process. python-socks
+# has no https and doesn't know socks5h, but it resolves DNS on the proxy side
+# for socks5 anyway, so it's the same thing.
 _PROXY_SCHEMES: Final[dict[str, str]] = {
     "http": "http",
     "socks5": "socks5",

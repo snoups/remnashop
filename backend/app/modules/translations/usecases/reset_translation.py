@@ -36,7 +36,7 @@ class ResetTranslationUseCase(UseCase[ResetTranslationDto, TranslationEntryDto])
                 TranslationChangedEvent(
                     actor=actor,
                     action="reset",
-                    locale=data.locale.value,
+                    locale=data.locale,
                     key=join_message_key(data.message_id, data.attribute_id),
                 )
             )

@@ -4,6 +4,7 @@ from xml.etree import ElementTree as ET
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import RobokassaSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -32,11 +33,12 @@ _STATE_PAID: Final[str] = "100"
 
 
 # Docs: https://docs.robokassa.ru/ru/pay-interface
-class RobokassaGateway(PaymentGateway):
+class RobokassaGateway(PaymentGateway[RobokassaSettings]):
+    settings_model = RobokassaSettings
     currency = Currency.RUB
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
-        login = self._require("merchant_login")
+        login = self.settings.merchant_login
         out_sum = f"{order.final_price:.2f}"
         inv_id = str(order.id)
         shp_params = {_SHP_ORDER_ID: order.idempotency_key}
@@ -46,7 +48,7 @@ class RobokassaGateway(PaymentGateway):
                     login,
                     out_sum,
                     inv_id,
-                    self._require("password1"),
+                    self.settings.password1.get_secret_value(),
                     *(f"{key}={shp_params[key]}" for key in sorted(shp_params)),
                 ]
             )
@@ -78,7 +80,7 @@ class RobokassaGateway(PaymentGateway):
 
         expected = md5_hex(
             ":".join(
-                [out_sum, inv_id, self._require("password2")]
+                [out_sum, inv_id, self.settings.password2.get_secret_value()]
                 + [f"{key}={shp_params[key]}" for key in sorted(shp_params)]
             )
         )
@@ -100,14 +102,16 @@ class RobokassaGateway(PaymentGateway):
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if signal.amount is None:
             return NOT_PAID
-        login = self._require("merchant_login")
+        login = self.settings.merchant_login
         inv_id = str(order.id)
         response = await self._http.get(
             _OP_STATE_URL,
             params={
                 "MerchantLogin": login,
                 "InvoiceID": inv_id,
-                "Signature": md5_hex(f"{login}:{inv_id}:{self._require('password2')}"),
+                "Signature": md5_hex(
+                    f"{login}:{inv_id}:{self.settings.password2.get_secret_value()}"
+                ),
             },
             timeout=PROVIDER_API_TIMEOUT_S,
         )

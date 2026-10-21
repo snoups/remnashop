@@ -1,5 +1,6 @@
 import time
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import jwt as pyjwt
 import pytest
@@ -7,8 +8,8 @@ from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.api.dependencies.admin import require_admin_user
-from app.api.dependencies.public import get_current_actor
-from app.core.actor import SyntheticActor
+from app.api.dependencies.public import get_auth_context
+from app.core.actor import Actor, SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
@@ -20,6 +21,10 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+
+
+async def _actor_of(*args: Any) -> Actor:
+    return (await get_auth_context.__dishka_orig_func__(*args)).actor
 
 
 def _fake_request() -> Request:
@@ -64,7 +69,7 @@ async def test_accepts_valid_token_with_active_session(
     user_id, session_id = await _create_user_and_session(user_repository, session_repository, uow)
     token = create_access_token(user_id, session_id, config.jwt_secret.get_secret_value())
 
-    actor = await get_current_actor.__dishka_orig_func__(
+    actor = await _actor_of(
         _fake_request(),
         config,
         user_repository,
@@ -89,7 +94,7 @@ async def test_rejects_token_with_revoked_session(
     token = create_access_token(user_id, session_id, config.jwt_secret.get_secret_value())
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_actor.__dishka_orig_func__(
+        await _actor_of(
             _fake_request(),
             config,
             user_repository,
@@ -112,7 +117,7 @@ async def test_rejects_token_with_unknown_sid(
     token = create_access_token(user_id, 999_999, config.jwt_secret.get_secret_value())
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_actor.__dishka_orig_func__(
+        await _actor_of(
             _fake_request(),
             config,
             user_repository,
@@ -139,7 +144,7 @@ async def test_rejects_pre_migration_token_missing_sid(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_actor.__dishka_orig_func__(
+        await _actor_of(
             _fake_request(),
             config,
             user_repository,
@@ -171,7 +176,7 @@ async def test_accepts_valid_api_token(
         )
         await uow.commit()
 
-    actor = await get_current_actor.__dishka_orig_func__(
+    actor = await _actor_of(
         _fake_request(),
         config,
         user_repository,
@@ -209,7 +214,7 @@ async def test_rejects_revoked_api_token(
     await api_token_repository.revoke_by_id(token.id)
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_actor.__dishka_orig_func__(
+        await _actor_of(
             _fake_request(),
             config,
             user_repository,
@@ -229,7 +234,7 @@ async def test_rejects_unknown_bearer_credential(
     config: AppConfig,
 ) -> None:
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_actor.__dishka_orig_func__(
+        await _actor_of(
             _fake_request(),
             config,
             user_repository,
@@ -261,7 +266,7 @@ async def test_require_admin_user_refuses_api_token(
         )
         await uow.commit()
 
-    actor = await get_current_actor.__dishka_orig_func__(
+    actor = await _actor_of(
         _fake_request(),
         config,
         user_repository,
@@ -313,7 +318,7 @@ async def test_api_token_ip_allowlist(
         )
         await uow.commit()
 
-    call = get_current_actor.__dishka_orig_func__(
+    call = _actor_of(
         _request_from(ip),
         config,
         user_repository,

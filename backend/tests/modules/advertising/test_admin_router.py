@@ -4,7 +4,7 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
+from dishka import AsyncContainer, Provider, Scope, provide
 from dishka.integrations.fastapi import setup_dishka
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,6 @@ from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
-from app.core.di.providers import get_core_providers
 from app.core.enums import AdLinkChannel, Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.core.security.permissions import Permission
@@ -34,22 +33,10 @@ from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.pricing.repository import PricingRepository
-from app.modules.providers import get_module_providers
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
-
-
-class _TestSessionProvider(Provider):
-    scope = Scope.REQUEST
-
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__()
-        self._session = session
-
-    @provide
-    def get_session(self) -> AsyncSession:
-        return self._session
+from tests.fakes.container import make_test_container
 
 
 class _AdvertisingProvider(Provider):
@@ -71,13 +58,7 @@ class _AdvertisingProvider(Provider):
 
 @pytest.fixture
 async def test_container(session: AsyncSession, config: AppConfig) -> AsyncIterator[AsyncContainer]:
-    providers = [
-        *get_core_providers(),
-        *get_module_providers(),
-        _AdvertisingProvider(),
-        _TestSessionProvider(session),
-    ]
-    container = make_async_container(*providers, context={AppConfig: config})
+    container = make_test_container(session, config, _AdvertisingProvider())
     yield container
     await container.close()
 

@@ -1,21 +1,11 @@
-from app.core.events import EventCategory, StoredEvent
-from app.core.utils.time import datetime_now
+from app.core.enums import Locale, Role
+from app.core.event_bus import EventBus
+from app.modules.settings import AccessSettingsChangedEvent
 from app.modules.transactions import subscribers
+from app.modules.users import UserDto
+from tests.fakes.events import stored_event
 
-
-def _entry(reenabled: bool) -> StoredEvent:
-    return StoredEvent(
-        outbox_id=1,
-        category=EventCategory.SETTINGS,
-        event_type="AccessSettingsChangedEvent",
-        occurred_at=datetime_now(),
-        payload={"payments_reenabled": reenabled, "changed_fields": ["payments_enabled"]},
-        actor_id=None,
-        actor_login=None,
-        actor_name=None,
-        actor_email=None,
-        ip_address=None,
-    )
+_ADMIN = UserDto(id=1, login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
 
 
 async def test_only_a_reenable_kicks_the_waitlist(monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -25,8 +15,13 @@ async def test_only_a_reenable_kicks_the_waitlist(monkeypatch) -> None:  # type:
         kicked.append(True)
 
     monkeypatch.setattr(subscribers.notify_payment_waitlist_task, "kiq", _kiq)
+    bus = EventBus()
+    subscribers.register_subscribers(bus)
 
-    await subscribers._notify_waitlist(_entry(False))
-    assert kicked == []
-    await subscribers._notify_waitlist(_entry(True))
+    for reenabled in (False, True):
+        event = AccessSettingsChangedEvent(
+            actor=_ADMIN, changed_fields=["payments_enabled"], payments_reenabled=reenabled
+        )
+        await bus.dispatch_stored(stored_event(event))
+
     assert kicked == [True]

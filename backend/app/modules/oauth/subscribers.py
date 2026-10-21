@@ -10,29 +10,24 @@ from app.modules.oauth.events import (
 )
 
 
-async def _log_oauth_login_succeeded(entry: StoredEvent) -> None:
-    logger.info(
-        f"Successful OAuth login via {entry.payload['provider']} "
-        f"for login='{entry.payload['user']['login']}'"
-    )
+async def _log_oauth_login_succeeded(event: OAuthLoginSucceededEvent, entry: StoredEvent) -> None:
+    logger.info(f"Successful OAuth login via {event.provider} for login='{event.user.login}'")
 
 
-async def _log_oauth_login_failed(entry: StoredEvent) -> None:
-    logger.warning(f"Failed OAuth login attempt via {entry.payload['provider']}")
+async def _log_oauth_login_failed(event: OAuthLoginFailedEvent, entry: StoredEvent) -> None:
+    logger.warning(f"Failed OAuth login attempt via {event.provider}")
 
 
-async def _log_oauth_identity_connected(entry: StoredEvent) -> None:
-    logger.info(
-        f"OAuth identity connected: {entry.payload['provider']} "
-        f"for login='{entry.payload['user']['login']}'"
-    )
+async def _log_oauth_identity_connected(
+    event: OAuthIdentityConnectedEvent, entry: StoredEvent
+) -> None:
+    logger.info(f"OAuth identity connected: {event.provider} for login='{event.user.login}'")
 
 
-async def _log_oauth_identity_disconnected(entry: StoredEvent) -> None:
-    logger.info(
-        f"OAuth identity disconnected: {entry.payload['provider']} "
-        f"for login='{entry.payload['user']['login']}'"
-    )
+async def _log_oauth_identity_disconnected(
+    event: OAuthIdentityDisconnectedEvent, entry: StoredEvent
+) -> None:
+    logger.info(f"OAuth identity disconnected: {event.provider} for login='{event.user.login}'")
 
 
 def register_subscribers(bus: EventBus) -> None:

@@ -118,10 +118,10 @@ class StartBroadcastUseCase(UseCase[int, None]):
         renderer = BroadcastRenderer(broadcast, promocode_code=code, unsubscribe_labels={})
         token = bot.token.get_secret_value()
         try:
-            async with self._client_factory.open(bot.proxy) as client:
+            async with self._client_factory.open(token, bot.proxy) as client:
                 username: Optional[str] = None
                 if any(b.kind in _DEEP_LINK_BUTTONS for b in broadcast.buttons):
-                    username = await get_bot_username(client, token)
+                    username = await get_bot_username(client)
                     if username is None:
                         logger.warning(
                             f"Broadcast '{broadcast_id}' channel post: bot username unknown, "
@@ -130,7 +130,6 @@ class StartBroadcastUseCase(UseCase[int, None]):
                 message = renderer.render_channel(username)
                 result = await send_broadcast_message(
                     client,
-                    token,
                     channel_id,
                     message.text,
                     message.reply_markup,

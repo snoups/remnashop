@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import datetime, timedelta
 from decimal import Decimal
 from itertools import count
@@ -6,6 +7,9 @@ from typing import Any, Final, Optional
 from uuid import uuid4
 
 import httpx
+from aiogram import Bot
+from aiogram.client.session.base import BaseSession
+from aiogram.methods import DeleteMessage, GetMe, TelegramMethod
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -105,18 +109,61 @@ async def add_paid_transaction(session: AsyncSession, user_id: int) -> None:
     await session.flush()
 
 
+class _ResponderSession(BaseSession):
+    """Answers each call with the responder's raw Bot API reply, which aiogram
+    then parses (or turns into its exception) exactly as for a real response."""
+
+    def __init__(self, telegram: "MockTelegram") -> None:
+        super().__init__()
+        self._telegram = telegram
+
+    async def make_request(
+        self, bot: Bot, method: TelegramMethod[Any], timeout: Optional[int] = None
+    ) -> Any:
+        self._telegram.requests.append(method)
+        reply = self._telegram.responder(method)
+        response = self.check_response(
+            bot=bot, method=method, status_code=reply.status_code, content=reply.text
+        )
+        return response.result
+
+    async def stream_content(self, *args: Any, **kwargs: Any) -> AsyncGenerator[bytes, None]:
+        raise AssertionError("broadcasts never download")
+        yield b""
+
+    async def close(self) -> None:
+        pass
+
+
 class MockTelegram(TelegramClientFactory):
-    def __init__(self, responder: Callable[[httpx.Request], httpx.Response]) -> None:
-        self.requests: list[httpx.Request] = []
-        self._responder = responder
+    def __init__(self, responder: Callable[[TelegramMethod[Any]], httpx.Response]) -> None:
+        self.requests: list[TelegramMethod[Any]] = []
+        self.responder = responder
 
-    def open(self, proxy: Optional[str]) -> httpx.AsyncClient:
-        def handle(request: httpx.Request) -> httpx.Response:
-            self.requests.append(request)
-            return self._responder(request)
+    @asynccontextmanager
+    async def _bot(self, token: str) -> AsyncIterator[Bot]:
+        yield Bot(token=token, session=_ResponderSession(self))
 
-        return httpx.AsyncClient(transport=httpx.MockTransport(handle))
+    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[Bot]:
+        return self._bot(token)
 
 
-def ok_response(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(200, json={"ok": True, "result": {"message_id": 100}})
+def message_result(message_id: int = 100, **extra: Any) -> dict[str, Any]:
+    return {"message_id": message_id, "date": 0, "chat": {"id": 1, "type": "private"}, **extra}
+
+
+BOT_USER: Final[dict[str, Any]] = {
+    "id": 123,
+    "is_bot": True,
+    "first_name": "bot",
+    "username": "shop_bot",
+}
+
+
+def ok_response(method: TelegramMethod[Any]) -> httpx.Response:
+    result: object = message_result()
+    if isinstance(method, DeleteMessage):
+        result = True
+    elif isinstance(method, GetMe):
+        result = BOT_USER
+    return httpx.Response(200, json={"ok": True, "result": result})

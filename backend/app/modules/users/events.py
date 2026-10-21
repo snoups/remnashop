@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, Optional
+from typing import ClassVar, Literal, Optional
 
+from app.core.enums import CabinetSignInMethod
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
 
 
@@ -15,7 +16,7 @@ class TelegramUserRegisteredEvent(UserEvent):
 @dataclass(frozen=True, kw_only=True)
 class CabinetUserRegisteredEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
-    method: str
+    method: CabinetSignInMethod
     ad_link_code: Optional[str] = None
     referral_code: Optional[str] = None
 
@@ -129,4 +130,4 @@ class BotBlockedByUserEvent(SystemEvent):
 class MarketingOptOutChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
     opted_out: bool
-    source: str
+    source: Literal["account", "link"]

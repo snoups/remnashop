@@ -71,7 +71,7 @@ async def test_sends_rendered_text_and_reports_finished_ids(
     blocked = await _create(user_repository, uow, name="d", telegram_id=7004, is_blocked=True)
     bot_blocked = await _create(user_repository, uow, name="e", telegram_id=7005)
 
-    done = await _use_case(user_repository, uow, "t").system(
+    done = await _use_case(user_repository, uow, "123:abc").system(
         SendTelegramTextsDto(
             user_ids=[ok.id, no_tg.id, failed.id, blocked.id, bot_blocked.id, 999_999], key=_KEY
         )

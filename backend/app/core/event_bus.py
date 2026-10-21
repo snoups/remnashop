@@ -1,20 +1,30 @@
-from typing import Any, Awaitable, Callable, Optional, Union
+from functools import wraps
+from typing import Awaitable, Callable, Optional
 
 from loguru import logger
 
-from app.core.events import BaseEvent, StoredEvent
+from app.core.events import E, StoredEvent, restore_event
 
-EventHandler = Callable[[Any], Awaitable[None]]
+StoredEventHandler = Callable[[StoredEvent], Awaitable[None]]
 
 
 class EventBus:
     def __init__(self) -> None:
-        self._handlers: dict[str, list[EventHandler]] = {}
+        self._handlers: dict[str, list[StoredEventHandler]] = {}
 
-    def subscribe(self, event_type: Union[type[BaseEvent], str], handler: EventHandler) -> None:
-        # a name too, for subscribers that only know event types as stored strings
-        name = event_type if isinstance(event_type, str) else event_type.__name__
-        self._handlers.setdefault(name, []).append(handler)
+    def subscribe(
+        self, event_type: type[E], handler: Callable[[E, StoredEvent], Awaitable[None]]
+    ) -> None:
+        @wraps(handler)
+        async def run(entry: StoredEvent) -> None:
+            # a row that no longer matches the class fails like any handler error
+            await handler(restore_event(event_type, entry), entry)
+
+        self._handlers.setdefault(event_type.__name__, []).append(run)
+
+    def subscribe_stored(self, event_type: str, handler: StoredEventHandler) -> None:
+        # for subscribers that only know event types as stored strings
+        self._handlers.setdefault(event_type, []).append(handler)
 
     async def dispatch_stored(self, entry: StoredEvent) -> Optional[str]:
         # every handler runs even if an earlier one failed; the last failure is

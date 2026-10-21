@@ -7,7 +7,7 @@ from loguru import logger
 from redis.asyncio import Redis
 
 from app.core.actor import Actor
-from app.core.constants import REDIS_KEY_PREFIX, TTL_7D
+from app.core.constants import REDIS_KEY_PREFIX, TIME_1H, TTL_7D
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
@@ -86,7 +86,7 @@ class WarnExpiringPromocodeDiscountsUseCase(UseCase[None, int]):
                         promocode_id=promocode.id,
                         code=promocode.code,
                         percent=percent,
-                        hours=max(1, math.ceil(left / 3600)),
+                        hours=max(1, math.ceil(left / TIME_1H)),
                     )
                 )
                 keys.append(key)

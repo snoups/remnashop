@@ -1,14 +1,21 @@
-from app.core.telegram_api import bot_file_url, bot_method_url, retry_after_seconds
+import pytest
+
+from app.core.telegram_api import bot_client, is_bot_token
+from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
 
 
-def test_urls_point_at_the_bot_api() -> None:
-    assert bot_method_url("123:abc", "getMe") == "https://api.telegram.org/bot123:abc/getMe"
-    assert (
-        bot_file_url("123:abc", "a/b.webp") == "https://api.telegram.org/file/bot123:abc/a/b.webp"
-    )
+def test_is_bot_token() -> None:
+    assert is_bot_token("123:abc") is True
+    assert is_bot_token("not-a-token") is False
 
 
-def test_retry_after_reads_the_parameters_and_falls_back() -> None:
-    assert retry_after_seconds({"parameters": {"retry_after": 7}}) == 7.0
-    assert retry_after_seconds({"parameters": {"retry_after": "x"}}) == 1.0
-    assert retry_after_seconds({}) == 1.0
+async def test_bot_client_closes_its_session_and_uses_the_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = use_fake_bot(monkeypatch, FakeBotSession())
+
+    async with bot_client("123:abc", "socks5://proxy:1080") as bot:
+        assert bot.token == "123:abc"
+
+    assert session.proxy == "socks5://proxy:1080"
+    assert session.closed

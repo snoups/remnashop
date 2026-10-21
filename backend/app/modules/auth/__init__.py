@@ -1,6 +1,6 @@
 from app.modules.auth.di import get_auth_providers
 from app.modules.auth.dto import AuthStatusDto, RevokeSessionDto, RevokeUserSessionDto, SessionDto
-from app.modules.auth.events import RescueCliUsedEvent
+from app.modules.auth.events import RescueCliAction, RescueCliUsedEvent
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_cookies import (
     OAUTH_BINDING_COOKIE,
@@ -44,6 +44,7 @@ __all__ = [
     "LoginUseCase",
     "LogoutUseCase",
     "RefreshSessionUseCase",
+    "RescueCliAction",
     "RescueCliUsedEvent",
     "RevokeSessionDto",
     "RevokeSessionUseCase",

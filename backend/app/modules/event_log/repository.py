@@ -36,7 +36,7 @@ class EventLogRepository:
         return EventLogEntryDto.model_validate(row, from_attributes=True)
 
     async def create(self, entry: EventLogEntryDto) -> Optional[EventLogEntryDto]:
-        entry_data = entry.model_dump(exclude=SERVER_OWNED_FIELDS)
+        entry_data = entry.model_dump(exclude=set(SERVER_OWNED_FIELDS))
         stmt = (
             pg_insert(EventLogEntry)
             .values(**entry_data)

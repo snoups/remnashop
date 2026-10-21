@@ -5,6 +5,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import YooMoneySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -28,12 +29,13 @@ _INCOMING: Final[str] = "in"
 
 
 # Docs: https://yoomoney.ru/docs/wallet
-class YooMoneyGateway(PaymentGateway):
+class YooMoneyGateway(PaymentGateway[YooMoneySettings]):
+    settings_model = YooMoneySettings
     currency = Currency.RUB
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
-            "receiver": self._require("wallet_id"),
+            "receiver": self.settings.wallet_id,
             "quickpay-form": "button",
             "paymentType": "AC",
             "sum": f"{order.final_price:.2f}",
@@ -73,13 +75,15 @@ class YooMoneyGateway(PaymentGateway):
         message = "&".join(
             f"{key}={quote(value, safe='')}" for key, value in sorted(data.items()) if key != "sign"
         )
-        expected = hmac_hex(self._require("secret_key"), message.encode("utf-8"))
+        expected = hmac_hex(self.settings.secret_key.get_secret_value(), message.encode("utf-8"))
         return safe_equals(expected, received_sign)
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if signal.amount is None:
             return NOT_PAID
-        token = self._optional("access_token")
+        token = (
+            self.settings.access_token.get_secret_value() if self.settings.access_token else None
+        )
         if token is None:
             return ProviderPayment(
                 paid=True,

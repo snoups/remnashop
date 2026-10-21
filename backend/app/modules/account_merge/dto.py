@@ -1,10 +1,30 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Optional
+from decimal import Decimal
+from enum import StrEnum, auto
+from typing import Final, Literal, Optional
 
+from app.core.enums import Locale, Role
 from app.modules.users import UserDto
 
 MergeSide = Literal["source", "target"]
+# an OAuth conflict is keyed per provider: "oauth:github"
+OAUTH_CONFLICT_PREFIX: Final[str] = "oauth:"
+
+
+class MergeConflictKey(StrEnum):
+    TELEGRAM = auto()
+    EMAIL = auto()
+    LOGIN = auto()
+    NAME = auto()
+    LANGUAGE = auto()
+    PERSONAL_DISCOUNT = auto()
+    PURCHASE_DISCOUNT = auto()
+    REFERRED_BY = auto()
+
+
+def oauth_conflict_key(provider: str) -> str:
+    return f"{OAUTH_CONFLICT_PREFIX}{provider}"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -67,3 +87,36 @@ class MergeAccountsDto:
     source_id: int
     choices: dict[str, MergeSide]
     fingerprint: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class MergedUserDto:
+    """Every column of the kept account a merge rewrites."""
+
+    telegram_id: Optional[int]
+    username: Optional[str]
+    email: Optional[str]
+    email_undeliverable_at: Optional[datetime]
+    login: Optional[str]
+    password_hash: Optional[str]
+    password_change_required: bool
+    name: str
+    language: Locale
+    personal_discount: int
+    personal_discount_promocode_id: Optional[int]
+    purchase_discount: int
+    purchase_discount_promocode_id: Optional[int]
+    role: Role
+    permission_grants: Optional[list[str]]
+    permission_revokes: Optional[list[str]]
+    ip_allowlist: Optional[list[str]]
+    notification_channels: Optional[dict[str, list[str]]]
+    notifications_seen_at: Optional[datetime]
+    notifications_cleared_at: Optional[datetime]
+    points: Decimal
+    bonus_days: int
+    is_trial_available: bool
+    is_blocked: bool
+    marketing_opt_out: bool
+    loyalty_excluded: bool
+    rules_accepted_at: Optional[datetime]

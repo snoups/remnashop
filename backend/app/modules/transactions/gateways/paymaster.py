@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import PayMasterSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -25,18 +26,19 @@ _PAID_STATUS: Final[str] = "Settled"
 
 
 # Docs: https://paymaster.ru/docs/en/api
-class PayMasterGateway(PaymentGateway):
+class PayMasterGateway(PaymentGateway[PayMasterSettings]):
+    settings_model = PayMasterSettings
     currency = Currency.RUB
 
     def _headers(self) -> dict[str, str]:
         return {
-            "Authorization": f"Bearer {self._require('api_key')}",
+            "Authorization": f"Bearer {self.settings.api_key.get_secret_value()}",
             "Accept": "application/json",
         }
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {
-            "merchantId": self._require("merchant_id"),
+            "merchantId": self.settings.merchant_id,
             "invoice": {
                 "description": f"Order #{order.id}",
                 "orderNo": order.idempotency_key,

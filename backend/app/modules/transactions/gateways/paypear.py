@@ -4,6 +4,7 @@ import orjson
 
 from app.core.enums import Currency
 from app.core.exceptions import PaymentGatewayError
+from app.modules.gateways import PayPearSettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
 from app.modules.transactions.gateways.base import (
     NOT_PAID,
@@ -26,11 +27,12 @@ _PAID_EVENT: Final[str] = "payment.confirmed"
 
 
 # Docs: https://paypear.ru/docs/
-class PayPearGateway(PaymentGateway):
+class PayPearGateway(PaymentGateway[PayPearSettings]):
+    settings_model = PayPearSettings
     currency = Currency.RUB
 
     def _auth(self) -> tuple[str, str]:
-        return self._require("shop_id"), self._require("secret_key")
+        return self.settings.shop_id, self.settings.secret_key.get_secret_value()
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {

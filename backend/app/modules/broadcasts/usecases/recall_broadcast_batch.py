@@ -2,7 +2,7 @@ import asyncio
 from functools import partial
 from typing import Final
 
-import httpx
+from aiogram import Bot
 from loguru import logger
 
 from app.core.actor import Actor
@@ -28,13 +28,11 @@ _DONE: Final[frozenset[SendOutcome]] = frozenset(
 )
 
 
-async def _delete(
-    client: httpx.AsyncClient, token: str, chat_id: int, message_id: int
-) -> SendResult:
-    result = await delete_telegram_message(client, token, chat_id, message_id)
+async def _delete(client: Bot, chat_id: int, message_id: int) -> SendResult:
+    result = await delete_telegram_message(client, chat_id, message_id)
     if result.outcome is SendOutcome.RETRY and result.retry_after is not None:
         await asyncio.sleep(min(result.retry_after, MAX_RETRY_AFTER_S))
-        result = await delete_telegram_message(client, token, chat_id, message_id)
+        result = await delete_telegram_message(client, chat_id, message_id)
     return result
 
 
@@ -55,14 +53,12 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
         self._recall_dispatch = recall_dispatch
         self._uow = uow
 
-    async def _recall_rows(
-        self, client: httpx.AsyncClient, token: str, rows: list[SentRecipientDto]
-    ) -> bool:
+    async def _recall_rows(self, client: Bot, rows: list[SentRecipientDto]) -> bool:
         # False: the bot token was rejected, nothing further can be deleted
         for start in range(0, len(rows), GROUP_SIZE):
             group = rows[start : start + GROUP_SIZE]
             results = await asyncio.gather(
-                *(_delete(client, token, r.telegram_id, r.telegram_message_id) for r in group)
+                *(_delete(client, r.telegram_id, r.telegram_message_id) for r in group)
             )
             async with self._uow:
                 for r, result in zip(group, results):
@@ -93,10 +89,10 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
         # a short page means this is the last one; concurrent chains end the same way
         last_page = len(rows) < BATCH_SIZE
         channel_deleted = False
-        async with self._client_factory.open(bot.proxy) as client:
-            authorized = await self._recall_rows(client, token, rows)
+        async with self._client_factory.open(token, bot.proxy) as client:
+            authorized = await self._recall_rows(client, rows)
             if last_page and authorized and channel is not None:
-                channel_deleted = (await _delete(client, token, *channel)).outcome in _DONE
+                channel_deleted = (await _delete(client, *channel)).outcome in _DONE
 
         async with self._uow:
             if channel_deleted:

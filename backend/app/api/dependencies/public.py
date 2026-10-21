@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 import jwt
@@ -23,6 +24,14 @@ from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.users import UserDto, UserRepository
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class AuthContext:
+    actor: Actor
+    # None for an API token, which has no session behind it
+    session_id: Optional[int] = None
+    audience: Optional[SessionAudience] = None
 
 
 async def _resolve_api_token_actor(
@@ -59,7 +68,7 @@ async def _resolve_api_token_actor(
 
 
 @inject
-async def get_current_actor(
+async def get_auth_context(
     request: Request,
     config: FromDishka[AppConfig],
     user_repository: FromDishka[UserRepository],
@@ -67,7 +76,7 @@ async def get_current_actor(
     api_token_repository: FromDishka[ApiTokenRepository],
     uow: FromDishka[UnitOfWork],
     credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
-) -> Actor:
+) -> AuthContext:
     client_ip = resolve_client_ip(request)
 
     if credentials is None:
@@ -86,7 +95,7 @@ async def get_current_actor(
         )
         if token_actor is not None:
             forbid_cabinet_proxy(request)
-            return token_actor
+            return AuthContext(actor=token_actor)
         logger.warning(f"Invalid or expired token from IP '{client_ip}'")
         raise ApiError(
             status.HTTP_401_UNAUTHORIZED, "Invalid or expired token", code=ErrorCode.TOKEN_INVALID
@@ -108,8 +117,6 @@ async def get_current_actor(
         logger.warning(f"Blocked actor {actor.log} attempted access from IP '{client_ip}'")
         raise ApiError(status.HTTP_401_UNAUTHORIZED, "User is blocked", code=ErrorCode.USER_BLOCKED)
 
-    request.state.session_id = session_id
-    request.state.session_audience = session.audience
     if session.audience is SessionAudience.DASHBOARD:
         forbid_cabinet_proxy(request)
 
@@ -121,7 +128,11 @@ async def get_current_actor(
             code=ErrorCode.IP_NOT_ALLOWED,
         )
 
-    return actor
+    return AuthContext(actor=actor, session_id=session_id, audience=session.audience)
+
+
+def get_current_actor(auth: AuthContext = Depends(get_auth_context)) -> Actor:
+    return auth.actor
 
 
 def forbid_cabinet_proxy(request: Request) -> None:
@@ -167,9 +178,11 @@ async def get_current_user(
     return user
 
 
-def get_cabinet_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
+def get_cabinet_user(
+    user: UserDto = Depends(get_current_user), auth: AuthContext = Depends(get_auth_context)
+) -> UserDto:
     """Cabinet routes: a customer session, never a dashboard one."""
-    if getattr(request.state, "session_audience", None) is not SessionAudience.CABINET:
+    if auth.audience is not SessionAudience.CABINET:
         raise ApiError(
             status.HTTP_403_FORBIDDEN,
             "This endpoint requires a cabinet session",
@@ -190,10 +203,14 @@ def get_cabinet_customer(user: UserDto = Depends(get_cabinet_user)) -> UserDto:
     return user
 
 
-def get_profile_user(request: Request, user: UserDto = Depends(get_current_user)) -> UserDto:
+def get_profile_user(
+    request: Request,
+    user: UserDto = Depends(get_current_user),
+    auth: AuthContext = Depends(get_auth_context),
+) -> UserDto:
     """/users/me: a cabinet session, or staff in the dashboard; a customer's
     dashboard session is refused, as is any dashboard session through the cabinet."""
-    if getattr(request.state, "session_audience", None) is SessionAudience.CABINET:
+    if auth.audience is SessionAudience.CABINET:
         return user
     forbid_cabinet_proxy(request)
     if not user.is_privileged:
@@ -205,13 +222,12 @@ def get_profile_user(request: Request, user: UserDto = Depends(get_current_user)
     return user
 
 
-def get_current_session_id(request: Request, actor: Actor = Depends(get_current_actor)) -> int:
+def get_current_session_id(auth: AuthContext = Depends(get_auth_context)) -> int:
     """The session the request's access token belongs to; an API token has none."""
-    session_id: Optional[int] = getattr(request.state, "session_id", None)
-    if session_id is None:
+    if auth.session_id is None:
         raise ApiError(
             status.HTTP_403_FORBIDDEN,
             "This endpoint is available to user accounts only",
             code=ErrorCode.USER_ACCOUNT_REQUIRED,
         )
-    return session_id
+    return auth.session_id

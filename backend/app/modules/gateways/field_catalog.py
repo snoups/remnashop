@@ -1,10 +1,14 @@
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Final
+from typing import Final, get_args
+
+from pydantic import SecretStr
+from pydantic.fields import FieldInfo
 
 from app.core.enums import Currency, PaymentGatewayType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.modules.gateways.gateway_settings import GATEWAY_SETTINGS, NumericStr
 
 _CURRENCY_FIELD_KEY: Final[str] = "currency"
 # Webhook source-IP check for providers that don't sign their notifications
@@ -28,130 +32,24 @@ class GatewayFieldSpec:
     default: str = ""
 
 
+_KIND_BY_TYPE: Final[dict[object, GatewayFieldKind]] = {
+    str: GatewayFieldKind.TEXT,
+    SecretStr: GatewayFieldKind.SECRET,
+    NumericStr: GatewayFieldKind.NUMBER,
+    bool: GatewayFieldKind.BOOLEAN,
+}
+
+
+def _field_spec(key: str, field: FieldInfo) -> GatewayFieldSpec:
+    declared = [arg for arg in get_args(field.annotation) if arg is not type(None)]
+    kind = _KIND_BY_TYPE[declared[0] if declared else field.annotation]
+    default = str(field.default).lower() if kind is GatewayFieldKind.BOOLEAN else ""
+    return GatewayFieldSpec(key=key, kind=kind, required=field.is_required(), default=default)
+
+
 GATEWAY_FIELD_CATALOG: Final[dict[PaymentGatewayType, tuple[GatewayFieldSpec, ...]]] = {
-    PaymentGatewayType.TELEGRAM_STARS: (
-        GatewayFieldSpec(
-            key=REQUIRE_PAID_PURCHASE_FIELD_KEY,
-            kind=GatewayFieldKind.BOOLEAN,
-            required=False,
-            default="false",
-        ),
-    ),
-    PaymentGatewayType.YOOKASSA: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="vat_code", kind=GatewayFieldKind.NUMBER, required=False),
-        GatewayFieldSpec(
-            key=VERIFY_IP_FIELD_KEY, kind=GatewayFieldKind.BOOLEAN, required=False, default="true"
-        ),
-    ),
-    PaymentGatewayType.YOOMONEY: (
-        GatewayFieldSpec(key="wallet_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="access_token", kind=GatewayFieldKind.SECRET, required=False),
-    ),
-    PaymentGatewayType.CRYPTOMUS: (
-        GatewayFieldSpec(key="merchant_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.HELEKET: (
-        GatewayFieldSpec(key="merchant_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.CRYPTOPAY: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.FREEKASSA: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret_word_2", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="payment_system_id", kind=GatewayFieldKind.NUMBER),
-    ),
-    PaymentGatewayType.MULENPAY: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="vat_code", kind=GatewayFieldKind.NUMBER, required=False),
-    ),
-    PaymentGatewayType.PAYMASTER: (
-        GatewayFieldSpec(key="merchant_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-    ),
-    PaymentGatewayType.PLATEGA: (
-        GatewayFieldSpec(key="merchant_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="payment_method", kind=GatewayFieldKind.NUMBER, required=False),
-    ),
-    PaymentGatewayType.ROBOKASSA: (
-        GatewayFieldSpec(key="merchant_login", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="password1", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="password2", kind=GatewayFieldKind.SECRET),
-    ),
-    PaymentGatewayType.URLPAY: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="vat_code", kind=GatewayFieldKind.NUMBER, required=False),
-    ),
-    PaymentGatewayType.WATA: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.VALUTIX: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="service_id", kind=GatewayFieldKind.NUMBER, required=False),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.ROLLYPAY: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="signing_secret", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.ANTILOPAY: (
-        GatewayFieldSpec(key="secret_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="private_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="public_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="project_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.PAYPALYCH: (
-        GatewayFieldSpec(key="api_token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.RIOPAY: (
-        GatewayFieldSpec(key="api_token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="service_id", kind=GatewayFieldKind.NUMBER, required=False),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.AURAPAY: (
-        GatewayFieldSpec(key="api_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-    ),
-    PaymentGatewayType.SEVERPAY: (
-        GatewayFieldSpec(key="mid", kind=GatewayFieldKind.NUMBER),
-        GatewayFieldSpec(key="token", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.LAVA: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="webhook_secret", kind=GatewayFieldKind.SECRET),
-    ),
-    PaymentGatewayType.CLOUDPAYMENTS: (
-        GatewayFieldSpec(key="public_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="api_secret", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
-    PaymentGatewayType.PAYPEAR: (
-        GatewayFieldSpec(key="shop_id", kind=GatewayFieldKind.TEXT),
-        GatewayFieldSpec(key="secret_key", kind=GatewayFieldKind.SECRET),
-        GatewayFieldSpec(key="currency", kind=GatewayFieldKind.TEXT, required=False),
-    ),
+    gateway_type: tuple(_field_spec(key, field) for key, field in model.model_fields.items())
+    for gateway_type, model in GATEWAY_SETTINGS.items()
 }
 
 
