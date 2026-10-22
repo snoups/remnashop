@@ -7,10 +7,11 @@ from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
-from app.core.enums import Currency, PurchaseType
+from app.core.enums import Currency, PurchaseChannel, PurchaseType
+from app.modules.legal import ListVisibleLegalDocumentsUseCase
 from app.modules.subscriptions import ListActivePlansUseCase, ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
-from app.telegram.dialogs.rendering import label_with_icon, render_window_text
+from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
 from app.telegram.i18n import format_date, format_price, get_translator
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
@@ -113,11 +114,17 @@ async def method_getter(
 @inject
 async def confirm_getter(
     dialog_manager: DialogManager,
+    list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     runner = _runner(dialog_manager, i18n)
     data = dialog_manager.dialog_data
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    documents = await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
+    terms_notice = (
+        TrustedHtml(render_window_text(runner, "frg-purchase-terms-notice")) if documents else ""
+    )
     return {
         "window_text": render_window_text(
             runner,
@@ -127,6 +134,7 @@ async def confirm_getter(
             price=_price(data["prices"], data["currency"]),
             currency_symbol=Currency(data["currency"]).symbol,
             method=runner.get(f"gateway-name.{data['gateway_type']}"),
+            terms_notice=terms_notice,
         ),
         "pay_text": label_with_icon(runner, "btn-purchase.pay"),
         "back_text": label_with_icon(runner, "btn-back.general"),

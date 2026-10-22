@@ -3,7 +3,7 @@ from typing import Optional
 
 from app.core.constants import TTL_7D
 from app.core.db.uow import UnitOfWork
-from app.core.enums import RegistrationSource
+from app.core.enums import Locale, RegistrationSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
@@ -22,7 +22,11 @@ class TelegramWebAppLoginUseCase:
         self._uow = uow
 
     async def execute(
-        self, init_data: str, client_ip: str, user_agent: Optional[str]
+        self,
+        init_data: str,
+        client_ip: str,
+        user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
@@ -41,4 +45,5 @@ class TelegramWebAppLoginUseCase:
             # expires, so a session left behind by an IP change needn't outlive a week
             session_ttl=TTL_7D,
             source=RegistrationSource.CABINET_MINI_APP,
+            legal_locale=legal_locale,
         )

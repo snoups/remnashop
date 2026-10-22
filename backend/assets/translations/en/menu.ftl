@@ -81,6 +81,24 @@ btn-menu =
     .purchase = Buy a subscription
     .promocode = Promocode
     .referrals = Referrals
+    .legal = Documents
+
+btn-legal =
+    .OFFER = Public offer
+    .USER_AGREEMENT = User agreement
+    .PRIVACY_POLICY = Privacy policy
+
+msg-legal-list = Legal documents. Pick one to read it.
+msg-legal-empty = No documents have been published yet.
+msg-legal-gate =
+    <b>Before you start</b>
+    To use the bot, read the documents below and accept them.
+msg-legal-gate-update =
+    <b>We’ve updated our documents</b>
+    Review the new version and accept it to continue.
+
+btn-legal-gate =
+    .accept = ✅ I accept
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
@@ -180,7 +198,10 @@ ntf-purchase =
 msg-purchase-plan = Choose a plan:
 msg-purchase-duration = { $plan_name }: choose a period:
 msg-purchase-method = Choose a payment method:
-msg-purchase-confirm = { $plan_name } · { $duration_days } d · { $price } { $currency_symbol } · { $method }
+msg-purchase-confirm =
+    { $plan_name } · { $duration_days } d · { $price } { $currency_symbol } · { $method }
+    { $terms_notice }
+frg-purchase-terms-notice = By paying you accept the terms — /terms
 msg-purchase-pay = Your order is ready. Tap the button below to pay.
 msg-purchase-link-choice = You already have a { $plan_name } subscription. Renew it or buy another one?
 
@@ -288,13 +309,10 @@ ntf-broadcast =
     .start-required = Press /start to continue.
 
 ntf-requirements =
-    .rules = Please read and accept the rules to continue.
     .channel = Subscribe to our channel to continue.
     .channel-not-found = We can't see your subscription yet. Subscribe and try again.
 
 btn-requirements =
-    .rules = Read the rules
-    .accept = I accept
     .subscribe = Subscribe
     .check = I've subscribed
 

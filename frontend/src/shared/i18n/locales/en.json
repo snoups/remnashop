@@ -1010,6 +1010,16 @@
       "badge": "Undeliverable",
       "clear": "Clear undeliverable mark",
       "cleared": "Undeliverable mark cleared."
+    },
+    "legalAcceptances": {
+      "title": "Accepted documents",
+      "none": "No documents accepted yet.",
+      "loadError": "Failed to load accepted documents.",
+      "triggers": {
+        "SIGN_UP": "Sign-up",
+        "PAYMENT": "Payment"
+      },
+      "order": "Order #{{id}}"
     }
   },
   "announcements": {
@@ -1053,7 +1063,6 @@
     "title": "Settings",
     "tabs": {
       "general": "General",
-      "access": "Access",
       "bot": "Telegram bot",
       "cabinet": "Web cabinet",
       "apiTokens": "API tokens",
@@ -1367,8 +1376,6 @@
     "botRequirements": {
       "title": "Requirements",
       "description": "What a customer must do before using the bot",
-      "rulesLabel": "Accept the rules",
-      "rulesUrl": "Rules link",
       "channelLabel": "Subscribe to the channel",
       "channelId": "Channel ID",
       "channelUrl": "Channel link",
@@ -1438,6 +1445,41 @@
         "yandex": "Yandex",
         "email": "Email code"
       }
+    },
+    "legal": {
+      "loadError": "Failed to load documents.",
+      "offerMissing": "The offer is not visible in a channel where payment is possible: {{channels}}.",
+      "channels": {
+        "BOT": "bot",
+        "CABINET": "cabinet"
+      },
+      "kinds": {
+        "OFFER": "Offer",
+        "USER_AGREEMENT": "User agreement",
+        "PRIVACY_POLICY": "Privacy policy"
+      },
+      "kindDescriptions": {
+        "OFFER": "Shown to a customer before payment",
+        "USER_AGREEMENT": "Accepted before using the bot and when signing in to the cabinet",
+        "PRIVACY_POLICY": "Accepted before using the bot and when signing in to the cabinet"
+      },
+      "showIn": {
+        "BOT": "Show in the bot",
+        "CABINET": "Show in the cabinet"
+      },
+      "tabs": {
+        "common": "Common",
+        "BOT": "Bot",
+        "CABINET": "Cabinet"
+      },
+      "ownText": "Own text",
+      "usesCommon": "The common text is used.",
+      "titleLabel": "Title",
+      "bodyLabel": "Text",
+      "bodyHint": "Markdown. The title and text together are limited to 32768 characters.",
+      "reaccept": "Ask customers to accept again",
+      "reacceptHint": "Every customer will see the new version on their next bot action or cabinet visit. Leave it off for minor edits.",
+      "lastReaccept": "Last acceptance request: {{date}}"
     }
   },
   "apiTokens": {
@@ -1653,6 +1695,11 @@
     "BANNERS_IMAGE_VIEW": "View banner image",
     "BANNERS_UPLOAD": "Upload banners",
     "BANNERS_DELETE": "Delete banners",
+    "LEGAL_DOCUMENTS_VIEW": "View legal documents",
+    "LEGAL_DOCUMENTS_UPDATE": "Manage legal document visibility",
+    "LEGAL_TEXT_SET": "Edit legal texts",
+    "LEGAL_TEXT_REMOVE": "Remove legal texts",
+    "LEGAL_ACCEPTANCES_VIEW": "View legal document acceptances",
     "LOCALES_VIEW": "View locales",
     "LOCALES_ADD": "Add locales",
     "LOCALES_REMOVE": "Remove locales",
@@ -3550,6 +3597,9 @@
     "LINK_RESET_DISABLED": "Subscription link reset is disabled.",
     "LOCALE_ALREADY_ACTIVE": "This language is already enabled.",
     "LOCALE_DEFAULT_NOT_REMOVABLE": "The default language can't be removed.",
+    "LEGAL_TEXT_REQUIRED": "The title and the text are required.",
+    "LEGAL_TEXT_TOO_LONG": "The title and text together are too long for one message.",
+    "LEGAL_REACCEPTANCE_NOT_ALLOWED": "Re-acceptance can’t be requested for the offer.",
     "LOCALE_NOT_ENABLED": "This language isn't enabled.",
     "LOGIN_TAKEN": "This login is already taken.",
     "LOYALTY_TIERS_INVALID": "Tier thresholds and percents must both increase.",

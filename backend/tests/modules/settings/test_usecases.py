@@ -95,6 +95,7 @@ async def _seed_en(translation_repository: TranslationRepository) -> None:
     await translation_repository.add_active_locale(Locale.EN)
     await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
+    await translation_repository.seed_missing(Locale.EN, "command", "terms", "Terms")
 
 
 async def test_owner_can_view_and_update_bot_settings(
@@ -577,14 +578,15 @@ async def test_owner_can_update_and_list_bot_commands(
     get_use_case = GetBotCommandsUseCase(settings_repository, uow)
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
-    assert [c.command for c in result.commands] == ["start", "paysupport"]
+    assert [c.command for c in result.commands] == ["start", "paysupport", "terms"]
     assert result.telegram_sync_failed is False
 
     listed = await get_use_case(OWNER, GetBotCommandsDto())
-    assert [c.command for c in listed] == ["start", "paysupport"]
+    assert [c.command for c in listed] == ["start", "paysupport", "terms"]
 
 
 async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
@@ -595,7 +597,7 @@ async def test_get_bot_commands_defaults_to_current_registry_when_db_is_empty(
 
     listed = await get_use_case(OWNER, GetBotCommandsDto())
 
-    assert [c.command for c in listed] == ["start", "paysupport"]
+    assert [c.command for c in listed] == ["start", "paysupport", "terms"]
     assert listed[0].enabled is True
 
 
@@ -655,7 +657,7 @@ async def test_get_bot_commands_drops_stale_rows_not_in_registry(
 
     listed = await get_use_case(OWNER, GetBotCommandsDto())
 
-    assert [c.command for c in listed] == ["start", "paysupport"]
+    assert [c.command for c in listed] == ["start", "paysupport", "terms"]
 
 
 async def test_regular_user_cannot_view_bot_commands(
@@ -681,7 +683,9 @@ async def test_regular_user_cannot_update_bot_commands(
     )
 
     with pytest.raises(PermissionDeniedError):
-        await update_use_case(REGULAR_USER, [("start", True), ("paysupport", True)])
+        await update_use_case(
+            REGULAR_USER, [("start", True), ("paysupport", True), ("terms", True)]
+        )
 
 
 async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigured(
@@ -697,7 +701,8 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
     )
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
     assert result.telegram_sync_failed is False
@@ -724,6 +729,7 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     await translation_repository.add_active_locale(Locale.RU)
     await translation_repository.seed_missing(Locale.RU, "command", "start", "Открыть главное меню")
     await translation_repository.seed_missing(Locale.RU, "command", "paysupport", "Возврат")
+    await translation_repository.seed_missing(Locale.RU, "command", "terms", "Документы")
 
     settings_use_case = UpdateBotSettingsUseCase(
         settings_repository, uow, RecordingEventPublisher()
@@ -742,7 +748,8 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     pushed = _capture_command_pushes(monkeypatch)
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
     assert result.telegram_sync_failed is False
@@ -750,7 +757,7 @@ async def test_update_bot_commands_pushes_once_per_locale_plus_default(
     expected_language_codes = [locale.value for locale in active_locales] + [None]
     assert [p.get("language_code") for p in pushed] == expected_language_codes
     for payload in pushed:
-        assert [c["command"] for c in payload["commands"]] == ["start", "paysupport"]
+        assert [c["command"] for c in payload["commands"]] == ["start", "paysupport", "terms"]
         assert payload["scope"] == {"type": "all_private_chats"}
 
 
@@ -764,8 +771,10 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
     await translation_repository.add_active_locale(Locale.RU)
     await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
+    await translation_repository.seed_missing(Locale.EN, "command", "terms", "Terms")
     await translation_repository.seed_missing(Locale.RU, "command", "start", "Открыть главное меню")
     await translation_repository.seed_missing(Locale.RU, "command", "paysupport", "Возврат")
+    await translation_repository.seed_missing(Locale.RU, "command", "terms", "Документы")
 
     settings_use_case = UpdateBotSettingsUseCase(
         settings_repository, uow, RecordingEventPublisher()
@@ -784,7 +793,8 @@ async def test_update_bot_commands_resolves_distinct_text_per_locale(
     pushed = _capture_command_pushes(monkeypatch)
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
     assert result.telegram_sync_failed is False
@@ -818,7 +828,8 @@ async def test_update_bot_commands_reports_sync_failure_when_locale_file_missing
     )
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
     assert result.telegram_sync_failed is True
@@ -834,6 +845,7 @@ async def test_update_bot_commands_excludes_disabled_from_telegram_push(
     await translation_repository.add_active_locale(Locale.RU)
     await translation_repository.seed_missing(Locale.RU, "command", "start", "Открыть главное меню")
     await translation_repository.seed_missing(Locale.RU, "command", "paysupport", "Возврат")
+    await translation_repository.seed_missing(Locale.RU, "command", "terms", "Документы")
 
     commands = (
         BotCommand(command="start", description_key="command.start"),
@@ -923,7 +935,8 @@ async def test_update_bot_commands_reports_telegram_sync_success(
     _capture_command_pushes(monkeypatch)
 
     result = await update_use_case(
-        OWNER, UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True)])
+        OWNER,
+        UpdateBotCommandsDto(commands=[("start", True), ("paysupport", True), ("terms", True)]),
     )
 
     assert result.telegram_sync_failed is False

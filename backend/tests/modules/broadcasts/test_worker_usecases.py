@@ -405,8 +405,6 @@ async def test_start_posts_to_channel(
 ) -> None:
     await settings_repository.update_bot_requirements(
         UpdateBotRequirementsDto(
-            rules_required=False,
-            rules_url=None,
             channel_required=False,
             channel_id=-100500,
             channel_url=None,
@@ -1094,8 +1092,6 @@ async def _channel_post_markup(
 ) -> list[list[dict[str, str]]]:
     await settings_repository.update_bot_requirements(
         UpdateBotRequirementsDto(
-            rules_required=False,
-            rules_url=None,
             channel_required=False,
             channel_id=-100500,
             channel_url=None,

@@ -119,4 +119,3 @@ class MergedUserDto:
     is_blocked: bool
     marketing_opt_out: bool
     loyalty_excluded: bool
-    rules_accepted_at: Optional[datetime]

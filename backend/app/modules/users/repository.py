@@ -565,15 +565,6 @@ class UserRepository:
         await self.session.refresh(db_user)
         return self._to_dto(db_user)
 
-    async def set_rules_accepted_at(self, user_id: int, accepted_at: datetime) -> UserDto:
-        db_user = await self.session.get(User, user_id)
-        if db_user is None:
-            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
-        db_user.rules_accepted_at = accepted_at
-        await self.session.flush()
-        await self.session.refresh(db_user)
-        return self._to_dto(db_user)
-
     async def set_marketing_opt_out(self, user_id: int, value: bool) -> None:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

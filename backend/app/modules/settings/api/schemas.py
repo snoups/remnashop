@@ -227,16 +227,12 @@ class UpdateCabinetAuthSettingsRequest(BaseModel):
 
 
 class BotRequirementsResponse(BaseModel):
-    rules_required: bool
-    rules_url: Optional[str]
     channel_required: bool
     channel_id: Optional[int]
     channel_url: Optional[str]
 
 
 class UpdateBotRequirementsRequest(BaseModel):
-    rules_required: bool = False
-    rules_url: Optional[HttpUrl] = None
     channel_required: bool = False
     channel_id: Optional[int] = Field(default=None, ge=-INT64_MAX - 1, le=INT64_MAX)
     channel_url: Optional[HttpUrl] = None

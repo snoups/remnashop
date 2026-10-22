@@ -1,7 +1,7 @@
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import RegistrationSource
+from app.core.enums import Locale, RegistrationSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
@@ -27,7 +27,11 @@ class BotSignInUseCase:
         self._uow = uow
 
     async def execute(
-        self, token: str, client_ip: str, user_agent: Optional[str]
+        self,
+        token: str,
+        client_ip: str,
+        user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
@@ -47,4 +51,5 @@ class BotSignInUseCase:
             client_ip,
             user_agent,
             source=RegistrationSource.CABINET_BOT_LINK,
+            legal_locale=legal_locale,
         )

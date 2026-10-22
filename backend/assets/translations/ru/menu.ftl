@@ -81,6 +81,24 @@ btn-menu =
     .purchase = Купить подписку
     .promocode = Промокод
     .referrals = Рефералы
+    .legal = Документы
+
+btn-legal =
+    .OFFER = Публичная оферта
+    .USER_AGREEMENT = Пользовательское соглашение
+    .PRIVACY_POLICY = Политика конфиденциальности
+
+msg-legal-list = Правовые документы. Выберите, какой прочитать.
+msg-legal-empty = Документы ещё не опубликованы.
+msg-legal-gate =
+    <b>Перед началом работы</b>
+    Чтобы пользоваться ботом, ознакомьтесь с документами ниже и примите их.
+msg-legal-gate-update =
+    <b>Мы обновили документы</b>
+    Посмотрите новую редакцию и примите её, чтобы продолжить.
+
+btn-legal-gate =
+    .accept = ✅ Принимаю
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
@@ -180,7 +198,10 @@ ntf-purchase =
 msg-purchase-plan = Выберите тариф:
 msg-purchase-duration = { $plan_name }: выберите срок:
 msg-purchase-method = Выберите способ оплаты:
-msg-purchase-confirm = { $plan_name } · { $duration_days } дн. · { $price } { $currency_symbol } · { $method }
+msg-purchase-confirm =
+    { $plan_name } · { $duration_days } дн. · { $price } { $currency_symbol } · { $method }
+    { $terms_notice }
+frg-purchase-terms-notice = Оплачивая, вы принимаете условия — /terms
 msg-purchase-pay = Заказ создан. Нажмите кнопку ниже, чтобы оплатить.
 msg-purchase-link-choice = У вас уже есть подписка { $plan_name }. Продлить её или купить ещё одну?
 
@@ -288,13 +309,10 @@ ntf-broadcast =
     .start-required = Нажмите /start, чтобы продолжить.
 
 ntf-requirements =
-    .rules = Чтобы продолжить, прочитайте и примите правила.
     .channel = Чтобы продолжить, подпишитесь на наш канал.
     .channel-not-found = Пока не видим подписку. Подпишитесь и попробуйте ещё раз.
 
 btn-requirements =
-    .rules = Читать правила
-    .accept = Принимаю
     .subscribe = Подписаться
     .check = Я подписался
 

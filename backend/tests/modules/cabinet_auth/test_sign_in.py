@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 from dishka import AsyncContainer
 from sqlalchemy import select
@@ -10,7 +12,10 @@ from app.core.enums import (
     AccessMode,
     BlacklistKind,
     CabinetSignInMethod,
+    LegalAcceptanceTrigger,
+    LegalDocumentKind,
     Locale,
+    PurchaseChannel,
     RegistrationSource,
     SessionAudience,
 )
@@ -19,10 +24,14 @@ from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
+from app.modules.cabinet_auth.api.schemas import BotSignInRequest
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
+from app.modules.legal import CreateLegalRevisionDto, LegalRepository
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
+from app.modules.translations import TranslationRepository
+from app.modules.users import UserDto
 from app.modules.users.dto import CreateUserDto, RegisterCabinetUserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import RegisterCabinetUserUseCase
@@ -311,3 +320,106 @@ async def test_email_sign_in_clears_undeliverable(
 
     loaded = await user_repository.find_by_id(existing.id)
     assert loaded is not None and loaded.email_undeliverable_at is None
+
+
+async def _publish(
+    legal_repository: LegalRepository, kind: LegalDocumentKind, locale: Locale
+) -> int:
+    revision = await legal_repository.add_revision(
+        CreateLegalRevisionDto(
+            kind=kind, locale=locale, channel=None, title=kind.value, body="text", created_by=None
+        )
+    )
+    return revision.id
+
+
+async def _telegram_sign_in(
+    sign_in: CabinetSignIn, telegram_id: int, legal_locale: Optional[Locale] = None
+) -> UserDto:
+    user, _ = await sign_in.telegram(
+        TelegramProfileDto(telegram_id=telegram_id, name="Ann", username=None, language=None),
+        InviteCodesDto(),
+        _IP,
+        "ua",
+        legal_locale=legal_locale,
+    )
+    return user
+
+
+async def test_first_cabinet_sign_in_records_sign_up(
+    sign_in: CabinetSignIn, legal_repository: LegalRepository
+) -> None:
+    await _publish(legal_repository, LegalDocumentKind.USER_AGREEMENT, Locale.EN)
+    await _publish(legal_repository, LegalDocumentKind.PRIVACY_POLICY, Locale.EN)
+
+    user = await _telegram_sign_in(sign_in, 9101, Locale.EN)
+
+    acceptances = await legal_repository.list_acceptances(user.id)
+    assert {a.revision.kind for a in acceptances} == {
+        LegalDocumentKind.USER_AGREEMENT,
+        LegalDocumentKind.PRIVACY_POLICY,
+    }
+    assert {(a.trigger, a.channel, a.ip_address) for a in acceptances} == {
+        (LegalAcceptanceTrigger.SIGN_UP, PurchaseChannel.CABINET, _IP)
+    }
+
+
+async def test_second_cabinet_sign_in_records_nothing(
+    sign_in: CabinetSignIn, legal_repository: LegalRepository
+) -> None:
+    await _publish(legal_repository, LegalDocumentKind.USER_AGREEMENT, Locale.EN)
+
+    user = await _telegram_sign_in(sign_in, 9102, Locale.EN)
+    await _telegram_sign_in(sign_in, 9102, Locale.EN)
+
+    assert len(await legal_repository.list_acceptances(user.id)) == 1
+
+
+async def test_bot_user_first_cabinet_sign_in_records_sign_up(
+    sign_in: CabinetSignIn,
+    legal_repository: LegalRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    await _publish(legal_repository, LegalDocumentKind.PRIVACY_POLICY, Locale.EN)
+    async with uow:
+        existing = await user_repository.create(CreateUserDto(name="Bot user", telegram_id=9103))
+
+    await _telegram_sign_in(sign_in, 9103, Locale.EN)
+
+    [acceptance] = await legal_repository.list_acceptances(existing.id)
+    assert acceptance.trigger is LegalAcceptanceTrigger.SIGN_UP
+    assert acceptance.channel is PurchaseChannel.CABINET
+
+
+async def test_sign_in_records_legal_locale(
+    sign_in: CabinetSignIn,
+    legal_repository: LegalRepository,
+    translation_repository: TranslationRepository,
+) -> None:
+    await translation_repository.add_active_locale(Locale.RU)
+    await _publish(legal_repository, LegalDocumentKind.USER_AGREEMENT, Locale.EN)
+    ru_id = await _publish(legal_repository, LegalDocumentKind.USER_AGREEMENT, Locale.RU)
+
+    user = await _telegram_sign_in(sign_in, 9104, Locale.RU)
+
+    [acceptance] = await legal_repository.list_acceptances(user.id)
+    assert acceptance.revision.id == ru_id
+
+
+async def test_sign_in_without_legal_locale_records_nothing_until_one_is_sent(
+    sign_in: CabinetSignIn, legal_repository: LegalRepository
+) -> None:
+    await _publish(legal_repository, LegalDocumentKind.USER_AGREEMENT, Locale.EN)
+
+    user = await _telegram_sign_in(sign_in, 9105)
+    assert await legal_repository.list_acceptances(user.id) == []
+
+    await _telegram_sign_in(sign_in, 9105, Locale.EN)
+    [acceptance] = await legal_repository.list_acceptances(user.id)
+    assert acceptance.trigger is LegalAcceptanceTrigger.SIGN_UP
+
+
+def test_unknown_legal_locale_in_a_request_is_ignored() -> None:
+    assert BotSignInRequest(token="t", legal_locale="xx").legal_locale is None  # type: ignore[arg-type]
+    assert BotSignInRequest(token="t", legal_locale="ru").legal_locale is Locale.RU  # type: ignore[arg-type]

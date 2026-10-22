@@ -2,7 +2,7 @@ from typing import Optional
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import OAuthProvider
+from app.core.enums import Locale, OAuthProvider
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.auth import IssuedSession
@@ -44,9 +44,12 @@ class CabinetOAuthCallbackUseCase:
         binding: Optional[str],
         client_ip: str,
         user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         profile, codes = await self._fetch(provider, code, state, binding, link_user_id=None)
-        return await self._sign_in.oauth(provider, profile, codes, client_ip, user_agent)
+        return await self._sign_in.oauth(
+            provider, profile, codes, client_ip, user_agent, legal_locale
+        )
 
     async def fetch_profile(
         self,

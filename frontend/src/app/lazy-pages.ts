@@ -43,9 +43,6 @@ export const BackupsPage = lazy(() =>
 export const BlacklistPage = lazy(() =>
   import("@pages/blacklist/BlacklistPage").then((m) => ({ default: m.BlacklistPage })),
 );
-export const AccessSettingsPage = lazy(() =>
-  import("@pages/settings/AccessSettingsPage").then((m) => ({ default: m.AccessSettingsPage })),
-);
 export const BroadcastsPage = lazy(() =>
   import("@pages/broadcasts/BroadcastsPage").then((m) => ({ default: m.BroadcastsPage })),
 );

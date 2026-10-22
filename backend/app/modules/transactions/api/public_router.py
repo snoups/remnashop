@@ -1,11 +1,12 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.public import AuthContext, get_auth_context, get_current_user
 from app.api.errors import error_responses
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.core.enums import PurchaseChannel, SessionAudience
+from app.core.utils.http import resolve_client_ip
 from app.modules.transactions.api.schemas import (
     CheckoutQuoteResponse,
     CheckoutResponse,
@@ -41,6 +42,7 @@ router = APIRouter(tags=["transactions"])
 )
 @inject
 async def create_checkout(
+    request: Request,
     payload: CreateCheckoutRequest,
     use_case: FromDishka[CreateCheckoutUseCase],
     actor: UserDto = Depends(get_current_user),
@@ -58,6 +60,8 @@ async def create_checkout(
             target_subscription_id=payload.target_subscription_id,
             customer_email=payload.customer_email,
             plan_code=payload.plan_code,
+            legal_locale=payload.legal_locale,
+            client_ip=resolve_client_ip(request),
             return_to="cabinet" if auth.audience is SessionAudience.CABINET else "default",
         ),
     )

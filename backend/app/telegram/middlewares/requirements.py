@@ -1,6 +1,7 @@
 from typing import Any, Awaitable, Callable, Final, Optional
 
 from aiogram import Bot
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import (
     CallbackQuery,
@@ -15,7 +16,8 @@ from loguru import logger
 from redis.asyncio import Redis
 
 from app.core.constants import CONTAINER_KEY, REDIS_KEY_PREFIX, USER_KEY
-from app.core.enums import MiddlewareEventType
+from app.core.enums import MiddlewareEventType, PurchaseChannel
+from app.modules.legal import GetPendingLegalDocumentsUseCase
 from app.modules.settings import (
     BotRequirementsDto,
     BotStatusKind,
@@ -25,19 +27,25 @@ from app.modules.settings import (
 )
 from app.modules.users import UserDto
 from app.telegram.broadcast_callbacks import RESUBSCRIBE_CALLBACK, UNSUBSCRIBE_CALLBACK
+from app.telegram.dialogs.rendering import render_window_text
 from app.telegram.i18n import get_translator
+from app.telegram.legal_gate import (
+    GATE_MESSAGE_TTL_S,
+    LEGAL_GATE_CALLBACK_PREFIXES,
+    gate_message_key,
+    legal_gate_keyboard,
+)
 from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
 
 # here, not under routers/: importing app.telegram.routers pulls in the handlers,
 # which import this module
-RULES_ACCEPT_CALLBACK: Final[str] = "requirements:rules"
 CHANNEL_CHECK_CALLBACK: Final[str] = "requirements:channel"
 
 _SUBSCRIBED_TTL_S: Final[int] = 5 * 60
 _LEFT_STATUSES: Final[frozenset[str]] = frozenset({"left", "kicked"})
 # opting out of marketing must work even before the requirements are met
 _REQUIREMENT_CALLBACKS: Final[frozenset[str]] = frozenset(
-    {RULES_ACCEPT_CALLBACK, CHANNEL_CHECK_CALLBACK, UNSUBSCRIBE_CALLBACK, RESUBSCRIBE_CALLBACK}
+    {CHANNEL_CHECK_CALLBACK, UNSUBSCRIBE_CALLBACK, RESUBSCRIBE_CALLBACK}
 )
 
 
@@ -91,18 +99,35 @@ class RequirementsMiddleware(EventTypedMiddleware):
         user: Optional[UserDto] = data.get(USER_KEY)
         if user is None or user.is_privileged or is_successful_payment(event):
             return await handler(event, data)
-        if isinstance(event, CallbackQuery) and event.data in _REQUIREMENT_CALLBACKS:
+        if isinstance(event, CallbackQuery) and (
+            event.data in _REQUIREMENT_CALLBACKS
+            or (event.data or "").startswith(LEGAL_GATE_CALLBACK_PREFIXES)
+        ):
             return await handler(event, data)
 
         container: AsyncContainer = data[CONTAINER_KEY]
-        requirements = await (await container.get(GetBotRequirementsUseCase)).system()
         runner = get_translator(await container.get(TranslatorHub), user)
 
-        if requirements.rules_required and user.rules_accepted_at is None:
+        pending = await (await container.get(GetPendingLegalDocumentsUseCase)).execute(
+            user, PurchaseChannel.BOT, user.language
+        )
+        if pending.documents:
+            if isinstance(event, Message):
+                redis = await container.get(Redis)
+                await redis.set(
+                    gate_message_key(user.id), event.model_dump_json(), ex=GATE_MESSAGE_TTL_S
+                )
             await ask_requirement(
-                event, runner.get("ntf-requirements.rules"), _rules_keyboard(runner, requirements)
+                event,
+                render_window_text(
+                    runner, "msg-legal-gate-update" if pending.is_update else "msg-legal-gate"
+                ),
+                legal_gate_keyboard(runner, pending),
+                parse_mode=ParseMode.HTML,
             )
             return None
+
+        requirements = await (await container.get(GetBotRequirementsUseCase)).system()
 
         channel_id = requirements.channel_id
         if (
@@ -125,34 +150,20 @@ class RequirementsMiddleware(EventTypedMiddleware):
         return await handler(event, data)
 
 
-async def ask_requirement(event: TelegramObject, text: str, keyboard: InlineKeyboardMarkup) -> None:
+async def ask_requirement(
+    event: TelegramObject,
+    text: str,
+    keyboard: InlineKeyboardMarkup,
+    parse_mode: Optional[str] = None,
+) -> None:
     if isinstance(event, Message):
-        await event.answer(text, reply_markup=keyboard)
+        await event.answer(text, reply_markup=keyboard, parse_mode=parse_mode)
     elif isinstance(event, CallbackQuery):
         if event.message is None:
             await event.answer(text, show_alert=True)
             return
-        await event.message.answer(text, reply_markup=keyboard)
+        await event.message.answer(text, reply_markup=keyboard, parse_mode=parse_mode)
         await event.answer()
-
-
-def _rules_keyboard(
-    runner: TranslatorRunner, requirements: BotRequirementsDto
-) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=runner.get("btn-requirements.rules"), url=requirements.rules_url
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=runner.get("btn-requirements.accept"), callback_data=RULES_ACCEPT_CALLBACK
-                )
-            ],
-        ]
-    )
 
 
 def channel_keyboard(

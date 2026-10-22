@@ -24,8 +24,6 @@ export function BotRequirementsForm() {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("BOT_REQUIREMENTS_MANAGE");
   const [state, , setData] = useAsyncResource(getBotRequirements);
-  const [rulesRequired, setRulesRequired] = useState(false);
-  const [rulesUrl, setRulesUrl] = useState("");
   const [channelRequired, setChannelRequired] = useState(false);
   const [channelId, setChannelId] = useState("");
   const [channelUrl, setChannelUrl] = useState("");
@@ -34,8 +32,6 @@ export function BotRequirementsForm() {
 
   useEffect(() => {
     if (state.kind !== "ready") return;
-    setRulesRequired(state.data.rules_required);
-    setRulesUrl(state.data.rules_url ?? "");
     setChannelRequired(state.data.channel_required);
     setChannelId(state.data.channel_id === null ? "" : String(state.data.channel_id));
     setChannelUrl(state.data.channel_url ?? "");
@@ -54,8 +50,6 @@ export function BotRequirementsForm() {
     setErrorCode(null);
     try {
       const requirements = await updateBotRequirements({
-        rules_required: rulesRequired,
-        rules_url: blankToNull(rulesUrl),
         channel_required: channelRequired,
         channel_id: parsedChannelId,
         channel_url: blankToNull(channelUrl),
@@ -87,24 +81,6 @@ export function BotRequirementsForm() {
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
           <fieldset disabled={!canManage} className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3 px-[12.5px]">
-                <p className="text-[13px] font-medium text-foreground">
-                  {t("settings.botRequirements.rulesLabel")}
-                </p>
-                <Switch checked={rulesRequired} onChange={setRulesRequired} />
-              </div>
-              <Field label={t("settings.botRequirements.rulesUrl")}>
-                <TextInput
-                  type="url"
-                  value={rulesUrl}
-                  onChange={(event) => setRulesUrl(event.target.value)}
-                  disabled={!rulesRequired}
-                  aria-invalid={incomplete && rulesRequired && rulesUrl.trim() === ""}
-                />
-              </Field>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-4">
               <div className="flex items-center justify-between gap-3 px-[12.5px]">
                 <p className="text-[13px] font-medium text-foreground">
                   {t("settings.botRequirements.channelLabel")}

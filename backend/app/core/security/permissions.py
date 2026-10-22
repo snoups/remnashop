@@ -52,6 +52,11 @@ class Permission(UpperStrEnum):
     BANNERS_UPLOAD = auto()
     BANNERS_DELETE = auto()
     BANNERS_RESTORE_DEFAULT = auto()
+    LEGAL_DOCUMENTS_VIEW = auto()
+    LEGAL_DOCUMENTS_UPDATE = auto()
+    LEGAL_TEXT_SET = auto()
+    LEGAL_TEXT_REMOVE = auto()
+    LEGAL_ACCEPTANCES_VIEW = auto()
     EMOJI_PACKS_VIEW = auto()
     EMOJI_PACKS_IMPORT = auto()
     EMOJI_PACKS_DELETE = auto()
@@ -278,6 +283,11 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BANNERS_UPLOAD: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_DELETE: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_RESTORE_DEFAULT: PermissionMeta(resource="banners", kind="write"),
+    Permission.LEGAL_DOCUMENTS_VIEW: PermissionMeta(resource="legal_documents", kind="read"),
+    Permission.LEGAL_DOCUMENTS_UPDATE: PermissionMeta(resource="legal_documents", kind="write"),
+    Permission.LEGAL_TEXT_SET: PermissionMeta(resource="legal_documents", kind="write"),
+    Permission.LEGAL_TEXT_REMOVE: PermissionMeta(resource="legal_documents", kind="write"),
+    Permission.LEGAL_ACCEPTANCES_VIEW: PermissionMeta(resource="legal_acceptances", kind="read"),
     Permission.EMOJI_PACKS_VIEW: PermissionMeta(resource="emoji_packs", kind="read"),
     Permission.EMOJI_PACKS_IMPORT: PermissionMeta(resource="emoji_packs", kind="write"),
     Permission.EMOJI_PACKS_DELETE: PermissionMeta(resource="emoji_packs", kind="write"),
@@ -595,6 +605,11 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.BANNERS_UPLOAD,
             Permission.BANNERS_DELETE,
             Permission.BANNERS_RESTORE_DEFAULT,
+            Permission.LEGAL_DOCUMENTS_VIEW,
+            Permission.LEGAL_DOCUMENTS_UPDATE,
+            Permission.LEGAL_TEXT_SET,
+            Permission.LEGAL_TEXT_REMOVE,
+            Permission.LEGAL_ACCEPTANCES_VIEW,
             Permission.EMOJI_PACKS_VIEW,
             Permission.EMOJI_PACKS_IMPORT,
             Permission.EMOJI_PACKS_DELETE,

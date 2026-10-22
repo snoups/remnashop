@@ -343,8 +343,6 @@ def upgrade() -> None:
     op.create_table(
         "bot_requirements",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("rules_required", sa.Boolean(), server_default="false", nullable=False),
-        sa.Column("rules_url", sa.String(), nullable=True),
         sa.Column("channel_required", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("channel_id", sa.BigInteger(), nullable=True),
         sa.Column("channel_url", sa.String(), nullable=True),
@@ -600,6 +598,31 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("set_name", name="ux_emoji_packs_set_name"),
+    )
+    op.create_table(
+        "legal_documents",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "kind",
+            sa.Enum("OFFER", "USER_AGREEMENT", "PRIVACY_POLICY", name="legaldocumentkind"),
+            nullable=False,
+        ),
+        sa.Column("show_in_bot", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("show_in_cabinet", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("kind"),
     )
     op.create_table(
         "loyalty_settings",
@@ -1148,7 +1171,6 @@ def upgrade() -> None:
         sa.Column("marketing_opt_out", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("is_bot_blocked", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_undeliverable_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("rules_accepted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
         sa.Column("bonus_days", sa.Integer(), server_default="0", nullable=False),
@@ -1501,6 +1523,78 @@ def upgrade() -> None:
     )
     op.create_index(
         op.f("ix_event_outbox_processed_at"), "event_outbox", ["processed_at"], unique=False
+    )
+    op.create_table(
+        "legal_document_revisions",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column(
+            "kind",
+            sa.Enum("OFFER", "USER_AGREEMENT", "PRIVACY_POLICY", name="legaldocumentkind"),
+            nullable=False,
+        ),
+        sa.Column(
+            "locale",
+            sa.Enum(
+                "AR",
+                "AZ",
+                "BE",
+                "BG",
+                "CS",
+                "DA",
+                "DE",
+                "EL",
+                "EN",
+                "ES",
+                "FA",
+                "FI",
+                "FR",
+                "HE",
+                "HI",
+                "HU",
+                "ID",
+                "IT",
+                "JA",
+                "KK",
+                "KO",
+                "MS",
+                "NL",
+                "NO",
+                "PL",
+                "PT",
+                "RO",
+                "RU",
+                "SR",
+                "SV",
+                "TG",
+                "TH",
+                "TR",
+                "UK",
+                "UZ",
+                "VI",
+                "ZH",
+                name="locale",
+            ),
+            nullable=False,
+        ),
+        sa.Column("channel", sa.Enum("BOT", "CABINET", name="purchasechannel"), nullable=True),
+        sa.Column("title", sa.String(length=160), nullable=False),
+        sa.Column("body", sa.Text(), nullable=False),
+        sa.Column("requires_reacceptance", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("created_by", sa.Integer(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_legal_revisions_key",
+        "legal_document_revisions",
+        ["kind", "locale", "channel", "id"],
+        unique=False,
     )
     op.create_table(
         "oauth_identities",
@@ -2243,11 +2337,47 @@ def upgrade() -> None:
         ["entitlement_id"],
         unique=False,
     )
+    op.create_table(
+        "legal_acceptances",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("revision_id", sa.Integer(), nullable=False),
+        sa.Column("channel", sa.Enum("BOT", "CABINET", name="purchasechannel"), nullable=False),
+        sa.Column(
+            "trigger", sa.Enum("SIGN_UP", "PAYMENT", name="legalacceptancetrigger"), nullable=False
+        ),
+        sa.Column("transaction_id", sa.Integer(), nullable=True),
+        sa.Column("ip_address", sa.String(length=45), nullable=True),
+        sa.Column(
+            "accepted_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id"], ["legal_document_revisions.id"], ondelete="RESTRICT"
+        ),
+        sa.ForeignKeyConstraint(["transaction_id"], ["transactions.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_legal_acceptances_user_channel_trigger",
+        "legal_acceptances",
+        ["user_id", "channel", "trigger"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_legal_acceptances_user_id"), "legal_acceptances", ["user_id"], unique=False
+    )
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f("ix_legal_acceptances_user_id"), table_name="legal_acceptances")
+    op.drop_index("ix_legal_acceptances_user_channel_trigger", table_name="legal_acceptances")
+    op.drop_table("legal_acceptances")
     op.drop_index(
         op.f("ix_addon_grant_idempotency_entitlement_id"), table_name="addon_grant_idempotency"
     )
@@ -2325,6 +2455,8 @@ def downgrade() -> None:
     op.drop_table("passkey_credentials")
     op.drop_index(op.f("ix_oauth_identities_user_id"), table_name="oauth_identities")
     op.drop_table("oauth_identities")
+    op.drop_index("ix_legal_revisions_key", table_name="legal_document_revisions")
+    op.drop_table("legal_document_revisions")
     op.drop_index(op.f("ix_event_outbox_processed_at"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_event_type"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
@@ -2382,6 +2514,7 @@ def downgrade() -> None:
     op.drop_table("oauth_settings")
     op.drop_table("notification_settings")
     op.drop_table("loyalty_settings")
+    op.drop_table("legal_documents")
     op.drop_table("emoji_packs")
     op.drop_table("email_settings")
     op.drop_table("dialog_windows")

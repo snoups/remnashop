@@ -90,6 +90,7 @@ async def test_menu_getter_includes_rendered_buttons(
         get_available_trial=get_available_trial,
         get_shop_settings=_shop_settings(),
         get_referral_settings=_referral_settings(),
+        list_visible_legal_documents=MagicMock(execute=AsyncMock(return_value=[])),
         i18n=i18n,
         dialog_config_cache=fake_cache,
     )
@@ -151,6 +152,7 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
         get_available_trial=get_available_trial,
         get_shop_settings=_shop_settings(),
         get_referral_settings=_referral_settings(),
+        list_visible_legal_documents=MagicMock(execute=AsyncMock(return_value=[])),
         i18n=i18n,
         dialog_config_cache=fake_cache,
     )

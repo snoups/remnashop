@@ -43,8 +43,6 @@ async def _seed_owner_row(session: AsyncSession) -> None:
 
 def _requirements(**overrides: object) -> UpdateBotRequirementsDto:
     values: dict[str, object] = {
-        "rules_required": False,
-        "rules_url": None,
         "channel_required": False,
         "channel_id": None,
         "channel_url": None,
@@ -66,14 +64,6 @@ async def _configured_bot(settings_repository: SettingsRepository, uow: UnitOfWo
         await settings_repository.update_bot_settings(
             UpdateBotSettingsDto(token="123:abc", secret_token="s")
         )
-
-
-async def test_rules_required_without_url_is_rejected(
-    use_case: UpdateBotRequirementsUseCase,
-) -> None:
-    with pytest.raises(ValidationError) as error:
-        await use_case(_OWNER, _requirements(rules_required=True))
-    assert error.value.code is ErrorCode.BOT_REQUIREMENTS_INCOMPLETE
 
 
 async def test_channel_required_without_id_is_rejected(
@@ -128,25 +118,23 @@ async def test_valid_requirements_are_saved(
     saved = await use_case(
         _OWNER,
         _requirements(
-            rules_required=True,
-            rules_url="https://example.com/rules",
             channel_required=True,
             channel_id=-100,
             channel_url="https://t.me/x",
         ),
     )
-    assert saved.rules_required and saved.channel_id == -100
+    assert saved.channel_required and saved.channel_id == -100
 
 
 async def test_only_values_that_differ_are_recorded_as_changed(
     use_case: UpdateBotRequirementsUseCase, session: AsyncSession
 ) -> None:
-    await use_case(_OWNER, _requirements(rules_url="https://example.com/a"))
+    await use_case(_OWNER, _requirements(channel_url="https://t.me/a"))
 
-    await use_case(_OWNER, _requirements(rules_url="https://example.com/b"))
+    await use_case(_OWNER, _requirements(channel_url="https://t.me/b"))
 
     rows = (await session.scalars(select(EventOutboxEntry).order_by(EventOutboxEntry.id))).all()
-    assert rows[-1].payload["changed_fields"] == ["rules_url"]
+    assert rows[-1].payload["changed_fields"] == ["channel_url"]
 
 
 def _member(status: str) -> object:
@@ -166,6 +154,7 @@ def _member(status: str) -> object:
             can_post_stories=False,
             can_edit_stories=False,
             can_delete_stories=False,
+            can_send_welcome_messages=False,
         )
     if status == "creator":
         return ChatMemberOwner(user=user, is_anonymous=False)

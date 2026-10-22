@@ -356,8 +356,6 @@ class UpdateCabinetAuthSettingsDto:
 
 
 class BotRequirementsDto(BaseDto, TimestampMixin):
-    rules_required: bool = False
-    rules_url: Optional[str] = None
     channel_required: bool = False
     channel_id: Optional[int] = None
     channel_url: Optional[str] = None
@@ -366,8 +364,6 @@ class BotRequirementsDto(BaseDto, TimestampMixin):
 @dataclass(frozen=True, kw_only=True)
 class UpdateBotRequirementsDto:
     # full replace: None clears a field
-    rules_required: bool
-    rules_url: Optional[str]
     channel_required: bool
     channel_id: Optional[int]
     channel_url: Optional[str]

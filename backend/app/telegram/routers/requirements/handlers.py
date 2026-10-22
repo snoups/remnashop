@@ -10,11 +10,10 @@ from app.modules.settings import (
     GetBotRequirementsUseCase,
     ReportBotStatusUseCase,
 )
-from app.modules.users import AcceptRulesUseCase, UserDto
+from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.middlewares.requirements import (
     CHANNEL_CHECK_CALLBACK,
-    RULES_ACCEPT_CALLBACK,
     ask_requirement,
     channel_keyboard,
     channel_member_key,
@@ -51,19 +50,15 @@ async def _is_subscribed(
     return await is_channel_member(callback.bot, redis, channel_id, user.telegram_id, report)
 
 
-@router.callback_query(F.data == RULES_ACCEPT_CALLBACK)
-async def on_rules_accepted(
+async def continue_requirements(
     callback: CallbackQuery,
     user: UserDto,
     dialog_manager: DialogManager,
-    accept_rules: FromDishka[AcceptRulesUseCase],
-    get_requirements: FromDishka[GetBotRequirementsUseCase],
-    redis: FromDishka[Redis],
-    i18n: FromDishka[TranslatorHub],
-    report: FromDishka[ReportBotStatusUseCase],
+    requirements: BotRequirementsDto,
+    redis: Redis,
+    i18n: TranslatorHub,
+    report: ReportBotStatusUseCase,
 ) -> None:
-    await accept_rules(user)
-    requirements = await get_requirements.system()
     if not await _is_subscribed(callback, user, requirements, redis, report):
         runner = get_translator(i18n, user)
         if isinstance(callback.message, Message):

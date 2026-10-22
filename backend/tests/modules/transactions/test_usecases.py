@@ -25,6 +25,9 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
     DiscountSource,
+    LegalAcceptanceTrigger,
+    LegalDocumentKind,
+    Locale,
     PaymentGatewayType,
     PlanAvailability,
     PlanType,
@@ -45,6 +48,7 @@ from app.core.exceptions import (
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.legal import CreateLegalRevisionDto, LegalAcceptanceRecorder, LegalRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -74,12 +78,14 @@ from app.modules.subscriptions import (
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
 from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
+from app.modules.transactions.api.schemas import CreateCheckoutRequest
 from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase, CreateTestPaymentUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository
+from app.modules.translations import TranslationRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
@@ -147,6 +153,8 @@ def create_checkout_use_case(
     waitlist_repository: WaitlistRepository,
     config: AppConfig,
     event_publisher: EventPublisher,
+    legal_repository: LegalRepository,
+    translation_repository: TranslationRepository,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         CheckoutPricer(
@@ -170,6 +178,7 @@ def create_checkout_use_case(
         settings_repository,
         config,
         event_publisher,
+        LegalAcceptanceRecorder(legal_repository, translation_repository),
     )
 
 
@@ -405,6 +414,7 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(
             SettingsRepository(session),
             config,
             RecordingEventPublisher(),
+            LegalAcceptanceRecorder(LegalRepository(session), TranslationRepository(session)),
         )
         try:
             await use_case(
@@ -1296,3 +1306,163 @@ async def test_payments_gate_fires_before_pricing_for_a_full_discount_order(
     assert error.value.code is ErrorCode.PAYMENTS_DISABLED
     assert await session.scalar(select(func.count()).select_from(Transaction)) == 0
     assert purchase_dispatch.messages == []
+
+
+async def _offer(legal_repository: LegalRepository, locale: Locale, title: str) -> int:
+    revision = await legal_repository.add_revision(
+        CreateLegalRevisionDto(
+            kind=LegalDocumentKind.OFFER,
+            locale=locale,
+            channel=None,
+            title=title,
+            body="text",
+            created_by=None,
+        )
+    )
+    return revision.id
+
+
+async def test_checkout_records_payment_acceptance(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    transaction_repository: TransactionRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    revision_id = await _offer(legal_repository, Locale.EN, "Offer")
+
+    result = await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), legal_locale=Locale.EN)
+    )
+
+    [acceptance] = await legal_repository.list_acceptances(actor.id)
+    assert acceptance.revision.id == revision_id
+    assert acceptance.trigger is LegalAcceptanceTrigger.PAYMENT
+    assert acceptance.transaction_id == result.order_id
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert acceptance.channel is order.channel
+
+
+async def test_checkout_uses_legal_locale_over_user_language(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    translation_repository: TranslationRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await translation_repository.add_active_locale(Locale.RU)
+    await _offer(legal_repository, Locale.EN, "Offer")
+    ru_id = await _offer(legal_repository, Locale.RU, "Оферта")
+
+    await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), legal_locale=Locale.RU)
+    )
+
+    [acceptance] = await legal_repository.list_acceptances(actor.id)
+    assert acceptance.revision.id == ru_id
+
+
+async def test_free_checkout_records_acceptance(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    legal_repository: LegalRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await _offer(legal_repository, Locale.EN, "Offer")
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(personal_discount=100))
+
+    result = await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), legal_locale=Locale.EN)
+    )
+
+    [acceptance] = await legal_repository.list_acceptances(actor.id)
+    assert acceptance.transaction_id == result.order_id
+
+
+async def test_failed_gateway_keeps_acceptance_of_failed_order(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    transaction_repository: TransactionRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await _offer(legal_repository, Locale.EN, "Offer")
+    create_checkout_use_case._gateway_factory = _FakeFactory(_FailingGateway())  # type: ignore[assignment]
+
+    with pytest.raises(PaymentGatewayError):
+        await create_checkout_use_case(
+            actor, dataclasses.replace(_checkout_dto(actor, plan), legal_locale=Locale.EN)
+        )
+
+    orders, _ = await transaction_repository.list_paginated(user_id=actor.id)
+    [acceptance] = await legal_repository.list_acceptances(actor.id)
+    assert [order.status for order in orders] == [TransactionStatus.FAILED]
+    assert acceptance.transaction_id == orders[0].id
+
+
+async def test_cabinet_checkout_without_legal_locale_records_nothing(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await _offer(legal_repository, Locale.EN, "Offer")
+
+    await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+
+    assert await legal_repository.list_acceptances(actor.id) == []
+
+
+async def test_bot_checkout_without_legal_locale_still_records(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await _offer(legal_repository, Locale.EN, "Offer")
+
+    await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), channel=PurchaseChannel.BOT)
+    )
+
+    assert len(await legal_repository.list_acceptances(actor.id)) == 1
+
+
+async def test_cabinet_checkout_records_client_ip(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    legal_repository: LegalRepository,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    await _offer(legal_repository, Locale.EN, "Offer")
+
+    await create_checkout_use_case(
+        actor,
+        dataclasses.replace(
+            _checkout_dto(actor, plan), legal_locale=Locale.EN, client_ip="203.0.113.5"
+        ),
+    )
+
+    [acceptance] = await legal_repository.list_acceptances(actor.id)
+    assert acceptance.ip_address == "203.0.113.5"
+
+
+def test_unknown_legal_locale_in_a_checkout_request_is_ignored() -> None:
+    body = {
+        "plan_id": 1,
+        "duration_days": 30,
+        "currency": "RUB",
+        "purchase_type": "NEW",
+        "gateway_type": "YOOKASSA",
+    }
+    assert CreateCheckoutRequest(**body, legal_locale="xx").legal_locale is None  # type: ignore[arg-type]
+    assert CreateCheckoutRequest(**body, legal_locale="ru").legal_locale is Locale.RU  # type: ignore[arg-type]

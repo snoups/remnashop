@@ -92,7 +92,10 @@ async def cabinet_telegram_login(
 ) -> CabinetAuthResponse:
     try:
         _, issued = await use_case.execute(
-            body.init_data, resolve_client_ip(request), request.headers.get("user-agent")
+            body.init_data,
+            resolve_client_ip(request),
+            request.headers.get("user-agent"),
+            body.legal_locale,
         )
     except AppError as error:
         if error.code in TELEGRAM_FAILURES:
@@ -135,7 +138,11 @@ async def cabinet_email_verify(
 ) -> CabinetAuthResponse:
     try:
         _, issued = await use_case.execute(
-            body.email, body.code, resolve_client_ip(request), request.headers.get("user-agent")
+            body.email,
+            body.code,
+            resolve_client_ip(request),
+            request.headers.get("user-agent"),
+            body.legal_locale,
         )
     except AppError as error:
         if error.code in EMAIL_VERIFY_FAILURES:
@@ -183,7 +190,10 @@ async def cabinet_telegram_signin(
 ) -> CabinetAuthResponse:
     try:
         _, issued = await use_case.execute(
-            body.token, resolve_client_ip(request), request.headers.get("user-agent")
+            body.token,
+            resolve_client_ip(request),
+            request.headers.get("user-agent"),
+            body.legal_locale,
         )
     except AppError as error:
         if error.code in BOT_SIGNIN_FAILURES:
@@ -259,7 +269,7 @@ async def oauth_callback(
             )
         else:
             user, issued = await cabinet.execute(
-                provider, body.code, body.state, binding, client_ip, user_agent
+                provider, body.code, body.state, binding, client_ip, user_agent, body.legal_locale
             )
     except AppError as error:
         if error.code in OAUTH_CALLBACK_FAILURES:

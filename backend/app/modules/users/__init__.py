@@ -31,7 +31,6 @@ from app.modules.users.schemas import (
 from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.unsubscribe import read_unsubscribe_token, unsubscribe_token
 from app.modules.users.usecases import (
-    AcceptRulesUseCase,
     BlockBlacklistMatchesUseCase,
     BlockUserUseCase,
     FindTelegramUserUseCase,
@@ -46,7 +45,6 @@ from app.modules.users.usecases import (
 from app.modules.users.visibility import assert_manageable, get_visible_target, visible_user
 
 __all__ = [
-    "AcceptRulesUseCase",
     "BlockBlacklistMatchesUseCase",
     "BlockUserUseCase",
     "CabinetUserRegisteredEvent",

@@ -68,7 +68,7 @@ export function TranslationsEditorForm() {
   const [entriesState, reloadEntries, setEntriesData] = useAsyncResource(listTranslations);
   const [pickedKey, setSelectedKey] = useState<string | null>(null);
   const [pickedLocale, setActiveLocale] = useState<string | null>(null);
-  // same rule as the window tree: a group stays as clicked, otherwise expanded
+  // a group stays as clicked, otherwise only the first one is expanded
   const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
   const [pendingImport, setPendingImport] = useState<TranslationsExportPayload | null>(null);
   const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
@@ -126,7 +126,7 @@ export function TranslationsEditorForm() {
           .map((e) => (e.attribute_id ? `${e.message_id}.${e.attribute_id}` : e.message_id)),
   );
 
-  const isGroupCollapsed = (group: string) => toggledGroups[group] ?? false;
+  const isGroupCollapsed = (group: string) => toggledGroups[group] ?? group !== groups[0]?.group;
 
   const toggleGroup = (group: string) =>
     setToggledGroups((current) => ({ ...current, [group]: !isGroupCollapsed(group) }));

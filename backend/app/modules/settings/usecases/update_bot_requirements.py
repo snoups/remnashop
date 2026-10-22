@@ -28,10 +28,6 @@ class UpdateBotRequirementsUseCase(UseCase[UpdateBotRequirementsDto, BotRequirem
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: UpdateBotRequirementsDto) -> BotRequirementsDto:
-        if data.rules_required and not data.rules_url:
-            raise ValidationError(
-                "Rules URL is required", code=ErrorCode.BOT_REQUIREMENTS_INCOMPLETE
-            )
         if data.channel_required:
             if data.channel_id is None or not data.channel_url:
                 raise ValidationError(

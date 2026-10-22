@@ -12,6 +12,8 @@ from app.core.db.models import (
     AnnouncementView,
     Broadcast,
     BroadcastRecipient,
+    LegalAcceptance,
+    LegalDocumentRevision,
     OAuthIdentity,
     PasskeyCredential,
     PaymentWaitlistEntry,
@@ -24,10 +26,13 @@ from app.core.enums import (
     BroadcastChannel,
     BroadcastRecipientStatus,
     BroadcastStatus,
+    LegalAcceptanceTrigger,
+    LegalDocumentKind,
     Locale,
     OAuthProvider,
     PromocodeAvailability,
     PromocodeRewardType,
+    PurchaseChannel,
 )
 from app.modules.account_merge.repository import (
     REASSIGNED_USER_FKS,
@@ -422,3 +427,30 @@ async def test_reassign_keeps_a_moved_order_paid_at_its_own_time(
     assert referral is not None
     assert referral.referrer_id == target.id
     assert referral.updated_at == referred_at
+
+
+async def test_merge_moves_legal_acceptances(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source = await user_repository.create(CreateUserDto(name="s"))
+    target = await user_repository.create(CreateUserDto(name="t"))
+    revision = LegalDocumentRevision(
+        kind=LegalDocumentKind.OFFER, locale=Locale.EN, title="Offer", body="text"
+    )
+    session.add(revision)
+    await session.flush()
+    session.add(
+        LegalAcceptance(
+            user_id=source.id,
+            revision_id=revision.id,
+            channel=PurchaseChannel.BOT,
+            trigger=LegalAcceptanceTrigger.SIGN_UP,
+        )
+    )
+    await session.flush()
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    session.expire_all()
+    [acceptance] = (await session.scalars(select(LegalAcceptance))).all()
+    assert acceptance.user_id == target.id

@@ -17,6 +17,7 @@ from app.core.enums import (
 )
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.legal import LegalAcceptanceRecorder, LegalRepository
 from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
@@ -45,6 +46,7 @@ from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository
+from app.modules.translations import TranslationRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
@@ -173,6 +175,10 @@ async def test_rate_change_moves_catalog_but_not_existing_order(
         SettingsRepository(plan_repository.session),
         config,
         RecordingEventPublisher(),
+        LegalAcceptanceRecorder(
+            LegalRepository(plan_repository.session),
+            TranslationRepository(plan_repository.session),
+        ),
     )
     result = await create_checkout(
         user,

@@ -13,7 +13,7 @@ def register_menu_metadata() -> None:
     catalog.register_action_key("delete_device")
     catalog.register_action_key("delete_all_devices")
     catalog.register_action_key("reissue_subscription")
-    for key in ("purchase_new", "open_subscriptions", "promocode"):
+    for key in ("purchase_new", "open_subscriptions", "promocode", "legal_documents"):
         catalog.register_action_key(key)
 
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
@@ -31,6 +31,7 @@ def register_menu_metadata() -> None:
     )
     catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
     catalog.register_condition("referral_enabled", lambda data: bool(data.get("referral_enabled")))
+    catalog.register_condition("legal_available", lambda data: bool(data.get("legal_available")))
 
     # the first active subscription's; a user with several gets that one
     catalog.register_variable(
@@ -128,6 +129,15 @@ def register_menu_metadata() -> None:
                     link_type=ButtonLinkType.NAVIGATE,
                     target_window_key="referrals.main",
                     visibility_condition="referral_enabled",
+                ),
+                catalog.CatalogButton(
+                    key="legal",
+                    text_key="btn-menu.legal",
+                    row=5,
+                    column=0,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="legal_documents",
+                    visibility_condition="legal_available",
                 ),
             ),
         )

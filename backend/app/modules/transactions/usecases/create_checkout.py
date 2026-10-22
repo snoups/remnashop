@@ -7,7 +7,10 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     DiscountSource,
+    LegalAcceptanceTrigger,
+    LegalDocumentKind,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -24,6 +27,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.gateways import REQUIRE_PAID_PURCHASE_FIELD_KEY, GatewayRepository, gateway_flags
+from app.modules.legal import LegalAcceptanceRecorder
 from app.modules.plans import PlanDto
 from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
 from app.modules.subscriptions import (
@@ -73,6 +77,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         settings_repository: SettingsRepository,
         config: AppConfig,
         event_publisher: EventPublisher,
+        legal_recorder: LegalAcceptanceRecorder,
     ) -> None:
         self._pricer = pricer
         self._user_repository = user_repository
@@ -88,6 +93,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._settings_repository = settings_repository
         self._config = config
         self._event_publisher = event_publisher
+        self._legal_recorder = legal_recorder
 
     def _return_url(self, data: CreateCheckoutDto, order_id: int) -> Optional[str]:
         cabinet_url = self._config.cabinet.url
@@ -149,6 +155,16 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
             order = await self._create_order(actor.id, data, plan, quote, customer_email)
+            if data.channel is PurchaseChannel.BOT or data.legal_locale is not None:
+                await self._legal_recorder.record(
+                    user_id=actor.id,
+                    channel=data.channel,
+                    trigger=LegalAcceptanceTrigger.PAYMENT,
+                    locale=data.legal_locale or user.language,
+                    kinds=frozenset(LegalDocumentKind),
+                    transaction_id=order.id,
+                    ip_address=data.client_ip,
+                )
             await self._event_publisher.publish(
                 CheckoutCreatedEvent(
                     user=actor,

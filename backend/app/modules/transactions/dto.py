@@ -8,6 +8,7 @@ from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
     DiscountSource,
+    Locale,
     PaymentGatewayType,
     PurchaseChannel,
     PurchaseType,
@@ -130,6 +131,8 @@ class CreateCheckoutDto:
     # required for a LINK plan: the link's code is what grants access to it
     plan_code: Optional[str] = None
     return_to: Literal["default", "cabinet"] = "default"
+    legal_locale: Optional[Locale] = None
+    client_ip: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

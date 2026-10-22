@@ -147,7 +147,6 @@ def merged_user_fields(
     login = winner(MergeConflictKey.LOGIN)
     personal = winner(MergeConflictKey.PERSONAL_DISCOUNT)
     purchase = winner(MergeConflictKey.PURCHASE_DISCOUNT)
-    accepted = [d for d in (source.rules_accepted_at, target.rules_accepted_at) if d is not None]
     return MergedUserDto(
         telegram_id=telegram.telegram_id,
         username=telegram.username,
@@ -178,5 +177,4 @@ def merged_user_fields(
         is_blocked=staff.is_blocked if staff_side else source.is_blocked or target.is_blocked,
         marketing_opt_out=source.marketing_opt_out or target.marketing_opt_out,
         loyalty_excluded=source.loyalty_excluded or target.loyalty_excluded,
-        rules_accepted_at=max(accepted) if accepted else None,
     )

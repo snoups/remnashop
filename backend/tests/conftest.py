@@ -37,6 +37,7 @@ from app.modules.dialogs.repository import DialogRepository
 from app.modules.emoji_packs.repository import EmojiPackRepository
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.legal.repository import LegalRepository
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.oauth.providers.state_store import OAuthStateStore
 from app.modules.oauth.repository import OAuthIdentityRepository
@@ -228,6 +229,11 @@ def announcement_repository(session: AsyncSession) -> AnnouncementRepository:
 @pytest.fixture
 def banner_repository(session: AsyncSession) -> BannerRepository:
     return BannerRepository(session)
+
+
+@pytest.fixture
+def legal_repository(session: AsyncSession) -> LegalRepository:
+    return LegalRepository(session)
 
 
 @pytest.fixture

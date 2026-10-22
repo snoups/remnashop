@@ -142,6 +142,17 @@ class PurchaseChannel(UpperStrEnum):
     CABINET = auto()
 
 
+class LegalDocumentKind(UpperStrEnum):
+    OFFER = auto()
+    USER_AGREEMENT = auto()
+    PRIVACY_POLICY = auto()
+
+
+class LegalAcceptanceTrigger(UpperStrEnum):
+    SIGN_UP = auto()
+    PAYMENT = auto()
+
+
 class ReferralLevel(IntEnum):
     FIRST = auto()
     SECOND = auto()

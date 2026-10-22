@@ -50,7 +50,6 @@ class UserDto(BaseDto, TimestampMixin):
     marketing_opt_out: bool = False
     is_bot_blocked: bool = False
     email_undeliverable_at: Optional[datetime] = None
-    rules_accepted_at: Optional[datetime] = None
 
     referral_code: Optional[str] = None
     points: Decimal = Decimal(0)

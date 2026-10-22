@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.constants import EMAIL_PATTERN
 from app.core.enums import Locale, Role
+from app.core.utils.validators import known_locale
 
 
 class CabinetMethodsResponse(BaseModel):
@@ -26,6 +27,9 @@ class CabinetAuthResponse(BaseModel):
 
 class TelegramWebAppLoginRequest(BaseModel):
     init_data: str = Field(max_length=4096)
+    legal_locale: Optional[Locale] = None
+
+    _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 
 
 class RequestEmailCodeRequest(BaseModel):
@@ -37,11 +41,17 @@ class RequestEmailCodeRequest(BaseModel):
 
 class BotSignInRequest(BaseModel):
     token: str = Field(max_length=128)
+    legal_locale: Optional[Locale] = None
+
+    _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 
 
 class VerifyEmailCodeRequest(BaseModel):
     email: str = Field(max_length=255, pattern=EMAIL_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")
+    legal_locale: Optional[Locale] = None
+
+    _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 
 
 class InviteCodesRequest(BaseModel):
@@ -75,3 +85,6 @@ class OAuthSignInResponse(BaseModel):
 class OAuthCallbackRequest(BaseModel):
     code: str = Field(max_length=2048)
     state: str = Field(max_length=256)
+    legal_locale: Optional[Locale] = None
+
+    _legal_locale = field_validator("legal_locale", mode="before")(known_locale)

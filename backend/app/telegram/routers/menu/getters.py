@@ -8,7 +8,9 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
+from app.core.enums import PurchaseChannel
 from app.modules.banners import GetBannerForDisplayUseCase
+from app.modules.legal import ListVisibleLegalDocumentsUseCase
 from app.modules.referrals import GetReferralSettingsUseCase
 from app.modules.settings import GetShopSettingsUseCase
 from app.modules.subscriptions import (
@@ -94,6 +96,7 @@ async def menu_getter(
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     get_shop_settings: FromDishka[GetShopSettingsUseCase],
     get_referral_settings: FromDishka[GetReferralSettingsUseCase],
+    list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
     **kwargs: Any,
@@ -118,6 +121,9 @@ async def menu_getter(
         get_available_trial,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
+    )
+    data["legal_available"] = bool(
+        await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     )
     subscription_values = subscription_menu_values(
         runner,

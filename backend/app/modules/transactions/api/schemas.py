@@ -7,11 +7,13 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.core.enums import (
     Currency,
     DiscountSource,
+    Locale,
     PaymentGatewayType,
     PurchaseChannel,
     PurchaseType,
     TransactionStatus,
 )
+from app.core.utils.validators import known_locale
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import TransactionDto
 
@@ -25,6 +27,9 @@ class CreateCheckoutRequest(BaseModel):
     target_subscription_id: Optional[int] = None
     customer_email: Optional[EmailStr] = None
     plan_code: Optional[str] = Field(default=None, max_length=64)
+    legal_locale: Optional[Locale] = None
+
+    _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 
 
 class CheckoutResponse(BaseModel):

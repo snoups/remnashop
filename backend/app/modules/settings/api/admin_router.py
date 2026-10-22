@@ -171,8 +171,6 @@ async def update_bot_requirements(
     settings = await use_case(
         actor,
         UpdateBotRequirementsDto(
-            rules_required=payload.rules_required,
-            rules_url=str(payload.rules_url) if payload.rules_url else None,
             channel_required=payload.channel_required,
             channel_id=payload.channel_id,
             channel_url=str(payload.channel_url) if payload.channel_url else None,

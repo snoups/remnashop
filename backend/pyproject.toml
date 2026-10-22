@@ -39,7 +39,7 @@ dependencies = [
     "pywebpush>=2.3.0",
     "aiosmtplib>=5.1.3",
     # every process talks to the Bot API through aiogram; the dialog UI stays in the extra
-    "aiogram~=3.25.0",
+    "aiogram~=3.31.0",
     "aiohttp-socks>=0.10.0",
 ]
 

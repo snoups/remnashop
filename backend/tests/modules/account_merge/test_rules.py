@@ -83,14 +83,12 @@ def test_resolve_ignores_choice_for_forced_conflict() -> None:
 
 
 def test_merged_fields_sum_and_flags() -> None:
-    accepted = datetime(2026, 1, 1, tzinfo=timezone.utc)
     source = _user(
         id=1,
         points=Decimal(5),
         bonus_days=3,
         is_trial_available=False,
         is_blocked=True,
-        rules_accepted_at=accepted,
         telegram_id=10,
         username="s",
         language=Locale.RU,
@@ -103,7 +101,6 @@ def test_merged_fields_sum_and_flags() -> None:
     assert values.bonus_days == 4
     assert values.is_trial_available is False
     assert values.is_blocked is True
-    assert values.rules_accepted_at == accepted
     assert values.telegram_id == 10 and values.username == "s"
     assert values.language == Locale.RU
 

@@ -3,6 +3,7 @@ from typing import Optional
 from redis.asyncio import Redis
 
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
@@ -39,7 +40,12 @@ class VerifyEmailCodeUseCase:
         self._uow = uow
 
     async def execute(
-        self, email: str, code: str, client_ip: str, user_agent: Optional[str]
+        self,
+        email: str,
+        code: str,
+        client_ip: str,
+        user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
@@ -67,4 +73,6 @@ class VerifyEmailCodeUseCase:
         if grant is None:
             await record_failure(self._redis, digest)
             raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID)
-        return await self._sign_in.email(email, grant.locale, grant.codes, client_ip, user_agent)
+        return await self._sign_in.email(
+            email, grant.locale, grant.codes, client_ip, user_agent, legal_locale
+        )

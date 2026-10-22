@@ -27,6 +27,11 @@ from app.core.db.models.email_settings import EmailSettings
 from app.core.db.models.emoji_pack import EmojiPack, EmojiPackItem
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.event_outbox import EventOutboxEntry
+from app.core.db.models.legal_document import (
+    LegalAcceptance,
+    LegalDocument,
+    LegalDocumentRevision,
+)
 from app.core.db.models.loyalty_settings import LoyaltySettings
 from app.core.db.models.notification_settings import NotificationSettings
 from app.core.db.models.oauth_identity import OAuthIdentity
@@ -85,6 +90,9 @@ __all__ = [
     "EmojiPackItem",
     "EventLogEntry",
     "EventOutboxEntry",
+    "LegalAcceptance",
+    "LegalDocument",
+    "LegalDocumentRevision",
     "LoyaltySettings",
     "NotificationSettings",
     "OAuthIdentity",

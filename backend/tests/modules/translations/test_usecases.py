@@ -197,6 +197,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     # the description the registry actually points at
     await translation_repository.seed_missing(Locale.EN, "command", "start", "Open the main menu")
     await translation_repository.seed_missing(Locale.EN, "command", "paysupport", "Refunds")
+    await translation_repository.seed_missing(Locale.EN, "command", "terms", "Terms")
     await UpdateBotSettingsUseCase(settings_repository, uow, RecordingEventPublisher())(
         OWNER, UpdateBotSettingsDto(token="123:abcdef", secret_token="webhook-secret")
     )

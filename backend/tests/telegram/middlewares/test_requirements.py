@@ -3,14 +3,19 @@ from typing import Any, Optional
 import pytest
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.methods import GetChatMember
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Chat, Message, User
 from fluentogram import TranslatorHub
 from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.constants import CONTAINER_KEY, USER_KEY
-from app.core.enums import Role
+from app.core.enums import LegalDocumentKind, Locale, Role
 from app.core.utils.time import datetime_now
+from app.modules.legal import (
+    GetPendingLegalDocumentsUseCase,
+    LegalRevisionDto,
+    PendingLegalDocumentsDto,
+)
 from app.modules.settings import (
     BotRequirementsDto,
     BotStatusKind,
@@ -19,7 +24,9 @@ from app.modules.settings import (
     ReportBotStatusUseCase,
 )
 from app.modules.users import UserDto
-from app.telegram.middlewares.requirements import RULES_ACCEPT_CALLBACK, RequirementsMiddleware
+from app.telegram.broadcast_callbacks import UNSUBSCRIBE_CALLBACK
+from app.telegram.legal_gate import LegalAcceptCallback, LegalDocumentCallback, gate_message_key
+from app.telegram.middlewares.requirements import CHANNEL_CHECK_CALLBACK, RequirementsMiddleware
 
 
 class _Runner:
@@ -52,13 +59,32 @@ class _Report:
         self.reports.append(data)
 
 
+class _GetPending:
+    def __init__(self, pending: PendingLegalDocumentsDto) -> None:
+        self._pending = pending
+
+    async def execute(self, user: UserDto, channel: Any, locale: Any) -> PendingLegalDocumentsDto:
+        return self._pending
+
+
+_NOTHING_PENDING = PendingLegalDocumentsDto(documents=[], is_update=False)
+
+
 class _Container:
-    def __init__(self, requirements: BotRequirementsDto, redis: Redis) -> None:
+    def __init__(
+        self,
+        requirements: BotRequirementsDto,
+        redis: Redis,
+        pending: PendingLegalDocumentsDto = _NOTHING_PENDING,
+    ) -> None:
         self._requirements = requirements
         self._redis = redis
+        self._pending = pending
         self.report = _Report()
 
     async def get(self, dependency_type: type) -> Any:
+        if dependency_type is GetPendingLegalDocumentsUseCase:
+            return _GetPending(self._pending)
         if dependency_type is TranslatorHub:
             return _Hub()
         if dependency_type is Redis:
@@ -87,8 +113,13 @@ def _message(answered: list[Any]) -> Message:
     async def _answer(text: str, **kwargs: Any) -> None:
         answered.append(text)
 
-    message = object.__new__(Message)
-    object.__setattr__(message, "successful_payment", None)
+    message = Message(
+        message_id=1,
+        date=datetime_now(),
+        chat=Chat(id=9, type="private"),
+        from_user=User(id=9, is_bot=False, first_name="Ann"),
+        text="hi",
+    )
     object.__setattr__(message, "answer", _answer)
     return message
 
@@ -106,7 +137,6 @@ async def redis(config: AppConfig) -> Any:
     await client.aclose()
 
 
-_RULES = BotRequirementsDto(rules_required=True, rules_url="https://example.com/rules")
 _CHANNEL = BotRequirementsDto(channel_required=True, channel_id=-100, channel_url="https://t.me/x")
 
 
@@ -130,24 +160,10 @@ async def _run(
     return called
 
 
-async def test_unaccepted_rules_stop_the_customer(redis: Redis) -> None:
-    answered: list[Any] = []
-    assert (
-        await _run(_message(answered), UserDto(id=1, name="c"), _RULES, _Bot("member"), redis)
-        is False
-    )
-    assert answered == ["ntf-requirements.rules"]
-
-
-async def test_accepted_rules_pass(redis: Redis) -> None:
-    user = UserDto(id=1, name="c", rules_accepted_at=datetime_now())
-    assert await _run(_message([]), user, _RULES, _Bot("member"), redis) is True
-
-
 async def test_staff_skip_requirements(redis: Redis) -> None:
     assert (
         await _run(
-            _message([]), UserDto(id=1, name="a", role=Role.ADMIN), _RULES, _Bot("left"), redis
+            _message([]), UserDto(id=1, name="a", role=Role.ADMIN), _CHANNEL, _Bot("left"), redis
         )
         is True
     )
@@ -156,7 +172,11 @@ async def test_staff_skip_requirements(redis: Redis) -> None:
 async def test_requirement_callbacks_pass_through(redis: Redis) -> None:
     assert (
         await _run(
-            _callback(RULES_ACCEPT_CALLBACK), UserDto(id=1, name="c"), _RULES, _Bot("left"), redis
+            _callback(CHANNEL_CHECK_CALLBACK),
+            UserDto(id=1, name="c"),
+            _CHANNEL,
+            _Bot("left"),
+            redis,
         )
         is True
     )
@@ -201,7 +221,10 @@ async def test_membership_is_cached_per_channel(redis: Redis) -> None:
 async def test_successful_payment_passes_unmet_requirements(redis: Redis) -> None:
     message = _message([])
     object.__setattr__(message, "successful_payment", object())
-    assert await _run(message, UserDto(id=1, name="c"), _RULES, _Bot("member"), redis) is True
+    assert (
+        await _run(message, UserDto(id=1, name="c", telegram_id=47), _CHANNEL, _Bot("left"), redis)
+        is True
+    )
 
 
 async def test_failed_report_still_lets_customers_through(redis: Redis) -> None:
@@ -214,3 +237,95 @@ async def test_failed_report_still_lets_customers_through(redis: Redis) -> None:
     container.report.system = boom  # type: ignore[method-assign]
 
     assert await _run(_message([]), user, _CHANNEL, _Bot(None), redis, container) is True
+
+
+def _agreement(revision_id: int = 1) -> LegalRevisionDto:
+    return LegalRevisionDto(
+        id=revision_id,
+        kind=LegalDocumentKind.USER_AGREEMENT,
+        locale=Locale.RU,
+        channel=None,
+        title="t",
+        body="b",
+        created_at=datetime_now(),
+    )
+
+
+_NEW = PendingLegalDocumentsDto(documents=[_agreement()], is_update=False)
+_UPDATED = PendingLegalDocumentsDto(documents=[_agreement()], is_update=True)
+_NONE = BotRequirementsDto()
+
+
+async def test_gate_blocks_until_accepted(redis: Redis) -> None:
+    answered: list[Any] = []
+    container = _Container(_NONE, redis, _NEW)
+
+    called = await _run(
+        _message(answered), UserDto(id=1, name="c"), _NONE, _Bot("member"), redis, container
+    )
+
+    assert called is False
+    assert answered == ["msg-legal-gate"]
+
+
+async def test_gate_shows_update_text(redis: Redis) -> None:
+    answered: list[Any] = []
+    container = _Container(_NONE, redis, _UPDATED)
+
+    await _run(_message(answered), UserDto(id=1, name="c"), _NONE, _Bot("member"), redis, container)
+
+    assert answered == ["msg-legal-gate-update"]
+
+
+async def test_no_pending_documents_passes_to_channel_check(redis: Redis) -> None:
+    answered: list[Any] = []
+    user = UserDto(id=1, name="c", telegram_id=48)
+
+    assert await _run(_message(answered), user, _CHANNEL, _Bot("left"), redis) is False
+    assert answered == ["ntf-requirements.channel"]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        LegalDocumentCallback(kind=LegalDocumentKind.USER_AGREEMENT).pack(),
+        LegalAcceptCallback(ids="1").pack(),
+        UNSUBSCRIBE_CALLBACK,
+    ],
+)
+async def test_gate_lets_document_and_unsubscribe_callbacks_through(
+    redis: Redis, data: str
+) -> None:
+    container = _Container(_NONE, redis, _NEW)
+
+    assert (
+        await _run(
+            _callback(data), UserDto(id=1, name="c"), _NONE, _Bot("member"), redis, container
+        )
+        is True
+    )
+
+
+async def test_privileged_and_payment_bypass_gate(redis: Redis) -> None:
+    container = _Container(_NONE, redis, _NEW)
+    staff = UserDto(id=1, name="a", role=Role.ADMIN)
+    payment = _message([])
+    object.__setattr__(payment, "successful_payment", object())
+
+    assert await _run(_message([]), staff, _NONE, _Bot("member"), redis, container) is True
+    assert await _run(payment, UserDto(id=2, name="c"), _NONE, _Bot("member"), redis, container)
+
+
+def test_accept_callback_fits_64_bytes() -> None:
+    assert len(LegalAcceptCallback(ids="999999999,999999999").pack().encode()) <= 64
+
+
+async def test_gate_remembers_the_stopped_message(redis: Redis) -> None:
+    message = _message([])
+    object.__setattr__(message, "text", "/start webauth_abc")
+    container = _Container(_NONE, redis, _NEW)
+
+    await _run(message, UserDto(id=31, name="c"), _NONE, _Bot("member"), redis, container)
+
+    stored = await redis.get(gate_message_key(31))
+    assert stored is not None and "webauth_abc" in stored

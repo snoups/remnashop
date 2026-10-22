@@ -10,6 +10,7 @@ from app.core.db.models import (
     AnnouncementView,
     ApiToken,
     BroadcastRecipient,
+    LegalAcceptance,
     OAuthIdentity,
     PasskeyCredential,
     PaymentWaitlistEntry,
@@ -51,6 +52,7 @@ REASSIGNED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("referrals", "referrer_id"),
         ("referrals", "referred_id"),
         ("referral_rewards", "referrer_id"),
+        ("legal_acceptances", "user_id"),
     }
 )
 # history stays as it happened; sessions are revoked through SessionRevoker
@@ -62,6 +64,7 @@ UNTOUCHED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("backup_runs", "triggered_by"),
         ("ad_links", "created_by"),
         ("broadcasts", "created_by"),
+        ("legal_document_revisions", "created_by"),
         ("user_sessions", "user_id"),
     }
 )
@@ -161,6 +164,7 @@ class AccountMergeRepository:
             ApiToken.created_by_user_id,
             PushSubscription.user_id,
             ReferralReward.referrer_id,
+            LegalAcceptance.user_id,
         ):
             await self._move_owner(column, s, t)
 
@@ -320,7 +324,6 @@ class AccountMergeRepository:
         db_user.is_blocked = merged.is_blocked
         db_user.marketing_opt_out = merged.marketing_opt_out
         db_user.loyalty_excluded = merged.loyalty_excluded
-        db_user.rules_accepted_at = merged.rules_accepted_at
         await self.session.flush()
         await self.session.refresh(db_user)
         return UserDto.model_validate(db_user, from_attributes=True)

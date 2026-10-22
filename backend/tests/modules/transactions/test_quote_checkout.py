@@ -16,6 +16,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.legal import LegalAcceptanceRecorder, LegalRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -36,6 +37,7 @@ from app.modules.transactions.dto import QuoteCheckoutDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase, QuoteCheckoutUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository
+from app.modules.translations import TranslationRepository
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
@@ -84,6 +86,8 @@ def checkout_use_case(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    legal_repository: LegalRepository,
+    translation_repository: TranslationRepository,
 ) -> CreateCheckoutUseCase:
     return CreateCheckoutUseCase(
         pricer,
@@ -100,6 +104,7 @@ def checkout_use_case(
         settings_repository,
         config,
         event_publisher,
+        LegalAcceptanceRecorder(legal_repository, translation_repository),
     )
 
 

@@ -6,8 +6,11 @@ from app.core.enums import (
     AccessDenial,
     AdLinkChannel,
     CabinetSignInMethod,
+    LegalAcceptanceTrigger,
+    LegalDocumentKind,
     Locale,
     OAuthProvider,
+    PurchaseChannel,
     RegistrationSource,
     SessionAudience,
 )
@@ -23,6 +26,7 @@ from app.modules.cabinet_auth.devices import KnownDevices
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.email_domains import is_allowed_domain
 from app.modules.cabinet_auth.events import CabinetNewDeviceSignInEvent, CabinetSignedInEvent
+from app.modules.legal import LegalAcceptanceRecorder
 from app.modules.oauth import CreateOAuthIdentityDto, OAuthIdentityRepository, OAuthProfile
 from app.modules.settings import SettingsRepository
 from app.modules.users import (
@@ -33,6 +37,10 @@ from app.modules.users import (
     RegistrationSnapshotDto,
     UserDto,
     UserRepository,
+)
+
+_SIGN_UP_DOCUMENTS: Final[frozenset[LegalDocumentKind]] = frozenset(
+    {LegalDocumentKind.USER_AGREEMENT, LegalDocumentKind.PRIVACY_POLICY}
 )
 
 _DENIAL_ERRORS: Final[dict[AccessDenial, ErrorCode]] = {
@@ -71,6 +79,7 @@ class CabinetSignIn:
         check_registration_access_use_case: CheckRegistrationAccessUseCase,
         session_issuer: SessionIssuer,
         known_devices: KnownDevices,
+        legal_acceptance_recorder: LegalAcceptanceRecorder,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
@@ -83,6 +92,7 @@ class CabinetSignIn:
         self._check_registration_access_use_case = check_registration_access_use_case
         self._session_issuer = session_issuer
         self._known_devices = known_devices
+        self._legal_acceptance_recorder = legal_acceptance_recorder
         self._event_publisher = event_publisher
         self._uow = uow
 
@@ -115,6 +125,7 @@ class CabinetSignIn:
         user_agent: Optional[str],
         method: CabinetSignInMethod,
         session_ttl: int = TTL_30D,
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         if user.is_blocked:
             raise PermissionDeniedError("User is blocked", code=ErrorCode.USER_BLOCKED)
@@ -127,6 +138,17 @@ class CabinetSignIn:
         )
         is_new_device = await self._known_devices.remember(user.id, client_ip, user_agent)
         async with self._uow:
+            if legal_locale is not None and not await self._legal_acceptance_recorder.has_signed_up(
+                user.id, PurchaseChannel.CABINET
+            ):
+                await self._legal_acceptance_recorder.record(
+                    user_id=user.id,
+                    channel=PurchaseChannel.CABINET,
+                    trigger=LegalAcceptanceTrigger.SIGN_UP,
+                    locale=legal_locale,
+                    kinds=_SIGN_UP_DOCUMENTS,
+                    ip_address=client_ip,
+                )
             await self._event_publisher.publish(
                 CabinetSignedInEvent(user=user, method=method, ip_address=client_ip)
             )
@@ -148,6 +170,7 @@ class CabinetSignIn:
         user_agent: Optional[str],
         session_ttl: int = TTL_30D,
         source: RegistrationSource = RegistrationSource.CABINET_TELEGRAM,
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         # blacklisted: the register usecase stores a blocked row, issue_for refuses it
         async with self._uow:
@@ -177,7 +200,12 @@ class CabinetSignIn:
             )
         )
         return await self.issue_for(
-            user, client_ip, user_agent, CabinetSignInMethod.TELEGRAM, session_ttl
+            user,
+            client_ip,
+            user_agent,
+            CabinetSignInMethod.TELEGRAM,
+            session_ttl,
+            legal_locale,
         )
 
     async def email(
@@ -187,6 +215,7 @@ class CabinetSignIn:
         codes: InviteCodesDto,
         client_ip: str,
         user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         email = normalize_email(email)
         async with self._uow:
@@ -221,7 +250,9 @@ class CabinetSignIn:
             # a received sign-in code proves the address works again
             async with self._uow:
                 await self._user_repository.set_email_undeliverable(user.id, None)
-        return await self.issue_for(user, client_ip, user_agent, CabinetSignInMethod.EMAIL)
+        return await self.issue_for(
+            user, client_ip, user_agent, CabinetSignInMethod.EMAIL, legal_locale=legal_locale
+        )
 
     async def oauth(
         self,
@@ -230,6 +261,7 @@ class CabinetSignIn:
         codes: InviteCodesDto,
         client_ip: str,
         user_agent: Optional[str],
+        legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         if provider is OAuthProvider.TELEGRAM:
             return await self.telegram(
@@ -237,11 +269,16 @@ class CabinetSignIn:
                 codes,
                 client_ip,
                 user_agent,
+                legal_locale=legal_locale,
             )
         user = await self._user_by_identity(provider, profile.external_id)
         if user is not None:
             return await self.issue_for(
-                user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+                user,
+                client_ip,
+                user_agent,
+                CabinetSignInMethod(provider.value),
+                legal_locale=legal_locale,
             )
 
         # users.email holds only proven addresses
@@ -281,7 +318,11 @@ class CabinetSignIn:
         if any(identity.provider is provider for identity in linked):
             # another account of this provider is already linked: sign in, keep the link
             return await self.issue_for(
-                user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+                user,
+                client_ip,
+                user_agent,
+                CabinetSignInMethod(provider.value),
+                legal_locale=legal_locale,
             )
         try:
             async with self._uow:
@@ -300,7 +341,11 @@ class CabinetSignIn:
                 raise
             user = winner
         return await self.issue_for(
-            user, client_ip, user_agent, CabinetSignInMethod(provider.value)
+            user,
+            client_ip,
+            user_agent,
+            CabinetSignInMethod(provider.value),
+            legal_locale=legal_locale,
         )
 
     async def _user_by_identity(

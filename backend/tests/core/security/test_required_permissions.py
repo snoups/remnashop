@@ -26,6 +26,13 @@ from app.modules.gateways.usecases import (
     SetGatewayActiveUseCase,
     UpdateGatewaySettingsUseCase,
 )
+from app.modules.legal.usecases import (
+    ListLegalDocumentsUseCase,
+    ListUserLegalAcceptancesUseCase,
+    RemoveLegalTextUseCase,
+    SetLegalTextUseCase,
+    UpdateLegalDocumentUseCase,
+)
 from app.modules.notifications.usecases import (
     GenerateVapidKeysUseCase,
     GetNotificationSettingsUseCase,
@@ -70,6 +77,11 @@ from app.modules.users.usecases import GetUserUseCase, SetUserDiscountUseCase
         (GetAddOnUseCase, Permission.ADDONS_DETAIL_VIEW),
         (GetPlanUseCase, Permission.PLANS_DETAIL_VIEW),
         (UploadBannerUseCase, Permission.BANNERS_UPLOAD),
+        (ListLegalDocumentsUseCase, Permission.LEGAL_DOCUMENTS_VIEW),
+        (UpdateLegalDocumentUseCase, Permission.LEGAL_DOCUMENTS_UPDATE),
+        (SetLegalTextUseCase, Permission.LEGAL_TEXT_SET),
+        (RemoveLegalTextUseCase, Permission.LEGAL_TEXT_REMOVE),
+        (ListUserLegalAcceptancesUseCase, Permission.LEGAL_ACCEPTANCES_VIEW),
         (DeleteBannerUseCase, Permission.BANNERS_DELETE),
         (GetBannerImageUseCase, Permission.BANNERS_IMAGE_VIEW),
         (GetBotCommandsUseCase, Permission.BOT_COMMANDS_VIEW),

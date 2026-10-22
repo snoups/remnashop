@@ -91,7 +91,6 @@ class User(BaseSql, TimestampMixin):
     is_bot_blocked: Mapped[bool] = mapped_column(default=False, server_default="false")
     email_undeliverable_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # NULL = never accepted; a date, not a flag, so changed rules can ask again
-    rules_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     # create() always generates one, a soft delete wipes it
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
     points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")

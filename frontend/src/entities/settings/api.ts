@@ -223,8 +223,6 @@ export function updateAccessSettings(payload: Partial<AccessSettings>): Promise<
 }
 
 export interface BotRequirements {
-  rules_required: boolean;
-  rules_url: string | null;
   channel_required: boolean;
   channel_id: number | null;
   channel_url: string | null;

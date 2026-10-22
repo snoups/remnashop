@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, Locale
 from app.modules.subscriptions import PlanCatalogDto
+from app.telegram.dialogs.rendering import _EMPTY
 from app.telegram.routers.purchase.getters import (
     confirm_getter,
     duration_getter,
@@ -115,7 +116,11 @@ async def test_confirm_shows_the_chosen_method_price() -> None:
         "gateway_type": "CRYPTOMUS",
     }
 
-    data = await confirm_getter.__dishka_orig_func__(_manager(dialog_data), i18n=_i18n())
+    data = await confirm_getter.__dishka_orig_func__(
+        _manager(dialog_data),
+        list_visible_legal_documents=MagicMock(execute=AsyncMock(return_value=[])),
+        i18n=_i18n(),
+    )
 
     assert data["window_text"] == _get(
         "msg-purchase-confirm",
@@ -124,4 +129,5 @@ async def test_confirm_shows_the_chosen_method_price() -> None:
         price="2.50",
         currency_symbol="$",
         method="gateway-name.CRYPTOMUS",
+        terms_notice=_EMPTY,
     )

@@ -122,8 +122,6 @@ class SettingsRepository:
 
     async def update_bot_requirements(self, data: UpdateBotRequirementsDto) -> BotRequirementsDto:
         row = await self._get_or_create_singleton(BotRequirements)
-        row.rules_required = data.rules_required
-        row.rules_url = data.rules_url
         row.channel_required = data.channel_required
         row.channel_id = data.channel_id
         row.channel_url = data.channel_url

@@ -71,6 +71,8 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "email.router",
         "event_log.router",
         "gateways.router",
+        "legal.router",
+        "legal.user_router",
         "loyalty.router",
         "loyalty.user_router",
         "notifications.router",
