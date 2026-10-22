@@ -248,10 +248,11 @@ interface ProviderPanelProps {
   /** absent: no switch */
   onToggle?: (next: boolean) => Promise<void>;
   canToggle?: boolean;
-  hint?: string;
   guide?: ReactNode;
   fields: ProviderField[];
   footer?: ReactNode;
+  /** present: the panel is its own form */
+  onSubmit?: (event: FormEvent) => void;
 }
 
 export function ProviderPanel({
@@ -261,10 +262,10 @@ export function ProviderPanel({
   isEnabled,
   onToggle,
   canToggle = false,
-  hint,
   guide,
   fields,
   footer,
+  onSubmit,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
@@ -283,8 +284,10 @@ export function ProviderPanel({
     }
   };
 
+  const Wrapper = onSubmit ? "form" : "div";
+
   return (
-    <div>
+    <Wrapper onSubmit={onSubmit}>
       <motion.div
         tabIndex={0}
         onClick={() => setIsOpen((open) => !open)}
@@ -336,7 +339,6 @@ export function ProviderPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
-              {hint && <p className="text-[12px] text-muted-foreground">{hint}</p>}
               {fields.map((field) => (
                 <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
                   {field.key.endsWith("_client_secret") ? (
@@ -367,7 +369,7 @@ export function ProviderPanel({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Wrapper>
   );
 }
 

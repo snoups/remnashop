@@ -1071,8 +1071,7 @@
       "backups": "Backups",
       "blacklist": "Blacklist",
       "pricing": "Pricing",
-      "referrals": "Referral program",
-      "loyalty": "Loyalty program"
+      "rewards": "Rewards"
     },
     "bot": {
       "title": "Telegram bot",
@@ -1189,10 +1188,10 @@
         "botSetupSteps": [
           "Open @BotFather",
           "Open the Mini App via the \"Open\" button",
-          "Select your bot and press Bot Settings",
-          "If a domain is already set under Web Login, remove it",
+          "Select your bot and open Login Widget",
+          "If a domain is already set in the URL field, remove it",
           "Press Switch to OpenID Connect Login. If that button isn't there, go back a menu after removing the domain and repeat step 3",
-          "Press Add an Allowed URL and enter the values below:"
+          "Press Add a Redirect URI and Add a Trusted Origin and enter the values below:"
         ],
         "trustedOriginsLabel": "Trusted Origins",
         "trustedOriginsValue": "https://remnashop.domain.com",
@@ -1382,8 +1381,8 @@
       "loadError": "Failed to load requirements."
     },
     "email": {
-      "title": "Email",
-      "description": "SMTP server for cabinet sign-in codes and notifications",
+      "title": "SMTP",
+      "description": "Sign-in codes, notifications and broadcasts to customers",
       "loadError": "Failed to load email settings.",
       "hostLabel": "SMTP host",
       "portLabel": "Port",
@@ -1404,47 +1403,148 @@
       "testSent": "Test email sent."
     },
     "emailBulk": {
-      "hostLabel": "SMTP host",
-      "portLabel": "Port",
-      "securityLabel": "Encryption",
-      "security": {
-        "STARTTLS": "STARTTLS",
-        "TLS": "TLS",
-        "NONE": "None"
-      },
-      "usernameLabel": "Username",
-      "passwordLabel": "Password",
-      "passwordSet": "Set — leave blank to keep",
-      "passwordUnset": "Not set",
-      "fromAddressLabel": "From address",
-      "fromNameLabel": "From name",
-      "testButton": "Send test email",
-      "testSending": "Sending…",
-      "testSent": "Test email sent.",
-      "title": "Broadcast SMTP",
-      "description": "A separate SMTP server for broadcasts; without it, broadcasts go through the main one",
-      "loadError": "Failed to load broadcast SMTP settings.",
+      "testSent": "Test email sent through the broadcast server.",
+      "sectionTitle": "Broadcasts",
       "rateLabel": "Emails per minute",
-      "rateHint": "From 1 to 1000. Applies to broadcasts even without a separate server.",
+      "rateHint": "From 1 to 1000, for either server",
       "rateInvalid": "Enter a whole number from 1 to 1000.",
-      "resetTitle": "Reset broadcast SMTP?",
-      "resetMessage": "The separate server is removed and broadcasts go through the main SMTP again. The rate limit is kept.",
-      "resetDone": "Broadcast SMTP reset."
+      "toggleLabel": "Separate server for broadcasts",
+      "viaMain": "Broadcasts currently go through the main server",
+      "resetTitle": "Turn off the separate broadcast server?",
+      "resetMessage": "The separate server’s settings are removed and broadcasts go through the main SMTP again. The rate limit is kept.",
+      "resetConfirm": "Turn off",
+      "resetDone": "Separate broadcast server turned off."
     },
     "cabinetAuth": {
       "title": "Cabinet sign-in",
-      "description": "Methods customers can use to sign in to the web cabinet",
+      "description": "Manage web cabinet sign-in methods for customers",
       "loadError": "Failed to load cabinet sign-in settings.",
       "restrictDomains": "Only allowed email domains",
       "allowedDomains": "Allowed domains",
-      "allowedDomainsHint": "New sign-ups by email only from these domains. Existing customers sign in with any address. One domain per line or comma-separated.",
-      "telegramHint": "Client ID and secret are set in “OAuth providers”",
+      "allowedDomainsHint": "New email sign-ups only from these domains. Existing customers sign in with any address.",
+      "telegramBotHint": "Mini App and sign-in link from the bot",
+      "emailHint": "Sign-in code by email, needs SMTP configured below",
       "methods": {
-        "telegram": "Telegram",
+        "telegramBot": "Telegram bot",
+        "telegramOAuth": "Telegram OAuth",
         "google": "Google",
         "yandex": "Yandex",
         "email": "Email code"
-      }
+      },
+      "guides": {
+        "telegramBot": {
+          "title": "Sign-in via the Telegram bot",
+          "sections": [
+            {
+              "title": "How it works",
+              "body": "On the sign-in page the customer presses the Telegram button: the bot opens and sends a confirmation button that signs them in to the cabinet. When the cabinet is opened as a Mini App inside Telegram, sign-in happens automatically."
+            },
+            {
+              "title": "Requirements",
+              "body": "A bot token in the “Telegram bot” section and the cabinet domain in the CABINET_DOMAIN environment variable."
+            },
+            {
+              "title": "Mini App",
+              "body": "Optional. To open the cabinet right from Telegram, in @BotFather pick the bot → Mini Apps, enable the Main App and set the cabinet address. The same address can go into the Menu Button so the cabinet also opens from the menu button in the bot chat.",
+              "values": [
+                {
+                  "label": "URL",
+                  "value": "https://YOUR_CABINET_DOMAIN"
+                }
+              ]
+            }
+          ]
+        },
+        "telegramOAuth": {
+          "title": "Telegram OAuth in the cabinet",
+          "sections": [
+            {
+              "title": "How it works",
+              "body": "A Telegram OAuth button appears on the sign-in page. The client ID and secret are shared with Telegram in “OAuth providers”: changing them here changes them for dashboard sign-in too."
+            },
+            {
+              "title": "Bot setup",
+              "body": "If Telegram OAuth isn’t set up yet, follow the “Telegram OAuth2” guide in “OAuth providers”. Then in @BotFather pick the bot → Login Widget and add the cabinet addresses next to the dashboard ones: Add a Redirect URI and Add a Trusted Origin.",
+              "values": [
+                {
+                  "label": "Redirect URIs",
+                  "value": "https://YOUR_CABINET_DOMAIN/login/callback/telegram"
+                },
+                {
+                  "label": "Trusted Origins",
+                  "value": "https://YOUR_CABINET_DOMAIN"
+                }
+              ]
+            }
+          ]
+        },
+        "google": {
+          "title": "OAuth2: Google",
+          "sections": [
+            {
+              "title": "Creating a client",
+              "body": "Open the Clients page in Google Cloud Console, press Create Client and pick the Web application type. If OAuth isn’t set up in the project yet, the console asks you to fill in the consent screen first.",
+              "link": "https://console.cloud.google.com/auth/clients"
+            },
+            {
+              "title": "Redirect URI",
+              "body": "Add the address below to Authorized redirect URIs, replacing YOUR_CABINET_DOMAIN with the cabinet domain:",
+              "values": [
+                {
+                  "label": "Authorized redirect URI",
+                  "value": "https://YOUR_CABINET_DOMAIN/login/callback/google"
+                }
+              ]
+            },
+            {
+              "title": "Keys",
+              "body": "Copy the Client ID and Client secret into the fields below. The cabinet only requests the name and email address (openid, email, profile)."
+            }
+          ]
+        },
+        "yandex": {
+          "title": "OAuth2: Yandex",
+          "sections": [
+            {
+              "title": "Creating an app",
+              "body": "Create an app “For user authorization” and pick the “Web services” platform.",
+              "link": "https://oauth.yandex.ru/client/new/id/"
+            },
+            {
+              "title": "Redirect URI",
+              "body": "Set the Redirect URI to the address below, replacing YOUR_CABINET_DOMAIN with the cabinet domain:",
+              "values": [
+                {
+                  "label": "Redirect URI",
+                  "value": "https://YOUR_CABINET_DOMAIN/login/callback/yandex"
+                }
+              ]
+            },
+            {
+              "title": "Data access and keys",
+              "body": "Under data access pick “Login, first and last name, gender” and “Email address”. After saving, copy the ClientID and Client secret from the app page into the fields below."
+            }
+          ]
+        },
+        "email": {
+          "title": "Sign-in with an email code",
+          "sections": [
+            {
+              "title": "How it works",
+              "body": "The customer enters an email address, receives a one-time code and enters it on the sign-in page."
+            },
+            {
+              "title": "Requirements",
+              "body": "SMTP configured in the “SMTP” card below; without it the method can’t be enabled."
+            },
+            {
+              "title": "Domain restriction",
+              "body": "To keep out disposable mailboxes, enable “Only allowed email domains”: new email sign-ups are accepted only from domains on the list."
+            }
+          ]
+        }
+      },
+      "domainsList": "List"
     },
     "legal": {
       "loadError": "Failed to load documents.",
@@ -2505,19 +2605,19 @@
       "programTitle": "Referral program",
       "programDescription": "Conditions, type and size of the reward",
       "rewardTypeDescription": {
-        "EXTRA_DAYS": "Credited to the bonus days balance",
-        "POINTS": "Collected on the user's account"
+        "EXTRA_DAYS": "The customer adds them to a subscription",
+        "POINTS": "The customer withdraws them on request"
       },
       "daysRequirePaidLabel": "Only for paying users",
       "daysRequirePaidHint": "Days aren't credited to someone who has never paid for a subscription.",
       "invitee": {
         "title": "Invited user reward",
         "description": {
-          "EXTRA_DAYS": "To the bonus days balance",
-          "POINTS": "To the user's account"
+          "EXTRA_DAYS": "The customer adds them to a subscription",
+          "POINTS": "The customer withdraws them on request"
         },
         "amountLabel": "On sign-up through a link",
-        "hint": "Credited once, when someone registers through a referral link. 0 turns it off.",
+        "hint": "Credited once, when someone registers through a referral link.",
         "pointsWarning": "Points are credited without a payment and can be farmed with fake accounts."
       },
       "levelsTitle": "Levels & rewards",
@@ -3746,10 +3846,6 @@
     "settings": {
       "title": "Loyalty program",
       "description": "An automatic discount that grows with what a customer has paid",
-      "status": {
-        "enabled": "Enabled",
-        "disabled": "Disabled"
-      },
       "enabledLabel": "Program enabled",
       "enabledHint": "Turned off, every customer's loyalty discount drops to zero on the next recalculation.",
       "windowLabel": "Counting window",
@@ -3761,6 +3857,7 @@
       "tiersDescription": "The discount of the highest tier whose threshold the customer has paid reaches applies to every purchase.",
       "tierFrom": "from",
       "addTier": "Add tier",
+      "tiersEmpty": "No levels yet — the scale shows an example.",
       "saved": "Loyalty settings saved.",
       "error": "Failed to save the loyalty settings.",
       "loadError": "Failed to load the loyalty settings."

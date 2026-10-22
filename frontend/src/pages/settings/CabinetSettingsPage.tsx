@@ -1,15 +1,17 @@
+import { useState } from "react";
+
 import { usePermissions } from "@entities/user/use-current-user";
 import { CabinetAuthSettingsForm } from "@features/cabinet-auth-settings/CabinetAuthSettingsForm";
-import { BulkEmailSettingsForm } from "@features/email-settings/BulkEmailSettingsForm";
 import { EmailSettingsForm } from "@features/email-settings/EmailSettingsForm";
 
 export function CabinetSettingsPage() {
   const permissions = usePermissions();
+  // the cabinet card shows whether SMTP is set up, so a save below refreshes it
+  const [emailVersion, setEmailVersion] = useState(0);
   return (
     <div className="flex flex-col gap-4">
-      {permissions.includes("CABINET_AUTH_SETTINGS_VIEW") && <CabinetAuthSettingsForm />}
-      {permissions.includes("EMAIL_SETTINGS_VIEW") && <EmailSettingsForm />}
-      {permissions.includes("EMAIL_SETTINGS_VIEW") && <BulkEmailSettingsForm />}
+      {permissions.includes("CABINET_AUTH_SETTINGS_VIEW") && <CabinetAuthSettingsForm emailVersion={emailVersion} />}
+      {permissions.includes("EMAIL_SETTINGS_VIEW") && <EmailSettingsForm onSaved={() => setEmailVersion((version) => version + 1)} />}
     </div>
   );
 }

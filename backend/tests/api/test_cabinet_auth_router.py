@@ -75,10 +75,12 @@ async def test_methods_is_public_and_lowercases_providers(
     headers = await _owner_headers(user_repository, session_repository, uow, config)
 
     patched = await client.patch(
-        f"{API_V1}/settings/cabinet-auth", json={"telegram_enabled": True}, headers=headers
+        f"{API_V1}/settings/cabinet-auth",
+        json={"telegram_enabled": True, "telegram_oauth_enabled": True},
+        headers=headers,
     )
     assert patched.status_code == 200
-    assert patched.json()["telegram_enabled"] is True
+    assert patched.json()["telegram_oauth_enabled"] is True
 
     methods = await client.get(f"{API_V1}/auth/methods")
     assert methods.status_code == 200

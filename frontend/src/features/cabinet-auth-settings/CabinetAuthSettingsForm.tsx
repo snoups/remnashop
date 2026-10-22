@@ -1,14 +1,17 @@
 import { DoorOpen, Globe, Mail, MailX } from "lucide-react";
-import { useEffect, useState, type ComponentType, type FormEvent } from "react";
+import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  getBotSettings,
   getCabinetAuthSettings,
+  getEmailSettings,
   getOAuthSettings,
   updateCabinetAuthSettings,
   updateOAuthSettings,
   type CabinetAuthSettings,
   type OAuthSettings,
+  type UpdateOAuthSettingsPayload,
 } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
@@ -20,33 +23,51 @@ import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
-import { Field } from "@shared/ui/Field";
 import { Switch } from "@shared/ui/Switch";
-import { TextArea } from "@shared/ui/TextInput";
 import { ProviderPanel } from "@features/oauth-settings/OAuthSettingsForm";
 
-type MethodKey = "telegram_enabled" | "google_enabled" | "yandex_enabled" | "email_enabled";
+import { AllowedDomainsDialog } from "./AllowedDomainsDialog";
+import { CabinetMethodGuideDialog, type GuideMethod } from "./CabinetMethodGuideDialog";
 
-type OAuthMethod = "google" | "yandex";
+type MethodKey =
+  | "telegram_enabled"
+  | "telegram_oauth_enabled"
+  | "google_enabled"
+  | "yandex_enabled"
+  | "email_enabled";
 
-const METHODS: { key: MethodKey; label: "telegram" | OAuthMethod | "email"; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
-  { key: "telegram_enabled", label: "telegram", icon: TelegramIcon },
+type OAuthMethod = "telegram" | "google" | "yandex";
+
+const METHODS: { key: MethodKey; label: GuideMethod; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
+  { key: "telegram_enabled", label: "telegramBot", icon: TelegramIcon },
+  { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
   { key: "google_enabled", label: "google", icon: Globe, oauth: "google" },
   { key: "yandex_enabled", label: "yandex", icon: Globe, oauth: "yandex" },
   { key: "email_enabled", label: "email", icon: Mail },
 ];
 
-export function CabinetAuthSettingsForm() {
+export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number }) {
   const { t } = useTranslation();
   const permissions = usePermissions();
   const canManage = permissions.includes("CABINET_AUTH_SETTINGS_MANAGE");
   const canViewOAuth = permissions.includes("OAUTH_SETTINGS_VIEW");
+  const canViewBot = permissions.includes("BOT_SETTINGS_VIEW");
+  const canViewEmail = permissions.includes("EMAIL_SETTINGS_VIEW");
   const [state, , setData] = useAsyncResource(getCabinetAuthSettings);
-  // Google/Yandex credentials live in OAuth settings; without that permission only the switches show
+  // OAuth credentials live in OAuth settings; without that permission only the switches show
   const [oauthState, , setOAuthData] = useAsyncResource((signal) =>
     canViewOAuth ? getOAuthSettings(signal) : Promise.resolve(null),
   );
   const oauthSettings = oauthState.kind === "ready" ? oauthState.data : null;
+  const [botState] = useAsyncResource((signal) =>
+    canViewBot ? getBotSettings(signal) : Promise.resolve(null),
+  );
+  const isBotConfigured = botState.kind === "ready" ? botState.data?.is_configured : undefined;
+  const [emailState] = useAsyncResource(
+    (signal) => (canViewEmail ? getEmailSettings(signal) : Promise.resolve(null)),
+    { deps: [emailVersion], keepData: true },
+  );
+  const isEmailConfigured = emailState.kind === "ready" ? emailState.data?.is_configured : undefined;
   const [pendingKey, setPendingKey] = useState<MethodKey | "domains" | null>(null);
 
   const handleToggle = async (key: MethodKey, next: boolean) => {
@@ -60,11 +81,7 @@ export function CabinetAuthSettingsForm() {
     }
   };
 
-  const [domainsText, setDomainsText] = useState("");
-  const savedDomains = state.kind === "ready" ? state.data.allowed_email_domains.join("\n") : null;
-  useEffect(() => {
-    if (savedDomains !== null) setDomainsText(savedDomains);
-  }, [savedDomains]);
+  const [isDomainsOpen, setIsDomainsOpen] = useState(false);
 
   const saveDomains = async (patch: Partial<CabinetAuthSettings>) => {
     setPendingKey("domains");
@@ -88,88 +105,96 @@ export function CabinetAuthSettingsForm() {
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("settings.cabinetAuth.loadError")} />}
       {state.kind === "ready" && (
-        <div className="mt-4 flex flex-col gap-1">
-          {METHODS.map(({ key, label, icon: Icon, oauth }) =>
-            oauth && oauthSettings ? (
-              <OAuthMethodPanel
-                key={key}
-                method={oauth}
-                icon={Icon}
-                label={t(`settings.cabinetAuth.methods.${label}`)}
-                oauthSettings={oauthSettings}
-                onSaved={setOAuthData}
-                isEnabled={state.data[key]}
-                onToggle={async (next) => setData(await updateCabinetAuthSettings({ [key]: next }))}
-                canToggle={canManage && pendingKey === null}
-              />
-            ) : (
-              <div
-                key={key}
-                className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                  <Icon className="size-4" />
+        <div className="mt-4">
+          <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
+            {METHODS.map(({ key, label, icon: Icon, oauth }) => {
+              const isConfigured =
+                label === "telegramBot" ? isBotConfigured : label === "email" ? isEmailConfigured : undefined;
+              return oauth && oauthSettings ? (
+                <OAuthMethodPanel
+                  key={key}
+                  method={oauth}
+                  icon={Icon}
+                  label={t(`settings.cabinetAuth.methods.${label}`)}
+                  guide={<CabinetMethodGuideDialog method={label} />}
+                  oauthSettings={oauthSettings}
+                  onSaved={setOAuthData}
+                  isEnabled={state.data[key]}
+                  onToggle={async (next) => setData(await updateCabinetAuthSettings({ [key]: next }))}
+                  canToggle={canManage && pendingKey === null}
+                />
+              ) : (
+                <div key={key}>
+                  <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+                      <Icon className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-medium text-foreground">
+                        {t(`settings.cabinetAuth.methods.${label}`)}
+                      </p>
+                      {isConfigured !== undefined ? (
+                        <p className="text-[12px]">
+                          {isConfigured ? (
+                            <span className="text-success">{t("settings.oauth.configured")}</span>
+                          ) : (
+                            <span className="text-warning">{t("settings.oauth.notConfigured")}</span>
+                          )}
+                        </p>
+                      ) : (
+                        <p className="text-[12px] text-muted-foreground">
+                          {oauth
+                            ? t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })
+                            : label === "telegramBot"
+                              ? t("settings.cabinetAuth.telegramBotHint")
+                              : t("settings.cabinetAuth.emailHint")}
+                        </p>
+                      )}
+                    </div>
+                    <CabinetMethodGuideDialog method={label} />
+                    <div className="mr-1 flex">
+                      <Switch
+                        checked={state.data[key]}
+                        onChange={(value) => void handleToggle(key, value)}
+                        // switching off stays possible after the bot token or SMTP is removed
+                        disabled={
+                          !canManage || pendingKey !== null || (isConfigured === false && !state.data[key])
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-foreground">
-                    {t(`settings.cabinetAuth.methods.${label}`)}
-                  </p>
-                  {oauth && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })}
-                    </p>
-                  )}
-                  {label === "telegram" && (
-                    <p className="text-[12px] text-muted-foreground">{t("settings.cabinetAuth.telegramHint")}</p>
-                  )}
-                </div>
-                <div className="mr-1 flex">
-                  <Switch
-                    checked={state.data[key]}
-                    onChange={(value) => void handleToggle(key, value)}
-                    disabled={!canManage || pendingKey !== null}
-                  />
-                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 border-t border-white/[0.08] pt-2">
+            <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
+                <MailX className="size-4" />
               </div>
-            ),
-          )}
-          <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-              <MailX className="size-4" />
-            </div>
-            <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
-              {t("settings.cabinetAuth.restrictDomains")}
-            </p>
-            <div className="mr-1 flex">
-              <Switch
-                checked={state.data.restrict_email_domains}
-                onChange={(value) => void saveDomains({ restrict_email_domains: value })}
-                disabled={!canManage || pendingKey !== null}
-              />
+              <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
+                {t("settings.cabinetAuth.restrictDomains")}
+              </p>
+              <Button variant="secondary" size="sm" type="button" onClick={() => setIsDomainsOpen(true)}>
+                {t("settings.cabinetAuth.domainsList")}
+              </Button>
+              <div className="mr-1 flex">
+                <Switch
+                  checked={state.data.restrict_email_domains}
+                  onChange={(value) => void saveDomains({ restrict_email_domains: value })}
+                  disabled={!canManage || pendingKey !== null}
+                />
+              </div>
             </div>
           </div>
-          {state.data.restrict_email_domains && (
-            <Field
-              label={t("settings.cabinetAuth.allowedDomains")}
-              htmlFor="cabinet-allowed-domains"
-              hint={t("settings.cabinetAuth.allowedDomainsHint")}
-              className="mt-2 px-[12.5px]"
-            >
-              <TextArea
-                id="cabinet-allowed-domains"
-                value={domainsText}
-                onChange={(event) => setDomainsText(event.target.value)}
-                onBlur={() => {
-                  const next = domainsText.split(/[\s,;]+/).filter(Boolean);
-                  if (next.join("\n") !== savedDomains)
-                    void saveDomains({ allowed_email_domains: next });
-                }}
-                disabled={!canManage}
-                spellCheck={false}
-                rows={6}
-                className="mt-1 w-full"
-              />
-            </Field>
+          {isDomainsOpen && (
+            <AllowedDomainsDialog
+              domains={state.data.allowed_email_domains}
+              canManage={canManage}
+              onSaved={setData}
+              onClose={() => setIsDomainsOpen(false)}
+            />
           )}
         </div>
       )}
@@ -181,6 +206,7 @@ interface OAuthMethodPanelProps {
   method: OAuthMethod;
   icon: ComponentType<{ className?: string }>;
   label: string;
+  guide: ReactNode;
   oauthSettings: OAuthSettings;
   onSaved: (settings: OAuthSettings) => void;
   isEnabled: boolean;
@@ -192,6 +218,7 @@ function OAuthMethodPanel({
   method,
   icon,
   label,
+  guide,
   oauthSettings,
   onSaved,
   isEnabled,
@@ -214,13 +241,12 @@ function OAuthMethodPanel({
     try {
       const id = clientId || undefined;
       const secret = clientSecret || undefined;
-      onSaved(
-        await updateOAuthSettings(
-          method === "google"
-            ? { google_client_id: id, google_client_secret: secret }
-            : { yandex_client_id: id, yandex_client_secret: secret },
-        ),
-      );
+      const payloads: Record<OAuthMethod, UpdateOAuthSettingsPayload> = {
+        telegram: { telegram_client_id: id, telegram_client_secret: secret },
+        google: { google_client_id: id, google_client_secret: secret },
+        yandex: { yandex_client_id: id, yandex_client_secret: secret },
+      };
+      onSaved(await updateOAuthSettings(payloads[method]));
       setClientId("");
       setClientSecret("");
       toast.success(t("common.saved"));
@@ -232,37 +258,36 @@ function OAuthMethodPanel({
   };
 
   return (
-    <form onSubmit={(event) => void handleSubmit(event)}>
-      <ProviderPanel
-        icon={icon}
-        label={label}
-        isConfigured={oauthSettings[`is_${method}_configured`]}
-        isEnabled={isEnabled}
-        onToggle={onToggle}
-        canToggle={canToggle}
-        hint={t("settings.oauth.redirectHint", { path: `/login/callback/${method}` })}
-        fields={[
-          {
-            key: `${method}_client_id`,
-            label: t("settings.oauth.clientIdLabel"),
-            value: clientId,
-            onChange: setClientId,
-          },
-          {
-            key: `${method}_client_secret`,
-            label: t("settings.oauth.clientSecretLabel"),
-            value: clientSecret,
-            onChange: setClientSecret,
-          },
-        ]}
-        footer={
-          canManageOAuth && (
-            <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          )
-        }
-      />
-    </form>
+    <ProviderPanel
+      icon={icon}
+      label={label}
+      guide={guide}
+      isConfigured={oauthSettings[`is_${method}_configured`]}
+      isEnabled={isEnabled}
+      onToggle={onToggle}
+      canToggle={canToggle}
+      fields={[
+        {
+          key: `${method}_client_id`,
+          label: t("settings.oauth.clientIdLabel"),
+          value: clientId,
+          onChange: setClientId,
+        },
+        {
+          key: `${method}_client_secret`,
+          label: t("settings.oauth.clientSecretLabel"),
+          value: clientSecret,
+          onChange: setClientSecret,
+        },
+      ]}
+      footer={
+        canManageOAuth && (
+          <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? t("common.saving") : t("common.save")}
+          </Button>
+        )
+      }
+      onSubmit={(event) => void handleSubmit(event)}
+    />
   );
 }

@@ -89,11 +89,8 @@ export const PromocodesPage = lazy(() =>
 export const ReferralsListPage = lazy(() =>
   import("@pages/referrals/ReferralsListPage").then((m) => ({ default: m.ReferralsListPage })),
 );
-export const LoyaltySettingsPage = lazy(() =>
-  import("@pages/settings/LoyaltySettingsPage").then((m) => ({ default: m.LoyaltySettingsPage })),
-);
-export const ReferralSettingsPage = lazy(() =>
-  import("@pages/settings/ReferralSettingsPage").then((m) => ({ default: m.ReferralSettingsPage })),
+export const RewardsSettingsPage = lazy(() =>
+  import("@pages/settings/RewardsSettingsPage").then((m) => ({ default: m.RewardsSettingsPage })),
 );
 export const SettingsPage = lazy(() =>
   import("@pages/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),

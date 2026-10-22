@@ -45,11 +45,10 @@ export function TelegramOAuthGuideDialog() {
           {botSetupSteps.map((step, index) => (
             <li key={index}>
               {index === 0 && withLink(step, "@BotFather", "https://t.me/botfather")}
-              {index === 2 && withEmphasis(step, "Bot Settings")}
-              {index === 3 && withEmphasis(step, "Web Login")}
+              {index === 2 && withEmphasis(step, "Login Widget")}
               {index === 4 && renderSwitchStep(step)}
-              {index === 5 && withEmphasis(step, "Add an Allowed URL")}
-              {index !== 0 && index !== 2 && index !== 3 && index !== 4 && index !== 5 && step}
+              {index === 5 && withEmphasis(step, ["Add a Redirect URI", "Add a Trusted Origin"])}
+              {index !== 0 && index !== 2 && index !== 4 && index !== 5 && step}
             </li>
           ))}
         </ol>

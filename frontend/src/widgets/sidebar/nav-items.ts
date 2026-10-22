@@ -98,6 +98,5 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { key: "backups", to: "backups", icon: Database, anyOf: ["BACKUPS_VIEW"] },
   { key: "blacklist", to: "blacklist", icon: Ban, anyOf: ["BLACKLIST_VIEW"] },
   { key: "pricing", to: "pricing", icon: Coins, anyOf: ["PRICING_VIEW"] },
-  { key: "referrals", to: "referrals", icon: Share2, anyOf: ["REFERRALS_SETTINGS_VIEW"] },
-  { key: "loyalty", to: "loyalty", icon: BadgePercent, anyOf: ["LOYALTY_SETTINGS_VIEW"] },
+  { key: "rewards", to: "rewards", icon: BadgePercent, anyOf: ["LOYALTY_SETTINGS_VIEW", "REFERRALS_SETTINGS_VIEW"] },
 ];

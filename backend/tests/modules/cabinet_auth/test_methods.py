@@ -77,6 +77,13 @@ async def test_oauth_providers_need_cabinet_flag_and_credentials(
             )
         )
     methods = await GetCabinetMethodsUseCase(settings_repository, cabinet_config, uow).execute()
+    assert methods.oauth == [OAuthProvider.GOOGLE]
+
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(telegram_oauth_enabled=True)
+        )
+    methods = await GetCabinetMethodsUseCase(settings_repository, cabinet_config, uow).execute()
     assert methods.oauth == [OAuthProvider.TELEGRAM, OAuthProvider.GOOGLE]
 
     async with uow:

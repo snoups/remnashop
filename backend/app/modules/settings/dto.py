@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AccessMode, SmtpSecurity, UpperStrEnum
+from app.core.enums import AccessMode, OAuthProvider, SmtpSecurity, UpperStrEnum
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -336,6 +336,7 @@ class UpdateEmailSettingsDto:
 
 class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
     telegram_enabled: bool = False
+    telegram_oauth_enabled: bool = False
     google_enabled: bool = False
     yandex_enabled: bool = False
     email_enabled: bool = False
@@ -344,10 +345,20 @@ class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
         default_factory=lambda: list(DEFAULT_ALLOWED_EMAIL_DOMAINS)
     )
 
+    def is_oauth_enabled(self, provider: OAuthProvider) -> bool:
+        if provider is OAuthProvider.TELEGRAM:
+            return self.telegram_oauth_enabled
+        if provider is OAuthProvider.GOOGLE:
+            return self.google_enabled
+        if provider is OAuthProvider.YANDEX:
+            return self.yandex_enabled
+        return False
+
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateCabinetAuthSettingsDto:
     telegram_enabled: Optional[bool] = None
+    telegram_oauth_enabled: Optional[bool] = None
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None
     email_enabled: Optional[bool] = None

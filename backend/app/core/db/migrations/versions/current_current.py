@@ -456,6 +456,7 @@ def upgrade() -> None:
         "cabinet_auth_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("telegram_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("telegram_oauth_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("google_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("yandex_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_enabled", sa.Boolean(), server_default="false", nullable=False),

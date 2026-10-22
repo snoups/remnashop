@@ -98,7 +98,7 @@ def callback(
 async def _enable_providers(settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
-            UpdateCabinetAuthSettingsDto(telegram_enabled=True, google_enabled=True)
+            UpdateCabinetAuthSettingsDto(telegram_oauth_enabled=True, google_enabled=True)
         )
 
 

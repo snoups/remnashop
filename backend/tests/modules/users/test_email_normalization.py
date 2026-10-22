@@ -47,6 +47,8 @@ async def test_create_blank_email_becomes_none(
         ("ivan.petrov@googlemail.com", "ivanpetrov@gmail.com"),
         ("ivan-petrov+x@ya.ru", "ivan.petrov@yandex.ru"),
         ("ivan.petrov@yandex.com", "ivan.petrov@yandex.ru"),
+        ("Ivan.Petrov@me.com", "ivan.petrov@icloud.com"),
+        ("ivan+tag@mac.com", "ivan@icloud.com"),
         ("ivan+tag@mail.ru", "ivan@mail.ru"),
         ("i.van@mail.ru", "i.van@mail.ru"),
         ("  Ann@Outlook.com ", "ann@outlook.com"),

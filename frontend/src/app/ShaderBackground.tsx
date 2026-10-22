@@ -14,6 +14,8 @@ const BUFFER_SCALE = 0.5;
 const IDLE_TIMEOUT_MS = 30_000;
 const EASE_DURATION_MS = 2_000;
 const ACTIVITY_EVENTS = ["pointermove", "pointerdown", "keydown", "wheel", "touchstart", "scroll"] as const;
+// Safari drops the context on sleep/wake, GPU switches and memory pressure; past this many losses the canvas is hidden for good
+const MAX_CONTEXT_LOSSES = 5;
 
 // One oversized triangle over the viewport, generated from gl_VertexID; no vertex buffer.
 const VERTEX_SHADER = `#version 300 es
@@ -178,9 +180,8 @@ export function ShaderBackground() {
     } catch {
       gl = null;
     }
-    if (!gl) return;
-    const program = compileProgram(gl);
-    if (!program) return;
+    // Safari hands out an already-lost context once it has blocked WebGL for the site
+    if (!gl || gl.isContextLost()) return;
     // `gl` narrowing doesn't survive into the closures below
     const context = gl;
 
@@ -194,7 +195,6 @@ export function ShaderBackground() {
       canvas.height = Math.ceil(window.innerHeight * BUFFER_SCALE);
       context.viewport(0, 0, canvas.width, canvas.height);
     };
-    resize();
 
     const uniforms: ShaderUniforms = {
       uTime: { value: 0 },
@@ -207,19 +207,21 @@ export function ShaderBackground() {
       uUvDistortionIntensity: { value: 0.15 },
       uHueRotationMatrix: { value: buildHueRotationMatrix(0) },
     };
-    const location = (name: string) => context.getUniformLocation(program, name);
-    const locations = {
-      uTime: location("uTime"),
-      uTimeSin: location("uTimeSin"),
-      uScrollProgress: location("uScrollProgress"),
-      uOpacity: location("uOpacity"),
-      uColourPalette: location("uColourPalette"),
-      uUvScale: location("uUvScale"),
-      uUvDistortionIterations: location("uUvDistortionIterations"),
-      uUvDistortionIntensity: location("uUvDistortionIntensity"),
-      uHueRotationMatrix: location("uHueRotationMatrix"),
-    };
-    context.useProgram(program);
+
+    let program: WebGLProgram | null = null;
+    let locations = {} as Record<keyof ShaderUniforms, WebGLUniformLocation | null>;
+    // Every GL object dies with the context, so a restored one needs all of this again.
+    function setup(): boolean {
+      program = compileProgram(context);
+      if (!program) return false;
+      for (const name of Object.keys(uniforms) as (keyof ShaderUniforms)[]) {
+        locations[name] = context.getUniformLocation(program, name);
+      }
+      context.useProgram(program);
+      resize();
+      return true;
+    }
+    if (!setup()) return;
 
     uniformsRef.current = uniforms;
 
@@ -251,13 +253,27 @@ export function ShaderBackground() {
 
     let frame = 0;
 
-    function onContextLost() {
-      // No preventDefault(): it promises a restore this code never does, and Safari
-      // then cycles lost/restored forever. A permanent hide is fine for decoration.
+    let contextLosses = 0;
+
+    function hideForGood() {
       stop();
       canvas!.style.display = "none";
     }
+
+    function onContextLost(event: Event) {
+      stop();
+      // preventDefault() is what asks the browser for a webglcontextrestored
+      if (++contextLosses > MAX_CONTEXT_LOSSES) return hideForGood();
+      event.preventDefault();
+    }
+
+    function onContextRestored() {
+      if (!setup()) return hideForGood();
+      renderFrame();
+      if (!reduceMotion && document.hasFocus()) start();
+    }
     canvas.addEventListener("webglcontextlost", onContextLost, false);
+    canvas.addEventListener("webglcontextrestored", onContextRestored, false);
 
     // Time is accumulated per frame rather than derived from a start timestamp,
     // so pauses (blur, idle) and the idle ease both keep uTime continuous.
@@ -331,6 +347,7 @@ export function ShaderBackground() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll);
       canvas.removeEventListener("webglcontextlost", onContextLost);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored);
       context.deleteProgram(program);
       // No WEBGL_lose_context here: the canvas is reused across StrictMode/HMR
       // remounts, and a force-lost context breaks the next getContext() in Safari.

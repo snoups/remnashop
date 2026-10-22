@@ -1,5 +1,5 @@
 import { BadgePercent, Plus, Trash2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getLoyaltySettings, saveLoyaltySettings, type LoyaltySettings } from "@entities/loyalty/api";
@@ -21,7 +21,12 @@ import { SuffixInput } from "@shared/ui/TextInput";
 
 const MAX_PERCENT = 100;
 const MAX_TIERS = 20;
-const FIRST_TIER = { threshold: "1000", percent: "3" };
+const SCALE_TICKS = [0, 25, 50, 75, 100];
+const DEFAULT_TIERS = [
+  { threshold: "1000", percent: "3" },
+  { threshold: "5000", percent: "5" },
+  { threshold: "15000", percent: "10" },
+];
 
 interface TierDraft {
   threshold: string;
@@ -49,8 +54,6 @@ export function LoyaltySettingsPage() {
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  // the badge shows what's stored, not the unsaved toggle
-  const [savedEnabled, setSavedEnabled] = useState(false);
   const [windowText, setWindowText] = useState("");
   const [tiers, setTiers] = useState<TierDraft[]>([]);
   const [currency, setCurrency] = useState<string | null>(null);
@@ -62,15 +65,39 @@ export function LoyaltySettingsPage() {
 
   const applySettings = (settings: LoyaltySettings) => {
     setEnabled(settings.enabled);
-    setSavedEnabled(settings.enabled);
     setWindowText(settings.window_months === null ? "" : String(settings.window_months));
-    setTiers(settings.tiers.map((tier) => ({ threshold: tier.threshold, percent: String(tier.percent) })));
+    setTiers(
+      settings.tiers.length > 0
+        ? settings.tiers.map((tier) => ({ threshold: tier.threshold, percent: String(tier.percent) }))
+        : DEFAULT_TIERS,
+    );
     setCurrency(settings.currency);
   };
 
   const [state] = useAsyncResource(getLoyaltySettings, { onSuccess: applySettings });
 
   const invalid = invalidTiers(tiers);
+  // with no tiers the scale shows the defaults dimmed, as an example
+  const chartTiers = tiers.length > 0 ? tiers : DEFAULT_TIERS;
+
+  // a thumb stays between its neighbours: percents must strictly increase
+  const setPercent = (index: number, percent: number) => {
+    const low = (Number(tiers[index - 1]?.percent) || 0) + 1;
+    const high = (Number(tiers[index + 1]?.percent) || MAX_PERCENT + 1) - 1;
+    updateTier(index, { percent: String(Math.min(high, Math.max(low, Math.round(percent)))) });
+  };
+
+  const dragPercent = (index: number, event: PointerEvent<HTMLButtonElement>) => {
+    const track = event.currentTarget.parentElement?.getBoundingClientRect();
+    if (track) setPercent(index, ((event.clientX - track.left) / track.width) * MAX_PERCENT);
+  };
+
+  const stepPercent = (index: number, event: KeyboardEvent<HTMLButtonElement>) => {
+    const delta = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[event.key];
+    if (delta === undefined) return;
+    event.preventDefault();
+    setPercent(index, (Number(tiers[index]?.percent) || 0) + delta);
+  };
   const isWindowInvalid = windowText !== "" && !(Number(windowText) >= 1);
   const hasInvalid = invalid.size > 0 || isWindowInvalid;
   const unit = currency ? currencySymbol(currency) : "";
@@ -81,7 +108,7 @@ export function LoyaltySettingsPage() {
   const addTier = () =>
     setTiers((prev) => {
       const last = prev[prev.length - 1];
-      if (!last) return [FIRST_TIER];
+      if (!last) return DEFAULT_TIERS.slice(0, 1);
       return [
         ...prev,
         {
@@ -114,33 +141,23 @@ export function LoyaltySettingsPage() {
   if (state.kind === "error") return <ErrorState text={t("loyalty.settings.loadError")} size="page" />;
 
   return (
-    <form onSubmit={(event) => void handleSubmit(event)} className="max-w-2xl">
+    <form onSubmit={(event) => void handleSubmit(event)}>
       <Card className="flex flex-col">
         <CardHeader
           icon={BadgePercent}
           title={t("loyalty.settings.title")}
           description={t("loyalty.settings.description")}
           aside={
-            <span
-              className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold ${
-                savedEnabled ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
-              }`}
-            >
-              {savedEnabled ? t("loyalty.settings.status.enabled") : t("loyalty.settings.status.disabled")}
-            </span>
+            <>
+              <span className="text-sm text-foreground/80">{t("loyalty.settings.enabledLabel")}</span>
+              <FieldHint text={t("loyalty.settings.enabledHint")} />
+              <Switch checked={enabled} onChange={setEnabled} disabled={isLocked} />
+            </>
           }
         />
 
-        <div className="mt-4 flex items-center justify-between gap-3 py-1">
-          <span className="flex items-center gap-1.5 text-sm text-foreground/80">
-            {t("loyalty.settings.enabledLabel")}
-            <FieldHint text={t("loyalty.settings.enabledHint")} />
-          </span>
-          <Switch checked={enabled} onChange={setEnabled} disabled={isLocked} />
-        </div>
-
-        <div className={`mt-3.5 flex flex-col gap-4 transition-opacity ${enabled ? "" : "opacity-45"}`}>
-          <div className="flex items-center justify-between gap-3">
+        <div className={`mt-4 flex flex-col gap-4 transition-opacity ${enabled ? "" : "opacity-45"}`}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <label htmlFor="loyalty-window" className="flex items-center gap-1.5 text-sm text-foreground/80">
               {t("loyalty.settings.windowLabel")}
               <FieldHint text={t("loyalty.settings.windowHint")} />
@@ -164,60 +181,116 @@ export function LoyaltySettingsPage() {
           <div className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-foreground">{t("loyalty.settings.tiersTitle")}</span>
             <span className="text-[12px] text-muted-foreground">{t("loyalty.settings.tiersDescription")}</span>
-            {tiers.map((tier, index) => (
-              <div key={index} className="flex items-center gap-2 rounded-[14px] bg-white/[0.03] px-3 py-2">
-                <span className="w-8 shrink-0 text-[13px] text-muted-foreground">{t("loyalty.settings.tierFrom")}</span>
-                <SuffixInput
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  suffix={unit}
-                  value={tier.threshold}
-                  disabled={areSettingsLocked}
-                  aria-invalid={invalid.has(index)}
-                  onChange={(event) => updateTier(index, { threshold: event.target.value })}
-                  className="min-w-0 flex-1"
-                />
-                <SuffixInput
-                  type="number"
-                  min={1}
-                  max={MAX_PERCENT}
-                  step="1"
-                  onKeyDown={blockNonIntegerKeys}
-                  suffix="%"
-                  value={tier.percent}
-                  disabled={areSettingsLocked}
-                  aria-invalid={invalid.has(index)}
-                  onChange={(event) => updateTier(index, { percent: event.target.value })}
-                  className="w-28 shrink-0"
-                />
-                <IconButton
-                  size="8"
-                  tone="danger"
-                  disabled={areSettingsLocked}
-                  onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
-                >
-                  <Trash2 className="size-4" />
-                </IconButton>
+            <div className="px-3 pb-6 pt-8">
+              <div className="relative h-1.5 rounded-full bg-white/[0.07]">
+                {SCALE_TICKS.map((tick) => (
+                  <span
+                    key={tick}
+                    className="absolute top-4 -translate-x-1/2 text-[11.5px] text-muted-foreground"
+                    style={{ left: `${tick}%` }}
+                  >
+                    {tick}%
+                  </span>
+                ))}
+                {tiers.length === 0
+                  ? chartTiers.map((tier, index) => (
+                      <span
+                        key={tier.threshold}
+                        className="absolute top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-accent bg-canvas text-[11px] font-semibold opacity-30"
+                        style={{ left: `${tier.percent}%` }}
+                      >
+                        {index + 1}
+                      </span>
+                    ))
+                  : tiers.map((tier, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        disabled={areSettingsLocked}
+                        onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+                        onPointerMove={(event) => {
+                          if (event.currentTarget.hasPointerCapture(event.pointerId)) dragPercent(index, event);
+                        }}
+                        onKeyDown={(event) => stepPercent(index, event)}
+                        className={`absolute top-1/2 flex size-6 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-none items-center justify-center rounded-full border-2 bg-canvas text-[11px] font-semibold text-foreground outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-not-allowed ${
+                          invalid.has(index) ? "border-error" : "border-accent"
+                        }`}
+                        style={{ left: `${Math.min(Number(tier.percent) || 0, MAX_PERCENT)}%` }}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
               </div>
-            ))}
-            <Button
-              variant="outline"
-              className="w-fit"
-              type="button"
-              onClick={addTier}
-              disabled={areSettingsLocked || tiers.length >= MAX_TIERS}
-            >
-              <Plus className="size-4" />
-              {t("loyalty.settings.addTier")}
-            </Button>
+            </div>
+
+            {tiers.length === 0 && (
+              <span className="text-[12px] text-muted-foreground opacity-60">{t("loyalty.settings.tiersEmpty")}</span>
+            )}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
+              {tiers.map((tier, index) => (
+                <div key={index} className="flex flex-col gap-2 rounded-[14px] bg-white/[0.03] p-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-white/[0.05] text-[12.5px] font-semibold text-foreground">
+                      {index + 1}
+                    </span>
+                    <IconButton
+                      size="8"
+                      tone="danger"
+                      disabled={areSettingsLocked}
+                      onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 className="size-4" />
+                    </IconButton>
+                  </div>
+                  <SuffixInput
+                    type="number"
+                    min={1}
+                    max={MAX_PERCENT}
+                    step="1"
+                    onKeyDown={blockNonIntegerKeys}
+                    suffix="%"
+                    value={tier.percent}
+                    disabled={areSettingsLocked}
+                    aria-invalid={invalid.has(index)}
+                    onChange={(event) => updateTier(index, { percent: event.target.value })}
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-[13px] text-muted-foreground">{t("loyalty.settings.tierFrom")}</span>
+                    <SuffixInput
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      suffix={unit}
+                      value={tier.threshold}
+                      disabled={areSettingsLocked}
+                      aria-invalid={invalid.has(index)}
+                      onChange={(event) => updateTier(index, { threshold: event.target.value })}
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
+              {canManage && tiers.length < MAX_TIERS && (
+                <button
+                  type="button"
+                  onClick={addTier}
+                  disabled={areSettingsLocked}
+                  className="flex min-h-36 items-center justify-center gap-1.5 rounded-[14px] border border-dashed border-white/[0.12] text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.03] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Plus className="size-4" />
+                  {t("loyalty.settings.addTier")}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {canManage && (
-          <Button variant="accent" className="mt-4 w-fit" type="submit" disabled={isSaving || hasInvalid}>
-            {isSaving ? t("common.saving") : t("common.save")}
-          </Button>
+          <div className="-mx-4 mt-4 flex justify-end border-t border-white/[0.07] px-4 pt-4">
+            <Button variant="accent" type="submit" disabled={isSaving || hasInvalid}>
+              {isSaving ? t("common.saving") : t("common.save")}
+            </Button>
+          </div>
         )}
       </Card>
     </form>

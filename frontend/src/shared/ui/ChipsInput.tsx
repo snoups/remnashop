@@ -1,7 +1,9 @@
 import { X } from "lucide-react";
-import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 
 import { IconButton } from "@shared/ui/IconButton";
+
+const SINGLE_ROW_HEIGHT = 38;
 
 interface ChipsInputProps {
   id?: string;
@@ -17,6 +19,17 @@ interface ChipsInputProps {
 export function ChipsInput({ id, values, onChange, normalize, placeholder, inputMode = "text" }: ChipsInputProps) {
   const [draft, setDraft] = useState("");
   const [isInvalid, setIsInvalid] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [isWrapped, setIsWrapped] = useState(false);
+
+  // one row is a pill like TextInput; wrapped rows get TextArea's corners
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const observer = new ResizeObserver(() => setIsWrapped(box.offsetHeight > SINGLE_ROW_HEIGHT));
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
 
   const commit = (text: string) => {
     const accepted: string[] = [];
@@ -47,14 +60,15 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
 
   return (
     <div
-      className={`flex min-h-9.5 flex-wrap items-center gap-1.5 rounded-[19px] border bg-input/60 px-1.5 py-1 ${
+      ref={boxRef}
+      className={`flex min-h-9.5 flex-wrap items-center gap-1.5 ${isWrapped ? "rounded-xl" : "rounded-[19px]"} border bg-input/60 p-1.5 ${
         isInvalid ? "border-error" : "border-border focus-within:border-primary"
       }`}
     >
       {values.map((value) => (
         <span
           key={value}
-          className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
+          className="flex h-6 items-center gap-1 rounded-full bg-white/[0.06] pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
         >
           {value}
           <IconButton size="18px" onClick={() => onChange(values.filter((other) => other !== value))}>
@@ -75,7 +89,7 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
         onBlur={() => commit(draft)}
         placeholder={values.length === 0 ? placeholder : undefined}
         aria-invalid={isInvalid}
-        className="min-w-36 flex-1 bg-transparent px-1.5 py-1 font-mono text-sm text-foreground outline-none"
+        className="h-6 min-w-16 flex-1 bg-transparent px-1.5 font-mono text-sm text-foreground outline-none"
       />
     </div>
   );

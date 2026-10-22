@@ -4,6 +4,7 @@ _GMAIL_DOMAINS: Final[frozenset[str]] = frozenset({"gmail.com", "googlemail.com"
 _YANDEX_DOMAINS: Final[frozenset[str]] = frozenset(
     {"yandex.ru", "ya.ru", "yandex.com", "yandex.by", "yandex.kz", "yandex.ua"}
 )
+_ICLOUD_DOMAINS: Final[frozenset[str]] = frozenset({"icloud.com", "me.com", "mac.com"})
 
 
 def normalize_email(value: str) -> str:
@@ -21,4 +22,6 @@ def canonical_email(value: str) -> str:
         return f"{local.replace('.', '')}@gmail.com"
     if domain in _YANDEX_DOMAINS:
         return f"{local.replace('-', '.')}@yandex.ru"
+    if domain in _ICLOUD_DOMAINS:
+        return f"{local}@icloud.com"
     return f"{local}@{domain}"

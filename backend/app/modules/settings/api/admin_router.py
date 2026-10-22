@@ -282,6 +282,7 @@ async def update_cabinet_auth_settings(
         actor,
         UpdateCabinetAuthSettingsDto(
             telegram_enabled=payload.telegram_enabled,
+            telegram_oauth_enabled=payload.telegram_oauth_enabled,
             google_enabled=payload.google_enabled,
             yandex_enabled=payload.yandex_enabled,
             email_enabled=payload.email_enabled,

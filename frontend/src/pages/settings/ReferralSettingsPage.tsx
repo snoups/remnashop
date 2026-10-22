@@ -137,6 +137,7 @@ export function ReferralSettingsPage() {
   const [daysRequirePaid, setDaysRequirePaid] = useState(true);
   const [inviteeRewardType, setInviteeRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
   const [inviteeRewardAmount, setInviteeRewardAmount] = useState("0");
+  const [inviteeEnabled, setInviteeEnabled] = useState(false);
   const [anchorCurrency, setAnchorCurrency] = useState<string | null>(null);
   const [exampleBase, setExampleBase] = useState(DEFAULT_EXAMPLE_BASE);
 
@@ -158,6 +159,7 @@ export function ReferralSettingsPage() {
     setDaysRequirePaid(settings.days_require_paid_subscription);
     setInviteeRewardType(settings.invitee_reward_type);
     setInviteeRewardAmount(String(settings.invitee_reward_amount));
+    setInviteeEnabled(settings.invitee_reward_amount > 0);
     setAnchorCurrency(settings.anchor_currency);
   };
 
@@ -180,7 +182,7 @@ export function ReferralSettingsPage() {
         reward_amounts: amounts,
         days_require_paid_subscription: daysRequirePaid,
         invitee_reward_type: inviteeRewardType,
-        invitee_reward_amount: Number(inviteeRewardAmount) || 0,
+        invitee_reward_amount: inviteeEnabled ? Number(inviteeRewardAmount) || 0 : 0,
       });
       applySettings(updated);
       toast.success(t("referrals.settings.saved"));
@@ -228,9 +230,10 @@ export function ReferralSettingsPage() {
     return !(value >= 1) || (isPercent && value > MAX_PERCENT);
   };
   const hasInvalidLevel = activeLevels.some(isLevelInvalid);
-  // mirrors the backend: a whole number of 0..MAX_INVITEE_REWARD
+  // mirrors the backend: a whole number of 1..MAX_INVITEE_REWARD, 0 when switched off
   const isInviteeInvalid =
-    !/^\d+$/.test(inviteeRewardAmount) || Number(inviteeRewardAmount) > MAX_INVITEE_REWARD;
+    inviteeEnabled &&
+    (!/^\d+$/.test(inviteeRewardAmount) || Number(inviteeRewardAmount) < 1 || Number(inviteeRewardAmount) > MAX_INVITEE_REWARD);
   const dimmed = enabled ? "" : "opacity-45";
 
   return (
@@ -307,50 +310,10 @@ export function ReferralSettingsPage() {
                 : t("referrals.settings.rewardStrategyDescription.AMOUNT")
             }
           />
-          <div className="flex flex-col gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-3.5">
-            <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-              <Gift className="size-4 text-primary" />
-              {t("referrals.settings.invitee.title")}
-            </span>
-            <OptionGroup
-              value={inviteeRewardType}
-              options={REWARD_TYPE_OPTIONS}
-              onChange={setInviteeRewardType}
-              disabled={areSettingsLocked}
-              name={(value) => t(`referrals.settings.rewardType.${value}`)}
-              describe={(value) => t(`referrals.settings.invitee.description.${value}`)}
-            />
-            <div className="flex items-center justify-between gap-3">
-              <label htmlFor="referrals-invitee" className="flex items-center gap-1.5 text-sm text-foreground/80">
-                {t("referrals.settings.invitee.amountLabel")}
-                <FieldHint text={t("referrals.settings.invitee.hint")} />
-              </label>
-              <div className={`flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border ${isInviteeInvalid ? "border-error/60" : "border-border"} bg-input/60 px-3.5 focus-within:border-primary`}>
-                <input
-                  id="referrals-invitee"
-                  type="number"
-                  onKeyDown={blockNonIntegerKeys}
-                  min={0}
-                  max={MAX_INVITEE_REWARD}
-                  step="1"
-                  value={inviteeRewardAmount}
-                  disabled={areSettingsLocked}
-                  onChange={(event) => setInviteeRewardAmount(event.target.value)}
-                  className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span className="shrink-0 text-[13px] text-muted-foreground">
-                  {t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
-                </span>
-              </div>
-            </div>
-            {inviteeRewardType === "POINTS" && (
-              <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
-            )}
-          </div>
         </div>
 
         {(canManage || canReset) && (
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-auto flex items-center gap-2 pt-4">
             {canManage && (
               <Button variant="accent" className="w-fit" type="submit" disabled={isSaving || hasInvalidLevel || isInviteeInvalid}>
                 {isSaving ? t("common.saving") : t("common.save")}
@@ -479,6 +442,61 @@ export function ReferralSettingsPage() {
                 {t("referrals.settings.levelsUnusedNote", { count: maxLevel })}
               </p>
             </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+              <Gift className="size-4 text-primary" />
+              {t("referrals.settings.invitee.title")}
+            </span>
+            <Switch
+              checked={inviteeEnabled}
+              onChange={(next) => {
+                setInviteeEnabled(next);
+                if (next && Number(inviteeRewardAmount) <= 0) setInviteeRewardAmount("1");
+              }}
+              disabled={areSettingsLocked}
+            />
+          </div>
+          {inviteeEnabled && (
+            <>
+              <OptionGroup
+                value={inviteeRewardType}
+                options={REWARD_TYPE_OPTIONS}
+                onChange={setInviteeRewardType}
+                disabled={areSettingsLocked}
+                name={(value) => t(`referrals.settings.rewardType.${value}`)}
+                describe={(value) => t(`referrals.settings.invitee.description.${value}`)}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="referrals-invitee" className="flex items-center gap-1.5 text-sm text-foreground/80">
+                  {t("referrals.settings.invitee.amountLabel")}
+                  <FieldHint text={t("referrals.settings.invitee.hint")} />
+                </label>
+                <div className={`flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border ${isInviteeInvalid ? "border-error/60" : "border-border"} bg-input/60 px-3.5 focus-within:border-primary`}>
+                  <input
+                    id="referrals-invitee"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    max={MAX_INVITEE_REWARD}
+                    step="1"
+                    value={inviteeRewardAmount}
+                    disabled={areSettingsLocked}
+                    onChange={(event) => setInviteeRewardAmount(event.target.value)}
+                    className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <span className="shrink-0 text-[13px] text-muted-foreground">
+                    {t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
+                  </span>
+                </div>
+              </div>
+              {inviteeRewardType === "POINTS" && (
+                <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
+              )}
+            </>
           )}
         </div>
       </Card>

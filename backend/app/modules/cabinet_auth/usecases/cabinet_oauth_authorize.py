@@ -52,7 +52,7 @@ class CabinetOAuthAuthorizeUseCase:
             )
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
-            if not getattr(cabinet, f"{provider.value.lower()}_enabled"):
+            if not cabinet.is_oauth_enabled(provider):
                 raise AuthenticationError(
                     "Provider is disabled", code=ErrorCode.OAUTH_PROVIDER_DISABLED
                 )

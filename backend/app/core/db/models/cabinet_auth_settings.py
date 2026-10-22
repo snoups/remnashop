@@ -11,6 +11,7 @@ class CabinetAuthSettings(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     telegram_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
+    telegram_oauth_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     google_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     yandex_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     email_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
