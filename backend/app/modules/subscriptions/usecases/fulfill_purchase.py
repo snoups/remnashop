@@ -9,6 +9,7 @@ from app.core.enums import PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.usecase import UseCase
+from app.modules.subscriptions.domain import OrderNotPaidError
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.ports import OrderFailer
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
@@ -17,7 +18,7 @@ from app.modules.users import UserRepository
 
 class FulfillPurchaseUseCase(UseCase[PurchaseSubscriptionDto, Optional[SubscriptionDto]]):
     """Provisions a paid order on behalf of its buyer. None when a free order
-    found the buyer at the cap and was failed instead."""
+    found the buyer at the cap and was failed instead, or the order stopped being paid."""
 
     required_permission = None
 
@@ -56,6 +57,10 @@ class FulfillPurchaseUseCase(UseCase[PurchaseSubscriptionDto, Optional[Subscript
                     refuse_disabled_target=False,
                 ),
             )
+        except OrderNotPaidError as error:
+            # final: a retry or the reconcile sweep would find the same status
+            logger.info(f"{buyer.log} {error}")
+            return None
         except ValidationError as error:
             if free_order_key is None or error.code is not ErrorCode.SUBSCRIPTION_LIMIT_REACHED:
                 raise

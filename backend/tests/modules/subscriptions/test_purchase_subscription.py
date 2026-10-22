@@ -18,6 +18,7 @@ from app.core.db.models import (
     Plan,
     Subscription,
     SubscriptionPurchaseIdempotency,
+    Transaction,
     User,
 )
 from app.core.db.uow import UnitOfWork
@@ -32,6 +33,7 @@ from app.core.enums import (
     Role,
     RoundingMode,
     SubscriptionStatus,
+    TransactionStatus,
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
@@ -3249,3 +3251,196 @@ async def test_a_change_retries_over_an_addon_pushed_meanwhile(
     assert changed.plan_snapshot.plan_id == new_plan.id
     # first attempt saw the addon under the lock and went again: its config is the last word
     assert len(update_calls) == 2
+
+
+async def _paid_order(
+    session: AsyncSession,
+    buyer: UserDto,
+    plan: PlanDto,
+    key: str,
+    *,
+    purchase_type: PurchaseType = PurchaseType.NEW,
+    target_subscription_id: Optional[int] = None,
+    status: TransactionStatus = TransactionStatus.PAID,
+) -> None:
+    repository = TransactionRepository(session)
+    order = await repository.create(
+        CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
+            user_id=buyer.id,
+            plan_id=plan.id,
+            plan_snapshot=snapshot_from_plan(plan),
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target_subscription_id,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            base_price=Decimal("100.00"),
+            discount_percent=0,
+            discount_source=DiscountSource.NONE,
+            final_price=Decimal("100.00"),
+            anchor_base_price=Decimal("100.00"),
+            anchor_final_price=Decimal("100.00"),
+            customer_email=None,
+            idempotency_key=key,
+            expires_at=datetime_now() + timedelta(minutes=30),
+        )
+    )
+    await repository.mark_status(order.id, status)
+
+
+async def _refund(session: AsyncSession, key: str) -> None:
+    await session.execute(
+        update(Transaction)
+        .where(Transaction.idempotency_key == key)
+        .values(status=TransactionStatus.REFUNDED)
+    )
+
+
+def _paid_purchase(
+    buyer: UserDto,
+    plan: PlanDto,
+    key: str,
+    purchase_type: PurchaseType = PurchaseType.NEW,
+    target_subscription_id: Optional[int] = None,
+) -> PurchaseSubscriptionDto:
+    return PurchaseSubscriptionDto(
+        user_id=buyer.id,
+        plan_snapshot=snapshot_from_plan(
+            plan, price_paid=Decimal("100.00"), currency=Currency.RUB, duration_days=30
+        ),
+        duration_days=30,
+        price_paid=Decimal("100.00"),
+        currency=Currency.RUB,
+        purchase_type=purchase_type,
+        target_subscription_id=target_subscription_id,
+        idempotency_key=key,
+    )
+
+
+async def test_a_refunded_order_is_not_provisioned(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    buyer = await _create_buyer(user_repository, 440)
+    plan = await _create_plan(plan_repository, "refunded-before")
+    await _paid_order(
+        plan_repository.session, buyer, plan, "refunded-before", status=TransactionStatus.REFUNDED
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await purchase_subscription_use_case(buyer, _paid_purchase(buyer, plan, "refunded-before"))
+
+    assert error.value.code is ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE
+    assert remnawave_store == {}
+    assert await subscription_repository.get_active_by_user(buyer.id) == []
+
+
+async def test_an_order_refunded_mid_purchase_disables_the_new_panel_user(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = plan_repository.session
+    buyer = await _create_buyer(user_repository, 441)
+    plan = await _create_plan(plan_repository, "refunded-mid-new")
+    await _paid_order(session, buyer, plan, "refunded-mid-new")
+    create_user = remnawave_sdk.users.create_user
+
+    async def create_then_refund(*args, **kwargs):  # type: ignore[no-untyped-def]
+        created = await create_user(*args, **kwargs)
+        await _refund(session, "refunded-mid-new")
+        return created
+
+    monkeypatch.setattr(remnawave_sdk.users, "create_user", create_then_refund)
+
+    with pytest.raises(ValidationError) as error:
+        await purchase_subscription_use_case(buyer, _paid_purchase(buyer, plan, "refunded-mid-new"))
+
+    assert error.value.code is ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE
+    (panel_user,) = remnawave_store.values()
+    assert panel_user["status"] == "DISABLED"
+    assert await subscription_repository.get_active_by_user(buyer.id) == []
+
+
+async def test_an_order_refunded_mid_renewal_takes_the_extension_back(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = plan_repository.session
+    buyer = await _create_buyer(user_repository, 442)
+    plan = await _create_plan(plan_repository, "refunded-mid-renew")
+    target = await purchase_subscription_use_case(
+        buyer, replace(_paid_purchase(buyer, plan, "unused"), idempotency_key=None)
+    )
+    await _paid_order(
+        session,
+        buyer,
+        plan,
+        "refunded-mid-renew",
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=target.id,
+    )
+    update_user = remnawave_sdk.users.update_user
+    refunded: list[bool] = []
+
+    async def update_then_refund(*args, **kwargs):  # type: ignore[no-untyped-def]
+        updated = await update_user(*args, **kwargs)
+        if not refunded:
+            refunded.append(True)
+            await _refund(session, "refunded-mid-renew")
+        return updated
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", update_then_refund)
+
+    with pytest.raises(ValidationError) as error:
+        await purchase_subscription_use_case(
+            buyer,
+            _paid_purchase(
+                buyer,
+                plan,
+                "refunded-mid-renew",
+                PurchaseType.RENEW,
+                target_subscription_id=target.id,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE
+    current = await subscription_repository.get_by_id(target.id)
+    assert current.expire_at == target.expire_at
+    panel_expire = remnawave_store[target.remnawave_user_id]["expireAt"]
+    assert datetime.fromisoformat(panel_expire.replace("Z", "+00:00")) == target.expire_at
+
+
+async def test_fulfilling_a_refunded_order_ends_without_a_retry(
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 443)
+    plan = await _create_plan(plan_repository, "refunded-fulfill")
+    await _paid_order(
+        plan_repository.session, buyer, plan, "refunded-fulfill", status=TransactionStatus.REFUNDED
+    )
+    fulfill = FulfillPurchaseUseCase(
+        user_repository,
+        purchase_subscription_use_case,
+        TransactionRepository(user_repository.session),
+        UnitOfWork(user_repository.session),
+    )
+
+    assert await fulfill.system(_paid_purchase(buyer, plan, "refunded-fulfill")) is None
+    assert await subscription_repository.get_active_by_user(buyer.id) == []

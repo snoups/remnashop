@@ -14,11 +14,13 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now, truncate_to_ms
 from app.modules.pricing import PricingRepository
+from app.modules.subscriptions.domain import OrderNotPaidError
 from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
 from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionRenewedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel import revert_panel_to_owner
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -84,6 +86,22 @@ class RenewPurchase:
                 target, data.idempotency_key, data.claim_token, data.duration_days, keep_key
             )
 
+        try:
+            return await self._finish(actor, data, target, expire_at)
+        except OrderNotPaidError:
+            # refunded while the panel was being extended: take the extension back
+            await revert_panel_to_owner(
+                self._remnawave_sdk, self._subscription_repository, self._uow, target
+            )
+            raise
+
+    async def _finish(
+        self,
+        actor: Actor,
+        data: PurchaseSubscriptionDto,
+        target: SubscriptionDto,
+        expire_at: datetime,
+    ) -> SubscriptionDto:
         async with self._uow:
             if data.idempotency_key is not None:
                 finished_id = await self._idempotency.lock(data.idempotency_key, data.claim_token)

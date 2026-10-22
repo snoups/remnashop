@@ -1,13 +1,19 @@
-from collections.abc import Awaitable, Callable, Iterator
+import asyncio
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 import pytest
 from loguru import logger
+from pydantic import SecretStr
 from redis.asyncio import Redis
-from sqlalchemy import update
+from remnapy import RemnawaveSDK
+from sqlalchemy import delete, update
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.core.db.models import SubscriptionPurchaseIdempotency, User
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
@@ -21,14 +27,19 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, PaymentGatewayError
+from app.core.exceptions import ConflictError, PaymentGatewayError, ValidationError
 from app.core.utils.lock import cron_lock
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.pricing.repository import PricingRepository
 from app.modules.settings import SettingsRepository
-from app.modules.settings.dto import UpdateBotSettingsDto
+from app.modules.settings.dto import BotSettingsDto, UpdateBotSettingsDto
 from app.modules.subscriptions import PurchaseRollbackDto, RollbackPreviewDto
+from app.modules.subscriptions.dto import PurchaseSubscriptionDto
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
+from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.transactions.dto import CreateTransactionDto, RefundTransactionDto, TransactionDto
 from app.modules.transactions.events import (
     TransactionRefundedEvent,
@@ -40,7 +51,12 @@ from app.modules.transactions.usecases import PreviewRefundUseCase, RefundTransa
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from tests.fakes.events import RecordingEventPublisher
-from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
+from tests.fakes.remnawave import FakeUserStore
+from tests.modules.subscriptions.factories import (
+    create_subscription,
+    make_eligibility,
+    make_plan_snapshot,
+)
 
 _AVAILABLE = RollbackPreviewDto(available=True, blocked_reason=None, old_term_expired=False)
 
@@ -189,7 +205,7 @@ async def _order(
     uow: UnitOfWork,
     *,
     user_id: int,
-    plan_id: int,
+    plan_id: Optional[int],
     key: str = "refund-order",
     gateway_type: PaymentGatewayType = PaymentGatewayType.TELEGRAM_STARS,
     status: TransactionStatus = TransactionStatus.PAID,
@@ -581,3 +597,200 @@ async def test_rollback_sees_an_order_paid_during_the_refund(
     await refund(owner, _input(order, rollback_subscription=True))
 
     assert rollback.inputs[0].has_later_paid_order is True
+
+
+async def test_refund_rechecks_the_status_under_its_lock_before_telegram(
+    refund: RefundTransactionUseCase,
+    paid_stars_order: TransactionDto,
+    owner: UserDto,
+    gateway: _FakeStarsGateway,
+    transaction_repository: TransactionRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def failed_meanwhile(rollback: PurchaseRollbackDto) -> None:
+        await transaction_repository.mark_status(paid_stars_order.id, TransactionStatus.FAILED)
+
+    monkeypatch.setattr(refund, "_assert_rollback_available", failed_meanwhile)
+
+    with pytest.raises(ConflictError) as error:
+        await refund(owner, _input(paid_stars_order, rollback_subscription=True))
+
+    assert error.value.code is ErrorCode.TRANSACTION_NOT_REFUNDABLE
+    assert gateway.refunds == []
+
+
+_RACE_KEY: Final[str] = "refund-race"
+_RACE_TELEGRAM_ID: Final[int] = 810_900
+# long enough for a purchase that isn't blocked to reach its commit
+_BLOCKED_FOR_S: Final[float] = 0.5
+
+
+class _StubGatewayRepository:
+    async def get_raw_settings(self, gateway_type: PaymentGatewayType) -> dict[str, str]:
+        return {}
+
+
+class _StubSettingsRepository:
+    async def get_bot_settings(self) -> BotSettingsDto:
+        return BotSettingsDto(token=SecretStr("123:abc"))
+
+
+@dataclass(frozen=True)
+class _Race:
+    buyer: UserDto
+    order: TransactionDto
+    refund: RefundTransactionUseCase
+    purchase: PurchaseSubscriptionUseCase
+    purchase_session: AsyncSession
+
+
+@pytest.fixture
+async def race(
+    engine: AsyncEngine,
+    gateway: _FakeStarsGateway,
+    preview_rollback: _StubPreview,
+    rollback: _StubRollback,
+    remnawave_sdk: RemnawaveSDK,
+    redis: Redis,
+) -> AsyncIterator[_Race]:
+    # the refund and the purchase each get a connection of their own, as in
+    # separate processes, so the seed rows are committed and removed by hand
+    try:
+        async with engine.connect() as refund_conn, engine.connect() as purchase_conn:
+            refund_session = AsyncSession(bind=refund_conn, expire_on_commit=False)
+            purchase_session = AsyncSession(bind=purchase_conn, expire_on_commit=False)
+            buyer = await UserRepository(refund_session).create(
+                CreateUserDto(name="refund-race", telegram_id=_RACE_TELEGRAM_ID)
+            )
+            order = await _order(
+                TransactionRepository(refund_session),
+                UnitOfWork(refund_session),
+                user_id=buyer.id,
+                plan_id=None,
+                key=_RACE_KEY,
+            )
+            subscriptions = SubscriptionRepository(purchase_session)
+            yield _Race(
+                buyer=buyer,
+                order=order,
+                refund=RefundTransactionUseCase(
+                    TransactionRepository(refund_session),
+                    UserRepository(refund_session),
+                    _StubGatewayRepository(),  # type: ignore[arg-type]
+                    _StubSettingsRepository(),  # type: ignore[arg-type]
+                    _FakeFactory(gateway),
+                    _StubRollbackService(preview_rollback, rollback),  # type: ignore[arg-type]
+                    RecordingEventPublisher(),
+                    UnitOfWork(refund_session),
+                    redis,
+                ),
+                purchase=PurchaseSubscriptionUseCase(
+                    subscriptions,
+                    make_eligibility(purchase_session),
+                    remnawave_sdk,
+                    UnitOfWork(purchase_session),
+                    RecordingEventPublisher(),
+                    SubscriptionLifecycleService(subscriptions),
+                    PricingRepository(purchase_session),
+                    PurchaseIdempotencyRepository(purchase_session),
+                ),
+                purchase_session=purchase_session,
+            )
+            await refund_session.close()
+            await purchase_session.close()
+    finally:
+        async with engine.begin() as cleanup:
+            await cleanup.execute(
+                delete(SubscriptionPurchaseIdempotency).where(
+                    SubscriptionPurchaseIdempotency.key == _RACE_KEY
+                )
+            )
+            # cascades to the order and any subscription
+            await cleanup.execute(delete(User).where(User.telegram_id == _RACE_TELEGRAM_ID))
+
+
+def _race_purchase(race: _Race) -> PurchaseSubscriptionDto:
+    return PurchaseSubscriptionDto(
+        user_id=race.buyer.id,
+        plan_snapshot=make_plan_snapshot(plan_id=1),
+        duration_days=30,
+        price_paid=Decimal("50"),
+        currency=Currency.XTR,
+        purchase_type=PurchaseType.NEW,
+        idempotency_key=_RACE_KEY,
+    )
+
+
+def _paused_telegram(gateway: _FakeStarsGateway) -> tuple[asyncio.Event, asyncio.Event]:
+    in_telegram, answer = asyncio.Event(), asyncio.Event()
+
+    async def wait_for_answer() -> None:
+        in_telegram.set()
+        await answer.wait()
+
+    gateway.on_refund = wait_for_answer
+    return in_telegram, answer
+
+
+async def _assert_blocked(task: asyncio.Task[Any]) -> None:
+    await asyncio.sleep(_BLOCKED_FOR_S)
+    assert not task.done()
+
+
+async def _assert_not_provisioned(race: _Race, task: asyncio.Task[Any]) -> None:
+    with pytest.raises(ValidationError) as error:
+        await task
+    assert error.value.code is ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE
+    assert (
+        await SubscriptionRepository(race.purchase_session).get_active_by_user(race.buyer.id) == []
+    )
+
+
+async def test_a_purchase_waits_for_a_refund_in_telegram_and_is_refused(
+    race: _Race,
+    gateway: _FakeStarsGateway,
+    remnawave_store: FakeUserStore,
+) -> None:
+    in_telegram, answer = _paused_telegram(gateway)
+    refund_task = asyncio.create_task(race.refund.system(_input(race.order)))
+    await in_telegram.wait()
+
+    purchase_task = asyncio.create_task(race.purchase(race.buyer, _race_purchase(race)))
+    await _assert_blocked(purchase_task)
+    answer.set()
+    await refund_task
+
+    await _assert_not_provisioned(race, purchase_task)
+    assert remnawave_store == {}
+
+
+async def test_a_purchase_refunded_after_its_claim_waits_and_disables_its_panel_user(
+    race: _Race,
+    gateway: _FakeStarsGateway,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    in_panel, panel_answer = asyncio.Event(), asyncio.Event()
+    create_user = remnawave_sdk.users.create_user
+
+    async def paused_create_user(*args: Any, **kwargs: Any) -> Any:
+        in_panel.set()
+        await panel_answer.wait()
+        return await create_user(*args, **kwargs)
+
+    monkeypatch.setattr(remnawave_sdk.users, "create_user", paused_create_user)
+    in_telegram, answer = _paused_telegram(gateway)
+
+    purchase_task = asyncio.create_task(race.purchase(race.buyer, _race_purchase(race)))
+    await in_panel.wait()
+    refund_task = asyncio.create_task(race.refund.system(_input(race.order)))
+    await in_telegram.wait()
+    panel_answer.set()
+    await _assert_blocked(purchase_task)
+    answer.set()
+    await refund_task
+
+    await _assert_not_provisioned(race, purchase_task)
+    (panel_user,) = remnawave_store.values()
+    assert panel_user["status"] == "DISABLED"

@@ -20,6 +20,10 @@ class SupersededError(ValidationError):
     this one reconfigured; reverting it would overwrite the winner's config."""
 
 
+class OrderNotPaidError(SupersededError):
+    """The order behind this purchase was refunded or failed while it was in flight."""
+
+
 # a subscription that still holds a panel identity and counts as owned
 OWNED_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
     SubscriptionStatus.ACTIVE,

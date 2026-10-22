@@ -67,8 +67,8 @@ class RefundTransactionUseCase(UseCase[RefundTransactionDto, RefundResultDto]):
 
     async def _execute(self, actor: Actor, data: RefundTransactionDto) -> RefundResultDto:
         rollback: Optional[PurchaseRollbackDto] = None
-        # the row lock ends with the first transaction; this keeps a second click
-        # from reaching Telegram while the first is still on its way
+        # answers a second click at once instead of leaving it waiting on the row
+        # lock held through the Telegram call
         async with cron_lock(
             self._redis, f"refund:{data.transaction_id}", ttl_seconds=_LOCK_TTL_S
         ) as acquired:
@@ -100,8 +100,9 @@ class RefundTransactionUseCase(UseCase[RefundTransactionDto, RefundResultDto]):
 
             if rollback is not None:
                 await self._assert_rollback_available(rollback)
-            await self._refund_in_telegram(order.id, gateway_settings, charge_id, payer.telegram_id)
-            await self._record(actor, data, order, payer, charge_id)
+            await self._refund_and_record(
+                actor, data, order, payer, payer.telegram_id, gateway_settings, charge_id
+            )
 
         rollback_failed = False
         if rollback is not None:
@@ -143,53 +144,57 @@ class RefundTransactionUseCase(UseCase[RefundTransactionDto, RefundResultDto]):
             )
             raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error
 
-    async def _record(
+    async def _refund_and_record(
         self,
         actor: Actor,
         data: RefundTransactionDto,
         order: TransactionDto,
         payer: UserDto,
+        telegram_id: int,
+        gateway_settings: dict[str, str],
         charge_id: str,
     ) -> None:
+        refunded = False
         try:
             async with self._uow:
-                changed = await self._transaction_repository.mark_status_if(
+                # held through the Telegram call: a purchase finishing this order
+                # waits on the row and then finds it REFUNDED
+                locked = await self._transaction_repository.get_by_id_for_update(order.id)
+                if locked.status is not TransactionStatus.PAID:
+                    raise _not_refundable(order.id, "status changed")
+                await self._refund_in_telegram(order.id, gateway_settings, charge_id, telegram_id)
+                refunded = True
+                await self._transaction_repository.mark_status_if(
                     order.id,
                     TransactionStatus.REFUNDED,
                     current=frozenset({TransactionStatus.PAID}),
                 )
-                if changed:
-                    await self._event_publisher.publish(
-                        TransactionRefundedEvent(
-                            order_id=order.id,
-                            user_id=order.user_id,
-                            payment_key=order.idempotency_key,
-                            gateway_type=order.gateway_type,
-                            amount=str(order.final_price),
-                            currency=order.currency,
-                        )
+                await self._event_publisher.publish(
+                    TransactionRefundedEvent(
+                        order_id=order.id,
+                        user_id=order.user_id,
+                        payment_key=order.idempotency_key,
+                        gateway_type=order.gateway_type,
+                        amount=str(order.final_price),
+                        currency=order.currency,
                     )
-                    await self._event_publisher.publish(
-                        TransactionRefundedManuallyEvent(
-                            actor=actor,
-                            target=payer,
-                            order_id=order.id,
-                            rollback_subscription=data.rollback_subscription,
-                            ip_address=data.client_ip,
-                        )
+                )
+                await self._event_publisher.publish(
+                    TransactionRefundedManuallyEvent(
+                        actor=actor,
+                        target=payer,
+                        order_id=order.id,
+                        rollback_subscription=data.rollback_subscription,
+                        ip_address=data.client_ip,
                     )
+                )
         except Exception:
-            logger.error(
-                f"Order '{order.id}' refunded in Telegram (charge '{charge_id}') "
-                f"but not recorded -- mark it manually"
-            )
+            if refunded:
+                logger.error(
+                    f"Order '{order.id}' refunded in Telegram (charge '{charge_id}') "
+                    f"but not recorded -- mark it manually"
+                )
             raise
-        if not changed:
-            logger.error(
-                f"Order '{order.id}' refunded in Telegram (charge '{charge_id}') "
-                f"but its status moved meanwhile"
-            )
-            raise _not_refundable(order.id, "status changed")
         logger.info(f"{actor.log} Refunded transaction '{order.id}' in Telegram Stars")
 
     async def _roll_back(self, actor: Actor, order_id: int, rollback: PurchaseRollbackDto) -> bool:

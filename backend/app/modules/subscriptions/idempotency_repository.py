@@ -7,13 +7,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.addon_grant_idempotency import AddOnGrantIdempotency
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
+from app.core.db.models.transaction import Transaction
 from app.core.db.timestamp import NOW_FUNC
+from app.core.enums import TransactionStatus
 from app.core.error_codes import ErrorCode
-from app.modules.subscriptions.domain import SupersededError
+from app.modules.subscriptions.domain import OrderNotPaidError, SupersededError
 
 # Must exceed the longest webhook-resend window of any payment provider: a
 # replay of a deleted key is a fresh claim, provisioned a second time.
 IDEMPOTENCY_KEY_RETENTION_DAYS: Final[int] = 7
+
+_UNDONE_ORDER_STATUSES: Final[frozenset[TransactionStatus]] = frozenset(
+    {TransactionStatus.REFUNDED, TransactionStatus.FAILED, TransactionStatus.CANCELED}
+)
 
 
 def _claim_lost(key: str) -> SupersededError:
@@ -31,6 +37,7 @@ class PurchaseIdempotencyRepository:
 
     async def claim(self, key: str, *, stale_after: timedelta) -> Optional[datetime]:
         """Returns the claim's token (its created_at), or None when another attempt holds it."""
+        await self._assert_order_paid(key)
         inserted = await self.session.execute(
             pg_insert(SubscriptionPurchaseIdempotency)
             .values(key=key, subscription_id=None)
@@ -69,6 +76,7 @@ class PurchaseIdempotencyRepository:
         return row.subscription_id if row is not None else None
 
     async def link(self, key: str, subscription_id: int, token: Optional[datetime]) -> None:
+        await self._assert_order_paid(key)
         result = await self.session.execute(
             update(SubscriptionPurchaseIdempotency)
             .where(
@@ -120,6 +128,19 @@ class PurchaseIdempotencyRepository:
         if row is None or row.created_at != token:
             raise _claim_lost(key)
         return None
+
+    async def _assert_order_paid(self, key: str) -> None:
+        # the row lock serializes with a refund's status write: a refund either
+        # lands first and is seen here, or waits for this purchase to commit.
+        # Promocode and referral grants carry keys with no order behind them.
+        status = await self.session.scalar(
+            select(Transaction.status).where(Transaction.idempotency_key == key).with_for_update()
+        )
+        if status in _UNDONE_ORDER_STATUSES:
+            raise OrderNotPaidError(
+                f"Order '{key}' is {status.value}, not provisioning it",
+                code=ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE,
+            )
 
     async def release(self, key: str, token: datetime) -> None:
         # a linked key belongs to a finished purchase: an attempt that failed after
