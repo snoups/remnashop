@@ -38,19 +38,19 @@ class SessionRepository:
         await self.session.flush()
         return self._to_dto(row)
 
-    async def get_active_by_id(self, session_id: int) -> Optional[SessionDto]:
+    async def find_active_by_id(self, session_id: int) -> Optional[SessionDto]:
         stmt = select(UserSession).where(UserSession.id == session_id, *self._active_clause())
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row else None
 
-    async def get_by_current_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
+    async def find_by_current_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
         stmt = select(UserSession).where(
             UserSession.refresh_token_hash == refresh_token_hash, *self._active_clause()
         )
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row else None
 
-    async def get_by_previous_hash_in_grace(self, refresh_token_hash: str) -> Optional[SessionDto]:
+    async def find_by_previous_hash_in_grace(self, refresh_token_hash: str) -> Optional[SessionDto]:
         now = datetime_now()
         stmt = select(UserSession).where(
             UserSession.previous_refresh_token_hash == refresh_token_hash,
@@ -61,13 +61,13 @@ class SessionRepository:
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row else None
 
-    async def get_rotatable_by_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
-        current = await self.get_by_current_hash(refresh_token_hash)
+    async def find_rotatable_by_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
+        current = await self.find_by_current_hash(refresh_token_hash)
         if current is not None:
             return current
-        return await self.get_by_previous_hash_in_grace(refresh_token_hash)
+        return await self.find_by_previous_hash_in_grace(refresh_token_hash)
 
-    async def get_by_expired_previous_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
+    async def find_by_expired_previous_hash(self, refresh_token_hash: str) -> Optional[SessionDto]:
         # tells "the previous hash, past its grace window" (theft) from "never
         # issued" (invalid token); the current/in-grace lookups miss on both
         now = datetime_now()

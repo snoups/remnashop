@@ -1,19 +1,19 @@
 import os
 import time
 from datetime import datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
 from typing import Final, Optional
 
 from redis.asyncio import Redis
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.host_metrics import read_host_cpu_percent, read_host_disk, read_host_load
 from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.overview.dto import (
     HostMemoryDto,
@@ -107,17 +107,17 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
         paid = await self._transaction_stats.list_paid(today_start - timedelta(days=1), now)
 
         today = sum(
-            (r.anchor_final_price for r in paid if r.paid_at >= today_start), start=Decimal(0)
+            (r.anchor_final_price for r in paid if r.paid_at >= today_start), start=ZERO_AMOUNT
         )
         same_time_cutoff = now - timedelta(days=1)
         yesterday = sum(
             (r.anchor_final_price for r in paid if r.paid_at < same_time_cutoff),
-            start=Decimal(0),
+            start=ZERO_AMOUNT,
         )
         return RevenueTodayDto(
             report_currency=rates.anchor,
-            today=today.quantize(ONE_CENT, rounding=ROUND_HALF_UP),
-            yesterday_same_time=yesterday.quantize(ONE_CENT, rounding=ROUND_HALF_UP),
+            today=round_cents(today),
+            yesterday_same_time=round_cents(yesterday),
             change=float(today / yesterday - 1) if yesterday else None,
         )
 

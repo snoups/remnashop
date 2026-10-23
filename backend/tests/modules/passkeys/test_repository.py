@@ -38,7 +38,7 @@ async def test_create_then_get_by_credential_id(
     created = await passkey_repository.create(_create_dto(user.id))
     assert created.credential_id == "cred-1"
 
-    found = await passkey_repository.get_by_credential_id("cred-1")
+    found = await passkey_repository.find_by_credential_id("cred-1")
     assert found is not None
     assert found.user_id == user.id
     assert found.public_key == b"pubkey"
@@ -47,7 +47,7 @@ async def test_create_then_get_by_credential_id(
 async def test_get_by_credential_id_returns_none_when_missing(
     passkey_repository: PasskeyRepository,
 ) -> None:
-    assert await passkey_repository.get_by_credential_id("nope") is None
+    assert await passkey_repository.find_by_credential_id("nope") is None
 
 
 async def test_list_by_user_returns_only_that_users_passkeys(
@@ -71,8 +71,8 @@ async def test_get_by_id_and_user_rejects_other_users_passkey(
     other = await _create_user(user_repository, uow, "other")
     created = await passkey_repository.create(_create_dto(owner.id))
 
-    assert await passkey_repository.get_by_id_and_user(created.id, owner.id) is not None
-    assert await passkey_repository.get_by_id_and_user(created.id, other.id) is None
+    assert await passkey_repository.find_by_id_and_user(created.id, owner.id) is not None
+    assert await passkey_repository.find_by_id_and_user(created.id, other.id) is None
 
 
 async def test_update_name(
@@ -94,7 +94,7 @@ async def test_update_after_authentication_bumps_sign_count_and_last_used_at(
 
     await passkey_repository.update_after_authentication(created.id, 5)
 
-    updated = await passkey_repository.get_by_credential_id("cred-1")
+    updated = await passkey_repository.find_by_credential_id("cred-1")
     assert updated is not None
     assert updated.sign_count == 5
     assert updated.last_used_at is not None
@@ -108,7 +108,7 @@ async def test_delete_by_id_and_user(
 
     deleted = await passkey_repository.delete_by_id_and_user(created.id, user.id)
     assert deleted
-    assert await passkey_repository.get_by_credential_id("cred-1") is None
+    assert await passkey_repository.find_by_credential_id("cred-1") is None
 
 
 async def test_delete_by_id_and_user_rejects_other_users_passkey(
@@ -120,4 +120,4 @@ async def test_delete_by_id_and_user_rejects_other_users_passkey(
 
     deleted = await passkey_repository.delete_by_id_and_user(created.id, other.id)
     assert not deleted
-    assert await passkey_repository.get_by_credential_id("cred-1") is not None
+    assert await passkey_repository.find_by_credential_id("cred-1") is not None

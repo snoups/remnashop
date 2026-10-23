@@ -100,7 +100,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             email=user.email if user.email_undeliverable_at is None else None,
         )
         if not channels:
-            logger.info(f"No channel to notify user {user.id} about {data.event_type}")
+            logger.info(f"No channel to notify {user.log} about {data.event_type}")
             return
         renderer = await self._renderer_factory.build()
         title, body = renderer.render(user.language, f"Customer{data.event_type}", data.args)
@@ -152,7 +152,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         if data.payment_key is None or outcome is None or user.telegram_id is None:
             return False
         async with self._uow:
-            order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
+            order = await self._transaction_repository.find_by_idempotency_key(data.payment_key)
         if order is None or order.channel is not PurchaseChannel.BOT:
             return False
         # no bot process listening: the text is the fallback

@@ -24,7 +24,7 @@ class GetUserReferralStatsUseCase(UseCase[int, ReferralStatsDto]):
         async with self._uow:
             target = await get_visible_target(self._user_repository, actor, data)
 
-            edge = await self._referral_repository.get_by_referred_id(target.id)
+            edge = await self._referral_repository.find_by_referred_id(target.id)
             sees_staff = PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
             counts = await self._referral_repository.count_by_level(
                 target.id, hide_staff_from=None if sees_staff else actor.id

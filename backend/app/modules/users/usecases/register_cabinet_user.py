@@ -66,7 +66,7 @@ class RegisterCabinetUserUseCase(UseCase[RegisterCabinetUserDto, UserDto]):
             # lost a race for the same email; the winner's row exists
             logger.debug("Lost a cabinet registration race for an email")
             async with self._uow:
-                winner = await self._user_repository.get_by_email(email)
+                winner = await self._user_repository.find_by_email(email)
             if winner is None:
                 raise
             return winner

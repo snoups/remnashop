@@ -71,7 +71,7 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 px-4 pb-4">
           {plans.kind === "loading" && <Spinner size="card" />}
-          {plans.kind === "error" && <ErrorState text={t("plans.loadError")} />}
+          {plans.kind === "error" && <ErrorState text={t("common.loadError")} />}
           {plans.kind === "ready" && (
             <Card variant="form">
               <PlanDurationPicker
@@ -84,7 +84,7 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
             </Card>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
           <span className="flex-1" />
           <Button variant="outline" type="button" onClick={close}>
             {t("common.cancel")}

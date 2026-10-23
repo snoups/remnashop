@@ -19,7 +19,7 @@ export function ChoiceChip({ active, size = "md", className = "", type = "button
       className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border font-medium transition-colors ${
         size === "sm" ? "px-1.5 py-1 text-xs" : "px-3 py-1.5 text-[12.5px]"
       } disabled:cursor-not-allowed disabled:opacity-50 ${
-        active ? "border-primary/40 bg-accent text-primary" : "border-border text-foreground/80 enabled:hover:bg-white/5"
+        active ? "border-primary/40 bg-accent text-primary" : "border-border text-foreground/80 enabled:hover:bg-white/[0.06]"
       } ${className}`}
       {...props}
     />

@@ -30,12 +30,12 @@ class PasskeyRepository:
         await self.session.flush()
         return self._to_dto(row)
 
-    async def get_by_credential_id(self, credential_id: str) -> Optional[PasskeyCredentialDto]:
+    async def find_by_credential_id(self, credential_id: str) -> Optional[PasskeyCredentialDto]:
         stmt = select(PasskeyCredential).where(PasskeyCredential.credential_id == credential_id)
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row else None
 
-    async def get_by_id_and_user(self, id: int, user_id: int) -> Optional[PasskeyCredentialDto]:
+    async def find_by_id_and_user(self, id: int, user_id: int) -> Optional[PasskeyCredentialDto]:
         stmt = select(PasskeyCredential).where(
             PasskeyCredential.id == id, PasskeyCredential.user_id == user_id
         )

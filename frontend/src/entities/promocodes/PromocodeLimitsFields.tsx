@@ -27,7 +27,7 @@ function PromocodeSwitchRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-[12px] text-muted-foreground">{hint}</p>

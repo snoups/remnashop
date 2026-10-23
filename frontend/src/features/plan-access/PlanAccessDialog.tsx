@@ -86,7 +86,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
                       type="button"
                       onClick={() => setAvailability(value)}
                       className={`flex items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition-colors ${
-                        isSelected ? "border-primary/50 bg-accent" : "border-border bg-white/[0.02] hover:bg-white/[0.05]"
+                        isSelected ? "border-primary/50 bg-accent" : "border-border bg-white/[0.02] hover:bg-white/[0.06]"
                       }`}
                     >
                       <span
@@ -95,10 +95,10 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
                         }`}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[13.5px] font-semibold text-foreground">
+                        <span className="block text-[13px] font-semibold text-foreground">
                           {t(`plans.access.availability.${value}`)}
                         </span>
-                        <span className="block text-[11.5px] text-muted-foreground">
+                        <span className="block text-[12px] text-muted-foreground">
                           {t(`plans.access.availabilityHint.${value}`)}
                         </span>
                       </span>
@@ -140,7 +140,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
           <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
             {availability === "ALLOWED" ? (
               <span className="font-semibold text-violet-300">

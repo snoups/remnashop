@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.enums import Currency
 from app.modules.analytics.period import AnalyticsPeriod
 from app.modules.pricing import CurrencyRateTable, convert_for_report
@@ -16,7 +17,7 @@ def report_amount(amount: Decimal, currency: Currency, rates: CurrencyRateTable)
 
 def median(values: list[Decimal]) -> Decimal:
     if not values:
-        return Decimal(0)
+        return ZERO_AMOUNT
     ordered = sorted(values)
     middle = len(ordered) // 2
     if len(ordered) % 2:

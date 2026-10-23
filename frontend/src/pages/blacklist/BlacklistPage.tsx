@@ -217,7 +217,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("blacklist.manual.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && rows.length === 0 && (
         <EmptyState text={t("blacklist.manual.empty")} />
       )}
@@ -416,7 +416,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("blacklist.sources.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && sources.length === 0 && (
         <EmptyState text={t("blacklist.sources.empty")} />
       )}
@@ -435,7 +435,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-semibold text-foreground">{source.name ?? source.url}</p>
+                  <p className="truncate text-[13px] font-semibold text-foreground">{source.name ?? source.url}</p>
                   {source.name && (
                     <p className="truncate font-mono text-[12px] text-muted-foreground">{source.url}</p>
                   )}

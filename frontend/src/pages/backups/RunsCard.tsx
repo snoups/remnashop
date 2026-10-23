@@ -111,7 +111,7 @@ export function RunsCard({
 
         {runsState.kind === "loading" && <Spinner size="page" />}
         {runsState.kind === "error" && (
-          <ErrorState text={t("backups.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {runsState.kind === "ready" && runsState.items.length === 0 && (
           <EmptyState text={t("backups.empty")} size="page" />
@@ -140,7 +140,7 @@ export function RunsCard({
                       </div>
                       <div className="flex min-w-0 flex-col gap-0.5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13.5px] font-semibold text-foreground">
+                          <span className="text-[13px] font-semibold text-foreground">
                             {t(`backups.kind.${run.kind}`)}
                           </span>
                           <Badge tone={STATUS_BADGE_TONE[run.status]}>
@@ -169,13 +169,9 @@ export function RunsCard({
                           variant="outline"
                           size="sm"
                           onClick={() => void handleDownload(run)}
-                          disabled={downloadingId === run.id}
+                          icon={Download}
+                          isLoading={downloadingId === run.id}
                         >
-                          {downloadingId === run.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Download className="size-3.5" />
-                          )}
                           <span className="hidden sm:inline">{t("backups.runs.downloadButton")}</span>
                         </Button>
                       )}

@@ -93,7 +93,7 @@ async def test_sync_skips_disabled_sources(
     )
     await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
 
-    fetched = await blacklist_repository.get_source(src.id)
+    fetched = await blacklist_repository.find_source(src.id)
     assert fetched is not None and fetched.entries_count == 1 and fetched.last_error is None
 
 
@@ -111,7 +111,7 @@ async def test_sync_replaces_lists_and_records_error(
         "app.modules.blacklist.usecases.fetch_blacklist_sources.fetch_source", fake_fetch
     )
     await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
-    fetched = await blacklist_repository.get_source(src.id)
+    fetched = await blacklist_repository.find_source(src.id)
     assert fetched is not None and fetched.entries_count == 2 and fetched.last_error is None
 
     async def boom(url: str) -> ParsedSourceList:
@@ -119,7 +119,7 @@ async def test_sync_replaces_lists_and_records_error(
 
     monkeypatch.setattr(fetch_blacklist_sources, "fetch_source", boom)
     await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
-    fetched = await blacklist_repository.get_source(src.id)
+    fetched = await blacklist_repository.find_source(src.id)
     assert fetched is not None
     assert fetched.entries_count == 2  # kept last-good
     assert fetched.last_error == "dead link"
@@ -151,7 +151,7 @@ async def test_sync_isolates_a_source_whose_write_fails(
     monkeypatch.setattr(blacklist_repository, "replace_source_lists", failing_replace)
     await FetchBlacklistSourcesUseCase(blacklist_repository, uow).system()
 
-    failed = await blacklist_repository.get_source(bad.id)
-    synced = await blacklist_repository.get_source(good.id)
+    failed = await blacklist_repository.find_source(bad.id)
+    synced = await blacklist_repository.find_source(good.id)
     assert failed is not None and failed.last_error == "value out of range"
     assert synced is not None and synced.entries_count == 1 and synced.last_error is None

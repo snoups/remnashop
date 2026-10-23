@@ -29,7 +29,7 @@ export function AnalyticsTrialPage() {
     <div className="flex flex-col gap-4 pb-2">
       <AnalyticsToolbar currency={state.kind === "ready" ? state.data.report_currency : undefined} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && <Overview data={state.data} isAll={period.kind === "all"} />}
     </div>
   );

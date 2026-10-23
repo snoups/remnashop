@@ -35,7 +35,7 @@ class GetBackupStatsUseCase(UseCase[None, BackupStatsDto]):
     async def _execute(self, actor: Actor, data: None) -> BackupStatsDto:
         async with self._uow:
             settings = await self._backup_repository.get_settings()
-            latest = await self._backup_repository.get_latest_completed(BackupKind.DATABASE)
+            latest = await self._backup_repository.find_latest_completed(BackupKind.DATABASE)
             completed, failed, total_size = await self._backup_repository.count_by_status()
         return BackupStatsDto(
             completed_count=completed,

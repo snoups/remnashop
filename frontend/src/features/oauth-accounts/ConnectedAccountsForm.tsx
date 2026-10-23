@@ -119,7 +119,7 @@ export function ConnectedAccountsForm() {
           <Spinner size="card" />
         )}
         {state.kind === "error" && (
-          <ErrorState text={t("profile.oauthAccounts.loadError")} />
+          <ErrorState text={t("common.loadError")} />
         )}
         {state.kind === "ready" &&
           PROVIDERS.map((provider) => {
@@ -155,9 +155,9 @@ export function ConnectedAccountsForm() {
                     else if (provider === "telegram") setConfirmTelegram(true);
                     else void handleDisconnect(provider);
                   }}
+                  isLoading={pendingProvider === provider}
                   disabled={pendingProvider !== null}
                 >
-                  {pendingProvider === provider && <Loader2 className="size-3.5 animate-spin" />}
                   {identity ? t("profile.oauthAccounts.disconnect") : t("profile.oauthAccounts.connect")}
                 </Button>
               </div>
@@ -325,7 +325,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 type="button"
                 onClick={() => setRenameTarget(passkey)}
                 disabled={pendingAction !== null}
-                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Pencil className="size-4" />
               </button>
@@ -333,7 +333,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 type="button"
                 onClick={() => setDeleteTarget(passkey)}
                 disabled={pendingAction !== null}
-                className="rounded-full p-1.5 text-error/80 hover:bg-white/5 hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full p-1.5 text-error/80 hover:bg-white/[0.06] hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {pendingAction === `delete:${passkey.id}` ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -423,8 +423,7 @@ function PasskeyRenameDialogBody({ name, onRename }: Omit<PasskeyRenameDialogPro
             <Button variant="outline" type="button" onClick={close}>
               {t("common.cancel")}
             </Button>
-            <Button variant="accent" type="submit" disabled={isSubmitting || !trimmed}>
-              {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
+            <Button variant="accent" type="submit" isLoading={isSubmitting} disabled={!trimmed}>
               {t("common.save")}
             </Button>
           </div>

@@ -94,7 +94,7 @@ async def test_reset_owner_access_removes_planted_passkeys_and_oauth_identities(
 
     assert await reset_owner_access(session, config.crypt_key.get_secret_value()) is not None
 
-    assert await passkeys.get_by_credential_id("planted") is None
+    assert await passkeys.find_by_credential_id("planted") is None
     assert await identities.list_by_user(owner.id) == []
 
 

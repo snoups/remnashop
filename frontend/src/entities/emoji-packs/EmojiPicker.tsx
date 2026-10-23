@@ -206,7 +206,7 @@ export function EmojiPicker({
           ) : (
             STANDARD_EMOJI.map((group) => (
               <div key={group.key} className="mb-2">
-                <span className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t(`dialogs.inspector.emojiGroup.${group.key}` as ParseKeys)}
                 </span>
                 <div className="grid grid-cols-8 gap-1">
@@ -233,7 +233,7 @@ export function EmojiPicker({
               onClear();
               setIsOpen(false);
             }}
-            className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[11.5px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+            className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[12px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
           >
             <X className="size-3" />
             {t("dialogs.inspector.emojiClear")}

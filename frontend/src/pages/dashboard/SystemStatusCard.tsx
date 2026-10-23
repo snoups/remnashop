@@ -29,7 +29,7 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
   return (
     <div className={SVC_CLASS}>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2.5 text-[13.5px] font-semibold text-foreground">
+        <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-foreground">
           <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Cpu className="size-4" />
             <i className="absolute -bottom-px -right-px size-2.5 rounded-full bg-success ring-2 ring-background" />
@@ -86,7 +86,7 @@ function ServerCard({ host, memory }: { host: HostStats | null; memory: HostMemo
   return (
     <div className={SVC_CLASS}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="flex items-center gap-2 text-[13.5px] font-semibold text-foreground">
+        <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
           <Server className="size-4 text-muted-foreground" />
           {t("dashboard.runtime.server")}
         </span>

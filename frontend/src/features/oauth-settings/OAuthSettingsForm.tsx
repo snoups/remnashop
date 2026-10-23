@@ -113,7 +113,7 @@ export function OAuthSettingsForm() {
         <Spinner size="card" />
       )}
       {state.kind === "error" && (
-        <ErrorState text={t("settings.oauth.loadError")} />
+        <ErrorState text={t("common.loadError")} />
       )}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">

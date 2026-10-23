@@ -153,7 +153,7 @@ export function WindowInspector({
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{label}</span>
           {window.kind === "seed" && (
-            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("dialogs.windowList.seedBadge")}
             </span>
           )}
@@ -165,7 +165,7 @@ export function WindowInspector({
               if (copied) toast.success(t("dialogs.inspector.keyCopied"));
             });
           }}
-          className="block max-w-full truncate text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+          className="block max-w-full truncate text-left font-mono text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {window.key}
         </button>
@@ -251,7 +251,7 @@ export function WindowInspector({
                   type="button"
                   disabled={isBusy || !activeLocale}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11.5px] text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
                 >
                   <Upload className="size-3" />
                   {t(bannerUrl ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}

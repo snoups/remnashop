@@ -46,7 +46,7 @@ class ReconcilePaidTransactionsUseCase(UseCase[ReconcilePaidTransactionsDto, Non
         redispatched = 0
         for order in stuck:
             async with self._uow:
-                linked = await self._idempotency_repository.get_subscription_id(
+                linked = await self._idempotency_repository.find_subscription_id(
                     order.idempotency_key
                 )
                 if linked is not None:

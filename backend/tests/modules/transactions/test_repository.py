@@ -99,11 +99,11 @@ async def test_get_by_idempotency_key(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-2")
         )
 
-    found = await transaction_repository.get_by_idempotency_key("key-2")
+    found = await transaction_repository.find_by_idempotency_key("key-2")
     assert found is not None
     assert found.id == created.id
 
-    assert await transaction_repository.get_by_idempotency_key("nonexistent") is None
+    assert await transaction_repository.find_by_idempotency_key("nonexistent") is None
 
 
 async def test_mark_paid_sets_external_payment_id_and_status(
@@ -133,7 +133,7 @@ async def test_get_by_external_payment_id(
             created.id, TransactionStatus.PENDING, external_payment_id="yk-456"
         )
 
-    found = await transaction_repository.get_by_external_payment_id("yk-456")
+    found = await transaction_repository.find_by_external_payment_id("yk-456")
     assert found is not None
     assert found.id == created.id
 
@@ -693,23 +693,23 @@ async def test_lookups_are_scoped_to_the_gateway(
             created.id, TransactionStatus.PENDING, external_payment_id="shared-id"
         )
 
-    by_key = await transaction_repository.get_by_idempotency_key(
+    by_key = await transaction_repository.find_by_idempotency_key(
         "key-scope", gateway_type=created.gateway_type
     )
     assert by_key is not None and by_key.id == created.id
     assert (
-        await transaction_repository.get_by_idempotency_key(
+        await transaction_repository.find_by_idempotency_key(
             "key-scope", gateway_type=PaymentGatewayType.YOOMONEY
         )
         is None
     )
 
-    by_external = await transaction_repository.get_by_external_payment_id(
+    by_external = await transaction_repository.find_by_external_payment_id(
         "shared-id", gateway_type=created.gateway_type
     )
     assert by_external is not None and by_external.id == created.id
     assert (
-        await transaction_repository.get_by_external_payment_id(
+        await transaction_repository.find_by_external_payment_id(
             "shared-id", gateway_type=PaymentGatewayType.YOOMONEY
         )
         is None

@@ -15,6 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import Locale, Role
@@ -93,7 +94,7 @@ class User(BaseSql, TimestampMixin):
     # NULL = never accepted; a date, not a flag, so changed rules can ask again
     # create() always generates one, a soft delete wipes it
     referral_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True, index=True)
-    points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=Decimal(0), server_default="0")
+    points: Mapped[Decimal] = mapped_column(Numeric(12, 0), default=ZERO_AMOUNT, server_default="0")
     bonus_days: Mapped[int] = mapped_column(default=0, server_default="0")
     # One-way latch: True until the first trial activation. Not derived from
     # history: a trial->paid conversion marks the trial row DELETED

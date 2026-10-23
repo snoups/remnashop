@@ -73,7 +73,7 @@ async def revert_panel_to_owner(
         owner: Optional[SubscriptionDto] = None
         with suppress(Exception):
             async with uow:
-                owner = await repository.get_by_remnawave_user_id(current.remnawave_user_id)
+                owner = await repository.find_by_remnawave_user_id(current.remnawave_user_id)
         # unreadable database: current is the best guess left
         owner = owner or current
         if owner.status is SubscriptionStatus.DELETED:

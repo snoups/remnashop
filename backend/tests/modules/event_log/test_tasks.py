@@ -53,7 +53,7 @@ async def test_process_outbox_entry_persists_and_marks_processed(
     assert total == 1
     assert items[0].outbox_id == entry.id
     assert items[0].target_id == target.id
-    row = await outbox_repository.get_unprocessed_by_id(entry.id)
+    row = await outbox_repository.find_unprocessed_by_id(entry.id)
     assert row is None  # marked processed
 
 
@@ -83,7 +83,7 @@ async def test_process_outbox_entry_records_failure_when_a_handler_raises(
         entry.id
     )
 
-    row = await outbox_repository.get_unprocessed_by_id(entry.id)
+    row = await outbox_repository.find_unprocessed_by_id(entry.id)
     assert row is not None  # NOT marked processed
     assert row.processed_at is None
     assert row.attempts == 1
@@ -118,7 +118,7 @@ async def test_process_outbox_entry_is_a_noop_when_already_processed(
     )
 
     items, _ = await event_log_repository.list()
-    assert items == []  # get_unprocessed_by_id returned None, nothing persisted
+    assert items == []  # find_unprocessed_by_id returned None, nothing persisted
 
 
 async def test_sweep_processes_good_rows_even_when_a_sibling_row_fails(
@@ -235,7 +235,7 @@ async def test_process_outbox_entry_retry_succeeds_without_doubling_the_audit_ro
     await ProcessOutboxEntryUseCase(outbox_repository, event_log_repository, bus, uow).system(
         entry.id
     )
-    row = await outbox_repository.get_unprocessed_by_id(entry.id)
+    row = await outbox_repository.find_unprocessed_by_id(entry.id)
     assert row is not None
     assert row.attempts == 1
 

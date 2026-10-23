@@ -11,6 +11,14 @@ def normalize_email(value: str) -> str:
     return value.strip().lower()
 
 
+def alias_domains(domain: str) -> frozenset[str]:
+    # every domain whose addresses canonical_email can fold into this one's
+    for group in (_GMAIL_DOMAINS, _YANDEX_DOMAINS, _ICLOUD_DOMAINS):
+        if domain in group:
+            return group
+    return frozenset({domain})
+
+
 def canonical_email(value: str) -> str:
     # one mailbox, one key: provider aliases fold into the address mail actually reaches
     normalized = normalize_email(value)

@@ -3,7 +3,6 @@ from typing import Optional
 from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.ports import EventPublisher
@@ -39,13 +38,13 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
             if data.user_id is not None:
                 target = await self._user_repository.find_by_id(data.user_id)
             elif data.email:
-                target = await self._user_repository.get_by_email(data.email)
+                target = await self._user_repository.find_by_email(data.email)
             elif data.telegram_username:
-                target = await self._user_repository.get_by_username(data.telegram_username)
+                target = await self._user_repository.find_by_username(data.telegram_username)
 
             if target is None or target.deleted_at is not None:
                 raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
-            if target.role != Role.USER:
+            if not target.is_customer:
                 raise ConflictError(
                     "User is already privileged", code=ErrorCode.USER_ALREADY_PRIVILEGED
                 )
@@ -89,7 +88,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
         fresh = await self._user_repository.find_live_for_update(user_id)
         if fresh is None:
             raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
-        if fresh.role != Role.USER:
+        if not fresh.is_customer:
             raise ConflictError(
                 "User is already privileged", code=ErrorCode.USER_ALREADY_PRIVILEGED
             )

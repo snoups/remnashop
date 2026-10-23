@@ -3,20 +3,21 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from app.core.dto import BaseDto
+from pydantic import BaseModel
+
 from app.core.enums import Currency, PaymentGatewayType, PromocodeRewardType, PromocodeStatus
 from app.modules.analytics.aggregates import Granularity
 from app.modules.analytics.sources import SourceKind
 
 
-class AnalyticsPeriodInfoDto(BaseDto):
+class AnalyticsPeriodInfoDto(BaseModel):
     start: datetime
     end: datetime
     previous_start: datetime
     previous_end: datetime
 
 
-class PeriodKpiDto(BaseDto):
+class PeriodKpiDto(BaseModel):
     revenue: Decimal
     payments: int
     paying_users: int
@@ -30,14 +31,14 @@ class PeriodKpiDto(BaseDto):
     churn_rate: float
 
 
-class SnapshotKpiDto(BaseDto):
+class SnapshotKpiDto(BaseModel):
     mrr: Decimal
     paid_subscriptions: int
     limited_subscriptions: int
     active_trials: int
 
 
-class AnalyticsDto(BaseDto):
+class AnalyticsDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     revenue_by_currency: dict[Currency, Decimal]
@@ -47,14 +48,14 @@ class AnalyticsDto(BaseDto):
     snapshot: SnapshotKpiDto
 
 
-class FunnelStepDto(BaseDto):
+class FunnelStepDto(BaseModel):
     key: str
     count: int
     pct_of_start: float
     pct_of_prev: float
 
 
-class FunnelSourceRowDto(BaseDto):
+class FunnelSourceRowDto(BaseModel):
     source: SourceKind
     ad_link_id: Optional[int]
     name: Optional[str]
@@ -64,31 +65,31 @@ class FunnelSourceRowDto(BaseDto):
     repeat_paid: int
 
 
-class FunnelDto(BaseDto):
+class FunnelDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     steps: list[FunnelStepDto]
     paid_via_trial: int
     by_source: list[FunnelSourceRowDto]
 
 
-class CohortRowDto(BaseDto):
+class CohortRowDto(BaseModel):
     cohort: str
     cohort_size: int
     retention_by_month: list[float]
 
 
-class CohortsDto(BaseDto):
+class CohortsDto(BaseModel):
     cohorts: list[CohortRowDto]
 
 
-class LtvBucketDto(BaseDto):
+class LtvBucketDto(BaseModel):
     label: str
     lower_bound: Decimal
     upper_bound: Optional[Decimal]
     users: int
 
 
-class LtvDistributionDto(BaseDto):
+class LtvDistributionDto(BaseModel):
     report_currency: Currency
     buckets: list[LtvBucketDto]
     payers: int
@@ -96,14 +97,14 @@ class LtvDistributionDto(BaseDto):
     median: Decimal
 
 
-class LtvGroupDto(BaseDto):
+class LtvGroupDto(BaseModel):
     key: str
     source: Optional[SourceKind]
     customers: int
     avg_ltv: Decimal
 
 
-class TopPayerDto(BaseDto):
+class TopPayerDto(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
@@ -113,14 +114,14 @@ class TopPayerDto(BaseDto):
     last_paid_at: datetime
 
 
-class LtvBreakdownDto(BaseDto):
+class LtvBreakdownDto(BaseModel):
     report_currency: Currency
     by_first_plan: list[LtvGroupDto]
     by_source: list[LtvGroupDto]
     top_payers: list[TopPayerDto]
 
 
-class SourceRowDto(BaseDto):
+class SourceRowDto(BaseModel):
     source: SourceKind
     ad_link_id: Optional[int]
     name: Optional[str]
@@ -131,7 +132,7 @@ class SourceRowDto(BaseDto):
     revenue_per_payer: Decimal
 
 
-class ReferralPaybackDto(BaseDto):
+class ReferralPaybackDto(BaseModel):
     referred_revenue: Decimal
     reward_days: int
     reward_points: int
@@ -139,7 +140,7 @@ class ReferralPaybackDto(BaseDto):
     deep_levels_revenue_share: float
 
 
-class TopReferrerDto(BaseDto):
+class TopReferrerDto(BaseModel):
     user_id: int
     name: str
     invited: int
@@ -148,7 +149,7 @@ class TopReferrerDto(BaseDto):
     reward_days: int
 
 
-class SourcesDto(BaseDto):
+class SourcesDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     channels: list[SourceRowDto]
@@ -157,7 +158,7 @@ class SourcesDto(BaseDto):
     top_referrers: list[TopReferrerDto]
 
 
-class RevenueTotalsDto(BaseDto):
+class RevenueTotalsDto(BaseModel):
     revenue: Decimal
     payments: int
     avg_check: Decimal
@@ -168,7 +169,7 @@ class RevenueTotalsDto(BaseDto):
     previous_payments: int
 
 
-class RevenueBucketDto(BaseDto):
+class RevenueBucketDto(BaseModel):
     start: datetime
     new: Decimal
     renew: Decimal
@@ -176,13 +177,13 @@ class RevenueBucketDto(BaseDto):
     previous_total: Decimal
 
 
-class RevenueGroupDto(BaseDto):
+class RevenueGroupDto(BaseModel):
     key: str
     payments: int
     revenue: Decimal
 
 
-class GatewayStatsDto(BaseDto):
+class GatewayStatsDto(BaseModel):
     gateway_type: PaymentGatewayType
     paid: int
     canceled: int
@@ -191,7 +192,7 @@ class GatewayStatsDto(BaseDto):
     revenue: Decimal
 
 
-class RevenueDto(BaseDto):
+class RevenueDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     granularity: str
@@ -203,18 +204,18 @@ class RevenueDto(BaseDto):
     gateways: list[GatewayStatsDto]
 
 
-class TrialDayBucketDto(BaseDto):
+class TrialDayBucketDto(BaseModel):
     key: str
     count: int
 
 
-class TimeToPayBucketDto(BaseDto):
+class TimeToPayBucketDto(BaseModel):
     key: str
     via_trial: int
     direct: int
 
 
-class TrialDto(BaseDto):
+class TrialDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     trials: int
@@ -229,19 +230,19 @@ class TrialDto(BaseDto):
     plans_after_trial: list[RevenueGroupDto]
 
 
-class RetentionPointDto(BaseDto):
+class RetentionPointDto(BaseModel):
     months: int
     rate: float
     eligible: int
 
 
-class ExpiringWeekDto(BaseDto):
+class ExpiringWeekDto(BaseModel):
     key: str
     count: int
     mrr_at_risk: Decimal
 
 
-class ExpiringCustomerDto(BaseDto):
+class ExpiringCustomerDto(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
@@ -251,20 +252,20 @@ class ExpiringCustomerDto(BaseDto):
     renewals: int
 
 
-class PlanActiveDto(BaseDto):
+class PlanActiveDto(BaseModel):
     plan_name: str
     active: int
     limited: int
 
 
-class MonthlyChurnDto(BaseDto):
+class MonthlyChurnDto(BaseModel):
     month: str
     base: int
     churned: int
     rate: float
 
 
-class RetentionDto(BaseDto):
+class RetentionDto(BaseModel):
     report_currency: Currency
     points: list[RetentionPointDto]
     avg_paid_months: float
@@ -287,12 +288,12 @@ class GetRevenueDto(AnalyticsPeriodQueryDto):
     granularity: Granularity = "day"
 
 
-class RewardTypeCountDto(BaseDto):
+class RewardTypeCountDto(BaseModel):
     reward_type: PromocodeRewardType
     activations: int
 
 
-class PromocodeRowDto(BaseDto):
+class PromocodeRowDto(BaseModel):
     promocode_id: int
     code: str
     reward_type: PromocodeRewardType
@@ -306,7 +307,7 @@ class PromocodeRowDto(BaseDto):
     status: PromocodeStatus
 
 
-class PromocodeStatsDto(BaseDto):
+class PromocodeStatsDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     activations: int

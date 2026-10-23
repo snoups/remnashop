@@ -81,7 +81,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
 
       <div className="px-5 pt-4">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("subscriptions.panelSync.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {missing && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
         {inSync && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.inSync")}</p>}
         {state.kind === "ready" && state.diff.fields.length > 0 && (
@@ -92,7 +92,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
               <span>{t("subscriptions.panelSync.columns.panel")}</span>
             </div>
             {state.diff.fields.map((diff) => {
-              const valueClass = `break-all ${MONO_FIELDS.has(diff.field) ? "font-mono text-[11.5px]" : ""}`;
+              const valueClass = `break-all ${MONO_FIELDS.has(diff.field) ? "font-mono text-[12px]" : ""}`;
               return (
                 <div key={diff.field} className="grid grid-cols-3 gap-3">
                   <span>{t(`subscriptions.panelSync.fieldNames.${diff.field}` as ParseKeys)}</span>

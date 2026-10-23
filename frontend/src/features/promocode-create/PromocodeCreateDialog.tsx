@@ -1,4 +1,4 @@
-import { Dices, Loader2, Package, Tag, Ticket } from "lucide-react";
+import { Dices, Package, Tag, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -192,9 +192,9 @@ function PromocodeCreateDialogBody({
                     variant="secondary"
                     size="field"
                     onClick={() => void handleGenerate()}
-                    disabled={isGenerating}
+                    icon={Dices}
+                    isLoading={isGenerating}
                   >
-                    {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Dices className="size-3.5" />}
                     {t("promocodes.create.generate")}
                   </Button>
                 )}
@@ -222,7 +222,7 @@ function PromocodeCreateDialogBody({
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
-                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.05]"
+                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.06]"
                       }`}
                     >
                       <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
@@ -337,7 +337,7 @@ function PromocodeCreateDialogBody({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-4">
           <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
             <span className="font-mono font-bold text-foreground">{trimmedCode || "—"}</span>
             {" · "}

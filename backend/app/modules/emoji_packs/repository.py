@@ -74,12 +74,12 @@ class EmojiPackRepository:
         await self.session.refresh(row)
         return self._to_dto(row, await self._items_of(row.id))
 
-    async def get_thumbnail(self, custom_emoji_id: str) -> Optional[bytes]:
+    async def find_thumbnail(self, custom_emoji_id: str) -> Optional[bytes]:
         return await self.session.scalar(
             select(EmojiPackItem.thumbnail).where(EmojiPackItem.custom_emoji_id == custom_emoji_id)
         )
 
-    async def get_animation(self, custom_emoji_id: str) -> Optional[tuple[bytes, str]]:
+    async def find_animation(self, custom_emoji_id: str) -> Optional[tuple[bytes, str]]:
         row = (
             await self.session.execute(
                 select(EmojiPackItem.animation, EmojiPackItem.animation_kind).where(

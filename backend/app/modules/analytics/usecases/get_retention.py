@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import report_amount
 from app.modules.analytics.cache import AnalyticsCache
@@ -26,7 +27,6 @@ from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepo
 from app.modules.transactions import TransactionStatsRepository
 from app.modules.users import UserRepository
 
-_ZERO: Final[Decimal] = Decimal(0)
 _MICROSECOND: Final[timedelta] = timedelta(microseconds=1)
 _ANNIVERSARIES: Final[tuple[int, ...]] = (1, 3, 6)
 _CHURN_MONTHS: Final[int] = 12
@@ -36,10 +36,6 @@ _DAYS_PER_MONTH: Final[Decimal] = Decimal("30.44")
 _WEEK_KEYS: Final[tuple[str, ...]] = ("1_7", "8_14", "15_21", "22_30")
 
 _Segments = list[tuple[datetime, datetime]]
-
-
-def _cents(value: Decimal) -> Decimal:
-    return value.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
 
 def _rate(part: int, whole: int) -> float:
@@ -97,7 +93,7 @@ def _week_key(expire_at: datetime, now: datetime) -> str:
 
 def _monthly_value(row: LiveSubscriptionDto, rates: CurrencyRateTable) -> Decimal:
     if row.duration_days <= 0:
-        return _ZERO
+        return ZERO_AMOUNT
     return report_amount(row.price_paid / row.duration_days * 30, row.currency, rates)
 
 
@@ -105,13 +101,13 @@ def _expiring_weeks(
     rows: list[LiveSubscriptionDto], now: datetime, rates: CurrencyRateTable
 ) -> list[ExpiringWeekDto]:
     counts = dict.fromkeys(_WEEK_KEYS, 0)
-    at_risk = dict.fromkeys(_WEEK_KEYS, _ZERO)
+    at_risk = dict.fromkeys(_WEEK_KEYS, ZERO_AMOUNT)
     for row in rows:
         key = _week_key(row.expire_at, now)
         counts[key] += 1
         at_risk[key] += _monthly_value(row, rates)
     return [
-        ExpiringWeekDto(key=key, count=counts[key], mrr_at_risk=_cents(at_risk[key]))
+        ExpiringWeekDto(key=key, count=counts[key], mrr_at_risk=round_cents(at_risk[key]))
         for key in _WEEK_KEYS
     ]
 
@@ -181,7 +177,9 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         nearest: dict[int, LiveSubscriptionDto] = {}
         for row in sorted(expiring, key=lambda r: r.expire_at):
             nearest.setdefault(row.user_id, row)
-        top = sorted(nearest.values(), key=lambda r: spent.get(r.user_id, _ZERO), reverse=True)
+        top = sorted(
+            nearest.values(), key=lambda r: spent.get(r.user_id, ZERO_AMOUNT), reverse=True
+        )
         top = top[:_TOP_LIMIT]
         users = {u.id: u for u in await self._user_repository.list_by_ids([r.user_id for r in top])}
         return [
@@ -191,7 +189,7 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
                 username=users[row.user_id].username if row.user_id in users else None,
                 plan_name=row.plan_name,
                 expire_at=row.expire_at,
-                spent=_cents(spent.get(row.user_id, _ZERO)),
+                spent=round_cents(spent.get(row.user_id, ZERO_AMOUNT)),
                 renewals=renewals.get(row.user_id, 0),
             )
             for row in top

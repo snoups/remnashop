@@ -96,7 +96,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
             )
 
         async with self._uow:
-            existing = await self._oauth_identity_repository.get_by_provider_external_id(
+            existing = await self._oauth_identity_repository.find_by_provider_external_id(
                 data.provider, external_id
             )
             if existing is not None and existing.user_id != actor.id:

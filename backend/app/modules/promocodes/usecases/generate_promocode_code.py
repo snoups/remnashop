@@ -23,5 +23,5 @@ class GeneratePromocodeCodeUseCase(UseCase[None, str]):
         async with self._uow:
             while True:
                 code = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
-                if await self._promocode_repository.get_by_code(code) is None:
+                if await self._promocode_repository.find_by_code(code) is None:
                     return code

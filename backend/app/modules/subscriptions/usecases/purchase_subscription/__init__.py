@@ -117,15 +117,15 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         async with self._uow:
             if token is not None:
                 return token, None
-            existing_id = await self._idempotency.get_subscription_id(key)
+            existing_id = await self._idempotency.find_subscription_id(key)
             if existing_id is not None:
                 return None, await self._subscription_repository.get_by_id(existing_id)
             if (
                 purchase_type is PurchaseType.RENEW
-                and await self._idempotency.get_pending_renew_expire_at(key) is not None
+                and await self._idempotency.find_pending_renew_expire_at(key) is not None
             ):
                 # resume: the renewal re-applies the pinned expire_at
-                return await self._idempotency.get_claim_token(key), None
+                return await self._idempotency.find_claim_token(key), None
             raise ValidationError(
                 f"Purchase with idempotency_key '{key}' is already in progress",
                 code=ErrorCode.PURCHASE_IN_PROGRESS,

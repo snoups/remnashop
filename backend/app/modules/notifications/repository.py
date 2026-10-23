@@ -22,13 +22,16 @@ class NotificationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _settings_dto(self, row: Optional[NotificationSettings]) -> NotificationSettingsDto:
+    def _to_settings_dto(self, row: Optional[NotificationSettings]) -> NotificationSettingsDto:
         if row is None:
             return NotificationSettingsDto()
         return NotificationSettingsDto.model_validate(row, from_attributes=True)
 
+    def _to_push_subscription_dto(self, row: PushSubscription) -> PushSubscriptionDto:
+        return PushSubscriptionDto.model_validate(row, from_attributes=True)
+
     async def get_settings(self) -> NotificationSettingsDto:
-        return self._settings_dto(await self.session.get(NotificationSettings, SINGLETON_ID))
+        return self._to_settings_dto(await self.session.get(NotificationSettings, SINGLETON_ID))
 
     async def is_push_configured(self) -> bool:
         return (await self.get_settings()).is_push_configured
@@ -39,7 +42,7 @@ class NotificationRepository:
         row.vapid_private_key = private_key
         await self.session.flush()
         await self.session.refresh(row)
-        return self._settings_dto(row)
+        return self._to_settings_dto(row)
 
     async def update_settings(self, data: UpdateNotificationSettingsDto) -> NotificationSettingsDto:
         row = await get_or_create_singleton(self.session, NotificationSettings, SINGLETON_ID)
@@ -47,7 +50,7 @@ class NotificationRepository:
             row.vapid_contact = data.vapid_contact or None
         await self.session.flush()
         await self.session.refresh(row)
-        return self._settings_dto(row)
+        return self._to_settings_dto(row)
 
     async def upsert_push_subscription(
         self,
@@ -79,7 +82,7 @@ class NotificationRepository:
         )
         row = (await self.session.execute(stmt)).scalar_one()
         await self.session.flush()
-        return PushSubscriptionDto.model_validate(row, from_attributes=True), existing is None
+        return self._to_push_subscription_dto(row), existing is None
 
     async def list_push_subscriptions(self, user_id: int) -> list[PushSubscriptionDto]:
         # only devices whose signing-in session is still live
@@ -93,7 +96,7 @@ class NotificationRepository:
             )
             .order_by(PushSubscription.last_seen_at.desc())
         )
-        return [PushSubscriptionDto.model_validate(r, from_attributes=True) for r in rows]
+        return [self._to_push_subscription_dto(r) for r in rows]
 
     async def delete_all_push_subscriptions(self) -> int:
         result = await self.session.execute(delete(PushSubscription))

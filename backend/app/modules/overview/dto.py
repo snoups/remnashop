@@ -4,7 +4,6 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Literal, Optional
 
-from app.core.dto import BaseDto
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType
 
 # 0 means "all time", resolved to the first registration
@@ -17,22 +16,26 @@ class GetOverviewChartDto:
     days: OverviewDays = 7
 
 
-class DailyCountDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class DailyCountDto:
     day: date
     count: int
 
 
-class DailyAmountDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class DailyAmountDto:
     day: date
     amount: Decimal
 
 
-class OverviewUsersDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class OverviewUsersDto:
     total: int
     new_today: int
 
 
-class OverviewSubscriptionsDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class OverviewSubscriptionsDto:
     total: int
     active: int
     limited: int
@@ -43,14 +46,16 @@ class OverviewSubscriptionsDto(BaseDto):
     trials: int
 
 
-class RevenueTodayDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class RevenueTodayDto:
     report_currency: Currency
     today: Decimal
     yesterday_same_time: Decimal
     change: Optional[float] = None
 
 
-class RecentPaymentDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class RecentPaymentDto:
     user_id: int
     name: str
     username: Optional[str] = None
@@ -62,7 +67,8 @@ class RecentPaymentDto(BaseDto):
     paid_at: datetime
 
 
-class RuntimeProcessDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class RuntimeProcessDto:
     process: str
     pid: int
     uptime_seconds: float
@@ -71,12 +77,14 @@ class RuntimeProcessDto(BaseDto):
     event_loop_p99_ms: float
 
 
-class HostMemoryDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class HostMemoryDto:
     total_bytes: int
     used_bytes: int
 
 
-class HostStatsDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class HostStatsDto:
     cpu_percent: Optional[float] = None
     cpu_count: int
     load_1: Optional[float] = None
@@ -86,7 +94,8 @@ class HostStatsDto(BaseDto):
     disk_used_bytes: Optional[int] = None
 
 
-class OverviewDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class OverviewDto:
     users: Optional[OverviewUsersDto] = None
     subscriptions: Optional[OverviewSubscriptionsDto] = None
     runtime: list[RuntimeProcessDto]
@@ -96,7 +105,8 @@ class OverviewDto(BaseDto):
     recent_payments: Optional[list[RecentPaymentDto]] = None
 
 
-class RevenueChartDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class RevenueChartDto:
     days: int
     granularity: Granularity
     paid_orders_count: int
@@ -105,24 +115,28 @@ class RevenueChartDto(BaseDto):
     daily: list[DailyAmountDto]
 
 
-class OnlineChartDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class OnlineChartDto:
     days: int
     granularity: Granularity
     current: int
     daily_peak: list[DailyCountDto]
 
 
-class HourlyOnlinePointDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class HourlyOnlinePointDto:
     hour: datetime
     peak: Optional[int] = None
 
 
-class HourlyOnlineDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class HourlyOnlineDto:
     current: int
     points: list[HourlyOnlinePointDto]
 
 
-class NodeCardDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class NodeCardDto:
     name: str
     country_code: str
     is_connected: bool
@@ -132,31 +146,36 @@ class NodeCardDto(BaseDto):
     last_status_change: Optional[datetime] = None
 
 
-class CountryCardDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class CountryCardDto:
     country_code: str
     nodes: int
     connected: int
     users_online: int
 
 
-class NodesOverviewDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class NodesOverviewDto:
     available: bool
     nodes: list[NodeCardDto]
     countries: list[CountryCardDto]
 
 
-class AppCountDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class AppCountDto:
     app: str
     count: int
 
 
-class PlatformAppsDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class PlatformAppsDto:
     platform: str
     total: int
     apps: list[AppCountDto]
 
 
-class ClientAppsDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class ClientAppsDto:
     available: bool
     total_devices: int
     average_per_user: float
@@ -173,7 +192,8 @@ class AttentionKind(StrEnum):
     BOT_WEBHOOK = "bot_webhook"
 
 
-class AttentionItemDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class AttentionItemDto:
     kind: AttentionKind
     severity: Literal["critical", "warning"]
     count: int
@@ -181,5 +201,6 @@ class AttentionItemDto(BaseDto):
     since: Optional[datetime] = None
 
 
-class AttentionDto(BaseDto):
+@dataclass(frozen=True, kw_only=True)
+class AttentionDto:
     items: list[AttentionItemDto]

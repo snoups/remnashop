@@ -65,7 +65,7 @@ export function AnalyticsSourcesPage() {
         }
       />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>
   );
@@ -210,7 +210,7 @@ function Overview({ data }: { data: Sources }) {
                 <span
                   className={`min-w-0 ${top ? "" : "border-l-2 border-border pl-4"}`}
                 >
-                  <span className="block truncate text-[13.5px] font-medium text-foreground">
+                  <span className="block truncate text-[13px] font-medium text-foreground">
                     {top
                       ? kindLabel(row.source)
                       : (row.name ?? `#${row.ad_link_id}`)}
@@ -376,7 +376,7 @@ function TopReferrers({ data }: { data: Sources }) {
               {initials(row.name)}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[13.5px] font-medium text-foreground">
+              <span className="block truncate text-[13px] font-medium text-foreground">
                 {row.name}
               </span>
               <span className="block truncate text-[12px] tabular-nums text-muted-foreground">

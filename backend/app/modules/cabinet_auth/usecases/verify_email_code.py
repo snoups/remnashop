@@ -4,19 +4,13 @@ from redis.asyncio import Redis
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError
 from app.core.ports import EventPublisher
 from app.modules.auth import IssuedSession
 from app.modules.cabinet_auth.email_codes import (
-    EmailCodeAttemptsExhausted,
-    EmailCodeExpired,
     EmailCodeStore,
-    email_key,
-    release_attempt,
-    reserve_attempt,
+    require_email_sign_in,
+    verify_email_code,
 )
-from app.modules.cabinet_auth.events import EmailCodeAttemptsExhaustedEvent
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.settings import SettingsRepository
 from app.modules.users import UserDto
@@ -48,31 +42,10 @@ class VerifyEmailCodeUseCase:
         legal_locale: Optional[Locale] = None,
     ) -> tuple[UserDto, IssuedSession]:
         async with self._uow:
-            cabinet = await self._settings_repository.get_cabinet_auth_settings()
-            email_settings = await self._settings_repository.get_email_settings()
-        if not (cabinet.email_enabled and email_settings.is_configured):
-            raise AuthenticationError(
-                "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
-            )
-        digest = email_key(email)
-        if not await reserve_attempt(self._redis, digest):
-            raise AuthenticationError("The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED)
-        try:
-            grant = await self._store.verify(email, code)
-        except EmailCodeExpired:
-            await release_attempt(self._redis, digest)
-            raise AuthenticationError(
-                "The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED
-            ) from None
-        except EmailCodeAttemptsExhausted:
-            async with self._uow:
-                await self._event_publisher.publish(
-                    EmailCodeAttemptsExhaustedEvent(email_hash=digest, ip_address=client_ip)
-                )
-            raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID) from None
-        if grant is None:
-            raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID)
-        await release_attempt(self._redis, digest)
+            await require_email_sign_in(self._settings_repository)
+        grant = await verify_email_code(
+            self._store, self._redis, self._event_publisher, self._uow, email, code, client_ip
+        )
         return await self._sign_in.email(
             email, grant.locale, grant.codes, client_ip, user_agent, legal_locale
         )

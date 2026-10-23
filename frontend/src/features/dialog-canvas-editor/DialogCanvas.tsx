@@ -44,7 +44,7 @@ export function DialogCanvas({
         <button
           type="button"
           onClick={() => onSelect({ kind: "text" })}
-          className={`block w-full cursor-pointer whitespace-pre-line rounded-lg px-2.5 py-2 text-left text-[13.5px] leading-relaxed text-foreground transition-colors ${
+          className={`block w-full cursor-pointer whitespace-pre-line rounded-lg px-2.5 py-2 text-left text-[13px] leading-relaxed text-foreground transition-colors ${
             selection?.kind === "text" ? "ring-2 ring-inset ring-primary" : "hover:bg-white/[0.06]"
           }`}
         >

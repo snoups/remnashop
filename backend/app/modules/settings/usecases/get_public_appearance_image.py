@@ -21,7 +21,7 @@ class GetPublicAppearanceImageUseCase:
 
     async def execute(self, kind: AppearanceImageKind) -> AppearanceImageDto:
         async with self._uow:
-            meta = await self._settings_repository.get_appearance_image_meta(kind)
+            meta = await self._settings_repository.find_appearance_image_meta(kind)
             if meta is None:
                 raise NotFoundError(
                     f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET

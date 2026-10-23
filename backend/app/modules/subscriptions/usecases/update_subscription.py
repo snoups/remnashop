@@ -115,7 +115,7 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
     async def _panel_owner(self, old: SubscriptionDto) -> SubscriptionDto:
         # a plan change keeps the panel user for its new row; that row's limits win
         async with self._uow:
-            owner = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+            owner = await self._subscription_repository.find_by_remnawave_user_id_for_update(
                 old.remnawave_user_id
             )
         return owner or old

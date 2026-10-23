@@ -178,7 +178,7 @@ class PublishPanelEventUseCase(UseCase[PublishPanelEventDto, None]):
         if remnawave_user_id is None:
             return
         async with self._uow:
-            subscription = await self._subscription_repository.get_by_remnawave_user_id(
+            subscription = await self._subscription_repository.find_by_remnawave_user_id(
                 remnawave_user_id
             )
             if subscription is None or subscription.status is SubscriptionStatus.DELETED:

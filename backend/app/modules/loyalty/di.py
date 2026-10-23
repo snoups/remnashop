@@ -9,6 +9,7 @@ from app.modules.loyalty.usecases import (
     GetLoyaltySettingsUseCase,
     GetUserLoyaltyUseCase,
     RecalculateLoyaltyDiscountsUseCase,
+    ResetLoyaltySettingsUseCase,
     SetUserLoyaltyExcludedUseCase,
     UpdateLoyaltySettingsUseCase,
 )
@@ -23,6 +24,7 @@ class LoyaltyProvider(Provider):
     use_cases = provide_all(
         GetLoyaltySettingsUseCase,
         UpdateLoyaltySettingsUseCase,
+        ResetLoyaltySettingsUseCase,
         RecalculateLoyaltyDiscountsUseCase,
         GetUserLoyaltyUseCase,
         SetUserLoyaltyExcludedUseCase,

@@ -128,7 +128,7 @@ function ButtonFace({
       ) : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
       {button.visibility_condition ? (
-        <span className="text-[9.5px] text-muted-foreground">({button.visibility_condition})</span>
+        <span className="text-[10px] text-muted-foreground">({button.visibility_condition})</span>
       ) : null}
     </span>
   );

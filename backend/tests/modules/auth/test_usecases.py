@@ -558,7 +558,7 @@ async def test_refresh_outside_grace_window_revokes_session_and_publishes_theft_
     )
 
     # Simulate the grace window having elapsed.
-    session_row = await session_repository.get_rotatable_by_hash(
+    session_row = await session_repository.find_rotatable_by_hash(
         hash_refresh_token(rotated.refresh_token)
     )
     assert session_row is not None
@@ -574,7 +574,7 @@ async def test_refresh_outside_grace_window_revokes_session_and_publishes_theft_
             refresh_token=issued.refresh_token, ip_address=CLIENT_IP, user_agent=USER_AGENT
         )
 
-    assert await session_repository.get_active_by_id(session_row.id) is None
+    assert await session_repository.find_active_by_id(session_row.id) is None
     row = await _newest_outbox_row(session, SessionTheftDetectedEvent.__name__)
     assert row.payload["session_id"] == session_row.id
 
@@ -820,7 +820,7 @@ async def test_logout_revokes_the_session(
     await use_case.execute(refresh_token=issued.refresh_token)
 
     assert (
-        await session_repository.get_rotatable_by_hash(hash_refresh_token(issued.refresh_token))
+        await session_repository.find_rotatable_by_hash(hash_refresh_token(issued.refresh_token))
         is None
     )
     assert [(e.user_id, e.audience) for e in publisher.events] == [(owner.id, "DASHBOARD")]  # type: ignore[attr-defined]

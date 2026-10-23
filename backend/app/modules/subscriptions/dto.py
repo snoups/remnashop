@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from remnapy.enums import TrafficLimitStrategy
 from remnapy.models.webhook import WebhookPayloadDto
 
-from app.core.constants import DEFAULT_PAGE_SIZE
+from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     AddOnType,
@@ -439,7 +439,7 @@ class GetAvailableTrialDto:
     plan: Optional[PlanDto]
     is_trial_available: bool
     # the trial's one duration, priced in the anchor currency; 0 for a free trial
-    price: Decimal = Decimal(0)
+    price: Decimal = ZERO_AMOUNT
     currency: Optional[Currency] = None
 
     @property

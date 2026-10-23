@@ -103,6 +103,8 @@ export class NetworkError extends Error {}
 
 const GATEWAY_ERROR_STATUSES = new Set([502, 503, 504]);
 
+const DEBUG_FAILURE_EXEMPT_PATH = "/users/me";
+
 export function getErrorMessage(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;
   const key = `apiErrors.${err.code}`;
@@ -142,8 +144,11 @@ function extractErrorMessage(body: unknown): string {
 async function sendRequest(path: string, init: RequestInit | undefined, bearer: string | null): Promise<Response> {
   const { apiFailure, latency } = getDebugState();
   if (latency) await new Promise((resolve) => setTimeout(resolve, latency));
-  if (apiFailure === "network") throw new NetworkError("Forced failure (debug bar)");
-  if (apiFailure === "server") throw new ApiError(500, "Forced failure (debug bar)");
+  // /users/me is spared: its failure swaps the whole dashboard for an error screen
+  if (path !== DEBUG_FAILURE_EXEMPT_PATH) {
+    if (apiFailure === "network") throw new NetworkError("Forced failure (debug bar)");
+    if (apiFailure === "server") throw new ApiError(500, "Forced failure (debug bar)");
+  }
 
   const headers = new Headers(init?.headers);
   if (bearer) headers.set("Authorization", `Bearer ${bearer}`);

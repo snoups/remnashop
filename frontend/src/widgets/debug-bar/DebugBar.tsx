@@ -75,7 +75,7 @@ function DebugButton({
       className={`${className} group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
         active
           ? "bg-accent text-primary"
-          : "bg-white/[0.05] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+          : "bg-white/[0.05] text-muted-foreground hover:bg-white/[0.07] hover:text-foreground"
       }`}
     >
       <Icon className="size-[17px]" />

@@ -364,14 +364,14 @@ async def test_set_appearance_image_marks_has_logo(
 
     assert settings.has_logo is True
     assert settings.has_favicon is False
-    meta = await settings_repository.get_appearance_image_meta(AppearanceImageKind.LOGO)
+    meta = await settings_repository.find_appearance_image_meta(AppearanceImageKind.LOGO)
     assert meta == ("png", "image/png")
 
 
 async def test_get_appearance_image_meta_returns_none_when_unset(
     settings_repository: SettingsRepository,
 ) -> None:
-    meta = await settings_repository.get_appearance_image_meta(AppearanceImageKind.FAVICON)
+    meta = await settings_repository.find_appearance_image_meta(AppearanceImageKind.FAVICON)
     assert meta is None
 
 
@@ -382,7 +382,7 @@ async def test_clear_appearance_image_resets_has_logo(
     settings = await settings_repository.clear_appearance_image(AppearanceImageKind.LOGO)
 
     assert settings.has_logo is False
-    assert await settings_repository.get_appearance_image_meta(AppearanceImageKind.LOGO) is None
+    assert await settings_repository.find_appearance_image_meta(AppearanceImageKind.LOGO) is None
 
 
 async def test_set_appearance_image_kinds_are_independent(

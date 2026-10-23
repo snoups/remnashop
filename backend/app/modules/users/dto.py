@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from app.core.constants import DEFAULT_PAGE_SIZE, REMNASHOP_PREFIX, WEB_PREFIX
+from app.core.constants import DEFAULT_PAGE_SIZE, REMNASHOP_PREFIX, WEB_PREFIX, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     AdLinkChannel,
@@ -52,7 +52,7 @@ class UserDto(BaseDto, TimestampMixin):
     email_undeliverable_at: Optional[datetime] = None
 
     referral_code: Optional[str] = None
-    points: Decimal = Decimal(0)
+    points: Decimal = ZERO_AMOUNT
     bonus_days: int = 0
     notifications_seen_at: Optional[datetime] = None
     notifications_cleared_at: Optional[datetime] = None
@@ -72,8 +72,20 @@ class UserDto(BaseDto, TimestampMixin):
         return self.role.includes(Role.ADMIN)
 
     @property
+    def is_customer(self) -> bool:
+        return self.role == Role.USER
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == Role.ADMIN
+
+    @property
     def is_owner(self) -> bool:
-        return self.role.includes(Role.OWNER)
+        return self.role == Role.OWNER
+
+    @property
+    def is_system(self) -> bool:
+        return self.role == Role.SYSTEM
 
     @property
     def age_days(self) -> Optional[int]:

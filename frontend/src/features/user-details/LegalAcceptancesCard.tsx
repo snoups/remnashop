@@ -17,7 +17,7 @@ export function LegalAcceptancesCard({ userId }: { userId: number }) {
   return (
     <Card variant="list" title={t("users.legalAcceptances.title")} icon={FileText}>
       {state.kind === "error" && (
-        <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("users.legalAcceptances.loadError")}</p>
+        <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("common.loadError")}</p>
       )}
       {state.kind === "ready" && state.data.items.length === 0 && (
         <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("users.legalAcceptances.none")}</p>

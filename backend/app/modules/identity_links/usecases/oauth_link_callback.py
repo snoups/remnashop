@@ -13,8 +13,10 @@ from app.modules.users import UserDto
 
 
 class OAuthLinkCallbackUseCase:
-    def __init__(self, callback: CabinetOAuthCallbackUseCase, linker: IdentityLinker) -> None:
-        self._callback = callback
+    def __init__(
+        self, cabinet_oauth_callback_use_case: CabinetOAuthCallbackUseCase, linker: IdentityLinker
+    ) -> None:
+        self._cabinet_oauth_callback_use_case = cabinet_oauth_callback_use_case
         self._linker = linker
 
     async def execute(
@@ -26,7 +28,7 @@ class OAuthLinkCallbackUseCase:
         binding: Optional[str],
         client_ip: str,
     ) -> LinkResultDto:
-        profile = await self._callback.fetch_profile(
+        profile = await self._cabinet_oauth_callback_use_case.fetch_profile(
             provider, code, state, binding, link_user_id=user.id
         )
         if provider is OAuthProvider.TELEGRAM:

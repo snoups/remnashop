@@ -137,7 +137,7 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
         session_id = docs_token_session(token, "access", secret) if token else None
         # the dashboard session that opened the docs must still be live: a sign-out,
         # block or demotion closes them too
-        if session_id is None or await sessions.get_active_by_id(session_id) is None:
+        if session_id is None or await sessions.find_active_by_id(session_id) is None:
             raise ApiError(
                 status.HTTP_401_UNAUTHORIZED,
                 "Open the API docs from the dashboard",

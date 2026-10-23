@@ -132,7 +132,7 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
       <div
         // 27px = 1px border + 8px inset + 18px (half the h-9 upload pill): the pill's ends sit concentric in the corners
         className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[27px] bg-input/60 ${
-          hasImage ? "border border-border" : "border border-dashed border-white/[0.16]"
+          hasImage ? "border border-border" : "border border-dashed border-white/[0.18]"
         }`}
       >
         {hasImage ? (
@@ -348,7 +348,7 @@ export function AppearanceSettingsForm() {
       />
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("settings.appearance.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
 
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSave(event)} className="mt-4 flex flex-col gap-4">
@@ -448,7 +448,7 @@ export function AppearanceSettingsForm() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2.5 border-t border-white/[0.06] pt-4">
+                <div className="flex flex-col gap-2.5 border-t border-white/[0.08] pt-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className={EYEBROW_CLASS}>{t("settings.appearance.shaderEnabledLabel")}</span>
                     <Switch

@@ -28,7 +28,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("advertising.stats.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("advertising.stats.usersEmpty")} />
       )}

@@ -131,7 +131,7 @@ async def test_import_deletes_custom_windows_missing_from_the_file(
         RecordingEventPublisher(),
     )(OWNER, export)
 
-    assert await dialog_repository.get_by_key("custom.later") is None
+    assert await dialog_repository.find_by_key("custom.later") is None
 
 
 async def test_import_creates_a_custom_window_from_the_file(
@@ -176,7 +176,7 @@ async def test_import_creates_a_custom_window_from_the_file(
         RecordingEventPublisher(),
     )(OWNER, payload)
 
-    created = await dialog_repository.get_by_key("custom-faq")
+    created = await dialog_repository.find_by_key("custom-faq")
     assert created is not None
     assert created.slot is not None
     assert [b.target_window_key for b in created.buttons] == ["menu.main"]

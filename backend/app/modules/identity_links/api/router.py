@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, Union
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -246,7 +246,7 @@ async def oauth_link_callback(
     guard: FailureLimit = Depends(
         failure_rate_limit(key="cabinet_link_oauth_callback_fail", limit=20, window_seconds=TIME_1M)
     ),
-) -> LinkResultResponse | JSONResponse:
+) -> Union[LinkResultResponse, JSONResponse]:
     try:
         result = await use_case.execute(
             user,

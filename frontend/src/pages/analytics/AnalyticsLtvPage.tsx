@@ -43,11 +43,11 @@ export function AnalyticsLtvPage() {
         }
       />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <>
           <Distribution data={state.data} />
-          {breakdown.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+          {breakdown.kind === "error" && <ErrorState text={t("common.loadError")} />}
           {breakdown.kind === "ready" && breakdown.data && <Breakdown data={breakdown.data} />}
           <CurrencyNote currency={state.data.report_currency} />
         </>
@@ -211,7 +211,7 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
                       {index + 1}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] font-medium text-foreground">{payer.name}</span>
+                      <span className="block truncate text-[13px] font-medium text-foreground">{payer.name}</span>
                       {payer.username && (
                         <span className="block truncate font-mono text-[12px] text-muted-foreground">@{payer.username}</span>
                       )}

@@ -141,7 +141,7 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
         )}
       </div>
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("broadcasts.details.recipientsError")} size="page" />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("broadcasts.details.noRecipients")} size="page" />
       )}

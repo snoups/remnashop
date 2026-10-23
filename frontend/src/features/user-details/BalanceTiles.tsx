@@ -341,7 +341,7 @@ function LastChange({
     <button
       type="button"
       onClick={() => onOpen(entry)}
-      className="truncate border-t border-white/[0.07] pt-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+      className="truncate border-t border-white/[0.08] pt-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
     >
       {t("users.details.balance.lastChange", {
         name: entry.actor_name ?? entry.actor_login ?? t("common.none"),

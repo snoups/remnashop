@@ -115,7 +115,7 @@ export function EmailSettingsForm({ onSaved }: { onSaved?: () => void }) {
       <CardHeader icon={Mail} title={t("settings.email.title")} description={t("settings.email.description")} />
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("settings.email.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <div className="mt-4 flex flex-col gap-4">
           <SmtpProfileForm profile="main" settings={state.data} onSaved={handleSaved} />

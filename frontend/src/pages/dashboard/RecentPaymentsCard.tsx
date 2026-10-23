@@ -8,6 +8,7 @@ import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney } from "@shared/lib/format";
 import { initials } from "@shared/lib/initials";
+import { formatTime } from "@shared/lib/relative-time";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
@@ -19,7 +20,7 @@ function formatPaidAt(iso: string, language: string): string {
   const today = new Date();
   const sameDay = date.toDateString() === today.toDateString();
   return sameDay
-    ? date.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    ? formatTime(date, language)
     : date.toLocaleDateString(language, { day: "numeric", month: "short" });
 }
 
@@ -66,7 +67,7 @@ export function RecentPaymentsCard({
                 {initials(payment.name)}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13.5px] font-medium text-foreground">
+                <span className="block truncate text-[13px] font-medium text-foreground">
                   {payment.name} · {payment.plan_name}
                 </span>
                 <span className="block truncate text-[12px] text-muted-foreground">

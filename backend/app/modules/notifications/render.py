@@ -1,5 +1,5 @@
 import re
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Union
 
 from fluent_compiler.bundle import FluentBundle
 from loguru import logger
@@ -29,8 +29,10 @@ def _display(snapshot: dict[str, Any]) -> str:
     return str(snapshot.get("name") or _EMPTY)
 
 
-def notification_args(payload: dict[str, Any], ip_address: Optional[str]) -> dict[str, str | int]:
-    args: dict[str, str | int] = {
+def notification_args(
+    payload: dict[str, Any], ip_address: Optional[str]
+) -> dict[str, Union[str, int]]:
+    args: dict[str, Union[str, int]] = {
         key: value
         for key, value in payload.items()
         if isinstance(value, (str, int)) and not isinstance(value, bool)
@@ -55,7 +57,7 @@ class NotificationRenderer:
         self._default_locale = default_locale
 
     def render(
-        self, locale: Locale, event_type: str, args: dict[str, str | int]
+        self, locale: Locale, event_type: str, args: dict[str, Union[str, int]]
     ) -> tuple[str, str]:
         key = message_id(event_type)
         for candidate in (locale, self._default_locale):
@@ -74,7 +76,7 @@ class NotificationRenderer:
             return str(title), str(body)
         return event_type, ""
 
-    def render_message(self, locale: Locale, key: str, args: dict[str, str | int]) -> str:
+    def render_message(self, locale: Locale, key: str, args: dict[str, Union[str, int]]) -> str:
         for candidate in (locale, self._default_locale):
             bundle = self._bundles.get(candidate)
             if bundle is None or not bundle.has_message(key):

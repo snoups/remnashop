@@ -59,14 +59,14 @@ class IdentityLinker:
     async def owner_of(self, claim: IdentityClaimDto) -> Optional[int]:
         if claim.kind is IdentityKind.TELEGRAM:
             assert claim.telegram is not None
-            user = await self._user_repository.get_by_telegram_id(claim.telegram.telegram_id)
+            user = await self._user_repository.find_by_telegram_id(claim.telegram.telegram_id)
             return user.id if user else None
         if claim.kind is IdentityKind.EMAIL:
             assert claim.email is not None
-            user = await self._user_repository.get_by_email(normalize_email(claim.email))
+            user = await self._user_repository.find_by_email(normalize_email(claim.email))
             return user.id if user else None
         assert claim.oauth is not None
-        identity = await self._oauth_identity_repository.get_by_provider_external_id(
+        identity = await self._oauth_identity_repository.find_by_provider_external_id(
             OAuthProvider(claim.kind.value), claim.oauth.external_id
         )
         return identity.user_id if identity else None
@@ -164,7 +164,7 @@ class IdentityLinker:
         if user.email is not None or not profile.email or not profile.email_verified:
             return
         email = normalize_email(profile.email)
-        if await self._user_repository.get_by_email(email) is not None:
+        if await self._user_repository.find_by_email(email) is not None:
             return
         if await self._blacklist_repository.is_blacklisted_email(email):
             return

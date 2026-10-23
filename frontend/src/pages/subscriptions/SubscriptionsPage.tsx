@@ -1,4 +1,4 @@
-import { Layers, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Layers, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -26,7 +26,7 @@ import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { Collapse } from "@shared/ui/Collapse";
@@ -169,16 +169,14 @@ export function SubscriptionsPage() {
       </div>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
         <CardHeader
           icon={Layers}
           title={
             <>
               {t("subscriptions.title")}
               {state.kind === "ready" && (
-                <span className="text-[11.5px] font-normal tabular-nums text-muted-foreground">{state.total}</span>
+                <span className="text-[12px] font-normal tabular-nums text-muted-foreground">{state.total}</span>
               )}
             </>
           }
@@ -188,7 +186,7 @@ export function SubscriptionsPage() {
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("subscriptions.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState text={t(hasFilters ? "subscriptions.noMatches" : "subscriptions.empty")} size="page" />
@@ -256,7 +254,7 @@ export function SubscriptionsPage() {
                           </span>
                           <span className="min-w-0">
                             <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-[13.5px] font-medium text-foreground">
+                              <span className="truncate text-[13px] font-medium text-foreground">
                                 {t("subscriptions.userLabel", { id: subscription.user_id })}
                               </span>
                               {subscription.is_trial && (
@@ -278,7 +276,7 @@ export function SubscriptionsPage() {
                             <span className="block text-[13px] font-medium text-foreground">
                               {formatTraffic(subscription.effective_traffic_limit, unlimitedLabel)}
                             </span>
-                            <span className="block truncate text-[11.5px] text-muted-foreground">
+                            <span className="block truncate text-[12px] text-muted-foreground">
                               {t(`subscriptions.edit.strategy.${subscription.traffic_limit_strategy}`)}
                             </span>
                           </span>
@@ -289,7 +287,7 @@ export function SubscriptionsPage() {
                             <span className="block text-[13px] text-foreground">
                               {formatDate(subscription.expire_at, i18n.language)}
                             </span>
-                            <span className={`block text-[11.5px] ${expiryToneClassName(days)}`}>
+                            <span className={`block text-[12px] ${expiryToneClassName(days)}`}>
                               {relativeTime.format(days, "day")}
                             </span>
                           </span>

@@ -99,8 +99,8 @@ async def get_own_security(
     actor: UserDto = Depends(require_admin_user),
 ) -> SecurityResponse:
     current = await use_case(actor)
-    return SecurityResponse(
-        ip_allowlist=current.ip_allowlist or [], client_ip=resolve_client_ip(request)
+    return SecurityResponse.model_validate(
+        {"ip_allowlist": current.ip_allowlist, "client_ip": resolve_client_ip(request)}
     )
 
 
@@ -119,8 +119,8 @@ async def update_own_security(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return SecurityResponse(
-        ip_allowlist=updated.ip_allowlist or [], client_ip=resolve_client_ip(request)
+    return SecurityResponse.model_validate(
+        {"ip_allowlist": updated.ip_allowlist, "client_ip": resolve_client_ip(request)}
     )
 
 

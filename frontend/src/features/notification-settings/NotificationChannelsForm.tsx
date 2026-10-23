@@ -138,7 +138,7 @@ export function NotificationChannelsForm() {
 
       <div className="mt-4 flex flex-col gap-3">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("profile.notifications.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && (
           <>
             <div className="flex flex-col gap-2 rounded-2xl border border-border/60 p-3">

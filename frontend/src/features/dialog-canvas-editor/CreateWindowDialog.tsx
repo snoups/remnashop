@@ -1,4 +1,4 @@
-import { Loader2, MessagesSquare } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -71,8 +71,7 @@ function CreateWindowDialogBody({ onCreate }: Pick<CreateWindowDialogProps, "onC
             <Button variant="outline" type="button" onClick={close}>
               {t("common.cancel")}
             </Button>
-            <Button variant="accent" type="submit" disabled={isSubmitting || !trimmed}>
-              {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
+            <Button variant="accent" type="submit" isLoading={isSubmitting} disabled={!trimmed}>
               {t("common.create")}
             </Button>
           </div>

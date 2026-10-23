@@ -41,7 +41,7 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
     <div className="flex flex-col gap-3">
       <Card variant="list">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("subscriptions.devices.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && state.data.items.length === 0 && (
           <EmptyState icon={Smartphone} text={t("subscriptions.devices.empty")} />
         )}

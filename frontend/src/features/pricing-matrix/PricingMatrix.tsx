@@ -37,6 +37,7 @@ import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
 const BULK_SCOPES: BulkAdjustScope[] = ["ALL_PLANS", "ALL_ADDONS"];
@@ -124,7 +125,7 @@ export function PricingMatrix({ book, onChanged }: PricingMatrixProps) {
           {/* separate borders: collapsed tables ignore border-radius on cells */}
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
-              <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&>th]:border-b [&>th]:border-border [&>th]:p-2 [&>th:first-child]:pl-3 [&>th:last-child]:pr-3">
+              <tr className={`text-left ${EYEBROW_CLASS} [&>th]:border-b [&>th]:border-border [&>th]:p-2 [&>th:first-child]:pl-3 [&>th:last-child]:pr-3`}>
                 <th>{t("pricing.matrix.item")}</th>
                 <th>{t("pricing.matrix.basePrice")}</th>
                 {CURRENCIES.map((currency) => (
@@ -132,7 +133,7 @@ export function PricingMatrix({ book, onChanged }: PricingMatrixProps) {
                     <span className="inline-flex items-center gap-1.5">
                       {currency}
                       {currency === book.settings.anchor_currency && (
-                        <span className="rounded-full bg-accent px-1.5 py-px text-[9.5px] tracking-wide text-primary">
+                        <span className="rounded-full bg-accent px-1.5 py-px text-[10px] tracking-wide text-primary">
                           {t("pricing.anchor.badge")}
                         </span>
                       )}

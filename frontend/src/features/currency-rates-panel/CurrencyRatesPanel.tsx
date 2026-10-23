@@ -185,7 +185,7 @@ function RateRow({
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <span className="flex size-[34px] items-center justify-center rounded-[10px] border border-glass-border bg-white/[0.05] text-base font-bold text-foreground">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-sm font-bold text-foreground">
           {currencySymbol(rate.currency)}
         </span>
         <span className="text-[15px] font-bold tracking-wide text-foreground">{rate.currency}</span>

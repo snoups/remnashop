@@ -67,7 +67,7 @@ class UpdateDialogTextUseCase(UseCase[UpdateDialogTextDto, TranslationEntryDto])
                 )
 
             window_key = catalog.window_key_for_text_key(full_key)
-            window = await self._dialog_repository.get_by_key(window_key) if window_key else None
+            window = await self._dialog_repository.find_by_key(window_key) if window_key else None
             if window is not None:
                 validate_window_text(
                     data.value, has_banner=window.banner_name is not None, locale=data.locale

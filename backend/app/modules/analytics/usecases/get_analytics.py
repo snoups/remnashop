@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
 from functools import partial
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT, TIMEZONE
+from app.core.constants import TIMEZONE, ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SubscriptionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import report_amount
 from app.modules.analytics.cache import AnalyticsCache
@@ -61,14 +61,10 @@ def _period_kpi(
     churned = len(base - covered[_end_point(period, now)])
     revenue = totals.revenue
     return PeriodKpiDto(
-        revenue=revenue.quantize(ONE_CENT, rounding=ROUND_HALF_UP),
+        revenue=round_cents(revenue),
         payments=totals.payments,
         paying_users=totals.paying_users,
-        arppu=(
-            (revenue / totals.paying_users).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
-            if totals.paying_users
-            else Decimal(0)
-        ),
+        arppu=(round_cents(revenue / totals.paying_users) if totals.paying_users else ZERO_AMOUNT),
         new_payers=new_payers,
         conversion_cohort=len(cohort),
         converted=converted,
@@ -140,13 +136,15 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
             revenue_by_currency = await stats.revenue_by_currency(period.start, period.end)
 
             mrr_by_currency = await self._subscription_stats.sum_active_mrr_by_currency()
-            mrr = sum(
-                (
-                    report_amount(amount, currency, rates)
-                    for currency, amount in mrr_by_currency.items()
-                ),
-                start=Decimal(0),
-            ).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+            mrr = round_cents(
+                sum(
+                    (
+                        report_amount(amount, currency, rates)
+                        for currency, amount in mrr_by_currency.items()
+                    ),
+                    start=ZERO_AMOUNT,
+                )
+            )
 
             return AnalyticsDto(
                 period=AnalyticsPeriodInfoDto(

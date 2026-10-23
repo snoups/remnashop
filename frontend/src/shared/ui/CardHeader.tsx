@@ -24,7 +24,7 @@ export function CardHeader({ icon: Icon, title, description, aside }: CardHeader
         </div>
         {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
       </div>
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <div className="-mx-4 mt-4 border-t border-white/[0.08]" />
     </>
   );
 }

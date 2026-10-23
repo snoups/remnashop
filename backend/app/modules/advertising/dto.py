@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from app.core.constants import DEFAULT_PAGE_SIZE
+from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AdLinkChannel, Currency
 
@@ -13,7 +13,7 @@ from app.core.enums import AdLinkChannel, Currency
 class AdLinkDto(BaseDto, TimestampMixin):
     name: str
     code: str
-    cost: Decimal = Decimal(0)
+    cost: Decimal = ZERO_AMOUNT
     cost_currency: Currency = Currency.USD
     is_active: bool = True
     allow_bot: bool = True
@@ -87,7 +87,7 @@ class AdvertisingSummaryDto(BaseDto):
 class CreateAdLinkDto:
     name: str
     code: str
-    cost: Decimal = Decimal(0)
+    cost: Decimal = ZERO_AMOUNT
     cost_currency: Currency = Currency.USD
     allow_bot: bool = True
     allow_webcabinet: bool = True

@@ -19,6 +19,7 @@ from app.modules.loyalty.dto import (
 from app.modules.loyalty.usecases import (
     GetLoyaltySettingsUseCase,
     GetUserLoyaltyUseCase,
+    ResetLoyaltySettingsUseCase,
     SetUserLoyaltyExcludedUseCase,
     UpdateLoyaltySettingsUseCase,
 )
@@ -52,6 +53,15 @@ async def update_loyalty_settings(
         ),
     )
     return LoyaltySettingsResponse.model_validate(saved, from_attributes=True)
+
+
+@router.post("/settings/actions/reset", response_model=LoyaltySettingsResponse)
+@inject
+async def reset_loyalty_settings(
+    use_case: FromDishka[ResetLoyaltySettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> LoyaltySettingsResponse:
+    return LoyaltySettingsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @user_router.get(

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import Currency
@@ -18,7 +19,7 @@ class AdLink(BaseSql, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal(0), server_default="0")
+    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=ZERO_AMOUNT, server_default="0")
     cost_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
     allow_bot: Mapped[bool] = mapped_column(default=True, server_default="true")

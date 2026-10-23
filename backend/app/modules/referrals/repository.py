@@ -100,13 +100,13 @@ class ReferralRepository:
             updated_at=row.updated_at,
         )
 
-    async def get_by_referred_id(self, referred_id: int) -> Optional[ReferralDto]:
+    async def find_by_referred_id(self, referred_id: int) -> Optional[ReferralDto]:
         stmt = select(Referral).where(Referral.referred_id == referred_id)
         row = await self.session.scalar(stmt)
         return self._to_dto(row) if row is not None else None
 
     async def has_referrer(self, user_id: int) -> bool:
-        return await self.get_by_referred_id(user_id) is not None
+        return await self.find_by_referred_id(user_id) is not None
 
     async def list_edges(
         self, referred_ids: Optional[list[int]] = None
@@ -225,7 +225,7 @@ class ReferralRepository:
             return {}
         downline = self._downline(referrer_id)
         stmt = select(downline.c.referred_id, downline.c.depth).where(
-            downline.c.referred_id.in_(user_ids)
+            in_ids(downline.c.referred_id, user_ids)
         )
         return {int(user_id): int(depth) for user_id, depth in (await self.session.execute(stmt))}
 
@@ -239,7 +239,7 @@ class ReferralRepository:
             .join(Subscription, Subscription.id == ReferralReward.subscription_id)
             .where(
                 ReferralReward.referrer_id == referrer_id,
-                Subscription.user_id.in_(buyer_ids),
+                in_ids(Subscription.user_id, buyer_ids),
                 ReferralReward.reversed_at.is_(None),
             )
             .group_by(Subscription.user_id, ReferralReward.type)
@@ -389,7 +389,8 @@ class ReferralRepository:
                 func.sum(ReferralReward.amount),
             )
             .where(
-                ReferralReward.referral_id.in_(referral_ids), ReferralReward.reversed_at.is_(None)
+                in_ids(ReferralReward.referral_id, referral_ids),
+                ReferralReward.reversed_at.is_(None),
             )
             .group_by(ReferralReward.referral_id, ReferralReward.type)
         )

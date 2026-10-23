@@ -1,5 +1,4 @@
-from decimal import Decimal
-
+from app.core.constants import ZERO_AMOUNT
 from app.core.utils.time import datetime_now
 from app.modules.loyalty.dto import UserLoyaltyDto
 from app.modules.loyalty.repository import LoyaltyRepository
@@ -24,7 +23,7 @@ async def build_user_loyalty(
     totals = await transaction_repository.sum_paid_anchor_amount_per_user(
         [user.id], paid_since=paid_since
     )
-    spent = totals.get(user.id, Decimal(0))
+    spent = totals.get(user.id, ZERO_AMOUNT)
     pricing = await pricing_repository.get_settings()
     return UserLoyaltyDto(
         user_id=user.id,

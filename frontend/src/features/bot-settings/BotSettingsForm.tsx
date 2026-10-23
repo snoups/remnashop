@@ -101,7 +101,7 @@ function BotLogsDialogBody() {
               type="button"
               onClick={reload}
               {...bounceTap()}
-              className="flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/5"
+              className="flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/[0.06]"
             >
               {t("settings.bot.refreshLogs")}
             </motion.button>
@@ -115,7 +115,7 @@ function BotLogsDialogBody() {
             const el = event.currentTarget;
             stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 16;
           }}
-          className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-input/60 p-3 font-mono text-[11.5px] leading-relaxed text-foreground/80">
+          className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border bg-input/60 p-3 font-mono text-[12px] leading-relaxed text-foreground/80">
           {state.kind === "error"
             ? t("settings.bot.logsLoadError")
             : state.kind === "ready"
@@ -316,7 +316,7 @@ export function BotSettingsForm() {
                 type="button"
                 onClick={handleGenerateSecretToken}
                 {...bounceTap()}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
               >
                 {isSecretCopied ? t("settings.bot.secretTokenCopied") : t("settings.bot.generateSecretToken")}
               </motion.button>
@@ -354,7 +354,7 @@ export function BotSettingsForm() {
                   onClick={() => void handleRemoveProxy()}
                   disabled={isRemovingProxy}
                   {...bounceTap()}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.1] hover:text-foreground"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
                 >
                   {t("settings.bot.removeProxy")}
                 </motion.button>

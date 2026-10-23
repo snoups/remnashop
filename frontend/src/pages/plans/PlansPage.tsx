@@ -138,7 +138,7 @@ export function PlansPage() {
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
               {t("plans.title")}
               {state.kind === "ready" && (
-                <span className="text-[11.5px] font-normal tabular-nums text-muted-foreground">
+                <span className="text-[12px] font-normal tabular-nums text-muted-foreground">
                   {state.data.length} &middot;{" "}
                   {t("plans.activeCount", { count: state.data.filter((plan) => plan.is_active).length })}
                 </span>
@@ -172,7 +172,7 @@ export function PlansPage() {
 
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <ErrorState text={t("plans.loadError")} size="page" />
+        <ErrorState text={t("common.loadError")} size="page" />
       )}
       {state.kind === "ready" && visibleItems.length === 0 && !canCreate && (
         <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
@@ -223,7 +223,7 @@ export function PlansPage() {
                 <button
                   type="button"
                   onClick={() => setEditingPlan("new")}
-                  className={`group flex flex-col items-center justify-center gap-2.5 rounded-[20px] border-[1.5px] border-dashed border-white/[0.16] text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground ${CARD_HEIGHT_CLASSNAME}`}
+                  className={`group flex flex-col items-center justify-center gap-2.5 rounded-[20px] border-[1.5px] border-dashed border-white/[0.18] text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground ${CARD_HEIGHT_CLASSNAME}`}
                 >
                   <span className="flex size-11 items-center justify-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary/20">
                     <Plus className="size-[18px]" />
@@ -303,7 +303,7 @@ function PlanCard({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`relative flex flex-col gap-3.5 rounded-[20px] border p-4 transition-[border-color,background-color,opacity] ${CARD_HEIGHT_CLASSNAME} ${
-        plan.tag ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.16]"
+        plan.tag ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18]"
       } ${plan.is_active ? "" : "opacity-55"} ${isDragging ? "z-10 shadow-2xl shadow-black/50" : ""}`}
     >
       <div className="flex items-start gap-2.5">
@@ -334,7 +334,7 @@ function PlanCard({
               </Badge>
             )}
           </div>
-          <p className="truncate font-mono text-[11.5px] text-muted-foreground">
+          <p className="truncate font-mono text-[12px] text-muted-foreground">
             {plan.public_code} &middot; {t(`plans.edit.type.${plan.type}`)}
           </p>
         </div>
@@ -388,7 +388,7 @@ function PlanCard({
         </div>
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.08] pt-3">
         <Badge tone={isRestricted ? "violet" : "neutral"} className="min-w-0">
           <span className="truncate">{t(`plans.access.availability.${plan.availability}`)}</span>
         </Badge>

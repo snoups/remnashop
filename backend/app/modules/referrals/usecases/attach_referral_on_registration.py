@@ -34,7 +34,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
         async with self._uow:
             settings = await self._referral_repository.get_settings()
             user = await self._user_repository.find_by_id(data.user_id)
-            referrer = await self._user_repository.get_by_referral_code(data.referral_code)
+            referrer = await self._user_repository.find_by_referral_code(data.referral_code)
         if user is None or user.deleted_at is not None or not settings.enabled:
             return
         if referrer is None or referrer.id == user.id or referrer.is_blocked:
@@ -82,7 +82,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
             for _ in range(max_level):
                 if current_id == user_id:
                     return True
-                edge = await self._referral_repository.get_by_referred_id(current_id)
+                edge = await self._referral_repository.find_by_referred_id(current_id)
                 if edge is None or edge.referrer_id is None:
                     return False
                 current_id = edge.referrer_id
@@ -90,7 +90,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
 
     async def _compute_level(self, referrer_id: int, max_level: int) -> int:
         async with self._uow:
-            parent_edge = await self._referral_repository.get_by_referred_id(referrer_id)
+            parent_edge = await self._referral_repository.find_by_referred_id(referrer_id)
             if parent_edge is None:
                 return ReferralLevel.FIRST
             return min(parent_edge.level + 1, max_level)

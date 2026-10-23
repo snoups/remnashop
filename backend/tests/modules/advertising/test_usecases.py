@@ -151,7 +151,7 @@ async def test_generate_ad_link_code_returns_unused_code(
 
     code = await use_case(OWNER)
 
-    assert await ad_link_repository.get_by_code(code) is None
+    assert await ad_link_repository.find_by_code(code) is None
     assert len(code) == 12
 
 

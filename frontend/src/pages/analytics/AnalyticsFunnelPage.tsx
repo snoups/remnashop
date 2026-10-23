@@ -28,7 +28,7 @@ export function AnalyticsFunnelPage() {
     <div className="flex flex-col gap-4 pb-2">
       <AnalyticsToolbar />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>
   );
@@ -113,7 +113,7 @@ function FunnelStepRow({
   return (
     <div className="flex flex-col">
       {index > 0 && (
-        <div className="flex flex-wrap items-center gap-2 py-0.5 pl-[26px] text-[11.5px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 py-0.5 pl-[26px] text-[12px] text-muted-foreground">
           <ArrowDown className="size-3" />
           <span className="tabular-nums text-foreground">{formatPercent(step.pct_of_prev, language)}</span>
           {t("analytics.funnel.ofPrevious")}
@@ -124,7 +124,7 @@ function FunnelStepRow({
         <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-bold text-foreground">
           {index + 1}
         </span>
-        <span className="truncate text-[13.5px] font-medium text-foreground">
+        <span className="truncate text-[13px] font-medium text-foreground">
           {t(`analytics.funnel.steps.${step.key}` as ParseKeys)}
         </span>
         <span className="order-last col-span-4 flex h-2.5 overflow-hidden rounded-full bg-white/[0.06] sm:order-none sm:col-span-1">

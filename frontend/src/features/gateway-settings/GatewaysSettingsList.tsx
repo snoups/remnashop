@@ -39,7 +39,7 @@ export function GatewaysSettingsList() {
 
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && (
-        <ErrorState text={t("settings.gateways.loadError")} />
+        <ErrorState text={t("common.loadError")} />
       )}
       {state.kind === "ready" && (
         <div className="mt-4 flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">

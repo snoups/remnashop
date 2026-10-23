@@ -134,11 +134,11 @@ async def test_get_user_attribution_returns_link_or_none(
         ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
     )
 
-    attribution = await ad_link_repository.get_user_attribution(user.id)
+    attribution = await ad_link_repository.find_user_attribution(user.id)
 
     assert attribution is not None
     assert (attribution.name, attribution.code) == ("Promo", "attr-user")
-    assert await ad_link_repository.get_user_attribution(other.id) is None
+    assert await ad_link_repository.find_user_attribution(other.id) is None
 
 
 async def test_update_rejects_disabling_every_channel(

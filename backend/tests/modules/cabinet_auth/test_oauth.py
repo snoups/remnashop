@@ -164,7 +164,7 @@ async def test_verified_email_links_identity_to_existing_user(
     )
     assert user.id == existing.id
     async with uow:
-        identity = await oauth_identity_repository.get_by_provider_external_id(
+        identity = await oauth_identity_repository.find_by_provider_external_id(
             OAuthProvider.GOOGLE, "g2"
         )
     assert identity is not None and identity.user_id == existing.id
@@ -194,7 +194,7 @@ async def test_an_alias_of_a_stored_email_does_not_sign_into_that_account(
     assert error.value.code is ErrorCode.EMAIL_TAKEN
     async with uow:
         assert (
-            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.GOOGLE, "g9")
+            await oauth_identity_repository.find_by_provider_external_id(OAuthProvider.GOOGLE, "g9")
             is None
         )
 
@@ -223,7 +223,7 @@ async def test_a_blocked_account_gains_no_identity_on_a_refused_sign_in(
         )
     async with uow:
         assert (
-            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.GOOGLE, "g8")
+            await oauth_identity_repository.find_by_provider_external_id(OAuthProvider.GOOGLE, "g8")
             is None
         )
 
@@ -247,7 +247,7 @@ async def test_unverified_email_creates_new_client_without_email(
     )
     assert user.id != existing.id and user.email is None
     async with uow:
-        identity = await oauth_identity_repository.get_by_provider_external_id(
+        identity = await oauth_identity_repository.find_by_provider_external_id(
             OAuthProvider.GOOGLE, "g3"
         )
     assert identity is not None and identity.user_id == user.id

@@ -30,6 +30,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { formatDate } from "@shared/lib/relative-time";
+import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 // Commerce tabs of the user details dialog: analytics, transactions, subscriptions, promocodes, referrals.
 
@@ -61,7 +62,7 @@ function activationReward(activation: UserPromocodeActivation, t: TFunction): st
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
-  return <h3 className="px-0.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-foreground">{children}</h3>;
+  return <h3 className={SECTION_TITLE_CLASS}>{children}</h3>;
 }
 
 // `saved` comes from the summary, already in the report currency; undefined hides the tile
@@ -164,7 +165,7 @@ export function AnalyticsTab({ userId }: { userId: number }) {
                   saved={canViewSummary ? kpiValue(summary, (s) => money(s.discount_amount)) : undefined}
                 />
               ) : orders.kind === "error" ? (
-                <ErrorState text={t("transactions.loadError")} />
+                <ErrorState text={t("common.loadError")} />
               ) : (
                 <Spinner size="card" />
               ))}
@@ -194,7 +195,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("transactions.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState icon={Receipt} text={t("users.details.empty.transactions")} />
       )}
@@ -226,7 +227,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
                   <span className="font-mono">{formatDate(order.created_at, i18n.language)}</span>
                 </span>
               </span>
-              <span className="shrink-0 text-[13.5px] font-semibold tabular-nums text-foreground">
+              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
               <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
@@ -271,7 +272,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
       )}
       <Card variant="list">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("subscriptions.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && state.data.items.length === 0 && (
           <EmptyState icon={CreditCard} text={t("users.details.empty.subscriptions")} />
         )}
@@ -328,7 +329,7 @@ export function PromocodesTab({ userId }: { userId: number }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("promocodes.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.data.length === 0 && (
         <EmptyState icon={Ticket} text={t("users.details.empty.promocodes")} />
       )}

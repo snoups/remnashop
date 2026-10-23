@@ -62,13 +62,18 @@ class UpdateShopSettingsRequest(BaseModel):
         return self
 
 
-class BotCommandItem(BaseModel):
+class BotCommandRequest(BaseModel):
     command: str = Field(pattern=_COMMAND_PATTERN.pattern)
     enabled: bool
 
 
+class BotCommandResponse(BaseModel):
+    command: str
+    enabled: bool
+
+
 class UpdateBotCommandsRequest(BaseModel):
-    commands: list[BotCommandItem]
+    commands: list[BotCommandRequest]
 
     @model_validator(mode="after")
     def validate_unique_commands(self) -> "UpdateBotCommandsRequest":
@@ -79,7 +84,7 @@ class UpdateBotCommandsRequest(BaseModel):
 
 
 class BotCommandsResponse(BaseModel):
-    commands: list[BotCommandItem]
+    commands: list[BotCommandResponse]
 
 
 class UpdateBotCommandsResponse(BotCommandsResponse):

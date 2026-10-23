@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -91,10 +90,9 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
         <Button
           key={direction}
           variant="secondary"
-          disabled={isRunning(status, direction)}
+          isLoading={isRunning(status, direction)}
           onClick={() => setConfirming(direction)}
         >
-          {isRunning(status, direction) && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
           {t(`subscriptions.panelSync.bulk.${key}`)}
         </Button>
       ))}

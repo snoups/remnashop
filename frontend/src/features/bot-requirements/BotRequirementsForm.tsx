@@ -76,7 +76,7 @@ export function BotRequirementsForm() {
       />
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("settings.botRequirements.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
           <fieldset disabled={!canManage} className="flex flex-col gap-4">

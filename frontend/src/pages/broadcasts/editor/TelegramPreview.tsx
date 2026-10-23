@@ -56,7 +56,7 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
               {[t(`broadcasts.media.${mediaType}`), mediaName].filter(Boolean).join(" · ")}
             </div>
           )}
-          <div className="whitespace-pre-wrap break-words px-2.5 pb-1.5 pt-2 text-[13.5px] leading-[1.45] text-[#e8ecfb]">
+          <div className="whitespace-pre-wrap break-words px-2.5 pb-1.5 pt-2 text-[13px] leading-[1.45] text-[#e8ecfb]">
             {text.trim() ? <TelegramHtml value={text} values={values} /> : <span className="text-[#6f7aa3]">{t("broadcasts.editor.preview.empty")}</span>}
           </div>
           <div className="px-2.5 pb-1.5 text-right text-[11px] text-[#6f7aa3]">

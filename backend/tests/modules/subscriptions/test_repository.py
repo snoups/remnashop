@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 from uuid import uuid4
 
 import pytest
@@ -314,7 +315,7 @@ async def test_grant_entitlement_unknown_subscription_raises_not_found(
 async def test_get_by_remnawave_user_id_returns_none_for_unknown_id(
     subscription_repository: SubscriptionRepository,
 ) -> None:
-    result = await subscription_repository.get_by_remnawave_user_id_for_update(999999)
+    result = await subscription_repository.find_by_remnawave_user_id_for_update(999999)
     assert result is None
 
 
@@ -324,7 +325,7 @@ async def test_get_by_remnawave_user_id_finds_the_matching_subscription(
     user_id = await _create_user(user_repository, 141)
     created = await subscription_repository.create(_create_dto(user_id, 54321))
 
-    found = await subscription_repository.get_by_remnawave_user_id_for_update(54321)
+    found = await subscription_repository.find_by_remnawave_user_id_for_update(54321)
 
     assert found is not None
     assert found.id == created.id
@@ -409,8 +410,8 @@ async def _insert_key(
     key: str,
     *,
     age: timedelta,
-    subscription_id: int | None = None,
-    renew_expire_at: datetime | None = None,
+    subscription_id: Optional[int] = None,
+    renew_expire_at: Optional[datetime] = None,
 ) -> None:
     session.add(
         SubscriptionPurchaseIdempotency(
@@ -499,7 +500,7 @@ async def test_link_and_get_idempotency_key(
         token = await idempotency_repository.claim("key-2", stale_after=_STALE_AFTER)
         await idempotency_repository.link("key-2", created.id, token)
 
-    linked = await idempotency_repository.get_subscription_id("key-2")
+    linked = await idempotency_repository.find_subscription_id("key-2")
 
     assert linked == created.id
 
@@ -508,7 +509,7 @@ async def test_get_subscription_by_unclaimed_idempotency_key_returns_none(
     subscription_repository: SubscriptionRepository,
     idempotency_repository: PurchaseIdempotencyRepository,
 ) -> None:
-    assert await idempotency_repository.get_subscription_id("missing") is None
+    assert await idempotency_repository.find_subscription_id("missing") is None
 
 
 async def test_plan_snapshot_round_trips_through_create_and_get(
@@ -608,7 +609,7 @@ async def test_get_by_remnawave_user_id_ignores_deleted_rows_sharing_the_uuid(
         )
     )
 
-    found = await subscription_repository.get_by_remnawave_user_id_for_update(9001)
+    found = await subscription_repository.find_by_remnawave_user_id_for_update(9001)
 
     assert found is not None
     assert found.id == live.id
@@ -868,7 +869,7 @@ async def test_a_reclaimed_key_belongs_to_the_new_claim(
 ) -> None:
     async with uow:
         await _insert_key(idempotency_repository.session, "owned-1", age=timedelta(minutes=20))
-        old_token = await idempotency_repository.get_claim_token("owned-1")
+        old_token = await idempotency_repository.find_claim_token("owned-1")
     async with uow:
         new_token = await idempotency_repository.claim("owned-1", stale_after=_STALE_AFTER)
     assert old_token is not None
@@ -877,7 +878,7 @@ async def test_a_reclaimed_key_belongs_to_the_new_claim(
     # the attempt that lost the claim fails afterwards: its release leaves the new claim alone
     async with uow:
         await idempotency_repository.release("owned-1", old_token)
-    assert await idempotency_repository.get_claim_token("owned-1") == new_token
+    assert await idempotency_repository.find_claim_token("owned-1") == new_token
 
     with pytest.raises(SupersededError):
         async with uow:
@@ -908,7 +909,7 @@ async def test_pinning_a_renewal_needs_the_current_claim(
 ) -> None:
     async with uow:
         await _insert_key(idempotency_repository.session, "pin-1", age=timedelta(minutes=20))
-        old_token = await idempotency_repository.get_claim_token("pin-1")
+        old_token = await idempotency_repository.find_claim_token("pin-1")
     async with uow:
         new_token = await idempotency_repository.claim("pin-1", stale_after=_STALE_AFTER)
     pinned = datetime_now() + timedelta(days=30)
@@ -919,7 +920,7 @@ async def test_pinning_a_renewal_needs_the_current_claim(
     async with uow:
         await idempotency_repository.pin_renew_expire_at("pin-1", pinned, new_token)
 
-    assert await idempotency_repository.get_pending_renew_expire_at("pin-1") is not None
+    assert await idempotency_repository.find_pending_renew_expire_at("pin-1") is not None
 
 
 async def test_entitlements_load_for_more_ids_than_asyncpg_takes_parameters(

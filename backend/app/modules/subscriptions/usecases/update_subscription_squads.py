@@ -55,7 +55,7 @@ class UpdateSubscriptionSquadsUseCase(UseCase[UpdateSubscriptionSquadsDto, Subsc
             locked = await self._subscription_repository.get_by_id_for_update(data.subscription_id)
             if locked.status is SubscriptionStatus.DELETED:
                 # a plan change keeps the panel user for its new row; that row's squads win
-                owner = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+                owner = await self._subscription_repository.find_by_remnawave_user_id_for_update(
                     current.remnawave_user_id
                 )
             else:

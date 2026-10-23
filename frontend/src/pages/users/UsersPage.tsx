@@ -10,7 +10,6 @@ import {
   Info,
   KeyRound,
   LaptopMinimal,
-  Loader2,
   Mail,
   Send,
   ShieldPlus,
@@ -57,7 +56,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown, type SelectOption } from "@shared/ui/SelectDropdown";
 import { dotIcon } from "@shared/ui/optionIcons";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
 type Kpi = "all" | "new" | "subscribed" | "blocked";
@@ -309,12 +308,10 @@ export function UsersPage() {
       </Card>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("users.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && <EmptyState text={t(hasFilters ? "users.noMatches" : "users.empty")} size="page" />}
         {state.kind === "ready" && state.items.length > 0 && (
@@ -434,7 +431,7 @@ export function UsersPage() {
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className={`truncate text-[13.5px] font-medium ${isDeleted ? "text-muted-foreground" : "text-foreground"}`}
+                            className={`truncate text-[13px] font-medium ${isDeleted ? "text-muted-foreground" : "text-foreground"}`}
                           >
                             {displayName}
                           </span>
@@ -465,7 +462,7 @@ export function UsersPage() {
                           </Badge>
                         ))}
                         {subscriptionCounts(user).length === 0 && (
-                          <span className="text-[13.5px] text-muted-foreground">—</span>
+                          <span className="text-[13px] text-muted-foreground">—</span>
                         )}
                       </span>
                       <span className="tabular-nums">
@@ -474,7 +471,7 @@ export function UsersPage() {
                             <span className="block text-[13px] text-foreground">
                               {formatDate(user.created_at, i18n.language)}
                             </span>
-                            <span className="block text-[11.5px] text-muted-foreground">
+                            <span className="block text-[12px] text-muted-foreground">
                               {formatRelative(user.created_at, i18n.language)}
                             </span>
                           </>

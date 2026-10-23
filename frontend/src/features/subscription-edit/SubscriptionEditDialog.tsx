@@ -262,7 +262,7 @@ function SubscriptionParamsForm({ subscription, onSaved, onDeleted }: Omit<Subsc
           </Card>
         </fieldset>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
           {canDelete && (
             <Button
               variant="danger"

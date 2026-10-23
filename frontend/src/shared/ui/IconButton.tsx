@@ -15,12 +15,12 @@ const SIZE_CLASS = {
 } as const;
 
 const TONE_CLASS = {
-  default: "hover:bg-white/[0.06] hover:text-foreground",
-  danger: "hover:bg-error/10 hover:text-error",
+  default: "enabled:hover:bg-white/[0.06] enabled:hover:text-foreground",
+  danger: "enabled:hover:bg-error/10 enabled:hover:text-error",
   // lights up with the surrounding `group` (a copyable field), not only on its own hover
-  group: "group-hover:bg-white/[0.06] group-hover:text-foreground",
+  group: "enabled:group-hover:bg-white/[0.06] enabled:group-hover:text-foreground",
   // standalone header controls
-  glass: "border border-glass-border bg-white/[0.05] hover:bg-white/[0.06] hover:text-foreground",
+  glass: "border border-glass-border bg-white/[0.05] enabled:hover:bg-white/[0.06] enabled:hover:text-foreground",
 } as const;
 
 interface IconButtonProps extends HTMLMotionProps<"button"> {

@@ -3,6 +3,7 @@ from decimal import Decimal
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -52,7 +53,7 @@ class RecalculateLoyaltyDiscountsUseCase(UseCase[RecalculateLoyaltyDto, int]):
             for state in await self._user_repository.list_loyalty_states(scope):
                 target = 0
                 if active and not state.excluded:
-                    target = resolve_percent(totals.get(state.user_id, Decimal(0)), settings.tiers)
+                    target = resolve_percent(totals.get(state.user_id, ZERO_AMOUNT), settings.tiers)
                 if target != state.discount:
                     changes[state.user_id] = target
             await self._user_repository.set_loyalty_discounts(changes)

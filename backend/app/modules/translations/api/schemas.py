@@ -15,7 +15,14 @@ class UpdateTranslationRequest(BaseModel):
     value: str
 
 
-class TranslationTextExportItem(BaseModel):
+class TranslationTextExportResponse(BaseModel):
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str
+
+
+class TranslationTextImportRequest(BaseModel):
     locale: Locale
     message_id: str
     attribute_id: str
@@ -24,12 +31,12 @@ class TranslationTextExportItem(BaseModel):
 
 class TranslationsExportResponse(BaseModel):
     version: int
-    texts: list[TranslationTextExportItem]
+    texts: list[TranslationTextExportResponse]
 
 
 class TranslationsImportRequest(BaseModel):
     version: int
-    texts: list[TranslationTextExportItem]
+    texts: list[TranslationTextImportRequest]
 
 
 class TranslationsImportResponse(BaseModel):

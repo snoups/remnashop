@@ -16,6 +16,7 @@ import { Tag } from "@shared/ui/Tag";
 import { Card } from "@shared/ui/Card";
 import { IconButton } from "@shared/ui/IconButton";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 export function ApiTokensForm() {
   const { t } = useTranslation();
@@ -77,14 +78,14 @@ export function ApiTokensForm() {
         </div>
       </div>
 
-      <div className="-mx-4 mt-4 border-t border-white/[0.07]" />
+      <div className="-mx-4 mt-4 border-t border-white/[0.08]" />
 
       {state.kind === "loading" && (
         <div className="mt-4">
           <Spinner size="card" />
         </div>
       )}
-      {state.kind === "error" && <ErrorState text={t("apiTokens.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.data.length === 0 && (
         <div className="flex flex-col items-center gap-3.5 -mx-4 -mb-4 px-4 pt-8 pb-10 text-center">
           <div>
@@ -93,7 +94,7 @@ export function ApiTokensForm() {
               {t("apiTokens.emptyHint")}
             </p>
           </div>
-          <code className="rounded-xl border border-white/[0.07] bg-black/35 px-3.5 py-2 font-mono text-xs text-muted-foreground">
+          <code className="rounded-xl border border-white/[0.08] bg-black/35 px-3.5 py-2 font-mono text-xs text-muted-foreground">
             Authorization: Bearer &lt;token&gt;
           </code>
           <Button
@@ -109,7 +110,7 @@ export function ApiTokensForm() {
       )}
       {state.kind === "ready" && state.data.length > 0 && (
         <div className="mt-4 flex flex-col divide-y divide-border/50">
-          <div className={`hidden mb-1.5 px-2.5 pb-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid ${ROW_GRID}`}>
+          <div className={`hidden mb-1.5 px-2.5 pb-3 md:grid ${EYEBROW_CLASS} ${ROW_GRID}`}>
             <span>{t("apiTokens.columnToken")}</span>
             <span>{t("apiTokens.columnLastUsed")}</span>
             <span>{t("apiTokens.columnExpiry")}</span>

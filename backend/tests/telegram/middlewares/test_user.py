@@ -143,7 +143,7 @@ async def test_user_middleware_registers_user_for_private_chat_messages(
 
     assert handler_called is True
     assert data[USER_KEY].telegram_id == 4242
-    assert await user_repository.get_by_telegram_id(4242) is not None
+    assert await user_repository.find_by_telegram_id(4242) is not None
 
 
 async def test_user_middleware_carries_ad_link_code_from_start_payload(
@@ -311,7 +311,7 @@ async def test_invite_only_refuses_an_uninvited_newcomer_without_creating_them(
 
     assert handler_called is False
     assert answered and answered[0][0] == "ntf-access.invite-only"
-    assert await user_repository.get_by_telegram_id(6161) is None
+    assert await user_repository.find_by_telegram_id(6161) is None
 
 
 async def test_invite_only_registers_a_newcomer_with_a_referral_code(
@@ -343,7 +343,7 @@ async def test_invite_only_registers_a_newcomer_with_a_referral_code(
     )
 
     assert handler_called is True
-    assert await user_repository.get_by_telegram_id(6363) is not None
+    assert await user_repository.find_by_telegram_id(6363) is not None
 
 
 async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
@@ -432,7 +432,7 @@ async def test_link_start_skips_registration(
     seen = await _run_link_start(6565, container, config, token)
 
     assert seen and seen.get(USER_KEY) is None
-    assert await user_repository.get_by_telegram_id(6565) is None
+    assert await user_repository.find_by_telegram_id(6565) is None
     # peeking only: the bot still has the start token to spend
     assert await store.peek(token) is not None
 

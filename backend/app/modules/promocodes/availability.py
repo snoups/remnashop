@@ -16,7 +16,7 @@ async def get_usable_promocode(
 ) -> PromocodeDto:
     # the code as a user typed it: an active, unexpired promocode or a refusal
     code = raw_code.strip().upper()
-    promo = await promocode_repository.get_by_code(code)
+    promo = await promocode_repository.find_by_code(code)
     if promo is None:
         raise NotFoundError(f"Promocode '{code}' not found", code=ErrorCode.PROMOCODE_NOT_FOUND)
     assert_usable(promo, datetime_now())

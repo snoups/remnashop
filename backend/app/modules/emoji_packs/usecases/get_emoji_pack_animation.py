@@ -21,7 +21,7 @@ class GetEmojiPackAnimationUseCase:
 
     async def execute(self, custom_emoji_id: str) -> tuple[bytes, str, Optional[str]]:
         async with self._uow:
-            found = await self._emoji_pack_repository.get_animation(custom_emoji_id)
+            found = await self._emoji_pack_repository.find_animation(custom_emoji_id)
         if found is None:
             raise NotFoundError(
                 f"No animation for emoji {custom_emoji_id}", code=ErrorCode.EMOJI_MEDIA_NOT_FOUND

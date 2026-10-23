@@ -1,14 +1,15 @@
 from collections import defaultdict
 from collections.abc import Mapping
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.advertising import AdLinkRepository
 from app.modules.analytics.cache import AnalyticsCache
@@ -20,15 +21,10 @@ from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepo
 from app.modules.transactions import PayerSummaryDto, TransactionStatsRepository
 from app.modules.users import UserRepository
 
-_ZERO: Final[Decimal] = Decimal(0)
 _TOP_LIMIT: Final[int] = 10
 
 
 _GroupId = tuple[str, Optional[SourceKind], Optional[int]]
-
-
-def _cents(value: Decimal) -> Decimal:
-    return value.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
 
 def _source_group(source: UserSource) -> _GroupId:
@@ -38,15 +34,15 @@ def _source_group(source: UserSource) -> _GroupId:
 
 
 def _groups(totals: dict[int, Decimal], group_of: Mapping[int, _GroupId]) -> list[LtvGroupDto]:
-    sums: dict[_GroupId, Decimal] = defaultdict(lambda: _ZERO)
+    sums: dict[_GroupId, Decimal] = defaultdict(lambda: ZERO_AMOUNT)
     counts: dict[_GroupId, int] = defaultdict(int)
     for user_id, total in totals.items():
         sums[group_of[user_id]] += total
         counts[group_of[user_id]] += 1
-    ordered = sorted(counts, key=lambda g: (-_cents(sums[g] / counts[g]), g[0], g[2] or 0))
+    ordered = sorted(counts, key=lambda g: (-round_cents(sums[g] / counts[g]), g[0], g[2] or 0))
     return [
         LtvGroupDto(
-            key=key, source=source, customers=counts[g], avg_ltv=_cents(sums[g] / counts[g])
+            key=key, source=source, customers=counts[g], avg_ltv=round_cents(sums[g] / counts[g])
         )
         for g in ordered
         for key, source, _ in (g,)
@@ -99,7 +95,7 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
                 username=users[user_id].username if user_id in users else None,
                 current_plan=plans.get(user_id),
                 payments=payers[user_id].payments,
-                spent=_cents(totals[user_id]),
+                spent=round_cents(totals[user_id]),
                 last_paid_at=payers[user_id].last_paid_at,
             )
             for user_id in top

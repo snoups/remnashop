@@ -3,7 +3,6 @@ import {
   ArrowLeftRight,
   ChevronRight,
   Filter,
-  Loader2,
   RefreshCw,
   Repeat,
   Sparkles,
@@ -21,6 +20,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ALL_TIME_TREND_DAYS, DAY_MS } from "@shared/lib/period";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
+import { formatTime } from "@shared/lib/relative-time";
 import { bounceTap } from "@shared/lib/bounceState";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
@@ -32,7 +32,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { dotIcon, letterIcon } from "@shared/ui/optionIcons";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
 import { Card } from "@shared/ui/Card";
@@ -261,12 +261,10 @@ export function TransactionsPage() {
       </Card>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("transactions.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && (
           <>
@@ -316,7 +314,7 @@ export function TransactionsPage() {
                               </span>
                               <span className="min-w-0">
                                 <span className="flex min-w-0 items-center gap-2">
-                                  <span className="truncate text-[13.5px] font-medium text-foreground">
+                                  <span className="truncate text-[13px] font-medium text-foreground">
                                     {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
                                     {" · "}
                                     {order.duration_days}d
@@ -334,7 +332,7 @@ export function TransactionsPage() {
                                   {formatMoney(order.final_price, order.currency, i18n.language, true)}
                                 </span>
                                 {hasDiscount(order) && (
-                                  <span className="block text-[11.5px] text-muted-foreground">
+                                  <span className="block text-[12px] text-muted-foreground">
                                     <span className="line-through">
                                       {formatMoney(order.base_price, order.currency, i18n.language, true)}
                                     </span>{" "}
@@ -343,10 +341,7 @@ export function TransactionsPage() {
                                 )}
                               </span>
                               <span className="text-[13px] tabular-nums text-foreground">
-                                {new Date(order.created_at).toLocaleTimeString(i18n.language, {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {formatTime(order.created_at, i18n.language)}
                               </span>
                               <span>
                                 <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>

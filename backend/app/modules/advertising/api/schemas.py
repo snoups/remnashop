@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.enums import AdLinkChannel, Currency
 
 
@@ -30,7 +31,7 @@ class AdLinkPageResponse(BaseModel):
 class CreateAdLinkRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     code: str = Field(min_length=1, max_length=48, pattern=r"^[A-Za-z0-9_-]+$")
-    cost: Decimal = Field(default=Decimal(0), ge=0)
+    cost: Decimal = Field(default=ZERO_AMOUNT, ge=0)
     cost_currency: Currency = Currency.USD
     allow_bot: bool = True
     allow_webcabinet: bool = True

@@ -46,7 +46,7 @@ export function DeliveryPicker({ form, onChange, channelName, channelMissing, di
             onChange={(on) => onChange(setEmailFallback(form, on))}
           />
           <span className="flex flex-col gap-0.5">
-            <span className="text-[13.5px] font-semibold text-foreground">
+            <span className="text-[13px] font-semibold text-foreground">
               {t("broadcasts.editor.delivery.fallback.title")}
             </span>
             <span className="text-[12px] text-muted-foreground">{t("broadcasts.editor.delivery.fallback.hint")}</span>
@@ -61,7 +61,7 @@ export function DeliveryPicker({ form, onChange, channelName, channelMissing, di
             onChange={(post_to_channel) => onChange({ ...form, post_to_channel })}
           />
           <span className="flex flex-col gap-0.5">
-            <span className="text-[13.5px] font-semibold text-foreground">
+            <span className="text-[13px] font-semibold text-foreground">
               {channelName
                 ? t("broadcasts.editor.channel.titleNamed", { name: channelName })
                 : t("broadcasts.editor.channel.title")}

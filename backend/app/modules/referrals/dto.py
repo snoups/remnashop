@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional
 
-from app.core.constants import DEFAULT_PAGE_SIZE
+from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
@@ -130,7 +130,7 @@ class ReferralSummaryDto:
     @property
     def conversion_rate(self) -> Decimal:
         # share of referrals that earned at least one reward
-        return Decimal(self.rewarded_count) / self.total_count if self.total_count else Decimal(0)
+        return Decimal(self.rewarded_count) / self.total_count if self.total_count else ZERO_AMOUNT
 
 
 @dataclass(frozen=True, kw_only=True)

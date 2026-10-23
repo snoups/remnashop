@@ -88,7 +88,7 @@ async def test_free_oauth_links(
     )
 
     assert result.status == "linked"
-    identity = await oauth_identity_repository.get_by_provider_external_id(
+    identity = await oauth_identity_repository.find_by_provider_external_id(
         OAuthProvider.GOOGLE, "g-1"
     )
     assert identity is not None and identity.user_id == user.id

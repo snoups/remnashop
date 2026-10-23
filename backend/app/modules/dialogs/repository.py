@@ -69,7 +69,7 @@ class DialogRepository:
         )
         return [self._to_dto(row) for row in result]
 
-    async def get_by_key(self, key: str) -> Optional[DialogWindowDto]:
+    async def find_by_key(self, key: str) -> Optional[DialogWindowDto]:
         row = await self._get_row(key)
         return self._to_dto(row) if row is not None else None
 

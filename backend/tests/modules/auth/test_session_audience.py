@@ -67,7 +67,7 @@ async def test_require_admin_rejects_cabinet_session(
 ) -> None:
     await _admin(user_repository, uow)
     async with uow:
-        actor = await user_repository.get_by_login("aud-admin")
+        actor = await user_repository.find_by_login("aud-admin")
     assert actor is not None
     request = Request({"type": "http", "headers": []})
     auth = AuthContext(actor=actor, session_id=1, audience=SessionAudience.CABINET)

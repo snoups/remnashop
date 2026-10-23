@@ -264,7 +264,7 @@ class SettingsRepository:
         await self.session.refresh(row)
         return self._to_appearance_dto(row)
 
-    async def get_appearance_image_meta(
+    async def find_appearance_image_meta(
         self, kind: AppearanceImageKind
     ) -> Optional[tuple[str, str]]:
         row = await self.session.get(AppearanceSettings, SINGLETON_ID)

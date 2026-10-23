@@ -40,7 +40,7 @@ export function AdminsPage() {
     <Card>
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <ErrorState text={t("admins.loadError")} size="page" />
+        <ErrorState text={t("common.loadError")} size="page" />
       )}
       {state.kind === "ready" && (
         <>
@@ -104,7 +104,7 @@ export function AdminsPage() {
                   >
                     {initials(admin.login ?? admin.name)}
                   </div>
-                  <p className="min-w-0 truncate text-[13.5px] font-medium text-foreground">{admin.name}</p>
+                  <p className="min-w-0 truncate text-[13px] font-medium text-foreground">{admin.name}</p>
                   <div className="flex items-center gap-2">
                     <Badge tone={ROLE_BADGE_TONE[admin.role]}>
                       {t(`roles.${admin.role}`)}

@@ -8,7 +8,7 @@ from app.core.actor import Actor
 from app.modules.settings.api.schemas import (
     AccessSettingsResponse,
     AppearanceResponse,
-    BotCommandItem,
+    BotCommandResponse,
     BotCommandsResponse,
     BotLogsResponse,
     BotRequirementsResponse,
@@ -338,7 +338,9 @@ async def get_bot_commands(
 ) -> BotCommandsResponse:
     commands = await use_case(actor, GetBotCommandsDto(default_order=default_order))
     return BotCommandsResponse(
-        commands=[BotCommandItem.model_validate(item, from_attributes=True) for item in commands]
+        commands=[
+            BotCommandResponse.model_validate(item, from_attributes=True) for item in commands
+        ]
     )
 
 

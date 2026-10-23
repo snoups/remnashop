@@ -11,8 +11,8 @@ from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENG
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.api.schemas import (
     ChangeSubscriptionPlanRequest,
-    DeviceItem,
     DeviceListResponse,
+    DeviceResponse,
     GrantSubscriptionRequest,
     PanelSyncDirectionStatusResponse,
     PanelSyncStatusResponse,
@@ -323,7 +323,7 @@ async def list_subscription_devices(
 ) -> DeviceListResponse:
     devices = await use_case(actor, subscription_id)
     return DeviceListResponse(
-        items=[DeviceItem.model_validate(device, from_attributes=True) for device in devices],
+        items=[DeviceResponse.model_validate(device, from_attributes=True) for device in devices],
         total=len(devices),
     )
 

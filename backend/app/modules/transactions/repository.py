@@ -5,7 +5,7 @@ from typing import Any, Final, Optional, cast
 from sqlalchemy import ColumnElement, CursorResult, and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX, ZERO_AMOUNT
 from app.core.db.filters import in_ids
 from app.core.db.models.subscription_purchase_idempotency import SubscriptionPurchaseIdempotency
 from app.core.db.models.transaction import Transaction
@@ -170,7 +170,7 @@ class TransactionRepository:
             )
         return self._to_dto(row)
 
-    async def get_by_idempotency_key(
+    async def find_by_idempotency_key(
         self, key: str, *, gateway_type: Optional[PaymentGatewayType] = None
     ) -> Optional[TransactionDto]:
         filters = [Transaction.idempotency_key == key]
@@ -179,7 +179,7 @@ class TransactionRepository:
         row = await self.session.scalar(select(Transaction).where(*filters))
         return self._to_dto(row) if row is not None else None
 
-    async def get_by_external_payment_id(
+    async def find_by_external_payment_id(
         self, external_id: str, *, gateway_type: Optional[PaymentGatewayType] = None
     ) -> Optional[TransactionDto]:
         # external_payment_id is unique per gateway only; two providers can
@@ -506,7 +506,7 @@ class TransactionRepository:
         )
         rows = (await self.session.execute(stmt)).tuples()
         for currency, amount in rows.all():
-            totals[currency] = totals.get(currency, Decimal(0)) + amount
+            totals[currency] = totals.get(currency, ZERO_AMOUNT) + amount
         return totals
 
     async def sum_paid_anchor_amount_by_user_ids(self, user_ids: list[int]) -> Decimal:
@@ -517,7 +517,7 @@ class TransactionRepository:
                 _NOT_TEST,
             )
         )
-        return total or Decimal(0)
+        return total or ZERO_AMOUNT
 
     async def sum_paid_promocode_discounts(self) -> tuple[int, Decimal]:
         # (paid orders, discount amount in the anchor currency)
@@ -534,7 +534,7 @@ class TransactionRepository:
             _NOT_TEST,
         )
         count, amount = (await self.session.execute(stmt)).tuples().one()
-        return count, amount or Decimal(0)
+        return count, amount or ZERO_AMOUNT
 
     async def list_user_ids_with_paid_order(self, user_ids: list[int]) -> set[int]:
         if not user_ids:

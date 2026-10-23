@@ -1,12 +1,19 @@
-import { Loader2, MoreVertical, Terminal } from "lucide-react";
-import { motion, Reorder, useDragControls } from "motion/react";
+import { closestCenter, DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Terminal } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getErrorMessage } from "@shared/api/http";
 import { type BotCommandItem, getBotCommands, updateBotCommands } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ErrorState } from "@shared/ui/EmptyState";
@@ -30,23 +37,26 @@ interface CommandRowProps {
 }
 
 function CommandRow({ row, onChange, readOnly }: CommandRowProps) {
-  const dragControls = useDragControls();
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+    disabled: readOnly,
+  });
 
   return (
-    <Reorder.Item
-      value={row}
-      as="div"
-      dragListener={false}
-      dragControls={dragControls}
-      className="flex items-center gap-2 rounded-full border border-border bg-input/60 py-2 pl-2 pr-2.5"
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-2 rounded-full border border-border bg-input/60 py-2 pl-2 pr-2.5 ${isDragging ? "relative z-10" : ""}`}
     >
       {!readOnly && (
         <button
+          ref={setActivatorNodeRef}
           type="button"
-          onPointerDown={(event) => dragControls.start(event)}
-          className="flex cursor-grab items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/5 active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          className="flex cursor-grab touch-none items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/[0.06] active:cursor-grabbing"
         >
-          <MoreVertical className="size-4" />
+          <GripVertical className="size-4" />
         </button>
       )}
       <span className="flex-1 truncate font-mono text-sm text-foreground/80">/{row.command}</span>
@@ -55,7 +65,7 @@ function CommandRow({ row, onChange, readOnly }: CommandRowProps) {
         onChange={(checked) => onChange("enabled", checked)}
         disabled={readOnly}
       />
-    </Reorder.Item>
+    </div>
   );
 }
 
@@ -64,8 +74,24 @@ export function BotCommandsForm() {
   const canManage = usePermissions().includes("BOT_COMMANDS_MANAGE");
   const [rows, setRows] = useState<Row[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const nextRowId = useRef(0);
+  // from 1: dnd-kit treats id 0 as missing
+  const nextRowId = useRef(1);
   const toRow = (item: BotCommandItem): Row => ({ ...item, id: nextRowId.current++ });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    setRows((current) =>
+      arrayMove(
+        current,
+        current.findIndex((row) => row.id === active.id),
+        current.findIndex((row) => row.id === over.id),
+      ),
+    );
+  };
 
   const [state] = useAsyncResource(getBotCommands, { onSuccess: (items) => setRows(items.map(toRow)) });
 
@@ -124,20 +150,24 @@ export function BotCommandsForm() {
           <Spinner size="card" />
         )}
         {state.kind === "error" && (
-          <ErrorState text={t("settings.botCommands.loadError")} />
+          <ErrorState text={t("common.loadError")} />
         )}
         {state.kind === "ready" && (
           <>
-            <Reorder.Group as="div" axis="y" values={rows} onReorder={setRows} className="flex flex-col gap-2">
-              {rows.map((row, index) => (
-                <CommandRow
-                  key={row.id}
-                  row={row}
-                  onChange={(field, value) => updateRow(index, field, value)}
-                  readOnly={!canManage}
-                />
-              ))}
-            </Reorder.Group>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col gap-2">
+                  {rows.map((row, index) => (
+                    <CommandRow
+                      key={row.id}
+                      row={row}
+                      onChange={(field, value) => updateRow(index, field, value)}
+                      readOnly={!canManage}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
             {canManage && (
             <div className="flex gap-2">
@@ -150,16 +180,14 @@ export function BotCommandsForm() {
               >
                 {isSubmitting ? t("common.saving") : t("common.save")}
               </Button>
-              <motion.button
-                type="button"
+              <Button
+                variant="outline"
+                className="w-fit"
+                isLoading={isResettingOrder}
                 onClick={() => void handleResetOrder()}
-                disabled={isResettingOrder}
-                {...bounceTap()}
-                className="flex w-fit h-9 items-center gap-1.5 rounded-full border border-white/[0.12] px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isResettingOrder && <Loader2 className="size-3.5 animate-spin" />}
                 {t("settings.botCommands.resetOrder")}
-              </motion.button>
+              </Button>
             </div>
             )}
           </>

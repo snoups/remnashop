@@ -94,7 +94,7 @@ function UserReferralsDialogBody({
           <div ref={contentRef}>
             {state.kind === "loading" && <Spinner size="card" />}
             {state.kind === "error" && (
-              <ErrorState text={t("referrals.stats.loadError")} />
+              <ErrorState text={t("common.loadError")} />
             )}
             {state.kind === "ready" && (
               <>

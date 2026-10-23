@@ -29,3 +29,8 @@ export function Spinner({ size, className = "" }: SpinnerProps) {
     </div>
   );
 }
+
+/** Corner spinner over a loaded card while it refetches; the card needs `relative`. */
+export function RefetchSpinner() {
+  return <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />;
+}

@@ -171,7 +171,7 @@ export function PromocodesPage() {
       <Card>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("promocodes.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && visibleItems.length === 0 && (
           <EmptyState text={t(hasFilters ? "promocodes.noMatches" : "promocodes.empty")} size="page" />
@@ -206,7 +206,7 @@ export function PromocodesPage() {
                     </span>
                     <span className="min-w-0">
                       <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate font-mono text-[13.5px] font-bold text-foreground">{promo.code}</span>
+                        <span className="truncate font-mono text-[13px] font-bold text-foreground">{promo.code}</span>
                         {promo.is_reusable && <Badge tone="accent">&infin;</Badge>}
                       </span>
                       <span className="block truncate text-[12px] text-muted-foreground">

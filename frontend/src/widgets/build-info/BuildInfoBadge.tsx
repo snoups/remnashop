@@ -18,7 +18,7 @@ import { useDialogFocus } from "@shared/ui/modal-hooks";
 import { Tag } from "@shared/ui/Tag";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { IconButton } from "@shared/ui/IconButton";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_DIALOG_CLASS } from "@shared/ui/classes";
 
 interface GithubRelease {
   tag_name: string;
@@ -272,7 +272,7 @@ function BuildInfoPanel({ onEscape, children }: { onEscape: () => void; children
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.94, y: 8 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
-      className="relative z-50 w-full max-w-sm rounded-dialog border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] outline-none backdrop-blur-2xl backdrop-saturate-150"
+      className={`relative z-50 w-full max-w-sm outline-none ${GLASS_DIALOG_CLASS}`}
     >
       {children}
     </motion.div>

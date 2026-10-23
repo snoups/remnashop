@@ -33,7 +33,7 @@ async def test_create_then_get_active_by_hash(
 ) -> None:
     await _create(api_token_repository, uow, token_hash="abc123")
 
-    found = await api_token_repository.get_active_by_hash("abc123")
+    found = await api_token_repository.find_active_by_hash("abc123")
     assert found is not None
     assert found.name == "ci-script"
     assert found.scopes == [Permission.BANNERS_UPLOAD.value]
@@ -42,7 +42,7 @@ async def test_create_then_get_active_by_hash(
 async def test_get_active_by_hash_returns_none_for_unknown_hash(
     api_token_repository: ApiTokenRepository,
 ) -> None:
-    found = await api_token_repository.get_active_by_hash("nope")
+    found = await api_token_repository.find_active_by_hash("nope")
     assert found is None
 
 
@@ -52,7 +52,7 @@ async def test_revoked_token_not_returned_by_get_active_by_hash(
     token_id = await _create(api_token_repository, uow, token_hash="revoke-me")
     await api_token_repository.revoke_by_id(token_id)
 
-    found = await api_token_repository.get_active_by_hash("revoke-me")
+    found = await api_token_repository.find_active_by_hash("revoke-me")
     assert found is None
 
 
@@ -86,7 +86,7 @@ async def test_list_not_revoked_includes_expired(
 
     listed_ids = {token.id for token in await api_token_repository.list_not_revoked()}
     assert expired.id in listed_ids
-    assert await api_token_repository.get_active_by_hash("expired-hash") is None
+    assert await api_token_repository.find_active_by_hash("expired-hash") is None
 
 
 async def test_touch_last_used_sets_timestamp(
@@ -94,13 +94,13 @@ async def test_touch_last_used_sets_timestamp(
 ) -> None:
     token_id = await _create(api_token_repository, uow, token_hash="touch-me")
 
-    before = await api_token_repository.get_active_by_hash("touch-me")
+    before = await api_token_repository.find_active_by_hash("touch-me")
     assert before is not None
     assert before.last_used_at is None
 
     await api_token_repository.touch_last_used(token_id)
 
-    after = await api_token_repository.get_active_by_hash("touch-me")
+    after = await api_token_repository.find_active_by_hash("touch-me")
     assert after is not None
     assert after.last_used_at is not None
 
@@ -110,12 +110,12 @@ async def test_touch_last_used_skips_a_recent_touch(
 ) -> None:
     token_id = await _create(api_token_repository, uow, token_hash="touch-twice")
     await api_token_repository.touch_last_used(token_id)
-    first = await api_token_repository.get_active_by_hash("touch-twice")
+    first = await api_token_repository.find_active_by_hash("touch-twice")
     assert first is not None and first.last_used_at is not None
 
     await api_token_repository.touch_last_used(token_id)
 
-    second = await api_token_repository.get_active_by_hash("touch-twice")
+    second = await api_token_repository.find_active_by_hash("touch-twice")
     assert second is not None
     assert second.last_used_at == first.last_used_at
 
@@ -135,7 +135,7 @@ async def test_get_active_by_hash_excludes_expired_token(
         )
         await uow.commit()
 
-    found = await api_token_repository.get_active_by_hash("expired-hash")
+    found = await api_token_repository.find_active_by_hash("expired-hash")
     assert found is None
 
 
@@ -154,5 +154,5 @@ async def test_get_active_by_hash_allows_token_with_no_expiry(
         )
         await uow.commit()
 
-    found = await api_token_repository.get_active_by_hash("forever-hash")
+    found = await api_token_repository.find_active_by_hash("forever-hash")
     assert found is not None

@@ -105,7 +105,7 @@ async def _on_hours(
     await _notify(entry, event.user.id, {"hours": event.hours})
 
 
-def _amount(value: str | int) -> str | int:
+def _amount(value: Union[str, int]) -> Union[str, int]:
     # ftl plural selectors only match numbers, a numeric string would fall to [other]
     if isinstance(value, str) and value.isdigit():
         return int(value)

@@ -49,7 +49,7 @@ class ValidatePromocodeUseCase(UseCase[ValidatePromocodeDto, PromocodeDto, UserD
                     )
 
             if not promo.is_reusable:
-                existing = await self._promocode_repository.get_activation_by_user(
+                existing = await self._promocode_repository.find_activation_by_user(
                     promo.id, actor.id
                 )
                 if existing is not None:

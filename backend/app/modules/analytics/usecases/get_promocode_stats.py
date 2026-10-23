@@ -1,15 +1,16 @@
 from collections import defaultdict
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeRewardType, PromocodeStatus, Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
@@ -25,7 +26,6 @@ from app.modules.promocodes import PromocodeDto, PromocodeRepository
 from app.modules.transactions import TransactionStatsRepository
 from app.modules.users import UserStatsRepository
 
-_ZERO: Final[Decimal] = Decimal(0)
 _FREE_REWARD_TYPES: Final[frozenset[PromocodeRewardType]] = frozenset(
     {
         PromocodeRewardType.DURATION,
@@ -34,10 +34,6 @@ _FREE_REWARD_TYPES: Final[frozenset[PromocodeRewardType]] = frozenset(
         PromocodeRewardType.SUBSCRIPTION,
     }
 )
-
-
-def _cents(value: Decimal) -> Decimal:
-    return value.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
 
 def _status(code: PromocodeDto, now: datetime) -> PromocodeStatus:
@@ -95,7 +91,7 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
             for row in await self._transaction_stats.list_paid_by_users(activators, period.end):
                 payments[row.user_id].append((row.paid_at, row.anchor_final_price))
 
-            period_revenue = discount_revenue = discount_given = _ZERO
+            period_revenue = discount_revenue = discount_given = ZERO_AMOUNT
             for row in await self._transaction_stats.list_paid(period.start, period.end):
                 amount = row.anchor_final_price
                 period_revenue += amount
@@ -127,7 +123,7 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
                         for paid, amount in payments[u]
                         if paid >= at
                     ),
-                    start=_ZERO,
+                    start=ZERO_AMOUNT,
                 )
                 by_type[code.reward_type] += len(uses)
                 if is_free:
@@ -143,7 +139,7 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
                         activations=len(uses),
                         total_activations=total.get(promocode_id, 0),
                         max_activations=code.max_activations,
-                        revenue_after=_cents(revenue_after),
+                        revenue_after=round_cents(revenue_after),
                         conversion_rate=converted / len(uses) if is_free else None,
                         status=_status(code, now),
                     )
@@ -160,8 +156,8 @@ class GetPromocodeStatsUseCase(UseCase[AnalyticsPeriodQueryDto, PromocodeStatsDt
                 report_currency=rates.anchor,
                 activations=len(in_period),
                 codes_used=len(rows),
-                discount_given=_cents(discount_given),
-                revenue_with_discount=_cents(discount_revenue),
+                discount_given=round_cents(discount_given),
+                revenue_with_discount=round_cents(discount_revenue),
                 revenue_share=float(discount_revenue / period_revenue) if period_revenue else 0.0,
                 free_reward_conversion=free_converted / free_total if free_total else 0.0,
                 by_reward_type=[

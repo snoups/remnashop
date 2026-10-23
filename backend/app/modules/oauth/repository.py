@@ -55,7 +55,7 @@ class OAuthIdentityRepository:
                 code=ErrorCode.OAUTH_ACCOUNT_LINKED_ELSEWHERE,
             ) from error
 
-    async def get_by_provider_external_id(
+    async def find_by_provider_external_id(
         self,
         provider: OAuthProvider,
         external_id: str,

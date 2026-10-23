@@ -86,7 +86,7 @@ class SessionIssuer:
     ) -> IssuedSession:
         # for RefreshSessionUseCase after it rotated the row: mints the
         # access/csrf pair for an existing session instead of creating one
-        session = await self._session_repository.get_active_by_id(session_id)
+        session = await self._session_repository.find_active_by_id(session_id)
         if session is None:
             # revoked between the rotation and this read
             raise AuthenticationError(

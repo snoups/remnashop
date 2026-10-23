@@ -46,7 +46,7 @@ async def test_create_then_get_active_by_id(
     user = await _create_user(user_repository, uow, "owner")
 
     created = await _create_session(session_repository, user.id)
-    found = await session_repository.get_active_by_id(created.id)
+    found = await session_repository.find_active_by_id(created.id)
 
     assert found is not None
     assert found.user_id == user.id
@@ -60,7 +60,7 @@ async def test_get_active_by_id_excludes_revoked(
 
     await session_repository.revoke_by_id(created.id)
 
-    assert await session_repository.get_active_by_id(created.id) is None
+    assert await session_repository.find_active_by_id(created.id) is None
 
 
 async def test_get_active_by_id_excludes_expired(
@@ -78,7 +78,7 @@ async def test_get_active_by_id_excludes_expired(
         )
     )
 
-    assert await session_repository.get_active_by_id(session.id) is None
+    assert await session_repository.find_active_by_id(session.id) is None
 
 
 async def test_get_rotatable_by_hash_matches_current_hash(
@@ -87,7 +87,7 @@ async def test_get_rotatable_by_hash_matches_current_hash(
     user = await _create_user(user_repository, uow, "owner")
     created = await _create_session(session_repository, user.id, "current-token")
 
-    found = await session_repository.get_rotatable_by_hash(hash_refresh_token("current-token"))
+    found = await session_repository.find_rotatable_by_hash(hash_refresh_token("current-token"))
 
     assert found is not None
     assert found.id == created.id
@@ -101,7 +101,7 @@ async def test_get_rotatable_by_hash_matches_previous_within_grace(
 
     await session_repository.rotate(created.id, hash_refresh_token("new-token"))
 
-    found = await session_repository.get_rotatable_by_hash(hash_refresh_token("old-token"))
+    found = await session_repository.find_rotatable_by_hash(hash_refresh_token("old-token"))
     assert found is not None
     assert found.id == created.id
 
@@ -112,7 +112,7 @@ async def test_get_by_current_hash_matches_current(
     user = await _create_user(user_repository, uow, "owner")
     created = await _create_session(session_repository, user.id, "current-token")
 
-    found = await session_repository.get_by_current_hash(hash_refresh_token("current-token"))
+    found = await session_repository.find_by_current_hash(hash_refresh_token("current-token"))
 
     assert found is not None
     assert found.id == created.id
@@ -125,7 +125,7 @@ async def test_get_by_current_hash_ignores_previous_hash(
     created = await _create_session(session_repository, user.id, "old-token")
     await session_repository.rotate(created.id, hash_refresh_token("new-token"))
 
-    found = await session_repository.get_by_current_hash(hash_refresh_token("old-token"))
+    found = await session_repository.find_by_current_hash(hash_refresh_token("old-token"))
 
     assert found is None
 
@@ -170,7 +170,7 @@ async def test_get_rotatable_by_hash_rejects_previous_after_grace_expires(
     )
     await session_repository.session.flush()
 
-    found = await session_repository.get_rotatable_by_hash(hash_refresh_token("old-token"))
+    found = await session_repository.find_rotatable_by_hash(hash_refresh_token("old-token"))
     assert found is None
 
 
@@ -183,7 +183,7 @@ async def test_get_by_expired_previous_hash_matches_only_after_grace_elapses(
 
     # still within grace
     assert (
-        await session_repository.get_by_expired_previous_hash(hash_refresh_token("old-token"))
+        await session_repository.find_by_expired_previous_hash(hash_refresh_token("old-token"))
         is None
     )
 
@@ -194,7 +194,7 @@ async def test_get_by_expired_previous_hash_matches_only_after_grace_elapses(
     )
     await session_repository.session.flush()
 
-    found = await session_repository.get_by_expired_previous_hash(hash_refresh_token("old-token"))
+    found = await session_repository.find_by_expired_previous_hash(hash_refresh_token("old-token"))
     assert found is not None
     assert found.id == created.id
 
@@ -208,7 +208,7 @@ async def test_rotate_updates_hash_and_last_used_at(
     rotated = await session_repository.rotate(created.id, hash_refresh_token("new-token"))
 
     assert rotated.last_used_at >= created.last_used_at
-    found_by_new = await session_repository.get_rotatable_by_hash(hash_refresh_token("new-token"))
+    found_by_new = await session_repository.find_rotatable_by_hash(hash_refresh_token("new-token"))
     assert found_by_new is not None
     assert found_by_new.id == created.id
 

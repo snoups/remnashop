@@ -15,7 +15,7 @@ class GetEmojiPackThumbnailUseCase:
 
     async def execute(self, custom_emoji_id: str) -> tuple[bytes, str]:
         async with self._uow:
-            data = await self._emoji_pack_repository.get_thumbnail(custom_emoji_id)
+            data = await self._emoji_pack_repository.find_thumbnail(custom_emoji_id)
         if not data:
             raise NotFoundError(
                 f"No thumbnail for emoji {custom_emoji_id}", code=ErrorCode.EMOJI_MEDIA_NOT_FOUND

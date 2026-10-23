@@ -509,11 +509,13 @@ async def test_issuer_change_deletes_oidc_identities_in_same_transaction(
 
     async with uow:
         assert (
-            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.OIDC, "sub-1")
+            await oauth_identity_repository.find_by_provider_external_id(
+                OAuthProvider.OIDC, "sub-1"
+            )
             is None
         )
         assert (
-            await oauth_identity_repository.get_by_provider_external_id(
+            await oauth_identity_repository.find_by_provider_external_id(
                 OAuthProvider.GITHUB, "gh-1"
             )
             is not None
@@ -549,7 +551,9 @@ async def test_same_issuer_keeps_oidc_identities(
 
     async with uow:
         assert (
-            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.OIDC, "sub-1")
+            await oauth_identity_repository.find_by_provider_external_id(
+                OAuthProvider.OIDC, "sub-1"
+            )
             is not None
         )
 

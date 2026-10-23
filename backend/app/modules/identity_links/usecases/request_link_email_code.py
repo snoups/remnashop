@@ -4,7 +4,7 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.exceptions import ConflictError
 from app.core.utils.email import normalize_email
 from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth import (
@@ -12,6 +12,7 @@ from app.modules.cabinet_auth import (
     email_key,
     fail_budget_exhausted,
     is_allowed_domain,
+    require_email_sign_in,
     send_limit_hit,
 )
 from app.modules.email import SendEmailDispatch, load_email_brand, render_link_code
@@ -43,13 +44,8 @@ class RequestLinkEmailCodeUseCase:
 
     async def execute(self, user: UserDto, email: str, locale: Locale) -> None:
         async with self._uow:
-            cabinet = await self._settings_repository.get_cabinet_auth_settings()
-            email_settings = await self._settings_repository.get_email_settings()
+            cabinet = await require_email_sign_in(self._settings_repository)
             brand = await load_email_brand(self._settings_repository)
-        if not (cabinet.email_enabled and email_settings.is_configured):
-            raise AuthenticationError(
-                "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
-            )
 
         digest = email_key(email)
         # the account's own email slot is taken: the link would be refused anyway
@@ -58,7 +54,7 @@ class RequestLinkEmailCodeUseCase:
                 "A different 'email' is already linked", code=ErrorCode.MERGE_IDENTITY_CONFLICT
             )
         async with self._uow:
-            owner = await self._user_repository.get_by_email(email)
+            owner = await self._user_repository.find_by_email(email)
             # a new address must pass what attaching it checks; refused silently,
             # since an error here would tell a free address from a taken one
             if owner is None and (

@@ -21,7 +21,7 @@ export function LoadMoreButton({ onClick, shown, total, isLoading = false, class
       onClick={onClick}
       disabled={isLoading}
       {...bounceTap()}
-      className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/5 disabled:cursor-not-allowed ${className}`}
+      className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed ${className}`}
     >
       {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <ChevronDown className="size-3.5" />}
       {isLoading ? t("pagination.loading") : t("pagination.loadMore")}

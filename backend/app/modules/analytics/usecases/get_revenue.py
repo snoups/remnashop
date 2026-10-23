@@ -1,14 +1,14 @@
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from functools import partial
-from typing import Final
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PaymentGatewayType, PurchaseType, Role, TransactionStatus
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import (
     Granularity,
@@ -35,15 +35,13 @@ from app.modules.transactions import (
 )
 from app.modules.users import UserStatsRepository
 
-_ZERO: Final[Decimal] = Decimal(0)
-
 
 @dataclass
 class _Bucket:
-    new: Decimal = _ZERO
-    renew: Decimal = _ZERO
-    change: Decimal = _ZERO
-    previous: Decimal = _ZERO
+    new: Decimal = ZERO_AMOUNT
+    renew: Decimal = ZERO_AMOUNT
+    change: Decimal = ZERO_AMOUNT
+    previous: Decimal = ZERO_AMOUNT
 
 
 @dataclass
@@ -52,16 +50,14 @@ class _Gateway:
     canceled: int = 0
     failed: int = 0
     refunded: int = 0
-    revenue: Decimal = _ZERO
-
-
-def _cents(value: Decimal) -> Decimal:
-    return value.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+    revenue: Decimal = ZERO_AMOUNT
 
 
 def _groups(groups: dict[str, list[Decimal]]) -> list[RevenueGroupDto]:
     rows = [
-        RevenueGroupDto(key=key, payments=len(amounts), revenue=_cents(sum(amounts, start=_ZERO)))
+        RevenueGroupDto(
+            key=key, payments=len(amounts), revenue=round_cents(sum(amounts, start=ZERO_AMOUNT))
+        )
         for key, amounts in groups.items()
     ]
     return sorted(rows, key=lambda row: row.revenue, reverse=True)
@@ -72,7 +68,7 @@ def _count_attempts(
     attempts: list[PaymentAttemptDto],
 ) -> tuple[int, Decimal]:
     refunds = 0
-    refunded = _ZERO
+    refunded = ZERO_AMOUNT
     for attempt in attempts:
         stats = gateways.setdefault(attempt.gateway_type, _Gateway())
         if attempt.status is TransactionStatus.CANCELED:
@@ -117,8 +113,8 @@ def _build_revenue(
         if 0 <= index < len(buckets):
             buckets[index].previous += amount[id(row)]
 
-    revenue = sum((amount[id(r)] for r in current), start=_ZERO)
-    previous_revenue = sum((amount[id(r)] for r in before), start=_ZERO)
+    revenue = sum((amount[id(r)] for r in current), start=ZERO_AMOUNT)
+    previous_revenue = sum((amount[id(r)] for r in before), start=ZERO_AMOUNT)
 
     by_plan: dict[str, list[Decimal]] = {}
     by_duration: dict[str, list[Decimal]] = {}
@@ -144,22 +140,22 @@ def _build_revenue(
         report_currency=rates.anchor,
         granularity=granularity,
         totals=RevenueTotalsDto(
-            revenue=_cents(revenue),
+            revenue=round_cents(revenue),
             payments=len(current),
-            avg_check=_cents(revenue / len(current)) if current else _ZERO,
-            median_check=_cents(median([amount[id(r)] for r in current])),
+            avg_check=round_cents(revenue / len(current)) if current else ZERO_AMOUNT,
+            median_check=round_cents(median([amount[id(r)] for r in current])),
             refunds=refunds,
-            refunded=_cents(refunded),
-            previous_revenue=_cents(previous_revenue),
+            refunded=round_cents(refunded),
+            previous_revenue=round_cents(previous_revenue),
             previous_payments=len(before),
         ),
         series=[
             RevenueBucketDto(
                 start=start,
-                new=_cents(bucket.new),
-                renew=_cents(bucket.renew),
-                change=_cents(bucket.change),
-                previous_total=_cents(bucket.previous),
+                new=round_cents(bucket.new),
+                renew=round_cents(bucket.renew),
+                change=round_cents(bucket.change),
+                previous_total=round_cents(bucket.previous),
             )
             for start, bucket in zip(starts, buckets, strict=True)
         ],
@@ -174,7 +170,7 @@ def _build_revenue(
                     canceled=stats.canceled,
                     failed=stats.failed,
                     refunded=stats.refunded,
-                    revenue=_cents(stats.revenue),
+                    revenue=round_cents(stats.revenue),
                 )
                 for gateway_type, stats in gateways.items()
             ),

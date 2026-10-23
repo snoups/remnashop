@@ -12,7 +12,7 @@ from app.core.enums import (
 )
 
 
-class DialogButtonItem(BaseModel):
+class DialogButtonResponse(BaseModel):
     id: int
     row: int
     column: int
@@ -31,12 +31,12 @@ class DialogWindowResponse(BaseModel):
     key: str
     kind: DialogWindowKind
     flow: DialogFlow
-    banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
+    banner_name: Optional[str] = None
     name: Optional[str] = None
     is_enabled: bool
     position: int
     text_keys: list[str]
-    buttons: list[DialogButtonItem]
+    buttons: list[DialogButtonResponse]
 
 
 class DialogCatalogResponse(BaseModel):
@@ -82,14 +82,21 @@ class CreateCustomWindowRequest(BaseModel):
     )
 
 
-class DialogTextExportItem(BaseModel):
+class DialogTextImportRequest(BaseModel):
     locale: Locale
     message_id: str = Field(min_length=1, max_length=128)
     attribute_id: str = Field(default="", max_length=128)
     value: str = Field(max_length=4096)
 
 
-class DialogWindowExportItem(BaseModel):
+class DialogTextExportResponse(BaseModel):
+    locale: Locale
+    message_id: str
+    attribute_id: str
+    value: str
+
+
+class DialogWindowImportRequest(BaseModel):
     key: str = Field(pattern=r"^[a-z0-9._-]+$", max_length=128)
     kind: DialogWindowKind
     banner_name: Optional[str] = Field(default=None, max_length=160, pattern=BANNER_NAME_PATTERN)
@@ -99,16 +106,39 @@ class DialogWindowExportItem(BaseModel):
     buttons: list[DialogButtonRequest] = Field(default_factory=list)
 
 
+class DialogButtonExportResponse(BaseModel):
+    row: int
+    column: int
+    text_key: str
+    link_type: ButtonLinkType
+    style: Optional[ButtonStyleKind] = None
+    visibility_condition: Optional[str] = None
+    action_key: Optional[str] = None
+    target_window_key: Optional[str] = None
+    url_value: Optional[str] = None
+    is_hidden: bool
+
+
+class DialogWindowExportResponse(BaseModel):
+    key: str
+    kind: DialogWindowKind
+    banner_name: Optional[str] = None
+    name: Optional[str] = None
+    is_enabled: bool
+    position: int
+    buttons: list[DialogButtonExportResponse]
+
+
 class DialogExportResponse(BaseModel):
     version: int
-    windows: list[DialogWindowExportItem]
-    texts: list[DialogTextExportItem] = Field(default_factory=list)
+    windows: list[DialogWindowExportResponse]
+    texts: list[DialogTextExportResponse]
 
 
 class DialogImportRequest(BaseModel):
     version: int
-    windows: list[DialogWindowExportItem]
-    texts: list[DialogTextExportItem] = Field(default_factory=list)
+    windows: list[DialogWindowImportRequest]
+    texts: list[DialogTextImportRequest] = Field(default_factory=list)
 
 
 class UpdateDialogTextRequest(BaseModel):

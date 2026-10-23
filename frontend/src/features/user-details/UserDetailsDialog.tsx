@@ -181,7 +181,7 @@ function UserDetailsDialogBody({
       </div>
 
       {available.length > 0 && (
-        <div className="flex items-center gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex items-center gap-2 border-t border-white/[0.08] px-5 py-4">
           <div className="ml-auto">
             <ActionMenu
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}

@@ -92,7 +92,7 @@ export function InvitedUsersPage({
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("referrals.dialog.invitedLoadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("referrals.dialog.invitedEmpty")} />
       )}

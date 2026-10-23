@@ -34,7 +34,7 @@ function PlatformRow({ platform }: { platform: ClientApps["platforms"][number] }
             <div key={segment.label} className={segment.tone} style={{ width: `${(segment.count / sum) * 100}%` }} />
           ))}
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
         {segments.map((segment) => (
           <span key={segment.label} className="flex items-center gap-1.5">
             <span className={`size-2 rounded-full ${segment.tone}`} />
@@ -74,7 +74,7 @@ export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
         }
       />
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("dashboard.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {data && !data.available && (
         <p className="py-6 text-center text-[13px] text-muted-foreground">{t("dashboard.remnawaveUnavailable")}</p>
       )}

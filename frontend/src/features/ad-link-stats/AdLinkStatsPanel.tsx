@@ -10,6 +10,7 @@ import { Tooltip } from "@shared/ui/Tooltip";
 import { Card } from "@shared/ui/Card";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { DAY_MS } from "@shared/lib/period";
+import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 const CHART_FALLBACK_DAYS = 30;
 
@@ -38,7 +39,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
   }
   if (state.kind === "error") {
     return (
-      <ErrorState text={t("advertising.stats.loadError")} />
+      <ErrorState text={t("common.loadError")} />
     );
   }
 
@@ -97,7 +98,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
 
       <Card>
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+          <h3 className={SECTION_TITLE_CLASS}>
             <BarChart3 className="size-3.5" />
             {t("advertising.stats.daily")}
           </h3>

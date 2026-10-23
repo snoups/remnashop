@@ -277,13 +277,13 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
         # meaningful within the gateway that was handed it.
         async with self._uow:
             if signal.reference:
-                order = await self._transaction_repository.get_by_idempotency_key(
+                order = await self._transaction_repository.find_by_idempotency_key(
                     signal.reference, gateway_type=gateway_type
                 )
                 if order is not None:
                     return order
             if signal.provider_payment_id:
-                return await self._transaction_repository.get_by_external_payment_id(
+                return await self._transaction_repository.find_by_external_payment_id(
                     signal.provider_payment_id, gateway_type=gateway_type
                 )
             return None

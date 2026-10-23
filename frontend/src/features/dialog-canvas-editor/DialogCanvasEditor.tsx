@@ -188,11 +188,11 @@ export function DialogCanvasEditor() {
   if (windowsState.kind !== "ready") {
     return (
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-        <div className="flex items-center gap-2.5 border-b border-white/[0.07] p-4">
+        <div className="flex items-center gap-2.5 border-b border-white/[0.08] p-4">
           {heading}
         </div>
         {windowsState.kind === "error" ? (
-          <ErrorState text={t("dialogs.loadError")} />
+          <ErrorState text={t("common.loadError")} />
         ) : (
           <Spinner className="p-4" />
         )}
@@ -484,7 +484,7 @@ export function DialogCanvasEditor() {
       {/* The three panes are zones inside the card rather than separate
           floating blocks. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.07] p-4">
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] p-4">
           {heading}
           <div className="ml-auto flex items-center gap-2">
             {permissions.includes("DIALOGS_EXPORT") && (

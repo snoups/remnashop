@@ -21,15 +21,18 @@ async def test_is_blacklisted_checks_manual_and_enabled_sources(
         AddBlacklistSourceDto(url="https://x.example/l.txt")
     )
     await blacklist_repository.replace_source_lists(
-        src.id, ParsedSourceList(telegram_ids=[999], emails=[]), error=None
+        src.id, ParsedSourceList(telegram_ids=[999], emails=["src@example.org"]), error=None
     )
 
     assert await blacklist_repository.is_blacklisted_email("bad@example.com")
+    assert await blacklist_repository.is_blacklisted_email("src+1@example.org")
+    assert not await blacklist_repository.is_blacklisted_email("src@example.com")
     assert await blacklist_repository.is_blacklisted_telegram_id(999)
     assert not await blacklist_repository.is_blacklisted_telegram_id(111)
 
     await blacklist_repository.set_source_enabled(src.id, False)
     assert not await blacklist_repository.is_blacklisted_telegram_id(999)  # disabled source ignored
+    assert not await blacklist_repository.is_blacklisted_email("src@example.org")
 
 
 async def test_replace_source_lists_is_wholesale(blacklist_repository: BlacklistRepository) -> None:
@@ -42,7 +45,7 @@ async def test_replace_source_lists_is_wholesale(blacklist_repository: Blacklist
     await blacklist_repository.replace_source_lists(
         src.id, ParsedSourceList(telegram_ids=[4], emails=[]), error=None
     )
-    fetched = await blacklist_repository.get_source(src.id)
+    fetched = await blacklist_repository.find_source(src.id)
     assert fetched is not None and fetched.entries_count == 1
     assert not await blacklist_repository.is_blacklisted_telegram_id(1)
     assert await blacklist_repository.is_blacklisted_telegram_id(4)

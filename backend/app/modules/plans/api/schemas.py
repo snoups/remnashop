@@ -16,17 +16,29 @@ from app.core.enums import (
 )
 
 
-class PlanPriceItem(BaseModel):
+class PlanPriceRequest(BaseModel):
     currency: Currency
     price: Decimal = Field(gt=0)
 
 
-class PlanDurationItem(BaseModel):
+class PlanPriceResponse(BaseModel):
+    currency: Currency
+    price: Decimal
+
+
+class PlanDurationRequest(BaseModel):
     days: int = Field(gt=0)
     order_index: int = 0
     # 0 only on a trial plan, checked by SetPlanDurationsUseCase
     base_price: Decimal = Field(ge=0)
-    overrides: list[PlanPriceItem] = Field(default_factory=list)
+    overrides: list[PlanPriceRequest] = Field(default_factory=list)
+
+
+class PlanDurationResponse(BaseModel):
+    days: int
+    order_index: int
+    base_price: Decimal
+    overrides: list[PlanPriceResponse]
 
 
 class PlanShareUrlsResponse(BaseModel):
@@ -57,7 +69,7 @@ class PlanResponse(BaseModel):
     discount_percent: int
     discount_starts_at: Optional[datetime] = None
     discount_ends_at: Optional[datetime] = None
-    durations: list[PlanDurationItem]
+    durations: list[PlanDurationResponse]
 
 
 class CreatePlanRequest(BaseModel):
@@ -88,7 +100,7 @@ class UpdatePlanRequest(BaseModel):
 
 
 class SetPlanDurationsRequest(BaseModel):
-    durations: list[PlanDurationItem]
+    durations: list[PlanDurationRequest]
 
 
 class SetPlanPriceOverrideRequest(BaseModel):
@@ -125,9 +137,9 @@ class PlanListResponse(BaseModel):
     total: int
 
 
-class AddOnPriceItem(BaseModel):
+class AddOnPriceResponse(BaseModel):
     currency: Currency
-    price: Decimal = Field(gt=0)
+    price: Decimal
 
 
 class AddOnResponse(BaseModel):
@@ -138,7 +150,7 @@ class AddOnResponse(BaseModel):
     order_index: int
     is_active: bool
     base_price: Decimal
-    overrides: list[AddOnPriceItem]
+    overrides: list[AddOnPriceResponse]
 
 
 class CreateAddOnRequest(BaseModel):
@@ -168,7 +180,7 @@ class AddOnListResponse(BaseModel):
     total: int
 
 
-class CurrencyRateItem(BaseModel):
+class CurrencyRateResponse(BaseModel):
     currency: Currency
     rate: Decimal
     rounding_mode: RoundingMode
@@ -182,27 +194,27 @@ class PricingSettingsResponse(BaseModel):
     price_per_gb: Optional[Decimal] = None
 
 
-class PriceBookCellItem(BaseModel):
+class PriceBookCellResponse(BaseModel):
     currency: Currency
     amount: Decimal
     is_pinned: bool
 
 
-class PriceBookRowItem(BaseModel):
+class PriceBookRowResponse(BaseModel):
     kind: Literal["plan_duration", "addon"]
     ref_id: int
     plan_id: Optional[int] = None
     name: str
     days: Optional[int] = None
     base_price: Decimal
-    cells: list[PriceBookCellItem]
+    cells: list[PriceBookCellResponse]
 
 
 class PriceBookResponse(BaseModel):
-    rate_table: list[CurrencyRateItem]
+    rate_table: list[CurrencyRateResponse]
     settings: PricingSettingsResponse
-    plans: list[PriceBookRowItem]
-    addons: list[PriceBookRowItem]
+    plans: list[PriceBookRowResponse]
+    addons: list[PriceBookRowResponse]
 
 
 class UpdateCurrencyRateRequest(BaseModel):
@@ -228,7 +240,7 @@ class AdjustBasePricesRequest(BaseModel):
     addon_ids: list[int] = Field(default_factory=list)
 
 
-class PreviewRateChange(BaseModel):
+class PreviewRateChangeRequest(BaseModel):
     currency: Currency
     rate: Decimal = Field(gt=0)
     rounding_mode: RoundingMode
@@ -237,12 +249,12 @@ class PreviewRateChange(BaseModel):
 
 
 class PreviewPricingChangeRequest(BaseModel):
-    rate: Optional[PreviewRateChange] = None
+    rate: Optional[PreviewRateChangeRequest] = None
     anchor: Optional[Currency] = None
     adjust: Optional[AdjustBasePricesRequest] = None
 
 
-class PricingDiffRowItem(BaseModel):
+class PricingDiffRowResponse(BaseModel):
     name: str
     days: Optional[int] = None
     currency: Currency
@@ -251,5 +263,5 @@ class PricingDiffRowItem(BaseModel):
 
 
 class PricingDiffResponse(BaseModel):
-    changes: list[PricingDiffRowItem]
+    changes: list[PricingDiffRowResponse]
     affected_count: int

@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Scale, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,6 +6,8 @@ import { listLegalDocuments, LEGAL_KINDS } from "@entities/legal/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { LegalDocumentCard } from "@features/legal-documents-editor/LegalDocumentCard";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { Card } from "@shared/ui/Card";
+import { CardHeader } from "@shared/ui/CardHeader";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -16,7 +18,14 @@ export function LegalDocumentsEditor() {
   const [selectedLocale, setSelectedLocale] = useState<string | null>(null);
 
   if (state.kind === "loading") return <Spinner size="card" />;
-  if (state.kind === "error") return <ErrorState text={t("settings.legal.loadError")} />;
+  if (state.kind === "error") {
+    return (
+      <Card>
+        <CardHeader icon={Scale} title={t("settings.legal.title")} description={t("settings.legal.description")} />
+        <ErrorState text={t("common.loadError")} />
+      </Card>
+    );
+  }
 
   const { locales } = state.data;
   const locale = selectedLocale && locales.includes(selectedLocale) ? selectedLocale : locales[0];

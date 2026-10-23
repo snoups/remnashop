@@ -44,7 +44,7 @@ class ProcessOutboxEntryUseCase(UseCase[int, None]):
     async def _execute(self, actor: Actor, data: int) -> None:
         try:
             async with self._uow:
-                row = await self._outbox_repository.get_unprocessed_by_id(data)
+                row = await self._outbox_repository.find_unprocessed_by_id(data)
                 if row is None:
                     return  # already processed, gone, or locked by another processor
                 await self._event_log_repository.create(

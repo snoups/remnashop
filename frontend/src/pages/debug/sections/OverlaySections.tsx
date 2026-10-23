@@ -8,7 +8,7 @@ import { useKit } from "@pages/debug/use-kit";
 import { AnnouncementsCarousel } from "@widgets/announcements/AnnouncementsCarousel";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
-import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
+import { GithubIcon, GoogleIcon, TelegramIcon, YandexIcon } from "@shared/ui/BrandIcons";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { Button } from "@shared/ui/Button";
 import { POPOVER_CLASS } from "@shared/ui/classes";
@@ -22,7 +22,8 @@ import { GuideDialog } from "@shared/ui/GuideDialog";
 import { IconButton } from "@shared/ui/IconButton";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
-import { Spinner } from "@shared/ui/Spinner";
+import { LabeledDivider } from "@shared/ui/LabeledDivider";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { initials } from "@shared/lib/initials";
 
@@ -298,6 +299,14 @@ export function StatesSection() {
       <Specimen name='Spinner size="card"' usage={k("u.spinner")} stage="stretch">
         <Spinner size="card" />
       </Specimen>
+      <Specimen name="RefetchSpinner" usage={k("u.refetchSpinner")} stage="stretch">
+        <div className="relative h-16 rounded-xl border border-dashed border-white/[0.12]">
+          <RefetchSpinner />
+        </div>
+      </Specimen>
+      <Specimen name="LabeledDivider" usage={k("u.labeledDivider")} stage="stretch">
+        <LabeledDivider>{k("s.or")}</LabeledDivider>
+      </Specimen>
       <Specimen name="Collapse" usage={k("u.collapse")} stage="stretch">
         <Button variant="outline" className="w-fit" onClick={() => setIsOpen((value) => !value)}>
           {isOpen ? k("s.hide") : k("s.show")}
@@ -334,6 +343,8 @@ export function StatesSection() {
         <span className="mx-3 h-6 w-px bg-border" />
         <GithubIcon className="size-5 text-foreground" />
         <TelegramIcon className="size-5 text-foreground" />
+        <GoogleIcon className="size-5 text-foreground" />
+        <YandexIcon className="size-5 text-foreground" />
       </Specimen>
     </DebugSection>
   );

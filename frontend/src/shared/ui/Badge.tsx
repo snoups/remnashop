@@ -12,7 +12,7 @@ const TONE_CLASS: Record<BadgeTone, string> = {
 };
 
 const SHAPE_CLASS = {
-  pill: "gap-1 px-2 py-0.5 text-[10.5px] uppercase tracking-wide",
+  pill: "gap-1 px-2 py-0.5 text-[11px] uppercase tracking-wide",
   // a circle for one digit, stretching into a pill for more
   count: "h-6 min-w-6 justify-center px-1.5 text-[11px] tabular-nums",
 } as const;

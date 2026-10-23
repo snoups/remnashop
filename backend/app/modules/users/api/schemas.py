@@ -206,6 +206,11 @@ class SecurityResponse(BaseModel):
     # the address this request came from, as the allowlist check sees it
     client_ip: str
 
+    @field_validator("ip_allowlist", mode="before")
+    @classmethod
+    def _unset_as_empty(cls, value: Optional[list[str]]) -> list[str]:
+        return value or []
+
 
 class UnblockBlacklistMatchesResponse(BaseModel):
     unblocked: int

@@ -9,7 +9,11 @@ from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.modules.loyalty.dto import LoyaltyTierDto, UpdateLoyaltySettingsDto
 from app.modules.loyalty.repository import LoyaltyRepository
-from app.modules.loyalty.usecases import GetLoyaltySettingsUseCase, UpdateLoyaltySettingsUseCase
+from app.modules.loyalty.usecases import (
+    GetLoyaltySettingsUseCase,
+    ResetLoyaltySettingsUseCase,
+    UpdateLoyaltySettingsUseCase,
+)
 from app.modules.pricing import PricingRepository
 from app.modules.users.dto import UserDto
 from tests.fakes.dispatch import RecordingDispatch
@@ -70,4 +74,27 @@ async def test_update_dispatches_a_full_recalculation(
         OWNER, UpdateLoyaltySettingsDto(enabled=True, window_months=None, tiers=[])
     )
 
+    assert dispatch.messages == [{"user_ids": None}]
+
+
+async def test_reset_restores_defaults_and_recalculates(
+    session: AsyncSession, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    await _update_use_case(session, uow, event_publisher, RecordingDispatch())(
+        OWNER,
+        UpdateLoyaltySettingsDto(
+            enabled=True,
+            window_months=12,
+            tiers=[LoyaltyTierDto(threshold=Decimal("1000"), percent=3)],
+        ),
+    )
+    dispatch = RecordingDispatch()
+
+    result = await ResetLoyaltySettingsUseCase(
+        LoyaltyRepository(session), PricingRepository(session), event_publisher, uow, dispatch
+    )(OWNER)
+
+    assert (result.enabled, result.window_months, result.tiers) == (False, None, [])
+    assert result.anchor_currency is not None
+    assert (await LoyaltyRepository(session).get_settings()).tiers == []
     assert dispatch.messages == [{"user_ids": None}]

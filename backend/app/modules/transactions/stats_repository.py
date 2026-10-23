@@ -62,8 +62,7 @@ class TransactionStatsRepository:
             Transaction.channel,
         ).where(*_PAID)
 
-    @staticmethod
-    def _to_paid(row: Any) -> PaidTransactionDto:
+    def _to_paid(self, row: Any) -> PaidTransactionDto:
         return PaidTransactionDto(
             user_id=row[0],
             paid_at=row[1],

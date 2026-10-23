@@ -4,7 +4,7 @@ from typing import Final
 from loguru import logger
 
 from app.core.actor import Actor
-from app.core.constants import MAX_POINTS_BALANCE
+from app.core.constants import MAX_POINTS_BALANCE, ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardStrategy, ReferralRewardType
 from app.core.error_codes import ErrorCode
@@ -59,7 +59,7 @@ def _check_amounts(
     if not enabled:
         return
     for level in range(1, max_level + 1):
-        if amounts.get(level, Decimal(0)) < _MIN_REWARD:
+        if amounts.get(level, ZERO_AMOUNT) < _MIN_REWARD:
             raise ValidationError(
                 f"Level {level} reward must be at least 1", code=ErrorCode.REFERRAL_REWARD_TOO_LOW
             )

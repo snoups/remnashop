@@ -18,7 +18,7 @@ export function OpenUserFooter({ links, children }: { links: OpenUserLink[]; chi
   if (available.length === 0 && !children) return null;
 
   return (
-    <div className="grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.07] px-5 py-3.5">
+    <div className="grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] px-5 py-3.5">
       {available.map((link) => (
         <OpenUserButton key={link.label} {...link} />
       ))}

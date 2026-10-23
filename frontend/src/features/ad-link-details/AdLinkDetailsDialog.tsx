@@ -174,7 +174,7 @@ function AdLinkDetailsDialogBody({
       </div>
 
       {tab === "settings" ? (
-        <div className="flex items-center justify-between gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] px-5 py-4">
           <div className="flex gap-2">
             {deleteButton}
             <Button variant="outline" onClick={() => void handleToggleActive()} disabled={isToggling}>
@@ -188,7 +188,7 @@ function AdLinkDetailsDialogBody({
         </div>
       ) : (
         canShare && (
-          <div className="flex justify-end border-t border-white/[0.07] px-5 py-4">
+          <div className="flex justify-end border-t border-white/[0.08] px-5 py-4">
             <AdLinkShareMenu key={`${adLink.id}-${adLink.allow_bot}-${adLink.allow_webcabinet}`} adLink={adLink} />
           </div>
         )

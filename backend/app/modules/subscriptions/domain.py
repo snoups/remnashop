@@ -8,7 +8,7 @@ from uuid import UUID
 
 from remnapy.enums import TrafficLimitStrategy
 
-from app.core.constants import GB_TO_BYTES
+from app.core.constants import GB_TO_BYTES, ZERO_AMOUNT
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
@@ -129,7 +129,7 @@ class SubscriptionState:
     ) -> SubscriptionState:
         snap = self.plan_snapshot
         # a lapsed term's money was used up; the new term starts its own credit
-        base_paid = Decimal(0) if restart else snap.effective_credit_paid
+        base_paid = ZERO_AMOUNT if restart else snap.effective_credit_paid
         base_days = 0 if restart else snap.effective_credit_days
         return replace(
             self,
@@ -152,7 +152,7 @@ class SubscriptionState:
             expire_at=expire_at,
             plan_snapshot=replace(
                 snap,
-                credit_paid=max(snap.effective_credit_paid - paid, Decimal(0)),
+                credit_paid=max(snap.effective_credit_paid - paid, ZERO_AMOUNT),
                 credit_days=max(snap.effective_credit_days - days, 0),
             ),
         )

@@ -1,8 +1,17 @@
 // Class strings shared by elements that are too different in structure for one component.
 
+const GLASS_SURFACE_CLASS =
+  "border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150";
+
 /** Glass dropdown shell; padding is the caller's (p-1.5 for menus, p-3 for pickers). */
-export const POPOVER_CLASS =
-  "rounded-popover border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150";
+export const POPOVER_CLASS = `rounded-popover ${GLASS_SURFACE_CLASS}`;
+
+/** Glass panel of a dialog drawn without Modal (build info, donate). */
+export const GLASS_DIALOG_CLASS = `rounded-dialog ${GLASS_SURFACE_CLASS}`;
+
+/** Section heading inside a details dialog card. */
+export const SECTION_TITLE_CLASS =
+  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
 
 /** 11px uppercase label over a filter, column or stat. */
 export const EYEBROW_CLASS = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";

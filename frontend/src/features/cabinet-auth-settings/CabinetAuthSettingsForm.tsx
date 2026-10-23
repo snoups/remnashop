@@ -1,4 +1,4 @@
-import { DoorOpen, Globe, Mail, MailX } from "lucide-react";
+import { Bot, DoorOpen, Mail, MailCheck } from "lucide-react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -17,7 +17,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { TelegramIcon } from "@shared/ui/BrandIcons";
+import { GoogleIcon, TelegramIcon, YandexIcon } from "@shared/ui/BrandIcons";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
@@ -39,10 +39,10 @@ type MethodKey =
 type OAuthMethod = "telegram" | "google" | "yandex";
 
 const METHODS: { key: MethodKey; label: GuideMethod; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
-  { key: "telegram_enabled", label: "telegramBot", icon: TelegramIcon },
+  { key: "telegram_enabled", label: "telegramBot", icon: Bot },
   { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
-  { key: "google_enabled", label: "google", icon: Globe, oauth: "google" },
-  { key: "yandex_enabled", label: "yandex", icon: Globe, oauth: "yandex" },
+  { key: "google_enabled", label: "google", icon: GoogleIcon, oauth: "google" },
+  { key: "yandex_enabled", label: "yandex", icon: YandexIcon, oauth: "yandex" },
   { key: "email_enabled", label: "email", icon: Mail },
 ];
 
@@ -103,7 +103,7 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
       />
 
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("settings.cabinetAuth.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <div className="mt-4">
           <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
@@ -171,7 +171,7 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
           <div className="mt-2 border-t border-white/[0.08] pt-2">
             <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                <MailX className="size-4" />
+                <MailCheck className="size-4" />
               </div>
               <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
                 {t("settings.cabinetAuth.restrictDomains")}

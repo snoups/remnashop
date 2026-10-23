@@ -1,8 +1,8 @@
-from decimal import Decimal
 from typing import Optional
 
 from loguru import logger
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -200,7 +200,7 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 # target's snapshot only feeds the same-plan check via .plan_id
                 plan_snapshot=target.plan_snapshot,
                 duration_days=promo.reward,
-                price_paid=Decimal(0),
+                price_paid=ZERO_AMOUNT,
                 currency=Currency.USD,
                 purchase_type=PurchaseType.RENEW,
                 target_subscription_id=target.id,
@@ -229,12 +229,12 @@ class ActivatePromocodeUseCase(UseCase[ActivatePromocodeDto, PromocodeDto, UserD
                 user_id=actor.id,
                 plan_snapshot=PlanSnapshot.from_plan(
                     plan,
-                    price_paid=Decimal(0),
+                    price_paid=ZERO_AMOUNT,
                     currency=Currency.USD,
                     duration_days=promo.reward_duration_days,
                 ),
                 duration_days=promo.reward_duration_days,
-                price_paid=Decimal(0),
+                price_paid=ZERO_AMOUNT,
                 currency=Currency.USD,
                 purchase_type=PurchaseType.NEW,
             ),

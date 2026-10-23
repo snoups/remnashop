@@ -63,7 +63,7 @@ class PurchaseIdempotencyRepository:
         await self.session.flush()
         return token
 
-    async def get_claim_token(self, key: str) -> Optional[datetime]:
+    async def find_claim_token(self, key: str) -> Optional[datetime]:
         token: Optional[datetime] = await self.session.scalar(
             select(SubscriptionPurchaseIdempotency.created_at).where(
                 SubscriptionPurchaseIdempotency.key == key
@@ -71,7 +71,7 @@ class PurchaseIdempotencyRepository:
         )
         return token
 
-    async def get_subscription_id(self, key: str) -> Optional[int]:
+    async def find_subscription_id(self, key: str) -> Optional[int]:
         row = await self.session.get(SubscriptionPurchaseIdempotency, key)
         return row.subscription_id if row is not None else None
 
@@ -90,7 +90,7 @@ class PurchaseIdempotencyRepository:
             raise _claim_lost(key)
         await self.session.flush()
 
-    async def get_pending_renew_expire_at(self, key: str) -> Optional[datetime]:
+    async def find_pending_renew_expire_at(self, key: str) -> Optional[datetime]:
         row = await self.session.get(SubscriptionPurchaseIdempotency, key)
         if row is None or row.subscription_id is not None:
             return None

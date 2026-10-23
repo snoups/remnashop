@@ -58,7 +58,7 @@ export function DebugKitPage() {
           <h1 className="text-[21px] font-bold tracking-tight text-foreground">{k("intro.title")}</h1>
           <p className="text-[12.5px] text-muted-foreground">{k("intro.caption")}</p>
         </div>
-        <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">{k("intro.meta")}</span>
+        <span className="shrink-0 font-mono text-[12px] text-muted-foreground">{k("intro.meta")}</span>
       </div>
 
       <DebugNav links={links} />

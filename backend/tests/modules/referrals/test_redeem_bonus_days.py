@@ -427,14 +427,14 @@ async def test_a_resumed_redemption_lands_even_if_the_subscription_was_disabled_
     monkeypatch.setattr(lifecycle, "renew", _renew_failing_once)
 
     # an admin disables the subscription between the failed attempt and the resume
-    real_pinned = idempotency_repository.get_pending_renew_expire_at
+    real_pinned = idempotency_repository.find_pending_renew_expire_at
 
     async def _disabled_before_resume(key: str) -> object:
         await _set_status(subscription_repository, subscription.id, SubscriptionStatus.DISABLED)
         return await real_pinned(key)
 
     monkeypatch.setattr(
-        idempotency_repository, "get_pending_renew_expire_at", _disabled_before_resume
+        idempotency_repository, "find_pending_renew_expire_at", _disabled_before_resume
     )
 
     result = await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=5))
@@ -504,7 +504,7 @@ async def test_redeem_hands_a_stuck_pinned_renewal_to_the_worker(
     renewed = await subscription_repository.get_by_id(subscription.id)
     expected = subscription.expire_at + timedelta(days=5)
     assert abs(renewed.expire_at - expected) < timedelta(milliseconds=1)
-    assert await idempotency_repository.get_subscription_id(key) == subscription.id
+    assert await idempotency_repository.find_subscription_id(key) == subscription.id
     assert await _bonus_days(user_repository, user.id) == 3
 
 

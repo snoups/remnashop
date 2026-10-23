@@ -2,10 +2,11 @@ from collections.abc import Iterable
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Final, Optional, Protocol
 
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.enums import Currency, RoundingMode
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.money import round_cents
 from app.modules.pricing.dto import (
     BASE_PRICE_PRECISION,
     MIN_BASE_PRICE,
@@ -19,7 +20,7 @@ _HUNDRED: Final[Decimal] = Decimal("100")
 def _apply_rounding(raw: Decimal, mode: RoundingMode) -> Decimal:
     if mode is RoundingMode.INTEGER:
         return raw.to_integral_value(rounding=ROUND_HALF_UP)
-    return raw.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
+    return round_cents(raw)
 
 
 def _apply_charm(amount: Decimal, mode: RoundingMode, charm_ending: int) -> Decimal:
@@ -82,7 +83,7 @@ def price_for(
     # what a plan duration or add-on costs in `currency`: its pinned price, else the converted base
     if base_price == 0:
         # a free trial stays free in every currency, past min_amount and overrides
-        return Decimal(0)
+        return ZERO_AMOUNT
     override = next((o.price for o in overrides if o.currency is currency), None)
     return resolve_price(base_price, currency, override, rates)
 
@@ -94,9 +95,7 @@ def convert_for_report(
     # just cut to cents, or the raw quotient ships ~28 digits
     if from_currency == to_currency:
         return amount
-    return rates.convert(amount, from_currency, to_currency).quantize(
-        ONE_CENT, rounding=ROUND_HALF_UP
-    )
+    return round_cents(rates.convert(amount, from_currency, to_currency))
 
 
 def assert_overridable_currency(currency: Currency, anchor: Currency) -> None:

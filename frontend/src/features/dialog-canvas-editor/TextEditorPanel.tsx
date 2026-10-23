@@ -195,7 +195,7 @@ export function TextEditorPanel({
         </div>
       </div>
       {isTooLong && (
-        <p className="mt-1 text-[11.5px] text-error">
+        <p className="mt-1 text-[12px] text-error">
           {t("dialogs.inspector.textTooLong", { length: draftLength, max: maxLength })}
         </p>
       )}

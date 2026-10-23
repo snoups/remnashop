@@ -114,7 +114,6 @@ class ValutixSettings(GatewaySettings):
 class RollyPaySettings(GatewaySettings):
     api_key: SecretStr
     signing_secret: SecretStr
-    currency: Optional[str] = None
 
 
 class AntilopaySettings(GatewaySettings):
@@ -122,7 +121,6 @@ class AntilopaySettings(GatewaySettings):
     private_key: SecretStr
     public_key: SecretStr
     project_id: str
-    currency: Optional[str] = None
 
 
 class PaypalychSettings(GatewaySettings):

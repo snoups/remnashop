@@ -2,7 +2,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AdLinkChannel, CabinetSignInMethod, Role
+from app.core.enums import AdLinkChannel, CabinetSignInMethod
 from app.core.error_codes import ErrorCode
 from app.core.events import UserEvent
 from app.core.exceptions import ConflictError
@@ -38,7 +38,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
 
     async def _execute(self, actor: Actor, data: RegisterTelegramUserDto) -> UserDto:
         async with self._uow:
-            existing = await self._user_repository.get_by_telegram_id(data.telegram_id)
+            existing = await self._user_repository.find_by_telegram_id(data.telegram_id)
             if existing is not None:
                 return await self._sync_profile(existing, data)
 
@@ -84,7 +84,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
             # the winner's row exists, so use it
             logger.debug(f"Lost registration race for telegram_id={data.telegram_id}")
             async with self._uow:
-                winner = await self._user_repository.get_by_telegram_id(data.telegram_id)
+                winner = await self._user_repository.find_by_telegram_id(data.telegram_id)
             if winner is None:
                 raise
             return winner
@@ -93,13 +93,9 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
 
     async def _sync_profile(self, user: UserDto, data: RegisterTelegramUserDto) -> UserDto:
         # staff names are set from the dashboard, Telegram doesn't own them
-        name = (
-            clean_telegram_name(data.name, data.telegram_id)
-            if user.role == Role.USER
-            else user.name
-        )
+        name = clean_telegram_name(data.name, data.telegram_id) if user.is_customer else user.name
         # staff language comes from the dashboard and drives their notifications
-        sync_language = data.sync_language and user.role == Role.USER
+        sync_language = data.sync_language and user.is_customer
         language = data.language if sync_language else user.language
         if user.is_bot_blocked and await self._user_repository.set_bot_blocked(user.id, False):
             user = user.model_copy(update={"is_bot_blocked": False})
@@ -108,5 +104,5 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
         updated = await self._user_repository.update_telegram_profile(
             user.id, name=name, username=data.username, language=language
         )
-        logger.info(f"User '{user.id}' profile updated from Telegram data")
+        logger.info(f"{user.log} Updated profile from Telegram data")
         return updated

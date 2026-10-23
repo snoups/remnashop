@@ -17,4 +17,4 @@ class FindTelegramUserUseCase(UseCase[int, Optional[UserDto]]):
 
     async def _execute(self, actor: Actor, data: int) -> Optional[UserDto]:
         async with self._uow:
-            return await self._user_repository.get_by_telegram_id(data)
+            return await self._user_repository.find_by_telegram_id(data)

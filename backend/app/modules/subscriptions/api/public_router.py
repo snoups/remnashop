@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
 from app.modules.subscriptions.api.schemas import (
-    DeviceItem,
     DeviceListResponse,
+    DeviceResponse,
     OwnSubscriptionListResponse,
     OwnSubscriptionResponse,
     PublicPlanListResponse,
@@ -114,7 +114,7 @@ async def list_own_devices(
 ) -> DeviceListResponse:
     devices = await use_case(actor, SubscriptionRefDto(subscription_id=subscription_id))
     return DeviceListResponse(
-        items=[DeviceItem.model_validate(d, from_attributes=True) for d in devices],
+        items=[DeviceResponse.model_validate(d, from_attributes=True) for d in devices],
         total=len(devices),
     )
 

@@ -47,7 +47,7 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             channel=CustomerChannel.TELEGRAM.value, result=result.value.lower()
         ).inc()
         if result is TelegramSendResult.FORBIDDEN:
-            logger.info(f"User {user.id} cannot receive bot messages")
+            logger.info(f"{user.log} Cannot receive bot messages")
             async with self._uow:
                 await mark_bot_blocked(self._user_repository, self._event_publisher, user.id)
         if result is TelegramSendResult.FAILED:

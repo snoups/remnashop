@@ -97,7 +97,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
           )}
           {groups.map(({ category, items }) => (
             <div key={category} className="mb-1 last:mb-0">
-              <span className="block px-2.5 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="block px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t(`dialogs.variableCategories.${category}`, { defaultValue: category })}
               </span>
               {items.map(({ name }) => (
@@ -112,7 +112,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
                   className="flex w-full flex-col items-start rounded-popover-item px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.07]"
                 >
                   <span className="text-[13px] font-medium text-foreground">{label(name)}</span>
-                  <span className="font-mono text-[11.5px] text-muted-foreground">{format(name)}</span>
+                  <span className="font-mono text-[12px] text-muted-foreground">{format(name)}</span>
                 </button>
               ))}
             </div>

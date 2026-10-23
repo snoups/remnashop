@@ -75,7 +75,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             settings = await self._referral_repository.get_settings()
             if not settings.enabled:
                 return
-            order = await self._transaction_repository.get_by_idempotency_key(data.payment_key)
+            order = await self._transaction_repository.find_by_idempotency_key(data.payment_key)
             # a bonus-day redemption carries a payment_key too, with no order behind it
             if order is None:
                 logger.info(f"Referral reward skipped: no order for payment '{data.payment_key}'")
@@ -128,7 +128,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         seen: set[int] = {buyer_id}
         current_id = buyer_id
         for level in range(1, min(max_level, _MAX_LEVEL) + 1):
-            edge = await self._referral_repository.get_by_referred_id(current_id)
+            edge = await self._referral_repository.find_by_referred_id(current_id)
             if edge is None or edge.referrer_id is None or edge.referrer_id in seen:
                 break
             chain.append(_Hop(level=level, referrer_id=edge.referrer_id, referral_id=edge.id))

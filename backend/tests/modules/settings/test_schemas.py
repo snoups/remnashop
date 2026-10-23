@@ -2,7 +2,7 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from app.modules.settings.api.schemas import (
-    BotCommandItem,
+    BotCommandRequest,
     OAuthSettingsResponse,
     UpdateBotRequirementsRequest,
     UpdateOAuthSettingsRequest,
@@ -48,7 +48,7 @@ def test_oauth_settings_response_carries_oidc_fields() -> None:
 
 
 def test_bot_command_item_carries_enabled_flag() -> None:
-    item = BotCommandItem(command="menu", enabled=False)
+    item = BotCommandRequest(command="menu", enabled=False)
 
     assert item.enabled is False
 

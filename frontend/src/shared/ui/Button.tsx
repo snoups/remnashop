@@ -1,4 +1,6 @@
+import { Loader2, type LucideIcon } from "lucide-react";
 import { motion, type HTMLMotionProps } from "motion/react";
+import type { ReactNode } from "react";
 
 import { bounceTap } from "@shared/lib/bounceState";
 
@@ -9,8 +11,8 @@ export type ButtonVariant = "accent" | "solid" | "outline" | "secondary" | "dang
 const COLOR_CLASS: Record<ButtonVariant, string> = {
   accent: "border-transparent bg-accent text-primary hover:bg-primary/20",
   solid: "border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
-  outline: "border-border text-foreground/80 hover:bg-white/5",
-  secondary: "border-border text-foreground/90 hover:bg-white/5",
+  outline: "border-border text-foreground/80 hover:bg-white/[0.06]",
+  secondary: "border-border text-foreground/90 hover:bg-white/[0.06]",
   danger: "border-border text-error hover:bg-error/10",
 };
 
@@ -31,11 +33,26 @@ const SIZE_CLASS = { sm: "h-8", md: "h-9", field: "h-9.5" } as const;
 interface ButtonProps extends HTMLMotionProps<"button"> {
   variant: ButtonVariant;
   size?: keyof typeof SIZE_CLASS;
+  /** leading icon; a spinner takes its place while isLoading */
+  icon?: LucideIcon;
+  /** spinner before the label, button disabled */
+  isLoading?: boolean;
   /** layout only (flex-1, w-full, mt-2...), no classes that fight the variant's */
   className?: string;
+  children?: ReactNode;
 }
 
-export function Button({ variant, size = "md", className = "", type = "button", ...props }: ButtonProps) {
+export function Button({
+  variant,
+  size = "md",
+  icon: Icon,
+  isLoading = false,
+  className = "",
+  type = "button",
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
   const typography =
     size === "sm" ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}` : TYPE_CLASS[variant];
 
@@ -44,7 +61,11 @@ export function Button({ variant, size = "md", className = "", type = "button", 
       type={type}
       {...bounceTap()}
       className={`flex shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${COLOR_CLASS[variant]} ${typography} ${className}`}
+      disabled={disabled || isLoading}
       {...props}
-    />
+    >
+      {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : Icon && <Icon className="size-3.5" />}
+      {children}
+    </motion.button>
   );
 }

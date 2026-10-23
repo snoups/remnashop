@@ -17,6 +17,7 @@ import { KpiTile } from "@shared/ui/KpiTile";
 import { PasswordInput } from "@shared/ui/PasswordInput";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { Slider } from "@shared/ui/Slider";
 import { Switch } from "@shared/ui/Switch";
 import { Tag } from "@shared/ui/Tag";
 import { SuffixInput, TextArea, TextInput } from "@shared/ui/TextInput";
@@ -35,6 +36,7 @@ export function FieldsSection() {
   const [search, setSearch] = useState("");
   const [select, setSelect] = useState("ru");
   const [isOn, setIsOn] = useState(true);
+  const [slider, setSlider] = useState(30);
   const [color, setColor] = useState("#22d3ee");
   const [chips, setChips] = useState(["user@example.com"]);
   const options = [
@@ -119,6 +121,10 @@ export function FieldsSection() {
         <Switch checked onChange={() => undefined} disabled />
         <span className="mx-2 h-6 w-px bg-border" />
         <ColorPickerField value={color} onChange={setColor} />
+      </Specimen>
+      <Specimen name="Slider" usage={k("u.slider")}>
+        <Slider max={100} value={slider} onChange={setSlider} className="w-56" />
+        <Slider max={100} value={60} onChange={() => undefined} disabled className="w-56" />
       </Specimen>
       <Specimen name="label · EYEBROW_CLASS" usage={k("u.labels")} wide>
         <span className="text-sm font-medium text-foreground/80">{k("s.name")}</span>

@@ -32,7 +32,7 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("promocodes.details.usersLoadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("promocodes.details.usersEmpty")} />
       )}

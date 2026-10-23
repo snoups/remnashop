@@ -1908,7 +1908,7 @@ async def test_a_renew_whose_db_write_failed_is_completed_by_the_retry_without_e
     assert after_retry == after_first
     assert renewed.expire_at == after_first
     assert renewal.idempotency_key is not None
-    linked = await idempotency_repository.get_subscription_id(renewal.idempotency_key)
+    linked = await idempotency_repository.find_subscription_id(renewal.idempotency_key)
     assert linked == original.id
     # a third delivery is a plain replay of the finished purchase
     assert (await use_case(buyer, renewal)).id == original.id
@@ -2952,7 +2952,7 @@ async def test_releasing_a_key_keeps_it_once_a_subscription_is_linked(
     async with uow:
         await idempotency_repository.release("linked-key", datetime_now())
 
-    assert await idempotency_repository.get_subscription_id("linked-key") == finished.id
+    assert await idempotency_repository.find_subscription_id("linked-key") == finished.id
 
 
 async def test_a_trial_activated_mid_purchase_is_retired_by_the_paid_subscription(

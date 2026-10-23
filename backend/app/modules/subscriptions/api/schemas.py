@@ -10,7 +10,7 @@ from app.core.enums import AddOnType, Currency, PanelSyncDirection, PlanType, Su
 from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 
 
-class AddOnEntitlementItem(BaseModel):
+class AddOnEntitlementResponse(BaseModel):
     subscription_id: int
     addon_id: Optional[int] = None
     type: AddOnType
@@ -38,7 +38,7 @@ class SubscriptionResponse(BaseModel):
     device_single_reset_at: Optional[datetime] = None
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
-    addon_entitlements: list[AddOnEntitlementItem]
+    addon_entitlements: list[AddOnEntitlementResponse]
 
     @field_validator("plan_snapshot", mode="before")
     @classmethod
@@ -75,7 +75,7 @@ class ChangeSubscriptionPlanRequest(BaseModel):
     duration_days: Optional[int] = Field(default=None, ge=1, le=36500)
 
 
-class DeviceItem(BaseModel):
+class DeviceResponse(BaseModel):
     hwid: str
     platform: Optional[str] = None
     device_model: Optional[str] = None
@@ -84,20 +84,20 @@ class DeviceItem(BaseModel):
 
 
 class DeviceListResponse(BaseModel):
-    items: list[DeviceItem]
+    items: list[DeviceResponse]
     total: int
 
 
-class PublicPlanPriceItem(BaseModel):
+class PublicPlanPriceResponse(BaseModel):
     currency: Currency
     # 0 only for a free trial plan opened by its code
     price: Decimal = Field(ge=0)
 
 
-class PublicPlanDurationItem(BaseModel):
+class PublicPlanDurationResponse(BaseModel):
     days: int = Field(gt=0)
     order_index: int = 0
-    prices: list[PublicPlanPriceItem]
+    prices: list[PublicPlanPriceResponse]
 
 
 class PublicPlanResponse(BaseModel):
@@ -111,7 +111,7 @@ class PublicPlanResponse(BaseModel):
     device_limit: int
     is_trial: bool
     order_index: int
-    durations: list[PublicPlanDurationItem]
+    durations: list[PublicPlanDurationResponse]
 
 
 class PublicPlanListResponse(BaseModel):

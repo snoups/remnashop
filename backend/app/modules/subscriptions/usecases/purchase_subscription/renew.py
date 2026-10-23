@@ -163,7 +163,7 @@ class RenewPurchase:
         # overwritten, and on resume an extension past the pinned value hides
         # an unlanded write. A panel-side idempotency token would close both.
         async with self._uow:
-            pinned = await self._idempotency.get_pending_renew_expire_at(key)
+            pinned = await self._idempotency.find_pending_renew_expire_at(key)
         if pinned is None:
             panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
             base = max(panel_user.expire_at, datetime_now())

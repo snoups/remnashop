@@ -3,10 +3,11 @@ from functools import partial
 from typing import Final
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ONE_CENT, ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.modules.analytics.aggregates import median
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
@@ -90,19 +91,19 @@ class GetLtvDistributionUseCase(UseCase[None, LtvDistributionDto]):
                     report_currency=report_currency,
                     buckets=[],
                     payers=0,
-                    mean=Decimal(0),
-                    median=Decimal(0),
+                    mean=ZERO_AMOUNT,
+                    median=ZERO_AMOUNT,
                 )
 
             raw = _quantile_boundaries(totals, min(_QUANTILE_COUNT, len(totals)))
-            boundaries = sorted({Decimal(0), *(_nice_floor(bound) for bound in raw[1:])})
+            boundaries = sorted({ZERO_AMOUNT, *(_nice_floor(bound) for bound in raw[1:])})
             buckets = _bucketize(totals, boundaries)
             return LtvDistributionDto(
                 report_currency=report_currency,
                 buckets=buckets,
                 payers=len(totals),
-                mean=(sum(totals, start=Decimal(0)) / len(totals)).quantize(
+                mean=(sum(totals, start=ZERO_AMOUNT) / len(totals)).quantize(
                     ONE_CENT, rounding=ROUND_HALF_UP
                 ),
-                median=median(totals).quantize(ONE_CENT, rounding=ROUND_HALF_UP),
+                median=round_cents(median(totals)),
             )

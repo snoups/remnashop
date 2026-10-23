@@ -147,7 +147,7 @@ function AttentionRow({ item }: { item: AttentionItem }) {
         <Icon className="size-4" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[13.5px] font-medium text-foreground">{title}</span>
+        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
         {sub && <span className="block truncate text-[12px] text-muted-foreground">{sub}</span>}
       </span>
       {link && link.allowed(permissions) ? (
@@ -190,7 +190,7 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
         }
       />
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("dashboard.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <div className={`${LIST_BODY_CLASS} pt-1.5`}>
           {sorted.length === 0 ? (
@@ -199,7 +199,7 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
                 <CheckCircle2 className="size-4" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13.5px] font-medium text-foreground">
+                <span className="block truncate text-[13px] font-medium text-foreground">
                   {t("dashboard.attention.allClear.title")}
                 </span>
                 <span className="block truncate text-[12px] text-muted-foreground">

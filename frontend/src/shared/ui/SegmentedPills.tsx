@@ -59,7 +59,7 @@ export function SegmentedPills<T extends string | number>({
             {option.label}
           </span>
           {option.dot && (
-            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-error" aria-hidden />
+            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-error" />
           )}
         </motion.button>
       ))}

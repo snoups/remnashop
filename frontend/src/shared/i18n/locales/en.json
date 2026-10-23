@@ -24,13 +24,14 @@
       "generic": "Something went wrong."
     },
     "lessThanMinuteAgo": "less than a minute ago",
-    "inLessThanMinute": "in less than a minute"
+    "inLessThanMinute": "in less than a minute",
+    "loadError": "Failed to load."
   },
   "errors": {
     "notFoundTitle": "Page not found",
-    "notFoundDescription": "The page you're looking for doesn't exist or was moved.",
+    "notFoundDescription": "The page you’re looking for doesn’t exist or was moved.",
     "notFoundButton": "Go home",
-    "serverUnreachableTitle": "Can't reach the server",
+    "serverUnreachableTitle": "Can’t reach the server",
     "serverUnreachableDescription": "Check your connection or try again in a moment.",
     "serverErrorTitle": "Server error",
     "serverErrorDescription": "The server responded with an error. Check the backend logs.",
@@ -62,7 +63,7 @@
     "confirmPasswordPlaceholder": "Repeat your password",
     "passwordHint": "At least 24 characters, with an uppercase letter, a lowercase letter, and a digit.",
     "generatePassword": "Generate password",
-    "copiedToClipboard": "Copied to clipboard!",
+    "copiedToClipboard": "Copied to clipboard",
     "createOwnerAccount": "Create owner account",
     "signIn": "Sign in",
     "passwordChange": {
@@ -74,7 +75,7 @@
     },
     "errors": {
       "loginTooShort": "Login must be at least 3 characters long.",
-      "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens",
+      "loginInvalidChars": "Login may only contain Latin letters, digits, dots, underscores, and hyphens.",
       "passwordRequirements": "Password must be at least 24 characters long and contain an uppercase letter, a lowercase letter, and a digit.",
       "passwordsDoNotMatch": "Passwords do not match.",
       "unsafeAuthorizationUrl": "The sign-in provider returned an unsafe address.",
@@ -87,17 +88,16 @@
       "completingSignIn": "Completing sign-in…",
       "passkeySignIn": "Sign in with a passkey",
       "passkeyShort": "Passkey",
-      "passkeyCancelled": "Passkey sign-in was cancelled.",
+      "passkeyCancelled": "Passkey sign-in was canceled.",
       "passkeyNotSupported": "Passkeys are not supported on this device or browser."
     },
     "welcome": {
       "title": "Welcome to Remnashop",
-      "description": "Remnashop is a ready-made platform for selling VPN subscriptions, built by enthusiasts in their spare time. If it's been useful to you, support is very welcome.",
+      "description": "Remnashop is a ready-made platform for selling VPN subscriptions, built by enthusiasts in their spare time. If it’s been useful to you, support is very welcome.",
       "continueButton": "Continue to dashboard"
     }
   },
   "dashboard": {
-    "loadError": "Failed to load the overview. Try refreshing.",
     "periodDays": "{{count}}d",
     "periodAll": "All time",
     "updatedAt": "updated at {{time}}",
@@ -233,7 +233,6 @@
   },
   "analytics": {
     "title": "Analytics",
-    "loadError": "Failed to load analytics. Try refreshing.",
     "tabs": {
       "metrics": "Metrics",
       "funnel": "Funnel",
@@ -260,7 +259,7 @@
       "direct": "directly · {{value}}",
       "neverConnected": "Never connected",
       "neverConnectedHint": "registered but never opened the VPN",
-      "connectedUnpaid": "Connected, but didn't pay",
+      "connectedUnpaid": "Connected, but didn’t pay",
       "bySource": "Funnel by source",
       "bySourceDescription": "Share of registrations at each step; payments as of today",
       "sourcesEmpty": "No registrations in this period.",
@@ -279,7 +278,7 @@
       "monthsValue": "{{value}} mo.",
       "avgLifetimeCaption": "from first payment to churn",
       "expiringTitle": "Expiring in the next 30 days",
-      "expiringDescription": "Who to keep: paid subscriptions won't renew themselves. Most valuable customers first",
+      "expiringDescription": "Who to keep: paid subscriptions won’t renew themselves. Most valuable customers first",
       "expiringPaid": "Paid · {{value}}",
       "expiringTrials": "Trials · {{value}}",
       "weeks": {
@@ -300,12 +299,12 @@
       "curveDescription": "Share of a cohort with an active paid subscription N months later",
       "average": "Average",
       "churnTitle": "Paid churn by month",
-      "churnDescription": "Share of paid subscribers who didn't renew within the month; trials and reward days don't count",
+      "churnDescription": "Share of paid subscribers who didn’t renew within the month; trials and reward days don’t count",
       "byPlanTitle": "Active subscriptions by plan",
       "byPlanDescription": "Which plans customers are on now and how many hit their traffic limit",
       "limited": "{{value}} at limit",
       "cohortsTitle": "Retention by first payment month",
-      "cohortsDescription": "Each row is customers who first paid in that month; M0, M1… is the share with an active paid subscription that many months later. Long plans don't show false dips",
+      "cohortsDescription": "Each row is customers who first paid in that month; M0, M1… is the share with an active paid subscription that many months later. Long plans don’t show false dips",
       "cohortColumn": "Cohort",
       "sizeColumn": "Customers"
     },
@@ -329,7 +328,7 @@
       "customers_one": "{{count}} customer",
       "customers_other": "{{count}} customers",
       "topTitle": "Top payers",
-      "topDescription": "All-time spend; a row opens the user's card",
+      "topDescription": "All-time spend; a row opens the user’s card",
       "customer": "Customer",
       "currentPlan": "Current plan",
       "payments": "Payments",
@@ -347,8 +346,8 @@
       "end": "End",
       "apply": "Apply"
     },
-    "periodIndependent": "Doesn't depend on the period",
-    "currencyNote": "Amounts in other currencies are converted to {{currency}} at the panel's rate at the time of payment.",
+    "periodIndependent": "Doesn’t depend on the period",
+    "currencyNote": "Amounts in other currencies are converted to {{currency}} at the rate set in pricing at the time of payment.",
     "was": "was {{value}}",
     "pp": "{{value}} pp",
     "empty": "No data yet.",
@@ -365,7 +364,7 @@
       "arppuCaption_other": "{{formatted}} payers",
       "newPayers": "New payers",
       "conversion": "Paid within {{days}} days",
-      "conversionHint": "Share of users who registered {{days}}+ days before the period's end and paid within {{days}} days of registering.",
+      "conversionHint": "Share of users who registered {{days}}+ days before the period’s end and paid within {{days}} days of registering.",
       "conversionCaption": "of registered up to {{date}}",
       "churn": "Paid churn",
       "churnHint": "Share of paid subscribers active at the start of the period who did not renew by its end.",
@@ -515,7 +514,6 @@
   },
   "eventLog": {
     "title": "Event log",
-    "loadError": "Failed to load event log.",
     "empty": "No events.",
     "noMatches": "Nothing found.",
     "filters": {
@@ -738,7 +736,6 @@
   },
   "admins": {
     "title": "Admins",
-    "loadError": "Failed to load admins.",
     "create": {
       "button": "Create admin",
       "title": "Create admin",
@@ -748,7 +745,7 @@
       "error": "Failed to create admin."
     },
     "passwordModal": {
-      "title": "Save this password now"
+      "title": "Temporary password"
     },
     "permissionsForm": {
       "error": "Failed to update permissions."
@@ -787,7 +784,6 @@
   "users": {
     "openUser": "To user",
     "title": "Users",
-    "loadError": "Failed to load users.",
     "empty": "No users.",
     "noMatches": "Nothing found.",
     "filters": {
@@ -1014,7 +1010,6 @@
     "legalAcceptances": {
       "title": "Accepted documents",
       "none": "No documents accepted yet.",
-      "loadError": "Failed to load accepted documents.",
       "triggers": {
         "SIGN_UP": "Sign-up",
         "PAYMENT": "Payment"
@@ -1026,14 +1021,6 @@
     "heading": "News",
     "critical": "Important",
     "counter": "{{current}} of {{total}}",
-    "close": "Close",
-    "pause": "Pause",
-    "play": "Play",
-    "prevSlide": "Previous slide",
-    "nextSlide": "Next slide",
-    "prevStory": "Previous announcement",
-    "nextStory": "Next announcement",
-    "openStory": "Watch shorts",
     "openLink": "Learn more"
   },
   "header": {
@@ -1085,7 +1072,7 @@
       "tokenLabel": "Bot token",
       "tokenHint": "Issued by @BotFather when the bot is created. Used to send messages as the bot and to register the webhook.",
       "secretTokenLabel": "Webhook secret token",
-      "secretTokenHint": "Sent back by Telegram in every webhook request's header; the API checks it matches before trusting the request, so only Telegram can reach your webhook.",
+      "secretTokenHint": "Sent back by Telegram in every webhook request’s header; the API checks it matches before trusting the request, so only Telegram can reach your webhook.",
       "generateSecretToken": "Generate",
       "secretTokenCopied": "Copied",
       "placeholder": "Leave blank to keep the current value",
@@ -1093,7 +1080,7 @@
       "errorInvalidToken": "Invalid bot token format.",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
-      "applyChangesDescription": "Restarts the telegram process so it picks up the saved token, secret and proxy. Has no effect if the process isn't currently running.",
+      "applyChangesDescription": "Restarts the telegram process so it picks up the saved token, secret and proxy. Has no effect if the process isn’t currently running.",
       "restartBot": "Restart",
       "restarting": "Restarting…",
       "restartCooldown": "Restarting ({{seconds}}s)",
@@ -1113,16 +1100,14 @@
     "botCommands": {
       "title": "Commands",
       "description": "Available commands and their order",
-      "loadError": "Failed to load commands.",
       "resetOrder": "Reset order",
-      "savedTelegramSyncFailed": "Saved, but Telegram wasn't updated. Try saving again."
+      "savedTelegramSyncFailed": "Saved, but Telegram wasn’t updated. Try saving again."
     },
     "banners": {
       "uploadError": "Failed to upload banner.",
       "deleteError": "Failed to delete banner."
     },
     "appearance": {
-      "loadError": "Failed to load appearance settings.",
       "dashboardTitle": "Dashboard",
       "dashboardDescription": "Branding and colors of the dashboard",
       "brandNameLabel": "Brand name",
@@ -1159,7 +1144,6 @@
     "oauth": {
       "title": "OAuth providers",
       "description": "Manage dashboard sign-in methods for admins",
-      "loadError": "Failed to load current status.",
       "configured": "configured",
       "notConfigured": "not configured",
       "clientIdLabel": "Client ID",
@@ -1187,10 +1171,10 @@
         "botSetupTitle": "Setting up the bot",
         "botSetupSteps": [
           "Open @BotFather",
-          "Open the Mini App via the \"Open\" button",
+          "Open the Mini App via the “Open” button",
           "Select your bot and open Login Widget",
           "If a domain is already set in the URL field, remove it",
-          "Press Switch to OpenID Connect Login. If that button isn't there, go back a menu after removing the domain and repeat step 3",
+          "Press Switch to OpenID Connect Login. If that button isn’t there, go back a menu after removing the domain and repeat step 3",
           "Press Add a Redirect URI and Add a Trusted Origin and enter the values below:"
         ],
         "trustedOriginsLabel": "Trusted Origins",
@@ -1204,21 +1188,21 @@
           "The bot replies with your ID — enter it into the corresponding field"
         ],
         "knownIssuesTitle": "Troubleshooting known issues",
-        "knownIssuesIntro": "Protections layered in front of the panel (cookie policies and similar) can misbehave with Telegram OAuth2.",
+        "knownIssuesIntro": "Protections layered in front of the dashboard (cookie policies and similar) can misbehave with Telegram OAuth2.",
         "knownIssuesProxyTip": "Use the /oauth2/ path in your reverse proxy to work around this.",
         "errorBotDomainTitle": "Error: BOT_DOMAIN_INVALID",
-        "errorBotDomainBody": "This happens when the bot's domain isn't configured correctly — revisit “Setting up the bot” above and redo it step by step if needed.",
+        "errorBotDomainBody": "This happens when the bot’s domain isn’t configured correctly — revisit “Setting up the bot” above and redo it step by step if needed.",
         "errorNoCodeTitle": "Error: no confirmation code arrives from Telegram at login",
-        "errorNoCodeBody": "This isn't something fixable on Remnashop's side. Try a bot created a while ago, or a different browser. You can also try signing in on one of Telegram's own “official” surfaces first, e.g. fragment.com — since the Telegram session is shared within the browser, that can help the panel sign-in go through."
+        "errorNoCodeBody": "This isn’t something fixable on Remnashop’s side. Try a bot created a while ago, or a different browser. You can also try signing in on one of Telegram’s own “official” surfaces first, e.g. fragment.com — since the Telegram session is shared within the browser, that can help the panel sign-in go through."
       },
       "githubGuide": {
         "title": "OAuth2: GitHub",
         "createAppTitle": "Creating an OAuth app",
         "createAppIntro": "First, create an OAuth app. Follow this link to create one:",
-        "callbackIntro": "Under Authorization callback URL, enter your panel's address.",
-        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your panel's address",
+        "callbackIntro": "Under Authorization callback URL, enter your dashboard’s address.",
+        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your dashboard’s address",
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/github",
-        "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your panel's actual address.",
+        "callbackNote": "Don’t forget to replace YOUR_REMNASHOP_DOMAIN with your dashboard’s actual address.",
         "settingsTitle": "OAuth2 settings in Remnashop",
         "settingsBody": "Once the OAuth app is created, copy the Client ID and Client secret. Paste them into the corresponding fields."
       },
@@ -1227,11 +1211,11 @@
         "intro": "Any OIDC-compliant provider works — Keycloak, Authentik, Zitadel, Auth0, PocketID, and others. The issuer must serve the standard /.well-known/openid-configuration endpoint.",
         "callbackTitle": "Creating the app with your provider",
         "callbackIntro": "When creating the app with your OIDC provider, set the Redirect URI below.",
-        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your panel's domain",
+        "callbackCommentLabel": "Replace YOUR_REMNASHOP_DOMAIN with your dashboard’s domain",
         "callbackUrlValue": "https://YOUR_REMNASHOP_DOMAIN/oauth2/callback/oidc",
-        "callbackNote": "Don't forget to replace YOUR_REMNASHOP_DOMAIN with your actual panel domain.",
+        "callbackNote": "Don’t forget to replace YOUR_REMNASHOP_DOMAIN with your actual dashboard domain.",
         "settingsTitle": "OIDC settings in Remnashop",
-        "settingsBody": "Enter your provider's Issuer URL along with the Client ID and Client secret you received. The display name is used as the label on the login button."
+        "settingsBody": "Enter your provider’s Issuer URL along with the Client ID and Client secret you received. The display name is used as the label on the login button."
       },
       "passwordLoginGuide": {
         "title": "Password login",
@@ -1246,7 +1230,6 @@
     "shop": {
       "title": "Shop",
       "description": "Limits and rules",
-      "loadError": "Failed to load shop settings.",
       "maxActiveSubscriptionsLabel": "Max active subscriptions per user",
       "unlimitedPlaceholder": "Unlimited",
       "deviceSingleResetLabel": "Single device reset",
@@ -1256,7 +1239,6 @@
       "invalidInput": "Check the entered values."
     },
     "gateways": {
-      "loadError": "Failed to load payment gateways.",
       "configured": "configured",
       "notConfigured": "not configured",
       "placeholder": "Leave blank to keep the current value",
@@ -1275,9 +1257,20 @@
       },
       "testPaymentError": "Failed to create a test payment.",
       "testPaymentBadUrl": "The provider returned an invalid payment link.",
+      "currencyHints": {
+        "CRYPTOMUS": "USD is recommended.",
+        "HELEKET": "USD is recommended.",
+        "CRYPTOPAY": "USD is recommended.",
+        "WATA": "Must be allowed in your Wata account. Defaults to USD.",
+        "VALUTIX": "Must match the terminal currency. Defaults to USD.",
+        "RIOPAY": "Must match the terminal currency. Defaults to RUB.",
+        "SEVERPAY": "Must match the merchant currency. Defaults to RUB.",
+        "CLOUDPAYMENTS": "Defaults to RUB.",
+        "PAYPALYCH": "Must match the shop currency. Defaults to RUB."
+      },
       "flagHints": {
-        "require_paid_purchase": "Customers see Stars only after paying another way at least once.",
-        "verify_ip": "Accept notifications only from YooKassa addresses. Turn off only if a proxy in front of the server (e.g. Cloudflare) hides the real IP."
+        "require_paid_purchase": "Customers see this payment method only after paying another way at least once.",
+        "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) on the web server; turn off only if that isn’t possible."
       },
       "title": "Payment gateways",
       "description": "Configure payment gateways and their availability to customers",
@@ -1350,13 +1343,11 @@
       "regenerate": "Regenerate keys",
       "confirmTitle": "Regenerate keys?",
       "confirm": "Every device will have to turn push on again.",
-      "generated": "Keys generated.",
-      "loadError": "Failed to load web push settings."
+      "generated": "Keys generated."
     },
     "access": {
       "title": "Access",
       "description": "Who can sign up and pay — in the bot and the web cabinet",
-      "loadError": "Failed to load access settings.",
       "modes": {
         "public": "Open to everyone",
         "invited": "Invite only",
@@ -1377,13 +1368,11 @@
       "description": "What a customer must do before using the bot",
       "channelLabel": "Subscribe to the channel",
       "channelId": "Channel ID",
-      "channelUrl": "Channel link",
-      "loadError": "Failed to load requirements."
+      "channelUrl": "Channel link"
     },
     "email": {
       "title": "SMTP",
       "description": "Sign-in codes, notifications and broadcasts to customers",
-      "loadError": "Failed to load email settings.",
       "hostLabel": "SMTP host",
       "portLabel": "Port",
       "securityLabel": "Encryption",
@@ -1418,7 +1407,6 @@
     "cabinetAuth": {
       "title": "Cabinet sign-in",
       "description": "Manage web cabinet sign-in methods for customers",
-      "loadError": "Failed to load cabinet sign-in settings.",
       "restrictDomains": "Only allowed email domains",
       "allowedDomains": "Allowed domains",
       "allowedDomainsHint": "New email sign-ups only from these domains. Existing customers sign in with any address.",
@@ -1547,7 +1535,8 @@
       "domainsList": "List"
     },
     "legal": {
-      "loadError": "Failed to load documents.",
+      "title": "Legal documents",
+      "description": "Offer, user agreement and privacy policy",
       "offerMissing": "The offer is not visible in a channel where payment is possible: {{channels}}.",
       "channels": {
         "BOT": "bot",
@@ -1588,7 +1577,6 @@
     "ipAllowlistHint": "Optional. One IP address or CIDR range per line; leave empty to allow any address.",
     "title": "API tokens",
     "description": "Tokens for programmatic access to the dashboard API",
-    "loadError": "Failed to load API tokens.",
     "empty": "No API tokens.",
     "emptyHint": "A token gives a script or integration API access with the permissions you pick. The secret is shown once, right after creation.",
     "createFirst": "Create token",
@@ -1623,7 +1611,6 @@
   },
   "profile": {
     "title": "Profile",
-    "loadError": "Failed to load profile.",
     "edit": {
       "title": "Edit profile",
       "nameLabel": "Display name",
@@ -1638,7 +1625,6 @@
     "oauthAccounts": {
       "title": "Sign-in methods",
       "description": "Sign in without a password — using a linked account or a passkey",
-      "loadError": "Failed to load sign-in methods.",
       "github": "GitHub",
       "telegram": "Telegram",
       "oidcFallback": "SSO",
@@ -1663,7 +1649,7 @@
       "lastUsed": "Last used {{date}}",
       "neverUsed": "Never used",
       "notSupported": "Passkeys are not supported on this device or browser.",
-      "cancelled": "Passkey registration was cancelled.",
+      "cancelled": "Passkey registration was canceled.",
       "addError": "Failed to add passkey.",
       "deleteError": "Failed to delete passkey.",
       "renameError": "Failed to rename passkey.",
@@ -1674,7 +1660,6 @@
       "title": "IP allowlist",
       "description": "Restrict your own account to specific IP addresses or CIDR ranges",
       "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
-      "loadError": "Failed to load the IP allowlist.",
       "saveError": "Failed to save.",
       "currentIp": "Your current IP: {{ip}}",
       "invalidEntries": "Not an IP address or CIDR range: {{entries}}",
@@ -1683,7 +1668,6 @@
     "notifications": {
       "title": "Notifications",
       "description": "Choose where each kind of event reaches you.",
-      "loadError": "Failed to load notification settings.",
       "saveError": "Failed to save notification settings.",
       "groups": {
         "security": {
@@ -1757,7 +1741,6 @@
   "sessions": {
     "title": "Active sessions",
     "description": "Devices currently signed in to this account",
-    "loadError": "Failed to load sessions.",
     "empty": "No active sessions.",
     "revoke": "Revoke",
     "revokeTitle": "Revoke session?",
@@ -1886,7 +1869,7 @@
     "PROMOCODES_UPDATE": "Edit promocodes",
     "PROMOCODES_DELETE": "Delete promocodes",
     "PROMOCODES_GENERATE_CODE": "Generate promocode codes",
-    "PROMOCODES_ACTIVATIONS_VIEW": "View a user's promocode activations",
+    "PROMOCODES_ACTIVATIONS_VIEW": "View a user’s promocode activations",
     "PROMOCODES_SUMMARY_VIEW": "View promocodes summary",
     "PROMOCODES_USERS_VIEW": "View users who activated a promocode",
     "BROADCASTS_VIEW": "View broadcasts",
@@ -1912,11 +1895,11 @@
     "TRANSACTIONS_SUMMARY_VIEW": "View transaction summary",
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
     "TRANSACTIONS_GATEWAYS_VIEW": "View gateways used in transactions",
-    "TRANSACTIONS_FULFILL": "Issue subscription for an unsettled transaction",
+    "TRANSACTIONS_FULFILL": "Issue subscription for a transaction manually",
     "TRANSACTIONS_REFUND": "Refund Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
     "REFERRALS_VIEW": "View referrals",
-    "REFERRALS_INVITED_VIEW": "View a user's invited users",
+    "REFERRALS_INVITED_VIEW": "View a user’s invited users",
     "REFERRALS_REVENUE_VIEW": "View revenue from invited users",
     "REFERRALS_LIST": "View referral list",
     "REFERRALS_SUMMARY_VIEW": "View referral summary",
@@ -1954,7 +1937,7 @@
     "AD_LINKS_STATS_VIEW": "View advertising stats",
     "AD_LINKS_SUMMARY_VIEW": "View advertising summary",
     "AD_LINKS_USERS_VIEW": "View attributed users",
-    "AD_LINKS_USER_ATTRIBUTION_VIEW": "View a user's ad source",
+    "AD_LINKS_USER_ATTRIBUTION_VIEW": "View a user’s ad source",
     "AD_LINKS_SHARE_VIEW": "Get ad link URLs and QR codes",
     "AD_LINKS_CREATE": "Create advertising links",
     "AD_LINKS_GENERATE_CODE": "Generate advertising codes",
@@ -1998,7 +1981,8 @@
     "NOTIFICATION_VAPID_KEYS_GENERATE": "Generate web push keys",
     "LOYALTY_SETTINGS_VIEW": "View loyalty settings",
     "LOYALTY_SETTINGS_MANAGE": "Edit loyalty settings",
-    "USERS_LOYALTY_VIEW": "View a user's loyalty tier",
+    "LOYALTY_SETTINGS_RESET": "Reset loyalty settings",
+    "USERS_LOYALTY_VIEW": "View a user’s loyalty tier",
     "USERS_LOYALTY_MANAGE": "Exclude a user from the loyalty program",
     "ACCESS_SETTINGS_VIEW": "View access settings",
     "ACCESS_SETTINGS_MANAGE": "Change access settings",
@@ -2038,7 +2022,6 @@
     "accessSettings": "Access"
   },
   "permissionPicker": {
-    "loadError": "Failed to load permissions.",
     "read": "Read",
     "write": "Write"
   },
@@ -2062,7 +2045,6 @@
       "RUB": "rubles",
       "XTR": "Stars"
     },
-    "loadError": "Failed to load pricing data.",
     "rates": {
       "title": "Currency rates",
       "description": "Conversion rates, rounding and minimum amounts per currency",
@@ -2086,10 +2068,10 @@
     },
     "anchor": {
       "title": "Anchor currency",
-      "description": "The anchor currency's rate is fixed at 1 — every other currency is derived from it",
+      "description": "The anchor currency’s rate is fixed at 1 — every other currency is derived from it",
       "badge": "Anchor",
       "confirmTitle": "Switch anchor currency",
-      "confirmMessage": "Switching the anchor to {{currency}} will recalculate every derived price. Review the changes below:",
+      "confirmMessage": "Switching the anchor to {{currency}} will recalculate every derived price. Loyalty level thresholds will be converted at the rate too; customers’ discounts stay the same. Review the prices below:",
       "confirmButton": "Switch",
       "saved": "Anchor currency updated.",
       "saveError": "Failed to switch the anchor currency."
@@ -2104,12 +2086,12 @@
     },
     "matrix": {
       "title": "Price matrix",
-      "titleHint": "The base price is the number you set; every currency is calculated from it. The anchor currency column shows the final price a customer pays after the rounding and price ending from Currency rates. Other currencies follow their rate; to fix a price in a currency, type your own value or click the pin — a pinned price doesn't change when the rate does.",
-      "description": "Base prices and per-currency overrides for plans and addons",
+      "titleHint": "The base price is the number you set; every currency is calculated from it. The anchor currency column shows the final price a customer pays after the rounding and price ending from Currency rates. Other currencies follow their rate; to fix a price in a currency, type your own value or click the pin — a pinned price doesn’t change when the rate does.",
+      "description": "Base prices and per-currency overrides for plans and add-ons",
       "item": "Item",
       "basePrice": "Base price",
       "plansSection": "Plans",
-      "addonsSection": "Addons",
+      "addonsSection": "Add-ons",
       "empty": "No plans or add-ons.",
       "saved": "Price updated.",
       "saveError": "Failed to update the price.",
@@ -2119,11 +2101,11 @@
       "scopeLabel": "Scope",
       "scope": {
         "ALL_PLANS": "All plan durations",
-        "ALL_ADDONS": "All addons",
+        "ALL_ADDONS": "All add-ons",
         "SELECTED": "Selected items"
       },
       "factorLabel": "Factor",
-      "factorHint": "Base prices are multiplied by this number: 1.10 is +10 %, 0.90 is −10 %.",
+      "factorHint": "Base prices are multiplied by this number: 1.10 is +10%, 0.90 is −10%.",
       "factorPositive": "The factor must be greater than 0.",
       "factorPlaceholder": "e.g. 1.10 for +10%",
       "preview": "Preview",
@@ -2148,7 +2130,6 @@
       "kindTelegramId": "Telegram",
       "kindEmail": "Email",
       "empty": "No entries.",
-      "loadError": "Failed to load the blacklist.",
       "addError": "Failed to add the entry.",
       "removeError": "Failed to remove the entry.",
       "searchPlaceholder": "Search entries",
@@ -2171,7 +2152,6 @@
       "syncNow": "Sync now",
       "syncStarted": "Sync started — the list will update shortly.",
       "empty": "No sources.",
-      "loadError": "Failed to load sources.",
       "addError": "Failed to add the source.",
       "removeError": "Failed to remove the source.",
       "toggleError": "Failed to update the source.",
@@ -2184,7 +2164,6 @@
       "title": "Matched users",
       "description": "Registered users found on the blacklist",
       "count": "Matches: {{count}}",
-      "loadError": "Failed to load matched users.",
       "empty": "No matches among users.",
       "searchPlaceholder": "Name, @username, ID or email",
       "allOrigins": "All",
@@ -2204,13 +2183,13 @@
         "button": "Unblock all",
         "title": "Unblock all matched users?",
         "confirm": "Every matched user will be unblocked and their entries removed from the manual list.\nUsers that are on external lists will be blocked again on the next sync.",
-        "success": "Unblocked {{count}} user(s).",
+        "success_one": "Unblocked {{count}} user.",
+        "success_other": "Unblocked {{count}} users.",
         "error": "Failed to unblock users."
       }
     }
   },
   "backups": {
-    "loadError": "Failed to load backups.",
     "empty": "No backups.",
     "kind": {
       "DATABASE": "Database",
@@ -2278,7 +2257,6 @@
   },
   "advertising": {
     "title": "Advertising links",
-    "loadError": "Failed to load advertising links.",
     "empty": "No advertising links.",
     "filters": {
       "statusAll": "All",
@@ -2317,7 +2295,7 @@
       "title": "Delete advertising link?",
       "confirm": "Permanently delete “{{name}}”? This cannot be undone.",
       "error": "Failed to delete the advertising link.",
-      "hasUsers": "Users have already signed up through this link, so it can't be deleted. Deactivate it instead — its stats stay intact."
+      "hasUsers": "Users have already signed up through this link, so it can’t be deleted. Deactivate it instead — its stats stay intact."
     },
     "stats": {
       "attributions": "Sign-ups",
@@ -2328,7 +2306,6 @@
       "cpa": "CPA",
       "roi": "ROI",
       "usersEmpty": "No attributed users.",
-      "loadError": "Failed to load stats.",
       "hasPaid": "Purchased",
       "notPaid": "No purchase",
       "daily": "Sign-ups per day",
@@ -2431,10 +2408,9 @@
       "title": "Locale editor",
       "description": "Locales, notifications, errors and other messages",
       "languages": "Languages · {{total}}",
-      "defaultLanguageHint": "★ marks the default language: users whose language isn't enabled get it.",
+      "defaultLanguageHint": "★ marks the default language: users whose language isn’t enabled get it.",
       "localeSource": "source · {{total}}",
       "localeTranslated": "{{translated}} / {{total}}",
-      "loadError": "Failed to load the texts.",
       "importConfirm": "Replace the translations with this file? Strings of active locales are overwritten, the rest are skipped.",
       "imported": "Imported {{applied}} strings, skipped {{skipped}}.",
       "importInvalid": "This file is not a translations export.",
@@ -2449,12 +2425,10 @@
       "adding": "Adding…",
       "imported": "Pack “{{title}}” added.",
       "empty": "No emoji packs.",
-      "loadError": "Failed to load the packs.",
       "deleteTitle": "Remove pack?",
       "deleteConfirm": "Remove “{{title}}”? Buttons already using its emoji will fall back to the plain glyph.",
       "deleteConfirmButton": "Remove"
     },
-    "loadError": "Failed to load dialog windows.",
     "windowList": {
       "addWindow": "Add window",
       "addWindowTitlePlaceholder": "e.g. Weekly deal",
@@ -2539,8 +2513,8 @@
       "buttonUrlScheme": "The link must start with {{schemes}}.",
       "buttonUrlVariable": "Unknown variable: {{name}}.",
       "buttonUrlMalformed": "The link is incomplete or contains spaces.",
-      "buttonsRowLimit": "A row fits at most {{max}} buttons — Telegram's limit.",
-      "buttonsTotalLimit": "A window fits at most {{max}} buttons — Telegram's limit.",
+      "buttonsRowLimit": "A row fits at most {{max}} buttons — Telegram’s limit.",
+      "buttonsTotalLimit": "A window fits at most {{max}} buttons — Telegram’s limit.",
       "textTooLong": "{{length}} of {{max}} characters — Telegram will not send this text.",
       "buttonUrlInvalidGrid": "Fix the button link before saving.",
       "emptySelection": "Pick the text or a button on the canvas to edit it.",
@@ -2575,12 +2549,11 @@
       "importConfirm": "Replace the whole dialog configuration with this file? Custom windows missing from it are deleted, and edited texts are overwritten.",
       "importConfirmButton": "Import",
       "imported": "Configuration imported.",
-      "importInvalid": "That file isn't a dialog export."
+      "importInvalid": "That file isn’t a dialog export."
     }
   },
   "referrals": {
     "title": "Referrals",
-    "loadError": "Failed to load referral settings.",
     "settings": {
       "enabledLabel": "Invites and rewards",
       "maxLevelLabel": "Levels in the chain",
@@ -2609,7 +2582,7 @@
         "POINTS": "The customer withdraws them on request"
       },
       "daysRequirePaidLabel": "Only for paying users",
-      "daysRequirePaidHint": "Days aren't credited to someone who has never paid for a subscription.",
+      "daysRequirePaidHint": "Days aren’t credited to someone who has never paid for a subscription.",
       "invitee": {
         "title": "Invited user reward",
         "description": {
@@ -2642,7 +2615,7 @@
         },
         "who": {
           "1": "Their inviter",
-          "2": "Inviter's inviter",
+          "2": "Inviter’s inviter",
           "3": "Third up the chain"
         }
       },
@@ -2654,7 +2627,7 @@
         "AMOUNT": "The same number for every payment",
         "PERCENT": {
           "EXTRA_DAYS": "A percent of the term paid for",
-          "POINTS": "A percent of the payment amount in the base currency"
+          "POINTS": "A percent of the payment amount in the anchor currency"
         }
       },
       "levelGets": "gets",
@@ -2681,8 +2654,7 @@
       "program": "Referral program",
       "levelAll": "All",
       "via": "via {{name}}",
-      "invitedEmpty": "No invited users.",
-      "invitedLoadError": "Failed to load invited users."
+      "invitedEmpty": "No invited users."
     },
     "stats": {
       "button": "Referral stats",
@@ -2695,8 +2667,7 @@
       "referrerLabel": "Referred by",
       "toReferrer": "To referrer",
       "toUser": "To user",
-      "rewardsEmpty": "No rewards.",
-      "loadError": "Failed to load referral stats."
+      "rewardsEmpty": "No rewards."
     },
     "list": {
       "levelAll": "All levels",
@@ -2723,8 +2694,7 @@
       "rewardCount_other": "{{count}} payouts",
       "noRewards": "no rewards",
       "empty": "No referrals.",
-      "loadError": "Failed to load referrals.",
-      "noPermission": "You don't have permission to view the referral list."
+      "noPermission": "You don’t have permission to view the referral list."
     },
     "summary": {
       "invited": "Invited",
@@ -2745,7 +2715,6 @@
   },
   "promocodes": {
     "title": "Promocodes",
-    "loadError": "Failed to load promocodes.",
     "empty": "No promocodes.",
     "noExpiry": "No expiry",
     "rewardType": {
@@ -2781,7 +2750,7 @@
       "saved": "Promocode created.",
       "error": "Failed to create the promocode.",
       "daysSuffix": "days",
-      "codeInvalid": "Only A–Z, 0–9, _ and - are allowed"
+      "codeInvalid": "Only A–Z, 0–9, _ and - are allowed."
     },
     "edit": {
       "saved": "Promocode updated.",
@@ -2828,7 +2797,7 @@
       "allowedUserIdsPlaceholder": "Type an ID and press Enter",
       "plansLabel": "Plans",
       "plansHint": "None selected — any plan",
-      "plansPromocodesOff": "Greyed-out plans don't accept promocodes",
+      "plansPromocodesOff": "Grayed-out plans don’t accept promocodes",
       "expiresLabel": "Valid until",
       "expiresPlaceholder": "No expiry",
       "maxActivationsLabel": "Activation limit",
@@ -2857,15 +2826,13 @@
       "used": "Used",
       "ofMax": "of {{max}}",
       "reusable": "Reusable",
-      "usersEmpty": "No activations.",
-      "usersLoadError": "Failed to load activations."
+      "usersEmpty": "No activations."
     },
     "pause": "Disable",
     "resume": "Enable"
   },
   "plans": {
     "title": "Plans",
-    "loadError": "Failed to load plans.",
     "empty": "No plans.",
     "unlimited": "Unlimited",
     "reorderError": "Failed to reorder plans.",
@@ -2934,9 +2901,9 @@
       "isActiveHint": "Inactive plans are hidden from customers",
       "isTrialHint": "Offered as a trial period",
       "allowBonusDaysLabel": "Bonus days",
-      "allowBonusDaysHint": "Customers can spend bonus days on this plan's subscriptions",
+      "allowBonusDaysHint": "Customers can spend bonus days on this plan’s subscriptions",
       "allowPromocodesLabel": "Promocodes",
-      "allowPromocodesHint": "Days, traffic and device promocodes apply to this plan's subscriptions; already activated ones stay",
+      "allowPromocodesHint": "Days, traffic and device promocodes apply to this plan’s subscriptions; already activated ones stay",
       "durationsAfterCreate": "Durations can be added once the plan is created."
     },
     "access": {
@@ -3009,7 +2976,6 @@
       "totalTrend": "last 30 days",
       "periodTrend": "vs. prior {{days}} days"
     },
-    "loadError": "Failed to load transactions.",
     "empty": "No transactions.",
     "noMatches": "Nothing found.",
     "orderLabel": "Transaction #{{id}}",
@@ -3116,7 +3082,6 @@
   },
   "subscriptions": {
     "title": "Subscriptions",
-    "loadError": "Failed to load subscriptions.",
     "empty": "No subscriptions.",
     "noMatches": "Nothing found.",
     "description": "User subscriptions synced with Remnawave",
@@ -3165,7 +3130,7 @@
       "saved": "Subscription updated.",
       "error": "Failed to update the subscription.",
       "expireAtLabel": "Valid until",
-      "plusDays": "+{{days}} d",
+      "plusDays": "+{{days}}d",
       "tabs": {
         "params": "Settings",
         "plan": "Plan",
@@ -3216,7 +3181,6 @@
     },
     "devices": {
       "empty": "No devices",
-      "loadError": "Failed to load devices.",
       "deleted": "Device deleted.",
       "deleteAll": "Delete all devices",
       "deleteAllTitle": "Delete all devices?",
@@ -3240,7 +3204,6 @@
     "panelSync": {
       "menuItem": "Sync with panel",
       "title": "Sync with the panel",
-      "loadError": "Failed to compare with the panel.",
       "inSync": "The subscription matches the panel.",
       "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted.",
       "columns": {
@@ -3280,7 +3243,7 @@
   "donate": {
     "button": "Donate",
     "title": "Support the project",
-    "description": "The project is built on a volunteer basis — if it's been useful to you, support is very welcome.",
+    "description": "The project is built on a volunteer basis — if it’s been useful to you, support is very welcome.",
     "boostyLabel": "Boosty",
     "yookassaLabel": "YooKassa",
     "communityTitle": "Private chat",
@@ -3349,7 +3312,7 @@
         "packTab": "Emoji packs in the picker.",
         "choice": "One of a small set; sm — dense grids.",
         "badge": "Status: uppercase with a border, colored by tone.",
-        "tag": "Counts and metadata: grey pill, no uppercase.",
+        "tag": "Counts and metadata: gray pill, no uppercase.",
         "badgeCount": "A number in a circle: subscriptions in the users list; stretches past one digit.",
         "badgeIcon": "Status with an icon.",
         "field": "Label, a 38px field and text under it.",
@@ -3360,6 +3323,7 @@
         "search": "Glass field — filters and search only.",
         "select": "Dropdown select; compact — 36px, in the editor.",
         "switch": "Switch: on, off, disabled.",
+        "slider": "Slider: a value within a range, regular and disabled.",
         "color": "Accent color picker.",
         "labels": "Labels: forms — 14px, filters and columns — eyebrow.",
         "cardPage": "Page and settings card, p-4.",
@@ -3371,7 +3335,7 @@
         "list": "Reference row list: admins, event log, transactions, ads, referrals.",
         "table": "Page table: analytics cohorts.",
         "compact": "Compact table in a dialog: price changes.",
-        "dialogHeader": "Every dialog's header: icon or glyph, badges, subtitle, actions, close.",
+        "dialogHeader": "Every dialog’s header: icon or glyph, badges, subtitle, actions, close.",
         "modal": "Dialog shell: sm and lg.",
         "confirm": "Confirmation: regular and destructive.",
         "guide": "Guide in its own window, opened by the icon on the right.",
@@ -3386,13 +3350,16 @@
         "brand": "Logo and sign-in provider icons.",
         "suffixInput": "Number with a unit after the value: days, currency. The suffix takes its own width; error and disabled match TextInput. Plans, promocodes, currency rates.",
         "groupToggle": "Collapsible group header: chevron, label, count; leading takes a status dot. Transactions, event log, referrals, subscriptions, pricing matrix.",
-        "actionMenuTrigger": "Menu behind a labelled button, e.g. \"Share\" in a dialog footer. A disabled item explains why on hover.",
+        "actionMenuTrigger": "Menu behind a labeled button, e.g. “Share” in a dialog footer. A disabled item explains why on hover.",
         "segmentedStretch": "Full-width switch inside a form field, e.g. ad link channels.",
-        "kpiTrend": "Change next to the value: green up, red down, grey no change. The period is in the popup.",
+        "kpiTrend": "Change next to the value: green up, red down, gray no change. The period is in the popup.",
         "passwordInput": "Login, bootstrap, profile passwords and OAuth client secrets",
         "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red",
         "cardHeader": "Page and settings card header: icon, title, description, right-side block, divider",
-        "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards"
+        "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards",
+        "labeledDivider": "Rule with a label in the middle: “or” on sign-in, donation section.",
+        "refetchSpinner": "Corner spinner over a loaded list while it refetches.",
+        "buttonLoading": "icon — leading icon; isLoading swaps it for a spinner (or adds one) and disables the button."
       },
       "s": {
         "openCarousel": "Open carousel",
@@ -3432,7 +3399,7 @@
         "refresh": "Refresh",
         "noClose": "Without close",
         "confirmTitle": "Delete this plan?",
-        "confirmText": "This can't be undone.",
+        "confirmText": "This can’t be undone.",
         "modalText": "Empty Modal: shell, backdrop and entrance animation.",
         "close": "Close",
         "show": "Show",
@@ -3450,7 +3417,7 @@
         "hintHeading": "In a heading",
         "hintEnd": "At the right edge",
         "tooltipSide": "Label, side=\"{{side}}\"",
-        "tooltipLong": "Delete the backup. The file is removed from disk and can't be restored.",
+        "tooltipLong": "Delete the backup. The file is removed from disk and can’t be restored.",
         "tooltipBadge": "Like the badge in the dialog editor.",
         "guideRow": "A setting that has a guide",
         "guideOpen": "Open the guide",
@@ -3474,7 +3441,8 @@
         "webUnavailable": "CABINET_DOMAIN is not set",
         "trendMonth": "last 30 days",
         "trendWeek": "vs. prior 7 days",
-        "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit."
+        "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit.",
+        "or": "or"
       },
       "sections": {
         "buttons": {
@@ -3555,7 +3523,7 @@
     "ADDON_NOT_FOUND": "Add-on not found.",
     "ADDON_USED_BY_PROMOCODE": "This add-on is still used by a promocode.",
     "ADMIN_NOT_FOUND": "Admin not found.",
-    "ADMIN_NOT_MANAGEABLE": "You can't manage this admin.",
+    "ADMIN_NOT_MANAGEABLE": "You can’t manage this admin.",
     "ADMIN_REQUIRED": "Admin access required.",
     "AD_LINK_CHANNEL_UNAVAILABLE": "This channel is not available for the link.",
     "AD_LINK_CODE_TAKEN": "A link with this code already exists.",
@@ -3564,18 +3532,18 @@
     "AD_LINK_NO_CHANNEL": "The link must allow at least one channel.",
     "ALLOWED_LIST_EMPTY": "Add at least one allowed user.",
     "ANALYTICS_PERIOD_INVALID": "The period start must be before its end.",
-    "ANCHOR_CURRENCY_INVALID": "This currency can't be the anchor currency.",
+    "ANCHOR_CURRENCY_INVALID": "This currency can’t be the anchor currency.",
     "ANCHOR_CURRENCY_UNCHANGED": "This currency is already the anchor.",
-    "ANCHOR_PRICE_NOT_OVERRIDABLE": "The anchor currency price can't be overridden.",
+    "ANCHOR_PRICE_NOT_OVERRIDABLE": "The anchor currency price can’t be overridden.",
     "ANCHOR_RATE_FIXED": "The anchor currency rate is always 1.",
     "API_TOKEN_NOT_FOUND": "API token not found.",
-    "APPEARANCE_IMAGE_NOT_SET": "The image isn't set.",
+    "APPEARANCE_IMAGE_NOT_SET": "The image isn’t set.",
     "BACKUP_ALREADY_RUNNING": "A backup of this kind is already running.",
     "BACKUP_FILE_MISSING": "The backup file is missing.",
-    "BACKUP_NOT_READY": "The backup isn't ready yet.",
+    "BACKUP_NOT_READY": "The backup isn’t ready yet.",
     "BACKUP_RUN_NOT_FOUND": "Backup not found.",
     "BROADCAST_NOT_FOUND": "Broadcast not found.",
-    "BROADCAST_INVALID_STATUS": "This action isn't available for the broadcast in its current status.",
+    "BROADCAST_INVALID_STATUS": "This action isn’t available for the broadcast in its current status.",
     "BROADCAST_HTML_INVALID": "The text has invalid or unsupported HTML.",
     "BROADCAST_TEXT_TOO_LONG": "The text is too long for Telegram.",
     "BROADCAST_VARIABLE_UNKNOWN": "The text uses an unknown variable.",
@@ -3584,10 +3552,10 @@
     "BROADCAST_BUTTONS_INVALID": "Check the buttons: up to 10, valid links and a label in every language.",
     "BROADCAST_DEFAULT_LOCALE_MISSING": "Fill in the text for the default language.",
     "BROADCAST_TEXT_EMPTY": "Fill in the text for every language or remove the empty one.",
-    "BROADCAST_CHANNEL_PERSONAL_VARIABLES": "A channel post can't contain personal variables.",
+    "BROADCAST_CHANNEL_PERSONAL_VARIABLES": "A channel post can’t contain personal variables.",
     "BROADCAST_CHANNEL_NOT_CONFIGURED": "Set the channel in the bot requirements first.",
     "BROADCAST_AUDIENCE_INVALID": "Check the audience filters.",
-    "BROADCAST_MEDIA_INVALID": "The file type or size isn't supported.",
+    "BROADCAST_MEDIA_INVALID": "The file type or size isn’t supported.",
     "BROADCAST_SCHEDULE_IN_PAST": "The send time is in the past.",
     "BROADCAST_BOT_NOT_CONFIGURED": "Set the bot token first.",
     "BROADCAST_TEST_NO_TELEGRAM": "Link Telegram to your account to receive a test message.",
@@ -3595,9 +3563,9 @@
     "BROADCAST_RECALL_EXPIRED": "Telegram only allows deleting messages within 48 hours.",
     "BROADCAST_RECALL_IN_PROGRESS": "The recall is still running. Try again in a few minutes.",
     "BROADCAST_TITLE_TOO_LONG": "The title is too long.",
-    "BROADCAST_DELIVERY_INVALID": "This delivery option doesn't fit the chosen mode.",
+    "BROADCAST_DELIVERY_INVALID": "This delivery option doesn’t fit the chosen mode.",
     "BROADCAST_EMAIL_HTML_INVALID": "The email contains unsupported formatting.",
-    "BROADCAST_EMAIL_IMAGE_INVALID": "The image doesn't fit the email limits.",
+    "BROADCAST_EMAIL_IMAGE_INVALID": "The image doesn’t fit the email limits.",
     "BROADCAST_EMAIL_SUBJECT_INVALID": "Fill in the email subject, up to 200 characters.",
     "BROADCAST_UNSUBSCRIBE_URL_MISSING": "Set the cabinet address: marketing emails need an unsubscribe link.",
     "BANNER_NAME_INVALID": "Invalid banner name.",
@@ -3607,48 +3575,48 @@
     "BLACKLIST_SOURCE_EXISTS": "This blacklist source already exists.",
     "BLACKLIST_SOURCE_NOT_FOUND": "Blacklist source not found.",
     "BLACKLIST_VALUE_INVALID": "Invalid value for this entry type.",
-    "BONUS_DAYS_BELOW_ZERO": "Bonus days can't go below zero.",
+    "BONUS_DAYS_BELOW_ZERO": "Bonus days can’t go below zero.",
     "BONUS_DAYS_INSUFFICIENT": "Not enough bonus days.",
-    "BONUS_DAYS_PLAN_NOT_ALLOWED": "Bonus days can't be used on this plan.",
-    "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Bonus days can't be added to a disabled subscription.",
-    "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Bonus days can't be added to a trial subscription.",
+    "BONUS_DAYS_PLAN_NOT_ALLOWED": "Bonus days can’t be used on this plan.",
+    "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Bonus days can’t be added to a disabled subscription.",
+    "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Bonus days can’t be added to a trial subscription.",
     "BOT_COMMANDS_MISMATCH": "The command list is out of date — reload the page.",
     "BOT_REQUIREMENTS_INCOMPLETE": "Fill in the link (and the channel ID) for every enabled requirement.",
     "CABINET_EMAIL_DISABLED": "Email sign-in is turned off.",
     "CABINET_TELEGRAM_DISABLED": "Telegram sign-in is turned off.",
-    "CANNOT_DELETE_SELF": "You can't delete your own account.",
-    "CHANNEL_NOT_ACCESSIBLE": "The bot can't see this channel — add it as an admin and check the ID.",
+    "CANNOT_DELETE_SELF": "You can’t delete your own account.",
+    "CHANNEL_NOT_ACCESSIBLE": "The bot can’t see this channel — add it as an admin and check the ID.",
     "COOLDOWN_ACTIVE": "Too soon — try again later.",
     "CSRF_FAILED": "Security check failed — reload the page.",
     "CURRENCY_RATE_MISSING": "No rate is set for this currency.",
     "CURRENT_PASSWORD_INCORRECT": "Current password is incorrect.",
     "DEVICE_RESET_DISABLED": "Device reset is disabled.",
-    "DIALOG_ACTION_NOT_IN_WINDOW": "This action doesn't belong to this window.",
+    "DIALOG_ACTION_NOT_IN_WINDOW": "This action doesn’t belong to this window.",
     "DIALOG_ACTION_UNKNOWN": "Unknown button action.",
-    "DIALOG_BUTTON_LABEL_EMPTY": "A button label can't be empty.",
+    "DIALOG_BUTTON_LABEL_EMPTY": "A button label can’t be empty.",
     "DIALOG_BUTTON_LIMIT_REACHED": "Too many buttons in this window.",
     "DIALOG_BUTTON_POSITION_TAKEN": "Two buttons occupy the same position.",
     "DIALOG_BUTTON_URL_MISSING": "A link button needs a URL.",
-    "DIALOG_CUSTOM_WINDOW_ACTION": "Custom windows can't have action buttons.",
+    "DIALOG_CUSTOM_WINDOW_ACTION": "Custom windows can’t have action buttons.",
     "DIALOG_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",
     "DIALOG_ROW_BUTTON_LIMIT_REACHED": "Too many buttons in one row.",
-    "DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE": "A system button can't be hidden.",
-    "DIALOG_TARGET_WINDOW_UNKNOWN": "The target window doesn't exist.",
-    "DIALOG_TEXT_EMPTY": "Window text can't be empty without a banner.",
+    "DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE": "A system button can’t be hidden.",
+    "DIALOG_TARGET_WINDOW_UNKNOWN": "The target window doesn’t exist.",
+    "DIALOG_TEXT_EMPTY": "Window text can’t be empty without a banner.",
     "DIALOG_TEXT_HTML_INVALID": "The text has invalid formatting.",
     "DIALOG_TEXT_KEY_HAS_ATTRIBUTE": "Invalid text key.",
-    "DIALOG_TEXT_KEY_NOT_EDITABLE": "This text can't be edited.",
+    "DIALOG_TEXT_KEY_NOT_EDITABLE": "This text can’t be edited.",
     "DIALOG_TEXT_TOO_LONG": "Window text is too long.",
-    "DIALOG_TEXT_VARIABLE_NOT_ALLOWED": "The text uses a variable that isn't available here.",
+    "DIALOG_TEXT_VARIABLE_NOT_ALLOWED": "The text uses a variable that isn’t available here.",
     "DIALOG_URL_EMPTY": "The URL is incomplete.",
-    "DIALOG_URL_HAS_SPACES": "A URL can't contain spaces.",
+    "DIALOG_URL_HAS_SPACES": "A URL can’t contain spaces.",
     "DIALOG_URL_SCHEME_INVALID": "The URL has an unsupported scheme.",
     "DIALOG_URL_VARIABLE_UNKNOWN": "The URL uses an unknown variable.",
     "DIALOG_VISIBILITY_UNKNOWN": "Unknown visibility condition.",
     "DIALOG_WINDOW_EXISTS": "A window with this key already exists.",
     "DIALOG_WINDOW_LIMIT_REACHED": "The custom window limit is reached.",
     "DIALOG_WINDOW_NOT_DELETABLE": "Only custom windows can be deleted.",
-    "DIALOG_WINDOW_NOT_DISABLEABLE": "Built-in windows can't be disabled.",
+    "DIALOG_WINDOW_NOT_DISABLEABLE": "Built-in windows can’t be disabled.",
     "DIALOG_WINDOW_NOT_FOUND": "Window not found.",
     "DIALOG_WINDOW_NOT_RENAMABLE": "Only custom windows can be renamed.",
     "DIALOG_WINDOW_NOT_RESETTABLE": "Custom windows have no default — delete it instead.",
@@ -3661,7 +3629,7 @@
     "DEEPLINK_OTHER_BROWSER": "Open the sign-in link in the browser where you pressed “Sign in”.",
     "EMAIL_CODE_INVALID": "Wrong code.",
     "EMAIL_NOT_CONFIGURED": "Set up SMTP first.",
-    "EMAIL_DOMAIN_NOT_ALLOWED": "This email provider isn't supported. Use another address.",
+    "EMAIL_DOMAIN_NOT_ALLOWED": "This email provider isn’t supported. Use another address.",
     "EMAIL_SEND_FAILED": "Failed to send the email. Check the SMTP settings.",
     "EMAIL_TAKEN": "This email is already in use.",
     "EMOJI_PACK_FETCH_FAILED": "Failed to load the emoji pack from Telegram.",
@@ -3669,21 +3637,21 @@
     "EMOJI_PACK_NOT_FOUND": "Emoji pack not found.",
     "EVENT_LOG_ENTRY_NOT_FOUND": "Event log entry not found.",
     "FLUENT_SYNTAX_INVALID": "The text has a Fluent syntax error.",
-    "GATEWAY_CURRENCY_INVALID": "This gateway doesn't support the selected currency.",
-    "GATEWAY_CURRENCY_UNSUPPORTED": "This gateway doesn't accept this currency.",
+    "GATEWAY_CURRENCY_INVALID": "This gateway doesn’t support the selected currency.",
+    "GATEWAY_CURRENCY_UNSUPPORTED": "This gateway doesn’t accept this currency.",
     "GATEWAY_EMAIL_REQUIRED": "This gateway requires an email.",
     "GATEWAY_FIELD_NOT_BOOLEAN": "A gateway field must be on or off.",
     "GATEWAY_FIELD_NOT_NUMBER": "A gateway field must be a number.",
     "GATEWAY_FIELD_UNKNOWN": "Unknown gateway setting.",
     "GATEWAY_NOT_AVAILABLE": "This payment method is unavailable.",
     "GATEWAY_NOT_CONFIGURED": "Set up the gateway before enabling it.",
-    "GATEWAY_NOT_IMPLEMENTED": "This gateway isn't supported.",
-    "GATEWAY_NOT_SUPPORTED": "This gateway isn't supported yet.",
-    "GATEWAY_NOT_TESTABLE": "This gateway can't be tested from the dashboard.",
+    "GATEWAY_NOT_IMPLEMENTED": "This gateway isn’t supported.",
+    "GATEWAY_NOT_SUPPORTED": "This gateway isn’t supported yet.",
+    "GATEWAY_NOT_TESTABLE": "This gateway can’t be tested from the dashboard.",
     "GATEWAY_REORDER_INCOMPLETE": "The new order must include every gateway exactly once.",
     "HTTP_ERROR": "Request failed.",
     "IDENTITY_BLACKLISTED": "This sign-in method is blocked and can’t be linked.",
-    "IMAGE_CONTENT_MISMATCH": "The file doesn't match its image type.",
+    "IMAGE_CONTENT_MISMATCH": "The file doesn’t match its image type.",
     "IMAGE_NOT_SQUARE": "The image must be square.",
     "IMAGE_SIZE_OUT_OF_RANGE": "The image size is out of the allowed range.",
     "IMAGE_TOO_LARGE": "The image file is too large.",
@@ -3691,17 +3659,17 @@
     "IMAGE_UNSUPPORTED_TYPE": "Unsupported image type.",
     "INTERNAL_ERROR": "Something went wrong on the server.",
     "INVALID_CREDENTIALS": "Invalid login or password.",
-    "INVALID_INIT_DATA": "Couldn't verify Telegram data. Reopen the app.",
-    "IP_ALLOWLIST_LOCKOUT": "Your current IP isn't in the list — you would lock yourself out.",
+    "INVALID_INIT_DATA": "Failed to verify Telegram data. Reopen the app.",
+    "IP_ALLOWLIST_LOCKOUT": "Your current IP isn’t in the list — you would lock yourself out.",
     "IP_NOT_ALLOWED": "Access from this IP address is not allowed.",
     "LAST_SIGN_IN_METHOD": "This is your last sign-in method. Link another one before removing it.",
     "LINK_RESET_DISABLED": "Subscription link reset is disabled.",
     "LOCALE_ALREADY_ACTIVE": "This language is already enabled.",
-    "LOCALE_DEFAULT_NOT_REMOVABLE": "The default language can't be removed.",
+    "LOCALE_DEFAULT_NOT_REMOVABLE": "The default language can’t be removed.",
     "LEGAL_TEXT_REQUIRED": "The title and the text are required.",
     "LEGAL_TEXT_TOO_LONG": "The title and text together are too long for one message.",
     "LEGAL_REACCEPTANCE_NOT_ALLOWED": "Re-acceptance can’t be requested for the offer.",
-    "LOCALE_NOT_ENABLED": "This language isn't enabled.",
+    "LOCALE_NOT_ENABLED": "This language isn’t enabled.",
     "LOGIN_TAKEN": "This login is already taken.",
     "LOYALTY_TIERS_INVALID": "Tier thresholds and percents must both increase.",
     "MERGE_ACCOUNT_BLOCKED": "This account is blocked and can’t be merged.",
@@ -3718,37 +3686,37 @@
     "NOT_AUTHENTICATED": "Sign in to continue.",
     "NOT_FOUND": "Not found.",
     "OAUTH_ACCOUNT_LINKED_ELSEWHERE": "This account is already linked to another user.",
-    "OAUTH_ACCOUNT_NOT_LINKED": "This account isn't linked to any user.",
+    "OAUTH_ACCOUNT_NOT_LINKED": "This account isn’t linked to any user.",
     "OAUTH_CODE_EXCHANGE_FAILED": "Sign-in with the provider failed.",
     "OAUTH_PROVIDER_DISABLED": "This sign-in method is disabled.",
-    "OAUTH_PROVIDER_NOT_CONFIGURED": "This sign-in method isn't set up.",
+    "OAUTH_PROVIDER_NOT_CONFIGURED": "This sign-in method isn’t set up.",
     "OAUTH_PROVIDER_UNREACHABLE": "The sign-in provider is unreachable.",
     "OAUTH_PROVIDER_UNSUPPORTED": "Unsupported sign-in provider.",
     "OAUTH_STATE_INVALID": "The sign-in session expired — try again.",
     "OWNER_ALREADY_EXISTS": "The owner account already exists.",
     "PANEL_SYNC_RUNNING": "A sync with the panel is already running.",
     "PASSKEYS_DISABLED": "Passkeys are disabled.",
-    "PASSKEYS_NOT_CONFIGURED": "Passkeys aren't set up.",
+    "PASSKEYS_NOT_CONFIGURED": "Passkeys aren’t set up.",
     "PASSKEY_CHALLENGE_EXPIRED": "The passkey request expired — try again.",
-    "PASSKEY_INVALID": "The passkey couldn't be verified.",
+    "PASSKEY_INVALID": "Failed to verify the passkey.",
     "PASSKEY_NOT_FOUND": "Passkey not found.",
     "PASSKEY_NOT_RECOGNIZED": "Passkey not recognized.",
-    "PASSKEY_REGISTRATION_FAILED": "The passkey couldn't be registered.",
+    "PASSKEY_REGISTRATION_FAILED": "Failed to register the passkey.",
     "PASSWORD_LOGIN_DISABLED": "Password sign-in is disabled.",
     "PAYLOAD_TOO_LARGE": "The request is too large.",
     "PAYMENT_GATEWAY_ERROR": "The payment gateway returned an error.",
     "PAYMENT_ORDER_NOT_FOUND": "Order not found.",
     "PAYMENT_ORDER_NOT_FULFILLABLE": "This transaction can’t be fulfilled.",
     "PAYMENTS_DISABLED": "Payments are temporarily unavailable.",
-    "PERMISSION_DENIED": "You don't have permission for this.",
-    "PERMISSION_NOT_GRANTABLE": "Some of these permissions can't be granted.",
+    "PERMISSION_DENIED": "You don’t have permission for this.",
+    "PERMISSION_NOT_GRANTABLE": "Some of these permissions can’t be granted.",
     "PLAN_DISCOUNT_WINDOW_INVALID": "The discount must start before it ends.",
     "PLAN_DURATION_DUPLICATE": "This duration is already in the plan.",
     "PLAN_DURATION_NOT_FOUND": "The plan has no such duration.",
     "PLAN_DURATION_PRICE_REQUIRED": "Only a trial plan can have a free duration.",
     "PLAN_IN_USE": "The plan is still in use.",
     "PLAN_NAME_TAKEN": "A plan with this name already exists.",
-    "PLAN_NOT_AVAILABLE": "This plan isn't available for purchase.",
+    "PLAN_NOT_AVAILABLE": "This plan isn’t available for purchase.",
     "PLAN_NOT_FOUND": "Plan not found.",
     "PLAN_NO_DURATIONS": "An active plan needs at least one duration.",
     "PLAN_NO_SQUADS": "A plan needs at least one squad to be active.",
@@ -3756,27 +3724,27 @@
     "PLAN_REORDER_INCOMPLETE": "The new order must include every plan exactly once.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",
     "PLAN_USED_BY_PROMOCODE": "The plan is still used by a promocode.",
-    "POINTS_BELOW_ZERO": "Points can't go below zero.",
-    "POINTS_LIMIT_EXCEEDED": "Points can't exceed the balance limit.",
+    "POINTS_BELOW_ZERO": "Points can’t go below zero.",
+    "POINTS_LIMIT_EXCEEDED": "Points can’t exceed the balance limit.",
     "PRICING_PREVIEW_AMBIGUOUS": "Choose exactly one change to preview.",
-    "PROMOCODE_ALREADY_ACTIVATED": "You've already activated this promocode.",
+    "PROMOCODE_ALREADY_ACTIVATED": "You’ve already activated this promocode.",
     "PROMOCODE_CODE_TAKEN": "A promocode with this code already exists.",
     "PROMOCODE_DISCOUNT_NOT_BETTER": "You already have a bigger discount than this promocode gives.",
     "PROMOCODE_EXISTING_USERS_ONLY": "This promocode is for existing users only.",
     "PROMOCODE_EXPIRED": "The promocode has expired.",
     "PROMOCODE_LIMIT_REACHED": "The promocode activation limit is reached.",
     "PROMOCODE_NEW_USERS_ONLY": "This promocode is for new users only.",
-    "PROMOCODE_NOT_AVAILABLE": "This promocode isn't available to you.",
+    "PROMOCODE_NOT_AVAILABLE": "This promocode isn’t available to you.",
     "PROMOCODE_NOT_FOUND": "Promocode not found.",
-    "PROMOCODE_PLAN_NOT_ALLOWED": "This promocode can't be used with this plan.",
+    "PROMOCODE_PLAN_NOT_ALLOWED": "This promocode can’t be used with this plan.",
     "PROMOCODE_PLANS_NOT_APPLICABLE": "Plans can only limit days, traffic and device promocodes.",
     "PROMOCODE_REWARD_ADDON_REQUIRED": "Choose an add-on for this reward.",
-    "PROMOCODE_REWARD_ADDON_TYPE_MISMATCH": "The add-on doesn't match the reward type.",
+    "PROMOCODE_REWARD_ADDON_TYPE_MISMATCH": "The add-on doesn’t match the reward type.",
     "PROMOCODE_REWARD_INVALID": "Invalid reward value.",
     "PROMOCODE_REWARD_PLAN_REQUIRED": "Choose a plan and a duration for this reward.",
     "PROMOTE_LOGIN_REQUIRED": "Set a login for this user to make them an admin.",
     "PROMOTE_TARGET_CHANGED": "The user changed while being made an admin. Try again.",
-    "PROXY_DASHBOARD_FORBIDDEN": "The dashboard isn't available through the cabinet's address",
+    "PROXY_DASHBOARD_FORBIDDEN": "The dashboard isn’t available through the cabinet’s address.",
     "PURCHASE_DISCOUNT_USED": "The discount was already used — try again.",
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",
@@ -3786,8 +3754,8 @@
     "PUSH_SUBSCRIPTION_NOT_FOUND": "Device not found.",
     "RATE_LIMITED": "Too many requests — try again later.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "This reward was already granted.",
-    "REFERRAL_REWARD_NEGATIVE": "A reward can't be negative.",
-    "REFERRAL_REWARD_PERCENT_TOO_HIGH": "A percent reward can't exceed 100.",
+    "REFERRAL_REWARD_NEGATIVE": "A reward can’t be negative.",
+    "REFERRAL_REWARD_PERCENT_TOO_HIGH": "A percent reward can’t exceed 100.",
     "REFERRAL_REWARD_TOO_HIGH": "The reward is too large.",
     "REFERRAL_REWARD_TOO_LOW": "The reward must be at least 1.",
     "REFERRER_ALREADY_SET": "The user already has a referrer.",
@@ -3798,7 +3766,7 @@
     "REMNAWAVE_UNAVAILABLE": "The Remnawave panel is temporarily unavailable.",
     "RENEW_PLAN_MISMATCH": "Renewing to a different plan is a plan change.",
     "REQUEST_INVALID": "Some fields are filled in incorrectly.",
-    "SESSION_AUDIENCE_MISMATCH": "This session can't be used here. Sign in again.",
+    "SESSION_AUDIENCE_MISMATCH": "This session can’t be used here. Sign in again.",
     "SESSION_NOT_FOUND": "Session not found.",
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "The limit must be positive, or empty for unlimited.",
     "SUBSCRIPTION_DELETED": "The subscription has been deleted.",
@@ -3806,10 +3774,10 @@
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
     "SUBSCRIPTION_PANEL_USER_MISSING": "The panel has no user for this subscription.",
-    "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can't be rolled back.",
-    "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn't allowed.",
+    "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can’t be rolled back.",
+    "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn’t allowed.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",
-    "TARGET_SUBSCRIPTION_FORBIDDEN": "A new purchase can't target an existing subscription.",
+    "TARGET_SUBSCRIPTION_FORBIDDEN": "A new purchase can’t target an existing subscription.",
     "TARGET_SUBSCRIPTION_NOT_ACTIVE": "Choose an active subscription.",
     "TARGET_SUBSCRIPTION_NOT_OWNED": "This subscription belongs to another user.",
     "TARGET_SUBSCRIPTION_REQUIRED": "Choose a subscription.",
@@ -3817,27 +3785,27 @@
     "TELEGRAM_ID_TAKEN": "This Telegram account is already registered.",
     "TEST_PAYMENT_NOT_FOUND": "Test payment not found.",
     "TOKEN_INVALID": "Your session expired — sign in again.",
-    "TRANSACTION_NOT_REFUNDABLE": "This transaction can't be refunded.",
+    "TRANSACTION_NOT_REFUNDABLE": "This transaction can’t be refunded.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",
-    "TRANSLATION_HAS_NEWLINES": "The text can't contain line breaks.",
-    "TRANSLATION_HAS_PLACEABLES": "Fluent placeables aren't supported here.",
+    "TRANSLATION_HAS_NEWLINES": "The text can’t contain line breaks.",
+    "TRANSLATION_HAS_PLACEABLES": "Fluent placeables aren’t supported here.",
     "TRANSLATION_HTML_INVALID": "The text has invalid formatting.",
     "TRANSLATION_NOT_FOUND": "Translation not found.",
-    "TRIAL_NOT_AVAILABLE": "The trial isn't available.",
+    "TRIAL_NOT_AVAILABLE": "The trial isn’t available.",
     "UNSUBSCRIBE_TOKEN_INVALID": "The unsubscribe link is invalid.",
     "URL_HOST_NOT_PUBLIC": "The URL must point to a public address.",
-    "URL_HOST_UNRESOLVABLE": "The URL host can't be resolved.",
+    "URL_HOST_UNRESOLVABLE": "The URL host can’t be resolved.",
     "URL_NOT_HTTPS": "Enter an https:// URL.",
     "USER_ACCOUNT_REQUIRED": "Only user accounts can do this.",
     "USER_ALREADY_ATTRIBUTED": "The user is already attributed to an ad link.",
     "USER_ALREADY_PRIVILEGED": "The user is already staff.",
     "USER_BLOCKED": "Your account is blocked.",
-    "USER_NOT_DELETABLE": "This user can't be deleted.",
+    "USER_NOT_DELETABLE": "This user can’t be deleted.",
     "USER_NOT_FOUND": "User not found.",
     "WEBHOOK_MALFORMED": "Malformed webhook.",
-    "WEBHOOK_NOT_CONFIGURED": "The webhook secret isn't configured.",
+    "WEBHOOK_NOT_CONFIGURED": "The webhook secret isn’t configured.",
     "WEBHOOK_SIGNATURE_INVALID": "Invalid webhook signature.",
-    "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn't trusted.",
+    "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn’t trusted.",
     "WEBHOOK_STALE": "The webhook is outdated.",
     "WITHDRAWAL_AMOUNT_INVALID": "The amount must be positive.",
     "WITHDRAWAL_EXCEEDS_POINTS": "Not enough points.",
@@ -3846,22 +3814,22 @@
   "loyalty": {
     "settings": {
       "title": "Loyalty program",
-      "description": "An automatic discount that grows with what a customer has paid",
-      "enabledLabel": "Program enabled",
-      "enabledHint": "Turned off, every customer's loyalty discount drops to zero on the next recalculation.",
-      "windowLabel": "Counting window",
-      "windowHint": "Only payments within the last N months count. Leave empty to count all time.",
+      "description": "A discount that grows with the customer’s total purchases",
+      "enabledHint": "A customer’s discount is recalculated after their purchase, renewal, plan change or refund. Everyone’s is recalculated after the settings are saved or reset, and daily at 03:00 UTC.\nTurned off, every customer’s loyalty discount drops to zero on the next recalculation.",
+      "windowLabel": "Only purchases within the chosen period count",
       "windowUnit_one": "month",
       "windowUnit_other": "months",
       "windowAllTime": "All time",
-      "tiersTitle": "Tiers",
-      "tiersDescription": "The discount of the highest tier whose threshold the customer has paid reaches applies to every purchase.",
-      "tierFrom": "from",
+      "thresholdColumn": "Total purchases",
+      "percentColumn": "Discount",
       "addTier": "Add tier",
-      "tiersEmpty": "No levels yet — the scale shows an example.",
+      "tiersEmpty": "No levels yet — an example is shown above.",
       "saved": "Loyalty settings saved.",
       "error": "Failed to save the loyalty settings.",
-      "loadError": "Failed to load the loyalty settings."
+      "resetConfirmTitle": "Reset loyalty settings?",
+      "resetConfirmText": "The program will be switched off, and the levels and counting window will return to their defaults. Customers’ loyalty discounts will drop to zero on recalculation.",
+      "resetSuccess": "Settings reset.",
+      "resetError": "Failed to reset settings."
     }
   },
   "broadcasts": {
@@ -3884,7 +3852,7 @@
     },
     "category": {
       "SERVICE": "Service",
-      "MARKETING": "Marketing"
+      "MARKETING": "Promo"
     },
     "media": {
       "PHOTO": "photo",
@@ -3899,8 +3867,8 @@
     "audience": {
       "all": "All customers",
       "plans": "Plans: {{names}}",
-      "expiresWithin": "Expires in ≤ {{days}} d.",
-      "expiredWithin": "Expired ≤ {{days}} d. ago",
+      "expiresWithin": "Expires in ≤ {{days}}d",
+      "expiredWithin": "Expired ≤ {{days}}d ago",
       "paid": "paid",
       "notPaid": "never paid",
       "locales": "Languages: {{locales}}",
@@ -3918,11 +3886,10 @@
       "adLinks_one": "{{count}} ad link",
       "adLinks_other": "{{count}} ad links"
     },
-    "description": "Messages to customers in the bot and the channel",
+    "description": "Messages to customers in Telegram, the channel and by email",
     "create": "New broadcast",
     "promoBadge": "Promo",
     "search": "Search by text",
-    "loadError": "Failed to load broadcasts.",
     "empty": "No broadcasts yet.",
     "noMatches": "Nothing found.",
     "kpi": {
@@ -3963,7 +3930,6 @@
       "edited": "Edited {{date}}"
     },
     "editor": {
-      "loadError": "Failed to load the broadcast.",
       "breadcrumb": "Broadcasts · #{{id}}",
       "newBreadcrumb": "Broadcasts · new",
       "category": "Category",
@@ -4065,8 +4031,8 @@
         "title": "Recipients",
         "others": "Others → get {{locale}}",
         "error": "Failed to count the recipients.",
-        "excluded": "Customers without Telegram and those who blocked the bot are not counted.",
-        "excludedMarketing": "Customers without Telegram, those who blocked the bot and those who opted out of promos are not counted."
+        "excluded": "Customers who blocked the bot won’t get the Telegram message.",
+        "excludedMarketing": "Customers who blocked the bot won’t get the Telegram message; those who opted out of promos aren’t counted."
       },
       "footer": {
         "unsaved": "Unsaved changes",
@@ -4107,11 +4073,11 @@
         "hint": {
           "TELEGRAM": "Sent by the bot to customers with Telegram.",
           "EMAIL": "Sent as an email to customers with a confirmed address.",
-          "ALL": "Customers with Telegram get a message, customers with an email get a letter."
+          "ALL": "Customers with Telegram get a message, customers with an email get an email."
         },
         "fallback": {
           "title": "Email customers without Telegram",
-          "hint": "Those who can’t be reached by the bot get a letter instead."
+          "hint": "Those who can’t be reached by the bot get an email instead."
         }
       },
       "email": {
@@ -4133,8 +4099,6 @@
       }
     },
     "details": {
-      "loadError": "Failed to load the broadcast.",
-      "recipientsError": "Failed to load recipients.",
       "noRecipients": "No recipients here.",
       "breadcrumb": "Broadcasts · #{{id}} · {{category}}",
       "of": "of {{total}}",
@@ -4181,7 +4145,7 @@
       "stopped": "Broadcast was stopped",
       "reasons": {
         "noTelegram": "No Telegram account",
-        "optedOut": "Opted out of promotions",
+        "optedOut": "Opted out of promos",
         "blocked": "Blocked in the shop",
         "recallFailed": "Recall failed: {{reason}}"
       },

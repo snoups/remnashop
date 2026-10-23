@@ -138,7 +138,7 @@ function BroadcastDetails({ id }: { id: number }) {
   );
 
   if (loaded.kind === "loading") return <Spinner size="page" />;
-  if (loaded.kind === "error" || !broadcast) return <ErrorState text={t("broadcasts.details.loadError")} size="page" />;
+  if (loaded.kind === "error" || !broadcast) return <ErrorState text={t("common.loadError")} size="page" />;
   const b = broadcast;
 
   const now = Date.now();

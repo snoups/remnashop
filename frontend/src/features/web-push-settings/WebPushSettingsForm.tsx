@@ -71,7 +71,7 @@ export function WebPushSettingsForm() {
 
       <div className="mt-4 flex flex-col gap-3">
         {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("settings.webPush.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && (
           <>
             {state.data.vapid_public_key && (

@@ -238,7 +238,7 @@ async def test_delete_passkey_removes_it(
     use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
     await use_case(actor, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
 
-    assert await passkey_repository.get_by_id_and_user(created.id, actor.id) is None
+    assert await passkey_repository.find_by_id_and_user(created.id, actor.id) is None
 
 
 async def test_delete_passkey_rejects_other_users_passkey(

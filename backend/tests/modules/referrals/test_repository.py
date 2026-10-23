@@ -46,7 +46,7 @@ async def test_get_by_referred_id_returns_none_when_unreferred(
     referral_repository: ReferralRepository, user_repository: UserRepository
 ) -> None:
     referred_id = await _create_user(user_repository, 2001)
-    assert await referral_repository.get_by_referred_id(referred_id) is None
+    assert await referral_repository.find_by_referred_id(referred_id) is None
     assert await referral_repository.has_referrer(referred_id) is False
 
 
@@ -60,7 +60,7 @@ async def test_create_referral_then_get_by_referred_id(
         referrer_id=referrer_id, referred_id=referred_id, level=1
     )
 
-    found = await referral_repository.get_by_referred_id(referred_id)
+    found = await referral_repository.find_by_referred_id(referred_id)
     assert found is not None
     assert found.id == created.id
     assert found.referrer_id == referrer_id

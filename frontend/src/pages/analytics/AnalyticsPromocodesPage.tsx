@@ -40,7 +40,7 @@ export function AnalyticsPromocodesPage() {
         }
       />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>
   );

@@ -21,7 +21,7 @@ class LogoutUseCase:
         self, refresh_token: str, audience: SessionAudience = SessionAudience.DASHBOARD
     ) -> None:
         async with self._uow:
-            session = await self._session_repository.get_rotatable_by_hash(
+            session = await self._session_repository.find_rotatable_by_hash(
                 hash_refresh_token(refresh_token)
             )
         if session is not None and session.audience is audience:

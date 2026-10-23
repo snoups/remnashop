@@ -1,8 +1,7 @@
-from decimal import Decimal
-
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.ports import EventPublisher
@@ -52,12 +51,12 @@ class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
                 user_id=recipient.id,
                 plan_snapshot=PlanSnapshot.from_plan(
                     plan,
-                    price_paid=Decimal(0),
+                    price_paid=ZERO_AMOUNT,
                     currency=Currency.USD,
                     duration_days=data.duration_days,
                 ),
                 duration_days=data.duration_days,
-                price_paid=Decimal(0),
+                price_paid=ZERO_AMOUNT,
                 currency=Currency.USD,
                 purchase_type=PurchaseType.NEW,
                 enforce_subscription_cap=False,

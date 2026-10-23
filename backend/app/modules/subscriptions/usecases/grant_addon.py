@@ -95,7 +95,7 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
             return target
         # replaced by a plan change after the promocode was activated: the reward
         # goes to the row that owns the panel user now
-        live = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+        live = await self._subscription_repository.find_by_remnawave_user_id_for_update(
             target.remnawave_user_id
         )
         if live is None or live.status is SubscriptionStatus.DELETED:

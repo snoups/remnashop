@@ -571,7 +571,7 @@ async def test_reset_referral_code_issues_a_new_code_and_logs_it(
     updated = await use_case(OWNER, user.id)
 
     assert updated.referral_code and updated.referral_code != user.referral_code
-    assert await user_repository.get_by_referral_code(user.referral_code) is None
+    assert await user_repository.find_by_referral_code(user.referral_code) is None
     rows = (
         await session.scalars(
             select(EventOutboxEntry).where(

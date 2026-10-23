@@ -201,7 +201,7 @@ export function TranslationsEditorForm() {
 
   return (
     <Card variant="bare" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.07] p-4">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] p-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
           <Languages className="size-4" />
         </div>
@@ -272,7 +272,7 @@ export function TranslationsEditorForm() {
                         className="relative z-10 size-3 shrink-0 text-warning"
                       />
                     )}
-                    <span className="relative z-10 ml-auto text-[10.5px] tabular-nums opacity-70">
+                    <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
                       {keys.length}
                     </span>
                   </motion.button>
@@ -321,7 +321,7 @@ export function TranslationsEditorForm() {
         <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4">
           {entriesState.kind === "loading" && <Spinner size="card" />}
           {entriesState.kind === "error" && (
-            <ErrorState text={t("dialogs.texts.loadError")} />
+            <ErrorState text={t("common.loadError")} />
           )}
           {activeLocales.length > 1 && (
             <div className="w-full max-w-sm">

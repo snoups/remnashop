@@ -205,6 +205,7 @@ class Permission(UpperStrEnum):
     REFERRALS_CODE_RESET = auto()
     LOYALTY_SETTINGS_VIEW = auto()
     LOYALTY_SETTINGS_MANAGE = auto()
+    LOYALTY_SETTINGS_RESET = auto()
     BACKUPS_VIEW = auto()
     BACKUPS_SETTINGS_VIEW = auto()
     BACKUPS_SETTINGS_MANAGE = auto()
@@ -442,6 +443,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.REFERRALS_CODE_RESET: PermissionMeta(resource="referrals", kind="write"),
     Permission.LOYALTY_SETTINGS_VIEW: PermissionMeta(resource="loyalty", kind="read"),
     Permission.LOYALTY_SETTINGS_MANAGE: PermissionMeta(resource="loyalty", kind="write"),
+    Permission.LOYALTY_SETTINGS_RESET: PermissionMeta(resource="loyalty", kind="write"),
     Permission.BACKUPS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_SETTINGS_MANAGE: PermissionMeta(resource="backups", kind="write"),
@@ -740,6 +742,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.REFERRALS_CODE_RESET,
             Permission.LOYALTY_SETTINGS_VIEW,
             Permission.LOYALTY_SETTINGS_MANAGE,
+            Permission.LOYALTY_SETTINGS_RESET,
             Permission.AD_LINKS_VIEW,
             Permission.AD_LINKS_DETAIL_VIEW,
             Permission.AD_LINKS_STATS_VIEW,
@@ -784,7 +787,7 @@ def assert_grantable(
 class PermissionPolicy:
     @staticmethod
     def effective_permissions(actor: Actor) -> set[Permission]:
-        if actor.role == Role.SYSTEM:
+        if actor.is_system:
             return set(Permission)
 
         base = set(ROLE_PERMISSIONS.get(actor.role, frozenset()))

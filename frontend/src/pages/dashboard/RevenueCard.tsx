@@ -39,7 +39,7 @@ export function RevenueCard({ refreshKey }: { refreshKey: number }) {
         }
       />
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("dashboard.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {report && (
         <div className="flex flex-col gap-3 pt-4">
           <div className="flex flex-wrap items-center gap-2.5">

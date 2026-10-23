@@ -192,7 +192,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute whitespace-nowrap text-[10.5px] font-semibold tabular-nums text-foreground"
+                  className="absolute whitespace-nowrap text-[11px] font-semibold tabular-nums text-foreground"
                   style={{ top: lane * LANE_PX, left: `${pct(start)}%` }}
                 >
                   {formatMoney(order.final_price, order.currency, i18n.language, true)}
@@ -213,7 +213,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute whitespace-nowrap pl-1 text-[10.5px] text-error"
+                  className="absolute whitespace-nowrap pl-1 text-[11px] text-error"
                   style={{ top: barsBottom + 6, left: `${pct(start)}%` }}
                 >
                   {t("users.details.analytics.timeline.gap", { count: Math.round((end - start) / DAY_MS) })}
@@ -237,12 +237,12 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
             style={{ height: barsBottom - 12 + 8, left: `${pct(now)}%` }}
           />
         </div>
-        <div className="relative h-5 border-t border-white/[0.07]">
+        <div className="relative h-5 border-t border-white/[0.08]">
           {months.map((month, index) =>
             index % tickStep === 0 ? (
               <span
                 key={month}
-                className="absolute top-1 text-[10.5px] text-muted-foreground"
+                className="absolute top-1 text-[11px] text-muted-foreground"
                 style={{ left: `${pct(month)}%` }}
               >
                 {monthLabel(month)}

@@ -31,7 +31,7 @@ class ApiTokenRepository:
         await self.session.flush()
         return self._to_dto(row)
 
-    async def get_active_by_hash(self, token_hash: str) -> Optional[ApiTokenDto]:
+    async def find_active_by_hash(self, token_hash: str) -> Optional[ApiTokenDto]:
         now = datetime_now()
         stmt = select(ApiToken).where(
             ApiToken.token_hash == token_hash,

@@ -35,7 +35,7 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
         type="button"
         onClick={() => setIsOpen(true)}
         {...bounceTap(0.03)}
-        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">
           <ShieldPlus className="size-4" />
@@ -141,7 +141,7 @@ function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
           </Card>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
           <Button variant="outline" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>

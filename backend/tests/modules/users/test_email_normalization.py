@@ -20,7 +20,7 @@ async def test_create_and_lookup_ignore_case(
 ) -> None:
     async with uow:
         created = await user_repository.create(CreateUserDto(name="i", email="Ivan@Mail.ru"))
-        found = await user_repository.get_by_email(" IVAN@mail.ru")
+        found = await user_repository.find_by_email(" IVAN@mail.ru")
     assert created.email == "ivan@mail.ru"
     assert found is not None and found.id == created.id
 
@@ -69,7 +69,7 @@ async def test_email_kept_as_entered_and_alias_finds_user(
         created = await user_repository.create(
             CreateUserDto(name="i", email="Ivan.Petrov@Gmail.com")
         )
-        found = await user_repository.get_by_email("ivanpetrov+1@googlemail.com")
+        found = await user_repository.find_by_email("ivanpetrov+1@googlemail.com")
     assert created.email == "ivan.petrov@gmail.com"
     assert found is not None and found.id == created.id
     canonical = await session.scalar(select(User.email_canonical).where(User.id == created.id))

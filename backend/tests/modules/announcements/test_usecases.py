@@ -1,6 +1,6 @@
 import json
 from datetime import timedelta
-from typing import Any
+from typing import Any, Union
 
 import httpx
 import pytest
@@ -27,7 +27,7 @@ def _feed(*items: dict[str, Any]) -> bytes:
     return json.dumps({"items": [{**base, **i} for i in items]}).encode()
 
 
-def _serve(monkeypatch: pytest.MonkeyPatch, body: bytes | Exception) -> None:
+def _serve(monkeypatch: pytest.MonkeyPatch, body: Union[bytes, Exception]) -> None:
     async def fake_fetch(url: str = "") -> bytes:
         if isinstance(body, Exception):
             raise body
@@ -75,7 +75,7 @@ async def test_failed_sync_keeps_the_current_set(
     announcement_repository: AnnouncementRepository,
     uow: UnitOfWork,
     admin: UserDto,
-    failure: bytes | Exception,
+    failure: Union[bytes, Exception],
 ) -> None:
     _serve(monkeypatch, _feed({"id": "a"}))
     await _sync(announcement_repository, uow)

@@ -101,7 +101,7 @@ async def test_create_admin_endpoint_returns_password_once(
     body = response.json()
     assert body["admin"]["login"] == "httpadmin"
     assert len(body["password"]) == PASSWORD_MIN_LENGTH
-    created = await user_repository.get_by_login("httpadmin")
+    created = await user_repository.find_by_login("httpadmin")
     assert created is not None and created.password_change_required
 
 

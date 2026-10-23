@@ -1,4 +1,4 @@
-import { ChevronRight, Link2, Loader2, Plus } from "lucide-react";
+import { ChevronRight, Link2, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
@@ -219,13 +219,11 @@ export function AdvertisingPage() {
       </Card>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("advertising.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState text={t("advertising.empty")} size="page" />
@@ -269,15 +267,15 @@ export function AdvertisingPage() {
                       <Link2 className="size-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] font-medium text-foreground">{link.name}</span>
+                      <span className="block truncate text-[13px] font-medium text-foreground">{link.name}</span>
                       <span className="block truncate font-mono text-[12px] text-muted-foreground">{link.code}</span>
                     </span>
                     {canViewSummary && (
                       <>
-                        <span className="text-right text-[13.5px] font-semibold tabular-nums text-foreground">
+                        <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
                           {metrics?.attributions_count ?? none}
                         </span>
-                        <span className="text-right text-[13.5px] tabular-nums text-foreground">
+                        <span className="text-right text-[13px] tabular-nums text-foreground">
                           {metrics?.paid_count ?? none}
                         </span>
                         <span className="flex flex-col items-end gap-1">
@@ -298,7 +296,7 @@ export function AdvertisingPage() {
                     </span>
                     {canViewSummary && (
                       <span
-                        className={`text-right text-[13.5px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
+                        className={`text-right text-[13px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
                       >
                         {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
                       </span>

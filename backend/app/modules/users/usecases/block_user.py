@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BlacklistKind, Role
+from app.core.enums import BlacklistKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
@@ -41,7 +41,7 @@ class BlockUserUseCase(UseCase[BlockUserDto, UserDto]):
             )
             assert_manageable(actor, target)
 
-            if target.role == Role.ADMIN:
+            if target.is_admin:
                 # same teardown as DemoteAdminUseCase: otherwise unblocking would
                 # hand back a working admin login, passkeys and live sessions
                 await self._user_repository.demote_from_admin(data.user_id)

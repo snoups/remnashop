@@ -1,3 +1,5 @@
+from typing import Union
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -267,7 +269,7 @@ async def oauth_callback(
     guard: FailureLimit = Depends(
         failure_rate_limit(key="oauth_callback_fail", limit=20, window_seconds=TIME_1M)
     ),
-) -> OAuthSignInResponse | JSONResponse:
+) -> Union[OAuthSignInResponse, JSONResponse]:
     binding = request.cookies.get(OAUTH_BINDING_COOKIE)
     client_ip = resolve_client_ip(request)
     user_agent = request.headers.get("user-agent")

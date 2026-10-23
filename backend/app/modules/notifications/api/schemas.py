@@ -43,14 +43,14 @@ class PushPublicKeyResponse(BaseModel):
     public_key: Optional[str]
 
 
-class PushSubscriptionKeys(BaseModel):
+class PushSubscriptionKeysRequest(BaseModel):
     p256dh: str = Field(min_length=1, max_length=255)
     auth: str = Field(min_length=1, max_length=255)
 
 
 class SubscribePushRequest(BaseModel):
     endpoint: HttpUrl
-    keys: PushSubscriptionKeys
+    keys: PushSubscriptionKeysRequest
 
     @field_validator("endpoint")
     @classmethod

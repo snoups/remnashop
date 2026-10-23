@@ -41,7 +41,7 @@ async def _resolve_api_token_actor(
     uow: UnitOfWork,
     client_ip: str,
 ) -> Optional[SyntheticActor]:
-    token = await api_token_repository.get_active_by_hash(hash_refresh_token(credential))
+    token = await api_token_repository.find_active_by_hash(hash_refresh_token(credential))
     if token is None:
         return None
     # refused before it counts as used
@@ -103,7 +103,7 @@ async def get_auth_context(
             status.HTTP_401_UNAUTHORIZED, "Invalid or expired token", code=ErrorCode.TOKEN_INVALID
         ) from None
 
-    session = await session_repository.get_active_by_id(session_id)
+    session = await session_repository.find_active_by_id(session_id)
     if session is None or session.user_id != user_id:
         logger.warning(f"Token for revoked/expired session_id={session_id} from IP '{client_ip}'")
         raise ApiError(

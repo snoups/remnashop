@@ -70,5 +70,5 @@ class CustomerAccountMerger:
                     ip_address=client_ip,
                 )
             )
-        logger.info(f"Customer '{fresh.id}' merged user '{other.id}' into themselves")
+        logger.info(f"{fresh.log} Merged {other.log} into themselves")
         return merged

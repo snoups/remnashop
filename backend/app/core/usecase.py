@@ -5,7 +5,6 @@ from loguru import logger
 from typing_extensions import TypeVar
 
 from app.core.actor import SYSTEM_ACTOR, Actor
-from app.core.enums import Role
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
 
@@ -59,7 +58,7 @@ class UseCase(ABC, Generic[InputDto, OutputDto, ActorT]):
         return await self._execute(actor, data)  # type: ignore[arg-type]
 
     def _check_permissions(self, actor: Actor) -> None:
-        if actor.role == Role.SYSTEM:
+        if actor.is_system:
             logger.debug(
                 f"Skipping permission check for system actor in '{self.__class__.__name__}'"
             )

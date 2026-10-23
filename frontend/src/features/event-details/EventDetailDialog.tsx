@@ -43,6 +43,7 @@ import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Card } from "@shared/ui/Card";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDateTime } from "@shared/lib/relative-time";
+import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 interface EventDetailDialogProps {
   entry: EventLogEntry;
@@ -50,9 +51,6 @@ interface EventDetailDialogProps {
 }
 
 type EventDetailTab = "details" | "payload";
-
-const sectionTitleClassName =
-  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
 
 interface ParticipantSectionProps {
   title: string;
@@ -108,8 +106,8 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
         </InfoRow>
       )}
       {(telegramId || user?.username) && (
-        <div className="m-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
-          <h4 className={sectionTitleClassName}>
+        <div className="m-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+          <h4 className={SECTION_TITLE_CLASS}>
             <Send className="size-3.5" />
             {t("eventLog.detail.telegram")}
           </h4>
@@ -225,7 +223,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
             {tab === "payload" && (
               <Card variant="list">
                 <div className="flex items-center justify-between py-1 pl-2.5 pr-1">
-                  <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+                  <h3 className={SECTION_TITLE_CLASS}>
                     <Braces className="size-3.5" />
                     {t("eventLog.detail.json")}
                   </h3>
@@ -237,7 +235,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                 </div>
                 <div className="relative m-1">
                   <pre
-                    className={`overflow-x-auto rounded-xl bg-input/60 p-3 font-mono text-[11.5px] text-foreground/80 transition-opacity ${
+                    className={`overflow-x-auto rounded-xl bg-input/60 p-3 font-mono text-[12px] text-foreground/80 transition-opacity ${
                       isCopied ? "opacity-20" : ""
                     }`}
                   >

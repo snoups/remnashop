@@ -339,7 +339,7 @@ async def test_delete_promocode(
 
     await delete_use_case(OWNER, created.id)
 
-    assert await promocode_repository.get_by_code("DELME") is None
+    assert await promocode_repository.find_by_code("DELME") is None
 
 
 async def test_list_promocodes_requires_view_permission(
@@ -361,7 +361,7 @@ async def test_generate_promocode_code_returns_unique_code(
     code = await use_case(OWNER)
 
     assert len(code) == 10
-    assert await promocode_repository.get_by_code(code) is None
+    assert await promocode_repository.find_by_code(code) is None
 
 
 def _activate_use_case(
@@ -997,8 +997,8 @@ async def test_activate_traffic_reward_dispatches_the_addon_grant(
     assert len(grant_dispatch.messages) == 1
     assert grant_dispatch.messages[0]["subscription_id"] == subscription.id
     assert grant_dispatch.messages[0]["addon_id"] == traffic_addon.id
-    activation = await promocode_repository.get_activation_by_user(
-        (await promocode_repository.get_by_code("TRAFFICBOOST")).id, actor.id
+    activation = await promocode_repository.find_activation_by_user(
+        (await promocode_repository.find_by_code("TRAFFICBOOST")).id, actor.id
     )
     assert activation is not None
     assert grant_dispatch.messages[0]["idempotency_key"] == f"promocode-activation:{activation.id}"

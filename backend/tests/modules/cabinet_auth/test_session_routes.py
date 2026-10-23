@@ -136,7 +136,7 @@ async def test_cabinet_logout_keeps_a_dashboard_session(
 
     assert response.status_code == 204
     assert (
-        await session_repository.get_by_current_hash(hash_refresh_token(dashboard.refresh_token))
+        await session_repository.find_by_current_hash(hash_refresh_token(dashboard.refresh_token))
         is not None
     )
 
@@ -176,7 +176,7 @@ async def _enable_telegram(settings_repository: SettingsRepository, uow: UnitOfW
 
 
 async def _user_by_telegram_id(uow: UnitOfWork, telegram_id: int) -> UserDto:
-    user = await UserRepository(uow.session).get_by_telegram_id(telegram_id)
+    user = await UserRepository(uow.session).find_by_telegram_id(telegram_id)
     assert user is not None
     return user
 

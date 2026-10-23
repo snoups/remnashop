@@ -113,7 +113,7 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
                 read_uow,
                 OutboxEventPublisher(read_uow, RecordingDispatch()),
             ).system()
-            refetched = await read_user_repository.get_by_telegram_id(_TARGET_TELEGRAM_ID)
+            refetched = await read_user_repository.find_by_telegram_id(_TARGET_TELEGRAM_ID)
             assert refetched is not None and refetched.is_blocked is True
     finally:
         async with read_engine.begin() as connection:

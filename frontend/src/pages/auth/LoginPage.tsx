@@ -16,6 +16,7 @@ import { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
 import { Spinner } from "@shared/ui/Spinner";
+import { LabeledDivider } from "@shared/ui/LabeledDivider";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 
@@ -84,13 +85,7 @@ export function LoginPage() {
             {status && altCount > 0 && (
               <div className="flex w-full flex-col gap-4">
                 {status.is_password_login_enabled && (
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {t("auth.oauth.or")}
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
+                  <LabeledDivider>{t("auth.oauth.or")}</LabeledDivider>
                 )}
 
                 <div className={isGrid ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>

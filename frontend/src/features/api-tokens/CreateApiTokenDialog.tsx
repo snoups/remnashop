@@ -201,7 +201,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
           </Card>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
           <Button
             variant="outline"
             type="button"

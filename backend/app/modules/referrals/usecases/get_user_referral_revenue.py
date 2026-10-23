@@ -1,6 +1,5 @@
-from decimal import Decimal
-
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
@@ -37,5 +36,5 @@ class GetUserReferralRevenueUseCase(UseCase[int, ReferralRevenueDto]):
             )
             paid = await self._transaction_repository.sum_paid_anchor_amount_per_user(downline)
             rate_table = await self._pricing_repository.get_rate_table()
-        amount = sum(paid.values(), start=Decimal(0))
+        amount = sum(paid.values(), start=ZERO_AMOUNT)
         return ReferralRevenueDto(amount=amount, currency=rate_table.anchor, paying_count=len(paid))

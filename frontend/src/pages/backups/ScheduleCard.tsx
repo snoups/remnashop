@@ -51,7 +51,7 @@ function TimelineItem({
       </div>
       <div className="min-w-0">
         <div className={EYEBROW_CLASS}>{label}</div>
-        <div className="truncate text-[13.5px] font-semibold text-foreground">{value}</div>
+        <div className="truncate text-[13px] font-semibold text-foreground">{value}</div>
         {detail && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
       </div>
     </div>
@@ -179,7 +179,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
 
         {settingsState.kind === "loading" && <Spinner size="card" />}
         {settingsState.kind === "error" && (
-          <ErrorState text={t("backups.loadError")} />
+          <ErrorState text={t("common.loadError")} />
         )}
         {settingsState.kind === "ready" && (
           <form

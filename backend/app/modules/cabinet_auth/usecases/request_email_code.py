@@ -3,14 +3,13 @@ from redis.asyncio import Redis
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
-from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError
 from app.core.utils.email import normalize_email
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.email_codes import (
     EmailCodeStore,
     email_key,
     fail_budget_exhausted,
+    require_email_sign_in,
     send_limit_hit,
 )
 from app.modules.cabinet_auth.email_domains import is_allowed_domain
@@ -40,16 +39,11 @@ class RequestEmailCodeUseCase:
 
     async def execute(self, email: str, locale: Locale, codes: InviteCodesDto) -> None:
         async with self._uow:
-            cabinet = await self._settings_repository.get_cabinet_auth_settings()
-            email_settings = await self._settings_repository.get_email_settings()
+            cabinet = await require_email_sign_in(self._settings_repository)
             brand = await load_email_brand(self._settings_repository)
-        if not (cabinet.email_enabled and email_settings.is_configured):
-            raise AuthenticationError(
-                "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
-            )
 
         async with self._uow:
-            existing = await self._user_repository.get_by_email(email)
+            existing = await self._user_repository.find_by_email(email)
         if existing is None and not is_allowed_domain(email, cabinet):
             return
 

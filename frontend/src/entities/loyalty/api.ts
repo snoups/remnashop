@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPut } from "@shared/api/http";
+import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 
 export interface LoyaltyTier {
   threshold: string;
@@ -28,6 +28,10 @@ export function getLoyaltySettings(signal?: AbortSignal): Promise<LoyaltySetting
 
 export function saveLoyaltySettings(payload: SaveLoyaltySettingsRequest): Promise<LoyaltySettings> {
   return apiPut<LoyaltySettings, SaveLoyaltySettingsRequest>("/loyalty/settings", payload);
+}
+
+export function resetLoyaltySettings(): Promise<LoyaltySettings> {
+  return apiPost<LoyaltySettings, Record<string, never>>("/loyalty/settings/actions/reset", {});
 }
 
 export function getUserLoyalty(userId: number, signal?: AbortSignal): Promise<UserLoyalty> {

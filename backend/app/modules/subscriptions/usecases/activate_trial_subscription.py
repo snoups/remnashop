@@ -1,6 +1,6 @@
 from contextlib import suppress
-from decimal import Decimal
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
@@ -68,13 +68,13 @@ class ActivateTrialSubscriptionUseCase(UseCase[None, SubscriptionDto, UserDto]):
                     user_id=actor.id,
                     plan_snapshot=PlanSnapshot.from_plan(
                         plan,
-                        price_paid=Decimal(0),
+                        price_paid=ZERO_AMOUNT,
                         currency=Currency.USD,
                         duration_days=duration.days,
                         is_trial=True,
                     ),
                     duration_days=duration.days,
-                    price_paid=Decimal(0),
+                    price_paid=ZERO_AMOUNT,
                     currency=Currency.USD,
                     purchase_type=PurchaseType.NEW,
                 ),

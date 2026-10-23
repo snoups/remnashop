@@ -256,7 +256,7 @@ function PlanEditDialogBody({
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
-                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.05]"
+                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.06]"
                       }`}
                     >
                       <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
@@ -381,7 +381,7 @@ function PlanEditDialogBody({
           </Card>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.08] px-5 py-3.5">
           <Button
             variant="outline"
             type="button"
@@ -519,7 +519,7 @@ function ToggleRow({
   return (
     <div className="flex items-center gap-3 rounded-[14px] border border-border bg-white/[0.02] px-3 py-2.5">
       <span className="min-w-0 flex-1">
-        <span className="block text-[13.5px] font-semibold text-foreground">{label}</span>
+        <span className="block text-[13px] font-semibold text-foreground">{label}</span>
         <span className={hintClassName}>{hint}</span>
       </span>
       <Switch checked={checked} onChange={onChange} />

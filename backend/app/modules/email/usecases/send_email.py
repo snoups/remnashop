@@ -70,6 +70,6 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
     async def _mark_undeliverable(self, address: str) -> None:
         # same flag a refused broadcast sets: later mail skips the address until it's proven again
         async with self._uow:
-            user = await self._user_repository.get_by_email(address)
+            user = await self._user_repository.find_by_email(address)
             if user is not None and user.email == address.lower():
                 await self._user_repository.set_email_undeliverable(user.id, datetime_now())

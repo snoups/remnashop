@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
@@ -48,6 +49,6 @@ class GetRevenueChartUseCase(UseCase[GetOverviewChartDto, RevenueChartDto]):
                 report_currency=report_currency,
                 daily=[
                     DailyAmountDto(day=day, amount=amount)
-                    for day, amount in period.bucketize(daily_converted, Decimal(0))
+                    for day, amount in period.bucketize(daily_converted, ZERO_AMOUNT)
                 ],
             )

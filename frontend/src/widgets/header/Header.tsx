@@ -121,14 +121,14 @@ export function Header({ onLogout }: HeaderProps) {
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1"
           >
             <span
-              className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.05]"
+              className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
             />
             <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">
               {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
             <div className="relative z-10 hidden text-left leading-tight sm:block">
               <span className="block text-[13px] font-semibold text-foreground">{login ?? t("header.account")}</span>
-              {role && <span className="block text-[11.5px] text-muted-foreground">{t(`roles.${role}`)}</span>}
+              {role && <span className="block text-[12px] text-muted-foreground">{t(`roles.${role}`)}</span>}
             </div>
             <ChevronDown className={`relative z-10 size-3.5 text-muted-foreground transition-transform ${openPopover === "user" ? "rotate-180" : ""}`} />
           </motion.button>

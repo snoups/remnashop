@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Callable, Final, Optional
+from typing import Any, Callable, Final, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.dependencies.models import Dependant
@@ -75,7 +75,7 @@ class ApiError(HTTPException):
         self.code = code
 
 
-def error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
+def error_responses(*status_codes: int) -> dict[Union[int, str], dict[str, Any]]:
     return {
         status_code: {"model": ErrorResponse, "description": HTTPStatus(status_code).phrase}
         for status_code in status_codes
@@ -83,7 +83,7 @@ def error_responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
 
 
 # every route sits behind request validation and the global rate limiter
-GLOBAL_ERROR_RESPONSES: Final[dict[int | str, dict[str, Any]]] = {
+GLOBAL_ERROR_RESPONSES: Final[dict[Union[int, str], dict[str, Any]]] = {
     status.HTTP_422_UNPROCESSABLE_CONTENT: {
         "model": RequestInvalidResponse,
         "description": "Request validation failed",

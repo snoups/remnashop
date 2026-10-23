@@ -53,6 +53,17 @@ export function ButtonsSection() {
           {k("s.disabled")}
         </Button>
       </Specimen>
+      <Specimen name="icon · isLoading" usage={k("u.buttonLoading")}>
+        <Button variant="secondary" icon={RefreshCw}>
+          {k("s.sync")}
+        </Button>
+        <Button variant="secondary" icon={RefreshCw} isLoading>
+          {k("s.sync")}
+        </Button>
+        <Button variant="accent" isLoading>
+          {k("s.save")}
+        </Button>
+      </Specimen>
       <Specimen name="LoadMoreButton" usage={k("u.loadMore")} stage="stretch">
         <LoadMoreButton shown={20} total={134} onClick={() => undefined} />
       </Specimen>

@@ -36,7 +36,7 @@ async def test_create_then_get_by_provider_external_id(
     )
     assert created.external_id == "12345"
 
-    found = await oauth_identity_repository.get_by_provider_external_id(
+    found = await oauth_identity_repository.find_by_provider_external_id(
         OAuthProvider.GITHUB, "12345"
     )
     assert found is not None
@@ -47,7 +47,7 @@ async def test_create_then_get_by_provider_external_id(
 async def test_get_by_provider_external_id_returns_none_when_missing(
     oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
-    found = await oauth_identity_repository.get_by_provider_external_id(
+    found = await oauth_identity_repository.find_by_provider_external_id(
         OAuthProvider.GITHUB, "nope"
     )
     assert found is None

@@ -53,7 +53,7 @@ function OnlineView({
 function HourlyBody({ state }: { state: AsyncState<HourlyOnline> }) {
   const { t, i18n } = useTranslation();
   if (state.kind === "loading") return <Spinner size="card" />;
-  if (state.kind === "error") return <ErrorState text={t("dashboard.loadError")} />;
+  if (state.kind === "error") return <ErrorState text={t("common.loadError")} />;
 
   const hourLabel = (iso: string) =>
     new Date(iso)
@@ -84,7 +84,7 @@ function DailyBody({ days, refreshKey }: { days: 7 | 30; refreshKey: number }) {
   const { t, i18n } = useTranslation();
   const state = useChart(getOnlineChart, days, refreshKey);
   if (state.kind === "loading") return <Spinner size="card" />;
-  if (state.kind === "error") return <ErrorState text={t("dashboard.loadError")} />;
+  if (state.kind === "error") return <ErrorState text={t("common.loadError")} />;
 
   const series = fillDailySeries(state.data.daily_peak, state.data.days, (day) => ({ day, count: 0 }));
   return (

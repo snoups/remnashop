@@ -25,7 +25,7 @@ class RevokeSessionUseCase(UseCase[RevokeSessionDto, None, UserDto]):
 
     async def _execute(self, actor: UserDto, data: RevokeSessionDto) -> None:
         async with self._uow:
-            session = await self._session_repository.get_active_by_id(data.session_id)
+            session = await self._session_repository.find_active_by_id(data.session_id)
             if session is None or session.user_id != actor.id:
                 # someone else's session answers like a missing one
                 raise NotFoundError("Session not found", code=ErrorCode.SESSION_NOT_FOUND)

@@ -37,7 +37,9 @@ class UpdateLoyaltySettingsUseCase(UseCase[UpdateLoyaltySettingsDto, LoyaltySett
         validate_tiers(data.tiers, data.window_months)
         async with self._uow:
             saved = await self._loyalty_repository.save_settings(data)
-            await self._event_publisher.publish(LoyaltySettingsChangedEvent(actor=actor))
+            await self._event_publisher.publish(
+                LoyaltySettingsChangedEvent(actor=actor, action="update")
+            )
             await self._uow.after_commit(partial(self._recalc_dispatch.kiq, user_ids=None))
             pricing = await self._pricing_repository.get_settings()
         logger.info(f"{actor.log} Updated loyalty settings")

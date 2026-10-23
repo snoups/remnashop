@@ -1,4 +1,4 @@
-import { ChevronRight, Coins, CornerUpLeft, Gift, Layers, Loader2 } from "lucide-react";
+import { ChevronRight, Coins, CornerUpLeft, Gift, Layers } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,7 @@ import { DAY_MS, previousWindow } from "@shared/lib/period";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
+import { formatTime } from "@shared/lib/relative-time";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
@@ -33,7 +34,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
@@ -212,12 +213,10 @@ export function ReferralsListPage() {
       </Card>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={permissions.includes("REFERRALS_LIST") ? t("referrals.list.loadError") : t("referrals.list.noPermission")} size="page" />
+          <ErrorState text={permissions.includes("REFERRALS_LIST") ? t("common.loadError") : t("referrals.list.noPermission")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState text={t("referrals.list.empty")} size="page" />
@@ -265,7 +264,7 @@ export function ReferralsListPage() {
                             {initials(referred?.name)}
                           </span>
                           <span className="min-w-0">
-                            <span className="block truncate text-[13.5px] font-medium text-foreground">
+                            <span className="block truncate text-[13px] font-medium text-foreground">
                               {referred?.name || t("users.deleted.name")}
                             </span>
                             {referred && (
@@ -277,7 +276,7 @@ export function ReferralsListPage() {
                           <span className="flex min-w-0 items-center gap-2">
                             <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
                             <span
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[10.5px] font-semibold text-foreground"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-semibold text-foreground"
                             >
                               {initials(item.referrer?.name)}
                             </span>
@@ -298,17 +297,14 @@ export function ReferralsListPage() {
                             >
                               {rewards ?? "—"}
                             </span>
-                            <span className="block truncate text-[11.5px] text-muted-foreground">
+                            <span className="block truncate text-[12px] text-muted-foreground">
                               {item.reward_count
                                 ? t("referrals.list.rewardCount", { count: item.reward_count })
                                 : t("referrals.list.noRewards")}
                             </span>
                           </span>
                           <span className="text-[13px] tabular-nums text-foreground">
-                            {new Date(item.created_at).toLocaleTimeString(i18n.language, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {formatTime(item.created_at, i18n.language)}
                           </span>
                           {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
                         </motion.button>

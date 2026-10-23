@@ -1,4 +1,4 @@
-import { MailX } from "lucide-react";
+import { MailCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -54,7 +54,7 @@ function AllowedDomainsForm({ domains, canManage, onSaved }: Omit<AllowedDomains
 
   return (
     <>
-      <DialogHeader icon={MailX} title={t("settings.cabinetAuth.allowedDomains")} />
+      <DialogHeader icon={MailCheck} title={t("settings.cabinetAuth.allowedDomains")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 p-4">

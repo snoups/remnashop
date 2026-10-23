@@ -127,7 +127,7 @@ export function ButtonInspector({
           <span className="block truncate text-sm font-semibold text-foreground">
             {t("dialogs.inspector.buttonTitle")}
           </span>
-          <span className="block truncate font-mono text-[11.5px] text-muted-foreground">
+          <span className="block truncate font-mono text-[12px] text-muted-foreground">
             {button.text_key}
           </span>
         </div>
@@ -170,7 +170,7 @@ export function ButtonInspector({
             }
           />
           {!isTextSeeded && (
-            <p className="mt-1 text-[11.5px] text-muted-foreground">
+            <p className="mt-1 text-[12px] text-muted-foreground">
               {t("dialogs.inspector.buttonLabelPending")}
             </p>
           )}
@@ -226,7 +226,7 @@ export function ButtonInspector({
         </div>
 
         {button.link_type === "action" && (
-          <p className="mb-3 text-[11.5px] text-muted-foreground">
+          <p className="mb-3 text-[12px] text-muted-foreground">
             {t("dialogs.inspector.buttonActionHint", { key: button.action_key ?? "" })}
           </p>
         )}
@@ -269,7 +269,7 @@ export function ButtonInspector({
                 />
               </div>
             </div>
-            {urlError !== null && <p className="mb-1.5 text-[11.5px] text-error">{urlError}</p>}
+            {urlError !== null && <p className="mb-1.5 text-[12px] text-error">{urlError}</p>}
           </div>
         )}
 

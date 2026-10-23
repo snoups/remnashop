@@ -1,4 +1,4 @@
-import { Coins, Dices, Link2, Loader2 } from "lucide-react";
+import { Coins, Dices, Link2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -158,9 +158,9 @@ function AdLinkCreateDialogBody({
                     variant="secondary"
                     size="field"
                     onClick={() => void handleGenerate()}
-                    disabled={isGenerating}
+                    icon={Dices}
+                    isLoading={isGenerating}
                   >
-                    {isGenerating ? <Loader2 className="size-3.5 animate-spin" /> : <Dices className="size-3.5" />}
                     {t("advertising.create.generate")}
                   </Button>
                 )}
@@ -186,7 +186,7 @@ function AdLinkCreateDialogBody({
         </form>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
+      <div className="flex justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
         <Button variant="outline" onClick={close}>
           {t("common.cancel")}
         </Button>

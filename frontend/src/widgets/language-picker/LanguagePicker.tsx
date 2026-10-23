@@ -42,7 +42,7 @@ export function LanguagePicker() {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         style={{ willChange: "transform" }}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground"
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
       >
         <Languages className="size-4 shrink-0" />
         {currentLanguageLabel}

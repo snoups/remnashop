@@ -47,14 +47,12 @@ import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 interface TransactionDetailsDialogProps {
   order: TransactionItem;
   onClose: () => void;
 }
-
-const sectionTitleClassName =
-  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
 
 function DetailValue({ value }: { value: string }) {
   return <span className="max-w-60 truncate">{value}</span>;
@@ -228,8 +226,8 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
               <DetailValue value={user?.email ?? none} />
             </InfoRow>
             {telegramId !== undefined && (
-              <div className="m-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
-                <h4 className={sectionTitleClassName}>
+              <div className="m-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+                <h4 className={SECTION_TITLE_CLASS}>
                   <Send className="size-3.5" />
                   {t("transactions.details.sections.telegram")}
                 </h4>

@@ -1,10 +1,9 @@
 import math
-from decimal import Decimal
 
 from loguru import logger
 
 from app.core.actor import Actor
-from app.core.constants import TIME_1D
+from app.core.constants import TIME_1D, ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
@@ -70,12 +69,12 @@ class ChangeSubscriptionPlanUseCase(UseCase[ChangeSubscriptionPlanDto, Subscript
                 user_id=old.user_id,
                 plan_snapshot=PlanSnapshot.from_plan(
                     plan,
-                    price_paid=Decimal(0),
+                    price_paid=ZERO_AMOUNT,
                     currency=Currency.USD,
                     duration_days=duration_days,
                 ),
                 duration_days=duration_days,
-                price_paid=Decimal(0),
+                price_paid=ZERO_AMOUNT,
                 currency=Currency.USD,
                 purchase_type=PurchaseType.CHANGE,
                 target_subscription_id=old.id,

@@ -1,11 +1,11 @@
 from dataclasses import replace
-from decimal import Decimal
 from functools import partial
 from typing import Optional
 from uuid import uuid4
 
 from loguru import logger
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType, SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -75,7 +75,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             user_id=actor.id,
             plan_snapshot=target.plan_snapshot,
             duration_days=data.days,
-            price_paid=Decimal(0),
+            price_paid=ZERO_AMOUNT,
             currency=Currency.USD,
             purchase_type=PurchaseType.RENEW,
             target_subscription_id=target.id,
@@ -85,7 +85,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             subscription = await self._purchase_subscription_use_case(actor, renewal)
         except Exception:
             async with self._uow:
-                pinned = await self._idempotency.get_pending_renew_expire_at(key)
+                pinned = await self._idempotency.find_pending_renew_expire_at(key)
             if pinned is None:
                 # the panel was never written: give the days back
                 # (a crash before this refund loses them)

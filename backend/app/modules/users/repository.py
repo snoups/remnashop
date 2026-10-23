@@ -3,7 +3,7 @@ import string
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional, Union, cast
 
 from loguru import logger
 from sqlalchemy import (
@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.core.constants import DEFAULT_PAGE_SIZE, MAX_POINTS_BALANCE
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_POINTS_BALANCE, ZERO_AMOUNT
 from app.core.db.errors import constraint_name
 from app.core.db.filters import in_ids
 from app.core.db.models.oauth_identity import OAuthIdentity
@@ -74,7 +74,7 @@ _UNIQUE_VIOLATIONS: Final[dict[str, tuple[str, ErrorCode]]] = {
 }
 
 
-_SORT_COLUMNS: Final[dict[str, InstrumentedAttribute[Any] | ColumnElement[Any]]] = {
+_SORT_COLUMNS: Final[dict[str, Union[InstrumentedAttribute[Any], ColumnElement[Any]]]] = {
     "created_at": User.created_at,
     "points": User.points,
     "discount": User.personal_discount,
@@ -131,7 +131,7 @@ class UserRepository:
             permission_revokes=data.permission_revokes,
             ip_allowlist=data.ip_allowlist,
             referral_code=await self._generate_referral_code(),
-            points=Decimal(0),
+            points=ZERO_AMOUNT,
             bonus_days=0,
         )
 
@@ -149,7 +149,7 @@ class UserRepository:
             code = "".join(
                 secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH)
             )
-            if await self.get_by_referral_code(code) is None:
+            if await self.find_by_referral_code(code) is None:
                 return code
         raise RuntimeError("Could not generate a unique referral code")
 
@@ -196,12 +196,12 @@ class UserRepository:
         users.extend([self._to_dto(row) for row in rows])
         return users
 
-    async def get_by_telegram_id(self, telegram_id: int) -> Optional[UserDto]:
+    async def find_by_telegram_id(self, telegram_id: int) -> Optional[UserDto]:
         stmt = select(User).where(User.telegram_id == telegram_id)
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
 
-    async def get_by_email(self, email: str) -> Optional[UserDto]:
+    async def find_by_email(self, email: str) -> Optional[UserDto]:
         stmt = select(User).where(User.email_canonical == canonical_email(email))
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
@@ -216,17 +216,17 @@ class UserRepository:
         await self.session.refresh(db_user)
         return self._to_dto(db_user)
 
-    async def get_by_login(self, login: str) -> Optional[UserDto]:
+    async def find_by_login(self, login: str) -> Optional[UserDto]:
         stmt = select(User).where(User.login == login)
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
 
-    async def get_by_username(self, username: str) -> Optional[UserDto]:
+    async def find_by_username(self, username: str) -> Optional[UserDto]:
         stmt = select(User).where(User.username == username)
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
 
-    async def get_by_referral_code(self, code: str) -> Optional[UserDto]:
+    async def find_by_referral_code(self, code: str) -> Optional[UserDto]:
         stmt = select(User).where(User.referral_code == code)
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
@@ -294,14 +294,14 @@ class UserRepository:
             select(User.points).where(User.id == user_id).with_for_update()
         )
         if old is None:
-            return Decimal(0)
+            return ZERO_AMOUNT
         new = await self.session.scalar(
             update(User)
             .where(User.id == user_id)
             .values(points=func.greatest(User.points - amount, 0))
             .returning(User.points)
         )
-        return old - (new or Decimal(0))
+        return old - (new or ZERO_AMOUNT)
 
     async def spend_trial(self, user_id: int) -> bool:
         # Atomic claim: of two concurrent callers only one sees rowcount 1.
@@ -350,8 +350,8 @@ class UserRepository:
         # every user's when user_id is None, e.g. right before the promocode is
         # deleted: the FK would null its id and the discount would pass for admin-granted
         ids = list(promocode_ids)
-        personal: list[ColumnElement[bool]] = [User.personal_discount_promocode_id.in_(ids)]
-        purchase: list[ColumnElement[bool]] = [User.purchase_discount_promocode_id.in_(ids)]
+        personal: list[ColumnElement[bool]] = [in_ids(User.personal_discount_promocode_id, ids)]
+        purchase: list[ColumnElement[bool]] = [in_ids(User.purchase_discount_promocode_id, ids)]
         if user_id is not None:
             personal.append(User.id == user_id)
             purchase.append(User.id == user_id)
@@ -697,7 +697,7 @@ class UserRepository:
         db_user.purchase_discount = 0
         db_user.personal_discount_promocode_id = None
         db_user.purchase_discount_promocode_id = None
-        db_user.points = Decimal(0)
+        db_user.points = ZERO_AMOUNT
         db_user.bonus_days = 0
         db_user.permission_grants = None
         db_user.permission_revokes = None

@@ -5,6 +5,7 @@ from typing import Final, Optional
 from sqlalchemy import Integer, Numeric, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.filters import in_ids
 from app.core.db.models.subscription import Subscription
 from app.core.enums import Currency, SubscriptionStatus
@@ -165,7 +166,7 @@ class SubscriptionStatsRepository:
                 status=status,
                 expire_at=expire_at,
                 plan_name=name or "",
-                price_paid=price or Decimal(0),
+                price_paid=price or ZERO_AMOUNT,
                 currency=Currency(currency),
                 duration_days=duration,
             )

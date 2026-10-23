@@ -78,7 +78,13 @@ function BroadcastEditorLoader({ id }: { id: number | null }) {
   const [localesState] = useAsyncResource(listActiveLocales);
 
   if (broadcastState.kind === "loading" || localesState.kind === "loading") return <Spinner size="page" />;
-  if (broadcastState.kind === "error") return <ErrorState text={t("broadcasts.editor.loadError")} size="page" />;
+  if (broadcastState.kind === "error") {
+    return (
+      <Card>
+        <ErrorState text={t("common.loadError")} size="page" />
+      </Card>
+    );
+  }
   const broadcast = broadcastState.data;
   if (broadcast && !isEditable(broadcast)) return <Navigate to={`${LIST_PATH}/${broadcast.id}`} replace />;
 

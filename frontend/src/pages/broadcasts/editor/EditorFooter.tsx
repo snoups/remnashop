@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { formatTime } from "@shared/lib/relative-time";
 import { Button } from "@shared/ui/Button";
 import { TextInput } from "@shared/ui/TextInput";
 
@@ -43,7 +44,7 @@ export function EditorFooter({
     ? t("broadcasts.editor.footer.unsaved")
     : savedAt
       ? t("broadcasts.editor.footer.savedAt", {
-          time: new Date(savedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }),
+          time: formatTime(savedAt, i18n.language),
         })
       : "";
 

@@ -7,6 +7,7 @@ from loguru import logger
 from remnapy import RemnawaveSDK
 
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -205,7 +206,7 @@ class ChangePurchase:
         proration_denominator = data.base_price if data.base_price is not None else data.price_paid
         daily_rate_new = proration_denominator / Decimal(data.duration_days)
         if daily_rate_new <= 0:
-            return Decimal(0), 0
+            return ZERO_AMOUNT, 0
         return credit, int(credit / daily_rate_new)
 
     async def _convert(self, amount: Decimal, source: Currency, target: Currency) -> Decimal:

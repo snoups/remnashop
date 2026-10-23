@@ -33,7 +33,7 @@ export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
         <p className="truncate text-[13px] font-medium leading-tight text-foreground/90">
           {name || t("users.deleted.name")}
         </p>
-        <p className="truncate text-[11.5px] leading-tight text-muted-foreground">{subtitle}</p>
+        <p className="truncate text-[12px] leading-tight text-muted-foreground">{subtitle}</p>
       </div>
       {aside}
     </motion.button>

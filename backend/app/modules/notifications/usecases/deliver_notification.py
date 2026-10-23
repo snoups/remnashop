@@ -1,4 +1,4 @@
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 from loguru import logger
 
@@ -44,7 +44,7 @@ def _coalescing_notes(
 ) -> str:
     notes = ""
     if data.suppressed:
-        count: dict[str, str | int] = {"count": data.suppressed}
+        count: dict[str, Union[str, int]] = {"count": data.suppressed}
         notes += "\n" + renderer.render_message(user.language, "ntf-suppressed", count)
     if data.sources_merged:
         notes += "\n" + renderer.render_message(user.language, "ntf-sources-merged", {})
@@ -98,11 +98,11 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
                         PushMessage(title=title, body=body, url=PUSH_URL, tag=data.event_type),
                     )
                 except Exception:
-                    logger.exception(f"Push notification for user {user.id} failed")
+                    logger.exception(f"Push notification for {user.log} failed")
             if NotificationChannel.TELEGRAM in channels and token and user.telegram_id:
                 try:
                     await send_telegram_message(
                         token, proxy, user.telegram_id, f"{title}\n\n{body}"
                     )
                 except Exception:
-                    logger.exception(f"Telegram notification for user {user.id} failed")
+                    logger.exception(f"Telegram notification for {user.log} failed")

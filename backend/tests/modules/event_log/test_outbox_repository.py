@@ -54,7 +54,7 @@ async def test_get_unprocessed_by_id_returns_none_once_processed(session) -> Non
 
     await repo.mark_processed(entry.id)
 
-    assert await repo.get_unprocessed_by_id(entry.id) is None
+    assert await repo.find_unprocessed_by_id(entry.id) is None
 
 
 async def test_record_failure_increments_attempts_and_stores_error(session) -> None:
@@ -64,7 +64,7 @@ async def test_record_failure_increments_attempts_and_stores_error(session) -> N
     await session.flush()
 
     await repo.record_failure(entry.id, error="boom")
-    row = await repo.get_unprocessed_by_id(entry.id)
+    row = await repo.find_unprocessed_by_id(entry.id)
 
     assert row is not None
     assert row.attempts == 1
@@ -93,17 +93,17 @@ async def test_get_unprocessed_by_id_skips_a_row_locked_by_another_transaction(
 
         try:
             await session_a.begin()
-            locked = await repo_a.get_unprocessed_by_id(entry_id)
+            locked = await repo_a.find_unprocessed_by_id(entry_id)
             assert locked is not None  # conn_a now holds the row lock
 
             # conn_b must not block and must not see the row
-            skipped = await asyncio.wait_for(repo_b.get_unprocessed_by_id(entry_id), timeout=1.0)
+            skipped = await asyncio.wait_for(repo_b.find_unprocessed_by_id(entry_id), timeout=1.0)
             assert skipped is None
 
             await session_a.rollback()  # release the lock
 
             # now conn_b sees it
-            seen = await repo_b.get_unprocessed_by_id(entry_id)
+            seen = await repo_b.find_unprocessed_by_id(entry_id)
             assert seen is not None
         finally:
             await session_a.close()

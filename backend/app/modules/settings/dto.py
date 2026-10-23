@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import auto
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import Field, SecretStr
 
 from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
@@ -108,9 +108,8 @@ class SetBotProxyDto:
     proxy_url: str
 
 
-class UpdateBotCommandsResultDto(BaseModel):
-    model_config = ConfigDict(strict=False, extra="ignore")
-
+@dataclass(frozen=True, kw_only=True)
+class UpdateBotCommandsResultDto:
     commands: list[BotCommandDto]
     telegram_sync_failed: bool = False
 

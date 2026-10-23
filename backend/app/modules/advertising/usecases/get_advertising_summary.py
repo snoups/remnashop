@@ -1,13 +1,13 @@
 from collections import defaultdict
-from decimal import ROUND_HALF_UP, Decimal
-from typing import Final
+from decimal import Decimal
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AdLinkChannel
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.modules.advertising.dto import (
     AdLinkMetricsDto,
     AdvertisingSummaryDto,
@@ -16,8 +16,6 @@ from app.modules.advertising.dto import (
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.transactions import TransactionRepository
-
-_ZERO: Final[Decimal] = Decimal(0)
 
 
 class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, AdvertisingSummaryDto]):
@@ -66,7 +64,7 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
         for link in ad_links:
             user_ids = users_by_link[link.id]
             paid = [user_id for user_id in user_ids if user_id in revenue_by_user]
-            revenue = sum((revenue_by_user[user_id] for user_id in paid), start=_ZERO)
+            revenue = sum((revenue_by_user[user_id] for user_id in paid), start=ZERO_AMOUNT)
             cost = convert_for_report(link.cost, link.cost_currency, report_currency, rate_table)
             links.append(
                 AdLinkMetricsDto(
@@ -81,23 +79,19 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
 
         attributions_count = len(attributions)
         paid_count = sum(link.paid_count for link in links)
-        revenue = sum((link.revenue for link in links), start=_ZERO)
-        cost = sum((link.cost for link in links), start=_ZERO)
+        revenue = sum((link.revenue for link in links), start=ZERO_AMOUNT)
+        cost = sum((link.cost for link in links), start=ZERO_AMOUNT)
         return AdvertisingSummaryDto(
             report_currency=report_currency,
             attributions_count=attributions_count,
             attributions_by_channel=dict(by_channel),
             paid_count=paid_count,
             conversion_rate=(
-                Decimal(paid_count) / attributions_count if attributions_count > 0 else _ZERO
+                Decimal(paid_count) / attributions_count if attributions_count > 0 else ZERO_AMOUNT
             ),
             revenue=revenue,
             cost=cost,
-            cpa=(
-                (cost / paid_count).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
-                if paid_count > 0
-                else None
-            ),
+            cpa=round_cents(cost / paid_count) if paid_count > 0 else None,
             roi=(revenue - cost) / cost if cost > 0 else None,
             links=links,
         )

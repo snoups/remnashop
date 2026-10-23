@@ -99,7 +99,7 @@ function PlanChangeForm({ subscriptionId, keepLabel, onChanged, onCancel }: Plan
   };
 
   if (plans.kind === "loading") return <Spinner size="card" />;
-  if (plans.kind === "error") return <ErrorState text={t("plans.loadError")} />;
+  if (plans.kind === "error") return <ErrorState text={t("common.loadError")} />;
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)}>

@@ -43,6 +43,7 @@ import { InfoRow } from "@shared/ui/InfoRow";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
+import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 // Profile/sessions/events tabs shared by the user and admin details dialogs.
 
@@ -57,9 +58,6 @@ function languageName(code: string, uiLanguage: string): string {
     return code.toUpperCase();
   }
 }
-
-const sectionTitleClassName =
-  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
 
 /** onChanged makes points and discounts editable, permissions allowing */
 export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
@@ -170,8 +168,8 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           </InfoRow>
         )}
         {user.telegram_id !== null && (
-          <div className="m-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
-            <h4 className={sectionTitleClassName}>
+          <div className="m-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+            <h4 className={SECTION_TITLE_CLASS}>
               <Send className="size-3.5" />
               {t("admins.details.sections.telegram")}
             </h4>
@@ -225,7 +223,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
   return (
     <Card variant="list">
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("eventLog.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState text={t("admins.details.eventsEmpty")} />
       )}

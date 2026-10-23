@@ -58,7 +58,7 @@ class LoginUseCase:
                     "Password login is disabled", code=ErrorCode.PASSWORD_LOGIN_DISABLED
                 )
 
-            user = await self._user_repository.get_by_login(login)
+            user = await self._user_repository.find_by_login(login)
             password_pepper = self._config.crypt_key.get_secret_value()
 
             stored_hash = (

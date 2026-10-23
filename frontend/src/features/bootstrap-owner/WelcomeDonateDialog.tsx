@@ -9,6 +9,7 @@ import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
 import { DialogPortal } from "@shared/ui/DialogPortal";
 import { Button } from "@shared/ui/Button";
+import { LabeledDivider } from "@shared/ui/LabeledDivider";
 
 interface WelcomeDonateDialogProps {
   onContinue: () => void;
@@ -96,13 +97,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
           </motion.div>
 
           <motion.div className="flex w-full flex-col gap-3" {...riseIn(0.7)}>
-            <div className="flex items-center gap-2.5">
-              <div className="h-px flex-1 bg-border" />
-              <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {t("donate.title")}
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            <LabeledDivider>{t("donate.title")}</LabeledDivider>
 
             <div className="flex w-full gap-2">
               <motion.a href={BOOSTY_URL} target="_blank" rel="noreferrer" {...tapProps} className={donatePillClassName}>

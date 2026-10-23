@@ -730,7 +730,7 @@ async def test_registration_links_the_newcomer_at_level_one(
         attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
     )
 
-    edge = await referral_repository.get_by_referred_id(newcomer)
+    edge = await referral_repository.find_by_referred_id(newcomer)
     assert edge is not None
     assert edge.referrer_id == referrer
     assert edge.level == 1
@@ -748,8 +748,8 @@ async def test_registration_level_follows_the_referrers_chain_up_to_max_level(
             attach_on_registration, child, await _referral_code(user_repository, parent)
         )
 
-    assert (await referral_repository.get_by_referred_id(c)).level == 2
-    assert (await referral_repository.get_by_referred_id(d)).level == 2  # clamped
+    assert (await referral_repository.find_by_referred_id(c)).level == 2
+    assert (await referral_repository.find_by_referred_id(d)).level == 2  # clamped
 
 
 async def test_registration_rewards_the_newcomer_with_days(
@@ -808,7 +808,7 @@ async def test_registration_with_a_zero_reward_links_without_crediting(
         attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
     )
 
-    assert await referral_repository.get_by_referred_id(newcomer) is not None
+    assert await referral_repository.find_by_referred_id(newcomer) is not None
     user = await user_repository.find_by_id(newcomer)
     assert user.bonus_days == 0
     assert user.points == Decimal(0)
@@ -862,7 +862,7 @@ async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
 
     await _register(attach_on_registration, newcomer, code)
 
-    assert await referral_repository.get_by_referred_id(newcomer) is None
+    assert await referral_repository.find_by_referred_id(newcomer) is None
     assert (await user_repository.find_by_id(newcomer)).bonus_days == 0
 
 
@@ -1187,7 +1187,7 @@ async def test_a_blocked_referrers_link_neither_links_nor_rewards(
     code = await _referral_code(user_repository, referrer)
     await _register(attach_on_registration, newcomer, code)
 
-    assert await referral_repository.get_by_referred_id(newcomer) is None
+    assert await referral_repository.find_by_referred_id(newcomer) is None
     assert (await user_repository.find_by_id(newcomer)).bonus_days == 0
 
 
@@ -1206,7 +1206,7 @@ async def test_a_deleted_newcomer_is_not_linked(
 
     await _register(attach_on_registration, newcomer, code)
 
-    assert await referral_repository.get_by_referred_id(newcomer) is None
+    assert await referral_repository.find_by_referred_id(newcomer) is None
 
 
 async def test_a_blocked_referrer_earns_nothing_from_payments(
@@ -1255,7 +1255,7 @@ async def test_refunded_order_earns_no_referral_reward(
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4402)
     session = referral_repository.session
     await _paid_order(session, buyer, "order-refunded")
-    order = await TransactionRepository(session).get_by_idempotency_key("order-refunded")
+    order = await TransactionRepository(session).find_by_idempotency_key("order-refunded")
     assert order is not None
     await _set_status(session, order.id, TransactionStatus.REFUNDED)
 
@@ -1336,7 +1336,7 @@ async def test_assign_referral_rewards_skips_an_order_refunded_while_assigning(
     subscription_id = await _create_active_subscription(subscription_repository, buyer, 4061)
     session = referral_repository.session
     await _paid_order(session, buyer, "order-refunded-midway")
-    order = await TransactionRepository(session).get_by_idempotency_key("order-refunded-midway")
+    order = await TransactionRepository(session).find_by_idempotency_key("order-refunded-midway")
     real_walk = assign_rewards._walk_chain
 
     async def _walk_then_refund(*args: object) -> object:

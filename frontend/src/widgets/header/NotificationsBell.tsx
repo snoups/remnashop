@@ -249,7 +249,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
             <button
               type="button"
               onClick={clearActive}
-              className="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-accent-foreground transition-colors hover:bg-white/[0.07]"
+              className="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
             >
               <Trash2 className="size-3.5" />
               {t("header.clear")}
@@ -271,7 +271,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 type="button"
                 disabled={!canOpenLog}
                 onClick={() => openEntry({ entry })}
-                className={`${ROW_CLASS} enabled:hover:bg-white/[0.05] disabled:cursor-default`}
+                className={`${ROW_CLASS} enabled:hover:bg-white/[0.06] disabled:cursor-default`}
               >
                 <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
                   <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
@@ -280,7 +280,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                   <span className="block truncate text-[12.5px] font-medium text-foreground/90">
                     {t(`eventLog.events.${entry.event_type}` as ParseKeys)}
                   </span>
-                  <span className="block truncate text-[11.5px] text-muted-foreground">
+                  <span className="block truncate text-[12px] text-muted-foreground">
                     {describeEntry(entry, t)} · {formatRelative(entry.occurred_at, i18n.language)}
                   </span>
                 </span>
@@ -306,8 +306,8 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                     <span className="block truncate text-[12.5px] font-medium text-foreground/90">
                       {localized(a.title, i18n.language)}
                     </span>
-                    {text && <span className="line-clamp-2 text-[11.5px] text-muted-foreground">{text}</span>}
-                    <span className="block truncate text-[11.5px] text-muted-foreground">
+                    {text && <span className="line-clamp-2 text-[12px] text-muted-foreground">{text}</span>}
+                    <span className="block truncate text-[12px] text-muted-foreground">
                       {critical && `${t("announcements.critical")} · `}
                       {formatRelative(a.notify_at, i18n.language)}
                     </span>
@@ -327,7 +327,6 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 <button
                   key={a.id}
                   type="button"
-                  aria-label={hasSlides ? t("announcements.openStory") : undefined}
                   onClick={() => {
                     onClose();
                     if (hasSlides) openStory(a.id);
@@ -336,7 +335,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                       markSeen(a.id);
                     }
                   }}
-                  className={`${ROW_CLASS} hover:bg-white/[0.05]`}
+                  className={`${ROW_CLASS} hover:bg-white/[0.06]`}
                 >
                   {content}
                 </button>

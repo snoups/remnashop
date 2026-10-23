@@ -13,6 +13,7 @@ ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
 MEDIA_DIR: Final[Path] = BASE_DIR / "media"
 
 ONE_CENT: Final[Decimal] = Decimal("0.01")
+ZERO_AMOUNT: Final[Decimal] = Decimal(0)
 BACKUP_DIR: Final[Path] = MEDIA_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
 

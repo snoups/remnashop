@@ -114,7 +114,6 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
       <button
         type="button"
         onClick={() => goToStory(index)}
-        aria-label={t(index < storyIndex ? "announcements.prevStory" : "announcements.nextStory")}
         className="relative hidden aspect-[9/16] w-52 shrink-0 overflow-hidden rounded-2xl bg-surface/40 text-left opacity-40 transition-opacity hover:opacity-70 lg:block"
       >
         {neighbour.slides[0]?.image_url && (
@@ -132,9 +131,6 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
       <div
         ref={rootRef}
         tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
         onKeyDown={onKeyDown}
         className="fixed inset-0 z-50 flex items-center justify-center gap-10 bg-black/55 outline-none backdrop-blur-3xl"
       >
@@ -158,8 +154,8 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
           )}
           <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 to-transparent" />
 
-          <button type="button" aria-label={t("announcements.prevSlide")} onClick={prev} className="absolute inset-y-0 left-0 w-1/3" />
-          <button type="button" aria-label={t("announcements.nextSlide")} onClick={next} className="absolute inset-y-0 right-0 w-2/3" />
+          <button type="button" onClick={prev} className="absolute inset-y-0 left-0 w-1/3" />
+          <button type="button" onClick={next} className="absolute inset-y-0 right-0 w-2/3" />
 
           <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-3">
             <div className="flex gap-1">
@@ -176,7 +172,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
             </div>
             <div className="flex items-center gap-2">
               {isCritical && (
-                <span className="rounded-full bg-warning/20 px-2.5 py-0.5 text-[11.5px] font-semibold text-warning">
+                <span className="rounded-full bg-warning/20 px-2.5 py-0.5 text-[12px] font-semibold text-warning">
                   {t("announcements.critical")}
                 </span>
               )}
@@ -186,7 +182,6 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
                 tone="glass"
                 className="pointer-events-auto"
                 onClick={() => setPaused(!paused)}
-                aria-label={t(paused ? "announcements.play" : "announcements.pause")}
               >
                 {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
               </IconButton>
@@ -195,7 +190,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2.5 p-6">
             <span className="text-[22px] font-bold leading-tight text-foreground">{title}</span>
-            <span className="whitespace-pre-line text-[14.5px] leading-relaxed text-foreground/80">
+            <span className="whitespace-pre-line text-[14px] leading-relaxed text-foreground/80">
               {localized(slide.text, i18n.language)}
             </span>
             {slide.url && (
@@ -219,7 +214,6 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
           tone="glass"
           className="absolute right-4 top-4 z-10"
           onClick={onClose}
-          aria-label={t("announcements.close")}
         >
           <X className="size-5" />
         </IconButton>

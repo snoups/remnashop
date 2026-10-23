@@ -34,7 +34,7 @@ class RefreshSessionUseCase:
         async with self._uow:
             presented_hash = hash_refresh_token(refresh_token)
 
-            current_session = await self._session_repository.get_by_current_hash(presented_hash)
+            current_session = await self._session_repository.find_by_current_hash(presented_hash)
         if current_session is not None and current_session.audience is not audience:
             current_session = None
         if current_session is not None:
@@ -50,7 +50,7 @@ class RefreshSessionUseCase:
             )
 
         async with self._uow:
-            graced_session = await self._session_repository.get_by_previous_hash_in_grace(
+            graced_session = await self._session_repository.find_by_previous_hash_in_grace(
                 presented_hash
             )
         if graced_session is not None and graced_session.audience is not audience:
@@ -68,7 +68,7 @@ class RefreshSessionUseCase:
             )
 
         async with self._uow:
-            theft_session = await self._session_repository.get_by_expired_previous_hash(
+            theft_session = await self._session_repository.find_by_expired_previous_hash(
                 presented_hash
             )
         if theft_session is not None and theft_session.audience is not audience:

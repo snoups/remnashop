@@ -1,17 +1,15 @@
-from decimal import ROUND_HALF_UP, Decimal
-from typing import Final
+from decimal import Decimal
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.modules.advertising.dto import AdLinkStatsDto, GetAdLinkStatsDto
 from app.modules.advertising.repository import AdLinkRepository
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.transactions import TransactionRepository
-
-_ZERO: Final[Decimal] = Decimal(0)
 
 
 class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
@@ -63,16 +61,12 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
                 ad_link.cost, ad_link.cost_currency, report_currency, rate_table
             )
 
-            cpa = (
-                (cost / len(paid_user_ids)).quantize(ONE_CENT, rounding=ROUND_HALF_UP)
-                if paid_user_ids
-                else None
-            )
+            cpa = round_cents(cost / len(paid_user_ids)) if paid_user_ids else None
             roi = (revenue - cost) / cost if cost > 0 else None
             conversion_rate = (
                 Decimal(len(paid_user_ids)) / attributions_count
                 if attributions_count > 0
-                else _ZERO
+                else ZERO_AMOUNT
             )
 
             daily = await self._ad_link_repository.daily_attribution_counts(

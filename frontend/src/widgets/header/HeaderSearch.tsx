@@ -49,6 +49,23 @@ const matches = (haystack: string, tokens: string[]) => {
   return tokens.every((token) => lower.includes(token));
 };
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function highlight(text: string, tokens: string[]) {
+  if (tokens.length === 0) return text;
+  const pattern = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "gi");
+  // split with a capture group puts matches at odd indexes
+  return text.split(pattern).map((part, index) =>
+    index % 2 === 1 ? (
+      <span key={index} className="underline underline-offset-2">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 export function HeaderSearch() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -212,6 +229,8 @@ export function HeaderSearch() {
 
   useEffect(() => setActive(0), [entries]);
 
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
   const go = (entry: Entry) => {
     if (entry.open) entry.open();
     else if (entry.to) navigate(entry.to);
@@ -232,7 +251,7 @@ export function HeaderSearch() {
     <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
       <motion.label
         {...bounceTap(0.03)}
-        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.08] focus-within:border-primary"
+        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.07] focus-within:border-primary"
       >
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
@@ -298,8 +317,8 @@ export function HeaderSearch() {
               }`}
             >
               <BounceIcon icon={entry.icon} size={16} hoverSize={20} />
-              <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{entry.hint}</span>}
+              <span className="min-w-0 flex-1 truncate">{highlight(entry.label, tokens)}</span>
+              {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{highlight(entry.hint, tokens)}</span>}
               {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
             </motion.button>
           ))

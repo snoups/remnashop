@@ -91,7 +91,7 @@ class VerifyPasskeyAuthenticationUseCase:
         # credential_id is unguessable, unlike a login, so looking it up before
         # verifying the signature leaks nothing about who has an account
         async with self._uow:
-            stored = await self._passkey_repository.get_by_credential_id(credential_id)
+            stored = await self._passkey_repository.find_by_credential_id(credential_id)
         if stored is None:
             raise await self._fail(
                 "Passkey not recognized", ErrorCode.PASSKEY_NOT_RECOGNIZED, client_ip, credential_id

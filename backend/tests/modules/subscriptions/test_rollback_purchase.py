@@ -413,7 +413,7 @@ async def test_rollback_undoes_a_renewal_that_reached_only_the_panel(
     async def _pinned(key: str) -> Optional[datetime]:
         return pinned if key == "order-key" else None
 
-    monkeypatch.setattr(service._idempotency, "get_pending_renew_expire_at", _pinned)
+    monkeypatch.setattr(service._idempotency, "find_pending_renew_expire_at", _pinned)
     data = replace(_data(PurchaseType.RENEW, None, target=bought.id), idempotency_key="order-key")
 
     assert (await service.preview(data)).available

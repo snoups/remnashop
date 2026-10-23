@@ -40,7 +40,7 @@ class SyncSubscriptionStatusUseCase(UseCase[SyncSubscriptionStatusDto, Optional[
         self, actor: Actor, data: SyncSubscriptionStatusDto
     ) -> Optional[SubscriptionDto]:
         async with self._uow:
-            subscription = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+            subscription = await self._subscription_repository.find_by_remnawave_user_id_for_update(
                 data.remnawave_user_id
             )
             if subscription is None:

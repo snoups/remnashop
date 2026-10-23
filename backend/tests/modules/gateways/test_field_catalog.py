@@ -73,6 +73,11 @@ def test_validate_gateway_field_values_rejects_an_unknown_currency() -> None:
         validate_gateway_field_values(PaymentGatewayType.CRYPTOMUS, {"currency": "EUR"})
 
 
+def test_validate_gateway_field_values_rejects_stars_currency() -> None:
+    with pytest.raises(ValidationError):
+        validate_gateway_field_values(PaymentGatewayType.CRYPTOMUS, {"currency": "XTR"})
+
+
 def test_validate_gateway_field_values_ignores_an_absent_currency() -> None:
     validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"shop_id": "1"})  # does not raise
 
@@ -101,8 +106,13 @@ def test_yoomoney_access_token_is_optional() -> None:
     assert specs["access_token"].required is False
 
 
-def test_aurapay_and_lava_are_rub_only_and_have_no_currency_field() -> None:
-    for gateway_type in (PaymentGatewayType.AURAPAY, PaymentGatewayType.LAVA):
+def test_rub_only_gateways_have_no_currency_field() -> None:
+    for gateway_type in (
+        PaymentGatewayType.AURAPAY,
+        PaymentGatewayType.LAVA,
+        PaymentGatewayType.ANTILOPAY,
+        PaymentGatewayType.ROLLYPAY,
+    ):
         keys = {spec.key for spec in GATEWAY_FIELD_CATALOG[gateway_type]}
         assert "currency" not in keys
 

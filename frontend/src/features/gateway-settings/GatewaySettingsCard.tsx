@@ -28,6 +28,18 @@ import { GATEWAY_DOCS_URLS } from "./docs-links";
 import { GATEWAY_LOGOS } from "./logos";
 import { inputModeFor, sanitizeFieldValue } from "./field-input";
 
+const CURRENCY_HINT_GATEWAYS = new Set([
+  "CRYPTOMUS",
+  "HELEKET",
+  "CRYPTOPAY",
+  "WATA",
+  "VALUTIX",
+  "RIOPAY",
+  "SEVERPAY",
+  "CLOUDPAYMENTS",
+  "PAYPALYCH",
+]);
+
 const TEST_PAYMENT_POLL_MS = 3000;
 
 interface GatewaySettingsCardProps {
@@ -254,6 +266,11 @@ export function GatewaySettingsCard({
                     key={field.key}
                     label={t(`settings.gateways.fields.${field.key}` as ParseKeys)}
                     htmlFor={`gateway-${gateway.type}-${field.key}`}
+                    info={
+                      field.key === "currency" && CURRENCY_HINT_GATEWAYS.has(gateway.type)
+                        ? t(`settings.gateways.currencyHints.${gateway.type}` as ParseKeys)
+                        : undefined
+                    }
                     aside={mustFill ? <span className="text-error">*</span> : undefined}
                   >
                     <TextInput

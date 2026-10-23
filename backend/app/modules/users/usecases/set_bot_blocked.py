@@ -21,11 +21,11 @@ class SetBotBlockedUseCase(UseCase[SetBotBlockedDto, None]):
 
     async def _execute(self, actor: Actor, data: SetBotBlockedDto) -> None:
         async with self._uow:
-            user = await self._user_repository.get_by_telegram_id(data.telegram_id)
+            user = await self._user_repository.find_by_telegram_id(data.telegram_id)
             if user is None:
                 return
             if data.blocked:
                 await mark_bot_blocked(self._user_repository, self._event_publisher, user.id)
             else:
                 await self._user_repository.set_bot_blocked(user.id, False)
-        logger.info(f"User '{user.id}' bot blocked status set to {data.blocked}")
+        logger.info(f"{user.log} Bot blocked status set to {data.blocked}")

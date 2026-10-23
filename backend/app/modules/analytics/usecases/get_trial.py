@@ -1,15 +1,16 @@
 from collections import Counter
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from functools import partial
 from typing import Final, Optional
 
 from app.core.actor import Actor
-from app.core.constants import ONE_CENT
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
 from app.modules.analytics.aggregates import median
 from app.modules.analytics.cache import AnalyticsCache
@@ -27,7 +28,6 @@ from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import PaidTransactionDto, TransactionStatsRepository
 from app.modules.users import UserRepository, UserStatsRepository
 
-_ZERO: Final[Decimal] = Decimal(0)
 _DEFAULT_TRIAL_DAYS: Final[int] = 7
 _AFTER_KEYS: Final[tuple[str, ...]] = ("after_1_3", "after_4_7", "after_8_30", "after_later")
 _TIME_TO_PAY_KEYS: Final[tuple[str, ...]] = (
@@ -41,10 +41,6 @@ _TIME_TO_PAY_KEYS: Final[tuple[str, ...]] = (
 )
 
 _Cohort = list[tuple[int, datetime, int, Optional[PaidTransactionDto]]]
-
-
-def _cents(value: Decimal) -> Decimal:
-    return value.quantize(ONE_CENT, rounding=ROUND_HALF_UP)
 
 
 def _trial_day_key(trial_start: datetime, trial_days: int, first_paid: datetime) -> str:
@@ -120,7 +116,9 @@ def _plans_after_trial(cohort: _Cohort) -> list[RevenueGroupDto]:
         if first is not None:
             by_plan.setdefault(first.plan_name, []).append(first.anchor_final_price)
     rows = [
-        RevenueGroupDto(key=name, payments=len(amounts), revenue=_cents(sum(amounts, start=_ZERO)))
+        RevenueGroupDto(
+            key=name, payments=len(amounts), revenue=round_cents(sum(amounts, start=ZERO_AMOUNT))
+        )
         for name, amounts in by_plan.items()
     ]
     return sorted(rows, key=lambda row: row.revenue, reverse=True)
@@ -218,7 +216,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
             ]
             revenue = sum(
                 (row.anchor_final_price for row in paid if row.user_id in converted_ids),
-                start=_ZERO,
+                start=ZERO_AMOUNT,
             )
             previous_range = period.previous
             return TrialDto(
@@ -233,7 +231,7 @@ class GetTrialUseCase(UseCase[AnalyticsPeriodQueryDto, TrialDto]):
                 converted=len(converted),
                 conversion_rate=len(converted) / len(cohort) if cohort else 0.0,
                 previous_conversion_rate=previous_converted / len(previous) if previous else 0.0,
-                revenue_from_converted=_cents(revenue),
+                revenue_from_converted=round_cents(revenue),
                 median_days_to_pay=int(median(days_to_pay)),
                 trial_days=trial_days,
                 by_trial_day=_day_buckets(cohort, trial_days),

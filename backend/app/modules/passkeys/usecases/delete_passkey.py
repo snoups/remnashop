@@ -25,7 +25,7 @@ class DeletePasskeyUseCase(UseCase[DeletePasskeyDto, None, UserDto]):
 
     async def _execute(self, actor: UserDto, data: DeletePasskeyDto) -> None:
         async with self._uow:
-            credential = await self._passkey_repository.get_by_id_and_user(
+            credential = await self._passkey_repository.find_by_id_and_user(
                 data.passkey_id, actor.id
             )
             if credential is None:

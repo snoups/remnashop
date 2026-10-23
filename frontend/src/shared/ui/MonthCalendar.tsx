@@ -80,7 +80,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
                   : isInRange
                     ? "bg-accent/40 text-foreground"
                     : isCurrentMonth
-                      ? "text-foreground hover:bg-white/[0.08]"
+                      ? "text-foreground hover:bg-white/[0.07]"
                       : "text-muted-foreground/50 hover:bg-white/[0.06]"
               } ${isToday && !isSelected ? "border-2 border-primary/40" : ""}`}
             >

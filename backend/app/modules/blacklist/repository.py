@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import any_, func, or_, select, union_all
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,7 @@ from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.core.enums import BlacklistKind
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
-from app.core.utils.email import canonical_email
+from app.core.utils.email import alias_domains, canonical_email
 from app.core.utils.time import datetime_now
 from app.modules.blacklist.dto import (
     AddBlacklistSourceDto,
@@ -96,7 +96,7 @@ class BlacklistRepository:
         ).scalars()
         return [self._to_source_dto(r) for r in rows]
 
-    async def get_source(self, source_id: int) -> Optional[BlacklistSourceDto]:
+    async def find_source(self, source_id: int) -> Optional[BlacklistSourceDto]:
         row = await self.session.get(BlacklistSource, source_id)
         return self._to_source_dto(row) if row else None
 
@@ -157,22 +157,33 @@ class BlacklistRepository:
         await self.session.flush()
 
     async def is_blacklisted_telegram_id(self, telegram_id: int) -> bool:
-        ids, _ = await self.all_blocked_identities()
-        return telegram_id in ids
+        manual = select(Blacklist.id).where(any_(Blacklist.blocked_telegram_ids) == telegram_id)
+        sources = select(BlacklistSource.id).where(
+            BlacklistSource.enabled.is_(True),
+            any_(BlacklistSource.blocked_telegram_ids) == telegram_id,
+        )
+        return bool(await self.session.scalar(select(or_(manual.exists(), sources.exists()))))
 
     async def is_blacklisted_email(self, email: str) -> bool:
         normalized = normalize_identity(BlacklistKind.EMAIL, email)
         if normalized is None:
             return False
-        _, emails = await self.all_blocked_identities()
         target = canonical_email(normalized)
-        return any(canonical_email(blocked) == target for blocked in emails)
+        # aliases only fold within a domain group, so the rest never has to leave the database
+        blocked = union_all(
+            select(func.unnest(Blacklist.blocked_emails).label("email")),
+            select(func.unnest(BlacklistSource.blocked_emails).label("email")).where(
+                BlacklistSource.enabled.is_(True)
+            ),
+        ).subquery()
+        domains = alias_domains(normalized.rpartition("@")[2])
+        candidates = await self.session.scalars(
+            select(blocked.c.email).where(
+                func.split_part(blocked.c.email, "@", 2).in_(sorted(domains))
+            )
+        )
+        return any(canonical_email(candidate) == target for candidate in candidates)
 
-    # all_blocked_identities loads every enabled source's full array
-    # to answer one membership check. Fine at the current scale (a handful of
-    # sources); if a source ever holds >100k ids, switch the two
-    # is_blacklisted_* methods to a targeted `WHERE :v = ANY(blocked_telegram_ids)`
-    # query with a GIN index and keep all_blocked_identities only for reconcile.
     async def all_blocked_identities(self) -> tuple[set[int], set[str]]:
         manual = await self.session.get(Blacklist, SINGLETON_ID)
         ids: set[int] = set(manual.blocked_telegram_ids) if manual else set()

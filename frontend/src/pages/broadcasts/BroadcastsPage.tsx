@@ -232,7 +232,7 @@ export function BroadcastsPage() {
 
       <Card>
         {state.kind === "loading" && <Spinner size="page" />}
-        {state.kind === "error" && <ErrorState text={t("broadcasts.loadError")} size="page" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
         {state.kind === "ready" && visibleItems.length === 0 && (
           <div className="flex flex-col items-center gap-3">
             <EmptyState text={t(hasFilters ? "broadcasts.noMatches" : "broadcasts.empty")} size="page" />
@@ -273,7 +273,7 @@ export function BroadcastsPage() {
                       </span>
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-[13.5px] font-semibold text-foreground">
+                          <span className="truncate text-[13px] font-semibold text-foreground">
                             {broadcastTitle(b, t("broadcasts.untitled"))}
                           </span>
                           {b.category === "MARKETING" && <Badge tone="violet">{t("broadcasts.promoBadge")}</Badge>}

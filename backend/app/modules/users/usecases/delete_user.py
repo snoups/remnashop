@@ -1,6 +1,5 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
@@ -36,7 +35,7 @@ class DeleteUserUseCase(UseCase[DeleteUserDto, None]):
             target = await self._user_repository.find_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
-            if target.role != Role.USER:
+            if not target.is_customer:
                 raise ConflictError(
                     "Target is not a deletable user", code=ErrorCode.USER_NOT_DELETABLE
                 )

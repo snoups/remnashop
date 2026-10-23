@@ -60,7 +60,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
               className="flex aspect-square cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
             >
               {copiedId === item.custom_emoji_id ? (
-                <span className="flex items-center gap-1 text-[10.5px] font-semibold text-success">
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-success">
                   <Check className="size-3.5" />
                 </span>
               ) : (

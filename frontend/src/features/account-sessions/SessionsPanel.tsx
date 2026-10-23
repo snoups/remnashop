@@ -51,7 +51,7 @@ export function SessionsPanel({ userId }: { userId?: number }) {
   return (
     <>
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("sessions.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <SessionList sessions={state.data} currentSessionId={currentSessionId} onRequestRevoke={setPendingRevoke} />
       )}

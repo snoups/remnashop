@@ -103,7 +103,7 @@ export function NodesCard({ state }: { state: AsyncState<NodesOverview | null> }
         }
       />
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("dashboard.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {data && !data.available && (
         <p className="py-6 text-center text-[13px] text-muted-foreground">{t("dashboard.remnawaveUnavailable")}</p>
       )}

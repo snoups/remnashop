@@ -39,6 +39,13 @@ class LoyaltyRepository:
         await self.session.flush()
         return self._to_dto(row)
 
+    async def reset_settings(self) -> LoyaltySettingsDto:
+        row = await self.session.get(LoyaltySettings, SINGLETON_ID)
+        if row is not None:
+            await self.session.delete(row)
+            await self.session.flush()
+        return self._to_dto(None)
+
     async def rescale_thresholds(self, factor: Decimal) -> None:
         row = await self.session.get(LoyaltySettings, SINGLETON_ID)
         if row is None or not row.tiers:

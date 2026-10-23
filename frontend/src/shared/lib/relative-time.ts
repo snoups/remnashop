@@ -22,6 +22,11 @@ export function formatDateTime(iso: string, language: string): string {
     .replace(",", "");
 }
 
+/** "23:00" in the given UI language (11:00 PM in en), for a time shown without its date. */
+export function formatTime(value: string | Date, language: string): string {
+  return new Date(value).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
+}
+
 /** "30.09.2026" in the given UI language, for every date without a time. */
 export function formatDate(iso: string, language: string): string {
   return new Date(iso).toLocaleDateString(language, { day: "2-digit", month: "2-digit", year: "numeric" });

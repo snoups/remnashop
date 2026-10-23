@@ -225,7 +225,7 @@ function PromocodeDetailsDialogBody({
       </div>
 
       {tab === "settings" && (
-        <div className="flex items-center justify-between gap-2 border-t border-white/[0.07] px-5 py-4">
+        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] px-5 py-4">
           <div className="flex gap-2">
             {canDelete && (
               <Button

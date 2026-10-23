@@ -61,7 +61,7 @@ export function AnalyticsRetentionPage() {
     <div className="flex flex-col gap-4 pb-2">
       <AnalyticsToolbar periodIndependent currency={state.kind === "ready" ? state.data.report_currency : undefined} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && <Overview data={state.data} cohorts={cohorts} />}
     </div>
   );
@@ -143,7 +143,7 @@ function Overview({ data, cohorts }: { data: Retention; cohorts: AsyncState<Coho
         <BarRows rows={planRows} empty={t("analytics.empty")} />
       </Card>
 
-      {cohorts.kind === "error" && <ErrorState text={t("analytics.loadError")} />}
+      {cohorts.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {cohortData && <CohortHeatmap data={cohortData} />}
 
       <CurrencyNote currency={currency} />
@@ -217,7 +217,7 @@ function ExpiringCard({ data }: { data: Retention }) {
                       {initials(row.name)}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] font-medium text-foreground">{row.name}</span>
+                      <span className="block truncate text-[13px] font-medium text-foreground">{row.name}</span>
                       {row.username && (
                         <span className="block truncate font-mono text-[12px] text-muted-foreground">@{row.username}</span>
                       )}
@@ -329,7 +329,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
         title={t("analytics.retention.cohortsTitle")}
         description={t("analytics.retention.cohortsDescription")}
         aside={
-          <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
             {formatPercent(0, language)}
             <span className="h-2 w-28 rounded-full bg-gradient-to-r from-primary/5 to-primary/85" />
             {formatPercent(1, language)}
@@ -341,7 +341,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
         <EmptyState text={t("analytics.empty")} size="page" />
       ) : (
         <div className="-mx-1 mt-3 overflow-x-auto">
-          <table className="w-full border-separate border-spacing-1 text-[11.5px] tabular-nums">
+          <table className="w-full border-separate border-spacing-1 text-[12px] tabular-nums">
             <thead>
               <tr className={EYEBROW_CLASS}>
                 <th className="px-1 pb-1.5 text-left font-semibold">{t("analytics.retention.cohortColumn")}</th>

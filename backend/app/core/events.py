@@ -112,6 +112,10 @@ class ActorSnapshot:
         return self.role.includes(Role.ADMIN)
 
     @property
+    def is_system(self) -> bool:
+        return self.role == Role.SYSTEM
+
+    @property
     def log(self) -> str:
         return f"[{self.role}:{self.id}:{self.login or self.name}]"
 

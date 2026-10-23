@@ -62,7 +62,7 @@ class PromocodeRepository:
     async def get_by_id(self, promocode_id: int) -> PromocodeDto:
         return self._to_dto(await self._get_or_raise(promocode_id))
 
-    async def get_by_code(self, code: str) -> Optional[PromocodeDto]:
+    async def find_by_code(self, code: str) -> Optional[PromocodeDto]:
         row = await self.session.scalar(select(Promocode).where(Promocode.code == code))
         return self._to_dto(row) if row is not None else None
 
@@ -304,7 +304,7 @@ class PromocodeRepository:
         )
         return [self._to_activation_dto(row) for row in rows], total or 0
 
-    async def get_activation_by_user(
+    async def find_activation_by_user(
         self, promocode_id: int, user_id: int
     ) -> Optional[PromocodeActivationDto]:
         result = await self.session.execute(

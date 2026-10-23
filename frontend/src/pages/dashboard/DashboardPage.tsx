@@ -14,6 +14,7 @@ import type {
 } from "@entities/overview/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { formatMoney, formatPercent } from "@shared/lib/format";
+import { formatTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { ErrorState } from "@shared/ui/EmptyState";
@@ -138,12 +139,12 @@ export function DashboardPage() {
       {updatedAt && (
         <span className="text-[12.5px] text-muted-foreground">
           {t("dashboard.updatedAt", {
-            time: updatedAt.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }),
+            time: formatTime(updatedAt, i18n.language),
           })}
         </span>
       )}
       {kpiState.kind === "loading" && <Spinner className="py-4" />}
-      {kpiState.kind === "error" && <ErrorState text={t("dashboard.loadError")} />}
+      {kpiState.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {kpiState.kind === "ready" && (
         <KpiRow
           overview={kpiState.data}

@@ -5,7 +5,6 @@ import {
   CreditCard,
   Filter,
   Layers,
-  Loader2,
   LogIn,
   Megaphone,
   Package,
@@ -36,6 +35,7 @@ import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
+import { formatTime } from "@shared/lib/relative-time";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -45,7 +45,7 @@ import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 
@@ -186,12 +186,10 @@ export function EventLogPage() {
       </Card>
 
       <Card className="relative">
-        {state.kind === "ready" && isFetching && (
-          <Loader2 className="absolute right-4 top-4 size-3.5 animate-spin text-muted-foreground" />
-        )}
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
-          <ErrorState text={t("eventLog.loadError")} size="page" />
+          <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && (
           <>
@@ -241,7 +239,7 @@ export function EventLogPage() {
                               {...bounceTap(0.03)}
                               className={`grid cursor-pointer grid-cols-[1.2fr_170px_1fr_140px_16px] items-center gap-4 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                             >
-                              <span className="flex min-w-0 items-center gap-3 text-[13.5px] font-medium text-foreground/90">
+                              <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
                                 <span
                                   className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
                                 >
@@ -250,10 +248,7 @@ export function EventLogPage() {
                                 <span className="truncate">{t(`eventLog.events.${entry.event_type}` as ParseKeys)}</span>
                               </span>
                               <span className="text-[13px] tabular-nums text-foreground">
-                                {new Date(entry.occurred_at).toLocaleTimeString(i18n.language, {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {formatTime(entry.occurred_at, i18n.language)}
                               </span>
                               <span className="truncate text-[12.5px] text-foreground">
                                 {describeEntry(entry, t)}

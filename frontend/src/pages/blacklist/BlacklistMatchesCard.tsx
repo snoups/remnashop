@@ -26,6 +26,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { SearchField } from "@shared/ui/SearchField";
 import { IconButton } from "@shared/ui/IconButton";
 import { Button } from "@shared/ui/Button";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 import { BlacklistCard, KindBadge } from "./BlacklistCard";
 
@@ -124,7 +125,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
       }
     >
       {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("blacklist.matches.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {data !== null && data.all_total === 0 && (
         <EmptyState text={t("blacklist.matches.empty")} />
       )}
@@ -162,7 +163,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
           <div className="-mx-2 mt-2 -mb-1 overflow-x-auto px-2 py-1">
             <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
               <thead>
-                <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&>th]:border-b [&>th]:border-border">
+                <tr className={`text-left ${EYEBROW_CLASS} [&>th]:border-b [&>th]:border-border`}>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnUser")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnHit")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnOrigin")}</th>
@@ -256,7 +257,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   type="button"
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
-                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -264,7 +265,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   type="button"
                   onClick={() => setPage(page + 1)}
                   disabled={page >= pageCount}
-                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronRight className="size-4" />
                 </button>

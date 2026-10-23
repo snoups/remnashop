@@ -1,4 +1,4 @@
-import { Loader2, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -92,9 +92,9 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
                 className="w-fit"
                 type="button"
                 onClick={() => void handleRunNow()}
-                disabled={isStartingRun}
+                icon={Play}
+                isLoading={isStartingRun}
               >
-                {isStartingRun ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
                 {t("backups.manual.runNow")}
               </Button>
               <FieldHint text={t("backups.manual.runHint")} />
@@ -104,7 +104,7 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
 
         {canViewStats && stats !== null && (
           <div
-            className={`mt-auto flex flex-col gap-2.5 ${canCreateRun ? "border-t border-white/[0.06] pt-4" : ""}`}
+            className={`mt-auto flex flex-col gap-2.5 ${canCreateRun ? "border-t border-white/[0.08] pt-4" : ""}`}
           >
             <span className={EYEBROW_CLASS}>{t("backups.manual.storageLabel")}</span>
             <div className="grid grid-cols-3 gap-2">

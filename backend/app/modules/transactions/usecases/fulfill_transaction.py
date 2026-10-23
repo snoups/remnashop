@@ -57,7 +57,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
                     code=ErrorCode.PAYMENT_ORDER_NOT_FULFILLABLE,
                 )
 
-            linked = await self._idempotency_repository.get_subscription_id(order.idempotency_key)
+            linked = await self._idempotency_repository.find_subscription_id(order.idempotency_key)
             if linked is not None:
                 # already provisioned, the reconciliation sweep just hasn't recorded it
                 await self._transaction_repository.mark_fulfilled(order.id, linked)

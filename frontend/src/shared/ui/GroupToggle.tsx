@@ -25,7 +25,7 @@ export function GroupToggle({ open, onToggle, label, count, leading }: GroupTogg
       />
       {leading}
       <span className="-ml-1 text-[12px] font-semibold text-foreground">{label}</span>
-      <span className="-ml-1 text-[11.5px] tabular-nums text-muted-foreground">{count}</span>
+      <span className="-ml-1 text-[12px] tabular-nums text-muted-foreground">{count}</span>
     </button>
   );
 }

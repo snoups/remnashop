@@ -115,7 +115,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
     return <Spinner size="card" />;
   }
   if (catalogState.kind === "error") {
-    return <ErrorState text={t("permissionPicker.loadError")} />;
+    return <ErrorState text={t("common.loadError")} />;
   }
 
   const groups = groupCatalogByResource(

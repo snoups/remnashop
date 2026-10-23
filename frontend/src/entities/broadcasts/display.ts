@@ -8,6 +8,8 @@ import type {
   BroadcastStatus,
 } from "@entities/broadcasts/api";
 import { PREMIUM_EMOJI_RE } from "@entities/dialogs/api";
+import i18n from "@shared/i18n";
+import { formatDate } from "@shared/lib/relative-time";
 import type { BadgeTone } from "@shared/ui/Badge";
 
 export const BROADCAST_STATUS_TONE: Record<BroadcastStatus, BadgeTone> = {
@@ -62,10 +64,6 @@ export function broadcastMeta(b: Broadcast, t: TFunction): string {
   return parts.join(" · ");
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString();
-}
-
 export function audienceSummary(
   a: BroadcastAudience,
   t: TFunction,
@@ -93,8 +91,8 @@ export function audienceSummary(
   if (a.registered_from || a.registered_to) {
     parts.push(
       t("broadcasts.audience.registered", {
-        from: a.registered_from ? formatDate(a.registered_from) : "…",
-        to: a.registered_to ? formatDate(a.registered_to) : "…",
+        from: a.registered_from ? formatDate(a.registered_from, i18n.language) : "…",
+        to: a.registered_to ? formatDate(a.registered_to, i18n.language) : "…",
       }),
     );
   }

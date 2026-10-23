@@ -358,7 +358,7 @@ async def test_stale_signed_payload_is_rejected_despite_a_fresh_header(
     )
 
     assert response.status_code == 401
-    refreshed = await subscription_repository.get_by_remnawave_user_id_for_update(81009)
+    refreshed = await subscription_repository.find_by_remnawave_user_id_for_update(81009)
     assert refreshed is not None
     assert refreshed.status == SubscriptionStatus.ACTIVE
 

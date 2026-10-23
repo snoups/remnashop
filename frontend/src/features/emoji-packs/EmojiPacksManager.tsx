@@ -1,4 +1,4 @@
-import { Loader2, Plus, Smile, Trash2 } from "lucide-react";
+import { Plus, Smile, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -87,14 +87,11 @@ export function EmojiPacksManager() {
                 variant="accent"
                 size="field"
                 type="button"
-                disabled={isImporting || link.trim() === "" || isLinkInvalid}
+                icon={Plus}
+                isLoading={isImporting}
+                disabled={link.trim() === "" || isLinkInvalid}
                 onClick={() => void handleImport()}
               >
-                {isImporting ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Plus className="size-3.5" />
-                )}
                 {isImporting ? t("dialogs.emojiPacks.adding") : t("common.add")}
               </Button>
             </div>
@@ -110,7 +107,7 @@ export function EmojiPacksManager() {
       <div className="-mx-2 mt-4 max-h-[72vh] overflow-y-auto">
         {packsState.kind === "loading" && <Spinner size="card" />}
         {packsState.kind === "error" && (
-          <ErrorState text={t("dialogs.emojiPacks.loadError")} />
+          <ErrorState text={t("common.loadError")} />
         )}
         {packsState.kind === "ready" && packsState.data.length === 0 && (
           <EmptyState text={t("dialogs.emojiPacks.empty")} />

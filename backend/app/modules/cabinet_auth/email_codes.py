@@ -8,10 +8,16 @@ from pydantic import TypeAdapter
 from redis.asyncio import Redis
 
 from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TIME_1H, TIME_1M, TTL_10M
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import AuthenticationError
+from app.core.ports import EventPublisher
 from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.rate_counter import hit_counter, release_counter
 from app.modules.cabinet_auth.dto import EmailCodeGrantDto, InviteCodesDto
+from app.modules.cabinet_auth.events import EmailCodeAttemptsExhaustedEvent
+from app.modules.settings import CabinetAuthSettingsDto, SettingsRepository
 
 _MAX_ATTEMPTS: Final[int] = 5
 _FAIL_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_fail:"
@@ -121,3 +127,48 @@ class EmailCodeStore:
             await self._redis.delete(key)
             raise EmailCodeAttemptsExhausted
         return None
+
+
+async def require_email_sign_in(settings_repository: SettingsRepository) -> CabinetAuthSettingsDto:
+    cabinet = await settings_repository.get_cabinet_auth_settings()
+    email_settings = await settings_repository.get_email_settings()
+    if not (cabinet.email_enabled and email_settings.is_configured):
+        raise AuthenticationError(
+            "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
+        )
+    return cabinet
+
+
+async def verify_email_code(
+    store: EmailCodeStore,
+    redis: Redis,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+    email: str,
+    code: str,
+    client_ip: str,
+    *,
+    budget: Optional[str] = None,
+) -> EmailCodeGrantDto:
+    """budget: the failure budget's key, the mailbox's sign-in one unless given."""
+    digest = email_key(email)
+    budget = budget or digest
+    if not await reserve_attempt(redis, budget):
+        raise AuthenticationError("The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED)
+    try:
+        grant = await store.verify(email, code)
+    except EmailCodeExpired:
+        await release_attempt(redis, budget)
+        raise AuthenticationError(
+            "The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED
+        ) from None
+    except EmailCodeAttemptsExhausted:
+        async with uow:
+            await event_publisher.publish(
+                EmailCodeAttemptsExhaustedEvent(email_hash=digest, ip_address=client_ip)
+            )
+        raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID) from None
+    if grant is None:
+        raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID)
+    await release_attempt(redis, budget)
+    return grant

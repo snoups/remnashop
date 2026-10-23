@@ -98,7 +98,7 @@ class PurchaseRollbackService:
             or data.idempotency_key is None
         ):
             return None
-        pinned = await self._idempotency.get_pending_renew_expire_at(data.idempotency_key)
+        pinned = await self._idempotency.find_pending_renew_expire_at(data.idempotency_key)
         if pinned is None:
             return None
         target = await self._subscription_repository.get_by_id(data.target_subscription_id)

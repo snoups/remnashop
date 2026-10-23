@@ -89,7 +89,7 @@ async def test_does_not_claim_an_activation(
 
     await use_case(actor, ValidatePromocodeDto(code="NOCLAIM"))
 
-    assert await promocode_repository.get_activation_by_user(promo.id, actor.id) is None
+    assert await promocode_repository.find_activation_by_user(promo.id, actor.id) is None
 
 
 async def test_preview_refuses_a_subscription_reward_whose_plan_is_unavailable(

@@ -22,4 +22,4 @@ class GetUserAdAttributionUseCase(UseCase[int, Optional[UserAdAttributionDto]]):
     async def _execute(self, actor: Actor, data: int) -> Optional[UserAdAttributionDto]:
         async with self._uow:
             await get_visible_target(self._user_repository, actor, data)
-            return await self._ad_link_repository.get_user_attribution(data)
+            return await self._ad_link_repository.find_user_attribution(data)

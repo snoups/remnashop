@@ -1122,7 +1122,7 @@ async def test_register_telegram_user_returns_winner_of_registration_race(
             CreateUserDto(telegram_id=778, name="Winner", language=Locale.EN)
         )
     # the concurrent update's existence check ran before the winner committed
-    real_lookup = user_repository.get_by_telegram_id
+    real_lookup = user_repository.find_by_telegram_id
     calls = 0
 
     async def lookup(telegram_id: int) -> Optional[UserDto]:
@@ -1130,7 +1130,7 @@ async def test_register_telegram_user_returns_winner_of_registration_race(
         calls += 1
         return None if calls == 1 else await real_lookup(telegram_id)
 
-    monkeypatch.setattr(user_repository, "get_by_telegram_id", lookup)
+    monkeypatch.setattr(user_repository, "find_by_telegram_id", lookup)
     use_case = RegisterTelegramUserUseCase(
         user_repository, blacklist_repository, uow, event_publisher
     )
@@ -1164,7 +1164,7 @@ async def test_register_telegram_user_syncs_changed_telegram_profile(
     assert renamed.name == "Robert"
     assert renamed.username is None
     async with uow:
-        stored = await user_repository.get_by_telegram_id(779)
+        stored = await user_repository.find_by_telegram_id(779)
     assert stored is not None and stored.name == "Robert" and stored.username is None
 
 

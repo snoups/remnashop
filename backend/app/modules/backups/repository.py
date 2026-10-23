@@ -192,7 +192,7 @@ class BackupRepository:
         rows = (await self.session.scalars(stmt)).all()
         return [self._to_run_dto(r) for r in rows]
 
-    async def get_latest_completed(self, kind: BackupKind) -> Optional[BackupRunDto]:
+    async def find_latest_completed(self, kind: BackupKind) -> Optional[BackupRunDto]:
         stmt = (
             select(BackupRun)
             .where(BackupRun.kind == kind, BackupRun.status == BackupRunStatus.COMPLETED)

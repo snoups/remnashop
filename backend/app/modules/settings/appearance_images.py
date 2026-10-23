@@ -111,7 +111,7 @@ async def upload_appearance_image(
         _validate_raster(data.data, image_format, limits)
 
     async with uow:
-        existing = await settings_repository.get_appearance_image_meta(kind)
+        existing = await settings_repository.find_appearance_image_meta(kind)
         result = await settings_repository.set_appearance_image(
             kind, data.content_type, image_format.value
         )
@@ -135,7 +135,7 @@ async def remove_appearance_image(
     kind: AppearanceImageKind,
 ) -> AppearanceSettingsDto:
     async with uow:
-        meta = await settings_repository.get_appearance_image_meta(kind)
+        meta = await settings_repository.find_appearance_image_meta(kind)
         if meta is None:
             raise NotFoundError(
                 f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET

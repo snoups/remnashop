@@ -84,6 +84,71 @@ html {
   height: 16px;
 }
 
+/* Slider (shared/ui/Slider.tsx): the native range input restyled, so drag,
+   touch and arrow keys stay the browser's. `--fill` is the filled share. */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--color-primary) var(--fill), rgb(255 255 255 / 0.12) var(--fill));
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: box-shadow 0.15s;
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: box-shadow 0.15s;
+}
+
+.slider:enabled:hover::-webkit-slider-thumb,
+.slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 5px rgb(34 211 238 / 0.25);
+}
+
+.slider:enabled:hover::-moz-range-thumb,
+.slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 5px rgb(34 211 238 / 0.25);
+}
+
 /* Native search-input "clear" (x) button, hidden: SearchClearButton draws
    one in every browser (Firefox has no native one). */
 input[type="search"]::-webkit-search-cancel-button {
@@ -125,6 +190,7 @@ textarea::-webkit-resizer {
 *::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-primary);
 }
+
 
 /* Dialog bodies reserve the scrollbar's width up front, so content doesn't shift when
    the scrollbar appears, and give that width back out of their right padding (p-4/px-4),

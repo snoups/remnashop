@@ -25,7 +25,7 @@ class RecordAdLinkAttributionUseCase(UseCase[RecordAdLinkAttributionDto, None]):
 
     async def _execute(self, actor: Actor, data: RecordAdLinkAttributionDto) -> None:
         async with self._uow:
-            ad_link = await self._ad_link_repository.get_by_code(data.ad_link_code)
+            ad_link = await self._ad_link_repository.find_by_code(data.ad_link_code)
         if ad_link is None or not ad_link.is_active:
             logger.debug(
                 f"Ad link code '{data.ad_link_code}' not found or inactive, skipping attribution"

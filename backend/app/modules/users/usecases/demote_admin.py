@@ -1,6 +1,5 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
@@ -34,7 +33,7 @@ class DemoteAdminUseCase(UseCase[DemoteAdminDto, UserDto]):
             target = await self._user_repository.find_live_for_update(data.user_id)
             if target is None:
                 raise NotFoundError("Admin not found", code=ErrorCode.ADMIN_NOT_FOUND)
-            if target.role != Role.ADMIN:
+            if not target.is_admin:
                 raise ConflictError(
                     "Target is not a manageable admin", code=ErrorCode.ADMIN_NOT_MANAGEABLE
                 )

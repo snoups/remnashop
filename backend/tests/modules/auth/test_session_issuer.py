@@ -30,7 +30,7 @@ async def test_issue_creates_session_and_matching_access_token(
     payload = decode_access_token(issued.access_token, config.jwt_secret.get_secret_value())
     assert payload["sub"] == str(user.id)
 
-    session = await session_repository.get_active_by_id(payload["sid"])
+    session = await session_repository.find_active_by_id(payload["sid"])
     assert session is not None
     assert session.user_id == user.id
     assert issued.csrf_token

@@ -44,7 +44,7 @@ class _Users:
         self.user = user
         self.undeliverable: list[int] = []
 
-    async def get_by_email(self, email: str) -> Optional[UserDto]:
+    async def find_by_email(self, email: str) -> Optional[UserDto]:
         return self.user
 
     async def set_email_undeliverable(self, user_id: int, at: object) -> None:
@@ -100,6 +100,7 @@ class _Actor:
     login = "a"
     telegram_id = None
     is_privileged = True
+    is_system = False
     log = "a"
 
     def __init__(self, email: Optional[str]) -> None:

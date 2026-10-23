@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.enums import Currency, DiscountSource
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
@@ -50,7 +51,7 @@ def quote_price(
 
     # applied one after the other: -20% and -10% make -28%, never past 100%
     if discount_percent >= 100 or plan_discount_percent >= 100:
-        final_price = Decimal(0)
+        final_price = ZERO_AMOUNT
     elif discount_percent == 0 and plan_discount_percent == 0:
         final_price = base_price
     else:

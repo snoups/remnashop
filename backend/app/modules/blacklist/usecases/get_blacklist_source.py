@@ -17,7 +17,7 @@ class GetBlacklistSourceUseCase(UseCase[int, BlacklistSourceDto]):
 
     async def _execute(self, actor: Actor, data: int) -> BlacklistSourceDto:
         async with self._uow:
-            source = await self._blacklist_repository.get_source(data)
+            source = await self._blacklist_repository.find_source(data)
         if source is None:
             raise NotFoundError(
                 f"Blacklist source not found: {data}", code=ErrorCode.BLACKLIST_SOURCE_NOT_FOUND

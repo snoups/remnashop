@@ -11,6 +11,8 @@ from app.core.exceptions import ValidationError
 from app.modules.gateways.gateway_settings import GATEWAY_SETTINGS, NumericStr
 
 _CURRENCY_FIELD_KEY: Final[str] = "currency"
+# Stars settle only through the Telegram Stars gateway, which has no currency field
+_GATEWAY_CURRENCIES: Final[tuple[Currency, ...]] = (Currency.USD, Currency.RUB)
 # Webhook source-IP check for providers that don't sign their notifications
 VERIFY_IP_FIELD_KEY: Final[str] = "verify_ip"
 REQUIRE_PAID_PURCHASE_FIELD_KEY: Final[str] = "require_paid_purchase"
@@ -84,15 +86,13 @@ def validate_gateway_field_keys(gateway_type: PaymentGatewayType, values: dict[s
 def validate_gateway_field_values(gateway_type: PaymentGatewayType, values: dict[str, str]) -> None:
     raw_currency = values.get(_CURRENCY_FIELD_KEY, "").strip()
     if raw_currency:
-        try:
-            Currency(raw_currency.upper())
-        except ValueError:
-            allowed = ", ".join(currency.value for currency in Currency)
+        if raw_currency.upper() not in _GATEWAY_CURRENCIES:
+            allowed = ", ".join(currency.value for currency in _GATEWAY_CURRENCIES)
             raise ValidationError(
                 f"Invalid currency '{raw_currency}' for {gateway_type.value}; "
                 f"must be one of {allowed}",
                 code=ErrorCode.GATEWAY_CURRENCY_INVALID,
-            ) from None
+            )
 
     for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]:
         if field_spec.kind is GatewayFieldKind.BOOLEAN:

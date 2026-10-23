@@ -41,6 +41,7 @@ import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { SuffixInput } from "@shared/ui/TextInput";
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -109,7 +110,7 @@ function OptionGroup<T extends string>({
                 <Icon className="size-[15px]" />
               </div>
               <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-[13.5px] font-semibold text-foreground">{name(option)}</span>
+                <span className="text-[13px] font-semibold text-foreground">{name(option)}</span>
                 <span className="text-xs leading-snug text-muted-foreground">{describe(option)}</span>
               </div>
             </motion.button>
@@ -209,7 +210,14 @@ export function ReferralSettingsPage() {
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
     return (
-      <ErrorState text={t("referrals.loadError")} size="page" />
+      <Card>
+        <CardHeader
+          icon={Users}
+          title={t("referrals.settings.programTitle")}
+          description={t("referrals.settings.programDescription")}
+        />
+        <ErrorState text={t("common.loadError")} />
+      </Card>
     );
   }
 
@@ -369,24 +377,22 @@ export function ReferralSettingsPage() {
                 <label htmlFor="referrals-example" className="text-center text-[12px] text-muted-foreground">
                   {t("referrals.settings.exampleLabel")}
                 </label>
-                <div className="flex h-9.5 w-28 items-center gap-1.5 rounded-full border border-border bg-input/60 px-3.5 focus-within:border-primary">
-                  <input
-                    id="referrals-example"
-                    type="number"
-                    onKeyDown={blockNonIntegerKeys}
-                    min={0}
-                    step="1"
-                    value={exampleBase[rewardType]}
-                    disabled={!enabled}
-                    onChange={(event) => setExampleBase((prev) => ({ ...prev, [rewardType]: event.target.value }))}
-                    className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                  <span className="shrink-0 text-[13px] text-muted-foreground">
-                    {rewardType === "POINTS"
+                <SuffixInput
+                  className="w-28 shrink-0"
+                  id="referrals-example"
+                  type="number"
+                  onKeyDown={blockNonIntegerKeys}
+                  min={0}
+                  step="1"
+                  value={exampleBase[rewardType]}
+                  disabled={!enabled}
+                  onChange={(event) => setExampleBase((prev) => ({ ...prev, [rewardType]: event.target.value }))}
+                  suffix={
+                    rewardType === "POINTS"
                       ? anchorCurrency && currencySymbol(anchorCurrency)
-                      : t("referrals.units.EXTRA_DAYS", { count: Number(exampleBase.EXTRA_DAYS) || 0 })}
-                  </span>
-                </div>
+                      : t("referrals.units.EXTRA_DAYS", { count: Number(exampleBase.EXTRA_DAYS) || 0 })
+                  }
+                />
               </div>
             )}
           </div>
@@ -411,25 +417,22 @@ export function ReferralSettingsPage() {
                       </span>
                     </span>
                   </label>
-                  <div className={`flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border ${isLevelInvalid(level) ? "border-error/60" : "border-border"} bg-input/60 px-3.5 focus-within:border-primary`}>
-                    <input
-                      id={`referrals-reward-${level}`}
-                      type="number"
-                      onKeyDown={blockNonIntegerKeys}
-                      min={1}
-                      max={isPercent ? MAX_PERCENT : undefined}
-                      step="1"
-                      value={amountOf(level)}
-                      disabled={areSettingsLocked}
-                      onChange={(event) =>
-                        setRewardAmounts((prev) => ({ ...prev, [String(level)]: event.target.value }))
-                      }
-                      className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    <span className="shrink-0 text-[13px] text-muted-foreground">
-                      {isPercent ? t("referrals.settings.percentUnit") : rewardUnit(Number(amountOf(level)) || 0)}
-                    </span>
-                  </div>
+                  <SuffixInput
+                    className="w-28 shrink-0"
+                    id={`referrals-reward-${level}`}
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    max={isPercent ? MAX_PERCENT : undefined}
+                    step="1"
+                    value={amountOf(level)}
+                    disabled={areSettingsLocked}
+                    onChange={(event) =>
+                      setRewardAmounts((prev) => ({ ...prev, [String(level)]: event.target.value }))
+                    }
+                    aria-invalid={isLevelInvalid(level)}
+                    suffix={isPercent ? t("referrals.settings.percentUnit") : rewardUnit(Number(amountOf(level)) || 0)}
+                  />
                 </div>
               </div>
             );
@@ -475,23 +478,20 @@ export function ReferralSettingsPage() {
                   {t("referrals.settings.invitee.amountLabel")}
                   <FieldHint text={t("referrals.settings.invitee.hint")} />
                 </label>
-                <div className={`flex h-9.5 w-28 shrink-0 items-center gap-1.5 rounded-full border ${isInviteeInvalid ? "border-error/60" : "border-border"} bg-input/60 px-3.5 focus-within:border-primary`}>
-                  <input
-                    id="referrals-invitee"
-                    type="number"
-                    onKeyDown={blockNonIntegerKeys}
-                    min={1}
-                    max={MAX_INVITEE_REWARD}
-                    step="1"
-                    value={inviteeRewardAmount}
-                    disabled={areSettingsLocked}
-                    onChange={(event) => setInviteeRewardAmount(event.target.value)}
-                    className="w-full min-w-0 bg-transparent text-right text-sm font-semibold tabular-nums text-foreground outline-none [appearance:textfield] disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                  <span className="shrink-0 text-[13px] text-muted-foreground">
-                    {t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
-                  </span>
-                </div>
+                <SuffixInput
+                  className="w-28 shrink-0"
+                  id="referrals-invitee"
+                  type="number"
+                  onKeyDown={blockNonIntegerKeys}
+                  min={1}
+                  max={MAX_INVITEE_REWARD}
+                  step="1"
+                  value={inviteeRewardAmount}
+                  disabled={areSettingsLocked}
+                  onChange={(event) => setInviteeRewardAmount(event.target.value)}
+                  aria-invalid={isInviteeInvalid}
+                  suffix={t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
+                />
               </div>
               {inviteeRewardType === "POINTS" && (
                 <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>

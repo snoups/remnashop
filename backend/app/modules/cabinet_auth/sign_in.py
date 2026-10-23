@@ -235,7 +235,7 @@ class CabinetSignIn:
     ) -> tuple[UserDto, IssuedSession]:
         email = normalize_email(email)
         async with self._uow:
-            user = await self._user_repository.get_by_email(email)
+            user = await self._user_repository.find_by_email(email)
         if user is None:
             async with self._uow:
                 cabinet = await self._settings_repository.get_cabinet_auth_settings()
@@ -272,7 +272,7 @@ class CabinetSignIn:
 
     async def _user_by_verified_email(self, verified_email: str) -> Optional[UserDto]:
         async with self._uow:
-            user = await self._user_repository.get_by_email(verified_email)
+            user = await self._user_repository.find_by_email(verified_email)
         # matched only canonically (an alias): on a host where "+" is part of the
         # name that is another person's mailbox, so the provider proves nothing here
         if user is not None and normalize_email(user.email or "") != verified_email:
@@ -380,7 +380,7 @@ class CabinetSignIn:
         self, provider: OAuthProvider, external_id: str
     ) -> Optional[UserDto]:
         async with self._uow:
-            identity = await self._oauth_identity_repository.get_by_provider_external_id(
+            identity = await self._oauth_identity_repository.find_by_provider_external_id(
                 provider, external_id
             )
             return await self._user_repository.find_by_id(identity.user_id) if identity else None

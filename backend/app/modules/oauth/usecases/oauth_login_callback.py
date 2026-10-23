@@ -85,7 +85,7 @@ class OAuthLoginCallbackUseCase:
         user: Optional[UserDto] = None
         if provider is OAuthProvider.TELEGRAM:
             async with self._uow:
-                user = await self._user_repository.get_by_telegram_id(int(external_id))
+                user = await self._user_repository.find_by_telegram_id(int(external_id))
         else:
             async with self._uow:
                 replaced = False
@@ -96,7 +96,7 @@ class OAuthLoginCallbackUseCase:
                 identity = (
                     None
                     if replaced
-                    else await self._oauth_identity_repository.get_by_provider_external_id(
+                    else await self._oauth_identity_repository.find_by_provider_external_id(
                         provider, external_id
                     )
                 )

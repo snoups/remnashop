@@ -42,7 +42,7 @@ const FLOW_ORDER: DialogFlow[] = [
 
 function StateBadge({ label }: { label: string }) {
   return (
-    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide text-warning">
+    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-warning">
       {label}
     </span>
   );
@@ -160,7 +160,7 @@ export function WindowSwitcher({
               <span className="relative z-10 truncate">
                 {t(`dialogs.windowList.flows.${flow}`)}
               </span>
-              <span className="relative z-10 ml-auto text-[10.5px] tabular-nums opacity-70">
+              <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
                 {items.length}
               </span>
             </motion.button>
@@ -194,7 +194,7 @@ export function WindowSwitcher({
         </motion.button>
       )}
       {isLimitReached && (
-        <span className="mt-1 text-[11.5px] text-muted-foreground">
+        <span className="mt-1 text-[12px] text-muted-foreground">
           {t("dialogs.windowList.limitReached")}
         </span>
       )}

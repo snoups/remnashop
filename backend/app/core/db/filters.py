@@ -6,7 +6,9 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 
 def in_ids(
-    column: Union[InstrumentedAttribute[int], InstrumentedAttribute[Optional[int]]],
+    column: Union[
+        InstrumentedAttribute[int], InstrumentedAttribute[Optional[int]], ColumnElement[int]
+    ],
     ids: Collection[int],
 ) -> ColumnElement[bool]:
     # one array bind, not IN (...): a long id list would pass asyncpg's

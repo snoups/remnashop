@@ -29,7 +29,7 @@ class RunScheduledBackupUseCase(UseCase[None, None]):
             if not settings.enabled:
                 return
 
-            latest = await self._backup_repository.get_latest_completed(BackupKind.DATABASE)
+            latest = await self._backup_repository.find_latest_completed(BackupKind.DATABASE)
             if latest is not None and latest.finished_at is not None:
                 if datetime_now() - latest.finished_at < timedelta(hours=settings.interval_hours):
                     return

@@ -14,6 +14,7 @@ from app.core.constants import (
     POINTS_WITHDRAW_RATE_LIMIT,
     TIME_1H,
     USER_KEY,
+    ZERO_AMOUNT,
 )
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.utils.rate_counter import hit_counter, user_rate_key
@@ -56,7 +57,7 @@ async def on_withdraw_input(
     try:
         amount = Decimal((message.text or "").strip().replace(",", "."))
     except InvalidOperation:
-        amount = Decimal(0)
+        amount = ZERO_AMOUNT
     # is_finite: Decimal accepts "NaN" and "Infinity"
     if not amount.is_finite() or amount <= 0:
         await message.answer(runner.get("ntf-referrals.invalid-amount"))

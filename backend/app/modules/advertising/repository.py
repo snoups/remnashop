@@ -62,7 +62,7 @@ class AdLinkRepository:
     async def get_by_id(self, ad_link_id: int) -> AdLinkDto:
         return self._to_dto(await self._get_or_raise(ad_link_id))
 
-    async def get_by_code(self, code: str) -> Optional[AdLinkDto]:
+    async def find_by_code(self, code: str) -> Optional[AdLinkDto]:
         row = await self.session.scalar(select(AdLink).where(AdLink.code == code))
         return self._to_dto(row) if row is not None else None
 
@@ -227,7 +227,9 @@ class AdLinkRepository:
             return []
         stmt = select(
             AdLinkAttribution.ad_link_id, AdLinkAttribution.user_id, AdLinkAttribution.channel
-        ).where(AdLinkAttribution.ad_link_id.in_(ad_link_ids), *_in_range(created_from, created_to))
+        ).where(
+            in_ids(AdLinkAttribution.ad_link_id, ad_link_ids), *_in_range(created_from, created_to)
+        )
         return list((await self.session.execute(stmt)).tuples().all())
 
     async def daily_attribution_counts(
@@ -269,7 +271,7 @@ class AdLinkRepository:
         rows = (await self.session.scalars(stmt)).all()
         return [self._to_attribution_dto(row) for row in rows], int(total or 0)
 
-    async def get_user_attribution(self, user_id: int) -> Optional[UserAdAttributionDto]:
+    async def find_user_attribution(self, user_id: int) -> Optional[UserAdAttributionDto]:
         row = (
             await self.session.execute(
                 select(AdLinkAttribution, AdLink)

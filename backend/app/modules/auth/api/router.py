@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -143,7 +143,7 @@ async def refresh_session(
     response: Response,
     use_case: FromDishka[RefreshSessionUseCase],
     config: FromDishka[AppConfig],
-) -> RefreshResponse | JSONResponse:
+) -> Union[RefreshResponse, JSONResponse]:
     chosen = _refresh_cookie_for(request)
     if chosen is None:
         raise ApiError(

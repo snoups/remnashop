@@ -109,22 +109,22 @@ async def test_get_by_id_missing_returns_none(user_repository: UserRepository) -
 async def test_get_by_telegram_id(user_repository: UserRepository, uow: UnitOfWork) -> None:
     await _create_user(user_repository, uow, telegram_id=222)
 
-    assert await user_repository.get_by_telegram_id(222) is not None
-    assert await user_repository.get_by_telegram_id(333) is None
+    assert await user_repository.find_by_telegram_id(222) is not None
+    assert await user_repository.find_by_telegram_id(333) is None
 
 
 async def test_get_by_email(user_repository: UserRepository, uow: UnitOfWork) -> None:
     await _create_user(user_repository, uow, email="alice@example.com")
 
-    assert await user_repository.get_by_email("alice@example.com") is not None
-    assert await user_repository.get_by_email("nobody@example.com") is None
+    assert await user_repository.find_by_email("alice@example.com") is not None
+    assert await user_repository.find_by_email("nobody@example.com") is None
 
 
 async def test_get_by_login(user_repository: UserRepository, uow: UnitOfWork) -> None:
     await _create_user(user_repository, uow, login="admin", role=Role.OWNER)
 
-    assert await user_repository.get_by_login("admin") is not None
-    assert await user_repository.get_by_login("nobody") is None
+    assert await user_repository.find_by_login("admin") is not None
+    assert await user_repository.find_by_login("nobody") is None
 
 
 async def test_exists_with_role(user_repository: UserRepository, uow: UnitOfWork) -> None:
@@ -224,8 +224,8 @@ async def test_list_by_roles_empty_when_none_match(user_repository: UserReposito
 async def test_get_by_username(user_repository: UserRepository, uow: UnitOfWork) -> None:
     await _create_user(user_repository, uow, telegram_id=42, username="alice_tg")
 
-    assert await user_repository.get_by_username("alice_tg") is not None
-    assert await user_repository.get_by_username("nobody_tg") is None
+    assert await user_repository.find_by_username("alice_tg") is not None
+    assert await user_repository.find_by_username("nobody_tg") is None
 
 
 async def test_delete_user_nulls_out_actor_id_on_their_own_event_log_entries(
@@ -274,7 +274,7 @@ async def test_get_by_referral_code_returns_matching_user(
     created = await user_repository.create(CreateUserDto(name="a", telegram_id=3))
 
     assert created.referral_code is not None
-    found = await user_repository.get_by_referral_code(created.referral_code)
+    found = await user_repository.find_by_referral_code(created.referral_code)
 
     assert found is not None
     assert found.id == created.id
@@ -283,7 +283,7 @@ async def test_get_by_referral_code_returns_matching_user(
 async def test_get_by_referral_code_unknown_returns_none(
     user_repository: UserRepository,
 ) -> None:
-    assert await user_repository.get_by_referral_code("NOPE0000") is None
+    assert await user_repository.find_by_referral_code("NOPE0000") is None
 
 
 async def test_credit_points_adds_to_existing_points(user_repository: UserRepository) -> None:

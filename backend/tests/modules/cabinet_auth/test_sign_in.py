@@ -223,7 +223,7 @@ async def test_blacklisted_email_blocked(
     with pytest.raises(PermissionDeniedError) as error:
         await sign_in.email("spam@mail.ru", Locale.EN, InviteCodesDto(), _IP, None)
     assert error.value.code is ErrorCode.USER_BLOCKED
-    blocked = await user_repository.get_by_email("spam@mail.ru")
+    blocked = await user_repository.find_by_email("spam@mail.ru")
     assert blocked is not None and blocked.is_blocked
     assert await _outbox(session, "CabinetUserRegisteredEvent") == []
     [event] = await _outbox(session, "CabinetRegistrationBlockedEvent")
@@ -250,7 +250,7 @@ async def test_blacklisted_telegram_id_blocked(
             None,
         )
     assert error.value.code is ErrorCode.USER_BLOCKED
-    blocked = await user_repository.get_by_telegram_id(9400)
+    blocked = await user_repository.find_by_telegram_id(9400)
     assert blocked is not None and blocked.is_blocked
     [event] = await _outbox(session, "TelegramRegistrationBlockedEvent")
     assert event.payload["user"]["id"] == blocked.id

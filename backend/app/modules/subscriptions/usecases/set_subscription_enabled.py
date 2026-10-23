@@ -79,7 +79,7 @@ class SetSubscriptionEnabledUseCase(UseCase[SetSubscriptionEnabledDto, Subscript
     async def _undo_toggle(self, subscription: SubscriptionDto, *, enabled: bool) -> None:
         # a plan change keeps the panel user for its new row; only that row's state counts
         async with self._uow:
-            owner = await self._subscription_repository.get_by_remnawave_user_id_for_update(
+            owner = await self._subscription_repository.find_by_remnawave_user_id_for_update(
                 subscription.remnawave_user_id
             )
         if owner is None or owner.status is SubscriptionStatus.DELETED:

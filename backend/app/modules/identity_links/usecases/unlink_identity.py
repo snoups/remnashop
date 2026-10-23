@@ -58,4 +58,4 @@ class UnlinkIdentityUseCase:
             await self._event_publisher.publish(
                 SignInMethodUnlinkedEvent(user=fresh, kind=kind, ip_address=client_ip)
             )
-        logger.info(f"User {fresh.log} unlinked sign-in method '{kind}'")
+        logger.info(f"{fresh.log} Unlinked sign-in method '{kind}'")

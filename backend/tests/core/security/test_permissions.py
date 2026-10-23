@@ -305,6 +305,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.REFERRALS_CODE_RESET,
         Permission.LOYALTY_SETTINGS_VIEW,
         Permission.LOYALTY_SETTINGS_MANAGE,
+        Permission.LOYALTY_SETTINGS_RESET,
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_DETAIL_VIEW,
         Permission.AD_LINKS_STATS_VIEW,

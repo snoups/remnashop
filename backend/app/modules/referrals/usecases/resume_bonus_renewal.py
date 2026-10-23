@@ -1,8 +1,7 @@
-from decimal import Decimal
-
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
@@ -59,7 +58,7 @@ class ResumeBonusRenewalUseCase(UseCase[ResumeBonusRenewalDto, None]):
                     user_id=user.id,
                     plan_snapshot=target.plan_snapshot,
                     duration_days=data.days,
-                    price_paid=Decimal(0),
+                    price_paid=ZERO_AMOUNT,
                     currency=Currency.USD,
                     purchase_type=PurchaseType.RENEW,
                     target_subscription_id=target.id,

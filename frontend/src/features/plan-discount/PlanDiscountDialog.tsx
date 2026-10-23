@@ -137,7 +137,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
           </Card>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.07] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
           <div className="min-w-0 flex-1">
             {status && (
               <Badge tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>

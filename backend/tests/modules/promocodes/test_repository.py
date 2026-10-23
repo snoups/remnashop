@@ -38,7 +38,7 @@ async def test_create_then_get_by_code_returns_promocode(
 ) -> None:
     created = await promocode_repository.create(_create_dto())
 
-    found = await promocode_repository.get_by_code("WELCOME10")
+    found = await promocode_repository.find_by_code("WELCOME10")
 
     assert found is not None
     assert found.id == created.id
@@ -47,7 +47,7 @@ async def test_create_then_get_by_code_returns_promocode(
 
 
 async def test_get_by_code_unknown_returns_none(promocode_repository: PromocodeRepository) -> None:
-    assert await promocode_repository.get_by_code("NOPE") is None
+    assert await promocode_repository.find_by_code("NOPE") is None
 
 
 async def test_create_duplicate_code_raises_conflict(
@@ -126,7 +126,7 @@ async def test_delete_removes_promocode(promocode_repository: PromocodeRepositor
 
     await promocode_repository.delete(created.id)
 
-    assert await promocode_repository.get_by_code("GONE") is None
+    assert await promocode_repository.find_by_code("GONE") is None
 
 
 async def test_delete_unknown_raises_not_found(promocode_repository: PromocodeRepository) -> None:
@@ -327,13 +327,13 @@ async def test_get_activation_by_user(
     )
     user = await user_repository.create(CreateUserDto(name="by-user"))
 
-    assert await promocode_repository.get_activation_by_user(promo.id, user.id) is None
+    assert await promocode_repository.find_activation_by_user(promo.id, user.id) is None
 
     await promocode_repository.claim_activation(
         promocode_id=promo.id, user_id=user.id, subscription_id=None
     )
 
-    activation = await promocode_repository.get_activation_by_user(promo.id, user.id)
+    activation = await promocode_repository.find_activation_by_user(promo.id, user.id)
     assert activation is not None
     assert activation.user_id == user.id
 
@@ -365,7 +365,7 @@ async def test_claim_activation_refuses_a_repeat_after_reusable_was_turned_off(
             promocode_id=promo.id, user_id=user_id, subscription_id=None
         )
 
-    assert await promocode_repository.get_activation_by_user(promo.id, user_id) is not None
+    assert await promocode_repository.find_activation_by_user(promo.id, user_id) is not None
 
 
 async def test_list_activations_by_user_returns_only_that_users_codes(

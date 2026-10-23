@@ -35,7 +35,7 @@ export function ProfilePage() {
     <div className="flex flex-col gap-6">
       <Card>
         {state.kind === "loading" && <Spinner />}
-        {state.kind === "error" && <ErrorState text={t("profile.loadError")} />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && (
           <div className="flex items-center gap-4">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">

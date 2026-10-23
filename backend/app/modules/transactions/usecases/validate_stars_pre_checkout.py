@@ -36,7 +36,7 @@ class ValidateStarsPreCheckoutUseCase(UseCase[StarsPreCheckoutDto, bool]):
             )
             if order is None or order.status is not TransactionStatus.PENDING:
                 return False
-            payer = await self._user_repository.get_by_telegram_id(data.telegram_id)
+            payer = await self._user_repository.find_by_telegram_id(data.telegram_id)
             if payer is None or payer.is_blocked:
                 return False
             settings = await self._gateway_repository.get_raw_settings(
