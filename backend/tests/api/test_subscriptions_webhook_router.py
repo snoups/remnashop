@@ -5,6 +5,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from redis.asyncio import Redis
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from app.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
 from app.core.db.models.subscription import Subscription
 from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
+from app.core.panel_writes import PanelWriteRecorder
 from app.core.utils.time import datetime_now
 from app.modules.providers import get_module_providers
 from app.modules.subscriptions.dto import CreateSubscriptionDto
@@ -359,3 +361,31 @@ async def test_stale_signed_payload_is_rejected_despite_a_fresh_header(
     refreshed = await subscription_repository.get_by_remnawave_user_id_for_update(81009)
     assert refreshed is not None
     assert refreshed.status == SubscriptionStatus.ACTIVE
+
+
+async def test_event_built_before_our_own_write_does_not_roll_the_subscription_back(
+    webhook_client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    config: AppConfig,
+    redis: Redis,
+) -> None:
+    subscription_id = await _subscription_for_webhook(
+        subscription_repository, user_repository, 81011
+    )
+    secret = config.remnawave.webhook_secret.get_secret_value()  # type: ignore[union-attr]
+    # the panel builds the event, then the shop renews the user, then the event arrives
+    body, headers = sign_webhook(
+        user_event_payload(event="user.expired", remnawave_user_id=81011, status="EXPIRED"), secret
+    )
+    recorder = PanelWriteRecorder(httpx.MockTransport(lambda _r: httpx.Response(200)), redis)
+    async with httpx.AsyncClient(transport=recorder, base_url="https://panel") as panel:
+        await panel.patch("/api/users", json={"id": 81011})
+
+    response = await webhook_client.post(
+        f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}", content=body, headers=headers
+    )
+
+    assert response.status_code == 200
+    refreshed = await subscription_repository.get_by_id(subscription_id)
+    assert refreshed.status is SubscriptionStatus.ACTIVE

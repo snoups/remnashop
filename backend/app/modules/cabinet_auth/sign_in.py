@@ -136,7 +136,32 @@ class CabinetSignIn:
             audience=SessionAudience.CABINET,
             ttl_seconds=session_ttl,
         )
-        is_new_device = await self._known_devices.remember(user.id, client_ip, user_agent)
+        try:
+            await self._record_sign_in(user, method, client_ip, legal_locale)
+        except BaseException:
+            # the browser never gets this session's cookies: don't leave it active
+            await self._session_issuer.revoke(issued.session_id)
+            raise
+        # after the commit: a device noted for a sign-in that rolled back would
+        # silence the alert for the real one
+        if await self._known_devices.remember(user.id, client_ip, user_agent):
+            async with self._uow:
+                await self._event_publisher.publish(
+                    CabinetNewDeviceSignInEvent(
+                        user=user,
+                        browser=describe_user_agent(user_agent),
+                        ip_address=client_ip,
+                    )
+                )
+        return user, issued
+
+    async def _record_sign_in(
+        self,
+        user: UserDto,
+        method: CabinetSignInMethod,
+        client_ip: str,
+        legal_locale: Optional[Locale],
+    ) -> None:
         async with self._uow:
             if legal_locale is not None and not await self._legal_acceptance_recorder.has_signed_up(
                 user.id, PurchaseChannel.CABINET
@@ -152,15 +177,6 @@ class CabinetSignIn:
             await self._event_publisher.publish(
                 CabinetSignedInEvent(user=user, method=method, ip_address=client_ip)
             )
-            if is_new_device:
-                await self._event_publisher.publish(
-                    CabinetNewDeviceSignInEvent(
-                        user=user,
-                        browser=describe_user_agent(user_agent),
-                        ip_address=client_ip,
-                    )
-                )
-        return user, issued
 
     async def telegram(
         self,
@@ -254,6 +270,15 @@ class CabinetSignIn:
             user, client_ip, user_agent, CabinetSignInMethod.EMAIL, legal_locale=legal_locale
         )
 
+    async def _user_by_verified_email(self, verified_email: str) -> Optional[UserDto]:
+        async with self._uow:
+            user = await self._user_repository.get_by_email(verified_email)
+        # matched only canonically (an alias): on a host where "+" is part of the
+        # name that is another person's mailbox, so the provider proves nothing here
+        if user is not None and normalize_email(user.email or "") != verified_email:
+            raise ConflictError("Email already in use", code=ErrorCode.EMAIL_TAKEN)
+        return user
+
     async def oauth(
         self,
         provider: OAuthProvider,
@@ -286,8 +311,7 @@ class CabinetSignIn:
             normalize_email(profile.email) if profile.email and profile.email_verified else None
         )
         if verified_email:
-            async with self._uow:
-                user = await self._user_repository.get_by_email(verified_email)
+            user = await self._user_by_verified_email(verified_email)
         if user is None:
             if verified_email:
                 async with self._uow:
@@ -313,17 +337,27 @@ class CabinetSignIn:
                     ),
                 )
             )
+        user = await self._link_identity(user, provider, profile)
+        return await self.issue_for(
+            user,
+            client_ip,
+            user_agent,
+            CabinetSignInMethod(provider.value),
+            legal_locale=legal_locale,
+        )
+
+    async def _link_identity(
+        self, user: UserDto, provider: OAuthProvider, profile: OAuthProfile
+    ) -> UserDto:
+        """The account the provider identity ends up on."""
+        # refused before a link is made: a blocked account must not gain a sign-in method
+        if user.is_blocked:
+            raise PermissionDeniedError("User is blocked", code=ErrorCode.USER_BLOCKED)
         async with self._uow:
             linked = await self._oauth_identity_repository.list_by_user(user.id)
         if any(identity.provider is provider for identity in linked):
             # another account of this provider is already linked: sign in, keep the link
-            return await self.issue_for(
-                user,
-                client_ip,
-                user_agent,
-                CabinetSignInMethod(provider.value),
-                legal_locale=legal_locale,
-            )
+            return user
         try:
             async with self._uow:
                 await self._oauth_identity_repository.create(
@@ -339,14 +373,8 @@ class CabinetSignIn:
             winner = await self._user_by_identity(provider, profile.external_id)
             if winner is None:
                 raise
-            user = winner
-        return await self.issue_for(
-            user,
-            client_ip,
-            user_agent,
-            CabinetSignInMethod(provider.value),
-            legal_locale=legal_locale,
-        )
+            return winner
+        return user
 
     async def _user_by_identity(
         self, provider: OAuthProvider, external_id: str

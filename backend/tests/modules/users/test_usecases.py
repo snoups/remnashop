@@ -1891,6 +1891,40 @@ async def test_set_user_discount_publishes_an_event_per_changed_discount(
     assert (row.payload["old_percent"], row.payload["new_percent"]) == (0, 20)
 
 
+async def test_an_admin_cannot_give_themselves_a_discount(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(login="self-discount", name="admin", role=Role.ADMIN, language=Locale.EN)
+        )
+        await uow.commit()
+
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
+    with pytest.raises(NotFoundError):
+        await use_case(
+            admin,
+            SetUserDiscountDto(user_id=admin.id, personal_discount=100, client_ip="127.0.0.1"),
+        )
+
+
+async def test_the_owner_can_give_themselves_a_discount(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    async with uow:
+        owner = await user_repository.create(
+            CreateUserDto(login="self-owner", name="owner", role=Role.OWNER, language=Locale.EN)
+        )
+        await uow.commit()
+
+    use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
+    result = await use_case(
+        owner, SetUserDiscountDto(user_id=owner.id, personal_discount=30, client_ip="127.0.0.1")
+    )
+
+    assert result.personal_discount == 30
+
+
 async def test_set_user_discount_rejects_out_of_range_percent(
     user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:

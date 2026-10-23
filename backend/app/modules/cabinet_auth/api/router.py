@@ -16,6 +16,7 @@ from app.core.enums import OAuthProvider, SessionAudience
 from app.core.exceptions import AppError, AuthenticationError, ValidationError
 from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
+    DEEPLINK_BINDING_COOKIE,
     OAUTH_BINDING_COOKIE,
     clear_oauth_binding_cookie,
     set_audience_cookies,
@@ -163,9 +164,19 @@ async def cabinet_email_verify(
 @inject
 async def cabinet_telegram_deeplink(
     body: InviteCodesRequest,
+    response: Response,
     use_case: FromDishka[RequestDeeplinkUseCase],
+    config: FromDishka[AppConfig],
 ) -> DeeplinkResponse:
     ticket = await use_case.execute(InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad))
+    if ticket.binding is not None:
+        set_oauth_binding_cookie(
+            response,
+            ticket.binding,
+            config.secure_cookies,
+            SessionAudience.CABINET,
+            name=DEEPLINK_BINDING_COOKIE,
+        )
     return DeeplinkResponse(bot_url=ticket.bot_url, expires_in=ticket.expires_in)
 
 
@@ -191,6 +202,7 @@ async def cabinet_telegram_signin(
     try:
         _, issued = await use_case.execute(
             body.token,
+            request.cookies.get(DEEPLINK_BINDING_COOKIE),
             resolve_client_ip(request),
             request.headers.get("user-agent"),
             body.legal_locale,
@@ -199,6 +211,7 @@ async def cabinet_telegram_signin(
         if error.code in BOT_SIGNIN_FAILURES:
             await guard.record_failure()
         raise
+    clear_oauth_binding_cookie(response, name=DEEPLINK_BINDING_COOKIE)
     set_audience_cookies(response, issued, config.secure_cookies, SessionAudience.CABINET)
     return CabinetAuthResponse(access_token=issued.access_token, expires_in=TTL_15M)
 

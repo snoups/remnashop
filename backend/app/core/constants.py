@@ -190,5 +190,6 @@ DEFAULT_ALLOWED_EMAIL_DOMAINS: Final[tuple[str, ...]] = (
     "libero.it",
 )
 
-# an address a customer may type: one @, no spaces or header-breaking characters
-EMAIL_PATTERN: Final[str] = r'^[^@\s(),<>;:"]+@[^@\s(),<>;:"]+$'
+# an address a customer may type: one @, no spaces or header-breaking characters,
+# no "?" (an RFC 2047 encoded word would make one mailbox look like many)
+EMAIL_PATTERN: Final[str] = r'^[^@\s(),<>;:"?]+@[^@\s(),<>;:"?]+$'

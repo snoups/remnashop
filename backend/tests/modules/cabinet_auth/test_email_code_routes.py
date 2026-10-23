@@ -199,7 +199,10 @@ async def test_verify_when_method_disabled(
     assert (response.status_code, response.json()["code"]) == (401, "CABINET_EMAIL_DISABLED")
 
 
-@pytest.mark.parametrize("email", ["a@b.c,evil@x.y", "a@b.c;x", "<a@b.c>", 'a"@b.c', "a@b.c:x"])
+@pytest.mark.parametrize(
+    "email",
+    ["a@b.c,evil@x.y", "a@b.c;x", "<a@b.c>", 'a"@b.c', "a@b.c:x", "=?utf-8?q?bad?=@gmail.com"],
+)
 async def test_email_with_header_steering_characters_is_rejected(
     client: httpx.AsyncClient, email: str
 ) -> None:

@@ -7,7 +7,7 @@ from loguru import logger
 
 import app.core.logger as logger_module
 from app.core.config import AppConfig
-from app.core.logger import InterceptHandler, setup_logger
+from app.core.logger import InterceptHandler, redact_exception, setup_logger
 
 
 def test_intercept_handler_masks_bot_token_in_url() -> None:
@@ -68,3 +68,22 @@ def test_each_process_writes_its_own_log_file(
         logging.getLogger().handlers = root_handlers
 
     assert [p.name for p in tmp_path.iterdir()] == ["remnashop-api.log"]
+
+
+def test_a_logged_exception_does_not_carry_the_bot_token() -> None:
+    messages: list[str] = []
+    logger.configure(patcher=redact_exception)
+    sink_id = logger.add(messages.append, format="{message}")
+    try:
+        try:
+            raise RuntimeError(
+                "400, url='https://api.telegram.org/file/bot123456:AAH-secret/x.webp'"
+            )
+        except RuntimeError:
+            logger.exception("download failed")
+    finally:
+        logger.remove(sink_id)
+        logger.configure(patcher=lambda _record: None)
+
+    assert "AAH-secret" not in "".join(messages)
+    assert "RuntimeError" in "".join(messages)

@@ -9,12 +9,14 @@ from app.core.exceptions import AuthenticationError
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.dto import BotSignInGrantDto, InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.usecases import BotSignInUseCase, IssueBotSignInLinkUseCase
+from app.modules.oauth import new_binding
 from app.modules.settings.dto import UpdateCabinetAuthSettingsDto
 from app.modules.settings.repository import SettingsRepository
 
 _IP = "203.0.113.1"
 _CABINET = "https://cabinet.example.com"
 _PROFILE = TelegramProfileDto(telegram_id=7007, name="Ann", username="ann", language="en")
+_BINDING, _BINDING_HASH = new_binding()
 
 
 @pytest.fixture
@@ -87,14 +89,41 @@ async def test_issue_link_without_cabinet_url_gives_nothing(
 async def test_signin_signs_in_once(
     store: DeeplinkStore, sign_in_use_case: BotSignInUseCase
 ) -> None:
-    token = await store.issue_signin(BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto()))
+    token = await store.issue_signin(
+        BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto(), binding_hash=_BINDING_HASH)
+    )
 
-    user, issued = await sign_in_use_case.execute(token, _IP, "ua")
+    user, issued = await sign_in_use_case.execute(token, _BINDING, _IP, "ua")
     assert user.telegram_id == 7007 and issued.access_token
 
     with pytest.raises(AuthenticationError) as error:
-        await sign_in_use_case.execute(token, _IP, "ua")
+        await sign_in_use_case.execute(token, _BINDING, _IP, "ua")
     assert error.value.code is ErrorCode.DEEPLINK_EXPIRED
+
+
+@pytest.mark.usefixtures("telegram_enabled")
+@pytest.mark.parametrize("binding", [None, "another-browser"])
+async def test_signin_from_another_browser_is_refused_and_keeps_the_link(
+    store: DeeplinkStore, sign_in_use_case: BotSignInUseCase, binding: object
+) -> None:
+    token = await store.issue_signin(
+        BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto(), binding_hash=_BINDING_HASH)
+    )
+    with pytest.raises(AuthenticationError) as error:
+        await sign_in_use_case.execute(token, binding, _IP, "ua")  # type: ignore[arg-type]
+    assert error.value.code is ErrorCode.DEEPLINK_OTHER_BROWSER
+    assert await store.peek_signin(token) is not None
+
+
+async def test_issue_link_carries_the_browser_binding(
+    store: DeeplinkStore, config: AppConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
+    start = await store.create(InviteCodesDto(), binding_hash=_BINDING_HASH)
+    link = await IssueBotSignInLinkUseCase(store, config).execute(start, _PROFILE)
+    assert link is not None
+    grant = await store.take_signin(_token_from(link.url))
+    assert grant is not None and grant.binding_hash == _BINDING_HASH
 
 
 async def test_signin_is_refused_when_telegram_is_disabled(
@@ -102,7 +131,7 @@ async def test_signin_is_refused_when_telegram_is_disabled(
 ) -> None:
     token = await store.issue_signin(BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto()))
     with pytest.raises(AuthenticationError) as error:
-        await sign_in_use_case.execute(token, _IP, "ua")
+        await sign_in_use_case.execute(token, _BINDING, _IP, "ua")
     assert error.value.code is ErrorCode.CABINET_TELEGRAM_DISABLED
     # a switched-off method must not burn the link: switching it back on lets it through
     assert await store.take_signin(token) is not None
@@ -132,5 +161,5 @@ async def test_login_signin_rejects_link_grant(
         BotSignInGrantDto(profile=_PROFILE, codes=InviteCodesDto(), link_user_id=42)
     )
     with pytest.raises(AuthenticationError) as error:
-        await sign_in_use_case.execute(token, _IP, "ua")
+        await sign_in_use_case.execute(token, _BINDING, _IP, "ua")
     assert error.value.code is ErrorCode.DEEPLINK_EXPIRED

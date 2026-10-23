@@ -1,10 +1,12 @@
 import httpx
 import pytest
+from redis.asyncio import Redis
 
 from app.core.config import AppConfig
-from app.core.constants import API_V1
+from app.core.constants import API_V1, REDIS_KEY_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.modules.auth.repository import SessionRepository
+from app.modules.cabinet_auth import email_key
 from app.modules.settings.dto import UpdateCabinetAuthSettingsDto, UpdateEmailSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import CreateUserDto
@@ -101,3 +103,65 @@ async def test_email_disabled(client: httpx.AsyncClient, headers: dict[str, str]
     response = await client.post(LINK_CODE, json={"email": "new@gmail.com"}, headers=headers)
     assert response.status_code == 400
     assert response.json()["code"] == "CABINET_EMAIL_DISABLED"
+
+
+@pytest.mark.usefixtures("email_enabled")
+async def test_link_code_for_an_owned_alias_goes_to_the_owner_mailbox(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    headers: dict[str, str],
+    user_repository: UserRepository,
+) -> None:
+    # john+x and john are different mailboxes on hosts where "+" is part of the name
+    await user_repository.create(CreateUserDto(name="victim", email="john+x@example.org"))
+
+    await client.post(LINK_CODE, json={"email": "john@example.org"}, headers=headers)
+
+    assert email_dispatch.messages[-1]["to"] == "john+x@example.org"
+
+
+@pytest.mark.usefixtures("email_enabled")
+async def test_no_link_code_for_a_new_address_that_could_never_be_attached(
+    client: httpx.AsyncClient, email_dispatch: RecordingDispatch, headers: dict[str, str]
+) -> None:
+    # example.org is outside the default domain allowlist and owned by nobody
+    response = await client.post(LINK_CODE, json={"email": "new@example.org"}, headers=headers)
+
+    assert response.status_code == 204
+    assert email_dispatch.messages == []
+
+
+@pytest.mark.usefixtures("email_enabled")
+async def test_no_link_code_while_another_email_is_linked(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    user = await user_repository.create(
+        CreateUserDto(name="has-email", telegram_id=7002, email="mine@gmail.com")
+    )
+    own = await bearer(user.id, session_repository, config)
+
+    response = await client.post(LINK_CODE, json={"email": "other@gmail.com"}, headers=own)
+
+    assert response.status_code == 409
+    assert email_dispatch.messages == []
+
+
+@pytest.mark.usefixtures("email_enabled")
+async def test_failed_links_leave_the_mailbox_sign_in_budget_alone(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    headers: dict[str, str],
+    redis: Redis,
+) -> None:
+    await client.post(LINK_CODE, json={"email": "victim@gmail.com"}, headers=headers)
+    wrong = "000000" if _code_of(email_dispatch) != "000000" else "111111"
+    await client.post(
+        LINK_VERIFY, json={"email": "victim@gmail.com", "code": wrong}, headers=headers
+    )
+
+    sign_in_budget = f"{REDIS_KEY_PREFIX}cabinet:email_code_fail:{email_key('victim@gmail.com')}"
+    assert await redis.get(sign_in_budget) is None

@@ -119,3 +119,21 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     analytics_admin_router,
     overview_admin_router,
 )
+
+# what the customer cabinet calls; through its proxy every other router answers 404
+# (refuse_outside_cabinet). A new cabinet route needs its router listed here.
+CABINET_ROUTERS: Final[tuple[APIRouter, ...]] = (
+    auth_router,
+    cabinet_auth_router,
+    legal_router,
+    legal_cabinet_router,
+    users_router,
+    identity_links_router,
+    settings_router,
+    settings_shop_router,
+    promocodes_public_router,
+    referrals_public_router,
+    subscriptions_public_router,
+    subscriptions_own_router,
+    transactions_public_router,
+)

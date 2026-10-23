@@ -26,9 +26,14 @@ class DeeplinkStore:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
-    async def create(self, codes: InviteCodesDto, link_user_id: Optional[int] = None) -> str:
+    async def create(
+        self,
+        codes: InviteCodesDto,
+        link_user_id: Optional[int] = None,
+        binding_hash: Optional[str] = None,
+    ) -> str:
         token = secrets.token_urlsafe(32)
-        ticket = StartTicketDto(codes=codes, link_user_id=link_user_id)
+        ticket = StartTicketDto(codes=codes, link_user_id=link_user_id, binding_hash=binding_hash)
         await self._redis.set(
             f"{_TOKEN_PREFIX}{_hash(token)}", _TICKET_ADAPTER.dump_json(ticket), ex=TTL_5M
         )
@@ -47,6 +52,10 @@ class DeeplinkStore:
             f"{_SIGNIN_PREFIX}{_hash(token)}", _GRANT_ADAPTER.dump_json(grant), ex=TTL_5M
         )
         return token
+
+    async def peek_signin(self, token: str) -> Optional[BotSignInGrantDto]:
+        raw = await self._redis.get(f"{_SIGNIN_PREFIX}{_hash(token)}")
+        return None if raw is None else _GRANT_ADAPTER.validate_json(raw)
 
     async def take_signin(self, token: str) -> Optional[BotSignInGrantDto]:
         raw = await self._redis.getdel(f"{_SIGNIN_PREFIX}{_hash(token)}")

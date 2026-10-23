@@ -14,6 +14,8 @@ from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_password, hash_refresh_token
+from app.modules.api_tokens.dto import CreateApiTokenDto
+from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -79,7 +81,6 @@ async def test_dashboard_sign_in_is_refused_through_the_proxy(
     for method, path, body in (
         ("POST", f"{API_V1}/auth/login", {"login": "owner", "password": _PASSWORD}),
         ("POST", f"{API_V1}/auth/bootstrap", {"login": "owner", "password": _PASSWORD}),
-        ("GET", f"{API_V1}/auth/passkeys/authenticate/options", None),
     ):
         response = await proxied_client.request(method, path, json=body, headers=_PROXIED)
         assert response.status_code == 403, path
@@ -100,9 +101,15 @@ async def test_a_dashboard_token_is_refused_through_the_proxy(
     direct = await proxied_client.get(f"{API_V1}/admins", headers=bearer)
     assert direct.status_code == 200
 
+    # a dashboard route doesn't exist through the cabinet's proxy at all
     proxied = await proxied_client.get(f"{API_V1}/admins", headers={**bearer, **_PROXIED})
-    assert proxied.status_code == 403
-    assert proxied.json()["code"] == "PROXY_DASHBOARD_FORBIDDEN"
+    assert proxied.status_code == 404
+    assert proxied.json()["code"] == "NOT_FOUND"
+
+    # a route both share still refuses the dashboard session
+    refused = await proxied_client.get(f"{API_V1}/users/me", headers={**bearer, **_PROXIED})
+    assert refused.status_code == 403
+    assert refused.json()["code"] == "PROXY_DASHBOARD_FORBIDDEN"
 
     forged = await proxied_client.get(
         f"{API_V1}/admins", headers={**bearer, "X-Cabinet-Proxy-Secret": "wrong"}
@@ -163,3 +170,46 @@ async def test_customer_and_staff_routes_through_the_proxy_need_a_cabinet_sessio
         f"{API_V1}/subscriptions/me", headers={"Authorization": f"Bearer {cabinet}", **_PROXIED}
     )
     assert allowed.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/payments/yookassa",
+        "/remnawave",
+        "/admins",
+        "/system/metadata",
+        "/docs",
+        "/auth/passkeys/authenticate/options",
+    ],
+)
+async def test_routes_the_cabinet_does_not_call_are_hidden_behind_its_proxy(
+    proxied_client: httpx.AsyncClient, path: str
+) -> None:
+    method = "POST" if path in {"/payments/yookassa", "/remnawave"} else "GET"
+    response = await proxied_client.request(method, f"{API_V1}{path}", headers=_PROXIED)
+    assert response.status_code == 404
+
+
+async def test_an_api_token_through_the_proxy_is_refused_before_counting_as_used(
+    proxied_client: httpx.AsyncClient, api_token_repository: ApiTokenRepository, uow: UnitOfWork
+) -> None:
+    secret = "proxied-api-token-secret"
+    async with uow:
+        token = await api_token_repository.create(
+            CreateApiTokenDto(
+                name="script",
+                token_hash=hash_refresh_token(secret),
+                scopes=["*"],
+                created_by_user_id=None,
+                expires_at=None,
+            )
+        )
+
+    response = await proxied_client.get(
+        f"{API_V1}/users/me", headers={"Authorization": f"Bearer {secret}", **_PROXIED}
+    )
+
+    assert response.status_code == 403
+    [stored] = [t for t in await api_token_repository.list_not_revoked() if t.id == token.id]
+    assert stored.last_used_at is None

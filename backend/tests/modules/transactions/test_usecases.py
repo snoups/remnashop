@@ -610,6 +610,21 @@ async def test_an_open_order_counts_as_history_for_a_new_only_plan(
     assert error.value.code is ErrorCode.PLAN_NOT_FOUND
 
 
+async def test_a_second_paid_trial_order_is_refused_while_the_first_is_open(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+) -> None:
+    trial = await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_trial=True))
+    await create_checkout_use_case(actor, _checkout_dto(actor, trial))
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(actor, _checkout_dto(actor, trial))
+    assert error.value.code is ErrorCode.TRIAL_NOT_AVAILABLE
+
+
 async def test_create_checkout_link_plan_requires_its_code(
     create_checkout_use_case: CreateCheckoutUseCase,
     _active_yookassa: None,
@@ -643,7 +658,8 @@ async def test_create_checkout_link_plan_requires_its_code(
     result = await create_checkout_use_case(actor, checkout(plan.public_code))
     assert result.confirmation_url == fake_gateway.confirmation_url
 
-    for code in (None, "wrong-code"):
+    # a non-ASCII code is just a wrong one, not a crash
+    for code in (None, "wrong-code", "код-плана"):
         with pytest.raises(NotFoundError):
             await create_checkout_use_case(actor, checkout(code))
 
@@ -1174,6 +1190,24 @@ class _FailingGateway(_FakeGateway):
         raise RuntimeError("provider down")
 
 
+class _ChattyGateway(_FakeGateway):
+    async def create_payment(self, order: TransactionDto) -> PaymentIntent:
+        raise PaymentGatewayError('API error: {"merchant_id": 4242, "msg": "bad sign"}')
+
+
+async def test_a_provider_error_reaches_the_customer_without_the_providers_answer(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    create_checkout_use_case._gateway_factory = _FakeFactory(_ChattyGateway())  # type: ignore[assignment]
+
+    with pytest.raises(PaymentGatewayError) as error:
+        await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+    assert "merchant_id" not in str(error.value)
+
+
 async def test_a_gateway_failure_fails_the_order_and_hands_the_discount_back(
     create_checkout_use_case: CreateCheckoutUseCase,
     _active_yookassa: None,
@@ -1188,7 +1222,7 @@ async def test_a_gateway_failure_fails_the_order_and_hands_the_discount_back(
         await user_repository.update_fields(actor.id, UpdateUserDto(purchase_discount=20))
     create_checkout_use_case._gateway_factory = _FakeFactory(_FailingGateway())  # type: ignore[assignment]
 
-    with pytest.raises(PaymentGatewayError, match="RuntimeError"):
+    with pytest.raises(PaymentGatewayError, match="unavailable"):
         await create_checkout_use_case(actor, _checkout_dto(actor, plan))
 
     orders, _ = await transaction_repository.list_paginated(user_id=actor.id)
@@ -1406,7 +1440,7 @@ async def test_failed_gateway_keeps_acceptance_of_failed_order(
     assert acceptance.transaction_id == orders[0].id
 
 
-async def test_cabinet_checkout_without_legal_locale_records_nothing(
+async def test_cabinet_checkout_without_legal_locale_records_in_the_customers_language(
     create_checkout_use_case: CreateCheckoutUseCase,
     _active_yookassa: None,
     legal_repository: LegalRepository,
@@ -1417,7 +1451,7 @@ async def test_cabinet_checkout_without_legal_locale_records_nothing(
 
     await create_checkout_use_case(actor, _checkout_dto(actor, plan))
 
-    assert await legal_repository.list_acceptances(actor.id) == []
+    assert await legal_repository.list_acceptances(actor.id) != []
 
 
 async def test_bot_checkout_without_legal_locale_still_records(

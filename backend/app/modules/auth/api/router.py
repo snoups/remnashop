@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -11,7 +13,7 @@ from app.core.constants import TIME_1M, TTL_15M
 from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
-from app.core.utils.http import resolve_client_ip
+from app.core.utils.http import is_cabinet_proxied, resolve_client_ip
 from app.modules.auth import (
     BootstrapOwnerUseCase,
     GetAuthStatusUseCase,
@@ -118,6 +120,17 @@ async def login(
     return to_auth_response(user, issued.access_token)
 
 
+def _refresh_cookie_for(request: Request) -> Optional[tuple[SessionAudience, str]]:
+    """The refresh cookie of the audience this host serves: the cabinet's through its
+    proxy, the dashboard's otherwise. A second one (tossed in from a sibling
+    subdomain) is ignored rather than breaking the real session's refresh."""
+    presented = dict(presented_refresh_tokens(request))
+    if len(presented) <= 1:
+        return next(iter(presented.items()), None)
+    audience = SessionAudience.CABINET if is_cabinet_proxied(request) else SessionAudience.DASHBOARD
+    return audience, presented[audience]
+
+
 @router.post(
     "/refresh",
     response_model=RefreshResponse,
@@ -131,19 +144,12 @@ async def refresh_session(
     use_case: FromDishka[RefreshSessionUseCase],
     config: FromDishka[AppConfig],
 ) -> RefreshResponse | JSONResponse:
-    presented = presented_refresh_tokens(request)
-    if not presented:
+    chosen = _refresh_cookie_for(request)
+    if chosen is None:
         raise ApiError(
             status.HTTP_401_UNAUTHORIZED, "No refresh token", code=ErrorCode.REFRESH_TOKEN_MISSING
         )
-    # each audience's cookie lives on its own path; both at once means something is off
-    if len(presented) > 1:
-        raise ApiError(
-            status.HTTP_401_UNAUTHORIZED,
-            "Ambiguous refresh token",
-            code=ErrorCode.REFRESH_TOKEN_INVALID,
-        )
-    audience, refresh_token = presented[0]
+    audience, refresh_token = chosen
     if audience is SessionAudience.DASHBOARD:
         forbid_cabinet_proxy(request)
     verify_csrf(
@@ -185,7 +191,9 @@ async def logout(
     use_case: FromDishka[LogoutUseCase],
     config: FromDishka[AppConfig],
 ) -> None:
-    for audience, refresh_token in presented_refresh_tokens(request):
+    chosen = _refresh_cookie_for(request)
+    if chosen is not None:
+        audience, refresh_token = chosen
         verify_csrf(
             refresh_token,
             request,
@@ -193,4 +201,6 @@ async def logout(
             csrf_cookie=SESSION_COOKIES[audience].csrf,
         )
         await use_case.execute(refresh_token=refresh_token, audience=audience)
+    # both: a cookie of the other audience has no business on this host
+    for audience in SESSION_COOKIES:
         clear_audience_cookies(response, audience)

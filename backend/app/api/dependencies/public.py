@@ -35,6 +35,7 @@ class AuthContext:
 
 
 async def _resolve_api_token_actor(
+    request: Request,
     credential: str,
     api_token_repository: ApiTokenRepository,
     uow: UnitOfWork,
@@ -43,6 +44,8 @@ async def _resolve_api_token_actor(
     token = await api_token_repository.get_active_by_hash(hash_refresh_token(credential))
     if token is None:
         return None
+    # refused before it counts as used
+    forbid_cabinet_proxy(request)
 
     if token.ip_allowlist and not is_ip_allowed(client_ip, token.ip_allowlist):
         logger.warning(f"API token '{token.name}' denied from disallowed IP '{client_ip}'")
@@ -91,10 +94,9 @@ async def get_auth_context(
         session_id = int(payload["sid"])
     except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         token_actor = await _resolve_api_token_actor(
-            credentials.credentials, api_token_repository, uow, client_ip
+            request, credentials.credentials, api_token_repository, uow, client_ip
         )
         if token_actor is not None:
-            forbid_cabinet_proxy(request)
             return AuthContext(actor=token_actor)
         logger.warning(f"Invalid or expired token from IP '{client_ip}'")
         raise ApiError(
@@ -145,6 +147,13 @@ def forbid_cabinet_proxy(request: Request) -> None:
             "Not available through the cabinet",
             code=ErrorCode.PROXY_DASHBOARD_FORBIDDEN,
         )
+
+
+def refuse_outside_cabinet(request: Request) -> None:
+    """Routes the cabinet doesn't call answer through its proxy as if they didn't
+    exist, so a dashboard closed at its own reverse proxy stays closed here too."""
+    if is_cabinet_proxied(request):
+        raise ApiError(status.HTTP_404_NOT_FOUND, "Not Found", code=ErrorCode.NOT_FOUND)
 
 
 def require_user_account(actor: Actor) -> UserDto:

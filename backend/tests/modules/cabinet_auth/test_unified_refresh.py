@@ -75,17 +75,17 @@ async def test_a_dashboard_token_in_the_cabinet_cookie_is_refused(
     assert response.status_code == 401
 
 
-async def test_both_refresh_cookies_at_once_are_refused(
+async def test_a_tossed_cabinet_cookie_does_not_break_the_dashboard_refresh(
     client: httpx.AsyncClient, sign_in: CabinetSignIn, container: AsyncContainer
 ) -> None:
     cabinet, dashboard = await _sessions(sign_in, container)
     _use(client, cabinet, SessionAudience.CABINET)
-    _use(client, dashboard, SessionAudience.DASHBOARD)
+    headers = _use(client, dashboard, SessionAudience.DASHBOARD)
 
-    response = await client.post(_REFRESH, headers={"X-Csrf-Token": cabinet.csrf_token})
+    # not through the cabinet's proxy: the dashboard's own cookie is the one used
+    response = await client.post(_REFRESH, headers=headers)
 
-    assert response.status_code == 401
-    assert response.json()["code"] == "REFRESH_TOKEN_INVALID"
+    assert response.status_code == 200
 
 
 @pytest.fixture

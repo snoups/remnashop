@@ -7,14 +7,20 @@ from app.modules.referrals.dto import (
     ReferralStatsRewardDto,
 )
 from app.modules.referrals.repository import ReferralRepository
-from app.modules.users import UserDto
+from app.modules.users import UserDto, UserRepository, visible_user
 
 
 class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
     required_permission = Permission.PUBLIC
 
-    def __init__(self, referral_repository: ReferralRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        referral_repository: ReferralRepository,
+        user_repository: UserRepository,
+        uow: UnitOfWork,
+    ) -> None:
         self._referral_repository = referral_repository
+        self._user_repository = user_repository
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> ReferralStatsDto:
@@ -23,9 +29,15 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
             counts = await self._referral_repository.count_by_level(actor.id)
             rewards = await self._referral_repository.list_rewards_by_referrer(actor.id)
             settings = await self._referral_repository.get_settings()
+            # a staff referrer stays hidden from the customer, as elsewhere
+            referrer = (
+                visible_user(actor, await self._user_repository.find_by_id(edge.referrer_id))
+                if edge is not None and edge.referrer_id is not None
+                else None
+            )
             return ReferralStatsDto(
                 referral_code=actor.referral_code,
-                referrer_id=edge.referrer_id if edge is not None else None,
+                referrer_id=referrer.id if referrer is not None else None,
                 points=actor.points,
                 bonus_days=actor.bonus_days,
                 counts_by_level=counts,

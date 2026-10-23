@@ -18,7 +18,8 @@ from app.modules.cabinet_auth.email_codes import (
     EmailCodeStore,
     email_key,
     fail_budget_exhausted,
-    record_failure,
+    release_attempt,
+    reserve_attempt,
     send_limit_hit,
 )
 from app.modules.cabinet_auth.email_domains import is_allowed_domain
@@ -62,7 +63,8 @@ __all__ = [
     "fail_budget_exhausted",
     "get_cabinet_auth_providers",
     "is_allowed_domain",
-    "record_failure",
+    "release_attempt",
+    "reserve_attempt",
     "send_limit_hit",
     "telegram_profile_from_oauth",
 ]

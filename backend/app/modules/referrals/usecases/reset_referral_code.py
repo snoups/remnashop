@@ -8,7 +8,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.events import ReferralCodeResetEvent
-from app.modules.users import UserDto, UserRepository, get_visible_target
+from app.modules.users import UserDto, UserRepository, assert_manageable, get_visible_target
 
 
 class ResetReferralCodeUseCase(UseCase[int, UserDto]):
@@ -23,7 +23,8 @@ class ResetReferralCodeUseCase(UseCase[int, UserDto]):
 
     async def _execute(self, actor: Actor, data: int) -> UserDto:
         async with self._uow:
-            await get_visible_target(self._user_repository, actor, data)
+            target = await get_visible_target(self._user_repository, actor, data)
+            assert_manageable(actor, target, allow_self=True)
             updated = await self._user_repository.reset_referral_code(data)
             if updated is None:
                 raise NotFoundError(f"User '{data}' not found", code=ErrorCode.USER_NOT_FOUND)

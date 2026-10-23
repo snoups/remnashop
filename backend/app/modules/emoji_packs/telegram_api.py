@@ -2,6 +2,7 @@ import asyncio
 import re
 from typing import Final, Optional
 
+import aiohttp
 from aiogram import Bot
 from aiogram.enums import StickerType
 from aiogram.types import Sticker, StickerSet
@@ -10,6 +11,8 @@ from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
 from app.modules.emoji_packs.dto import EmojiPackItemDto, FetchedEmojiPack
 
 _TIMEOUT_S: Final[float] = 10.0
+# a file download fails as an aiohttp error, not a Bot API one
+_DOWNLOAD_ERRORS: Final[tuple[type[Exception], ...]] = (*BOT_API_ERRORS, aiohttp.ClientError)
 # t.me/addemoji/<name>, with or without scheme, query or trailing slash, or
 # the bare name.
 _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
@@ -82,7 +85,7 @@ async def _download(
     async with semaphore:
         try:
             content = await bot.download(file_id)
-        except BOT_API_ERRORS:
+        except _DOWNLOAD_ERRORS:
             # Losing a file costs that emoji its artwork, not the import.
             return None
     return content.read() if content is not None else None

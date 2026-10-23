@@ -254,6 +254,9 @@ class PurchaseRollbackDto:
     price_paid: Decimal
     currency: Currency
     has_later_paid_order: bool
+    # the order's purchase key: a renewal that reached the panel but not the
+    # database is found by the expiry pinned on it
+    idempotency_key: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

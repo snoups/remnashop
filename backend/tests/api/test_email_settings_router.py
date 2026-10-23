@@ -90,3 +90,18 @@ async def test_email_settings_response_never_carries_the_password(
         assert "secret-pw" not in response.text
         assert body["is_password_set"] is True
         assert body["is_configured"] is True
+
+
+async def test_a_sender_name_with_a_line_break_is_refused(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    for field in ("from_name", "bulk_from_name"):
+        response = await client.patch(
+            f"{API_V1}/settings/email", json={field: "Shop\r\nBcc: x@y.z"}, headers=headers
+        )
+        assert response.status_code == 422

@@ -3,6 +3,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, status
 
 from app.api.dependencies.admin import require_admin
+from app.api.dependencies.public import get_current_session_id
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.utils.http import resolve_client_ip
@@ -66,8 +67,9 @@ async def create_api_token(
 async def issue_docs_ott(
     use_case: FromDishka[IssueDocsOttUseCase],
     actor: Actor = Depends(require_admin),
+    session_id: int = Depends(get_current_session_id),
 ) -> DocsOttResponse:
-    return DocsOttResponse(ott=await use_case(actor))
+    return DocsOttResponse(ott=await use_case(actor, session_id))
 
 
 @router.delete(

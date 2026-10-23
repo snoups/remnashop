@@ -4,6 +4,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
@@ -15,7 +16,7 @@ from app.modules.users.events import (
     UserPurchaseDiscountChangedEvent,
 )
 from app.modules.users.repository import UserRepository
-from app.modules.users.visibility import get_visible_target
+from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
 def _changed(new: Optional[int], old: int) -> bool:
@@ -43,6 +44,8 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
+            # on oneself only the owner: for anyone else a discount is money they hand themselves
+            assert_manageable(actor, target, allow_self=actor.role is Role.OWNER)
 
             personal_changed = _changed(data.personal_discount, target.personal_discount)
             purchase_changed = _changed(data.purchase_discount, target.purchase_discount)

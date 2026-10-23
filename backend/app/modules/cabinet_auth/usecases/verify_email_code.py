@@ -13,8 +13,8 @@ from app.modules.cabinet_auth.email_codes import (
     EmailCodeExpired,
     EmailCodeStore,
     email_key,
-    fail_budget_exhausted,
-    record_failure,
+    release_attempt,
+    reserve_attempt,
 )
 from app.modules.cabinet_auth.events import EmailCodeAttemptsExhaustedEvent
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
@@ -55,24 +55,24 @@ class VerifyEmailCodeUseCase:
                 "Email sign-in is disabled", code=ErrorCode.CABINET_EMAIL_DISABLED
             )
         digest = email_key(email)
-        if await fail_budget_exhausted(self._redis, digest):
+        if not await reserve_attempt(self._redis, digest):
             raise AuthenticationError("The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED)
         try:
             grant = await self._store.verify(email, code)
         except EmailCodeExpired:
+            await release_attempt(self._redis, digest)
             raise AuthenticationError(
                 "The code has expired", code=ErrorCode.EMAIL_CODE_EXPIRED
             ) from None
         except EmailCodeAttemptsExhausted:
-            await record_failure(self._redis, digest)
             async with self._uow:
                 await self._event_publisher.publish(
                     EmailCodeAttemptsExhaustedEvent(email_hash=digest, ip_address=client_ip)
                 )
             raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID) from None
         if grant is None:
-            await record_failure(self._redis, digest)
             raise AuthenticationError("Wrong code", code=ErrorCode.EMAIL_CODE_INVALID)
+        await release_attempt(self._redis, digest)
         return await self._sign_in.email(
             email, grant.locale, grant.codes, client_ip, user_agent, legal_locale
         )

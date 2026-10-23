@@ -291,6 +291,20 @@ class TransactionRepository:
         ).all()
         return [self._to_dto(row) for row in rows]
 
+    async def mark_fulfilled_by_key(self, idempotency_key: str, subscription_id: int) -> None:
+        await self.session.execute(
+            update(Transaction)
+            .where(
+                Transaction.idempotency_key == idempotency_key,
+                Transaction.fulfilled_at.is_(None),
+            )
+            .values(
+                fulfilled_at=NOW_FUNC,
+                fulfilled_subscription_id=subscription_id,
+                updated_at=Transaction.updated_at,
+            )
+        )
+
     async def mark_fulfilled(self, order_id: int, subscription_id: int) -> None:
         # updated_at is the paid-at timestamp every revenue query groups by;
         # pinned to itself, since Core update() still applies its onupdate
@@ -312,13 +326,20 @@ class TransactionRepository:
         return status
 
     async def count_open_new_orders(
-        self, user_id: int, now: datetime, *, exclude_key: Optional[str] = None
+        self,
+        user_id: int,
+        now: datetime,
+        *,
+        exclude_key: Optional[str] = None,
+        trial_only: bool = False,
     ) -> int:
         conditions = [
             _NOT_TEST,
             Transaction.user_id == user_id,
             Transaction.purchase_type == PurchaseType.NEW,
         ]
+        if trial_only:
+            conditions.append(Transaction.plan_snapshot["is_trial"].as_boolean().is_(True))
         if exclude_key is not None:
             conditions.append(Transaction.idempotency_key != exclude_key)
         count = await self.session.scalar(

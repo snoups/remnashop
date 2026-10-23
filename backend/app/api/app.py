@@ -17,7 +17,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import Response
 from starlette.types import Scope
 
-from app.api.dependencies.public import get_auth_context
+from app.api.dependencies.public import get_auth_context, refuse_outside_cabinet
 from app.api.dependencies.rate_limit import global_rate_limit
 from app.api.errors import (
     GLOBAL_ERROR_RESPONSES,
@@ -28,7 +28,7 @@ from app.api.errors import (
 from app.api.lifespan import lifespan
 from app.api.middlewares import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from app.api.probes_router import router as probes_router
-from app.api.routers import ROUTERS
+from app.api.routers import CABINET_ROUTERS, ROUTERS
 from app.api.system_router import router as system_router
 from app.core.config import AppConfig
 from app.core.constants import (
@@ -40,13 +40,15 @@ from app.core.constants import (
     TTL_2H,
 )
 from app.core.error_codes import ErrorCode
-from app.core.security import create_docs_token, is_valid_docs_token
+from app.core.security import create_docs_token, docs_token_session
 from app.core.utils.http import resolve_client_ip
+from app.modules.auth import SessionRepository
 
 _DOCS_OTT_USED_KEY: Final[str] = f"{REDIS_KEY_PREFIX}docs:ott-used:"
 FRONTEND_DIST: Final[Path] = Path("/opt/remnashop/frontend/dist")
 # Vite hashes every file name under assets/, so a URL never changes content
 _ASSETS_CACHE_CONTROL: Final[str] = "public, max-age=31536000, immutable"
+_MIN_PROXY_SECRET_LENGTH: Final[int] = 32
 
 
 def resolve_cors(origins: list[str]) -> tuple[list[str], bool]:
@@ -99,14 +101,17 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
     openapi_url = f"{DOCS_PATH}/openapi.json"
 
     async def _enter(
-        request: Request, redis: Redis, ott: Optional[str], page: HTMLResponse
+        request: Request,
+        redis: Redis,
+        sessions: SessionRepository,
+        ott: Optional[str],
+        page: HTMLResponse,
     ) -> Response:
         if ott is not None:
             # one exchange per ticket: a ticket seen in a log or history is spent
             used_key = f"{_DOCS_OTT_USED_KEY}{hashlib.sha256(ott.encode()).hexdigest()}"
-            if not is_valid_docs_token(ott, "ott", secret) or not await redis.set(
-                used_key, 1, nx=True, ex=TIME_1M
-            ):
+            session_id = docs_token_session(ott, "ott", secret)
+            if session_id is None or not await redis.set(used_key, 1, nx=True, ex=TIME_1M):
                 raise ApiError(
                     status.HTTP_401_UNAUTHORIZED,
                     "Docs ticket is invalid or expired",
@@ -116,7 +121,7 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
             response = RedirectResponse(request.url.path, status_code=status.HTTP_303_SEE_OTHER)
             response.set_cookie(
                 DOCS_COOKIE_NAME,
-                create_docs_token("access", TTL_2H, secret),
+                create_docs_token("access", TTL_2H, secret, session_id),
                 max_age=TTL_2H,
                 path=DOCS_PATH,
                 httponly=True,
@@ -124,43 +129,73 @@ def _setup_docs(app: FastAPI, config: AppConfig) -> None:
                 samesite="lax",
             )
             return response
-        _require_docs_cookie(request)
+        await _require_docs_cookie(request, sessions)
         return page
 
-    def _require_docs_cookie(request: Request) -> None:
+    async def _require_docs_cookie(request: Request, sessions: SessionRepository) -> None:
         token = request.cookies.get(DOCS_COOKIE_NAME)
-        if token is None or not is_valid_docs_token(token, "access", secret):
+        session_id = docs_token_session(token, "access", secret) if token else None
+        # the dashboard session that opened the docs must still be live: a sign-out,
+        # block or demotion closes them too
+        if session_id is None or await sessions.get_active_by_id(session_id) is None:
             raise ApiError(
                 status.HTTP_401_UNAUTHORIZED,
                 "Open the API docs from the dashboard",
                 code=ErrorCode.NOT_AUTHENTICATED,
             )
 
-    @app.get(DOCS_PATH, include_in_schema=False)
+    @app.get(DOCS_PATH, include_in_schema=False, dependencies=[Depends(refuse_outside_cabinet)])
     @inject
     async def swagger_ui(
-        request: Request, redis: FromDishka[Redis], ott: Optional[str] = None
+        request: Request,
+        redis: FromDishka[Redis],
+        sessions: FromDishka[SessionRepository],
+        ott: Optional[str] = None,
     ) -> Response:
         page = get_swagger_ui_html(openapi_url=openapi_url, title=f"{app.title} - Swagger UI")
-        return await _enter(request, redis, ott, page)
+        return await _enter(request, redis, sessions, ott, page)
 
-    @app.get(f"{DOCS_PATH}/redoc", include_in_schema=False)
+    @app.get(
+        f"{DOCS_PATH}/redoc",
+        include_in_schema=False,
+        dependencies=[Depends(refuse_outside_cabinet)],
+    )
     @inject
     async def redoc_ui(
-        request: Request, redis: FromDishka[Redis], ott: Optional[str] = None
+        request: Request,
+        redis: FromDishka[Redis],
+        sessions: FromDishka[SessionRepository],
+        ott: Optional[str] = None,
     ) -> Response:
         page = get_redoc_html(openapi_url=openapi_url, title=f"{app.title} - ReDoc")
-        return await _enter(request, redis, ott, page)
+        return await _enter(request, redis, sessions, ott, page)
 
-    @app.get(openapi_url, include_in_schema=False)
-    async def openapi_schema(request: Request) -> dict:
-        _require_docs_cookie(request)
+    @app.get(openapi_url, include_in_schema=False, dependencies=[Depends(refuse_outside_cabinet)])
+    @inject
+    async def openapi_schema(request: Request, sessions: FromDishka[SessionRepository]) -> dict:
+        await _require_docs_cookie(request, sessions)
         return app.openapi()
 
 
 # handler names are unique across routers; keeps operationIds readable for generated clients
 def _operation_id(route: APIRoute) -> str:
     return route.name
+
+
+def _warn_about_cabinet_proxy_secret(config: AppConfig) -> None:
+    # without a strong secret the API can't tell the cabinet's proxy apart, and the
+    # dashboard's sign-in becomes reachable through the cabinet's domain
+    secret = config.cabinet.proxy_secret.get_secret_value() if config.cabinet.proxy_secret else ""
+    if config.cabinet.domain and not secret:
+        logger.warning(
+            "CABINET_DOMAIN is set without CABINET_PROXY_SECRET: dashboard sign-in "
+            "is not refused through the cabinet's proxy"
+        )
+    elif secret and len(secret) < _MIN_PROXY_SECRET_LENGTH:
+        logger.warning(
+            f"CABINET_PROXY_SECRET is shorter than {_MIN_PROXY_SECRET_LENGTH} characters "
+            "and can be guessed; generate one with `openssl rand -hex 32`"
+        )
 
 
 def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
@@ -178,6 +213,7 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     app.state.cabinet_proxy_secret = (
         config.cabinet.proxy_secret.get_secret_value() if config.cabinet.proxy_secret else None
     )
+    _warn_about_cabinet_proxy_secret(config)
     app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     cors_origins, allow_credentials = resolve_cors(list(config.origins))
@@ -189,9 +225,14 @@ def get_app(config: AppConfig, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
         allow_headers=["*"],
     )
 
+    outside_cabinet = [Depends(refuse_outside_cabinet)]
     for router in ROUTERS:
-        app.include_router(router, prefix=API_V1)
-    app.include_router(system_router, prefix=API_V1)
+        app.include_router(
+            router,
+            prefix=API_V1,
+            dependencies=None if router in CABINET_ROUTERS else outside_cabinet,
+        )
+    app.include_router(system_router, prefix=API_V1, dependencies=outside_cabinet)
 
     register_error_handlers(app)
     document_auth_errors(app, get_auth_context)

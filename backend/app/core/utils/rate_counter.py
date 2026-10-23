@@ -1,3 +1,5 @@
+from typing import Final
+
 from redis.asyncio import Redis
 
 from app.core.constants import REDIS_KEY_PREFIX
@@ -15,3 +17,14 @@ async def hit_counter(redis: Redis, key: str, window_seconds: int) -> int:
         pipe.expire(key, window_seconds, nx=True)
         current, _ = await pipe.execute()
     return int(current)
+
+
+# DECR only a live counter: one whose window already ran out must not come back
+# as a negative count without a TTL
+_RELEASE_SCRIPT: Final[str] = (
+    "if redis.call('exists', KEYS[1]) == 1 then return redis.call('decr', KEYS[1]) end return 0"
+)
+
+
+async def release_counter(redis: Redis, key: str) -> None:
+    await redis.eval(_RELEASE_SCRIPT, 1, key)  # type: ignore[misc]

@@ -1,12 +1,16 @@
+from datetime import timedelta
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 import httpx
 import pytest
 from dishka import AsyncContainer, make_async_container
 from dishka.integrations.fastapi import setup_dishka
 from fastapi.testclient import TestClient
+from loguru import logger
+from pydantic import SecretStr
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.api.probes_router as probes_router_module
 from app.api.app import get_app
@@ -14,8 +18,15 @@ from app.api.middlewares import BodySizeLimitMiddleware
 from app.core.config import AppConfig
 from app.core.constants import API_V1, DOCS_PATH
 from app.core.di.providers import get_core_providers
-from app.core.security import create_docs_token
+from app.core.enums import Locale, Role, SessionAudience
+from app.core.security import create_docs_token, hash_refresh_token
+from app.core.utils.time import datetime_now
+from app.modules.auth.dto import CreateSessionDto
+from app.modules.auth.repository import SessionRepository
 from app.modules.providers import get_module_providers
+from app.modules.users.dto import CreateUserDto
+from app.modules.users.repository import UserRepository
+from tests.fakes.container import make_test_container
 
 
 @pytest.fixture
@@ -393,30 +404,52 @@ def test_docs_refuse_a_request_without_a_ticket(
     assert client.get(DOCS_PATH, params={"ott": "forged"}).status_code == 401
 
 
-def test_docs_trade_a_ticket_for_a_cookie(
-    config: AppConfig, readyz_container: AsyncContainer
+async def test_docs_trade_a_ticket_for_a_cookie_tied_to_the_session(
+    config: AppConfig,
+    session: AsyncSession,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
 ) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(name="docs", login="docs-owner", role=Role.ADMIN, language=Locale.EN)
+    )
+    dashboard = await session_repository.create(
+        CreateSessionDto(
+            user_id=owner.id,
+            refresh_token_hash=hash_refresh_token("docs-refresh"),
+            ip_address="127.0.0.1",
+            user_agent=None,
+            expires_at=datetime_now() + timedelta(days=1),
+            audience=SessionAudience.DASHBOARD,
+        )
+    )
+    container = make_test_container(session, config)
     app = get_app(config)
-    setup_dishka(readyz_container, app)
-    client = TestClient(app, base_url="https://testserver")
+    setup_dishka(container, app)
     secret = config.jwt_secret.get_secret_value()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="https://testserver") as client:
+        # an access-scoped token is not a ticket
+        leaked_cookie = create_docs_token("access", 60, secret, dashboard.id)
+        assert (await client.get(DOCS_PATH, params={"ott": leaked_cookie})).status_code == 401
 
-    # an access-scoped token is not a ticket
-    leaked_cookie = create_docs_token("access", 60, secret)
-    assert client.get(DOCS_PATH, params={"ott": leaked_cookie}).status_code == 401
+        ott = create_docs_token("ott", 30, secret, dashboard.id)
+        redirect = await client.get(DOCS_PATH, params={"ott": ott})
+        assert redirect.status_code == 303
+        assert redirect.headers["location"] == DOCS_PATH
 
-    ott = create_docs_token("ott", 30, secret)
-    redirect = client.get(DOCS_PATH, params={"ott": ott}, follow_redirects=False)
-    assert redirect.status_code == 303
-    assert redirect.headers["location"] == DOCS_PATH
+        # spent: a second exchange of the same ticket fails
+        assert (await client.get(DOCS_PATH, params={"ott": ott})).status_code == 401
 
-    # spent: a second exchange of the same ticket fails
-    assert client.get(DOCS_PATH, params={"ott": ott}, follow_redirects=False).status_code == 401
+        assert (await client.get(DOCS_PATH)).status_code == 200
+        schema = await client.get(f"{DOCS_PATH}/openapi.json")
+        assert schema.status_code == 200
+        assert f"{API_V1}/api-tokens" in schema.json()["paths"]
 
-    assert client.get(DOCS_PATH).status_code == 200
-    schema = client.get(f"{DOCS_PATH}/openapi.json")
-    assert schema.status_code == 200
-    assert f"{API_V1}/api-tokens" in schema.json()["paths"]
+        # signing out of the dashboard closes the docs too
+        await session_repository.revoke_by_id(dashboard.id)
+        assert (await client.get(f"{DOCS_PATH}/openapi.json")).status_code == 401
+    await container.close()
 
 
 async def test_emoji_art_counts_in_its_own_bucket_not_the_ip_budget(
@@ -435,6 +468,12 @@ async def test_emoji_art_counts_in_its_own_bucket_not_the_ip_budget(
     assert all(r.status_code != 429 for r in responses)
     assert await redis.get(global_key) is None
     assert int(await redis.get(emoji_key)) == 301
+
+    # an admin's DELETE is not art: it counts in the ordinary bucket
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        await client.delete("/api/v1/emoji-packs/some-set")
+    assert int(await redis.get(global_key)) == 1
+    await redis.delete(global_key)
     await redis.delete(emoji_key)
 
 
@@ -451,6 +490,34 @@ def test_an_unknown_api_path_is_a_json_404_not_the_spa(
 
     assert unknown_get.status_code == 404
     assert unknown_get.json()["code"] == "NOT_FOUND"
+    assert unknown_get.headers["cache-control"] == "no-store"
     assert unknown_post.status_code == 404
     assert spa.status_code == 200
     assert "text/html" in spa.headers["content-type"]
+
+
+@pytest.mark.parametrize(
+    ("domain", "secret", "warned"),
+    [
+        ("cabinet.example.com", None, True),
+        ("cabinet.example.com", "short", True),
+        ("cabinet.example.com", "x" * 32, False),
+        (None, None, False),
+    ],
+)
+def test_weak_or_missing_cabinet_proxy_secret_is_warned_about(
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+    domain: Optional[str],
+    secret: Optional[str],
+    warned: bool,
+) -> None:
+    monkeypatch.setattr(config.cabinet, "domain", domain)
+    monkeypatch.setattr(config.cabinet, "proxy_secret", SecretStr(secret) if secret else None)
+    messages: list[str] = []
+    sink = logger.add(lambda message: messages.append(str(message)), level="WARNING")
+    try:
+        get_app(config)
+    finally:
+        logger.remove(sink)
+    assert any("CABINET_PROXY_SECRET" in message for message in messages) is warned

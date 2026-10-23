@@ -2,10 +2,11 @@ from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthIdentityDto
 from app.modules.oauth.events import OAuthIdentityConnectedEvent
 from app.modules.oauth.providers.base import OAUTH_EXCHANGE_ERRORS, build_redirect_uri
@@ -25,6 +26,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
         state_store: OAuthStateStore,
         oauth_identity_repository: OAuthIdentityRepository,
         user_repository: UserRepository,
+        blacklist_repository: BlacklistRepository,
         uow: UnitOfWork,
         config: AppConfig,
         event_publisher: EventPublisher,
@@ -33,6 +35,7 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
         self._state_store = state_store
         self._oauth_identity_repository = oauth_identity_repository
         self._user_repository = user_repository
+        self._blacklist_repository = blacklist_repository
         self._uow = uow
         self._config = config
         self._event_publisher = event_publisher
@@ -68,15 +71,25 @@ class OAuthConnectCallbackUseCase(UseCase[OAuthCallbackDto, OAuthIdentityDto, Us
         external_id = profile.external_id
         external_login = profile.login
         if data.provider is OAuthProvider.TELEGRAM:
-            async with self._uow:
-                updated = await self._user_repository.set_telegram_id(actor.id, int(external_id))
-                await self._event_publisher.publish(
-                    OAuthIdentityConnectedEvent(
-                        user=actor, provider=data.provider, ip_address=data.client_ip
+            telegram_id = int(external_id)
+            # the same account again changes nothing (and keeps the username)
+            if actor.telegram_id != telegram_id:
+                async with self._uow:
+                    if await self._blacklist_repository.is_blacklisted_telegram_id(telegram_id):
+                        raise ValidationError(
+                            "Telegram ID is blacklisted", code=ErrorCode.TELEGRAM_ID_BLACKLISTED
+                        )
+                    await self._user_repository.set_telegram_id(actor.id, telegram_id)
+                    await self._event_publisher.publish(
+                        OAuthIdentityConnectedEvent(
+                            user=actor,
+                            provider=data.provider,
+                            ip_address=data.client_ip,
+                            previous_telegram_id=actor.telegram_id,
+                        )
                     )
-                )
             return OAuthIdentityDto(
-                user_id=updated.id,
+                user_id=actor.id,
                 provider=OAuthProvider.TELEGRAM,
                 external_id=external_id,
                 external_login=external_login,

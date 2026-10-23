@@ -2,12 +2,13 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Role
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import AdjustUserBonusDaysDto
 from app.modules.referrals.events import UserBonusDaysAdjustedEvent
-from app.modules.users import UserRepository, get_visible_target
+from app.modules.users import UserRepository, assert_manageable, get_visible_target
 
 
 class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
@@ -23,6 +24,8 @@ class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
     async def _execute(self, actor: Actor, data: AdjustUserBonusDaysDto) -> None:
         async with self._uow:
             target = await get_visible_target(self._user_repository, actor, data.user_id)
+            # on oneself only the owner: for anyone else it's free subscription time
+            assert_manageable(actor, target, allow_self=actor.role is Role.OWNER)
             # the floor itself is in credit_bonus_days' UPDATE predicate
             await self._user_repository.credit_bonus_days(data.user_id, data.delta)
             await self._event_publisher.publish(

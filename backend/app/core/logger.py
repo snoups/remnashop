@@ -4,13 +4,16 @@ import logging
 import re
 import sys
 from collections import deque
-from typing import Final, Union
+from typing import TYPE_CHECKING, Final, Union
 
 from loguru import logger
 from redis import Redis, RedisError
 
 from app.core.config import AppConfig
 from app.core.constants import LOG_DIR
+
+if TYPE_CHECKING:
+    from loguru import Record
 
 LOG_BUFFER_CAPACITY: Final[int] = 200
 REDIS_LOG_CAPACITY: Final[int] = 500
@@ -44,6 +47,27 @@ class LogBuffer:
 log_buffer = LogBuffer()
 
 
+def _mask_secrets(text: str) -> str:
+    return _SIGNATURE_IN_QUERY.sub(_SIGNATURE_MASK, _BOT_TOKEN_IN_URL.sub(_BOT_TOKEN_MASK, text))
+
+
+class RedactedError(Exception):
+    """Stands in for a logged exception whose text carried a secret."""
+
+
+def redact_exception(record: "Record") -> None:
+    # an HTTP client error repeats the request URL, and a Bot API URL holds the token
+    exception = record["exception"]
+    if exception is None or exception.type is None or exception.value is None:
+        return
+    text = str(exception.value)
+    masked = _mask_secrets(text)
+    if masked != text:
+        record["exception"] = exception._replace(
+            type=RedactedError, value=RedactedError(f"{exception.type.__name__}: {masked}")
+        )
+
+
 class InterceptHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -61,14 +85,14 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        message = _BOT_TOKEN_IN_URL.sub(_BOT_TOKEN_MASK, record.getMessage())
-        message = _SIGNATURE_IN_QUERY.sub(_SIGNATURE_MASK, message)
+        message = _mask_secrets(record.getMessage())
         logger.opt(depth=depth, exception=record.exc_info).log(level, message)
 
 
 def setup_logger(config: AppConfig, process: str) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger.remove()
+    logger.configure(patcher=redact_exception)
 
     # diagnose=False on every sink: loguru's default annotates each traceback
     # frame with the repr of that frame's variables. On a request path those

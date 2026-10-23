@@ -4,11 +4,12 @@ import pytest
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, OAuthProvider, Role
+from app.core.enums import BlacklistKind, Locale, OAuthProvider, Role
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer, SessionRepository
+from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.providers.base import OAuthProfile
 from app.modules.oauth.providers.state_store import (
@@ -96,6 +97,7 @@ def _connect_use_case(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -327,6 +329,49 @@ async def test_telegram_connect_rejects_id_taken_by_another_user(
         )
 
     assert error.value.code == ErrorCode.TELEGRAM_ID_TAKEN
+
+
+async def test_telegram_connect_refuses_a_blacklisted_id(
+    monkeypatch: pytest.MonkeyPatch,
+    settings_repository: SettingsRepository,
+    oauth_state_store: OAuthStateStore,
+    oauth_identity_repository: OAuthIdentityRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    monkeypatch.setattr(oauth_connect_callback, "get_oauth_client", lambda *_: _FakeClient())
+    admin = await _create_user(user_repository, uow, "adm", Role.ADMIN)
+    async with uow:
+        await BlacklistRepository(user_repository.session).add_entry(
+            BlacklistKind.TELEGRAM_ID, str(TELEGRAM_ID)
+        )
+    state = await oauth_state_store.create(
+        provider=OAuthProvider.TELEGRAM,
+        purpose=OAuthFlowPurpose.CONNECT,
+        user_id=admin.id,
+        code_verifier=None,
+    )
+    use_case = _connect_use_case(
+        settings_repository,
+        oauth_state_store,
+        oauth_identity_repository,
+        user_repository,
+        uow,
+        config,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            admin,
+            OAuthCallbackDto(
+                provider=OAuthProvider.TELEGRAM, code="c", state=state, client_ip=CLIENT_IP
+            ),
+        )
+
+    assert error.value.code == ErrorCode.TELEGRAM_ID_BLACKLISTED
 
 
 async def test_telegram_disconnect_clears_telegram_id(

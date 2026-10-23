@@ -258,13 +258,29 @@ async def test_get_own_referral_stats_reflects_referrer_and_counts(
     b = await _create_user(user_repository, 6003)
     await referral_repository.create_referral(referrer_id=referrer.id, referred_id=a.id, level=1)
     await referral_repository.create_referral(referrer_id=referrer.id, referred_id=b.id, level=1)
-    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
+    use_case = GetOwnReferralStatsUseCase(referral_repository, user_repository, uow)
 
     stats = await use_case(referrer)
 
     assert stats.referral_code == referrer.referral_code
     assert stats.counts_by_level == {1: 2}
     assert stats.rewards == []
+
+
+async def test_get_own_referral_stats_hides_a_staff_referrer(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", login="ref-staff", role=Role.ADMIN, telegram_id=6010)
+    )
+    invited = await _create_user(user_repository, 6011)
+    await referral_repository.create_referral(referrer_id=staff.id, referred_id=invited.id, level=1)
+
+    stats = await GetOwnReferralStatsUseCase(referral_repository, user_repository, uow)(invited)
+
+    assert stats.referrer_id is None
 
 
 async def test_get_own_referral_stats_includes_reward_history(
@@ -287,7 +303,7 @@ async def test_get_own_referral_stats_includes_reward_history(
         type=ReferralRewardType.POINTS,
         amount=Decimal("7"),
     )
-    use_case = GetOwnReferralStatsUseCase(referral_repository, uow)
+    use_case = GetOwnReferralStatsUseCase(referral_repository, user_repository, uow)
 
     stats = await use_case(referrer)
 

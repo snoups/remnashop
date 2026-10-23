@@ -13,6 +13,7 @@ from app.core.constants import REDIS_KEY_PREFIX, TTL_5M, TTL_10M
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ValidationError
+from app.core.panel_writes import written_after
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import (
@@ -83,6 +84,14 @@ class HandleRemnawaveWebhookUseCase(UseCase[RemnawaveWebhookDto, None]):
             return
 
         if isinstance(payload.data, WebhookUserDto):
+            # built before our own later write to this user and delivered after
+            # it: its state is outdated, and our write's echo carries the current one
+            if await written_after(self._redis, payload.data.id, payload.timestamp):
+                logger.info(
+                    f"Skipped '{payload.event}' for panel user {payload.data.id}: "
+                    "the shop changed the user after the event was built"
+                )
+                return
             await self._sync_status(payload, replay_key)
 
         # a notification must never undo or fail the status sync

@@ -3,6 +3,8 @@ from functools import partial
 from typing import Final, Optional
 from uuid import uuid4
 
+from loguru import logger
+
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
@@ -10,7 +12,6 @@ from app.core.enums import (
     LegalAcceptanceTrigger,
     LegalDocumentKind,
     PaymentGatewayType,
-    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -114,6 +115,25 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
         return customer_email
 
+    async def _reserve_trial(self, user_id: int, *, is_free: bool) -> None:
+        """One trial per customer, held under the per-user lock: the flag itself is
+        spent on delivery, so a second trial order or the trial button racing this
+        checkout would each deliver one."""
+        if is_free:
+            # delivered right away: spent here, the trial button then finds it gone
+            taken = not await self._user_repository.spend_trial(user_id)
+        else:
+            taken = (
+                await self._transaction_repository.count_open_new_orders(
+                    user_id, datetime_now(), trial_only=True
+                )
+                > 0
+            )
+        if taken:
+            raise ValidationError(
+                f"Trial is not available for user '{user_id}'", code=ErrorCode.TRIAL_NOT_AVAILABLE
+            )
+
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
         if not (await self._get_access_settings_use_case.system()).payments_enabled:
             # own transaction, so the refusal below doesn't roll it back
@@ -149,22 +169,25 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 raise NotFoundError(
                     f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
                 )
+            if plan.is_trial:
+                await self._reserve_trial(actor.id, is_free=is_free)
             if data.purchase_type is PurchaseType.NEW:
                 await self._eligibility.assert_below_cap(actor.id, lock=True, pending=open_orders)
             # the one-shot discount is spent in the same transaction as the
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
             order = await self._create_order(actor.id, data, plan, quote, customer_email)
-            if data.channel is PurchaseChannel.BOT or data.legal_locale is not None:
-                await self._legal_recorder.record(
-                    user_id=actor.id,
-                    channel=data.channel,
-                    trigger=LegalAcceptanceTrigger.PAYMENT,
-                    locale=data.legal_locale or user.language,
-                    kinds=frozenset(LegalDocumentKind),
-                    transaction_id=order.id,
-                    ip_address=data.client_ip,
-                )
+            # paying accepts the offer on either channel; the client's locale only picks
+            # the revision, the customer's language when it sends none
+            await self._legal_recorder.record(
+                user_id=actor.id,
+                channel=data.channel,
+                trigger=LegalAcceptanceTrigger.PAYMENT,
+                locale=data.legal_locale or user.language,
+                kinds=frozenset(LegalDocumentKind),
+                transaction_id=order.id,
+                ip_address=data.client_ip,
+            )
             await self._event_publisher.publish(
                 CheckoutCreatedEvent(
                     user=actor,
@@ -199,9 +222,17 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
                 if failed:
                     await give_back_purchase_discount(self._user_repository, order)
-            if isinstance(error, PaymentGatewayError):
-                raise
-            raise PaymentGatewayError(f"Provider request failed: {type(error).__name__}") from error
+            # the provider's own answer stays in the log: it can name the merchant
+            # account or the request, which is not the customer's business
+            logger.exception(
+                f"Gateway '{data.gateway_type}' failed to create a payment for order {order.id}"
+            )
+            code = (
+                error.code
+                if isinstance(error, PaymentGatewayError)
+                else ErrorCode.PAYMENT_GATEWAY_ERROR
+            )
+            raise PaymentGatewayError("The payment provider is unavailable", code=code) from error
 
         async with self._uow:
             # a webhook that beat us here has stored the payment id and marked it PAID already

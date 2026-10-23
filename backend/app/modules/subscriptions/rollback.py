@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -21,6 +21,7 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.eligibility import subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.panel import restore, revert_panel_to_owner
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -71,9 +72,11 @@ class PurchaseRollbackService:
         revoker: PanelSubscriptionRevoker,
         pricing_repository: PricingRepository,
         remnawave_sdk: RemnawaveSDK,
+        idempotency: PurchaseIdempotencyRepository,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
     ) -> None:
+        self._idempotency = idempotency
         self._subscription_repository = subscription_repository
         self._user_repository = user_repository
         self._lifecycle_service = lifecycle_service
@@ -83,9 +86,33 @@ class PurchaseRollbackService:
         self._event_publisher = event_publisher
         self._uow = uow
 
+    async def _pending_renewal(
+        self, data: PurchaseRollbackDto
+    ) -> Optional[tuple[SubscriptionDto, datetime]]:
+        """A renewal whose worker extended the panel and died before the database
+        caught up: the subscription and the expiry pinned for it."""
+        if (
+            data.purchase_type is not PurchaseType.RENEW
+            or data.fulfilled_subscription_id is not None
+            or data.target_subscription_id is None
+            or data.idempotency_key is None
+        ):
+            return None
+        pinned = await self._idempotency.get_pending_renew_expire_at(data.idempotency_key)
+        if pinned is None:
+            return None
+        target = await self._subscription_repository.get_by_id(data.target_subscription_id)
+        if target.status is SubscriptionStatus.DELETED:
+            return None
+        return target, pinned
+
     async def preview(self, data: PurchaseRollbackDto) -> RollbackPreviewDto:
         old_term_expired = False
         async with self._uow:
+            if await self._pending_renewal(data) is not None:
+                return RollbackPreviewDto(
+                    available=True, blocked_reason=None, old_term_expired=False
+                )
             blocker = await _rollback_blocker(self._subscription_repository, data)
             if data.purchase_type is PurchaseType.CHANGE and data.target_subscription_id:
                 old = await self._subscription_repository.get_by_id(data.target_subscription_id)
@@ -95,6 +122,11 @@ class PurchaseRollbackService:
         )
 
     async def rollback(self, actor: Actor, data: PurchaseRollbackDto) -> None:
+        async with self._uow:
+            pending = await self._pending_renewal(data)
+        if pending is not None:
+            await self._undo_pending_renewal(data, *pending)
+            return
         old: Optional[SubscriptionDto] = None
         async with self._uow:
             blocker = await _rollback_blocker(self._subscription_repository, data)
@@ -117,6 +149,24 @@ class PurchaseRollbackService:
         elif old is not None:
             await self._restore_replaced(actor, old, fulfilled)
         logger.info(f"{actor.log} Rolled back subscription '{fulfilled.id}' after a refund")
+
+    async def _undo_pending_renewal(
+        self, data: PurchaseRollbackDto, target: SubscriptionDto, pinned: datetime
+    ) -> None:
+        # the database never took this renewal, so only the panel has to give it back
+        panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
+        if panel_user.expire_at < pinned:
+            return  # the extension never landed
+        await self._remnawave_sdk.users.update_user(
+            UpdateUserRequestDto(
+                id=target.remnawave_user_id,
+                expire_at=pinned - timedelta(days=data.duration_days),
+            )
+        )
+        logger.info(
+            f"Reverted the panel extension of subscription '{target.id}' "
+            "left by an unfinished renewal after a refund"
+        )
 
     async def _shorten(
         self, actor: Actor, data: PurchaseRollbackDto, renewed: SubscriptionDto

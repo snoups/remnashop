@@ -6,6 +6,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.modules.cabinet_auth.deeplink_store import DeeplinkStore
 from app.modules.cabinet_auth.dto import DeeplinkTicketDto, InviteCodesDto
+from app.modules.oauth import new_binding
 from app.modules.settings import SettingsRepository, fetch_bot_username
 
 
@@ -32,8 +33,13 @@ class RequestDeeplinkUseCase:
             raise AuthenticationError(
                 "The bot is unreachable", code=ErrorCode.OAUTH_PROVIDER_UNREACHABLE
             )
-        token = await self._store.create(codes, link_user_id)
+        # a sign-in link only works in the browser that asked for it, so a link
+        # sent to someone else can't sign them into the sender's account; a link
+        # to an account is already tied to that account's session
+        binding, binding_hash = (None, None) if link_user_id is not None else new_binding()
+        token = await self._store.create(codes, link_user_id, binding_hash)
         return DeeplinkTicketDto(
             bot_url=f"{T_ME}{username}?start={WEBAUTH_START_PREFIX}{token}",
             expires_in=TTL_5M,
+            binding=binding,
         )

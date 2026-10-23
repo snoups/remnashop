@@ -16,6 +16,7 @@ from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
 )
 from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
+from app.modules.transactions.usecases.mark_order_fulfilled import MarkOrderFulfilledUseCase
 from app.modules.transactions.usecases.notify_payment_waitlist import NotifyPaymentWaitlistUseCase
 from app.modules.transactions.usecases.preview_refund import PreviewRefundUseCase
 from app.modules.transactions.usecases.prune_expired_transactions import (
@@ -45,6 +46,7 @@ __all__ = [
     "ListPaymentMethodsUseCase",
     "ListTransactionGatewaysUseCase",
     "ListTransactionsUseCase",
+    "MarkOrderFulfilledUseCase",
     "NotifyPaymentWaitlistUseCase",
     "PreviewRefundUseCase",
     "PruneExpiredTransactionsUseCase",

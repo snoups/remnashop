@@ -8,9 +8,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.broker import broker
 from app.core.exceptions import RetryableTaskError
 from app.core.utils.lock import cron_lock
-from app.modules.transactions.dto import ReconcilePaidTransactionsDto, StarsPaymentDto
+from app.modules.transactions.dto import (
+    MarkOrderFulfilledDto,
+    ReconcilePaidTransactionsDto,
+    StarsPaymentDto,
+)
 from app.modules.transactions.usecases import (
     ConfirmStarsPaymentUseCase,
+    MarkOrderFulfilledUseCase,
     NotifyPaymentWaitlistUseCase,
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
@@ -40,6 +45,18 @@ async def reconcile_paid_transactions_task(
             logger.debug("reconcile_paid_transactions_task already running, skipping this tick")
             return
         await use_case.system(ReconcilePaidTransactionsDto())
+
+
+@broker.task(retry_on_error=True, max_retries=3)
+@inject(patch_module=True)
+async def mark_order_fulfilled_task(
+    payment_key: str,
+    subscription_id: int,
+    use_case: FromDishka[MarkOrderFulfilledUseCase],
+) -> None:
+    await use_case.system(
+        MarkOrderFulfilledDto(payment_key=payment_key, subscription_id=subscription_id)
+    )
 
 
 @broker.task

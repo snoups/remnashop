@@ -32,6 +32,8 @@ class StartTicketDto:
     codes: InviteCodesDto
     # set when the cabinet asked to link Telegram to this account rather than sign in
     link_user_id: Optional[int] = None
+    # hash of the cookie given to the browser that asked for a sign-in link
+    binding_hash: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,6 +41,7 @@ class BotSignInGrantDto:
     profile: TelegramProfileDto
     codes: InviteCodesDto
     link_user_id: Optional[int] = None
+    binding_hash: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -64,3 +67,5 @@ class EmailCodeGrantDto:
 class DeeplinkTicketDto:
     bot_url: str
     expires_in: int
+    # the browser's half of a sign-in link; a link to an account needs none
+    binding: Optional[str] = None

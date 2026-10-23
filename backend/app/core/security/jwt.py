@@ -1,6 +1,6 @@
 import secrets
 import time
-from typing import Final, Literal, TypedDict, cast
+from typing import Final, Literal, Optional, TypedDict, cast
 
 import jwt
 
@@ -32,21 +32,27 @@ _DOCS_TOKEN_ISSUER: Final[str] = "remnashop-docs"
 DocsTokenScope = Literal["ott", "access"]
 
 
-def create_docs_token(scope: DocsTokenScope, ttl: int, secret: str) -> str:
+def create_docs_token(scope: DocsTokenScope, ttl: int, secret: str, session_id: int) -> str:
     # jti: two tickets issued in the same second must still differ, since a
-    # ticket is consumed by its hash
+    # ticket is consumed by its hash; sid: the docs stay open only as long as
+    # the dashboard session that asked for them
     payload = {
         "scope": scope,
         "iss": _DOCS_TOKEN_ISSUER,
         "exp": int(time.time()) + ttl,
         "jti": secrets.token_urlsafe(16),
+        "sid": session_id,
     }
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def is_valid_docs_token(token: str, scope: DocsTokenScope, secret: str) -> bool:
+def docs_token_session(token: str, scope: DocsTokenScope, secret: str) -> Optional[int]:
+    """The dashboard session a valid docs token of this scope belongs to."""
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"], issuer=_DOCS_TOKEN_ISSUER)
     except jwt.PyJWTError:
-        return False
-    return payload.get("scope") == scope
+        return None
+    session_id = payload.get("sid")
+    if payload.get("scope") != scope or not isinstance(session_id, int):
+        return None
+    return session_id

@@ -52,6 +52,9 @@ class SecurityHeadersMiddleware:
                 headers = MutableHeaders(scope=message)
                 for name, value in _SECURITY_HEADERS:
                     headers.setdefault(name, value)
+                # API answers carry account data; a route that may be cached says so itself
+                if scope["path"].startswith(API_V1):
+                    headers.setdefault("cache-control", "no-store")
             await send(message)
 
         await self.app(scope, receive, send_with_headers)

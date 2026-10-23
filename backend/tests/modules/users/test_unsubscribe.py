@@ -1,3 +1,7 @@
+import base64
+import hashlib
+import hmac
+
 import pytest
 
 from app.modules.users import read_unsubscribe_token, unsubscribe_token
@@ -39,3 +43,13 @@ def test_other_user_signature_rejected() -> None:
 
 def test_other_secret_rejected() -> None:
     assert read_unsubscribe_token(unsubscribe_token(42, SECRET), "z" * 32) is None
+
+
+def test_a_link_signed_before_the_derived_key_still_unsubscribes() -> None:
+    secret = "crypt-key"
+    legacy = hmac.new(secret.encode(), b"marketing-unsubscribe:42", hashlib.sha256).digest()
+    token = f"42.{base64.urlsafe_b64encode(legacy).rstrip(b'=').decode()}"
+
+    assert read_unsubscribe_token(token, secret) == 42
+    # new links no longer sign with the crypt key itself
+    assert unsubscribe_token(42, secret) != token

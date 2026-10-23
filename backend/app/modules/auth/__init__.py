@@ -3,6 +3,7 @@ from app.modules.auth.dto import AuthStatusDto, RevokeSessionDto, RevokeUserSess
 from app.modules.auth.events import RescueCliAction, RescueCliUsedEvent
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_cookies import (
+    DEEPLINK_BINDING_COOKIE,
     OAUTH_BINDING_COOKIE,
     SESSION_COOKIES,
     SessionCookies,
@@ -32,6 +33,7 @@ from app.modules.auth.usecases import (
 )
 
 __all__ = [
+    "DEEPLINK_BINDING_COOKIE",
     "OAUTH_BINDING_COOKIE",
     "SESSION_COOKIES",
     "AuthResponse",

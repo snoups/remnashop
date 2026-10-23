@@ -19,7 +19,10 @@ from app.modules.users import UserDto, UserRepository
 def link_code_matches(plan: PlanDto, plan_code: Optional[str]) -> bool:
     if plan.availability is not PlanAvailability.LINK:
         return True
-    return plan_code is not None and hmac.compare_digest(plan_code, plan.public_code)
+    # bytes: compare_digest refuses a str with non-ASCII characters
+    return plan_code is not None and hmac.compare_digest(
+        plan_code.encode(), plan.public_code.encode()
+    )
 
 
 class CheckoutPricer:

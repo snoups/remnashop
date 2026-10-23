@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import secrets
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import ClassVar, Final, Optional
 
 from pydantic import TypeAdapter
@@ -10,7 +10,7 @@ from redis.asyncio import Redis
 from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TIME_1H, TIME_1M, TTL_10M
 from app.core.enums import Locale
 from app.core.utils.email import canonical_email, normalize_email
-from app.core.utils.rate_counter import hit_counter
+from app.core.utils.rate_counter import hit_counter, release_counter
 from app.modules.cabinet_auth.dto import EmailCodeGrantDto, InviteCodesDto
 
 _MAX_ATTEMPTS: Final[int] = 5
@@ -23,7 +23,6 @@ _PER_HOUR: Final[int] = 10
 @dataclass(frozen=True, kw_only=True)
 class _EmailCodeRecord:
     code_hash: str
-    attempts: int
     email: str
     referral_code: Optional[str]
     ad_link_code: Optional[str]
@@ -53,8 +52,15 @@ async def fail_budget_exhausted(redis: Redis, digest: str) -> bool:
     return int(await redis.get(f"{_FAIL_PREFIX}{digest}") or 0) >= _DAILY_FAIL_BUDGET
 
 
-async def record_failure(redis: Redis, digest: str) -> None:
-    await hit_counter(redis, f"{_FAIL_PREFIX}{digest}", TIME_1D)
+async def reserve_attempt(redis: Redis, digest: str) -> bool:
+    """Counts a verify attempt against the mailbox's daily budget before it runs,
+    so parallel guesses can't all pass; False once the budget is spent.
+    An attempt that didn't fail gives its count back with release_attempt."""
+    return await hit_counter(redis, f"{_FAIL_PREFIX}{digest}", TIME_1D) <= _DAILY_FAIL_BUDGET
+
+
+async def release_attempt(redis: Redis, digest: str) -> None:
+    await release_counter(redis, f"{_FAIL_PREFIX}{digest}")
 
 
 async def send_limit_hit(redis: Redis, digest: str) -> bool:
@@ -75,15 +81,16 @@ class EmailCodeStore:
         code = f"{secrets.randbelow(1_000_000):06d}"
         record = _EmailCodeRecord(
             code_hash=_hash_code(email_hash, code),
-            attempts=0,
             email=normalize_email(email),
             referral_code=codes.referral_code,
             ad_link_code=codes.ad_link_code,
             locale=locale,
         )
-        await self._redis.set(
-            f"{self.key_prefix}{email_hash}", _RECORD_ADAPTER.dump_json(record), ex=TTL_10M
-        )
+        key = f"{self.key_prefix}{email_hash}"
+        async with self._redis.pipeline(transaction=True) as pipe:
+            pipe.set(key, _RECORD_ADAPTER.dump_json(record), ex=TTL_10M)
+            pipe.delete(f"{key}:attempts")
+            await pipe.execute()
         return code
 
     async def verify(self, email: str, code: str) -> Optional[EmailCodeGrantDto]:
@@ -93,6 +100,11 @@ class EmailCodeStore:
         if raw is None:
             raise EmailCodeExpired
         record = _RECORD_ADAPTER.validate_json(raw)
+        # counted before the comparison: parallel guesses each take their own slot
+        attempt = await hit_counter(self._redis, f"{key}:attempts", TTL_10M)
+        if attempt > _MAX_ATTEMPTS:
+            await self._redis.delete(key)
+            raise EmailCodeAttemptsExhausted
         if record.email == normalize_email(email) and hmac.compare_digest(
             record.code_hash, _hash_code(email_hash, code)
         ):
@@ -105,11 +117,7 @@ class EmailCodeStore:
                 ),
                 locale=record.locale,
             )
-        record = replace(record, attempts=record.attempts + 1)
-        if record.attempts >= _MAX_ATTEMPTS:
+        if attempt == _MAX_ATTEMPTS:
             await self._redis.delete(key)
             raise EmailCodeAttemptsExhausted
-        # xx: never resurrect a key a parallel request already consumed or burned. A stale
-        # payload can still overwrite a freshly issued code; a strict fix needs Lua/WATCH
-        await self._redis.set(key, _RECORD_ADAPTER.dump_json(record), keepttl=True, xx=True)
         return None

@@ -3,9 +3,11 @@ from collections.abc import AsyncIterator
 from dishka import Provider, Scope, provide
 from httpx import AsyncClient, AsyncHTTPTransport, Timeout
 from loguru import logger
+from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 
 from app.core.config import AppConfig
+from app.core.panel_writes import PanelWriteRecorder
 from app.core.resilient_transport import ResilientTransport
 
 
@@ -13,7 +15,7 @@ class RemnawaveProvider(Provider):
     scope = Scope.APP
 
     @provide
-    async def get_remnawave(self, config: AppConfig) -> AsyncIterator[RemnawaveSDK]:
+    async def get_remnawave(self, config: AppConfig, redis: Redis) -> AsyncIterator[RemnawaveSDK]:
         logger.debug("Initializing RemnawaveSDK")
 
         headers = {}
@@ -28,7 +30,7 @@ class RemnawaveProvider(Provider):
 
         # with transport= given, AsyncClient ignores its own verify/limits/...
         # kwargs, so TLS and pooling go on AsyncHTTPTransport(...)
-        transport = ResilientTransport(AsyncHTTPTransport())
+        transport = PanelWriteRecorder(ResilientTransport(AsyncHTTPTransport()), redis)
         client = AsyncClient(
             base_url=f"{config.remnawave.url.get_secret_value()}/api",
             headers=headers,

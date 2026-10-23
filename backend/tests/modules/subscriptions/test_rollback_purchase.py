@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -65,6 +66,7 @@ def service(
     user_repository: UserRepository,
     pricing_repository: PricingRepository,
     remnawave_sdk: RemnawaveSDK,
+    idempotency_repository: PurchaseIdempotencyRepository,
     event_publisher: EventPublisher,
     uow: UnitOfWork,
 ) -> PurchaseRollbackService:
@@ -75,6 +77,7 @@ def service(
         PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
         pricing_repository,
         remnawave_sdk,
+        idempotency_repository,
         event_publisher,
         uow,
     )
@@ -390,3 +393,33 @@ async def test_renew_rollback_racing_a_change_restores_the_live_row_on_the_panel
     assert panel["hwidDeviceLimit"] == 7
     panel_expire = _panel_expire(remnawave_store, renewed.remnawave_user_id)
     assert abs(panel_expire - live_expire) < timedelta(seconds=1)
+
+
+async def test_rollback_undoes_a_renewal_that_reached_only_the_panel(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _buyer(user_repository, 9120)
+    bought = await _buy(purchase, buyer, await _plan(plan_repository, "rb_pin"), PurchaseType.NEW)
+    # the worker pinned and wrote the extension, then died before the database renew
+    pinned = bought.expire_at + timedelta(days=30)
+    remnawave_store[bought.remnawave_user_id]["expireAt"] = pinned.isoformat()
+
+    async def _pinned(key: str) -> Optional[datetime]:
+        return pinned if key == "order-key" else None
+
+    monkeypatch.setattr(service._idempotency, "get_pending_renew_expire_at", _pinned)
+    data = replace(_data(PurchaseType.RENEW, None, target=bought.id), idempotency_key="order-key")
+
+    assert (await service.preview(data)).available
+    await service.rollback(OWNER, data)
+
+    panel_expire = _panel_expire(remnawave_store, bought.remnawave_user_id)
+    assert abs(panel_expire - bought.expire_at) < timedelta(seconds=1)
+    after = await subscription_repository.get_by_id(bought.id)
+    assert after.expire_at == bought.expire_at

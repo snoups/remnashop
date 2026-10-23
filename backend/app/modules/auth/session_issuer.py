@@ -21,6 +21,7 @@ from app.modules.auth.repository import SessionRepository
 
 @dataclass(frozen=True, kw_only=True)
 class IssuedSession:
+    session_id: int
     access_token: str
     refresh_token: str
     csrf_token: str
@@ -66,11 +67,16 @@ class SessionIssuer:
         csrf_token = derive_csrf_token(refresh_token, secret)
 
         return IssuedSession(
+            session_id=session.id,
             access_token=access_token,
             refresh_token=refresh_token,
             csrf_token=csrf_token,
             expires_at=expires_at,
         )
+
+    async def revoke(self, session_id: int) -> None:
+        async with self._uow:
+            await self._session_repository.revoke_by_id(session_id)
 
     def generate_new_refresh_token(self) -> str:
         return generate_refresh_token()
@@ -90,6 +96,7 @@ class SessionIssuer:
         access_token = create_access_token(user_id, session_id, secret)
         csrf_token = derive_csrf_token(refresh_token, secret)
         return IssuedSession(
+            session_id=session_id,
             access_token=access_token,
             refresh_token=refresh_token,
             csrf_token=csrf_token,

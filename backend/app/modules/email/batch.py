@@ -71,11 +71,13 @@ class SmtpBatch:
 
     async def send(self, email: OutgoingEmailDto) -> EmailDeliveryDto:
         try:
-            await self._client.sendmail(
-                self._profile.from_address or "",
-                [email.to],
-                build_mime(self._profile, email).as_bytes(policy=_WIRE_POLICY),
-            )
+            message = build_mime(self._profile, email).as_bytes(policy=_WIRE_POLICY)
+        except (ValueError, TypeError) as error:
+            # one message the stdlib can't build (an odd address) must not stop
+            # the rest of the batch: it fails on its own after its attempts
+            return EmailDeliveryDto(outcome=EmailOutcome.RETRY, error=f"Unbuildable: {error}")
+        try:
+            await self._client.sendmail(self._profile.from_address or "", [email.to], message)
         except aiosmtplib.SMTPRecipientsRefused as error:
             refusal = error.recipients[0] if error.recipients else None
             if refusal is not None and mailbox_refused(refusal.code, refusal.message):

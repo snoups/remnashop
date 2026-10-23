@@ -77,6 +77,26 @@ async def test_telegram_creates_client_and_cabinet_session(
     assert registration.telegram_language_code == "ru"
 
 
+async def test_a_failed_sign_in_leaves_no_active_session(
+    sign_in: CabinetSignIn,
+    session_repository: SessionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with uow:
+        user = await user_repository.create(CreateUserDto(name="Ann", telegram_id=9009))
+
+    async def _broken(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("outbox down")
+
+    monkeypatch.setattr(sign_in._event_publisher, "publish", _broken)
+    with pytest.raises(RuntimeError):
+        await sign_in.issue_for(user, _IP, "ua", CabinetSignInMethod.TELEGRAM)
+
+    assert await session_repository.list_active_by_user(user.id) == []
+
+
 async def test_telegram_unknown_language_falls_back_to_english(sign_in: CabinetSignIn) -> None:
     user, _ = await sign_in.telegram(
         TelegramProfileDto(telegram_id=9003, name="Bo", username=None, language="xx"),

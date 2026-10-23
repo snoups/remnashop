@@ -78,6 +78,14 @@ async def test_deeplink_then_bot_link_signs_in_once(
     assert link is not None
     signin = link.url.split("token=", 1)[1]
 
+    # the link sent to another browser (one without the binding cookie) is refused there
+    async with httpx.AsyncClient(transport=client._transport, base_url=client.base_url) as other:
+        elsewhere = await other.post(_SIGNIN, json={"token": signin})
+    assert elsewhere.status_code == 401
+    assert elsewhere.json()["code"] == ErrorCode.DEEPLINK_OTHER_BROWSER.value
+    assert client.cookies.get("deeplink_binding")
+
+    # ...and stays usable in the browser that asked for it
     done = await client.post(_SIGNIN, json={"token": signin})
     assert done.status_code == 200 and done.json()["access_token"]
     assert client.cookies.get("cabinet_refresh_token")

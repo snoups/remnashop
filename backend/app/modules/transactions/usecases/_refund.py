@@ -45,4 +45,5 @@ async def rollback_input(
         price_paid=order.final_price,
         currency=order.currency,
         has_later_paid_order=has_later_paid_order,
+        idempotency_key=order.idempotency_key,
     )

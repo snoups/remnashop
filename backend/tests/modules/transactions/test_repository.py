@@ -210,6 +210,37 @@ async def test_list_paid_awaiting_reconciliation_excludes_fulfilled_orders(
     assert paid.id not in [order.id for order in awaiting]
 
 
+async def test_mark_fulfilled_by_key_links_the_order_to_its_subscription(
+    transaction_repository: TransactionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        paid = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-fulfilled-now")
+        )
+        paid = await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
+        subscription = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=user_id,
+                remnawave_user_id=555102,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now(),
+                url="https://fake-panel.test/sub/555102",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        await transaction_repository.mark_fulfilled_by_key("key-fulfilled-now", subscription.id)
+
+    fetched = await transaction_repository.get_by_id(paid.id)
+    assert fetched.fulfilled_subscription_id == subscription.id
+    assert fetched.updated_at == paid.updated_at
+
+
 async def test_list_paid_awaiting_reconciliation_excludes_orders_before_since(
     transaction_repository: TransactionRepository,
     session: AsyncSession,

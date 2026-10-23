@@ -484,6 +484,42 @@ async def test_revenue_today_compares_with_yesterday_same_time(
     assert newest.currency == Currency.RUB
 
 
+async def test_a_hidden_staff_payer_stays_nameless_in_recent_payments(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    subscription_stats_repository: SubscriptionStatsRepository,
+    redis: Redis,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="Hidden Staff", login="hidden-staff", role=Role.ADMIN, username="hid")
+    )
+    _, today_start = _now_and_midnight()
+    seeded = await _seed_paid(
+        transaction_repository,
+        session,
+        uow,
+        user_id=staff.id,
+        plan_id=plan_id,
+        key="staff-paid",
+        amount="100",
+        at=today_start + timedelta(minutes=2),
+    )
+    await _clear_window(session, today_start, keep=[seeded])
+    admin = OWNER.model_copy(update={"id": 2, "role": Role.ADMIN})
+
+    overview = await _overview_use_case(
+        user_repository, subscription_stats_repository, pricing_repository, redis, uow
+    )(admin)
+
+    assert overview.recent_payments is not None
+    [payment] = [p for p in overview.recent_payments if p.user_id == staff.id]
+    assert (payment.name, payment.username) == ("", None)
+
+
 async def test_revenue_sections_hidden_without_transactions_view(
     user_repository: UserRepository,
     pricing_repository: PricingRepository,

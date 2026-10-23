@@ -10,6 +10,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.auth import BootstrapOwnerUseCase, SessionIssuer, SessionRepository
+from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.events import OAuthLoginFailedEvent
 from app.modules.oauth.providers.base import OAuthProfile
@@ -452,6 +453,7 @@ async def test_connect_callback_links_identity_to_actor(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -497,6 +499,7 @@ async def test_connect_callback_reports_provider_exchange_failure(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -541,6 +544,7 @@ async def test_connect_callback_rejects_state_bound_to_different_actor(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -599,6 +603,7 @@ async def test_connect_callback_rejects_identity_already_linked_to_another_user(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -804,6 +809,7 @@ async def test_connect_callback_refuses_an_identity_from_a_replaced_oidc_issuer(
         oauth_state_store,
         oauth_identity_repository,
         user_repository,
+        BlacklistRepository(user_repository.session),
         uow,
         config,
         event_publisher,

@@ -218,6 +218,12 @@ class ReconcilePaidTransactionsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class MarkOrderFulfilledDto:
+    payment_key: str
+    subscription_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class PaidTransactionDto:
     user_id: int
     paid_at: datetime

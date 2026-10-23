@@ -115,6 +115,7 @@ class ErrorCode(UpperStrEnum):
     EMOJI_PACK_BOT_TOKEN_MISSING = auto()
     EMAIL_CODE_EXPIRED = auto()
     DEEPLINK_EXPIRED = auto()
+    DEEPLINK_OTHER_BROWSER = auto()
     EMAIL_CODE_INVALID = auto()
     EMAIL_NOT_CONFIGURED = auto()
     EMAIL_DOMAIN_NOT_ALLOWED = auto()

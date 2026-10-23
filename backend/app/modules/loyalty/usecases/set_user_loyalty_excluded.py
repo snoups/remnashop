@@ -14,7 +14,12 @@ from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.loyalty.summary import build_user_loyalty
 from app.modules.pricing import PricingRepository
 from app.modules.transactions import TransactionRepository
-from app.modules.users import UpdateUserDto, UserRepository, get_visible_target
+from app.modules.users import (
+    UpdateUserDto,
+    UserRepository,
+    assert_manageable,
+    get_visible_target,
+)
 
 
 class SetUserLoyaltyExcludedUseCase(UseCase[SetUserLoyaltyExcludedDto, UserLoyaltyDto]):
@@ -43,6 +48,7 @@ class SetUserLoyaltyExcludedUseCase(UseCase[SetUserLoyaltyExcludedDto, UserLoyal
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
+            assert_manageable(actor, target, allow_self=True)
 
             updated = target
             if target.loyalty_excluded != data.excluded:

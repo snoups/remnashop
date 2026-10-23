@@ -144,6 +144,23 @@ async def test_sender_uses_tls_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls["hostname"] == "smtp.example.com" and calls["to"] == "a@b.c"
 
 
+async def test_sender_envelope_is_the_validated_address(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, Any] = {}
+
+    async def fake_send(message: Any, **kwargs: Any) -> None:
+        calls.update(kwargs)
+
+    monkeypatch.setattr("app.modules.email.sender.aiosmtplib.send", fake_send)
+    await SmtpSender().send(
+        _CONFIGURED.profile(bulk=False),
+        EmailMessageDto(to="=?utf-8?q?bad?=@gmail.com", subject="s", text="t", html="<p>t</p>"),
+    )
+
+    # without explicit recipients aiosmtplib decodes the To header into bad@gmail.com
+    assert calls["recipients"] == ["=?utf-8?q?bad?=@gmail.com"]
+    assert calls["sender"] == "no-reply@example.com"
+
+
 async def test_send_email_skips_when_not_configured(redis: Redis) -> None:
     sender = _Sender()
     use_case = SendEmailUseCase(_Repo(EmailSettingsDto()), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]

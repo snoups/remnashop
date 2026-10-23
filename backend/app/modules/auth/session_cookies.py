@@ -29,6 +29,7 @@ SESSION_COOKIES: Final[dict[SessionAudience, SessionCookies]] = {
 }
 
 OAUTH_BINDING_COOKIE: Final[str] = "oauth_binding"
+DEEPLINK_BINDING_COOKIE: Final[str] = "deeplink_binding"
 
 
 def set_audience_cookies(
@@ -66,9 +67,10 @@ def set_oauth_binding_cookie(
     secure: bool,
     audience: SessionAudience,
     path: str = REFRESH_COOKIE_PATH,
+    name: str = OAUTH_BINDING_COOKIE,
 ) -> None:
     response.set_cookie(
-        OAUTH_BINDING_COOKIE,
+        name,
         binding,
         max_age=TTL_10M,
         httponly=True,
@@ -78,5 +80,7 @@ def set_oauth_binding_cookie(
     )
 
 
-def clear_oauth_binding_cookie(response: Response, path: str = REFRESH_COOKIE_PATH) -> None:
-    response.delete_cookie(OAUTH_BINDING_COOKIE, path=path)
+def clear_oauth_binding_cookie(
+    response: Response, path: str = REFRESH_COOKIE_PATH, name: str = OAUTH_BINDING_COOKIE
+) -> None:
+    response.delete_cookie(name, path=path)

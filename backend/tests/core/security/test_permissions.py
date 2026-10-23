@@ -608,6 +608,12 @@ def test_irreversible_subscription_actions_are_not_token_grantable() -> None:
     assert Permission.SUBSCRIPTIONS_GRANT in TOKEN_GRANTABLE_PERMISSIONS
 
 
+def test_backups_write_token_cannot_rotate_or_reset_history() -> None:
+    granted = expand_token_scopes(["backups:write"])
+    assert Permission.BACKUPS_SETTINGS_RESET not in granted
+    assert Permission.BACKUPS_RUN_CREATE not in granted
+
+
 def test_oauth_settings_manage_is_owner_only_by_default() -> None:
     assert Permission.OAUTH_SETTINGS_MANAGE not in ROLE_PERMISSIONS[Role.ADMIN]
     assert Permission.EMAIL_SETTINGS_MANAGE not in ROLE_PERMISSIONS[Role.ADMIN]

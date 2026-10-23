@@ -3658,6 +3658,7 @@
     "EMOJI_PACK_BOT_TOKEN_MISSING": "Set the bot token before importing an emoji pack.",
     "EMAIL_CODE_EXPIRED": "The code has expired. Request a new one.",
     "DEEPLINK_EXPIRED": "The sign-in link has expired. Try again.",
+    "DEEPLINK_OTHER_BROWSER": "Open the sign-in link in the browser where you pressed “Sign in”.",
     "EMAIL_CODE_INVALID": "Wrong code.",
     "EMAIL_NOT_CONFIGURED": "Set up SMTP first.",
     "EMAIL_DOMAIN_NOT_ALLOWED": "This email provider isn't supported. Use another address.",

@@ -1,4 +1,4 @@
-from typing import Callable, Coroutine, Final
+from typing import AsyncIterator, Callable, Coroutine, Final
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -14,7 +14,7 @@ from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
 from app.core.error_codes import ErrorCode
 from app.core.security import decode_access_token
 from app.core.utils.http import ip_rate_bucket, resolve_client_ip
-from app.core.utils.rate_counter import hit_counter, user_rate_key
+from app.core.utils.rate_counter import hit_counter, release_counter, user_rate_key
 from app.modules.users import UserDto
 
 _GLOBAL_RATE_LIMIT: Final[int] = 300
@@ -72,13 +72,11 @@ def rate_limit(
 
 
 class FailureLimit:
-    def __init__(self, redis: Redis, redis_key: str, window_seconds: int) -> None:
-        self._redis = redis
-        self._redis_key = redis_key
-        self._window_seconds = window_seconds
+    def __init__(self) -> None:
+        self.failed = False
 
     async def record_failure(self) -> None:
-        await hit_counter(self._redis, self._redis_key, self._window_seconds)
+        self.failed = True
 
 
 def failure_rate_limit(
@@ -86,15 +84,17 @@ def failure_rate_limit(
     key: str,
     limit: int,
     window_seconds: int,
-) -> Callable[[Request, Redis], Coroutine[None, None, FailureLimit]]:
-    # Counts only attempts the route reports through record_failure(): hundreds
+) -> Callable[[Request, Redis], AsyncIterator[FailureLimit]]:
+    # Keeps only attempts the route reports through record_failure(): hundreds
     # of customers share one VPN exit IP, and their successful sign-ins must
-    # not eat the budget of the next one.
+    # not eat the budget of the next one. Each attempt is counted before it
+    # runs and given back unless it failed, so a burst of parallel guesses
+    # can't all pass a check made before any of them was counted.
     @inject
-    async def dependency(request: Request, redis: FromDishka[Redis]) -> FailureLimit:
+    async def dependency(request: Request, redis: FromDishka[Redis]) -> AsyncIterator[FailureLimit]:
         client_ip = ip_rate_bucket(resolve_client_ip(request))
         redis_key = f"{REDIS_KEY_PREFIX}ratelimit:{key}:{client_ip}"
-        if int(await redis.get(redis_key) or 0) >= limit:
+        if await hit_counter(redis, redis_key, window_seconds) > limit:
             RATE_LIMIT_HITS.labels(key=key).inc()
             logger.warning(f"Rate limit exceeded: '{key}' by IP '{client_ip}'")
             raise ApiError(
@@ -102,7 +102,12 @@ def failure_rate_limit(
                 "Too many requests, try again later",
                 code=ErrorCode.RATE_LIMITED,
             )
-        return FailureLimit(redis, redis_key, window_seconds)
+        guard = FailureLimit()
+        try:
+            yield guard
+        finally:
+            if not guard.failed:
+                await release_counter(redis, redis_key)
 
     return dependency
 
@@ -147,7 +152,8 @@ async def global_rate_limit(
     if request.url.path in _RATE_LIMIT_EXEMPT_PATHS:
         return
 
-    if request.url.path.startswith(_EMOJI_PREFIX):
+    # only the art loads: an admin's DELETE stays in the ordinary bucket
+    if request.method == "GET" and request.url.path.startswith(_EMOJI_PREFIX):
         identity = f"ip:{ip_rate_bucket(resolve_client_ip(request))}"
         bucket, limit = "emoji", _EMOJI_RATE_LIMIT
     else:

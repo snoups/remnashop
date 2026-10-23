@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from redis.asyncio import Redis
 
@@ -48,7 +50,7 @@ async def test_wrong_attempt_keeps_ttl(store: EmailCodeStore, redis: Redis) -> N
     wrong = "000000" if code != "000000" else "111111"
     await store.verify("a@b.c", wrong)
     keys = [key async for key in redis.scan_iter("*cabinet:email_code:*")]
-    assert len(keys) == 1 and await redis.ttl(keys[0]) > 0
+    assert len(keys) == 2 and all([await redis.ttl(key) > 0 for key in keys])
 
 
 async def test_wrong_attempt_does_not_resurrect_consumed_code(
@@ -65,7 +67,27 @@ async def test_wrong_attempt_does_not_resurrect_consumed_code(
 
     monkeypatch.setattr(redis, "get", get_then_consume)
     assert await store.verify("a@b.c", wrong) is None
-    assert [key async for key in redis.scan_iter("*cabinet:email_code:*")] == []
+    keys = [key async for key in redis.scan_iter("*cabinet:email_code:*")]
+    assert all(key.endswith(":attempts") for key in keys)
+
+
+async def test_parallel_wrong_guesses_get_five_attempts_in_total(store: EmailCodeStore) -> None:
+    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    wrong = [f"{n:06d}" for n in range(30) if f"{n:06d}" != code][:20]
+
+    results = await asyncio.gather(
+        *(store.verify("a@b.c", guess) for guess in wrong), return_exceptions=True
+    )
+
+    evaluated = [result for result in results if result is None]
+    assert len(evaluated) == 4  # the fifth wrong guess burns the code
+    assert all(
+        isinstance(result, (EmailCodeAttemptsExhausted, EmailCodeExpired))
+        for result in results
+        if result is not None
+    )
+    with pytest.raises(EmailCodeExpired):
+        await store.verify("a@b.c", code)
 
 
 async def test_code_is_bound_to_the_address_it_was_issued_for(store: EmailCodeStore) -> None:

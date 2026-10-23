@@ -26,7 +26,12 @@ class IssueBotSignInLinkUseCase:
         if ticket is None:
             return None
         token = await self._store.issue_signin(
-            BotSignInGrantDto(profile=profile, codes=ticket.codes, link_user_id=ticket.link_user_id)
+            BotSignInGrantDto(
+                profile=profile,
+                codes=ticket.codes,
+                link_user_id=ticket.link_user_id,
+                binding_hash=ticket.binding_hash,
+            )
         )
         is_link = ticket.link_user_id is not None
         path = _LINK_PATH if is_link else _SIGNIN_PATH

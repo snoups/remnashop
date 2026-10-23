@@ -7,6 +7,8 @@ from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode, SmtpSecurity
 
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
+# no control characters (a line break above all): it lands in an email header
+_HEADER_TEXT: Final[str] = r"^[^\x00-\x1f\x7f]*$"
 
 
 class BotSettingsResponse(BaseModel):
@@ -186,7 +188,8 @@ class UpdateEmailSettingsRequest(BaseModel):
     from_address: Optional[str] = Field(
         None, min_length=1, max_length=255, pattern=r"^[^@\s]+@[^@\s]+$"
     )
-    from_name: Optional[str] = Field(None, max_length=100)
+    # a line break in a header value makes every send raise
+    from_name: Optional[str] = Field(None, max_length=100, pattern=_HEADER_TEXT)
     bulk_host: Optional[str] = Field(None, min_length=1, max_length=255)
     bulk_port: Optional[int] = Field(None, ge=1, le=65535)
     bulk_security: Optional[SmtpSecurity] = None
@@ -195,7 +198,7 @@ class UpdateEmailSettingsRequest(BaseModel):
     bulk_from_address: Optional[str] = Field(
         None, min_length=1, max_length=255, pattern=r"^[^@\s]+@[^@\s]+$"
     )
-    bulk_from_name: Optional[str] = Field(None, max_length=100)
+    bulk_from_name: Optional[str] = Field(None, max_length=100, pattern=_HEADER_TEXT)
     bulk_rate_per_minute: Optional[int] = Field(None, ge=1, le=1000)
 
 

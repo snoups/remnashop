@@ -190,3 +190,13 @@ async def test_long_list_unsubscribe_is_not_rfc2047_encoded() -> None:
     assert f"List-Unsubscribe: <{url}>".encode() in data
     assert b"=?utf-8?" not in data.split(b"\r\n\r\n", 1)[0]
     assert b"Content-ID: <img-1>" in data
+
+
+async def test_a_message_that_cannot_be_built_does_not_stop_the_batch() -> None:
+    profile = replace(_PROFILE, from_name="Shop\nBcc: x@y.z")  # saved before validation existed
+    async with SmtpBatchSender().open(profile) as batch:
+        broken = await batch.send(_email("a@example.com"))
+    assert broken.outcome is EmailOutcome.RETRY
+
+    async with SmtpBatchSender().open(_PROFILE) as batch:
+        assert (await batch.send(_email("b@example.com"))).outcome is EmailOutcome.SENT

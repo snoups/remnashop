@@ -66,8 +66,12 @@ class SmtpSender:
             if html_part is not None:
                 html_part.add_related(logo.data, maintype=maintype, subtype=subtype, cid="<logo>")
         try:
+            # the envelope is the validated address itself: re-parsed from the To
+            # header, an encoded word in it would decode into another mailbox
             await aiosmtplib.send(
                 mime,
+                sender=profile.from_address,
+                recipients=[message.to],
                 hostname=profile.host,
                 port=profile.port,
                 username=profile.username,

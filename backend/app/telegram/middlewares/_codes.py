@@ -25,7 +25,9 @@ def _parse_start_code(event: TelegramObject, prefix: str) -> Optional[str]:
     if not code:
         return None
 
-    logger.debug(f"Parsed '{prefix}' code '{code}' from deep-link payload")
+    # a webauth_ code signs into the cabinet, and the bot's log is readable from the dashboard
+    shown = "<redacted>" if payload.startswith(WEBAUTH_START_PREFIX) else code
+    logger.debug(f"Parsed '{prefix}' code '{shown}' from deep-link payload")
     return code
 
 

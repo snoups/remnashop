@@ -28,7 +28,7 @@ from app.modules.overview.dto import (
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionStatsRepository
-from app.modules.users import UserRepository, UserStatsRepository
+from app.modules.users import UserRepository, UserStatsRepository, visible_user
 
 _RECENT_PAYMENTS: Final[int] = 8
 
@@ -70,7 +70,7 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
             recent_payments = None
             if Permission.TRANSACTIONS_VIEW in perms:
                 revenue_today = await self._revenue_today(today_start)
-                recent_payments = await self._recent_payments()
+                recent_payments = await self._recent_payments(actor)
 
         return OverviewDto(
             users=users,
@@ -121,16 +121,18 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
             change=float(today / yesterday - 1) if yesterday else None,
         )
 
-    async def _recent_payments(self) -> list[RecentPaymentDto]:
+    async def _recent_payments(self, actor: Actor) -> list[RecentPaymentDto]:
         rows = await self._transaction_stats.list_recent_paid(_RECENT_PAYMENTS)
         users = {
             u.id: u for u in await self._user_repository.list_by_ids([r.user_id for r in rows])
         }
+        # a staff payer the caller may not see stays nameless, as in the order list
+        shown = {user_id: visible_user(actor, user) for user_id, user in users.items()}
         return [
             RecentPaymentDto(
                 user_id=row.user_id,
-                name=users[row.user_id].name if row.user_id in users else "",
-                username=users[row.user_id].username if row.user_id in users else None,
+                name=payer.name if (payer := shown.get(row.user_id)) else "",
+                username=payer.username if payer else None,
                 plan_name=row.plan_name,
                 gateway_type=row.gateway_type,
                 purchase_type=row.purchase_type,

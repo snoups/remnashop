@@ -9,7 +9,7 @@ from app.core.db.models import OAuthIdentity, Referral, User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider, Role, SessionAudience
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.account_merge.dto import GetMergePreviewDto, MergeAccountsDto
@@ -199,7 +199,8 @@ async def test_staff_merge_needs_admins_manage(merge, user_repository) -> None:
     customer = await user_repository.create(CreateUserDto(name="c", telegram_id=33))
     actor = UserDto(id=admin.id, name="a", role=Role.ADMIN, permission_grants=["USERS_MERGE"])
 
-    with pytest.raises(PermissionDeniedError):
+    # out of reach answers like a missing account, so staff ids can't be probed
+    with pytest.raises(NotFoundError):
         await merge(
             actor,
             MergeAccountsDto(

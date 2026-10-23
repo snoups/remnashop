@@ -517,6 +517,9 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         # irreversible or bulk
         Permission.BACKUPS_SETTINGS_MANAGE,
         Permission.BACKUPS_RUN_DELETE,
+        # reset shrinks retention and a run rotates old backups away
+        Permission.BACKUPS_SETTINGS_RESET,
+        Permission.BACKUPS_RUN_CREATE,
         Permission.BLACKLIST_SOURCE_ADD,
         Permission.BLACKLIST_SYNC,
         Permission.USERS_DELETE,

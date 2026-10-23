@@ -4,7 +4,7 @@ from app.core.security.jwt import (
     create_access_token,
     create_docs_token,
     decode_access_token,
-    is_valid_docs_token,
+    docs_token_session,
 )
 from app.core.security.password import (
     PASSWORD_MIN_LENGTH,
@@ -28,11 +28,11 @@ __all__ = [
     "decode_access_token",
     "decrypt_value",
     "derive_csrf_token",
+    "docs_token_session",
     "encrypt_value",
     "generate_password",
     "generate_refresh_token",
     "hash_password",
     "hash_refresh_token",
-    "is_valid_docs_token",
     "verify_password",
 ]

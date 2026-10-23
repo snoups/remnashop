@@ -11,7 +11,7 @@ from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BlacklistKind, OAuthProvider
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError, PermissionDeniedError
+from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
@@ -168,6 +168,64 @@ async def test_verified_email_links_identity_to_existing_user(
             OAuthProvider.GOOGLE, "g2"
         )
     assert identity is not None and identity.user_id == existing.id
+
+
+async def test_an_alias_of_a_stored_email_does_not_sign_into_that_account(
+    authorize: CabinetOAuthAuthorizeUseCase,
+    callback: CabinetOAuthCallbackUseCase,
+    profile_holder: dict[str, OAuthProfile],
+    user_repository: UserRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+    uow: UnitOfWork,
+) -> None:
+    # on a host where "+" is part of the name these are two people's mailboxes
+    async with uow:
+        await user_repository.create(CreateUserDto(name="John", email="john@example.org"))
+    with pytest.raises(ConflictError) as error:
+        await _sign_in_via(
+            authorize,
+            callback,
+            profile_holder,
+            OAuthProvider.GOOGLE,
+            OAuthProfile(
+                external_id="g9", login=None, email="john+x@example.org", email_verified=True
+            ),
+        )
+    assert error.value.code is ErrorCode.EMAIL_TAKEN
+    async with uow:
+        assert (
+            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.GOOGLE, "g9")
+            is None
+        )
+
+
+async def test_a_blocked_account_gains_no_identity_on_a_refused_sign_in(
+    authorize: CabinetOAuthAuthorizeUseCase,
+    callback: CabinetOAuthCallbackUseCase,
+    profile_holder: dict[str, OAuthProfile],
+    user_repository: UserRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await user_repository.create(
+            CreateUserDto(name="Ann", email="blocked@example.com", is_blocked=True)
+        )
+    with pytest.raises(PermissionDeniedError):
+        await _sign_in_via(
+            authorize,
+            callback,
+            profile_holder,
+            OAuthProvider.GOOGLE,
+            OAuthProfile(
+                external_id="g8", login=None, email="blocked@example.com", email_verified=True
+            ),
+        )
+    async with uow:
+        assert (
+            await oauth_identity_repository.get_by_provider_external_id(OAuthProvider.GOOGLE, "g8")
+            is None
+        )
 
 
 async def test_unverified_email_creates_new_client_without_email(
