@@ -26,6 +26,7 @@ import type { EventLogEntry } from "@entities/event-log/api";
 import {
   ANONYMOUS_EVENT_TYPES,
   PAYLOAD_TARGET_KEY,
+  eventTitle,
   getInitiator,
   getUserSnapshot,
   isApiToken,
@@ -170,7 +171,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
     <>
       <DialogHeader
         glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />}
-        title={t(`eventLog.events.${entry.event_type}` as ParseKeys)}
+        title={eventTitle(entry, t)}
       />
 
       {tabs.length > 1 && (

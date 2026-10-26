@@ -50,14 +50,6 @@ class UserSessionRevokedByAdminEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class LoggedOutEvent(BaseEvent):
-    category: ClassVar[EventCategory] = EventCategory.AUTH
-    user_id: int
-    session_id: int
-    audience: str
-
-
-@dataclass(frozen=True, kw_only=True)
 class RescueCliUsedEvent(SystemEvent):
     """A break-glass action run from `python -m app.cli` on the server."""
 

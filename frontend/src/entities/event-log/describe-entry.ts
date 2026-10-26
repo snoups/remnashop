@@ -73,3 +73,23 @@ export function describeEntry(entry: EventLogEntry, t: TFunction): string {
   const target = getTargetLogin(entry);
   return target ? `${actor} → ${target}` : actor;
 }
+
+// payload field that picks `eventLog.eventVariants.<type>.<value>` over the plain title
+const TITLE_VARIANT_FIELDS: Readonly<Record<string, string>> = {
+  CabinetUserRegisteredEvent: "method",
+  RescueCliUsedEvent: "action",
+};
+
+const HOURS_PER_DAY = 24;
+
+export function eventTitle(entry: EventLogEntry, t: TFunction): string {
+  const title = t(`eventLog.events.${entry.event_type}` as ParseKeys);
+  const hours = entry.payload?.hours;
+  if (entry.event_type === "SubscriptionExpiredAgoEvent" && typeof hours === "number") {
+    return t("eventLog.eventVariants.subscriptionExpiredDays", { count: Math.round(hours / HOURS_PER_DAY) });
+  }
+  const field = TITLE_VARIANT_FIELDS[entry.event_type];
+  const variant = field ? entry.payload?.[field] : undefined;
+  if (typeof variant !== "string") return title;
+  return t(`eventLog.eventVariants.${entry.event_type}.${variant}` as ParseKeys, { defaultValue: title });
+}

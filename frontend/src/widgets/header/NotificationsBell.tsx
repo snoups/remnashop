@@ -1,4 +1,3 @@
-import type { ParseKeys } from "i18next";
 import { Bell, Play, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
@@ -10,7 +9,7 @@ import type { Announcement } from "@entities/announcements/api";
 import { AnnouncementIcon } from "@entities/announcements/AnnouncementIcon";
 import { clearNotifications, getNotifications, markNotificationsRead } from "@entities/event-log/api";
 import type { EventLogLocationState, Notifications } from "@entities/event-log/api";
-import { describeEntry } from "@entities/event-log/describe-entry";
+import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
 import { pollWhileVisible } from "@shared/lib/poll-while-visible";
@@ -278,7 +277,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12.5px] font-medium text-foreground/90">
-                    {t(`eventLog.events.${entry.event_type}` as ParseKeys)}
+                    {eventTitle(entry, t)}
                   </span>
                   <span className="block truncate text-[12px] text-muted-foreground">
                     {describeEntry(entry, t)} · {formatRelative(entry.occurred_at, i18n.language)}

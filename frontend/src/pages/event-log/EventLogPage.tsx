@@ -28,7 +28,7 @@ import {
   type EventLogLocationState,
   listEventLog,
 } from "@entities/event-log/api";
-import { describeEntry } from "@entities/event-log/describe-entry";
+import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -203,11 +203,11 @@ export function EventLogPage() {
                   {/* px-2: the rows' whileTap scale grows into padding, so the scroll
                       container's width holds and no scrollbar flickers on tap */}
                   <div className="min-w-[640px] px-2">
-                    <div className="grid grid-cols-[1.2fr_170px_1fr_140px_16px] gap-4 border-b border-border px-3 pb-2.5">
+                    <div className="grid grid-cols-[2fr_64px_1fr_140px_16px] gap-4 border-b border-border px-3 pb-2.5">
                       <span className={EYEBROW_CLASS}>
                         {t("eventLog.columns.eventType")}
                       </span>
-                      <span className={EYEBROW_CLASS}>
+                      <span className={`-ml-3 ${EYEBROW_CLASS}`}>
                         {t("eventLog.columns.occurredAt")}
                       </span>
                       <span className={EYEBROW_CLASS}>{t("eventLog.columns.actor")}</span>
@@ -237,7 +237,7 @@ export function EventLogPage() {
                                 }
                               }}
                               {...bounceTap(0.03)}
-                              className={`grid cursor-pointer grid-cols-[1.2fr_170px_1fr_140px_16px] items-center gap-4 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
+                              className={`grid cursor-pointer grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                             >
                               <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
                                 <span
@@ -245,9 +245,9 @@ export function EventLogPage() {
                                 >
                                   <EventTypeIcon eventType={entry.event_type} className="size-4" />
                                 </span>
-                                <span className="truncate">{t(`eventLog.events.${entry.event_type}` as ParseKeys)}</span>
+                                <span className="truncate">{eventTitle(entry, t)}</span>
                               </span>
-                              <span className="text-[13px] tabular-nums text-foreground">
+                              <span className="-ml-3 text-[13px] tabular-nums text-foreground">
                                 {formatTime(entry.occurred_at, i18n.language)}
                               </span>
                               <span className="truncate text-[12.5px] text-foreground">

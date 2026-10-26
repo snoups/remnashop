@@ -1,4 +1,3 @@
-import type { ParseKeys } from "i18next";
 import {
   AtSign,
   Ban,
@@ -23,6 +22,7 @@ import { getUserAdAttribution } from "@entities/advertising/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { listEventLog } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
+import { eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import type { UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -242,7 +242,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
               <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-              {t(`eventLog.events.${entry.event_type}` as ParseKeys)}
+              {eventTitle(entry, t)}
             </span>
             <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
               {formatDateTime(entry.occurred_at, i18n.language)}

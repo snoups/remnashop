@@ -52,7 +52,6 @@ from app.modules.oauth.events import (
 from app.modules.settings import SettingsRepository, UpdateOAuthSettingsDto
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
-from tests.fakes.events import RecordingEventPublisher
 
 PASSWORD = "Sup3rSecretPassw0rd1234567890"
 CLIENT_IP = "203.0.113.1"
@@ -815,25 +814,21 @@ async def test_logout_revokes_the_session(
     issuer = SessionIssuer(session_repository, uow, config)
     issued = await issuer.issue(owner.id, CLIENT_IP, USER_AGENT)
 
-    publisher = RecordingEventPublisher()
-    use_case = LogoutUseCase(session_repository, uow, publisher)
+    use_case = LogoutUseCase(session_repository, uow)
     await use_case.execute(refresh_token=issued.refresh_token)
 
     assert (
         await session_repository.find_rotatable_by_hash(hash_refresh_token(issued.refresh_token))
         is None
     )
-    assert [(e.user_id, e.audience) for e in publisher.events] == [(owner.id, "DASHBOARD")]  # type: ignore[attr-defined]
 
 
 async def test_logout_is_idempotent_for_unknown_token(
     session_repository: SessionRepository,
     uow: UnitOfWork,
 ) -> None:
-    publisher = RecordingEventPublisher()
-    use_case = LogoutUseCase(session_repository, uow, publisher)
+    use_case = LogoutUseCase(session_repository, uow)
     await use_case.execute(refresh_token="never-issued")  # must not raise
-    assert publisher.events == []
 
 
 async def test_api_token_reaches_customer_sessions_but_not_staff_sessions(

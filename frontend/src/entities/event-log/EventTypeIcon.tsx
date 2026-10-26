@@ -220,7 +220,6 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   TransactionExpiredEvent: Clock,
   MarketingOptOutChangedEvent: MailX,
   BotBlockedByUserEvent: Ban,
-  LoggedOutEvent: LogOut,
   PasskeyRenamedEvent: Fingerprint,
   AdLinkAttributedEvent: Megaphone,
   BackupCompletedEvent: DatabaseZap,

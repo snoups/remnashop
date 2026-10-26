@@ -564,12 +564,12 @@
       "json": "JSON"
     },
     "events": {
-      "LoginSucceededEvent": "Login",
-      "LoginFailedEvent": "Login failed",
+      "LoginSucceededEvent": "Dashboard sign-in",
+      "LoginFailedEvent": "Dashboard sign-in failed",
       "OwnerBootstrappedEvent": "Owner created",
       "BootstrapConflictEvent": "Owner creation attempt",
-      "OAuthLoginSucceededEvent": "OAuth login",
-      "OAuthLoginFailedEvent": "OAuth login failed",
+      "OAuthLoginSucceededEvent": "Dashboard sign-in via OAuth",
+      "OAuthLoginFailedEvent": "Dashboard OAuth sign-in failed",
       "EmailCodeAttemptsExhaustedEvent": "Email code attempts exhausted",
       "OAuthIdentityConnectedEvent": "OAuth account linked",
       "OAuthIdentityDisconnectedEvent": "OAuth account unlinked",
@@ -599,8 +599,8 @@
       "BlacklistReconciledEvent": "Blacklist auto-block",
       "CurrencyRateChangedEvent": "Currency rate changed",
       "OidcIssuerChangedEvent": "OIDC issuer changed",
-      "PasskeyLoginFailedEvent": "Passkey login failed",
-      "PasskeyLoginSucceededEvent": "Passkey login",
+      "PasskeyLoginFailedEvent": "Dashboard passkey sign-in failed",
+      "PasskeyLoginSucceededEvent": "Dashboard sign-in via passkey",
       "PasskeyRegisteredEvent": "Passkey added",
       "PasskeyRemovedEvent": "Passkey removed",
       "PlanChangedEvent": "Plan changed",
@@ -682,7 +682,7 @@
       "EmailSettingsChangedEvent": "Email settings changed",
       "CabinetAuthSettingsChangedEvent": "Cabinet sign-in settings changed",
       "SubscriptionExpiredAgoEvent": "Subscription expired a while ago",
-      "SubscriptionNotConnectedEvent": "Never connected",
+      "SubscriptionNotConnectedEvent": "Subscription not in use",
       "SubscriptionFirstConnectedEvent": "First connection",
       "SubscriptionTrafficResetEvent": "Traffic reset",
       "SubscriptionRevokedEvent": "Subscription link reissued",
@@ -694,9 +694,9 @@
       "NodeTrafficReachedEvent": "Node traffic limit",
       "NodeBillingDueEvent": "Node payment due",
       "PanelStartedEvent": "Panel started",
-      "PanelLoginFailedEvent": "Panel sign-in failed",
-      "PanelLoginSucceededEvent": "Panel sign-in",
-      "RescueCliUsedEvent": "Rescue console",
+      "PanelLoginFailedEvent": "Remnawave sign-in failed",
+      "PanelLoginSucceededEvent": "Remnawave sign-in",
+      "RescueCliUsedEvent": "Server console action",
       "RemnawaveUnavailableEvent": "Panel unavailable",
       "RemnawaveRestoredEvent": "Panel available",
       "RemnawaveVersionMismatchEvent": "Unsupported panel version",
@@ -710,10 +710,24 @@
       "TransactionExpiredEvent": "Unpaid order expired",
       "MarketingOptOutChangedEvent": "Marketing preference changed",
       "BotBlockedByUserEvent": "Bot blocked by customer",
-      "LoggedOutEvent": "Signed out",
       "PasskeyRenamedEvent": "Passkey renamed",
       "AdLinkAttributedEvent": "Came from an ad link",
       "BackupCompletedEvent": "Backup completed"
+    },
+    "eventVariants": {
+      "CabinetUserRegisteredEvent": {
+        "EMAIL": "Cabinet sign-up (Email)",
+        "GOOGLE": "Cabinet sign-up (Google)",
+        "YANDEX": "Cabinet sign-up (Yandex)",
+        "TELEGRAM": "Cabinet sign-up (Telegram)"
+      },
+      "RescueCliUsedEvent": {
+        "reset_owner_access": "Owner access reset (console)",
+        "enable_password_login": "Password sign-in enabled (console)",
+        "restore_backup": "Backup restored (console)"
+      },
+      "subscriptionExpiredDays_one": "Subscription expired ({{count}} day ago)",
+      "subscriptionExpiredDays_other": "Subscription expired ({{count}} days ago)"
     }
   },
   "sidebar": {
