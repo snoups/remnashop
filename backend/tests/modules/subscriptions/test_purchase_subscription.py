@@ -2583,7 +2583,7 @@ def _paid_new_dto(
     )
 
 
-async def test_a_paid_upgrade_of_a_disabled_trial_keeps_the_panels_status(
+async def test_a_paid_upgrade_enables_a_disabled_trial(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
@@ -2604,7 +2604,37 @@ async def test_a_paid_upgrade_of_a_disabled_trial_keeps_the_panels_status(
     paid = await purchase_subscription_use_case(buyer, _paid_new_dto(buyer, paid_plan))
 
     assert paid.remnawave_user_id == trial.remnawave_user_id
-    assert paid.status is SubscriptionStatus.DISABLED
+    assert paid.status is SubscriptionStatus.ACTIVE
+    assert remnawave_store[trial.remnawave_user_id]["status"] == "ACTIVE"
+
+
+async def test_a_paid_purchase_replaces_an_expired_trial_and_keeps_its_link(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_store: FakeUserStore,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9202)
+    trial_plan = await _create_plan(plan_repository, "expired-trial")
+    paid_plan = await _create_plan(plan_repository, "expired-trial-paid")
+    trial = await purchase_subscription_use_case(buyer, _trial_dto(buyer, trial_plan))
+    remnawave_store[trial.remnawave_user_id]["status"] = "EXPIRED"
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == trial.id)
+        .values(status=SubscriptionStatus.EXPIRED)
+    )
+
+    paid = await purchase_subscription_use_case(buyer, _paid_new_dto(buyer, paid_plan))
+
+    assert paid.remnawave_user_id == trial.remnawave_user_id
+    assert paid.url == trial.url
+    assert paid.status is SubscriptionStatus.ACTIVE
+    assert len(remnawave_store) == 1
+    assert (await subscription_repository.get_by_id(trial.id)).status is (
+        SubscriptionStatus.DELETED
+    )
 
 
 async def test_a_paid_upgrade_of_a_trial_resets_its_traffic(

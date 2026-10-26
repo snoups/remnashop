@@ -2,6 +2,8 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+from aiogram.types import CallbackQuery, Message
+
 from app.core.constants import POINTS_WITHDRAW_RATE_LIMIT, USER_KEY
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
@@ -15,6 +17,7 @@ from app.telegram.routers.referrals.catalog import register_referrals_catalog
 from app.telegram.routers.referrals.handlers import (
     on_redeem_days,
     on_redeem_target_selected,
+    on_referral_qr,
     on_withdraw_input,
     on_withdraw_points,
 )
@@ -240,3 +243,23 @@ def test_every_catalog_action_has_a_bound_handler() -> None:
     finally:
         catalog._reset_for_tests()
         state_pool._reset_for_tests()
+
+
+async def test_qr_sends_the_referral_link_as_a_png() -> None:
+    callback = MagicMock(spec=CallbackQuery)
+    callback.message = MagicMock(spec=Message)
+    callback.message.answer_photo = AsyncMock()
+    callback.answer = AsyncMock()
+    bot = MagicMock(me=AsyncMock(return_value=MagicMock(username="shop_bot")))
+
+    await on_referral_qr.__dishka_orig_func__(
+        callback,
+        MagicMock(),
+        _manager(),
+        AsyncMock(return_value=MagicMock(referral_code="abc")),
+        bot,
+    )
+
+    photo = callback.message.answer_photo.await_args.args[0]
+    assert photo.data.startswith(b"\x89PNG")
+    callback.answer.assert_awaited_once()

@@ -20,6 +20,7 @@ from app.modules.referrals.usecases import (
     ListReferralsUseCase,
     RedeemBonusDaysUseCase,
     RequestPointsWithdrawalUseCase,
+    ResetOwnReferralCodeUseCase,
     UpdateReferralSettingsUseCase,
 )
 
@@ -42,6 +43,7 @@ __all__ = [
     "ReferralStatsDto",
     "RequestPointsWithdrawalDto",
     "RequestPointsWithdrawalUseCase",
+    "ResetOwnReferralCodeUseCase",
     "UpdateReferralSettingsDto",
     "UpdateReferralSettingsUseCase",
     "get_referrals_providers",

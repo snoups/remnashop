@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
 import {
-  URL_SCHEMES,
   iconIdTextKey,
+  isLinkButton,
   iconTextKey,
   splitTextKey,
   updateDialogText,
   urlProblem,
+  urlSchemesFor,
   variableOptions,
 } from "@entities/dialogs/api";
 import type { DialogButtonItem, DialogCatalog } from "@entities/dialogs/api";
@@ -30,12 +31,13 @@ function describeUrlError(
   variableKeys: string[],
   t: TFunction,
 ): string | null {
-  if (button.link_type !== "url") return null;
+  if (!isLinkButton(button.link_type)) return null;
   if (!button.url_value) return t("dialogs.inspector.buttonUrlEmpty");
-  const problem = urlProblem(button.url_value, variableKeys);
+  const schemes = urlSchemesFor(button.link_type);
+  const problem = urlProblem(button.url_value, variableKeys, schemes);
   if (problem === null) return null;
   if (problem.kind === "scheme") {
-    return t("dialogs.inspector.buttonUrlScheme", { schemes: URL_SCHEMES.join(", ") });
+    return t("dialogs.inspector.buttonUrlScheme", { schemes: schemes.join(", ") });
   }
   if (problem.kind === "malformed") return t("dialogs.inspector.buttonUrlMalformed");
   return t("dialogs.inspector.buttonUrlVariable", { name: problem.name });
@@ -70,7 +72,9 @@ export function ButtonInspector({
 }: ButtonInspectorProps) {
   const { t } = useTranslation();
   const linkTypeOptions: DialogButtonItem["link_type"][] =
-    windowKind === "custom" ? ["navigate", "url"] : ["action", "navigate", "url"];
+    windowKind === "custom"
+      ? ["navigate", "url", "web_app"]
+      : ["action", "navigate", "url", "web_app"];
   const { messageId } = splitTextKey(button.text_key);
   const isTextSeeded = entries.some((e) => e.message_id === messageId);
   const urlError = describeUrlError(button, catalog.variable_keys, t);
@@ -246,7 +250,7 @@ export function ButtonInspector({
           </div>
         )}
 
-        {button.link_type === "url" && (
+        {isLinkButton(button.link_type) && (
           <div className="mb-3">
             <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
             <div className="relative mb-1.5">

@@ -37,6 +37,7 @@ async def build_condition_data(
     active: list[SubscriptionDto],
     get_available_trial: GetAvailableTrialUseCase,
     *,
+    cabinet_url: str,
     selected_id: Optional[int] = None,
     can_purchase: bool = False,
     referral_enabled: bool = False,
@@ -78,4 +79,5 @@ async def build_condition_data(
         ),
         "has_device_limit": subscription is not None and subscription.effective_device_limit != 0,
         "connect_url": subscription.url if subscription is not None else "",
+        "cabinet_url": cabinet_url,
     }

@@ -49,7 +49,7 @@ async def test_condition_data_uses_the_selected_subscription() -> None:
     active = [first, second]
     trial = AsyncMock(return_value=MagicMock(is_trial_available=False, plan=None))
 
-    data = await build_condition_data(_user(), active, trial, selected_id=2)
+    data = await build_condition_data(_user(), active, trial, cabinet_url="", selected_id=2)
 
     assert data["connect_url"] == "https://b"
     assert data["subscriptions_count"] == 2
@@ -59,7 +59,7 @@ async def test_condition_data_without_a_selection_uses_the_first_subscription() 
     active = [_subscription(1, "https://a"), _subscription(2, "https://b")]
     trial = AsyncMock(return_value=MagicMock(is_trial_available=False, plan=None))
 
-    data = await build_condition_data(_user(), active, trial)
+    data = await build_condition_data(_user(), active, trial, cabinet_url="")
 
     assert data["connect_url"] == "https://a"
 
@@ -69,7 +69,7 @@ async def test_condition_data_for_a_gone_selection_has_no_subscription() -> None
     active = [_subscription(1, "https://a")]
     trial = AsyncMock(return_value=MagicMock(is_trial_available=False, plan=None))
 
-    data = await build_condition_data(_user(), active, trial, selected_id=9)
+    data = await build_condition_data(_user(), active, trial, cabinet_url="", selected_id=9)
 
     assert data["subscription"] is None
     assert data["connect_url"] == ""

@@ -146,6 +146,7 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     device_single_reset_at: Optional[datetime] = None
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
+    paused_by_channel_leave: bool = False
     addon_entitlements: list[AddOnEntitlementDto] = Field(default_factory=list)
 
 
@@ -462,3 +463,10 @@ class ListSubscriptionsDto:
     user_id: Optional[int] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChannelMembershipDto:
+    telegram_id: int
+    chat_id: int
+    joined: bool

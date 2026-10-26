@@ -17,6 +17,13 @@ _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9
 # whole keyboard, and the window with it, if a button URL has another scheme.
 URL_VARIABLE_RE: Final[re.Pattern[str]] = re.compile(r"\$\{([a-z0-9_.]+)\}")
 URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
+# Telegram opens a Mini App only over HTTPS
+WEB_APP_SCHEMES: Final[tuple[str, ...]] = ("https://",)
+
+
+def url_schemes_for(link_type: ButtonLinkType) -> tuple[str, ...]:
+    return WEB_APP_SCHEMES if link_type == ButtonLinkType.WEB_APP else URL_SCHEMES
+
 
 # The namespace for admin-authored dialog text that has no catalog registration
 # of its own: a custom window's body, or a freshly-added button's label.

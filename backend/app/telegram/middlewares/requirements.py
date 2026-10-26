@@ -112,11 +112,7 @@ class RequirementsMiddleware(EventTypedMiddleware):
             user, PurchaseChannel.BOT, user.language
         )
         if pending.documents:
-            if isinstance(event, Message):
-                redis = await container.get(Redis)
-                await redis.set(
-                    gate_message_key(user.id), event.model_dump_json(), ex=GATE_MESSAGE_TTL_S
-                )
+            await _remember_stopped(event, user, await container.get(Redis))
             await ask_requirement(
                 event,
                 render_window_text(
@@ -140,6 +136,7 @@ class RequirementsMiddleware(EventTypedMiddleware):
             if not await is_channel_member(
                 data["bot"], redis, channel_id, user.telegram_id, report
             ):
+                await _remember_stopped(event, user, redis)
                 await ask_requirement(
                     event,
                     runner.get("ntf-requirements.channel"),
@@ -148,6 +145,11 @@ class RequirementsMiddleware(EventTypedMiddleware):
                 return None
 
         return await handler(event, data)
+
+
+async def _remember_stopped(event: TelegramObject, user: UserDto, redis: Redis) -> None:
+    if isinstance(event, Message):
+        await redis.set(gate_message_key(user.id), event.model_dump_json(), ex=GATE_MESSAGE_TTL_S)
 
 
 async def ask_requirement(

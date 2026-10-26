@@ -1285,6 +1285,39 @@ async def test_create_checkout_renew_refuses_a_disabled_subscription(
     assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED
 
 
+@pytest.mark.parametrize("purchase_type", [PurchaseType.RENEW, PurchaseType.CHANGE])
+async def test_create_checkout_refuses_to_renew_or_change_a_trial(
+    purchase_type: PurchaseType,
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_102, plan_id=plan.id
+    )
+    await subscription_repository.session.execute(
+        update(Subscription).where(Subscription.id == subscription_id).values(is_trial=True)
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                channel=PurchaseChannel.BOT,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=purchase_type,
+                target_subscription_id=subscription_id,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.TRIAL_NOT_RENEWABLE
+
+
 async def test_checkout_with_payments_off_refuses_and_waitlists_the_buyer(
     create_checkout_use_case: CreateCheckoutUseCase,
     settings_repository: SettingsRepository,

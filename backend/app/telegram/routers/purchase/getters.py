@@ -9,7 +9,7 @@ from fluentogram import TranslatorHub, TranslatorRunner
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, PurchaseChannel, PurchaseType
 from app.modules.legal import ListVisibleLegalDocumentsUseCase
-from app.modules.subscriptions import ListActivePlansUseCase, ListOwnActiveSubscriptionsUseCase
+from app.modules.subscriptions import ListActivePlansUseCase, ListOwnSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
 from app.telegram.i18n import format_date, format_price, get_translator
@@ -160,7 +160,7 @@ async def pay_getter(
 async def link_choice_getter(
     dialog_manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -170,7 +170,7 @@ async def link_choice_getter(
     plan = selected_plan(catalog, dialog_manager.dialog_data)
     owned = [
         s
-        for s in await list_own_active_subscriptions(user)
+        for s in await list_own_subscriptions(user)
         if plan is not None and s.plan_snapshot.plan_id == plan.id
     ]
     return {

@@ -48,6 +48,7 @@ dependencies = [
 telegram = [
     "aiogram-dialog~=2.5.0",
     "fluentogram~=1.2.1",
+    "segno~=1.6",
 ]
 
 #[tool.uv.sources]

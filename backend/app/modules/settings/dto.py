@@ -59,6 +59,8 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
     device_all_reset_cooldown_hours: int = 0
     link_reset_enabled: bool = True
     link_reset_cooldown_hours: int = 0
+    referral_reset_enabled: bool = True
+    referral_reset_cooldown_hours: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -82,6 +84,8 @@ class UpdateShopSettingsDto:
     device_all_reset_cooldown_hours: Optional[int] = None
     link_reset_enabled: Optional[bool] = None
     link_reset_cooldown_hours: Optional[int] = None
+    referral_reset_enabled: Optional[bool] = None
+    referral_reset_cooldown_hours: Optional[int] = None
     fields_set: frozenset[str] = frozenset()
 
 
@@ -369,6 +373,7 @@ class BotRequirementsDto(BaseDto, TimestampMixin):
     channel_required: bool = False
     channel_id: Optional[int] = None
     channel_url: Optional[str] = None
+    trial_channel_guard: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -377,6 +382,7 @@ class UpdateBotRequirementsDto:
     channel_required: bool
     channel_id: Optional[int]
     channel_url: Optional[str]
+    trial_channel_guard: bool
 
 
 @dataclass(frozen=True, kw_only=True)

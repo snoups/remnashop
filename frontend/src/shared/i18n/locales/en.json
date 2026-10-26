@@ -1249,6 +1249,7 @@
       "deviceSingleResetLabel": "Single device reset",
       "deviceAllResetLabel": "Reset all devices",
       "linkResetLabel": "Subscription link reset",
+      "referralResetLabel": "Referral link reset",
       "cooldownHoursLabel": "Cooldown, h",
       "invalidInput": "Check the entered values."
     },
@@ -1382,7 +1383,9 @@
       "description": "What a customer must do before using the bot",
       "channelLabel": "Subscribe to the channel",
       "channelId": "Channel ID",
-      "channelUrl": "Channel link"
+      "channelUrl": "Channel link",
+      "trialChannelGuard": "Pause trials on unsubscribe",
+      "trialChannelGuardHint": "Leaving the channel pauses the customer’s trial, coming back resumes it"
     },
     "email": {
       "title": "SMTP",
@@ -2380,6 +2383,7 @@
       "user_name": "User name",
       "user_points": "User points",
       "subscription_url": "Connection link",
+      "cabinet_url": "Web cabinet link",
       "devices_current": "Devices connected",
       "devices_max": "Device limit",
       "name": "Name",
@@ -3678,6 +3682,7 @@
     "IP_NOT_ALLOWED": "Access from this IP address is not allowed.",
     "LAST_SIGN_IN_METHOD": "This is your last sign-in method. Link another one before removing it.",
     "LINK_RESET_DISABLED": "Subscription link reset is disabled.",
+    "REFERRAL_RESET_DISABLED": "Changing the referral link is turned off.",
     "LOCALE_ALREADY_ACTIVE": "This language is already enabled.",
     "LOCALE_DEFAULT_NOT_REMOVABLE": "The default language can’t be removed.",
     "LEGAL_TEXT_REQUIRED": "The title and the text are required.",
@@ -3785,6 +3790,7 @@
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "The limit must be positive, or empty for unlimited.",
     "SUBSCRIPTION_DELETED": "The subscription has been deleted.",
     "SUBSCRIPTION_DISABLED": "This subscription is disabled.",
+    "TRIAL_NOT_RENEWABLE": "A trial can’t be renewed or changed. Buy a subscription instead.",
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
     "SUBSCRIPTION_PANEL_USER_MISSING": "The panel has no user for this subscription.",

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PaymentOutcome, PurchaseChannel
+from app.core.enums import Locale, PaymentOutcome, PurchaseChannel, SubscriptionStatus
 from app.core.exceptions import RetryableTaskError
 from app.core.metrics import WORKER_METRICS_REGISTRY
 from app.core.utils.time import datetime_now
@@ -16,14 +16,20 @@ from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.usecases import NotifyCustomerUseCase
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.settings import SettingsRepository
+from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.transactions import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.customer_notifications.factories import FakeBotSignals, create_order
+from tests.modules.subscriptions.factories import make_plan_snapshot
 
 _FTL = """\
 ntf-customer-open-cabinet = Open cabinet
+ntf-customer-button-renew = Renew
+ntf-customer-button-buy = Buy
+ntf-customer-button-close = Close
 ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
 ntf-customer-subscription-expiring = Expires soon.
@@ -70,6 +76,7 @@ class _Fixture:
             users,
             settings,
             orders,
+            SubscriptionRepository(orders.session),
             cast(Any, _Renderers()),
             cast(Any, self.tokens),
             cast(Any, self.signals),
@@ -92,6 +99,7 @@ class _Fixture:
         event_type: str = _PURCHASED,
         outbox_id: int = 1,
         payment_key: Optional[str] = None,
+        subscription_id: Optional[int] = None,
     ) -> None:
         await self.use_case.system(
             NotifyCustomerDto(
@@ -100,6 +108,7 @@ class _Fixture:
                 outbox_id=outbox_id,
                 args={},
                 payment_key=payment_key,
+                subscription_id=subscription_id,
             )
         )
 
@@ -128,7 +137,11 @@ async def test_telegram_and_email_both_queued(fx: _Fixture) -> None:
     await fx.notify(user)
 
     assert fx.telegram.messages == [
-        {"user_id": user.id, "text": "Activated\n\nSubscription is active."}
+        {
+            "user_id": user.id,
+            "text": "Activated\n\nSubscription is active.",
+            "buttons": [{"text": "Close", "callback_data": "cn:close"}],
+        }
     ]
     assert len(fx.email.messages) == 1
     message = fx.email.messages[0]
@@ -345,3 +358,38 @@ async def test_not_fulfilled_bot_order_shows_window(fx: _Fixture) -> None:
 
     assert fx.signals.outcomes == [(8204, order_id, PaymentOutcome.NOT_FULFILLED)]
     assert fx.telegram.messages == []
+
+
+async def test_expiring_subscription_gets_a_renew_button(fx: _Fixture) -> None:
+    user = await fx.create(name="r", telegram_id=8090)
+
+    await fx.notify(user, "SubscriptionExpiringEvent", subscription_id=77)
+
+    (message,) = fx.telegram.messages
+    assert message["buttons"] == [
+        {"text": "Renew", "callback_data": "cn:renew:77"},
+        {"text": "Close", "callback_data": "cn:close"},
+    ]
+
+
+async def test_expiring_trial_gets_a_buy_button(fx: _Fixture) -> None:
+    user = await fx.create(name="t", telegram_id=8091)
+    async with fx.uow:
+        trial = await SubscriptionRepository(fx.orders.session).create(
+            CreateSubscriptionDto(
+                user_id=user.id,
+                remnawave_user_id=880_091,
+                status=SubscriptionStatus.ACTIVE,
+                is_trial=True,
+                traffic_limit=0,
+                device_limit=0,
+                expire_at=datetime_now(),
+                url="https://example.test/sub",
+                plan_snapshot=make_plan_snapshot(plan_id=1),
+            )
+        )
+
+    await fx.notify(user, "SubscriptionExpiringEvent", subscription_id=trial.id)
+
+    (message,) = fx.telegram.messages
+    assert message["buttons"][0] == {"text": "Buy", "callback_data": "cn:buy"}

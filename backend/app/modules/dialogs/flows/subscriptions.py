@@ -11,6 +11,16 @@ def register_subscriptions_metadata() -> None:
     catalog.register_action_key("purchase_change")
     catalog.register_action_key("subscription_card_back")
 
+    # a trial is neither renewed nor changed: a purchase replaces it, link and all
+    catalog.register_condition(
+        "paid_subscription",
+        lambda data: data.get("subscription") is not None and not data["subscription"].is_trial,
+    )
+    catalog.register_condition(
+        "trial_subscription",
+        lambda data: data.get("subscription") is not None and data["subscription"].is_trial,
+    )
+
     catalog.register_window(
         catalog.CatalogWindow(
             key="subscriptions.list",
@@ -78,6 +88,7 @@ def register_subscriptions_metadata() -> None:
                     column=0,
                     link_type=ButtonLinkType.ACTION,
                     action_key="purchase_renew",
+                    visibility_condition="paid_subscription",
                 ),
                 catalog.CatalogButton(
                     key="change",
@@ -86,6 +97,16 @@ def register_subscriptions_metadata() -> None:
                     column=1,
                     link_type=ButtonLinkType.ACTION,
                     action_key="purchase_change",
+                    visibility_condition="paid_subscription",
+                ),
+                catalog.CatalogButton(
+                    key="purchase",
+                    text_key="btn-subscriptions.purchase",
+                    row=2,
+                    column=2,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="purchase_new",
+                    visibility_condition="trial_subscription",
                 ),
                 catalog.CatalogButton(
                     key="back",

@@ -178,7 +178,7 @@ async def test_start_failure_answers_the_callback_and_closes() -> None:
         list_active_plans=AsyncMock(
             return_value=PlanCatalogDto(plans=[], anchor_currency=Currency.RUB)
         ),
-        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
@@ -197,7 +197,7 @@ async def test_new_purchase_start_does_not_list_subscriptions() -> None:
         list_active_plans=AsyncMock(
             return_value=PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
         ),
-        list_own_active_subscriptions=list_own,
+        list_own_subscriptions=list_own,
         list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
@@ -492,7 +492,7 @@ async def _retry_start(manager: AsyncMock, methods: list[PaymentMethodDto], plan
         list_active_plans=AsyncMock(
             return_value=PlanCatalogDto(plans=plans, anchor_currency=Currency.RUB)
         ),
-        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(return_value=methods),
         i18n=_i18n(),
     )

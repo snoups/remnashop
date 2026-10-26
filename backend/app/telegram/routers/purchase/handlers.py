@@ -17,7 +17,7 @@ from app.modules.subscriptions import (
     CatalogPlanDto,
     ListActivePlansDto,
     ListActivePlansUseCase,
-    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
     PlanCatalogDto,
     SubscriptionDto,
 )
@@ -209,7 +209,7 @@ async def on_purchase_start(
     start_data: Data,
     manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_payment_methods: FromDishka[ListPaymentMethodsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
@@ -219,7 +219,7 @@ async def on_purchase_start(
     is_new = start.get("purchase_type", PurchaseType.NEW.value) == PurchaseType.NEW.value
     by_link = start.get(PLAN_CODE_KEY) is not None
     needs_subscriptions = by_link or not is_new
-    subscriptions = await list_own_active_subscriptions(user) if needs_subscriptions else []
+    subscriptions = await list_own_subscriptions(user) if needs_subscriptions else []
     catalog = await list_active_plans(user, catalog_query(manager))
     methods = bot_payment_methods(user, await list_payment_methods(user)) if retry else None
     key = await start_purchase_steps(manager, catalog, subscriptions, methods)

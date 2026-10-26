@@ -58,10 +58,11 @@ class NewPurchase:
                     code=ErrorCode.TARGET_SUBSCRIPTION_FORBIDDEN,
                 )
 
+            # an expired trial too: the purchase keeps its panel user and link
             active_trial = next(
                 (
                     sub
-                    for sub in await self._subscription_repository.get_active_by_user(data.user_id)
+                    for sub in await self._subscription_repository.get_live_by_user(data.user_id)
                     if sub.is_trial
                 ),
                 None,
@@ -163,11 +164,12 @@ class NewPurchase:
         self, actor: Actor, data: PurchaseSubscriptionDto, trial: SubscriptionDto
     ) -> SubscriptionDto:
         # the trial's panel user, reconfigured for the purchased plan; no
-        # create_user/delete_user here
+        # create_user/delete_user here. Enabled too: a trial paused or disabled
+        # is still replaced by a subscription the customer has paid for
         plan = data.plan_snapshot
         expire_at = datetime_now() + timedelta(days=data.duration_days)
         panel_user = await self._remnawave_sdk.users.update_user(
-            configure_for_plan(trial.remnawave_user_id, plan, expire_at)
+            configure_for_plan(trial.remnawave_user_id, plan, expire_at, enable=True)
         )
 
         try:
@@ -184,12 +186,10 @@ class NewPurchase:
                     # an addon grant pushed the trial's limits over this plan's
                     # meanwhile; it holds this lock while it pushes, so redo ours
                     panel_user = await self._remnawave_sdk.users.update_user(
-                        configure_for_plan(trial.remnawave_user_id, plan, expire_at)
+                        configure_for_plan(trial.remnawave_user_id, plan, expire_at, enable=True)
                     )
                 await self._subscription_repository.mark_deleted(trial.id)
                 subscription = await self._subscription_repository.create(
-                    # a disabled trial stays disabled: configure_for_plan
-                    # leaves the panel status as it is
                     subscription_row(data, panel_user, status=SubscriptionStatus(panel_user.status))
                 )
                 await self._finish(actor, data, subscription)
@@ -208,6 +208,8 @@ class NewPurchase:
             # the reverted trial row
             with suppress(Exception):
                 await self._remnawave_sdk.users.update_user(restore(trial))
+                if trial.status is SubscriptionStatus.DISABLED:
+                    await self._remnawave_sdk.users.disable_user(trial.remnawave_user_id)
             raise
 
         await reset_traffic_if_paid(self._remnawave_sdk, data, subscription)

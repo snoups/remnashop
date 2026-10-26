@@ -174,6 +174,7 @@ async def update_bot_requirements(
             channel_required=payload.channel_required,
             channel_id=payload.channel_id,
             channel_url=str(payload.channel_url) if payload.channel_url else None,
+            trial_channel_guard=payload.trial_channel_guard,
         ),
     )
     return BotRequirementsResponse.model_validate(settings, from_attributes=True)

@@ -125,6 +125,7 @@ class SettingsRepository:
         row.channel_required = data.channel_required
         row.channel_id = data.channel_id
         row.channel_url = data.channel_url
+        row.trial_channel_guard = data.trial_channel_guard
 
         await self.session.flush()
         await self.session.refresh(row)

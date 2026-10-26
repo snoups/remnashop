@@ -13,6 +13,7 @@ from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUs
 from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
 from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
+from app.modules.referrals.usecases.reset_own_referral_code import ResetOwnReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_settings import ResetReferralSettingsUseCase
 from app.modules.referrals.usecases.resume_bonus_renewal import ResumeBonusRenewalUseCase
@@ -33,6 +34,7 @@ __all__ = [
     "ListReferralsUseCase",
     "RedeemBonusDaysUseCase",
     "RequestPointsWithdrawalUseCase",
+    "ResetOwnReferralCodeUseCase",
     "ResetReferralCodeUseCase",
     "ResetReferralSettingsUseCase",
     "ResumeBonusRenewalUseCase",

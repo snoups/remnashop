@@ -25,6 +25,7 @@ async def notify_customer_task(
     use_case: FromDishka[NotifyCustomerUseCase],
     # defaulted: messages queued before the field existed still deserialize
     payment_key: Optional[str] = None,
+    subscription_id: Optional[int] = None,
 ) -> None:
     await use_case.system(
         NotifyCustomerDto(
@@ -33,6 +34,7 @@ async def notify_customer_task(
             outbox_id=outbox_id,
             args=args,
             payment_key=payment_key,
+            subscription_id=subscription_id,
         )
     )
 
@@ -40,9 +42,14 @@ async def notify_customer_task(
 @broker.task(retry_on_error=True, max_retries=3)
 @inject(patch_module=True)
 async def send_customer_telegram_task(
-    user_id: int, text: str, use_case: FromDishka[SendCustomerTelegramUseCase]
+    user_id: int,
+    text: str,
+    use_case: FromDishka[SendCustomerTelegramUseCase],
+    buttons: Optional[list[dict[str, str]]] = None,
 ) -> None:
-    await use_case.system(SendCustomerTelegramDto(user_id=user_id, text=text))
+    await use_case.system(
+        SendCustomerTelegramDto(user_id=user_id, text=text, buttons=buttons or [])
+    )
 
 
 # best effort: a missed cancel window leaves the bot on the payment screen, nothing more

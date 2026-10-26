@@ -190,6 +190,17 @@ async def test_unsubscribed_customer_is_stopped_and_not_cached(redis: Redis) -> 
     assert bot.calls == 2
 
 
+async def test_channel_gate_remembers_the_stopped_message(redis: Redis) -> None:
+    message = _message([])
+    object.__setattr__(message, "text", "/start plan_pro")
+    user = UserDto(id=32, name="c", telegram_id=43)
+
+    assert await _run(message, user, _CHANNEL, _Bot("left"), redis) is False
+
+    stored = await redis.get(gate_message_key(32))
+    assert stored is not None and "plan_pro" in stored
+
+
 async def test_subscription_is_cached(redis: Redis) -> None:
     bot = _Bot("member")
     user = UserDto(id=1, name="c", telegram_id=43)

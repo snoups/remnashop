@@ -9,9 +9,14 @@ def register_referrals_metadata() -> None:
 
     catalog.register_action_key("withdraw_points")
     catalog.register_action_key("redeem_days")
+    catalog.register_action_key("referral_qr")
+    catalog.register_action_key("reset_referral_code")
 
     catalog.register_condition("has_points", lambda data: bool(data.get("has_points")))
     catalog.register_condition("has_bonus_days", lambda data: bool(data.get("has_bonus_days")))
+    catalog.register_condition(
+        "referral_reset_enabled", lambda data: bool(data.get("referral_reset_enabled"))
+    )
     catalog.register_variable(
         "referral_url", lambda data: data.get("referral_url", ""), category="referral"
     )
@@ -39,6 +44,14 @@ def register_referrals_metadata() -> None:
                     url_value="https://t.me/share/url?url=${referral_url}",
                 ),
                 catalog.CatalogButton(
+                    key="qr",
+                    text_key="btn-referrals.qr",
+                    row=0,
+                    column=1,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="referral_qr",
+                ),
+                catalog.CatalogButton(
                     key="withdraw",
                     text_key="btn-referrals.withdraw",
                     row=1,
@@ -57,9 +70,18 @@ def register_referrals_metadata() -> None:
                     visibility_condition="has_bonus_days",
                 ),
                 catalog.CatalogButton(
+                    key="reset_code",
+                    text_key="btn-referrals.reset-code",
+                    row=2,
+                    column=0,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="reset_referral_code",
+                    visibility_condition="referral_reset_enabled",
+                ),
+                catalog.CatalogButton(
                     key="back",
                     text_key="btn-back.general",
-                    row=2,
+                    row=3,
                     column=0,
                     link_type=ButtonLinkType.NAVIGATE,
                     target_window_key="menu.main",

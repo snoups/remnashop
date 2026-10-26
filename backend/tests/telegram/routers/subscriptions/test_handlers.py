@@ -60,7 +60,7 @@ async def test_card_back_with_one_subscription_returns_to_the_menu() -> None:
     list_own = AsyncMock(return_value=[MagicMock(id=7)])
 
     await on_subscription_card_back.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, list_own_active_subscriptions=list_own
+        MagicMock(), MagicMock(), manager, list_own_subscriptions=list_own
     )
 
     manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
@@ -71,7 +71,7 @@ async def test_card_back_with_several_subscriptions_returns_to_the_list() -> Non
     list_own = AsyncMock(return_value=[MagicMock(id=7), MagicMock(id=8)])
 
     await on_subscription_card_back.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, list_own_active_subscriptions=list_own
+        MagicMock(), MagicMock(), manager, list_own_subscriptions=list_own
     )
 
     manager.start.assert_awaited_once_with(Subscriptions.LIST, mode=StartMode.RESET_STACK)
@@ -96,7 +96,7 @@ async def test_device_delete_targets_the_selected_subscription() -> None:
         MagicMock(),
         manager,
         delete_device=delete_device,
-        list_own_active_subscriptions=AsyncMock(),
+        list_own_subscriptions=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -117,7 +117,7 @@ async def test_device_delete_on_a_gone_subscription_reopens_the_subscriptions() 
         MagicMock(),
         manager,
         delete_device=delete_device,
-        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=[]),
         i18n=_i18n(),
     )
 
@@ -135,7 +135,7 @@ async def test_device_delete_without_a_selected_subscription_reopens_the_subscri
         MagicMock(),
         manager,
         delete_device=delete_device,
-        list_own_active_subscriptions=AsyncMock(return_value=[MagicMock(id=7), MagicMock(id=8)]),
+        list_own_subscriptions=AsyncMock(return_value=[MagicMock(id=7), MagicMock(id=8)]),
         i18n=_i18n(),
     )
 
@@ -158,7 +158,7 @@ async def test_device_delete_on_a_deleted_or_foreign_subscription_reopens_the_su
         MagicMock(),
         manager,
         delete_device=AsyncMock(side_effect=ValidationError("gone", code=code)),
-        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=[]),
         i18n=_i18n(),
     )
 
@@ -176,7 +176,7 @@ async def test_device_delete_turned_off_by_the_admin_stays_in_the_window() -> No
         MagicMock(),
         manager,
         delete_device=AsyncMock(side_effect=error),
-        list_own_active_subscriptions=AsyncMock(),
+        list_own_subscriptions=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -195,7 +195,7 @@ async def test_reissue_turned_off_by_the_admin_stays_in_the_window() -> None:
         MagicMock(),
         manager,
         reissue_subscription=AsyncMock(side_effect=error),
-        list_own_active_subscriptions=AsyncMock(),
+        list_own_subscriptions=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -213,7 +213,7 @@ async def test_device_delete_other_refusal_answers_generically_and_stays() -> No
         MagicMock(),
         manager,
         delete_device=AsyncMock(side_effect=error),
-        list_own_active_subscriptions=AsyncMock(),
+        list_own_subscriptions=AsyncMock(),
         i18n=_i18n(),
     )
 

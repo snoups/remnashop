@@ -14,3 +14,5 @@ class BotRequirements(BaseSql, TimestampMixin):
     channel_required: Mapped[bool] = mapped_column(default=False, server_default="false")
     channel_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     channel_url: Mapped[Optional[str]] = mapped_column()
+    # leaving the channel pauses the customer's trials, coming back resumes them
+    trial_channel_guard: Mapped[bool] = mapped_column(default=False, server_default="false")

@@ -87,6 +87,8 @@ def _handle_update_user(request: httpx.Request, store: FakeUserStore) -> httpx.R
         payload["hwidDeviceLimit"] = body["hwidDeviceLimit"]
     if body.get("trafficLimitStrategy") is not None:
         payload["trafficLimitStrategy"] = body["trafficLimitStrategy"]
+    if body.get("status") is not None:
+        payload["status"] = body["status"]
     if body.get("expireAt") is not None:
         payload["expireAt"] = body["expireAt"]
         expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))

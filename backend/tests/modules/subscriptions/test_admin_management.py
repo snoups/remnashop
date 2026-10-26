@@ -33,11 +33,12 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
-from app.modules.settings.dto import UpdateShopSettingsDto
+from app.modules.settings.dto import UpdateBotRequirementsDto, UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.dto import (
     AdminDeleteDeviceDto,
     ChangeSubscriptionPlanDto,
+    ChannelMembershipDto,
     GrantSubscriptionDto,
     ListSubscriptionsDto,
     SetSubscriptionEnabledDto,
@@ -54,10 +55,12 @@ from app.modules.subscriptions.usecases import (
     AdminDeleteDeviceUseCase,
     AdminListDevicesUseCase,
     AdminReissueSubscriptionUseCase,
+    ApplyChannelMembershipUseCase,
     ChangeSubscriptionPlanUseCase,
     DeleteSubscriptionUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
+    ListOwnSubscriptionsUseCase,
     ListSubscriptionsUseCase,
     PurchaseSubscriptionUseCase,
     ResetSubscriptionTrafficUseCase,
@@ -955,3 +958,125 @@ async def test_grant_to_an_anonymized_account_is_not_found(
         await grant_use_case(
             OWNER, GrantSubscriptionDto(user_id=gone.id, plan_id=plan.id, duration_days=30)
         )
+
+
+async def _channel_guarded_trial(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    telegram_id: int,
+) -> SubscriptionDto:
+    granted = await _granted(
+        grant_use_case, user_repository, plan_repository, telegram_id, f"guard{telegram_id}"
+    )
+    await session.execute(
+        update(Subscription).where(Subscription.id == granted.id).values(is_trial=True)
+    )
+    async with uow:
+        await SettingsRepository(session).update_bot_requirements(
+            UpdateBotRequirementsDto(
+                channel_required=True,
+                channel_id=-100,
+                channel_url="https://t.me/x",
+                trial_channel_guard=True,
+            )
+        )
+    return granted
+
+
+def _membership_use_case(
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> ApplyChannelMembershipUseCase:
+    session = subscription_repository.session
+    return ApplyChannelMembershipUseCase(
+        subscription_repository,
+        UserRepository(session),
+        SettingsRepository(session),
+        remnawave_sdk,
+        SubscriptionLifecycleService(subscription_repository),
+        event_publisher,
+        uow,
+    )
+
+
+async def test_channel_leave_pauses_a_trial_and_rejoin_resumes_it(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    trial = await _channel_guarded_trial(
+        grant_use_case, user_repository, plan_repository, session, uow, 9701
+    )
+    use_case = _membership_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
+    leave = ChannelMembershipDto(telegram_id=9701, chat_id=-100, joined=False)
+
+    assert await use_case.system(leave) is not None
+    paused = await subscription_repository.get_by_id(trial.id)
+    assert paused.status is SubscriptionStatus.DISABLED and paused.paused_by_channel_leave
+    assert remnawave_store[trial.remnawave_user_id]["status"] == "DISABLED"
+
+    assert await use_case.system(replace(leave, joined=True)) is not None
+    resumed = await subscription_repository.get_by_id(trial.id)
+    assert resumed.status is SubscriptionStatus.ACTIVE and not resumed.paused_by_channel_leave
+
+
+async def test_channel_rejoin_keeps_an_admin_disabled_trial_disabled(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    trial = await _channel_guarded_trial(
+        grant_use_case, user_repository, plan_repository, session, uow, 9702
+    )
+    await _set_enabled(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, SetSubscriptionEnabledDto(subscription_id=trial.id, enabled=False)
+    )
+    use_case = _membership_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
+
+    joined = ChannelMembershipDto(telegram_id=9702, chat_id=-100, joined=True)
+    assert await use_case.system(joined) is None
+    assert (await subscription_repository.get_by_id(trial.id)).status is (
+        SubscriptionStatus.DISABLED
+    )
+
+
+async def test_own_subscriptions_keep_an_expired_one_for_renewal(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    expired = await _granted(grant_use_case, user_repository, plan_repository, 9703, "own1")
+    deleted = await _granted(grant_use_case, user_repository, plan_repository, 9704, "own2")
+    for subscription_id, status in (
+        (expired.id, SubscriptionStatus.EXPIRED),
+        (deleted.id, SubscriptionStatus.DELETED),
+    ):
+        await session.execute(
+            update(Subscription).where(Subscription.id == subscription_id).values(status=status)
+        )
+    use_case = ListOwnSubscriptionsUseCase(subscription_repository, uow)
+
+    owner = await user_repository.find_by_id(expired.user_id)
+    other = await user_repository.find_by_id(deleted.user_id)
+    assert owner is not None and other is not None
+    assert [s.id for s in await use_case(owner)] == [expired.id]
+    assert await use_case(other) == []

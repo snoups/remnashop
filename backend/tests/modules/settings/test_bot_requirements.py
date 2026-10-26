@@ -46,6 +46,7 @@ def _requirements(**overrides: object) -> UpdateBotRequirementsDto:
         "channel_required": False,
         "channel_id": None,
         "channel_url": None,
+        "trial_channel_guard": False,
     }
     values.update(overrides)
     return UpdateBotRequirementsDto(**values)  # type: ignore[arg-type]

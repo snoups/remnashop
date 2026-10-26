@@ -16,6 +16,7 @@ from app.modules.settings import GetShopSettingsUseCase
 from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
     ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
     SubscriptionDto,
 )
 from app.modules.translations import strip_serializer_escapes
@@ -93,6 +94,7 @@ async def menu_getter(
     config: FromDishka[AppConfig],
     get_banner: FromDishka[GetBannerForDisplayUseCase],
     list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     get_shop_settings: FromDishka[GetShopSettingsUseCase],
     get_referral_settings: FromDishka[GetReferralSettingsUseCase],
@@ -119,9 +121,12 @@ async def menu_getter(
         user,
         active,
         get_available_trial,
+        cabinet_url=config.cabinet.url,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
     )
+    # an expired subscription still opens from "My subscriptions" to be renewed
+    data["subscriptions_count"] = len(await list_own_subscriptions(user))
     data["legal_available"] = bool(
         await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     )

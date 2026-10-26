@@ -408,6 +408,7 @@ async def test_start_posts_to_channel(
             channel_required=False,
             channel_id=-100500,
             channel_url=None,
+            trial_channel_guard=False,
         )
     )
     ids = await _customers(session, user_repository, 9640, 1)
@@ -1095,6 +1096,7 @@ async def _channel_post_markup(
             channel_required=False,
             channel_id=-100500,
             channel_url=None,
+            trial_channel_guard=False,
         )
     )
     ids = await _customers(session, user_repository, 9660, 1)

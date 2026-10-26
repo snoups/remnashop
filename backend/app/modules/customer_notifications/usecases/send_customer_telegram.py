@@ -1,3 +1,4 @@
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 
 from app.core.actor import Actor
@@ -42,7 +43,19 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             or user.deleted_at is not None
         ):
             return
-        result = await send_telegram_text(token, proxy, user.telegram_id, data.text)
+        markup = (
+            InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text=b["text"], callback_data=b["callback_data"])]
+                    for b in data.buttons
+                ]
+            )
+            if data.buttons
+            else None
+        )
+        result = await send_telegram_text(
+            token, proxy, user.telegram_id, data.text, reply_markup=markup
+        )
         CUSTOMER_NOTIFICATIONS.labels(
             channel=CustomerChannel.TELEGRAM.value, result=result.value.lower()
         ).inc()

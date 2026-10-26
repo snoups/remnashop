@@ -32,10 +32,14 @@ def register_menu_metadata() -> None:
     catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
     catalog.register_condition("referral_enabled", lambda data: bool(data.get("referral_enabled")))
     catalog.register_condition("legal_available", lambda data: bool(data.get("legal_available")))
+    catalog.register_condition("cabinet_available", lambda data: bool(data.get("cabinet_url")))
 
     # the first active subscription's; a user with several gets that one
     catalog.register_variable(
         "subscription_url", lambda data: data.get("connect_url", ""), category="subscription"
+    )
+    catalog.register_variable(
+        "cabinet_url", lambda data: data.get("cabinet_url", ""), category="other"
     )
     catalog.register_variable("user_name", lambda data: data.get("name", ""), category="user")
     catalog.register_variable("user_points", lambda data: data.get("points", ""), category="user")
@@ -138,6 +142,15 @@ def register_menu_metadata() -> None:
                     link_type=ButtonLinkType.ACTION,
                     action_key="legal_documents",
                     visibility_condition="legal_available",
+                ),
+                catalog.CatalogButton(
+                    key="cabinet",
+                    text_key="btn-menu.web-cabinet",
+                    row=6,
+                    column=0,
+                    link_type=ButtonLinkType.WEB_APP,
+                    url_value="${cabinet_url}",
+                    visibility_condition="cabinet_available",
                 ),
             ),
         )

@@ -21,7 +21,12 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import (
+    CooldownError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository, convert_for_report
 from app.modules.referrals.dto import (
@@ -45,10 +50,12 @@ from app.modules.referrals.usecases import (
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
     RequestPointsWithdrawalUseCase,
+    ResetOwnReferralCodeUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
     UpdateReferralSettingsUseCase,
 )
+from app.modules.settings import SettingsRepository, UpdateShopSettingsDto
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -815,3 +822,51 @@ async def test_adjust_user_points_skips_an_anonymized_account(
             OWNER,
             AdjustUserPointsDto(user_id=target.id, delta=Decimal("10"), client_ip="127.0.0.1"),
         )
+
+
+async def _set_referral_reset(
+    settings_repository: SettingsRepository, uow: UnitOfWork, *, enabled: bool, hours: int
+) -> None:
+    async with uow:
+        await settings_repository.update_shop_settings(
+            UpdateShopSettingsDto(
+                referral_reset_enabled=enabled,
+                referral_reset_cooldown_hours=hours,
+                fields_set=frozenset({"referral_reset_enabled", "referral_reset_cooldown_hours"}),
+            )
+        )
+
+
+async def test_own_referral_code_reset_waits_out_its_cooldown(
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher,
+) -> None:
+    await _set_referral_reset(settings_repository, uow, enabled=True, hours=24)
+    user = await _create_user(user_repository, 6201)
+    use_case = ResetOwnReferralCodeUseCase(
+        user_repository, settings_repository, uow, event_publisher
+    )
+
+    updated = await use_case(user)
+
+    assert updated.referral_code and updated.referral_code != user.referral_code
+    with pytest.raises(CooldownError):
+        await use_case(updated)
+
+
+async def test_own_referral_code_reset_can_be_turned_off(
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    event_publisher,
+) -> None:
+    await _set_referral_reset(settings_repository, uow, enabled=False, hours=0)
+    user = await _create_user(user_repository, 6202)
+    use_case = ResetOwnReferralCodeUseCase(
+        user_repository, settings_repository, uow, event_publisher
+    )
+
+    with pytest.raises(ValidationError):
+        await use_case(user)

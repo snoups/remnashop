@@ -13,6 +13,7 @@ from app.telegram.routers import (
 from app.telegram.routers.bot_member import handlers as bot_member_handlers
 from app.telegram.routers.broadcasts import handlers as broadcasts_handlers
 from app.telegram.routers.cabinet_auth import handlers as cabinet_auth_handlers
+from app.telegram.routers.customer_notifications import handlers as customer_notifications_handlers
 from app.telegram.routers.legal import handlers as legal_handlers
 from app.telegram.routers.payments import handlers as payments_handlers
 from app.telegram.routers.purchase import deeplink as plan_link
@@ -27,6 +28,7 @@ def setup_routers(router: Router) -> None:
         requirements_handlers.router,
         broadcasts_handlers.router,
         cabinet_auth_handlers.router,
+        customer_notifications_handlers.router,
         plan_link.router,
         legal_handlers.router,
         menu.handlers.router,

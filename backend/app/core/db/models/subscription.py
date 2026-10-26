@@ -53,5 +53,7 @@ class Subscription(BaseSql, TimestampMixin):
     device_single_reset_at: Mapped[Optional[datetime]]
     device_all_reset_at: Mapped[Optional[datetime]]
     link_reset_at: Mapped[Optional[datetime]]
+    # disabled because the customer left the required channel; only these come back on rejoin
+    paused_by_channel_leave: Mapped[bool] = mapped_column(default=False, server_default="false")
     # kept on DELETED rows: a trial->paid or plan change replaces the row, not the customer
     first_connected_at: Mapped[Optional[datetime]]

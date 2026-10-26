@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 
@@ -21,10 +21,13 @@ from app.modules.subscriptions import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
     SubscriptionExpiredAgoEvent,
+    SubscriptionExpiredEvent,
+    SubscriptionExpiringEvent,
     SubscriptionGrantedEvent,
     SubscriptionNotConnectedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
+    SubscriptionTrafficLimitedEvent,
     TorrentBlockerReportEvent,
 )
 from app.modules.transactions import (
@@ -164,7 +167,12 @@ async def test_event_enqueues_notification(
     kiq = await _dispatch(event)
 
     kiq.assert_awaited_once_with(
-        user_id=user_id, event_type=event.event_type, outbox_id=5, args=args, payment_key=None
+        user_id=user_id,
+        event_type=event.event_type,
+        outbox_id=5,
+        args=args,
+        payment_key=None,
+        subscription_id=ANY,
     )
 
 
@@ -186,7 +194,12 @@ async def test_merge_notifies_only_on_self_merge(actor_id: int, notified: bool) 
 
     if notified:
         kiq.assert_awaited_once_with(
-            user_id=7, event_type="AccountsMergedEvent", outbox_id=5, args={}, payment_key=None
+            user_id=7,
+            event_type="AccountsMergedEvent",
+            outbox_id=5,
+            args={},
+            payment_key=None,
+            subscription_id=None,
         )
     else:
         kiq.assert_not_awaited()
@@ -231,3 +244,18 @@ async def test_abandoned_order_shows_cancel_window(event_class: type[BaseEvent])
         await bus.dispatch_stored(stored_event(event_class(order_id=4, user_id=7)))  # type: ignore[call-arg]
 
     kiq.assert_awaited_once_with(order_id=4)
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        SubscriptionExpiringEvent(user=_user(7), hours=24, **_SUB),
+        SubscriptionExpiredEvent(user=_user(7), **_SUB),
+        SubscriptionTrafficLimitedEvent(user=_user(7), **_SUB),
+    ],
+    ids=lambda event: type(event).__name__,
+)
+async def test_lapsing_subscription_is_named_for_its_renew_button(event: BaseEvent) -> None:
+    kiq = await _dispatch(event)
+
+    assert kiq.await_args.kwargs["subscription_id"] == 1

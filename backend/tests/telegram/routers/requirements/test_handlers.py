@@ -1,13 +1,15 @@
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Chat, Message, User
 from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.modules.settings import BotRequirementsDto
 from app.modules.users import UserDto
+from app.telegram.legal_gate import gate_message_key
 from app.telegram.middlewares.requirements import channel_member_key
 from app.telegram.routers.requirements.handlers import on_channel_check
 
@@ -60,7 +62,7 @@ async def redis(config: AppConfig) -> Any:
     await client.aclose()
 
 
-async def _check(bot: _Bot, redis: Redis) -> tuple[MagicMock, AsyncMock]:
+async def _check(bot: _Bot, redis: Redis, dispatcher: Any = None) -> tuple[MagicMock, AsyncMock]:
     callback, _ = _callback(bot)
     dialog_manager = MagicMock(start=AsyncMock())
     await on_channel_check(
@@ -71,6 +73,7 @@ async def _check(bot: _Bot, redis: Redis) -> tuple[MagicMock, AsyncMock]:
         redis,
         _Hub(),  # type: ignore[arg-type]
         AsyncMock(),
+        dispatcher or MagicMock(feed_update=AsyncMock()),
     )
     return callback, dialog_manager.start
 
@@ -92,3 +95,21 @@ async def test_channel_check_opens_the_menu_for_a_member(redis: Redis) -> None:
 
     callback.answer.assert_awaited_once_with()
     start.assert_awaited_once()
+
+
+async def test_channel_check_replays_the_stopped_plan_link(redis: Redis) -> None:
+    stored = Message(
+        message_id=5,
+        date=datetime(2026, 10, 26, tzinfo=timezone.utc),
+        chat=Chat(id=46, type="private"),
+        from_user=User(id=46, is_bot=False, first_name="Ann"),
+        text="/start plan_pro",
+    )
+    await redis.set(gate_message_key(_USER.id), stored.model_dump_json(), ex=60)
+    dispatcher = MagicMock(feed_update=AsyncMock())
+
+    _, start = await _check(_Bot("member"), redis, dispatcher)
+
+    start.assert_not_awaited()
+    assert dispatcher.feed_update.await_args.args[1].message.text == "/start plan_pro"
+    assert await redis.get(gate_message_key(_USER.id)) is None

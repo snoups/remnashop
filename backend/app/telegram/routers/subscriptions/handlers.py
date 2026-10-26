@@ -14,7 +14,7 @@ from app.modules.subscriptions import (
     DeleteAllDevicesUseCase,
     DeleteDeviceDto,
     DeleteDeviceUseCase,
-    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
     ReissueSubscriptionUseCase,
     SubscriptionDto,
     SubscriptionRefDto,
@@ -50,10 +50,10 @@ async def on_open_subscriptions(
     callback: CallbackQuery,
     widget: Keyboard,
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await open_subscriptions(dialog_manager, await list_own_active_subscriptions(user))
+    await open_subscriptions(dialog_manager, await list_own_subscriptions(user))
 
 
 @inject
@@ -61,10 +61,10 @@ async def on_subscription_card_back(
     callback: CallbackQuery,
     widget: Keyboard,
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    subscriptions = await list_own_active_subscriptions(user)
+    subscriptions = await list_own_subscriptions(user)
     # with one subscription the list is skipped, so going "back" to it would reopen this card
     if len(subscriptions) == 1:
         await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
@@ -93,11 +93,11 @@ async def _subscription_gone(
     callback: CallbackQuery,
     runner: TranslatorRunner,
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: ListOwnActiveSubscriptionsUseCase,
+    list_own_subscriptions: ListOwnSubscriptionsUseCase,
     user: UserDto,
 ) -> None:
     await callback.answer(runner.get("ntf-subscription.gone"), show_alert=True)
-    await open_subscriptions(dialog_manager, await list_own_active_subscriptions(user))
+    await open_subscriptions(dialog_manager, await list_own_subscriptions(user))
 
 
 async def _answer_refusal(
@@ -105,13 +105,11 @@ async def _answer_refusal(
     runner: TranslatorRunner,
     error: AppError,
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: ListOwnActiveSubscriptionsUseCase,
+    list_own_subscriptions: ListOwnSubscriptionsUseCase,
     user: UserDto,
 ) -> None:
     if isinstance(error, NotFoundError) or error.code in _GONE_CODES:
-        await _subscription_gone(
-            callback, runner, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _subscription_gone(callback, runner, dialog_manager, list_own_subscriptions, user)
     elif error.code in _RESET_DISABLED_CODES:
         await callback.answer(runner.get("ntf-devices.reset-disabled"), show_alert=True)
     else:
@@ -138,7 +136,7 @@ async def on_device_delete_confirm(
     widget: Keyboard,
     dialog_manager: DialogManager,
     delete_device: FromDishka[DeleteDeviceUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
@@ -148,9 +146,7 @@ async def on_device_delete_confirm(
     runner = get_translator(i18n, user)
     subscription_id = selected_subscription_id(dialog_manager)
     if subscription_id is None:
-        await _subscription_gone(
-            callback, runner, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _subscription_gone(callback, runner, dialog_manager, list_own_subscriptions, user)
         return
     try:
         await delete_device(user, DeleteDeviceDto(subscription_id=subscription_id, hwid=hwid))
@@ -158,9 +154,7 @@ async def on_device_delete_confirm(
         await _answer_cooldown(callback, runner, e)
         return
     except (NotFoundError, ValidationError) as error:
-        await _answer_refusal(
-            callback, runner, error, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
     await callback.answer(runner.get("ntf-devices.deleted"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)
@@ -172,16 +166,14 @@ async def on_device_delete_all_confirm(
     widget: Keyboard,
     dialog_manager: DialogManager,
     delete_all_devices: FromDishka[DeleteAllDevicesUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     subscription_id = selected_subscription_id(dialog_manager)
     if subscription_id is None:
-        await _subscription_gone(
-            callback, runner, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _subscription_gone(callback, runner, dialog_manager, list_own_subscriptions, user)
         return
     try:
         await delete_all_devices(user, SubscriptionRefDto(subscription_id=subscription_id))
@@ -189,9 +181,7 @@ async def on_device_delete_all_confirm(
         await _answer_cooldown(callback, runner, e)
         return
     except (NotFoundError, ValidationError) as error:
-        await _answer_refusal(
-            callback, runner, error, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
     await callback.answer(runner.get("ntf-devices.all-deleted"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)
@@ -203,16 +193,14 @@ async def on_reissue_subscription_confirm(
     widget: Keyboard,
     dialog_manager: DialogManager,
     reissue_subscription: FromDishka[ReissueSubscriptionUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     subscription_id = selected_subscription_id(dialog_manager)
     if subscription_id is None:
-        await _subscription_gone(
-            callback, runner, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _subscription_gone(callback, runner, dialog_manager, list_own_subscriptions, user)
         return
     try:
         await reissue_subscription(user, SubscriptionRefDto(subscription_id=subscription_id))
@@ -220,9 +208,7 @@ async def on_reissue_subscription_confirm(
         await _answer_cooldown(callback, runner, e)
         return
     except (NotFoundError, ValidationError) as error:
-        await _answer_refusal(
-            callback, runner, error, dialog_manager, list_own_active_subscriptions, user
-        )
+        await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
     await callback.answer(runner.get("ntf-devices.reissued"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)

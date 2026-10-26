@@ -375,6 +375,12 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     f"Cannot {data.purchase_type.value.lower()} a disabled subscription",
                     code=ErrorCode.SUBSCRIPTION_DISABLED,
                 )
+            # a NEW purchase replaces the trial and keeps its connection link
+            if target.is_trial:
+                raise ValidationError(
+                    f"Cannot {data.purchase_type.value.lower()} a trial",
+                    code=ErrorCode.TRIAL_NOT_RENEWABLE,
+                )
 
             if data.purchase_type is PurchaseType.RENEW:
                 if target.plan_snapshot.plan_id != data.plan_id:

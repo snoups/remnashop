@@ -55,6 +55,7 @@ async def referrals_getter(
         user,
         active,
         get_available_trial,
+        cabinet_url=config.cabinet.url,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
     )
@@ -69,6 +70,7 @@ async def referrals_getter(
     me = await bot.me()
     data["has_points"] = stats.points > 0
     data["has_bonus_days"] = stats.bonus_days > 0
+    data["referral_reset_enabled"] = (await get_shop_settings.system()).referral_reset_enabled
     data["referral_url"] = (
         referral_url(me.username, stats.referral_code)
         if stats.referral_code and me.username

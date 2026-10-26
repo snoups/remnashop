@@ -41,7 +41,7 @@ def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> Non
         )
 
 
-def validate_url_value(url_value: str) -> None:
+def validate_url_value(url_value: str, schemes: tuple[str, ...] = catalog.URL_SCHEMES) -> None:
     if any(char.isspace() for char in url_value):
         raise ValidationError("URL cannot contain spaces", code=ErrorCode.DIALOG_URL_HAS_SPACES)
     for name in catalog.URL_VARIABLE_RE.findall(url_value):
@@ -50,12 +50,12 @@ def validate_url_value(url_value: str) -> None:
                 f"Unknown URL variable: {name}", code=ErrorCode.DIALOG_URL_VARIABLE_UNKNOWN
             )
     literal = catalog.URL_VARIABLE_RE.sub("", url_value)
-    if literal and not literal.startswith(catalog.URL_SCHEMES):
+    if literal and not literal.startswith(schemes):
         raise ValidationError(
-            f"URL must start with one of: {', '.join(catalog.URL_SCHEMES)}",
+            f"URL must start with one of: {', '.join(schemes)}",
             code=ErrorCode.DIALOG_URL_SCHEME_INVALID,
         )
-    if url_value in catalog.URL_SCHEMES:
+    if url_value in schemes:
         raise ValidationError("URL has nothing after the scheme", code=ErrorCode.DIALOG_URL_EMPTY)
 
 
@@ -141,9 +141,9 @@ def _validate_button(
                 f"Unknown target window: {button.target_window_key}",
                 code=ErrorCode.DIALOG_TARGET_WINDOW_UNKNOWN,
             )
-    elif button.link_type == ButtonLinkType.URL:
+    elif button.link_type in (ButtonLinkType.URL, ButtonLinkType.WEB_APP):
         if not button.url_value:
             raise ValidationError(
                 "URL button needs a url_value", code=ErrorCode.DIALOG_BUTTON_URL_MISSING
             )
-        validate_url_value(button.url_value)
+        validate_url_value(button.url_value, catalog.url_schemes_for(button.link_type))

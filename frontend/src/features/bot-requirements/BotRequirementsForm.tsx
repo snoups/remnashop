@@ -27,6 +27,7 @@ export function BotRequirementsForm() {
   const [channelRequired, setChannelRequired] = useState(false);
   const [channelId, setChannelId] = useState("");
   const [channelUrl, setChannelUrl] = useState("");
+  const [trialChannelGuard, setTrialChannelGuard] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,6 +36,7 @@ export function BotRequirementsForm() {
     setChannelRequired(state.data.channel_required);
     setChannelId(state.data.channel_id === null ? "" : String(state.data.channel_id));
     setChannelUrl(state.data.channel_url ?? "");
+    setTrialChannelGuard(state.data.trial_channel_guard);
   }, [state]);
 
   const channelIdValid = channelId.trim() === "" || CHANNEL_ID_PATTERN.test(channelId.trim());
@@ -53,6 +55,7 @@ export function BotRequirementsForm() {
         channel_required: channelRequired,
         channel_id: parsedChannelId,
         channel_url: blankToNull(channelUrl),
+        trial_channel_guard: trialChannelGuard,
       });
       setData(requirements);
       toast.success(t("common.saved"));
@@ -106,6 +109,21 @@ export function BotRequirementsForm() {
                   aria-invalid={incomplete && channelRequired && channelUrl.trim() === ""}
                 />
               </Field>
+              <div className="flex items-center justify-between gap-3 px-[12.5px]">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">
+                    {t("settings.botRequirements.trialChannelGuard")}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground">
+                    {t("settings.botRequirements.trialChannelGuardHint")}
+                  </p>
+                </div>
+                <Switch
+                  checked={trialChannelGuard}
+                  onChange={setTrialChannelGuard}
+                  disabled={!channelRequired}
+                />
+              </div>
             </div>
           </fieldset>
 

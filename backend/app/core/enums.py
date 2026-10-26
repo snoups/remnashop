@@ -453,6 +453,7 @@ class ButtonLinkType(StrEnum):
     ACTION = auto()
     NAVIGATE = auto()
     URL = auto()
+    WEB_APP = auto()
 
 
 class ButtonStyleKind(StrEnum):

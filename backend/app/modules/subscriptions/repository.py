@@ -90,6 +90,7 @@ class SubscriptionRepository:
             device_single_reset_at=row.device_single_reset_at,
             device_all_reset_at=row.device_all_reset_at,
             link_reset_at=row.link_reset_at,
+            paused_by_channel_leave=row.paused_by_channel_leave,
             addon_entitlements=entitlements,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -460,6 +461,11 @@ class SubscriptionRepository:
     ) -> None:
         row = await self._get_or_raise(subscription_id)
         setattr(row, column, value)
+        await self.session.flush()
+
+    async def set_paused_by_channel_leave(self, subscription_id: int, paused: bool) -> None:
+        row = await self._get_or_raise(subscription_id)
+        row.paused_by_channel_leave = paused
         await self.session.flush()
 
     async def set_url(self, subscription_id: int, url: str) -> SubscriptionDto:

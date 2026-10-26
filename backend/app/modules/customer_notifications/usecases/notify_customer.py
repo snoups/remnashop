@@ -5,10 +5,17 @@ from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.config import AppConfig
-from app.core.constants import REDIS_KEY_PREFIX, TTL_1D, TTL_7D
+from app.core.constants import (
+    CUSTOMER_NOTIFICATION_BUY_CALLBACK,
+    CUSTOMER_NOTIFICATION_CLOSE_CALLBACK,
+    CUSTOMER_NOTIFICATION_RENEW_PREFIX,
+    REDIS_KEY_PREFIX,
+    TTL_1D,
+    TTL_7D,
+)
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PaymentOutcome, PurchaseChannel
-from app.core.exceptions import RetryableTaskError
+from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.ports import BotSignals
 from app.core.usecase import UseCase
 from app.modules.customer_notifications.dispatch import SendCustomerTelegramDispatch
@@ -24,8 +31,13 @@ from app.modules.notifications import (
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     SubscriptionChangedEvent,
+    SubscriptionExpiredAgoEvent,
+    SubscriptionExpiredEvent,
+    SubscriptionExpiringEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
+    SubscriptionRepository,
+    SubscriptionTrafficLimitedEvent,
     TorrentBlockerReportEvent,
 )
 from app.modules.transactions import PaidOrderNotFulfilledEvent, TransactionRepository
@@ -43,6 +55,17 @@ _OUTCOMES: Final[dict[str, PaymentOutcome]] = {
     PaidOrderNotFulfilledEvent.__name__: PaymentOutcome.NOT_FULFILLED,
 }
 
+# a subscription running out gets a way to pay for more right under the message
+_RENEWABLE: Final[frozenset[str]] = frozenset(
+    event.__name__
+    for event in (
+        SubscriptionExpiringEvent,
+        SubscriptionExpiredEvent,
+        SubscriptionExpiredAgoEvent,
+        SubscriptionTrafficLimitedEvent,
+    )
+)
+
 
 def _cooldown_key(event_type: str, user_id: int) -> Optional[str]:
     if event_type not in _COOLDOWNS:
@@ -58,6 +81,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         user_repository: UserRepository,
         settings_repository: SettingsRepository,
         transaction_repository: TransactionRepository,
+        subscription_repository: SubscriptionRepository,
         renderer_factory: NotificationRendererFactory,
         token_source: BotTokenSource,
         bot_signals: BotSignals,
@@ -70,6 +94,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         self._user_repository = user_repository
         self._settings_repository = settings_repository
         self._transaction_repository = transaction_repository
+        self._subscription_repository = subscription_repository
         self._renderer_factory = renderer_factory
         self._token_source = token_source
         self._bot_signals = bot_signals
@@ -144,7 +169,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
     ) -> str:
         if channel is CustomerChannel.TELEGRAM and await self._show_window(data, user):
             return "window"
-        await self._queue(channel, user, renderer, title, body)
+        await self._queue(data, channel, user, renderer, title, body)
         return "queued"
 
     async def _show_window(self, data: NotifyCustomerDto, user: UserDto) -> bool:
@@ -160,6 +185,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
 
     async def _queue(
         self,
+        data: NotifyCustomerDto,
         channel: CustomerChannel,
         user: UserDto,
         renderer: NotificationRenderer,
@@ -167,7 +193,11 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         body: str,
     ) -> None:
         if channel is CustomerChannel.TELEGRAM:
-            await self._send_telegram.kiq(user_id=user.id, text=f"{title}\n\n{body}")
+            await self._send_telegram.kiq(
+                user_id=user.id,
+                text=f"{title}\n\n{body}",
+                buttons=await self._telegram_buttons(data, user, renderer),
+            )
             return
         assert user.email is not None
         async with self._uow:
@@ -182,3 +212,34 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             button=renderer.text(user.language, "ntf-customer-open-cabinet"),
         )
         await self._send_email.kiq(to=user.email, subject=title, text=text, html=html)
+
+    async def _telegram_buttons(
+        self, data: NotifyCustomerDto, user: UserDto, renderer: NotificationRenderer
+    ) -> list[dict[str, str]]:
+        buttons = []
+        if data.event_type in _RENEWABLE and data.subscription_id is not None:
+            # a trial isn't renewed: a purchase replaces it and keeps its link
+            if await self._is_trial(data.subscription_id):
+                buttons.append(("ntf-customer-button-buy", CUSTOMER_NOTIFICATION_BUY_CALLBACK))
+            else:
+                buttons.append(
+                    (
+                        "ntf-customer-button-renew",
+                        f"{CUSTOMER_NOTIFICATION_RENEW_PREFIX}{data.subscription_id}",
+                    )
+                )
+        buttons.append(("ntf-customer-button-close", CUSTOMER_NOTIFICATION_CLOSE_CALLBACK))
+        # Telegram refuses the whole message over one empty label
+        return [
+            {"text": text, "callback_data": callback_data}
+            for key, callback_data in buttons
+            if (text := renderer.text(user.language, key))
+        ]
+
+    async def _is_trial(self, subscription_id: int) -> bool:
+        async with self._uow:
+            try:
+                subscription = await self._subscription_repository.get_by_id(subscription_id)
+            except NotFoundError:
+                return False
+        return subscription.is_trial

@@ -346,6 +346,7 @@ def upgrade() -> None:
         sa.Column("channel_required", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("channel_id", sa.BigInteger(), nullable=True),
         sa.Column("channel_url", sa.String(), nullable=True),
+        sa.Column("trial_channel_guard", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -919,6 +920,10 @@ def upgrade() -> None:
         ),
         sa.Column("link_reset_enabled", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("link_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("referral_reset_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column(
+            "referral_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -1173,6 +1178,7 @@ def upgrade() -> None:
         sa.Column("is_bot_blocked", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("email_undeliverable_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("referral_code", sa.String(length=16), nullable=True),
+        sa.Column("referral_code_reset_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("points", sa.Numeric(precision=12, scale=0), server_default="0", nullable=False),
         sa.Column("bonus_days", sa.Integer(), server_default="0", nullable=False),
         sa.Column("is_trial_available", sa.Boolean(), server_default="true", nullable=False),
@@ -1734,6 +1740,7 @@ def upgrade() -> None:
         sa.Column("device_single_reset_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("device_all_reset_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("link_reset_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("paused_by_channel_leave", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("first_connected_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",

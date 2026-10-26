@@ -1,7 +1,7 @@
 from collections.abc import Awaitable
 from typing import Any, Optional, Union, cast
 
-from aiogram.types import CallbackQuery, InlineKeyboardButton, KeyboardButton
+from aiogram.types import CallbackQuery, InlineKeyboardButton, KeyboardButton, WebAppInfo
 from aiogram_dialog import StartMode
 from aiogram_dialog.api.internal import RawKeyboard
 from aiogram_dialog.api.protocols import DialogManager, DialogProtocol
@@ -52,13 +52,11 @@ class ConfigKeyboard(Keyboard):
                 icon_id = button.get("icon_custom_emoji_id")
                 icon = button.get("icon")
                 text = f"{icon} {button['text']}" if icon and not icon_id else button["text"]
-                if button["link_type"] == ButtonLinkType.URL:
+                link_type = button["link_type"]
+                if link_type in (ButtonLinkType.URL, ButtonLinkType.WEB_APP):
                     url = button["url_value"]
-                    if (
-                        not url
-                        or not url.startswith(catalog.URL_SCHEMES)
-                        or url in catalog.URL_SCHEMES
-                    ):
+                    schemes = catalog.url_schemes_for(link_type)
+                    if not url or not url.startswith(schemes) or url in schemes:
                         # Telegram rejects the whole keyboard over one bad URL, so
                         # a variable that resolved to nothing usable drops its own
                         # button instead of taking the window down.
@@ -67,10 +65,12 @@ class ConfigKeyboard(Keyboard):
                             f"unusable resolved url_value {url!r}"
                         )
                         continue
+                    is_web_app = link_type == ButtonLinkType.WEB_APP
                     rendered_row.append(
                         InlineKeyboardButton(
                             text=text,
-                            url=button["url_value"],
+                            url=None if is_web_app else url,
+                            web_app=WebAppInfo(url=url) if is_web_app else None,
                             icon_custom_emoji_id=icon_id,
                         )
                     )

@@ -38,6 +38,7 @@ async def _notify(
     user_id: int,
     args: dict[str, Any],
     payment_key: Optional[str] = None,
+    subscription_id: Optional[int] = None,
 ) -> None:
     # the system actor owns nothing
     if user_id <= 0:
@@ -48,6 +49,7 @@ async def _notify(
         outbox_id=entry.outbox_id,
         args=args,
         payment_key=payment_key,
+        subscription_id=subscription_id,
     )
 
 
@@ -102,7 +104,15 @@ async def _on_hours(
     ],
     entry: StoredEvent,
 ) -> None:
-    await _notify(entry, event.user.id, {"hours": event.hours})
+    await _notify(
+        entry, event.user.id, {"hours": event.hours}, subscription_id=event.subscription_id
+    )
+
+
+async def _on_lapsed(
+    event: Union[SubscriptionExpiredEvent, SubscriptionTrafficLimitedEvent], entry: StoredEvent
+) -> None:
+    await _notify(entry, event.user.id, {}, subscription_id=event.subscription_id)
 
 
 def _amount(value: Union[str, int]) -> Union[str, int]:
@@ -150,8 +160,8 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(TransactionCanceledEvent, _on_abandoned)
     bus.subscribe(TransactionExpiredEvent, _on_abandoned)
     bus.subscribe(SubscriptionExpiringEvent, _on_hours)
-    bus.subscribe(SubscriptionExpiredEvent, _on_purchase)
-    bus.subscribe(SubscriptionTrafficLimitedEvent, _on_purchase)
+    bus.subscribe(SubscriptionExpiredEvent, _on_lapsed)
+    bus.subscribe(SubscriptionTrafficLimitedEvent, _on_lapsed)
     bus.subscribe(SubscriptionTrafficThresholdEvent, _on_purchase)
     bus.subscribe(SubscriptionNotConnectedEvent, _on_hours)
     bus.subscribe(SubscriptionExpiredAgoEvent, _on_hours)

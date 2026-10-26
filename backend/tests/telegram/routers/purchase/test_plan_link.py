@@ -90,7 +90,7 @@ async def test_link_to_an_unavailable_plan_answers_and_opens_the_menu() -> None:
         manager.start_data,
         manager,
         list_active_plans=list_active_plans,
-        list_own_active_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
         i18n=_i18n(),
     )
@@ -170,7 +170,7 @@ async def test_link_choice_lists_only_subscriptions_on_that_plan() -> None:
     data = await link_choice_getter.__dishka_orig_func__(
         manager,
         list_active_plans=AsyncMock(return_value=_catalog(10)),
-        list_own_active_subscriptions=AsyncMock(
+        list_own_subscriptions=AsyncMock(
             return_value=[_subscription(3, plan_id=10), _subscription(4, plan_id=11)]
         ),
         i18n=_getter_i18n(),

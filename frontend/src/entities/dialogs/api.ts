@@ -10,7 +10,7 @@ export type DialogFlow =
   | "subscription"
   | "promocode"
   | "custom";
-export type ButtonLinkType = "action" | "navigate" | "url";
+export type ButtonLinkType = "action" | "navigate" | "url" | "web_app";
 export type ButtonStyleKind = "primary" | "success" | "danger";
 
 export interface DialogButtonItem {
@@ -137,20 +137,34 @@ export function bannerNameForMode(mode: BannerMode, windowKey: string): string |
 const URL_VARIABLE_RE = /\$\{([a-z0-9_.]+)\}/g;
 /** Mirrors the backend's own rule (modules/dialogs/catalog.py): Telegram rejects
  * a whole keyboard over one bad button URL. */
-export const URL_SCHEMES = ["https://", "http://", "tg://"];
+const URL_SCHEMES = ["https://", "http://", "tg://"];
+/** Telegram opens a Mini App only over HTTPS. */
+const WEB_APP_SCHEMES = ["https://"];
+
+export function isLinkButton(linkType: ButtonLinkType): boolean {
+  return linkType === "url" || linkType === "web_app";
+}
+
+export function urlSchemesFor(linkType: ButtonLinkType): string[] {
+  return linkType === "web_app" ? WEB_APP_SCHEMES : URL_SCHEMES;
+}
 
 export type UrlProblem =
   | { kind: "scheme" }
   | { kind: "malformed" }
   | { kind: "variable"; name: string };
 
-export function urlProblem(value: string, variableKeys: string[]): UrlProblem | null {
-  if (/\s/.test(value) || URL_SCHEMES.includes(value)) return { kind: "malformed" };
+export function urlProblem(
+  value: string,
+  variableKeys: string[],
+  schemes: string[] = URL_SCHEMES,
+): UrlProblem | null {
+  if (/\s/.test(value) || schemes.includes(value)) return { kind: "malformed" };
   for (const match of value.matchAll(URL_VARIABLE_RE)) {
     if (!variableKeys.includes(match[1])) return { kind: "variable", name: match[1] };
   }
   const literal = value.replace(URL_VARIABLE_RE, "");
-  if (literal && !URL_SCHEMES.some((scheme) => literal.startsWith(scheme))) {
+  if (literal && !schemes.some((scheme) => literal.startsWith(scheme))) {
     return { kind: "scheme" };
   }
   return null;
@@ -235,8 +249,9 @@ export function invalidUrlButton(
   return (
     buttons.find(
       (button) =>
-        button.link_type === "url" &&
-        (!button.url_value || urlProblem(button.url_value, variableKeys) !== null),
+        isLinkButton(button.link_type) &&
+        (!button.url_value ||
+          urlProblem(button.url_value, variableKeys, urlSchemesFor(button.link_type)) !== null),
     ) ?? null
   );
 }

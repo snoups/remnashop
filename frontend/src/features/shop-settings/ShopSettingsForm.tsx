@@ -1,4 +1,4 @@
-import { Layers, Link2, MonitorSmartphone, ShoppingBag, Smartphone } from "lucide-react";
+import { Layers, Link2, MonitorSmartphone, Share2, ShoppingBag, Smartphone } from "lucide-react";
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -31,6 +31,8 @@ export function ShopSettingsForm() {
   const [deviceAllResetCooldownHours, setDeviceAllResetCooldownHours] = useState("0");
   const [linkResetEnabled, setLinkResetEnabled] = useState(true);
   const [linkResetCooldownHours, setLinkResetCooldownHours] = useState("0");
+  const [referralResetEnabled, setReferralResetEnabled] = useState(true);
+  const [referralResetCooldownHours, setReferralResetCooldownHours] = useState("0");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,8 @@ export function ShopSettingsForm() {
     setDeviceAllResetCooldownHours(String(state.data.device_all_reset_cooldown_hours));
     setLinkResetEnabled(state.data.link_reset_enabled);
     setLinkResetCooldownHours(String(state.data.link_reset_cooldown_hours));
+    setReferralResetEnabled(state.data.referral_reset_enabled);
+    setReferralResetCooldownHours(String(state.data.referral_reset_cooldown_hours));
   }, [state]);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -53,11 +57,13 @@ export function ShopSettingsForm() {
     const parsedSingleCooldown = parseRequiredInt(deviceSingleResetCooldownHours, 0);
     const parsedAllCooldown = parseRequiredInt(deviceAllResetCooldownHours, 0);
     const parsedLinkCooldown = parseRequiredInt(linkResetCooldownHours, 0);
+    const parsedReferralCooldown = parseRequiredInt(referralResetCooldownHours, 0);
     if (
       parsedMax === undefined ||
       parsedSingleCooldown === undefined ||
       parsedAllCooldown === undefined ||
-      parsedLinkCooldown === undefined
+      parsedLinkCooldown === undefined ||
+      parsedReferralCooldown === undefined
     ) {
       toast.error(t("settings.shop.invalidInput"));
       return;
@@ -73,6 +79,8 @@ export function ShopSettingsForm() {
         device_all_reset_cooldown_hours: parsedAllCooldown,
         link_reset_enabled: linkResetEnabled,
         link_reset_cooldown_hours: parsedLinkCooldown,
+        referral_reset_enabled: referralResetEnabled,
+        referral_reset_cooldown_hours: parsedReferralCooldown,
       });
       setData(settings);
       toast.success(t("common.saved"));
@@ -145,6 +153,14 @@ export function ShopSettingsForm() {
               onEnabledChange={setLinkResetEnabled}
               cooldownHours={linkResetCooldownHours}
               onCooldownChange={setLinkResetCooldownHours}
+            />
+            <ResetRow
+              icon={Share2}
+              label={t("settings.shop.referralResetLabel")}
+              enabled={referralResetEnabled}
+              onEnabledChange={setReferralResetEnabled}
+              cooldownHours={referralResetCooldownHours}
+              onCooldownChange={setReferralResetCooldownHours}
             />
           </div>
           </fieldset>

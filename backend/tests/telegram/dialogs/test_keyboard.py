@@ -566,3 +566,34 @@ async def test_process_item_callback_non_numeric_item_id_returns_false() -> None
     )
 
     assert handled is False
+
+
+@pytest.mark.parametrize(
+    ("url", "rendered"), [("https://cabinet.example.com", True), ("", False), ("http://x.y", False)]
+)
+async def test_render_keyboard_opens_a_web_app_over_https_only(url: str, rendered: bool) -> None:
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Cabinet",
+                    "style": None,
+                    "icon_custom_emoji_id": None,
+                    "link_type": ButtonLinkType.WEB_APP,
+                    "action_key": None,
+                    "target_window_key": None,
+                    "url_value": url,
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    if not rendered:
+        assert keyboard == []
+        return
+    (button,) = keyboard[0]
+    assert isinstance(button, InlineKeyboardButton)
+    assert button.url is None
+    assert button.web_app is not None and button.web_app.url == url

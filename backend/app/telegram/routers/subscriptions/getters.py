@@ -8,6 +8,7 @@ from fluentogram import TranslatorHub
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
+from app.core.enums import SubscriptionStatus
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.banners import GetBannerForDisplayUseCase
 from app.modules.referrals import GetReferralSettingsUseCase
@@ -16,7 +17,7 @@ from app.modules.subscriptions import (
     DeviceDto,
     GetAvailableTrialUseCase,
     ListDevicesUseCase,
-    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
     SubscriptionDto,
     SubscriptionRefDto,
 )
@@ -57,7 +58,7 @@ async def subscriptions_list_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     get_banner: FromDishka[GetBannerForDisplayUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     get_shop_settings: FromDishka[GetShopSettingsUseCase],
     get_referral_settings: FromDishka[GetReferralSettingsUseCase],
@@ -67,7 +68,9 @@ async def subscriptions_list_getter(
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    active = await list_own_active_subscriptions(user)
+    subscriptions = await list_own_subscriptions(user)
+    # an expired subscription takes no slot of the purchase cap
+    active = [s for s in subscriptions if s.status is not SubscriptionStatus.EXPIRED]
     can_purchase, referral_enabled = await menu_flags(
         active, get_shop_settings, get_referral_settings
     )
@@ -75,6 +78,7 @@ async def subscriptions_list_getter(
         user,
         active,
         get_available_trial,
+        cabinet_url=config.cabinet.url,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
     )
@@ -83,7 +87,7 @@ async def subscriptions_list_getter(
     )
     data["subscriptions"] = [
         {"id": s.id, "label": f"{s.plan_snapshot.name} — {format_date(s.expire_at)}"}
-        for s in active
+        for s in subscriptions
     ]
     data["window_text"] = render_window_text(
         runner, "msg-subscriptions-list", **resolve_variable_kwargs(data)
@@ -99,7 +103,7 @@ async def subscription_card_getter(
     dialog_manager: DialogManager,
     config: FromDishka[AppConfig],
     get_banner: FromDishka[GetBannerForDisplayUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
@@ -109,8 +113,9 @@ async def subscription_card_getter(
     runner = get_translator(i18n, user)
     data: dict[str, Any] = await build_condition_data(
         user,
-        await list_own_active_subscriptions(user),
+        await list_own_subscriptions(user),
         get_available_trial,
+        cabinet_url=config.cabinet.url,
         selected_id=selected_subscription_id(dialog_manager),
     )
     data["banner"] = await _window_banner(
@@ -140,7 +145,7 @@ async def subscription_card_getter(
 @inject
 async def devices_getter(
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_devices: FromDishka[ListDevicesUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
@@ -151,7 +156,7 @@ async def devices_getter(
 
     subscription_id = selected_subscription_id(dialog_manager)
     subscription = next(
-        (s for s in await list_own_active_subscriptions(user) if s.id == subscription_id), None
+        (s for s in await list_own_subscriptions(user) if s.id == subscription_id), None
     )
     devices: list[DeviceDto] = []
     if subscription is not None:

@@ -87,3 +87,20 @@ def test_window_text_length_ignores_tags() -> None:
     validate_window_text(
         "<b>" + "a" * MAX_CAPTION_LENGTH + "</b>", has_banner=True, locale=Locale.EN
     )
+
+
+def test_web_app_button_takes_only_https() -> None:
+    (button,) = _url_buttons([0])
+    _validate([DialogButtonInputDto(**{**button.__dict__, "link_type": ButtonLinkType.WEB_APP})])
+    with pytest.raises(ValidationError):
+        _validate(
+            [
+                DialogButtonInputDto(
+                    **{
+                        **button.__dict__,
+                        "link_type": ButtonLinkType.WEB_APP,
+                        "url_value": "http://example.com",
+                    }
+                )
+            ]
+        )

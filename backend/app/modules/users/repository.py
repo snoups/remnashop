@@ -1,7 +1,7 @@
 import secrets
 import string
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final, Optional, Union, cast
 
@@ -32,7 +32,7 @@ from app.core.db.partial_update import apply_partial_update
 from app.core.db.user_search import user_search_filter
 from app.core.enums import Locale, Role
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, CooldownError, NotFoundError, ValidationError
 from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.time import datetime_now
 from app.modules.users.dto import (
@@ -656,6 +656,26 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(db_user)
         return self._to_dto(db_user)
+
+    async def reset_own_referral_code(self, user_id: int, cooldown: timedelta) -> UserDto:
+        # under the row lock: a double tap waits here and then meets the cooldown
+        row = await self.session.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if row is None:
+            raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
+        now = datetime_now()
+        previous = row.referral_code_reset_at
+        if previous is not None and now < previous + cooldown:
+            raise CooldownError(previous + cooldown)
+        row.referral_code = await self._generate_referral_code()
+        row.referral_code_reset_at = now
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_dto(row)
 
     async def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> None:
         db_user = await self.session.get(User, user_id)

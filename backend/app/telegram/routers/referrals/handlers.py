@@ -1,6 +1,9 @@
+import io
 from decimal import Decimal, InvalidOperation
 
-from aiogram.types import CallbackQuery, Message
+import segno
+from aiogram import Bot
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Keyboard
@@ -16,17 +19,20 @@ from app.core.constants import (
     USER_KEY,
     ZERO_AMOUNT,
 )
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import CooldownError, NotFoundError, ValidationError
 from app.core.utils.rate_counter import hit_counter, user_rate_key
 from app.modules.referrals import (
+    GetOwnReferralStatsUseCase,
     RedeemBonusDaysDto,
     RedeemBonusDaysUseCase,
     RequestPointsWithdrawalDto,
     RequestPointsWithdrawalUseCase,
+    ResetOwnReferralCodeUseCase,
 )
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
-from app.telegram.i18n import get_translator
+from app.telegram.i18n import format_datetime, get_translator
+from app.telegram.routers.referrals.getters import referral_url
 from app.telegram.states import Referrals
 
 
@@ -34,6 +40,54 @@ async def on_withdraw_points(
     callback: CallbackQuery, widget: Keyboard, dialog_manager: DialogManager
 ) -> None:
     await dialog_manager.switch_to(Referrals.WITHDRAW)
+
+
+@inject
+async def on_referral_qr(
+    callback: CallbackQuery,
+    widget: Keyboard,
+    dialog_manager: DialogManager,
+    get_own_referral_stats: FromDishka[GetOwnReferralStatsUseCase],
+    bot: FromDishka[Bot],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    stats = await get_own_referral_stats(user)
+    me = await bot.me()
+    if stats.referral_code and me.username and isinstance(callback.message, Message):
+        image = io.BytesIO()
+        segno.make(referral_url(me.username, stats.referral_code), error="m").save(
+            image, kind="png", scale=10, border=2
+        )
+        await callback.message.answer_photo(
+            BufferedInputFile(image.getvalue(), filename="referral-qr.png")
+        )
+    await callback.answer()
+
+
+@inject
+async def on_reset_referral_code(
+    callback: CallbackQuery,
+    widget: Keyboard,
+    dialog_manager: DialogManager,
+    reset_own_referral_code: FromDishka[ResetOwnReferralCodeUseCase],
+    i18n: FromDishka[TranslatorHub],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    runner = get_translator(i18n, user)
+    try:
+        await reset_own_referral_code(user)
+    except CooldownError as error:
+        await callback.answer(
+            runner.get(
+                "ntf-common.cooldown-active", available_at=format_datetime(error.available_at)
+            ),
+            show_alert=True,
+        )
+        return
+    except ValidationError:
+        await callback.answer(runner.get("ntf-referrals.reset-disabled"), show_alert=True)
+        return
+    await callback.answer(runner.get("ntf-referrals.code-reset"), show_alert=True)
 
 
 @inject

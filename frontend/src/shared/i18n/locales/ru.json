@@ -1295,6 +1295,7 @@
       "deviceSingleResetLabel": "Сброс одного устройства",
       "deviceAllResetLabel": "Сброс всех устройств",
       "linkResetLabel": "Сброс ссылки подписки",
+      "referralResetLabel": "Смена реферальной ссылки",
       "cooldownHoursLabel": "Интервал повторного сброса, ч",
       "invalidInput": "Проверьте введённые значения."
     },
@@ -1430,7 +1431,9 @@
       "description": "Что клиент должен сделать, прежде чем пользоваться ботом",
       "channelLabel": "Подписаться на канал",
       "channelId": "ID канала",
-      "channelUrl": "Ссылка на канал"
+      "channelUrl": "Ссылка на канал",
+      "trialChannelGuard": "Пауза пробного периода при отписке",
+      "trialChannelGuardHint": "Отписался от канала — пробный период приостанавливается, вернулся — продолжается"
     },
     "email": {
       "title": "SMTP",
@@ -2430,6 +2433,7 @@
       "user_name": "Имя пользователя",
       "user_points": "Баллы пользователя",
       "subscription_url": "Ссылка подключения",
+      "cabinet_url": "Ссылка на веб-кабинет",
       "devices_current": "Подключено устройств",
       "devices_max": "Лимит устройств",
       "name": "Имя",
@@ -3746,6 +3750,7 @@
     "IP_NOT_ALLOWED": "Доступ с этого IP-адреса запрещён.",
     "LAST_SIGN_IN_METHOD": "Это ваш последний способ входа. Сначала привяжите другой.",
     "LINK_RESET_DISABLED": "Сброс ссылки подписки отключён.",
+    "REFERRAL_RESET_DISABLED": "Смена реферальной ссылки отключена.",
     "LOCALE_ALREADY_ACTIVE": "Этот язык уже включён.",
     "LOCALE_DEFAULT_NOT_REMOVABLE": "Язык по умолчанию нельзя удалить.",
     "LEGAL_TEXT_REQUIRED": "Заголовок и текст обязательны.",
@@ -3853,6 +3858,7 @@
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "Лимит должен быть больше нуля или пустым для безлимита.",
     "SUBSCRIPTION_DELETED": "Подписка удалена.",
     "SUBSCRIPTION_DISABLED": "Подписка отключена.",
+    "TRIAL_NOT_RENEWABLE": "Пробный период нельзя продлить или сменить тариф. Купите подписку.",
     "SUBSCRIPTION_LIMIT_REACHED": "Достигнут лимит подписок.",
     "SUBSCRIPTION_NOT_FOUND": "Подписка не найдена.",
     "SUBSCRIPTION_PANEL_USER_MISSING": "В панели нет пользователя для этой подписки.",

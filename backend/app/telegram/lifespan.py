@@ -67,6 +67,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     url=webhook_url,
                     secret_token=endpoint.secret_token,
                     drop_pending_updates=app.state.drop_pending_updates,
+                    # chat_member is off unless asked for, and the channel guard needs it
+                    allowed_updates=endpoint.dispatcher.resolve_used_update_types(),
                 )
             )
         except Exception as error:
@@ -92,11 +94,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await report_status.system(
             ReportBotStatusDto(kind=BotStatusKind.STARTED, detail=me.username)
         )
-        if not me.supports_inline_queries:
-            logger.warning(
-                "Bot is not enabled for inline mode. "
-                "Please enable Inline Mode in BotFather for correct work of some features"
-            )
 
     redis = await container.get(Redis)
     handlers = {

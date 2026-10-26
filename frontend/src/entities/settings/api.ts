@@ -195,6 +195,8 @@ export interface ShopSettings {
   device_all_reset_cooldown_hours: number;
   link_reset_enabled: boolean;
   link_reset_cooldown_hours: number;
+  referral_reset_enabled: boolean;
+  referral_reset_cooldown_hours: number;
 }
 
 export type UpdateShopSettingsPayload = ShopSettings;
@@ -227,6 +229,7 @@ export interface BotRequirements {
   channel_required: boolean;
   channel_id: number | null;
   channel_url: string | null;
+  trial_channel_guard: boolean;
 }
 
 export function getBotRequirements(signal?: AbortSignal): Promise<BotRequirements> {

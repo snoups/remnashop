@@ -24,3 +24,5 @@ class ShopSettings(BaseSql, TimestampMixin):
     device_all_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
     link_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
     link_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
+    referral_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
+    referral_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")

@@ -154,6 +154,8 @@ btn-referrals =
     .share = Share link
     .withdraw = Withdraw points
     .redeem = Redeem bonus days
+    .qr = QR code
+    .reset-code = New referral link
 
 btn-back =
     .general = Back
@@ -266,6 +268,8 @@ ntf-referrals =
     .no-subscription = You have no active subscription to add the days to.
     .days-redeemed = { $days } bonus days added to your subscription.
     .redeem-failed = Bonus days can't be added to this subscription.
+    .code-reset = Your referral link has been replaced. The old one no longer works.
+    .reset-disabled = Changing the referral link is turned off.
 
 ntf-promocode =
     .not-found = Promocode not found.
@@ -311,6 +315,8 @@ ntf-broadcast =
 ntf-requirements =
     .channel = Subscribe to our channel to continue.
     .channel-not-found = We can't see your subscription yet. Subscribe and try again.
+    .trial-paused = You left our channel, so your trial is paused. Subscribe again to continue.
+    .trial-resumed = You're back in our channel, so your trial is running again.
 
 btn-requirements =
     .subscribe = Subscribe

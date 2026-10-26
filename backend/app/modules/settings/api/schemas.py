@@ -43,6 +43,8 @@ class ShopSettingsResponse(BaseModel):
     device_all_reset_cooldown_hours: int
     link_reset_enabled: bool
     link_reset_cooldown_hours: int
+    referral_reset_enabled: bool
+    referral_reset_cooldown_hours: int
 
 
 class UpdateShopSettingsRequest(BaseModel):
@@ -53,6 +55,8 @@ class UpdateShopSettingsRequest(BaseModel):
     device_all_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
     link_reset_enabled: Optional[bool] = None
     link_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    referral_reset_enabled: Optional[bool] = None
+    referral_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def non_nullable_fields(self) -> "UpdateShopSettingsRequest":
@@ -240,12 +244,14 @@ class BotRequirementsResponse(BaseModel):
     channel_required: bool
     channel_id: Optional[int]
     channel_url: Optional[str]
+    trial_channel_guard: bool
 
 
 class UpdateBotRequirementsRequest(BaseModel):
     channel_required: bool = False
     channel_id: Optional[int] = Field(default=None, ge=-INT64_MAX - 1, le=INT64_MAX)
     channel_url: Optional[HttpUrl] = None
+    trial_channel_guard: bool = False
 
 
 class CabinetSettingsResponse(BaseModel):

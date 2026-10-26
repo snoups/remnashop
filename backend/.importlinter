@@ -43,6 +43,7 @@ source_modules =
 forbidden_modules =
     aiogram_dialog
     fluentogram
+    segno
 
 [importlinter:contract:usecases-without-sqlalchemy]
 name = usecases do not touch sqlalchemy

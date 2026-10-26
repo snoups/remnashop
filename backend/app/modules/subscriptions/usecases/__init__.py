@@ -7,6 +7,9 @@ from app.modules.subscriptions.usecases.admin_list_devices import AdminListDevic
 from app.modules.subscriptions.usecases.admin_reissue_subscription import (
     AdminReissueSubscriptionUseCase,
 )
+from app.modules.subscriptions.usecases.apply_channel_membership import (
+    ApplyChannelMembershipUseCase,
+)
 from app.modules.subscriptions.usecases.change_subscription_plan import (
     ChangeSubscriptionPlanUseCase,
 )
@@ -30,6 +33,7 @@ from app.modules.subscriptions.usecases.list_devices import ListDevicesUseCase
 from app.modules.subscriptions.usecases.list_own_active_subscriptions import (
     ListOwnActiveSubscriptionsUseCase,
 )
+from app.modules.subscriptions.usecases.list_own_subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.subscriptions.usecases.list_own_subscriptions_usage import (
     ListOwnSubscriptionsUsageUseCase,
 )
@@ -70,6 +74,7 @@ __all__ = [
     "AdminDeleteDeviceUseCase",
     "AdminListDevicesUseCase",
     "AdminReissueSubscriptionUseCase",
+    "ApplyChannelMembershipUseCase",
     "ChangeSubscriptionPlanUseCase",
     "DeleteAllDevicesUseCase",
     "DeleteDeviceUseCase",
@@ -86,6 +91,7 @@ __all__ = [
     "ListDevicesUseCase",
     "ListOwnActiveSubscriptionsUseCase",
     "ListOwnSubscriptionsUsageUseCase",
+    "ListOwnSubscriptionsUseCase",
     "ListSubscriptionsUseCase",
     "PruneIdempotencyKeysUseCase",
     "PublishPanelEventUseCase",

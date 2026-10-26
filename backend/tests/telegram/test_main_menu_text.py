@@ -174,6 +174,7 @@ async def test_menu_drops_banner_when_text_exceeds_caption(monkeypatch) -> None:
             config=MagicMock(),
             get_banner=MagicMock(),
             list_own_active_subscriptions=AsyncMock(return_value=[]),
+            list_own_subscriptions=AsyncMock(return_value=[]),
             get_available_trial=trial,
             get_shop_settings=shop,
             get_referral_settings=referral,

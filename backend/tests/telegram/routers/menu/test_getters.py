@@ -9,7 +9,10 @@ from app.modules.banners.usecases import GetBannerForDisplayUseCase
 from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.modules.subscriptions import GetAvailableTrialUseCase
-from app.modules.subscriptions.usecases import ListOwnActiveSubscriptionsUseCase
+from app.modules.subscriptions.usecases import (
+    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
+)
 from app.modules.translations.repository import TranslationRepository
 from app.telegram.routers.menu.getters import menu_getter
 
@@ -87,6 +90,7 @@ async def test_menu_getter_includes_rendered_buttons(
         list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
             subscription_repository, uow
         ),
+        list_own_subscriptions=ListOwnSubscriptionsUseCase(subscription_repository, uow),
         get_available_trial=get_available_trial,
         get_shop_settings=_shop_settings(),
         get_referral_settings=_referral_settings(),
@@ -149,6 +153,7 @@ async def test_menu_getter_passes_name_variable_to_menu_text(
         list_own_active_subscriptions=ListOwnActiveSubscriptionsUseCase(
             subscription_repository, uow
         ),
+        list_own_subscriptions=ListOwnSubscriptionsUseCase(subscription_repository, uow),
         get_available_trial=get_available_trial,
         get_shop_settings=_shop_settings(),
         get_referral_settings=_referral_settings(),

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from loguru import logger
 from remnapy import RemnawaveSDK
+from remnapy.enums import UserStatus
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
 from app.core.constants import GB_TO_BYTES
@@ -34,10 +35,16 @@ def new_panel_user(user_id: int, plan: PlanSnapshot, expire_at: datetime) -> Cre
 
 
 def configure_for_plan(
-    remnawave_user_id: int, plan: PlanSnapshot, expire_at: datetime
+    remnawave_user_id: int,
+    plan: PlanSnapshot,
+    expire_at: datetime,
+    *,
+    enable: bool = False,
 ) -> UpdateUserRequestDto:
     return UpdateUserRequestDto(
         id=remnawave_user_id,
+        # None keeps the panel's own status
+        status=UserStatus.ACTIVE if enable else None,
         expire_at=expire_at,
         traffic_limit_bytes=plan.traffic_limit * GB_TO_BYTES,
         hwid_device_limit=plan.device_limit,

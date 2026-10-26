@@ -3,7 +3,7 @@ from typing import Union
 from aiogram import Bot, Dispatcher, Router
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, InaccessibleMessage, InputRichMessage, Message, Update
+from aiogram.types import CallbackQuery, InaccessibleMessage, InputRichMessage, Message
 from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Keyboard
 from dishka import FromDishka
@@ -26,7 +26,6 @@ from app.telegram.i18n import get_translator
 from app.telegram.legal_gate import (
     LegalAcceptCallback,
     LegalDocumentCallback,
-    gate_message_key,
     legal_gate_keyboard,
 )
 from app.telegram.middlewares.requirements import ask_requirement
@@ -138,15 +137,7 @@ async def on_legal_accept(
             parse_mode=ParseMode.HTML,
         )
         return
-    stopped = await redis.getdel(gate_message_key(user.id))
-    if stopped is not None and callback.bot is not None:
-        if isinstance(callback.message, Message):
-            await callback.message.delete()
-        await callback.answer()
-        # the next requirement, if any, stops it again
-        await dispatcher.feed_update(
-            callback.bot, Update(update_id=0, message=Message.model_validate_json(stopped))
-        )
-        return
     requirements = await get_requirements.system()
-    await continue_requirements(callback, user, dialog_manager, requirements, redis, i18n, report)
+    await continue_requirements(
+        callback, user, dialog_manager, requirements, redis, i18n, report, dispatcher
+    )
