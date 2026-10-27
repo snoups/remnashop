@@ -18,6 +18,7 @@ from app.core.enums import (
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import (
+    ConflictError,
     NotFoundError,
     PaymentGatewayError,
     PermissionDeniedError,
@@ -151,6 +152,11 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         await self._validate_provisioning_preconditions(actor.id, data)
         user = await self._pricer.drop_dead_promocode_discounts(user)
         quote = await self._pricer.quote(plan, data.duration_days, data.currency, user)
+        if data.expected_price is not None and quote.final_price != data.expected_price:
+            raise ConflictError(
+                f"Price changed from {data.expected_price} to {quote.final_price}",
+                code=ErrorCode.PRICE_CHANGED,
+            )
 
         is_free = quote.final_price == 0
         if not is_free:

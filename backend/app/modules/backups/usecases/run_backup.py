@@ -14,12 +14,14 @@ from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.backups.dto import STALE_RUN_AFTER, RunBackupDto
-from app.modules.backups.dump import create_assets_dump, create_database_dump
+from app.modules.backups.dump import (
+    BACKUP_FILE_MODE,
+    create_assets_dump,
+    create_signed_database_dump,
+)
 from app.modules.backups.events import BackupCompletedEvent, BackupFailedEvent
-from app.modules.backups.provenance import sign_backup_file
 from app.modules.backups.repository import BackupRepository
 
-_FILE_MODE: Final[int] = 0o600
 _STALE_RUN_ERROR: Final[str] = "Interrupted: the worker stopped before the backup finished"
 _EXTENSION_BY_KIND: Final[dict[BackupKind, str]] = {
     BackupKind.DATABASE: "dump",
@@ -91,12 +93,10 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
         try:
             if kind is BackupKind.DATABASE:
                 dest = backup_dir / f"{stem}.{_EXTENSION_BY_KIND[kind]}"
-                await create_database_dump(self._config, dest)
-                os.chmod(dest, _FILE_MODE)
-                sign_backup_file(dest, self._config.crypt_key.get_secret_value())
+                await create_signed_database_dump(self._config, dest)
             else:
                 dest = await create_assets_dump(self._config, backup_dir / stem)
-                os.chmod(dest, _FILE_MODE)
+                os.chmod(dest, BACKUP_FILE_MODE)
 
             with dest.open("rb") as f:
                 checksum = hashlib.file_digest(f, "sha256").hexdigest()

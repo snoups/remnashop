@@ -48,6 +48,14 @@ _DOCS_OTT_USED_KEY: Final[str] = f"{REDIS_KEY_PREFIX}docs:ott-used:"
 FRONTEND_DIST: Final[Path] = Path("/opt/remnashop/frontend/dist")
 # Vite hashes every file name under assets/, so a URL never changes content
 _ASSETS_CACHE_CONTROL: Final[str] = "public, max-age=31536000, immutable"
+# the dashboard document: announcement images on raw.githubusercontent.com, the build
+# badge's release check on api.github.com
+_SPA_CONTENT_SECURITY_POLICY: Final[str] = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https://raw.githubusercontent.com; media-src 'self' blob:; "
+    "font-src 'self' data:; connect-src 'self' https://api.github.com; "
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
 _MIN_PROXY_SECRET_LENGTH: Final[int] = 32
 
 
@@ -91,9 +99,10 @@ def _setup_spa_serving(app: FastAPI, frontend_dist: Path) -> None:
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str) -> FileResponse:
         candidate = (root / full_path).resolve()
+        csp = {"Content-Security-Policy": _SPA_CONTENT_SECURITY_POLICY}
         if full_path and candidate.is_file() and candidate.is_relative_to(root):
-            return FileResponse(candidate)
-        return FileResponse(root / "index.html", headers={"Cache-Control": "no-cache"})
+            return FileResponse(candidate, headers=csp)
+        return FileResponse(root / "index.html", headers={**csp, "Cache-Control": "no-cache"})
 
 
 def _setup_docs(app: FastAPI, config: AppConfig) -> None:

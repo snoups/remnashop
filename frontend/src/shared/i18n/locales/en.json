@@ -1436,7 +1436,36 @@
         "yandex": "Yandex",
         "email": "Email code"
       },
+      "captcha": {
+        "title": "Captcha on email sign-in",
+        "provider": "Provider",
+        "siteKey": "Site key",
+        "secretKey": "Secret key"
+      },
       "guides": {
+        "captcha": {
+          "title": "Captcha on email sign-in",
+          "sections": [
+            {
+              "title": "What it does",
+              "body": "Before an email code is sent, the customer passes a check from the chosen provider. This keeps bots from sending codes to other people’s addresses and getting your SMTP into spam lists. Telegram and OAuth sign-in are not affected."
+            },
+            {
+              "title": "Cloudflare Turnstile",
+              "body": "In the Cloudflare dashboard open Turnstile, add a widget with the cabinet domain and copy its site key and secret key.",
+              "link": "https://dash.cloudflare.com/?to=/:account/turnstile"
+            },
+            {
+              "title": "hCaptcha",
+              "body": "In the hCaptcha dashboard add a site with the cabinet domain, copy its site key and the account secret key.",
+              "link": "https://dashboard.hcaptcha.com/sites"
+            },
+            {
+              "title": "If the provider is down",
+              "body": "Email codes are not sent while the provider can’t confirm the check; the other sign-in methods keep working."
+            }
+          ]
+        },
         "telegramBot": {
           "title": "Sign-in via the Telegram bot",
           "sections": [
@@ -3603,6 +3632,8 @@
     "CABINET_EMAIL_DISABLED": "Email sign-in is turned off.",
     "CABINET_TELEGRAM_DISABLED": "Telegram sign-in is turned off.",
     "CANNOT_DELETE_SELF": "You can’t delete your own account.",
+    "CAPTCHA_FAILED": "The captcha check failed. Try again.",
+    "CAPTCHA_NOT_CONFIGURED": "Set the captcha site key and secret key first.",
     "CHANNEL_NOT_ACCESSIBLE": "The bot can’t see this channel — add it as an admin and check the ID.",
     "COOLDOWN_ACTIVE": "Too soon — try again later.",
     "CSRF_FAILED": "Security check failed — reload the page.",
@@ -3764,6 +3795,7 @@
     "PROMOTE_LOGIN_REQUIRED": "Set a login for this user to make them an admin.",
     "PROMOTE_TARGET_CHANGED": "The user changed while being made an admin. Try again.",
     "PROXY_DASHBOARD_FORBIDDEN": "The dashboard isn’t available through the cabinet’s address.",
+    "PRICE_CHANGED": "The price has changed. Check the new total and try again.",
     "PURCHASE_DISCOUNT_USED": "The discount was already used — try again.",
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",

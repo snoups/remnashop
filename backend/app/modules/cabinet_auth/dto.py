@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from app.core.enums import Locale, OAuthProvider
+from app.core.enums import CaptchaProvider, Locale, OAuthProvider
+
+
+@dataclass(frozen=True, kw_only=True)
+class CaptchaWidgetDto:
+    provider: CaptchaProvider
+    site_key: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -11,6 +17,7 @@ class CabinetMethodsDto:
     email: bool
     oauth: list[OAuthProvider]
     allowed_email_domains: Optional[list[str]]
+    captcha: Optional[CaptchaWidgetDto] = None
 
 
 @dataclass(frozen=True, kw_only=True)

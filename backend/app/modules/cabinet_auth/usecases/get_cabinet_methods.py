@@ -1,7 +1,7 @@
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
-from app.modules.cabinet_auth.dto import CabinetMethodsDto
+from app.modules.cabinet_auth.dto import CabinetMethodsDto, CaptchaWidgetDto
 from app.modules.settings import SettingsRepository
 
 
@@ -36,5 +36,12 @@ class GetCabinetMethodsUseCase:
             oauth=providers,
             allowed_email_domains=(
                 cabinet.allowed_email_domains if cabinet.restrict_email_domains else None
+            ),
+            captcha=(
+                CaptchaWidgetDto(
+                    provider=cabinet.captcha_provider, site_key=cabinet.captcha_site_key
+                )
+                if cabinet.captcha_enabled and cabinet.captcha_site_key is not None
+                else None
             ),
         )

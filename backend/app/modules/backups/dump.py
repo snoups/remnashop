@@ -3,8 +3,12 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Final
 
 from app.core.config import AppConfig
+from app.modules.backups.provenance import sign_backup_file
+
+BACKUP_FILE_MODE: Final[int] = 0o600
 
 
 async def create_database_dump(config: AppConfig, dest: Path) -> None:
@@ -29,6 +33,12 @@ async def create_database_dump(config: AppConfig, dest: Path) -> None:
     _, stderr = await proc.communicate()
     if proc.returncode != 0:
         raise RuntimeError(f"pg_dump failed: {stderr.decode()}")
+
+
+async def create_signed_database_dump(config: AppConfig, dest: Path) -> None:
+    await create_database_dump(config, dest)
+    os.chmod(dest, BACKUP_FILE_MODE)
+    sign_backup_file(dest, config.crypt_key.get_secret_value())
 
 
 def _build_assets_zip(media_dir: Path, final_path: Path) -> None:

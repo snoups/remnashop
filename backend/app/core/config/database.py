@@ -22,6 +22,8 @@ class DatabaseConfig(BaseConfig, env_prefix="DATABASE_"):
     # ones. Raise them for a higher-latency database such as a managed cloud one.
     statement_timeout_ms: int = 60_000
     idle_in_transaction_timeout_ms: int = 300_000
+    # above a panel call (~20s worst case) made while holding a row lock
+    lock_timeout_ms: int = 30_000
     # above statement_timeout: Postgres cancels first, with its own error
     command_timeout_s: int = 75
     connect_timeout_s: int = 10

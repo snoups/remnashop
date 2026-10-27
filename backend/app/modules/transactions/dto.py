@@ -133,6 +133,8 @@ class CreateCheckoutDto:
     return_to: Literal["default", "cabinet"] = "default"
     legal_locale: Optional[Locale] = None
     client_ip: Optional[str] = None
+    # the total the customer was shown; None skips the check
+    expected_price: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, kw_only=True)

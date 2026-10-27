@@ -1,4 +1,4 @@
-import { Bot, DoorOpen, Mail, MailCheck } from "lucide-react";
+import { Bot, DoorOpen, Mail, MailCheck, ShieldCheck } from "lucide-react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,7 +10,9 @@ import {
   updateCabinetAuthSettings,
   updateOAuthSettings,
   type CabinetAuthSettings,
+  type CaptchaProvider,
   type OAuthSettings,
+  type UpdateCabinetAuthSettingsPayload,
   type UpdateOAuthSettingsPayload,
 } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -22,6 +24,8 @@ import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { ErrorState } from "@shared/ui/EmptyState";
+import { Field } from "@shared/ui/Field";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { ProviderPanel } from "@features/oauth-settings/OAuthSettingsForm";
@@ -38,7 +42,7 @@ type MethodKey =
 
 type OAuthMethod = "telegram" | "google" | "yandex";
 
-const METHODS: { key: MethodKey; label: GuideMethod; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
+const METHODS: { key: MethodKey; label: Exclude<GuideMethod, "captcha">; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
   { key: "telegram_enabled", label: "telegramBot", icon: Bot },
   { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
   { key: "google_enabled", label: "google", icon: GoogleIcon, oauth: "google" },
@@ -83,7 +87,7 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
 
   const [isDomainsOpen, setIsDomainsOpen] = useState(false);
 
-  const saveDomains = async (patch: Partial<CabinetAuthSettings>) => {
+  const saveDomains = async (patch: UpdateCabinetAuthSettingsPayload) => {
     setPendingKey("domains");
     try {
       setData(await updateCabinetAuthSettings(patch));
@@ -188,6 +192,9 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
               </div>
             </div>
           </div>
+          <div className="mt-2 border-t border-white/[0.08] pt-2">
+            <CaptchaPanel settings={state.data} canManage={canManage} onSaved={setData} />
+          </div>
           {isDomainsOpen && (
             <AllowedDomainsDialog
               domains={state.data.allowed_email_domains}
@@ -282,6 +289,89 @@ function OAuthMethodPanel({
       ]}
       footer={
         canManageOAuth && (
+          <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? t("common.saving") : t("common.save")}
+          </Button>
+        )
+      }
+      onSubmit={(event) => void handleSubmit(event)}
+    />
+  );
+}
+
+const CAPTCHA_PROVIDERS: { value: CaptchaProvider; label: string }[] = [
+  { value: "TURNSTILE", label: "Cloudflare Turnstile" },
+  { value: "HCAPTCHA", label: "hCaptcha" },
+];
+
+function CaptchaPanel({
+  settings,
+  canManage,
+  onSaved,
+}: {
+  settings: CabinetAuthSettings;
+  canManage: boolean;
+  onSaved: (settings: CabinetAuthSettings) => void;
+}) {
+  const { t } = useTranslation();
+  const [provider, setProvider] = useState(settings.captcha_provider);
+  const [siteKey, setSiteKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      onSaved(
+        await updateCabinetAuthSettings({
+          captcha_provider: provider,
+          ...(siteKey && { captcha_site_key: siteKey }),
+          ...(secretKey && { captcha_secret_key: secretKey }),
+        }),
+      );
+      setSiteKey("");
+      setSecretKey("");
+      toast.success(t("common.saved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ProviderPanel
+      icon={ShieldCheck}
+      label={t("settings.cabinetAuth.captcha.title")}
+      guide={<CabinetMethodGuideDialog method="captcha" />}
+      isConfigured={settings.is_captcha_configured}
+      isEnabled={settings.captcha_enabled}
+      onToggle={async (next) => onSaved(await updateCabinetAuthSettings({ captcha_enabled: next }))}
+      canToggle={canManage}
+      canEdit={canManage}
+      extra={
+        <Field label={t("settings.cabinetAuth.captcha.provider")}>
+          <SegmentedPills value={provider} onChange={setProvider} options={CAPTCHA_PROVIDERS} disabled={!canManage} stretch />
+        </Field>
+      }
+      fields={[
+        {
+          key: "captcha_site_key",
+          label: t("settings.cabinetAuth.captcha.siteKey"),
+          value: siteKey,
+          onChange: setSiteKey,
+        },
+        {
+          key: "captcha_secret_key",
+          label: t("settings.cabinetAuth.captcha.secretKey"),
+          value: secretKey,
+          onChange: setSecretKey,
+          secret: true,
+        },
+      ]}
+      footer={
+        canManage && (
           <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
             {isSubmitting ? t("common.saving") : t("common.save")}
           </Button>

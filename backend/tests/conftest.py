@@ -11,6 +11,8 @@ os.environ.setdefault("DATABASE_HOST", "localhost")
 os.environ.setdefault("DATABASE_PORT", "5432")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
+# the test client talks plain http to testserver: a Secure cookie never comes back
+os.environ.setdefault("APP_SECURE_COOKIES", "false")
 
 from decimal import Decimal
 from typing import AsyncIterator

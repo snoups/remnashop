@@ -90,6 +90,7 @@ async def test_methods_is_public_and_lowercases_providers(
         "email": False,
         "oauth": [],
         "allowed_email_domains": list(DEFAULT_ALLOWED_EMAIL_DOMAINS),
+        "captcha": None,
     }
 
     enabled = await client.patch(
@@ -117,3 +118,42 @@ async def test_methods_is_public_and_lowercases_providers(
     )
     assert rejected.status_code == 400
     assert rejected.json()["code"] == "EMAIL_NOT_CONFIGURED"
+
+
+async def test_captcha_secret_is_write_only(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    saved = await client.patch(
+        f"{API_V1}/settings/cabinet-auth",
+        json={"captcha_enabled": True, "captcha_site_key": "site", "captcha_secret_key": "s3cr3t"},
+        headers=headers,
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["is_captcha_configured"] is True
+    assert "s3cr3t" not in saved.text
+
+
+async def test_captcha_cannot_be_switched_on_without_keys(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+
+    rejected = await client.patch(
+        f"{API_V1}/settings/cabinet-auth",
+        json={"captcha_enabled": True, "captcha_site_key": "site"},
+        headers=headers,
+    )
+
+    assert rejected.status_code == 400
+    assert rejected.json()["code"] == "CAPTCHA_NOT_CONFIGURED"

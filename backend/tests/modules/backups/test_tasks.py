@@ -33,7 +33,7 @@ async def test_run_backup_marks_failed_when_dump_raises(
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch(
-        "app.modules.backups.usecases.run_backup.create_database_dump",
+        "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=RuntimeError("pg_dump failed: boom")),
     ):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
@@ -90,7 +90,7 @@ async def test_run_backup_runs_one_of_two_queued_runs(
         first = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
         await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+    with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=first.id)
         )
@@ -115,7 +115,7 @@ async def test_run_backup_completes_and_signs_database_dump(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+    with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
@@ -178,7 +178,7 @@ async def test_run_backup_removes_partial_file_on_failure(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+    with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
@@ -202,7 +202,7 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
     async def _fake_dump(cfg, dest: Path) -> None:
         dest.write_bytes(b"x")
 
-    with patch("app.modules.backups.usecases.run_backup.create_database_dump", _fake_dump):
+    with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
         for _ in range(2):
             async with uow:
                 run = await backup_repository.create_run(
@@ -385,7 +385,7 @@ async def test_run_backup_fails_a_run_stranded_by_a_killed_worker(
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch(
-        "app.modules.backups.usecases.run_backup.create_database_dump",
+        "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
     ):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
@@ -433,7 +433,7 @@ async def test_run_backup_does_not_fail_itself_after_a_long_queue(
         )
 
     with patch(
-        "app.modules.backups.usecases.run_backup.create_database_dump",
+        "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
     ):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
@@ -488,7 +488,7 @@ async def test_run_backup_ignores_a_run_that_already_finished(
         sibling = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
         await backup_repository.mark_running(sibling.id)
 
-    with patch("app.modules.backups.usecases.run_backup.create_database_dump", dump):
+    with patch("app.modules.backups.dump.create_database_dump", dump):
         await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )

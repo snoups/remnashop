@@ -4,7 +4,7 @@ from typing import Annotated, Final, Optional
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 from app.core.constants import INT64_MAX
-from app.core.enums import AccessMode, SmtpSecurity
+from app.core.enums import AccessMode, CaptchaProvider, SmtpSecurity
 
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 # no control characters (a line break above all): it lands in an email header
@@ -219,6 +219,10 @@ class CabinetAuthSettingsResponse(BaseModel):
     email_enabled: bool
     restrict_email_domains: bool
     allowed_email_domains: list[str]
+    captcha_enabled: bool
+    captcha_provider: CaptchaProvider
+    captcha_site_key: Optional[str]
+    is_captcha_configured: bool
 
 
 class UpdateCabinetAuthSettingsRequest(BaseModel):
@@ -229,6 +233,10 @@ class UpdateCabinetAuthSettingsRequest(BaseModel):
     email_enabled: Optional[bool] = None
     restrict_email_domains: Optional[bool] = None
     allowed_email_domains: Optional[list[str]] = None
+    captcha_enabled: Optional[bool] = None
+    captcha_provider: Optional[CaptchaProvider] = None
+    captcha_site_key: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    captcha_secret_key: Optional[str] = Field(default=None, min_length=1, max_length=255)
 
     @field_validator("allowed_email_domains")
     @classmethod

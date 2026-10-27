@@ -468,6 +468,17 @@ def upgrade() -> None:
             server_default="[]",
             nullable=False,
         ),
+        sa.Column("captcha_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "captcha_provider",
+            sa.Enum("TURNSTILE", "HCAPTCHA", name="captchaprovider"),
+            server_default="TURNSTILE",
+            nullable=False,
+        ),
+        sa.Column("captcha_site_key", sa.String(length=255), nullable=True),
+        sa.Column(
+            "captcha_secret_key", app.core.db.encrypted_string.EncryptedString(), nullable=True
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

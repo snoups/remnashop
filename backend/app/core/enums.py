@@ -195,6 +195,11 @@ class AccessMode(UpperStrEnum):
     RESTRICTED = auto()
 
 
+class CaptchaProvider(UpperStrEnum):
+    TURNSTILE = auto()
+    HCAPTCHA = auto()
+
+
 class SmtpSecurity(UpperStrEnum):
     STARTTLS = auto()
     TLS = auto()

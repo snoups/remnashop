@@ -40,6 +40,10 @@ class UpdateCabinetAuthSettingsUseCase(
                     )
             before = await self._settings_repository.get_cabinet_auth_settings()
             settings = await self._settings_repository.update_cabinet_auth_settings(data)
+            if settings.captcha_enabled and not settings.is_captcha_configured:
+                raise ValidationError(
+                    "Captcha keys are not set", code=ErrorCode.CAPTCHA_NOT_CONFIGURED
+                )
             await self._event_publisher.publish(
                 CabinetAuthSettingsChangedEvent(
                     actor=actor, changed_fields=changed_fields(before, settings, vars(data))

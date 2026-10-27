@@ -6,7 +6,11 @@ from app.modules.backups.dto import (
     CreateBackupRunDto,
     UpdateBackupSettingsDto,
 )
-from app.modules.backups.dump import restore_database_dump, terminate_other_backends
+from app.modules.backups.dump import (
+    create_signed_database_dump,
+    restore_database_dump,
+    terminate_other_backends,
+)
 from app.modules.backups.provenance import (
     ProvenanceResult,
     ProvenanceStatus,
@@ -43,6 +47,7 @@ __all__ = [
     "ResetBackupSettingsUseCase",
     "UpdateBackupSettingsDto",
     "UpdateBackupSettingsUseCase",
+    "create_signed_database_dump",
     "get_backups_providers",
     "restore_database_dump",
     "terminate_other_backends",

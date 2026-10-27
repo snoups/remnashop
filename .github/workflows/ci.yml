@@ -1,0 +1,132 @@
+name: Remnashop - Checks
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - main
+  # the image workflows run these first: no image is built from a red commit
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: 🐍 Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: remnashop
+          POSTGRES_PASSWORD: remnashop
+          POSTGRES_DB: remnashop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U remnashop -d remnashop"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: valkey/valkey:9-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 🧾 Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 🛠️ Set Up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: 📦 Install Dependencies
+        run: uv sync --frozen --extra telegram
+
+      # throwaway values: the app refuses to start without them, nothing here is secret
+      - name: 🔑 Write Test Environment
+        run: |
+          {
+            echo "APP_DOMAIN=ci.example.com"
+            echo "APP_CRYPT_KEY=$(openssl rand -base64 32)"
+            echo "APP_JWT_SECRET=$(openssl rand -hex 32)"
+            echo "REMNAWAVE_HOST=remnawave"
+            echo "REMNAWAVE_TOKEN=ci-token"
+            echo "REMNAWAVE_WEBHOOK_SECRET=$(openssl rand -hex 32)"
+            echo "DATABASE_PASSWORD=remnashop"
+          } > ../.env
+
+      - name: 🧹 Ruff
+        run: uv run ruff check . && uv run ruff format --check .
+
+      - name: 🔎 Mypy
+        run: uv run mypy .
+
+      - name: 🧱 Import Contracts
+        run: uv run lint-imports
+
+      - name: 🗄️ Migrate Test Database
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: "5432"
+
+      - name: 🧪 Pytest
+        run: uv run pytest -q
+
+  frontend:
+    name: ⚛️ Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: 🧾 Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: 🛠️ Set Up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: 🔎 Type Check
+        run: npx tsc -b
+
+      - name: 🧹 Lint
+        run: npm run lint
+
+      - name: 🏗️ Build
+        run: npm run build

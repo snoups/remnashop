@@ -4,6 +4,10 @@ set -e
 TARGET="$1"
 
 if [ "$TARGET" = "api" ]; then
+    if ! python -m app.cli.pre_migration_dump; then
+        echo "Pre-migration backup failed, migrations not applied! Exiting container..."
+        exit 1
+    fi
     echo "Running database migrations"
     if ! alembic -c alembic.ini upgrade head; then
         echo "Database migration failed! Exiting container..."

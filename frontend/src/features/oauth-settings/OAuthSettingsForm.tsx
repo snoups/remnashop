@@ -238,6 +238,7 @@ interface ProviderField {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  secret?: boolean;
 }
 
 interface ProviderPanelProps {
@@ -253,6 +254,10 @@ interface ProviderPanelProps {
   footer?: ReactNode;
   /** present: the panel is its own form */
   onSubmit?: (event: FormEvent) => void;
+  /** above the fields */
+  extra?: ReactNode;
+  /** defaults to the OAuth settings permission */
+  canEdit?: boolean;
 }
 
 export function ProviderPanel({
@@ -266,9 +271,12 @@ export function ProviderPanel({
   fields,
   footer,
   onSubmit,
+  extra,
+  canEdit,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
-  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
+  const canManageOAuth = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
+  const canManage = canEdit ?? canManageOAuth;
   const [isOpen, setIsOpen] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
@@ -339,9 +347,10 @@ export function ProviderPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
+              {extra}
               {fields.map((field) => (
                 <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
-                  {field.key.endsWith("_client_secret") ? (
+                  {(field.secret ?? field.key.endsWith("_client_secret")) ? (
                     <PasswordInput
                       id={`oauth-${field.key}`}
                       value={field.value}

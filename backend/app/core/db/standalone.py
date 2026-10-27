@@ -18,6 +18,7 @@ def connect_args(database: DatabaseConfig) -> dict[str, Any]:
             "timezone": "UTC",
             "statement_timeout": str(database.statement_timeout_ms),
             "idle_in_transaction_session_timeout": str(database.idle_in_transaction_timeout_ms),
+            "lock_timeout": str(database.lock_timeout_ms),
         },
         "command_timeout": database.command_timeout_s,
         "timeout": database.connect_timeout_s,

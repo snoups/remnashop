@@ -175,16 +175,26 @@ export interface CabinetAuthSettings {
   email_enabled: boolean;
   restrict_email_domains: boolean;
   allowed_email_domains: string[];
+  captcha_enabled: boolean;
+  captcha_provider: CaptchaProvider;
+  captcha_site_key: string | null;
+  is_captcha_configured: boolean;
 }
+
+export type CaptchaProvider = "TURNSTILE" | "HCAPTCHA";
+
+export type UpdateCabinetAuthSettingsPayload = Partial<
+  Omit<CabinetAuthSettings, "is_captcha_configured" | "captcha_site_key">
+> & { captcha_site_key?: string; captcha_secret_key?: string };
 
 export function getCabinetAuthSettings(signal?: AbortSignal): Promise<CabinetAuthSettings> {
   return apiGet<CabinetAuthSettings>("/settings/cabinet-auth", signal);
 }
 
 export function updateCabinetAuthSettings(
-  payload: Partial<CabinetAuthSettings>,
+  payload: UpdateCabinetAuthSettingsPayload,
 ): Promise<CabinetAuthSettings> {
-  return apiPatch<CabinetAuthSettings, Partial<CabinetAuthSettings>>("/settings/cabinet-auth", payload);
+  return apiPatch<CabinetAuthSettings, UpdateCabinetAuthSettingsPayload>("/settings/cabinet-auth", payload);
 }
 
 export interface ShopSettings {

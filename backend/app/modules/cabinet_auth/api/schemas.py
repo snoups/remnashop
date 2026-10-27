@@ -3,8 +3,13 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.constants import EMAIL_PATTERN
-from app.core.enums import Locale, Role
+from app.core.enums import CaptchaProvider, Locale, Role
 from app.core.utils.validators import known_locale
+
+
+class CaptchaWidgetResponse(BaseModel):
+    provider: CaptchaProvider
+    site_key: str
 
 
 class CabinetMethodsResponse(BaseModel):
@@ -13,6 +18,7 @@ class CabinetMethodsResponse(BaseModel):
     email: bool
     oauth: list[str]
     allowed_email_domains: Optional[list[str]]
+    captcha: Optional[CaptchaWidgetResponse]
 
     @field_validator("oauth", mode="before")
     @classmethod
@@ -37,6 +43,7 @@ class RequestEmailCodeRequest(BaseModel):
     locale: Locale = Locale.EN
     ref: Optional[str] = Field(None, max_length=64)
     ad: Optional[str] = Field(None, max_length=64)
+    captcha_token: Optional[str] = Field(None, max_length=4096)
 
 
 class BotSignInRequest(BaseModel):

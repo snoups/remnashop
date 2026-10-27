@@ -9,8 +9,14 @@ on:
 permissions: {}
 
 jobs:
-  images:
+  checks:
     if: github.event.action == 'released' || github.event.release.prerelease
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  images:
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read

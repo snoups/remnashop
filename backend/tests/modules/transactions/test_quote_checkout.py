@@ -1,3 +1,4 @@
+from dataclasses import replace
 from decimal import Decimal
 from uuid import uuid4
 
@@ -13,8 +14,9 @@ from app.core.enums import (
     PlanType,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
+from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
 from app.modules.legal import LegalAcceptanceRecorder, LegalRepository
 from app.modules.plans.dto import (
@@ -235,3 +237,26 @@ async def test_quote_does_not_spend_the_purchase_discount(
     assert quote.discount_source is DiscountSource.PURCHASE
     user = await user_repository.find_by_id(actor.id)
     assert user is not None and user.purchase_discount == 20
+
+
+async def test_checkout_refuses_a_total_the_customer_was_not_shown(
+    quote_use_case: QuoteCheckoutUseCase,
+    checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    transaction_repository: TransactionRepository,
+) -> None:
+    quote = await quote_use_case(actor, _quote_dto(plan))
+    stale = replace(_checkout_dto(actor, plan), expected_price=quote.final_price + 1)
+
+    with pytest.raises(ConflictError) as error:
+        await checkout_use_case(actor, stale)
+
+    assert error.value.code is ErrorCode.PRICE_CHANGED
+    assert await transaction_repository.count_open_new_orders(actor.id, datetime_now()) == 0
+
+    shown = replace(_checkout_dto(actor, plan), expected_price=quote.final_price)
+    result = await checkout_use_case(actor, shown)
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.final_price == quote.final_price

@@ -38,7 +38,7 @@ router = APIRouter(tags=["transactions"])
     "/checkout",
     response_model=CheckoutResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(400, 403, 404, 502),
+    responses=error_responses(400, 403, 404, 409, 502),
 )
 @inject
 async def create_checkout(
@@ -61,6 +61,7 @@ async def create_checkout(
             customer_email=payload.customer_email,
             plan_code=payload.plan_code,
             legal_locale=payload.legal_locale,
+            expected_price=payload.expected_price,
             client_ip=resolve_client_ip(request),
             return_to="cabinet" if auth.audience is SessionAudience.CABINET else "default",
         ),

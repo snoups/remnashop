@@ -301,10 +301,23 @@ def test_spa_and_api_responses_carry_anti_framing_headers(
 
     for path in ("/dashboard/users", "/health"):
         response = client.get(path)
-        assert response.headers["content-security-policy"] == "frame-ancestors 'none'"
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
         assert response.headers["x-frame-options"] == "DENY"
         assert response.headers["x-content-type-options"] == "nosniff"
         assert response.headers["referrer-policy"] == "same-origin"
+        assert "camera=()" in response.headers["permissions-policy"]
+        assert response.headers["strict-transport-security"] == "max-age=31536000"
+
+
+def test_only_the_spa_gets_the_script_policy(
+    config: AppConfig, frontend_dist: Path, readyz_container: AsyncContainer
+) -> None:
+    app = get_app(config, frontend_dist=frontend_dist)
+    setup_dishka(readyz_container, app)
+    client = TestClient(app)
+
+    assert "script-src 'self'" in client.get("/dashboard/users").headers["content-security-policy"]
+    assert client.get("/health").headers["content-security-policy"] == "frame-ancestors 'none'"
 
 
 async def _multipart_chunks(total: int):

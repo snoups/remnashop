@@ -112,14 +112,18 @@ async def cabinet_telegram_login(
     "/email/code",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(rate_limit(key="cabinet_email_code", limit=30, window_seconds=TIME_1M))],
-    responses=error_responses(401),
+    responses=error_responses(401, 403),
 )
 @inject
 async def cabinet_email_code(
-    body: RequestEmailCodeRequest, use_case: FromDishka[RequestEmailCodeUseCase]
+    body: RequestEmailCodeRequest, request: Request, use_case: FromDishka[RequestEmailCodeUseCase]
 ) -> None:
     await use_case.execute(
-        body.email, body.locale, InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad)
+        body.email,
+        body.locale,
+        InviteCodesDto(referral_code=body.ref, ad_link_code=body.ad),
+        captcha_token=body.captcha_token,
+        client_ip=resolve_client_ip(request),
     )
 
 

@@ -7,7 +7,7 @@ from pydantic import Field, SecretStr
 
 from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AccessMode, OAuthProvider, SmtpSecurity, UpperStrEnum
+from app.core.enums import AccessMode, CaptchaProvider, OAuthProvider, SmtpSecurity, UpperStrEnum
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -347,6 +347,14 @@ class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
     allowed_email_domains: list[str] = Field(
         default_factory=lambda: list(DEFAULT_ALLOWED_EMAIL_DOMAINS)
     )
+    captcha_enabled: bool = False
+    captcha_provider: CaptchaProvider = CaptchaProvider.TURNSTILE
+    captcha_site_key: Optional[str] = None
+    captcha_secret_key: Optional[SecretStr] = None
+
+    @property
+    def is_captcha_configured(self) -> bool:
+        return self.captcha_site_key is not None and self.captcha_secret_key is not None
 
     def is_oauth_enabled(self, provider: OAuthProvider) -> bool:
         if provider is OAuthProvider.TELEGRAM:
@@ -367,6 +375,10 @@ class UpdateCabinetAuthSettingsDto:
     email_enabled: Optional[bool] = None
     restrict_email_domains: Optional[bool] = None
     allowed_email_domains: Optional[list[str]] = None
+    captcha_enabled: Optional[bool] = None
+    captcha_provider: Optional[CaptchaProvider] = None
+    captcha_site_key: Optional[str] = None
+    captcha_secret_key: Optional[str] = None
 
 
 class BotRequirementsDto(BaseDto, TimestampMixin):

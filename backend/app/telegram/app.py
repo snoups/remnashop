@@ -23,6 +23,10 @@ def get_app(
         openapi_url=None,
     )
 
+    @app.get("/health")
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
     endpoint = TelegramWebhookEndpoint(dispatcher=dispatcher, secret_token=secret_token)
     endpoint.register(app=app, path=config.bot.webhook_path)
 

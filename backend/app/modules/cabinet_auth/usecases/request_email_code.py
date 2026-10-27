@@ -1,9 +1,12 @@
+from typing import Optional
+
 from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.utils.email import normalize_email
+from app.modules.cabinet_auth.captcha import verify_captcha
 from app.modules.cabinet_auth.dto import InviteCodesDto
 from app.modules.cabinet_auth.email_codes import (
     EmailCodeStore,
@@ -37,10 +40,18 @@ class RequestEmailCodeUseCase:
         self._user_repository = user_repository
         self._uow = uow
 
-    async def execute(self, email: str, locale: Locale, codes: InviteCodesDto) -> None:
+    async def execute(
+        self,
+        email: str,
+        locale: Locale,
+        codes: InviteCodesDto,
+        captcha_token: Optional[str] = None,
+        client_ip: Optional[str] = None,
+    ) -> None:
         async with self._uow:
             cabinet = await require_email_sign_in(self._settings_repository)
             brand = await load_email_brand(self._settings_repository)
+        await verify_captcha(cabinet, captcha_token, client_ip)
 
         async with self._uow:
             existing = await self._user_repository.find_by_email(email)

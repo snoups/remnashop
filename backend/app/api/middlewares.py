@@ -35,6 +35,9 @@ _SECURITY_HEADERS: Final[tuple[tuple[str, str], ...]] = (
     ("X-Frame-Options", "DENY"),
     ("X-Content-Type-Options", "nosniff"),
     ("Referrer-Policy", "same-origin"),
+    ("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()"),
+    # over plain http the browser ignores it; no includeSubDomains: a sibling host may still be http
+    ("Strict-Transport-Security", "max-age=31536000"),
 )
 
 
