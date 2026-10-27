@@ -52,5 +52,7 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
                     reward_amounts=settings.reward_amounts,
                     invitee_reward_type=settings.invitee_reward_type,
                     invitee_reward_amount=settings.invitee_reward_amount,
+                    accrual_strategy=settings.accrual_strategy,
+                    max_level=settings.max_level,
                 ),
             )

@@ -75,6 +75,8 @@ class ReferralProgramDto:
     reward_amounts: dict[int, Decimal]
     invitee_reward_type: ReferralRewardType
     invitee_reward_amount: int
+    accrual_strategy: ReferralAccrualStrategy
+    max_level: int
 
 
 @dataclass(frozen=True, kw_only=True)

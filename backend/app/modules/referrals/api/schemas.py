@@ -82,6 +82,8 @@ class ReferralProgramResponse(BaseModel):
     reward_amounts: dict[int, Decimal]
     invitee_reward_type: ReferralRewardType
     invitee_reward_amount: int
+    accrual_strategy: ReferralAccrualStrategy
+    max_level: int
 
 
 class OwnReferralStatsResponse(ReferralStatsResponse):

@@ -285,3 +285,4 @@ async def test_own_stats_carry_the_program(
     assert program["enabled"] is True
     assert {"reward_type", "reward_strategy", "reward_amounts"} <= program.keys()
     assert {"invitee_reward_type", "invitee_reward_amount"} <= program.keys()
+    assert {"accrual_strategy", "max_level"} <= program.keys()
