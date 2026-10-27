@@ -6,14 +6,14 @@ from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.utils.http import resolve_client_ip
-from app.modules.auth import (
+from app.modules.auth.api.schemas import SessionListResponse, SessionResponse
+from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
+from app.modules.auth.usecases import (
     ListSessionsUseCase,
     ListUserSessionsUseCase,
     RevokeSessionUseCase,
     RevokeUserSessionUseCase,
 )
-from app.modules.auth.api.schemas import SessionListResponse, SessionResponse
-from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
 from app.modules.users import UserDto
 
 sessions_router = APIRouter(prefix="/auth/sessions", tags=["auth"])

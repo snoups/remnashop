@@ -3,9 +3,8 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1, CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from app.core.security.session_token import derive_csrf_token
@@ -15,10 +14,10 @@ _BOOTSTRAP_PASSWORD = "Sup3rSecurePassword12345"
 
 @pytest.fixture
 async def auth_client(
-    config: AppConfig, test_container: AsyncContainer
+    test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

@@ -9,7 +9,7 @@ from aiogram_dialog import StartMode
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, PurchaseType
 from app.modules.subscriptions import ListActivePlansDto, PlanCatalogDto
-from app.modules.transactions import CheckoutResultDto
+from app.modules.transactions.dto import CheckoutResultDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.purchase.deeplink import on_plan_link
 from app.telegram.routers.purchase.getters import duration_getter, link_choice_getter

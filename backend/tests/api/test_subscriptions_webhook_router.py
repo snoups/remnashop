@@ -5,6 +5,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from redis.asyncio import Redis
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,10 +63,10 @@ async def webhook_container(
 
 @pytest.fixture
 async def webhook_client(
-    config: AppConfig, webhook_container: AsyncContainer
+    webhook_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(webhook_container, app)
+    app = api_app
+    app.state.dishka_container = webhook_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

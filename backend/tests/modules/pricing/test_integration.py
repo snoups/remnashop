@@ -17,7 +17,8 @@ from app.core.enums import (
 )
 from app.core.ports import EventPublisher
 from app.modules.gateways.repository import GatewayRepository
-from app.modules.legal import LegalAcceptanceRecorder, LegalRepository
+from app.modules.legal import LegalAcceptanceRecorder
+from app.modules.legal.repository import LegalRepository
 from app.modules.loyalty.repository import LoyaltyRepository
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
@@ -40,9 +41,10 @@ from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.settings.repository import SettingsRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import ListActivePlansUseCase
-from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
+from app.modules.transactions.gateways.base import PaymentIntent
+from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase
 from app.modules.transactions.waitlist_repository import WaitlistRepository

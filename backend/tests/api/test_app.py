@@ -6,6 +6,7 @@ import httpx
 import pytest
 from dishka import AsyncContainer, make_async_container
 from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from loguru import logger
 from pydantic import SecretStr
@@ -40,9 +41,9 @@ def frontend_dist(tmp_path: Path) -> Path:
     return dist
 
 
-def test_health_returns_ok(config: AppConfig, readyz_container: AsyncContainer) -> None:
-    app = get_app(config)
-    setup_dishka(readyz_container, app)
+def test_health_returns_ok(readyz_container: AsyncContainer, api_app: FastAPI) -> None:
+    app = api_app
+    app.state.dishka_container = readyz_container
     client = TestClient(app)
 
     response = client.get("/health")
@@ -172,10 +173,10 @@ async def readyz_container(config: AppConfig) -> AsyncIterator[AsyncContainer]:
 
 @pytest.fixture
 async def readyz_client(
-    config: AppConfig, readyz_container: AsyncContainer
+    readyz_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(readyz_container, app)
+    app = api_app
+    app.state.dishka_container = readyz_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
@@ -239,10 +240,10 @@ async def protected_route_container(config: AppConfig) -> AsyncIterator[AsyncCon
 
 
 async def test_global_rate_limit_returns_429_after_the_threshold(
-    config: AppConfig, protected_route_container: AsyncContainer, redis: Redis
+    protected_route_container: AsyncContainer, redis: Redis, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(protected_route_container, app)
+    app = api_app
+    app.state.dishka_container = protected_route_container
     key = "remnashop:ratelimit:global:ip:203.0.113.20"
     await redis.delete(key)
 
@@ -259,10 +260,10 @@ async def test_global_rate_limit_returns_429_after_the_threshold(
 
 
 async def test_health_and_readyz_are_exempt_from_the_global_rate_limit(
-    config: AppConfig, readyz_container: AsyncContainer, redis: Redis
+    readyz_container: AsyncContainer, redis: Redis, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(readyz_container, app)
+    app = api_app
+    app.state.dishka_container = readyz_container
     key = "remnashop:ratelimit:global:ip:203.0.113.21"
     await redis.delete(key)
 
@@ -275,10 +276,10 @@ async def test_health_and_readyz_are_exempt_from_the_global_rate_limit(
 
 
 async def test_remnawave_webhook_is_exempt_from_the_global_rate_limit(
-    config: AppConfig, protected_route_container: AsyncContainer, redis: Redis
+    protected_route_container: AsyncContainer, redis: Redis, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(protected_route_container, app)
+    app = api_app
+    app.state.dishka_container = protected_route_container
     key = "remnashop:ratelimit:global:ip:203.0.113.22"
     await redis.delete(key)
 
@@ -341,10 +342,10 @@ async def _multipart_chunks(total: int):
     ],
 )
 async def test_oversized_body_is_rejected_before_authentication(
-    config: AppConfig, readyz_container: AsyncContainer, method: str, path: str, too_big: int
+    readyz_container: AsyncContainer, method: str, path: str, too_big: int, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(readyz_container, app)
+    app = api_app
+    app.state.dishka_container = readyz_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         declared = await client.request(method, path, content=b"x" * too_big)
@@ -406,10 +407,10 @@ async def test_broadcast_media_route_allows_bodies_up_to_its_media_limit() -> No
 
 
 def test_docs_refuse_a_request_without_a_ticket(
-    config: AppConfig, readyz_container: AsyncContainer
+    readyz_container: AsyncContainer, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(readyz_container, app)
+    app = api_app
+    app.state.dishka_container = readyz_container
     client = TestClient(app)
 
     for path in (DOCS_PATH, f"{DOCS_PATH}/redoc", f"{DOCS_PATH}/openapi.json"):
@@ -466,10 +467,10 @@ async def test_docs_trade_a_ticket_for_a_cookie_tied_to_the_session(
 
 
 async def test_emoji_art_counts_in_its_own_bucket_not_the_ip_budget(
-    config: AppConfig, protected_route_container: AsyncContainer, redis: Redis
+    protected_route_container: AsyncContainer, redis: Redis, api_app: FastAPI
 ) -> None:
-    app = get_app(config)
-    setup_dishka(protected_route_container, app)
+    app = api_app
+    app.state.dishka_container = protected_route_container
     global_key = "remnashop:ratelimit:global:ip:203.0.113.23"
     emoji_key = "remnashop:ratelimit:emoji:ip:203.0.113.23"
     await redis.delete(global_key, emoji_key)

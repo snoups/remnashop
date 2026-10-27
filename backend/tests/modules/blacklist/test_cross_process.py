@@ -4,11 +4,10 @@ from typing import Final
 
 import httpx
 from dishka import Provider, Scope, make_async_container, provide
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
@@ -20,10 +19,10 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.providers import get_module_providers
-from app.modules.users import BlockBlacklistMatchesUseCase
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.usecases import BlockBlacklistMatchesUseCase
 from tests.fakes.dispatch import RecordingDispatch
 
 _OWNER_TELEGRAM_ID: Final[int] = 51500
@@ -42,7 +41,9 @@ class _SessionProvider(Provider):
         return self._session
 
 
-async def test_api_written_entry_is_visible_to_a_separate_session(config: AppConfig) -> None:
+async def test_api_written_entry_is_visible_to_a_separate_session(
+    config: AppConfig, api_app: FastAPI
+) -> None:
     # Written through the HTTP API on one engine, read back by a reconcile run on
     # a second: a flush without a commit would be invisible to the reader.
     # Both commit for real, so cleanup is by hand.
@@ -89,8 +90,8 @@ async def test_api_written_entry_is_visible_to_a_separate_session(config: AppCon
                 _SessionProvider(write_session),
                 context={AppConfig: config},
             )
-            app = get_app(config)
-            setup_dishka(container, app)
+            app = api_app
+            app.state.dishka_container = container
             try:
                 transport = httpx.ASGITransport(app=app)
                 async with httpx.AsyncClient(

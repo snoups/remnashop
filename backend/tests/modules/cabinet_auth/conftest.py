@@ -3,10 +3,9 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, provide
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.email import SendEmailDispatch
@@ -47,9 +46,9 @@ async def sign_in(container: AsyncContainer) -> AsyncIterator[CabinetSignIn]:
 
 
 @pytest.fixture
-async def client(config: AppConfig, container: AsyncContainer) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(container, app)
+async def client(container: AsyncContainer, api_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+    app = api_app
+    app.state.dishka_container = container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

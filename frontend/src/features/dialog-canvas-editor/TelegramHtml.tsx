@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { parseTelegramHtml, renderVariablesSample } from "@entities/broadcasts/telegram-html";
 import type { TgNode } from "@entities/broadcasts/telegram-html";
-import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 
 function renderNodes(nodes: TgNode[]): ReactNode[] {
   return nodes.map((node, index) => {

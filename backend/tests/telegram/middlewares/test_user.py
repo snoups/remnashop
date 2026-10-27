@@ -8,8 +8,7 @@ from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import AppConfig
-from app.core.constants import CONFIG_KEY, CONTAINER_KEY, USER_KEY
+from app.core.constants import CONTAINER_KEY, USER_KEY
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.user_registration import UserRegistration
 from app.core.db.uow import UnitOfWork
@@ -100,14 +99,11 @@ async def _run_middleware(data: dict[str, Any]) -> bool:
     return handler_called
 
 
-async def test_user_middleware_skips_registration_for_group_chat_messages(
-    config: AppConfig,
-) -> None:
+async def test_user_middleware_skips_registration_for_group_chat_messages() -> None:
     data: dict[str, Any] = {
         "event_chat": Chat(id=-100123, type=ChatType.GROUP),
         "event_from_user": _sender(),
         CONTAINER_KEY: _ExplodingContainer(),
-        CONFIG_KEY: config,
     }
 
     handler_called = await _run_middleware(data)
@@ -123,7 +119,6 @@ async def test_user_middleware_registers_user_for_private_chat_messages(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     data: dict[str, Any] = {
         "event_chat": Chat(id=4242, type=ChatType.PRIVATE),
@@ -136,7 +131,6 @@ async def test_user_middleware_registers_user_for_private_chat_messages(
             uow,
             event_publisher,
         ),
-        CONFIG_KEY: config,
     }
 
     handler_called = await _run_middleware(data)
@@ -153,7 +147,6 @@ async def test_user_middleware_carries_ad_link_code_from_start_payload(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
     session: AsyncSession,
 ) -> None:
     message = Message.model_construct(
@@ -176,7 +169,6 @@ async def test_user_middleware_carries_ad_link_code_from_start_payload(
             uow,
             event_publisher,
         ),
-        CONFIG_KEY: config,
     }
 
     middleware = UserMiddleware()
@@ -210,7 +202,6 @@ async def test_user_middleware_syncs_username_and_an_active_telegram_language(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     container = _FakeContainer(
         user_repository,
@@ -226,7 +217,6 @@ async def test_user_middleware_syncs_username_and_an_active_telegram_language(
             "event_chat": Chat(id=sender.id, type=ChatType.PRIVATE),
             "event_from_user": sender,
             CONTAINER_KEY: container,
-            CONFIG_KEY: config,
         }
         await _run_middleware(data)
         return data[USER_KEY]
@@ -262,7 +252,6 @@ async def _run_start(
     text: str,
     telegram_id: int,
     container: _FakeContainer,
-    config: AppConfig,
     answered: list[Any],
 ) -> bool:
     message = _start_message(telegram_id, text, answered)
@@ -270,7 +259,6 @@ async def _run_start(
         "event_chat": message.chat,
         "event_from_user": message.from_user,
         CONTAINER_KEY: container,
-        CONFIG_KEY: config,
     }
     middleware = UserMiddleware()
     handler_called = False
@@ -290,7 +278,6 @@ async def test_invite_only_refuses_an_uninvited_newcomer_without_creating_them(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     async with uow:
         await settings_repository.update_access_settings(
@@ -307,7 +294,7 @@ async def test_invite_only_refuses_an_uninvited_newcomer_without_creating_them(
     )
     answered: list[Any] = []
 
-    handler_called = await _run_start("/start", 6161, container, config, answered)
+    handler_called = await _run_start("/start", 6161, container, answered)
 
     assert handler_called is False
     assert answered and answered[0][0] == "ntf-access.invite-only"
@@ -321,7 +308,6 @@ async def test_invite_only_registers_a_newcomer_with_a_referral_code(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
 ) -> None:
     async with uow:
         referrer = await user_repository.create(CreateUserDto(name="ref", telegram_id=6262))
@@ -338,9 +324,7 @@ async def test_invite_only_registers_a_newcomer_with_a_referral_code(
         event_publisher,
     )
 
-    handler_called = await _run_start(
-        f"/start ref_{referrer.referral_code}", 6363, container, config, []
-    )
+    handler_called = await _run_start(f"/start ref_{referrer.referral_code}", 6363, container, [])
 
     assert handler_called is True
     assert await user_repository.find_by_telegram_id(6363) is not None
@@ -353,7 +337,6 @@ async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
     session: AsyncSession,
     redis: Redis,
 ) -> None:
@@ -369,7 +352,7 @@ async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
         store,
     )
 
-    await _run_start(f"/start webauth_{token}", 6464, container, config, [])
+    await _run_start(f"/start webauth_{token}", 6464, container, [])
 
     rows = (
         await session.scalars(
@@ -383,14 +366,13 @@ async def test_webauth_start_registers_a_newcomer_with_the_cabinet_invite(
 
 
 async def _run_link_start(
-    telegram_id: int, container: _FakeContainer, config: AppConfig, token: str
+    telegram_id: int, container: _FakeContainer, token: str
 ) -> dict[str, Any]:
     message = _start_message(telegram_id, f"/start webauth_{token}", [])
     data: dict[str, Any] = {
         "event_chat": message.chat,
         "event_from_user": message.from_user,
         CONTAINER_KEY: container,
-        CONFIG_KEY: config,
     }
     seen: dict[str, Any] = {}
 
@@ -408,7 +390,6 @@ async def test_link_start_skips_registration(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
     redis: Redis,
 ) -> None:
     async with uow:
@@ -429,7 +410,7 @@ async def test_link_start_skips_registration(
         store,
     )
 
-    seen = await _run_link_start(6565, container, config, token)
+    seen = await _run_link_start(6565, container, token)
 
     assert seen and seen.get(USER_KEY) is None
     assert await user_repository.find_by_telegram_id(6565) is None
@@ -444,7 +425,6 @@ async def test_link_start_existing_user_loaded(
     ad_link_repository: AdLinkRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
-    config: AppConfig,
     session: AsyncSession,
     redis: Redis,
 ) -> None:
@@ -465,7 +445,7 @@ async def test_link_start_existing_user_loaded(
     )
     before = len((await session.scalars(select(EventOutboxEntry))).all())
 
-    seen = await _run_link_start(6666, container, config, token)
+    seen = await _run_link_start(6666, container, token)
 
     assert seen[USER_KEY].id == existing.id
     assert len((await session.scalars(select(EventOutboxEntry))).all()) == before

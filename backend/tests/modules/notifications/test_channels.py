@@ -3,15 +3,15 @@ import pytest
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import ValidationError
-from app.modules.notifications import (
+from app.modules.notifications import bell_event_types
+from app.modules.notifications.dto import (
     DEFAULT_NOTIFICATION_CHANNELS,
     NOTIFICATION_GROUPS,
     NotificationChannel,
-    bell_event_types,
+    UpdateNotificationChannelsDto,
     channels_for,
     group_of,
 )
-from app.modules.notifications.dto import UpdateNotificationChannelsDto
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.notifications.usecases import (
     GetNotificationChannelsUseCase,

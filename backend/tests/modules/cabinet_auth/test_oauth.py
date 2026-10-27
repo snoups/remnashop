@@ -28,8 +28,8 @@ from app.modules.oauth import (
 )
 from app.modules.oauth.dto import CreateOAuthIdentityDto
 from app.modules.oauth.usecases import OAuthConnectAuthorizeUseCase, OAuthLoginAuthorizeUseCase
-from app.modules.settings import SettingsRepository, UpdateOAuthSettingsDto
-from app.modules.settings.dto import UpdateCabinetAuthSettingsDto
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateCabinetAuthSettingsDto, UpdateOAuthSettingsDto
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

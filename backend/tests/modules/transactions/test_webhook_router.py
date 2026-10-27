@@ -6,11 +6,10 @@ from typing import AsyncIterator, Optional
 import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope, provide
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.enums import (
@@ -120,10 +119,10 @@ async def test_container(
 
 @pytest.fixture
 async def client(
-    config: AppConfig, test_container: AsyncContainer
+    test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

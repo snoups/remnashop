@@ -48,7 +48,9 @@ from app.core.exceptions import (
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
-from app.modules.legal import CreateLegalRevisionDto, LegalAcceptanceRecorder, LegalRepository
+from app.modules.legal import LegalAcceptanceRecorder
+from app.modules.legal.dto import CreateLegalRevisionDto
+from app.modules.legal.repository import LegalRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -71,16 +73,15 @@ from app.modules.settings.dto import (
     UpdateShopSettingsDto,
 )
 from app.modules.settings.repository import SettingsRepository
-from app.modules.subscriptions import (
-    CreateSubscriptionDto,
-    SubscriptionRepository,
-)
+from app.modules.subscriptions import SubscriptionRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.usecases.purchase_subscription import STALE_CLAIM_AFTER
-from app.modules.transactions import PaymentGatewayFactory, PaymentIntent
 from app.modules.transactions.api.schemas import CreateCheckoutRequest
 from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dto import CreateCheckoutDto, TransactionDto
+from app.modules.transactions.gateways.base import PaymentIntent
+from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import CreateCheckoutUseCase, CreateTestPaymentUseCase

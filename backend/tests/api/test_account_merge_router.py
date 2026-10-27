@@ -5,9 +5,8 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
@@ -21,10 +20,10 @@ from app.modules.users.repository import UserRepository
 
 @pytest.fixture
 async def client(
-    config: AppConfig, test_container: AsyncContainer
+    test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

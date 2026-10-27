@@ -5,11 +5,10 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
@@ -44,10 +43,10 @@ async def test_container(session: AsyncSession, config: AppConfig) -> AsyncItera
 
 @pytest.fixture
 async def client(
-    config: AppConfig, test_container: AsyncContainer
+    test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client
@@ -167,16 +166,16 @@ async def test_withdraw_points_rejects_amount_above_points(
 
 
 async def test_withdraw_points_is_rate_limited_per_user(
-    config: AppConfig,
     test_container: AsyncContainer,
     actor: tuple[UserDto, dict[str, str]],
     redis: Redis,
+    api_app: FastAPI,
 ) -> None:
     # Each request is an audit-log row an admin works through by hand: one user
     # must not bury the rest, and a new source address must not reset the budget.
     user, headers = actor
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     key = f"remnashop:ratelimit:points_withdraw:user:{user.id}"
     await redis.delete(key)
 

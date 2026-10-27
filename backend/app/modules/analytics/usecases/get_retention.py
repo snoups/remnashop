@@ -35,8 +35,6 @@ _TOP_LIMIT: Final[int] = 10
 _DAYS_PER_MONTH: Final[Decimal] = Decimal("30.44")
 _WEEK_KEYS: Final[tuple[str, ...]] = ("1_7", "8_14", "15_21", "22_30")
 
-_Segments = list[tuple[datetime, datetime]]
-
 
 def _rate(part: int, whole: int) -> float:
     return part / whole if whole else 0.0

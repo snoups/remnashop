@@ -9,7 +9,8 @@ from app.core.enums import Locale, OAuthProvider, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.ports import EventPublisher
-from app.modules.auth import BootstrapOwnerUseCase, SessionIssuer, SessionRepository
+from app.modules.auth import SessionIssuer, SessionRepository
+from app.modules.auth.usecases import BootstrapOwnerUseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.events import OAuthLoginFailedEvent
@@ -32,7 +33,8 @@ from app.modules.oauth.usecases import (
     oauth_connect_callback,
     oauth_login_callback,
 )
-from app.modules.settings import SettingsRepository, UpdateOAuthSettingsDto
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateOAuthSettingsDto
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

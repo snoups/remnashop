@@ -9,6 +9,7 @@ export type DialogFlow =
   | "change"
   | "subscription"
   | "promocode"
+  | "referrals"
   | "custom";
 export type ButtonLinkType = "action" | "navigate" | "url" | "web_app";
 export type ButtonStyleKind = "primary" | "success" | "danger";
@@ -114,7 +115,7 @@ export function windowTextKeys(window: DialogWindow): string[] {
 /** Mirrors core/constants.py. A window stores a banner name: unset means no
  * banner, SHARED_BANNER_NAME means the one shared by every window, and anything
  * else is that window's own. */
-export const SHARED_BANNER_NAME = "default";
+const SHARED_BANNER_NAME = "default";
 const WINDOW_BANNER_PREFIX = "win.";
 
 export type BannerMode = "none" | "shared" | "own";
@@ -124,7 +125,7 @@ export function bannerMode(bannerName: string | null): BannerMode {
   return bannerName === SHARED_BANNER_NAME ? "shared" : "own";
 }
 
-export function windowBannerName(windowKey: string): string {
+function windowBannerName(windowKey: string): string {
   return `${WINDOW_BANNER_PREFIX}${windowKey}`;
 }
 
@@ -172,8 +173,8 @@ export function urlProblem(
 
 /** Mirrors modules/dialogs/validation.py: Telegram refuses the whole keyboard
  * or message past these. */
-export const MAX_BUTTONS_PER_ROW = 8;
-export const MAX_BUTTONS = 100;
+const MAX_BUTTONS_PER_ROW = 8;
+const MAX_BUTTONS = 100;
 export const MAX_TEXT_LENGTH = 4096;
 export const MAX_CAPTION_LENGTH = 1024;
 

@@ -4,7 +4,8 @@ import hmac
 
 import pytest
 
-from app.modules.users import read_unsubscribe_token, unsubscribe_token
+from app.modules.users import unsubscribe_token
+from app.modules.users.unsubscribe import read_unsubscribe_token
 
 SECRET = "k" * 32
 

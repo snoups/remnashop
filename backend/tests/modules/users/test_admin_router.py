@@ -4,11 +4,10 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import update
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
@@ -31,14 +30,14 @@ from tests.fakes.events import RecordingEventPublisher
 
 @pytest.fixture
 async def client(
-    config: AppConfig, test_container: AsyncContainer
+    test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
     # httpx.AsyncClient + ASGITransport runs the app on this test's loop.
     # TestClient (tests/api/test_app.py) uses a thread with its own loop, and
     # the endpoint's session is the `session` fixture's asyncpg connection,
     # which is loop-bound ("Future attached to a different loop").
-    app = get_app(config)
-    setup_dishka(test_container, app)
+    app = api_app
+    app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

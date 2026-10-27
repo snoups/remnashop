@@ -55,7 +55,8 @@ from app.modules.referrals.usecases import (
     ResetReferralSettingsUseCase,
     UpdateReferralSettingsUseCase,
 )
-from app.modules.settings import SettingsRepository, UpdateShopSettingsDto
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.dto import CreateTransactionDto

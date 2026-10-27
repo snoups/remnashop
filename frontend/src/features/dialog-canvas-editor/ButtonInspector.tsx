@@ -22,7 +22,7 @@ import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
-import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 import { Button } from "@shared/ui/Button";
 

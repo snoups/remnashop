@@ -18,7 +18,8 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.gateways.repository import GatewayRepository
-from app.modules.legal import LegalAcceptanceRecorder, LegalRepository
+from app.modules.legal import LegalAcceptanceRecorder
+from app.modules.legal.repository import LegalRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,

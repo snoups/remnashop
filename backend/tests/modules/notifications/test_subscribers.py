@@ -5,7 +5,7 @@ import pytest
 
 from app.core.event_bus import EventBus
 from app.core.events import EventCategory, StoredEvent
-from app.modules.notifications import NOTIFICATION_GROUPS
+from app.modules.notifications.dto import NOTIFICATION_GROUPS
 from app.modules.notifications.subscribers import register_subscribers
 from app.modules.notifications.tasks import deliver_notification_task
 

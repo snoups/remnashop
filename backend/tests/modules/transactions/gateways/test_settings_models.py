@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.enums import PaymentGatewayType
-from app.modules.gateways import GATEWAY_FIELD_CATALOG, GatewayFieldKind
+from app.modules.gateways.field_catalog import GATEWAY_FIELD_CATALOG, GatewayFieldKind
 from app.modules.gateways.gateway_settings import GATEWAY_SETTINGS
 from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY

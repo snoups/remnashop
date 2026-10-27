@@ -1,15 +1,7 @@
 from app.modules.gateways.di import get_gateways_providers
-from app.modules.gateways.dto import (
-    PaymentGatewayDto,
-    ReorderGatewaysDto,
-    UpdateGatewaySettingsDto,
-)
 from app.modules.gateways.field_catalog import (
-    GATEWAY_FIELD_CATALOG,
     REQUIRE_PAID_PURCHASE_FIELD_KEY,
     VERIFY_IP_FIELD_KEY,
-    GatewayFieldKind,
-    GatewayFieldSpec,
     gateway_flags,
 )
 from app.modules.gateways.gateway_settings import (
@@ -39,15 +31,8 @@ from app.modules.gateways.gateway_settings import (
     YooMoneySettings,
 )
 from app.modules.gateways.repository import GatewayRepository
-from app.modules.gateways.usecases import (
-    ListGatewaysUseCase,
-    ReorderGatewaysUseCase,
-    SetGatewayActiveUseCase,
-    UpdateGatewaySettingsUseCase,
-)
 
 __all__ = [
-    "GATEWAY_FIELD_CATALOG",
     "REQUIRE_PAID_PURCHASE_FIELD_KEY",
     "VERIFY_IP_FIELD_KEY",
     "AntilopaySettings",
@@ -56,29 +41,20 @@ __all__ = [
     "CryptoPaySettings",
     "CryptomusSettings",
     "FreeKassaSettings",
-    "GatewayFieldKind",
-    "GatewayFieldSpec",
     "GatewayRepository",
     "GatewaySettings",
     "HeleketSettings",
     "LavaSettings",
-    "ListGatewaysUseCase",
     "MulenPaySettings",
     "PayMasterSettings",
     "PayPearSettings",
-    "PaymentGatewayDto",
     "PaypalychSettings",
     "PlategaSettings",
-    "ReorderGatewaysDto",
-    "ReorderGatewaysUseCase",
     "RioPaySettings",
     "RobokassaSettings",
     "RollyPaySettings",
-    "SetGatewayActiveUseCase",
     "SeverPaySettings",
     "TelegramStarsSettings",
-    "UpdateGatewaySettingsDto",
-    "UpdateGatewaySettingsUseCase",
     "UrlPaySettings",
     "ValutixSettings",
     "WataSettings",

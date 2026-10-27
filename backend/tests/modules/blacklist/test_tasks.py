@@ -2,10 +2,10 @@ from app.core.enums import BlacklistKind, Role
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.blacklist.usecases import FetchBlacklistSourcesUseCase, fetch_blacklist_sources
-from app.modules.users import BlockBlacklistMatchesUseCase
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from app.modules.users.usecases import BlockBlacklistMatchesUseCase
 
 
 async def test_reconcile_blocks_matching_user_and_does_not_unblock(

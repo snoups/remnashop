@@ -5,7 +5,7 @@ from fluent.syntax import FluentParser
 from fluent.syntax.ast import Message
 
 from app.core.enums import Locale
-from app.modules.notifications import NOTIFICATION_GROUPS
+from app.modules.notifications.dto import NOTIFICATION_GROUPS
 from app.modules.notifications.render import (
     TEST_EVENT_TYPE,
     NotificationRenderer,

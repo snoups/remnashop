@@ -1,5 +1,6 @@
 import type { ParseKeys } from "i18next";
 import {
+  BadgePercent,
   Ban,
   BarChart3,
   BellRing,
@@ -9,12 +10,17 @@ import {
   Coins,
   CreditCard,
   Database,
+  FileCheck,
+  FileText,
   Globe,
   Image,
   KeyRound,
   Languages,
   Layers,
   Link2,
+  LogIn,
+  Mail,
+  Megaphone,
   MessagesSquare,
   Minus,
   Monitor,
@@ -82,6 +88,12 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   referrals: Share2,
   backups: Database,
   ad_links: Link2,
+  broadcasts: Megaphone,
+  loyalty: BadgePercent,
+  cabinet_auth_settings: LogIn,
+  email_settings: Mail,
+  legal_documents: FileText,
+  legal_acceptances: FileCheck,
 };
 
 function getResourceIcon(resource: string): LucideIcon {

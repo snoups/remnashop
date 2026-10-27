@@ -14,7 +14,7 @@ from app.modules.event_log.usecases import (
     GetNotificationsUseCase,
     MarkNotificationsReadUseCase,
 )
-from app.modules.notifications import NOTIFICATION_GROUPS
+from app.modules.notifications.dto import NOTIFICATION_GROUPS
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

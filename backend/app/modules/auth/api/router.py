@@ -14,13 +14,6 @@ from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError
 from app.core.utils.http import is_cabinet_proxied, resolve_client_ip
-from app.modules.auth import (
-    BootstrapOwnerUseCase,
-    GetAuthStatusUseCase,
-    LoginUseCase,
-    LogoutUseCase,
-    RefreshSessionUseCase,
-)
 from app.modules.auth.api.schemas import (
     BootstrapRequest,
     LoginRequest,
@@ -38,6 +31,13 @@ from app.modules.auth.session_response import (
     set_session_cookies,
     to_auth_response,
     verify_csrf,
+)
+from app.modules.auth.usecases import (
+    BootstrapOwnerUseCase,
+    GetAuthStatusUseCase,
+    LoginUseCase,
+    LogoutUseCase,
+    RefreshSessionUseCase,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])

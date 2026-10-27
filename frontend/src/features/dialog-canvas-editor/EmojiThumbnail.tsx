@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { splitPremiumEmoji } from "@entities/dialogs/api";
 import { emojiThumbnailUrl } from "@entities/emoji-packs/api";
 
 export function EmojiThumbnail({ glyph, customEmojiId }: { glyph: string; customEmojiId: string }) {
@@ -14,20 +13,5 @@ export function EmojiThumbnail({ glyph, customEmojiId }: { glyph: string; custom
       onError={() => setFailed(true)}
       className="inline-block size-[1.25em] align-[-0.25em] object-contain"
     />
-  );
-}
-
-/** Dialog text with premium emoji markup drawn as the emoji itself. */
-export function EmojiText({ value }: { value: string }) {
-  return (
-    <>
-      {splitPremiumEmoji(value).map((part, index) =>
-        typeof part === "string" ? (
-          part
-        ) : (
-          <EmojiThumbnail key={index} glyph={part.glyph} customEmojiId={part.customEmojiId} />
-        ),
-      )}
-    </>
   );
 }

@@ -14,7 +14,8 @@ from app.modules.email.dto import EmailMessageDto, SendTestEmailDto
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_link_code, render_login_code
 from app.modules.email.usecases import SendEmailUseCase, SendTestEmailUseCase
-from app.modules.settings import AppearanceImageDto, EmailSettingsDto, SmtpProfileDto
+from app.modules.settings import AppearanceImageDto, SmtpProfileDto
+from app.modules.settings.dto import EmailSettingsDto
 from app.modules.users import UserDto
 
 _CONFIGURED = EmailSettingsDto(

@@ -11,7 +11,8 @@ from app.core.config import AppConfig
 from app.core.config.cabinet import CabinetConfig
 from app.core.constants import API_V1
 from app.core.enums import SessionAudience
-from app.modules.auth import SESSION_COOKIES, IssuedSession, SessionIssuer
+from app.modules.auth import IssuedSession, SessionIssuer
+from app.modules.auth.session_cookies import SESSION_COOKIES
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 

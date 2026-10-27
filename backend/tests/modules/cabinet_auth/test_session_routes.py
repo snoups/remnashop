@@ -20,8 +20,8 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import SessionAudience
 from app.core.security import derive_csrf_token, hash_refresh_token
 from app.core.utils.time import datetime_now
-from app.modules.auth import SESSION_COOKIES
 from app.modules.auth.repository import SessionRepository
+from app.modules.auth.session_cookies import SESSION_COOKIES
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn

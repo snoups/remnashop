@@ -37,6 +37,7 @@ const FLOW_ORDER: DialogFlow[] = [
   "change",
   "subscription",
   "promocode",
+  "referrals",
   "custom",
 ];
 

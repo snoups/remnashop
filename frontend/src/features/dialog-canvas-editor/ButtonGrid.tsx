@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { buttonKey, iconIdTextKey, iconTextKey } from "@entities/dialogs/api";
-import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiText";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import type { DialogButtonItem } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 

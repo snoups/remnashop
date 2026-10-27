@@ -1760,8 +1760,6 @@
       },
       "push": {
         "label": "Push on this device",
-        "enable": "Enable",
-        "enabled": "On",
         "test": "Send test",
         "testSent": "Test notification sent.",
         "iosInstall": "Add the dashboard to the Home Screen to get push on iPhone",
@@ -2065,7 +2063,11 @@
     "emojiPacks": "Emoji packs",
     "loyalty": "Loyalty",
     "notificationSettings": "Web push",
-    "accessSettings": "Access"
+    "accessSettings": "Access",
+    "cabinetAuthSettings": "Cabinet sign-in",
+    "emailSettings": "Email",
+    "legalDocuments": "Documents",
+    "legalAcceptances": "Document acceptances"
   },
   "permissionPicker": {
     "read": "Read",
@@ -2704,7 +2706,6 @@
       "invitedEmpty": "No invited users."
     },
     "stats": {
-      "button": "Referral stats",
       "referralCodeLabel": "Referral code",
       "resetCode": "Reset referral code",
       "resetConfirmTitle": "Reset the referral code?",

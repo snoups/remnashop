@@ -70,6 +70,7 @@ export function getTestPaymentStatus(orderId: number): Promise<{ status: TestPay
   return apiGet<{ status: TestPaymentStatus }>(`/transactions/test-payments/${orderId}`);
 }
 
+/** @public reorder UI not built yet */
 export function reorderGateways(types: string[]): Promise<Gateway[]> {
   return apiPost<ListResponse<Gateway>, { types: string[] }>("/gateways/actions/reorder", { types }).then(
     (response) => response.items,

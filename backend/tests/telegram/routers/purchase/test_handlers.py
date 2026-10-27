@@ -21,13 +21,10 @@ from app.core.enums import (
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PaymentGatewayError, PermissionDeniedError
 from app.modules.dialogs import catalog
-from app.modules.subscriptions import (
-    CatalogDurationDto,
-    CatalogPlanDto,
-    CatalogPriceDto,
-    PlanCatalogDto,
-)
-from app.modules.transactions import CheckoutResultDto, CreateCheckoutDto, PaymentMethodDto
+from app.modules.subscriptions import CatalogDurationDto, CatalogPlanDto, PlanCatalogDto
+from app.modules.subscriptions.dto import CatalogPriceDto
+from app.modules.transactions import CreateCheckoutDto, PaymentMethodDto
+from app.modules.transactions.dto import CheckoutResultDto
 from app.telegram.dialogs import state_pool
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.i18n import format_price

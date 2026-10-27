@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["public/sw.js", "scripts/*.mjs", "src/**/*.d.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": ["tailwindcss"],
+  "ignoreExportsUsedInFile": { "type": true, "interface": true }
+}

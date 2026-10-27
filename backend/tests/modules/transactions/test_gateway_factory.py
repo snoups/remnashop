@@ -3,7 +3,7 @@ import pytest
 from app.core.config import AppConfig
 from app.core.enums import PaymentGatewayType
 from app.core.exceptions import ValidationError
-from app.modules.transactions import PaymentGatewayFactory
+from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY
 from app.modules.transactions.gateways.yookassa import YooKassaGateway
 from tests.modules.transactions.gateways.support import NO_HTTP

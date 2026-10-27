@@ -18,7 +18,7 @@ type RefreshResult = { kind: "token"; token: string } | { kind: "rejected" } | {
 
 let refreshPromise: Promise<RefreshResult> | null = null;
 
-export function readCookie(name: string): string | null {
+function readCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }

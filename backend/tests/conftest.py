@@ -20,10 +20,13 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer
+from dishka.integrations.fastapi import ContainerMiddleware
+from fastapi import FastAPI
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
+from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.outbox_event_publisher import OutboxEventPublisher
@@ -70,6 +73,15 @@ from tests.modules.subscriptions.factories import make_eligibility
 @pytest.fixture
 def config() -> AppConfig:
     return AppConfig.get()
+
+
+@pytest.fixture(scope="session")
+def api_app() -> FastAPI:
+    # get_app costs ~0.4 s; a test binds its own container through
+    # app.state.dishka_container, which ContainerMiddleware reads per request
+    app = get_app(AppConfig.get())
+    app.add_middleware(ContainerMiddleware)
+    return app
 
 
 @pytest.fixture(autouse=True)

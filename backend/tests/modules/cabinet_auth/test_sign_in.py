@@ -27,7 +27,8 @@ from app.modules.blacklist import BlacklistRepository
 from app.modules.cabinet_auth.api.schemas import BotSignInRequest
 from app.modules.cabinet_auth.dto import InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
-from app.modules.legal import CreateLegalRevisionDto, LegalRepository
+from app.modules.legal.dto import CreateLegalRevisionDto
+from app.modules.legal.repository import LegalRepository
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations import TranslationRepository

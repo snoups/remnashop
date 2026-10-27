@@ -24,7 +24,6 @@ REMNAWAVE_MIN_VERSION: Final[Version] = Version("2.7.0")
 REMNAWAVE_MAX_VERSION: Final[Version] = Version("2.8.0")
 
 REPOSITORY: Final[str] = "https://github.com/remnashop/remnashop"
-DOCS: Final[str] = "https://remnashop.dev"
 T_ME: Final[str] = "https://t.me/"
 API_V1: Final[str] = "/api/v1"
 BOT_WEBHOOK_PATH: Final[str] = "/telegram"
@@ -41,8 +40,6 @@ WINDOW_BANNER_PREFIX: Final[str] = "win."
 # a leading dot, "..") would let a caller walk out of the media dir.
 BANNER_NAME_PATTERN: Final[str] = r"^[a-z0-9][a-z0-9._-]*$"
 
-IMPORTED_TAG: Final[str] = "IMPORTED"
-INLINE_QUERY_INVITE: Final[str] = "invite"
 REMNASHOP_PREFIX: Final[str] = "rs_"
 WEB_PREFIX: Final[str] = "web_"
 WEBAUTH_START_PREFIX: Final[str] = "webauth_"
@@ -51,9 +48,6 @@ PLAN_START_PREFIX: Final[str] = "plan_"
 CUSTOMER_NOTIFICATION_CLOSE_CALLBACK: Final[str] = "cn:close"
 CUSTOMER_NOTIFICATION_RENEW_PREFIX: Final[str] = "cn:renew:"
 CUSTOMER_NOTIFICATION_BUY_CALLBACK: Final[str] = "cn:buy"
-PAYMENT_PREFIX: Final[str] = "payment_"
-GOTO_PREFIX: Final[str] = "gt_"
-ENCRYPTED_PREFIX: Final[str] = "enc_"
 
 REDIS_KEY_PREFIX: Final[str] = "remnashop:"
 # a hung Redis fails fast instead of stalling every request on it; dead pooled
@@ -99,15 +93,8 @@ DOCS_COOKIE_NAME: Final[str] = "docs_access"
 CABINET_CLIENT_IP_HEADER: Final[str] = "x-cabinet-client-ip"
 CABINET_PROXY_SECRET_HEADER: Final[str] = "x-cabinet-proxy-secret"
 
-MIDDLEWARE_DATA_KEY: Final[str] = "middleware_data"
 CONTAINER_KEY: Final[str] = "dishka_container"
-CONFIG_KEY: Final[str] = "config"
 USER_KEY: Final[str] = "user"
-TARGET_TELEGRAM_ID: Final[str] = "target_telegram_id"
-TARGET_USER_ID: Final[str] = "target_user_id"
-FROM_REFERRAL_USER_ID: Final[str] = "from_referral_user_id"
-USER_LIST_ORIGIN: Final[str] = "user_list_origin"
-USER_LIST_PAYLOAD: Final[str] = "user_list_payload"
 
 INT32_MAX: Final[int] = 2_147_483_647
 # users.points is Numeric(12, 0)
@@ -124,20 +111,11 @@ TIME_1D: Final[int] = TIME_1H * 24
 TTL_5M: Final[int] = TIME_1M * 5
 TTL_10M: Final[int] = TIME_1M * 10
 TTL_15M: Final[int] = TIME_1M * 15
-TTL_30M: Final[int] = TIME_1M * 30
 TTL_1H: Final[int] = TIME_1H
 TTL_2H: Final[int] = TIME_1H * 2
-TTL_6H: Final[int] = TIME_1H * 6
-TTL_12H: Final[int] = TIME_1H * 12
 TTL_1D: Final[int] = TIME_1D
 TTL_7D: Final[int] = TIME_1D * 7
 TTL_30D: Final[int] = TIME_1D * 30
-
-UNLIMITED_EXPIRE_YEAR: Final[int] = 2099
-
-BATCH_SIZE_10: Final[int] = 10
-BATCH_SIZE_20: Final[int] = 20
-BATCH_DELAY: Final[int] = 1
 
 # Plan.traffic_limit / AddOn.amount are stored as whole GB (binary, matching
 # "give this plan 100 GB" as an admin would type it). Remnawave's API takes

@@ -3,10 +3,9 @@ from typing import AsyncIterator
 
 import httpx
 import pytest
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
@@ -210,10 +209,12 @@ async def test_the_cabinet_me_path_is_gone(client: httpx.AsyncClient) -> None:
 
 
 @pytest.fixture
-async def client(session: AsyncSession, config: AppConfig) -> AsyncIterator[httpx.AsyncClient]:
+async def client(
+    session: AsyncSession, config: AppConfig, api_app: FastAPI
+) -> AsyncIterator[httpx.AsyncClient]:
     container = make_test_container(session, config)
-    app = get_app(config)
-    setup_dishka(container, app)
+    app = api_app
+    app.state.dishka_container = container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as http:
         yield http

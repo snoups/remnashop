@@ -687,7 +687,7 @@ async def test_delete_stale_idempotency_keys_removes_only_old_rows(
     now = datetime.now(timezone.utc)
     old_purchase = SubscriptionPurchaseIdempotency(key="old-p", subscription_id=None)
     new_purchase = SubscriptionPurchaseIdempotency(key="new-p", subscription_id=None)
-    old_addon = AddOnGrantIdempotency(key="old-a", entitlement_id=None)
+    old_addon = AddOnGrantIdempotency(key="old-a")
     session.add_all([old_purchase, new_purchase, old_addon])
     await session.flush()
     # created_at is a server default; force the "old" rows back in time

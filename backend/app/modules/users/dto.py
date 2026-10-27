@@ -15,7 +15,6 @@ from app.core.enums import (
 )
 from app.core.security.permissions import Permission
 from app.core.utils.http import describe_user_agent
-from app.core.utils.time import datetime_now
 from app.modules.blacklist import BlacklistOriginDto
 
 UserSort = Literal["created_at", "points", "discount", "name", "channels", "subscriptions"]
@@ -60,14 +59,6 @@ class UserDto(BaseDto, TimestampMixin):
     deleted_at: Optional[datetime] = None
 
     @property
-    def contact_label(self) -> str:
-        if self.username:
-            return self.username
-        if self.telegram_id is not None:
-            return str(self.telegram_id)
-        return self.email or str(self.id)
-
-    @property
     def is_privileged(self) -> bool:
         return self.role.includes(Role.ADMIN)
 
@@ -88,13 +79,6 @@ class UserDto(BaseDto, TimestampMixin):
         return self.role == Role.SYSTEM
 
     @property
-    def age_days(self) -> Optional[int]:
-        if self.created_at is None:
-            return None
-
-        return (datetime_now() - self.created_at).days
-
-    @property
     def log(self) -> str:
         return f"[{self.role}:{self.id}:{self.remna_name} ({self.name})]"
 
@@ -103,17 +87,6 @@ class UserDto(BaseDto, TimestampMixin):
         if self.telegram_id is not None:
             return f"{REMNASHOP_PREFIX}{self.telegram_id}"
         return f"{REMNASHOP_PREFIX}{WEB_PREFIX}{self.id}"
-
-    @property
-    def remna_description(self) -> str:
-        description = f"name: {self.name}"
-
-        if self.username:
-            description += f"\nusername: {self.username}"
-        if self.email:
-            description += f"\nemail: {self.email}"
-
-        return description
 
 
 class UserListItemDto(UserDto):

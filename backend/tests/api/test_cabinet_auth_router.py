@@ -5,10 +5,9 @@ from typing import AsyncIterator
 import httpx
 import pytest
 from dishka import AsyncContainer
-from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.app import get_app
 from app.core.config import AppConfig
 from app.core.constants import API_V1, DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.db.uow import UnitOfWork
@@ -22,10 +21,12 @@ from tests.fakes.container import make_test_container
 
 
 @pytest.fixture
-async def client(session: AsyncSession, config: AppConfig) -> AsyncIterator[httpx.AsyncClient]:
+async def client(
+    session: AsyncSession, config: AppConfig, api_app: FastAPI
+) -> AsyncIterator[httpx.AsyncClient]:
     container: AsyncContainer = make_test_container(session, config)
-    app = get_app(config)
-    setup_dishka(container, app)
+    app = api_app
+    app.state.dishka_container = container
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client

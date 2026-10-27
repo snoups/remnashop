@@ -8,7 +8,7 @@ from app.core.constants import API_V1, REDIS_KEY_PREFIX
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SessionAudience
-from app.modules.auth import SESSION_COOKIES
+from app.modules.auth.session_cookies import SESSION_COOKIES
 from app.modules.cabinet_auth.email_codes import email_key
 from app.modules.settings.dto import (
     UpdateAccessSettingsDto,

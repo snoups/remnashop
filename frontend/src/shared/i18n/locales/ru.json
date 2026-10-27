@@ -1808,8 +1808,6 @@
       },
       "push": {
         "label": "Пуш на этом устройстве",
-        "enable": "Включить",
-        "enabled": "Включён",
         "test": "Отправить тест",
         "testSent": "Тестовое уведомление отправлено.",
         "iosInstall": "Чтобы получать пуши на iPhone, добавьте панель управления на экран «Домой»",
@@ -2113,7 +2111,11 @@
     "emojiPacks": "Наборы эмодзи",
     "loyalty": "Лояльность",
     "notificationSettings": "Веб-пуш",
-    "accessSettings": "Доступ"
+    "accessSettings": "Доступ",
+    "cabinetAuthSettings": "Вход в кабинет",
+    "emailSettings": "Почта",
+    "legalDocuments": "Документы",
+    "legalAcceptances": "Принятия документов"
   },
   "permissionPicker": {
     "read": "Чтение",
@@ -2756,7 +2758,6 @@
       "invitedEmpty": "Нет приглашённых."
     },
     "stats": {
-      "button": "Реферальная статистика",
       "referralCodeLabel": "Реферальный код",
       "resetCode": "Сбросить реферальный код",
       "resetConfirmTitle": "Сбросить реферальный код?",

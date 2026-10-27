@@ -7,7 +7,6 @@ from app.modules.users.dto import (
     RegistrationSnapshotDto,
     SetBotBlockedDto,
     SetMarketingOptOutDto,
-    SetUserDiscountDto,
     UpdateUserDto,
     UserDto,
 )
@@ -23,35 +22,23 @@ from app.modules.users.ports import (
     SubscriptionRevoker,
 )
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import (
-    CurrentUserResponse,
-    UserResponse,
-    to_current_user_response,
-)
+from app.modules.users.schemas import CurrentUserResponse, UserResponse, to_current_user_response
 from app.modules.users.stats_repository import UserStatsRepository
-from app.modules.users.unsubscribe import read_unsubscribe_token, unsubscribe_token
+from app.modules.users.unsubscribe import unsubscribe_token
 from app.modules.users.usecases import (
-    BlockBlacklistMatchesUseCase,
-    BlockUserUseCase,
     FindTelegramUserUseCase,
-    GetCurrentUserUseCase,
     RegisterCabinetUserUseCase,
     RegisterTelegramUserUseCase,
     SetBotBlockedUseCase,
     SetMarketingOptOutUseCase,
-    SetUserDiscountUseCase,
-    UnblockUserUseCase,
 )
 from app.modules.users.visibility import assert_manageable, get_visible_target, visible_user
 
 __all__ = [
-    "BlockBlacklistMatchesUseCase",
-    "BlockUserUseCase",
     "CabinetUserRegisteredEvent",
     "CreateUserDto",
     "CurrentUserResponse",
     "FindTelegramUserUseCase",
-    "GetCurrentUserUseCase",
     "PasskeyRevoker",
     "PromocodeLiveness",
     "RegisterCabinetUserDto",
@@ -64,11 +51,8 @@ __all__ = [
     "SetBotBlockedUseCase",
     "SetMarketingOptOutDto",
     "SetMarketingOptOutUseCase",
-    "SetUserDiscountDto",
-    "SetUserDiscountUseCase",
     "SubscriptionRevoker",
     "TelegramUserRegisteredEvent",
-    "UnblockUserUseCase",
     "UpdateUserDto",
     "UserDeletedEvent",
     "UserDto",
@@ -79,7 +63,6 @@ __all__ = [
     "get_users_providers",
     "get_visible_target",
     "mark_bot_blocked",
-    "read_unsubscribe_token",
     "to_current_user_response",
     "unsubscribe_token",
     "visible_user",

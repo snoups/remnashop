@@ -49,7 +49,8 @@ from app.modules.oauth.events import (
     OAuthLoginFailedEvent,
     OAuthLoginSucceededEvent,
 )
-from app.modules.settings import SettingsRepository, UpdateOAuthSettingsDto
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateOAuthSettingsDto
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 

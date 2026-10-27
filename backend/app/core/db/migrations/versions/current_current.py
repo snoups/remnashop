@@ -2334,7 +2334,6 @@ def upgrade() -> None:
     op.create_table(
         "addon_grant_idempotency",
         sa.Column("key", sa.String(), nullable=False),
-        sa.Column("entitlement_id", sa.Integer(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -2347,14 +2346,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["entitlement_id"], ["addon_entitlements.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("key"),
-    )
-    op.create_index(
-        op.f("ix_addon_grant_idempotency_entitlement_id"),
-        "addon_grant_idempotency",
-        ["entitlement_id"],
-        unique=False,
     )
     op.create_table(
         "legal_acceptances",
@@ -2397,9 +2389,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_legal_acceptances_user_id"), table_name="legal_acceptances")
     op.drop_index("ix_legal_acceptances_user_channel_trigger", table_name="legal_acceptances")
     op.drop_table("legal_acceptances")
-    op.drop_index(
-        op.f("ix_addon_grant_idempotency_entitlement_id"), table_name="addon_grant_idempotency"
-    )
     op.drop_table("addon_grant_idempotency")
     op.drop_index(op.f("ix_transactions_user_id"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_target_subscription_id"), table_name="transactions")

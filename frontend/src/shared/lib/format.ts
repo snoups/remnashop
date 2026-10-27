@@ -1,5 +1,5 @@
 // Mirrors backend/app/core/enums.py's Currency.symbol.
-export const CURRENCY_SYMBOL: Readonly<Record<string, string>> = { USD: "$", XTR: "★", RUB: "₽" };
+const CURRENCY_SYMBOL: Readonly<Record<string, string>> = { USD: "$", XTR: "★", RUB: "₽" };
 
 export function currencySymbol(currency: string): string {
   return CURRENCY_SYMBOL[currency] ?? currency;

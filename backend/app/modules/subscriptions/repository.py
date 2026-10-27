@@ -384,10 +384,7 @@ class SubscriptionRepository:
         )
         self.session.add(entitlement)
         if idempotency_key is not None:
-            await self.session.flush()  # assigns entitlement.id
-            self.session.add(
-                AddOnGrantIdempotency(key=idempotency_key, entitlement_id=entitlement.id)
-            )
+            self.session.add(AddOnGrantIdempotency(key=idempotency_key))
 
         await self.session.flush()
         return await self.get_by_id(subscription_id)

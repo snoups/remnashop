@@ -1,7 +1,6 @@
 from app.modules.pricing.di import get_pricing_providers
 from app.modules.pricing.dto import (
     BASE_PRICE_PRECISION,
-    MIN_BASE_PRICE,
     NON_ANCHOR_CURRENCIES,
     RATE_PRECISION,
     CurrencyRateDto,
@@ -24,7 +23,6 @@ from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricin
 
 __all__ = [
     "BASE_PRICE_PRECISION",
-    "MIN_BASE_PRICE",
     "NON_ANCHOR_CURRENCIES",
     "RATE_PRECISION",
     "AnchorSwitchedEvent",

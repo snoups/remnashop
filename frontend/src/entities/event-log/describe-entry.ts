@@ -6,7 +6,7 @@ import type { EventLogEntry } from "@entities/event-log/api";
 // payload keys from the dataclass fields, so keep this in sync by hand.
 export const PAYLOAD_TARGET_KEY = "target";
 
-export function getTargetLogin(entry: EventLogEntry): string | undefined {
+function getTargetLogin(entry: EventLogEntry): string | undefined {
   return entry.payload &&
     typeof entry.payload === "object" &&
     PAYLOAD_TARGET_KEY in entry.payload
@@ -59,7 +59,7 @@ export function isSystemActor(user: UserSnapshot): boolean {
   return user.role === "SYSTEM";
 }
 
-export function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
+function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
   return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
 }
 

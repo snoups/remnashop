@@ -58,7 +58,7 @@ export function ReferralKpis({ userId, stats }: { userId: number; stats: Referra
   );
 }
 
-export function ReferralProgramCard({ stats }: { stats: ReferralStats }) {
+function ReferralProgramCard({ stats }: { stats: ReferralStats }) {
   const { t } = useTranslation();
   const none = t("common.none");
 
