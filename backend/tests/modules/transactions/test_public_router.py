@@ -334,6 +334,11 @@ async def test_own_transactions_list_and_detail(
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()["items"]] == [own_order]
     assert listed.json()["items"][0]["plan_name"] == plan.name
+    # no discount on this order: the base price is the final one
+    item = listed.json()["items"][0]
+    assert item["base_price"] == item["final_price"]
+    assert (item["plan_discount_percent"], item["discount_percent"]) == (0, 0)
+    assert item["discount_source"] == "NONE"
 
     assert (
         await client.get(f"{API_V1}/transactions/me/{own_order}", headers=mine)

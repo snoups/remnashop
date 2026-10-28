@@ -191,6 +191,21 @@ class GetReferralSummaryDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class OwnInvitedUserDto:
+    # None: the account is gone
+    name: Optional[str]
+    level: int
+    created_at: Optional[datetime]
+    reward_amounts: dict[ReferralRewardType, Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListOwnInvitedUsersDto:
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
 class ListInvitedUsersDto:
     user_id: int
     level: Optional[int] = None

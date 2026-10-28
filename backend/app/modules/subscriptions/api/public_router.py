@@ -12,6 +12,7 @@ from app.modules.subscriptions.api.schemas import (
     OwnSubscriptionListResponse,
     OwnSubscriptionResponse,
     PublicPlanListResponse,
+    PublicPlanPriceResponse,
     PublicPlanResponse,
     TrialResponse,
 )
@@ -84,6 +85,7 @@ async def get_own_trial(
         is_free=trial.is_free,
         price=trial.price,
         currency=trial.currency,
+        prices=[PublicPlanPriceResponse(currency=p.currency, price=p.price) for p in trial.prices],
     )
 
 

@@ -1,9 +1,9 @@
 from typing import Final
 
-from app.core.enums import PlanAvailability
+from app.core.enums import Currency, PlanAvailability
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import PricingRepository, price_for
-from app.modules.subscriptions.dto import GetAvailableTrialDto
+from app.modules.subscriptions.dto import CatalogPriceDto, GetAvailableTrialDto
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.users import UserDto
 
@@ -49,4 +49,11 @@ async def pick_trial(
         is_trial_available=True,
         price=price_for(duration.base_price, duration.overrides, rates.anchor, rates),
         currency=rates.anchor,
+        prices=tuple(
+            CatalogPriceDto(
+                currency=currency,
+                price=price_for(duration.base_price, duration.overrides, currency, rates),
+            )
+            for currency in Currency
+        ),
     )

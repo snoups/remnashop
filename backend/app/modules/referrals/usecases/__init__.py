@@ -10,6 +10,7 @@ from app.modules.referrals.usecases.get_referral_summary import GetReferralSumma
 from app.modules.referrals.usecases.get_user_referral_revenue import GetUserReferralRevenueUseCase
 from app.modules.referrals.usecases.get_user_referral_stats import GetUserReferralStatsUseCase
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
+from app.modules.referrals.usecases.list_own_invited_users import ListOwnInvitedUsersUseCase
 from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
 from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.request_points_withdrawal import RequestPointsWithdrawalUseCase
@@ -31,6 +32,7 @@ __all__ = [
     "GetUserReferralRevenueUseCase",
     "GetUserReferralStatsUseCase",
     "ListInvitedUsersUseCase",
+    "ListOwnInvitedUsersUseCase",
     "ListReferralsUseCase",
     "RedeemBonusDaysUseCase",
     "RequestPointsWithdrawalUseCase",

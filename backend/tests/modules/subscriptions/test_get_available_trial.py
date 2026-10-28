@@ -133,6 +133,9 @@ async def test_a_paid_trial_is_offered_with_its_anchor_price(
     assert result.is_free is False
     assert result.price == Decimal("1.50")
     assert result.currency is Currency.USD
+    # every currency, the anchor's at the anchor price, for the checkout's gateway choice
+    assert {p.currency for p in result.prices} == set(Currency)
+    assert next(p.price for p in result.prices if p.currency is Currency.USD) == Decimal("1.50")
 
 
 async def test_a_targeted_trial_beats_one_open_to_everyone(

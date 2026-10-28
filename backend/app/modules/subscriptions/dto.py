@@ -442,6 +442,9 @@ class GetAvailableTrialDto:
     # the trial's one duration, priced in the anchor currency; 0 for a free trial
     price: Decimal = ZERO_AMOUNT
     currency: Optional[Currency] = None
+    # the same duration in every currency, as the catalog prices it: a paid trial
+    # is checked out in whichever currency the chosen gateway takes
+    prices: tuple[CatalogPriceDto, ...] = ()
 
     @property
     def is_free(self) -> bool:

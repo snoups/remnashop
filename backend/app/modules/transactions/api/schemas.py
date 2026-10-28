@@ -161,6 +161,11 @@ class OwnTransactionResponse(BaseModel):
     id: int
     status: TransactionStatus
     final_price: Decimal
+    # what the discounts were taken off, and which: the cabinet shows the saving
+    base_price: Decimal
+    plan_discount_percent: int
+    discount_percent: int
+    discount_source: DiscountSource
     currency: Currency
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
@@ -174,6 +179,10 @@ class OwnTransactionResponse(BaseModel):
             id=order.id,
             status=order.status,
             final_price=order.final_price,
+            base_price=order.base_price,
+            plan_discount_percent=order.plan_discount_percent,
+            discount_percent=order.discount_percent,
+            discount_source=order.discount_source,
             currency=order.currency,
             purchase_type=order.purchase_type,
             gateway_type=order.gateway_type,

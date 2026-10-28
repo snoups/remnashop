@@ -147,6 +147,18 @@ class InvitedUserResponse(BaseModel):
     reward_amounts: dict[ReferralRewardType, Decimal]
 
 
+class OwnInvitedUserResponse(BaseModel):
+    name: Optional[str]
+    level: int
+    created_at: Optional[datetime]
+    reward_amounts: dict[ReferralRewardType, Decimal]
+
+
+class OwnInvitedUserPageResponse(BaseModel):
+    items: list[OwnInvitedUserResponse]
+    total: int
+
+
 class InvitedUserPageResponse(BaseModel):
     items: list[InvitedUserResponse]
     total: int

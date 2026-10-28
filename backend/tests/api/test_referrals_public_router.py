@@ -143,6 +143,35 @@ async def test_stats_reflect_the_referrer(
     assert stats_response.json()["referrer_id"] == referrer_user.id
 
 
+async def test_invited_list_shows_names_only_and_only_ones_own(
+    client: httpx.AsyncClient,
+    actor: tuple[UserDto, dict[str, str]],
+    referrer: tuple[UserDto, dict[str, str]],
+    referral_repository: ReferralRepository,
+    uow: UnitOfWork,
+) -> None:
+    actor_user, actor_headers = actor
+    referrer_user, referrer_headers = referrer
+    async with uow:
+        await referral_repository.create_referral(
+            referrer_id=referrer_user.id, referred_id=actor_user.id, level=1
+        )
+        await uow.commit()
+
+    listed = await client.get(f"{API_V1}/referrals/me/invited", headers=referrer_headers)
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body["total"] == 1
+    item = body["items"][0]
+    # the name and the level, nothing that reaches the person
+    assert set(item) == {"name", "level", "created_at", "reward_amounts"}
+    assert (item["name"], item["level"]) == (actor_user.name, 1)
+
+    # the invitee has nobody below them
+    own = await client.get(f"{API_V1}/referrals/me/invited", headers=actor_headers)
+    assert own.json() == {"items": [], "total": 0}
+
+
 async def test_manual_referral_attach_is_gone(
     client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
 ) -> None:

@@ -162,6 +162,8 @@ class TrialResponse(BaseModel):
     is_free: bool = True
     price: Optional[Decimal] = None
     currency: Optional[Currency] = None
+    # the one duration in every currency, for the checkout's gateway choice
+    prices: list[PublicPlanPriceResponse] = []
 
 
 class PanelSyncResultResponse(BaseModel):
