@@ -20,7 +20,7 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
 }
 
 export function Card({ variant = "page", title, icon: Icon, titleFor, className = "", children, ...props }: CardProps) {
-  // the title's own pt-2 plus pt-1.5 lines its text up where pt-3.5 would put untitled content
+  // the title's pt-2 plus pt-1.5 lines its text up where pt-3.5 would put untitled content
   const top = variant === "form" ? (title ? "pt-1.5" : "pt-3.5") : "";
   const Title = titleFor ? "label" : "h3";
   return (

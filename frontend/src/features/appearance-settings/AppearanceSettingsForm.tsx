@@ -37,7 +37,7 @@ const SVG_MIME_TYPE = "image/svg+xml";
 const ACCEPTED_FILE_TYPES = `image/jpeg,image/png,image/webp,${SVG_MIME_TYPE}`;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
-// mirrors the backend's per-kind limits (upload_appearance_image.py)
+// mirrors the backend's _LIMITS_BY_KIND
 const IMAGE_LIMITS: Record<AppearanceImageKind, { minSide: number; maxSide: number; maxKb: number }> = {
   logo: { minSide: 128, maxSide: 1024, maxKb: 1024 },
   favicon: { minSide: 32, maxSide: 512, maxKb: 256 },

@@ -2,7 +2,7 @@ import type { ParseKeys, TFunction } from "i18next";
 
 import type { EventLogEntry } from "@entities/event-log/api";
 
-// `ActorTargetEvent.target` (backend/app/core/events.py): `build_payload` takes
+// `ActorTargetEvent.target`: the outbox publisher's `_build_payload` takes
 // payload keys from the dataclass fields, so keep this in sync by hand.
 export const PAYLOAD_TARGET_KEY = "target";
 

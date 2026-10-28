@@ -26,7 +26,7 @@ def _clean():
 
 
 def test_flows_package_imports_without_aiogram() -> None:
-    # a fresh interpreter: this module's own imports already load the flows package
+    # a fresh interpreter: this module's imports already load the flows package
     code = (
         "import sys\n"
         "sys.modules['aiogram'] = None\n"
@@ -94,7 +94,7 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
         RedisBotSignals(redis),
         RecordingEventPublisher(),
     )
-    # a seed window's own action key, written back through the admin API
+    # a seed window's action key, written back through the admin API
 
     updated = await use_case(
         OWNER,

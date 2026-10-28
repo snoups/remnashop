@@ -61,7 +61,7 @@ def resolve_client_ip(request: Request) -> str:
     # header is ignored.
     #
     # The LAST entry: there's exactly one trusted hop, and whether it
-    # overwrites or appends (nginx's `$proxy_add_x_forwarded_for`), its own
+    # overwrites or appends (nginx's `$proxy_add_x_forwarded_for`), its
     # view of the peer lands last. Anything before it may be spoofed.
     #
     # getlist, not get: repeated header lines form one list, and a proxy that

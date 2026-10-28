@@ -109,7 +109,7 @@ class AccountMergeRepository:
         )
 
     async def reaches(self, start: int, user_ids: set[int]) -> bool:
-        # walks start's upline, as the merge's own loop check does
+        # walks start's upline, as the merge's loop check does
         current: Optional[int] = start
         for _ in range(_MAX_CHAIN_WALK):
             if current is None:

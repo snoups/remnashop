@@ -340,7 +340,12 @@ async def test_preview_pricing_change_writes_nothing(
     before_addon = await addon_repository.get_by_id(addon.id)
 
     diff = await PreviewPricingChangeUseCase(
-        plan_repository, addon_repository, pricing_repository, uow
+        plan_repository,
+        addon_repository,
+        pricing_repository,
+        TransactionRepository(plan_repository.session),
+        LoyaltyRepository(plan_repository.session),
+        uow,
     )(
         OWNER,
         PricingChangePreviewDto(
@@ -379,7 +384,12 @@ async def test_preview_pricing_change_rejects_ambiguous_request(
     uow: UnitOfWork,
 ) -> None:
     use_case = PreviewPricingChangeUseCase(
-        plan_repository, addon_repository, pricing_repository, uow
+        plan_repository,
+        addon_repository,
+        pricing_repository,
+        TransactionRepository(plan_repository.session),
+        LoyaltyRepository(plan_repository.session),
+        uow,
     )
     with pytest.raises(ValidationError):
         await use_case(OWNER, PricingChangePreviewDto())
@@ -480,3 +490,163 @@ async def test_anchor_switch_rechecks_the_anchor_under_the_row_lock(engine: Asyn
             )
             await holder.execute(restore.where(PricingSettings.id == settings.id))
             await holder.commit()
+
+
+def _book_amounts(book) -> dict[tuple[str, object, Currency], Decimal]:  # type: ignore[no-untyped-def]
+    return {
+        (row.name, row.days, cell.currency): cell.amount
+        for row in [*book.plans, *book.addons]
+        for cell in row.cells
+    }
+
+
+@pytest.mark.parametrize("change", ["adjust", "anchor"])
+async def test_preview_shows_what_applying_the_change_does(
+    change: str,
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("95"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    plan, addon = await _seed_catalog(plan_repository, addon_repository)
+    adjust = AdjustBasePricesDto(
+        scope=PriceAdjustScope.SELECTED,
+        factor=Decimal("1.37"),
+        plan_duration_ids=[plan.durations[0].id],
+        addon_ids=[addon.id],
+    )
+    preview = (
+        PricingChangePreviewDto(adjust=adjust)
+        if change == "adjust"
+        else (PricingChangePreviewDto(anchor=Currency.RUB))
+    )
+    before = _book_amounts(
+        await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(OWNER)
+    )
+
+    diff = await PreviewPricingChangeUseCase(
+        plan_repository,
+        addon_repository,
+        pricing_repository,
+        TransactionRepository(plan_repository.session),
+        LoyaltyRepository(plan_repository.session),
+        uow,
+    )(OWNER, preview)
+    if change == "adjust":
+        book = await AdjustBasePricesUseCase(
+            plan_repository, addon_repository, pricing_repository, uow, event_publisher
+        )(OWNER, adjust)
+    else:
+        book = await SwitchAnchorCurrencyUseCase(
+            pricing_repository,
+            plan_repository,
+            addon_repository,
+            TransactionRepository(plan_repository.session),
+            LoyaltyRepository(plan_repository.session),
+            uow,
+            event_publisher,
+        )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+    after = _book_amounts(book)
+
+    changed = {key: amount for key, amount in after.items() if before.get(key) != amount}
+    # an anchor switch keeps every derived amount; an adjustment must move some
+    assert bool(changed) is (change == "adjust")
+    assert {(row.name, row.days, row.currency): row.new for row in diff.changes} == changed
+
+
+async def test_anchor_preview_shows_the_values_the_switch_rescales(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("90"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    await pricing_repository.update_settings(
+        UpdatePricingSettingsDto(price_per_day=Decimal("0.10"), price_per_gb=None)
+    )
+    loyalty = LoyaltyRepository(session)
+    await loyalty.save_settings(
+        UpdateLoyaltySettingsDto(
+            enabled=True,
+            window_months=None,
+            tiers=[LoyaltyTierDto(threshold=Decimal("10.05"), percent=3)],
+        )
+    )
+    transactions = TransactionRepository(session)
+
+    diff = await PreviewPricingChangeUseCase(
+        plan_repository, addon_repository, pricing_repository, transactions, loyalty, uow
+    )(OWNER, PricingChangePreviewDto(anchor=Currency.RUB))
+    await SwitchAnchorCurrencyUseCase(
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        transactions,
+        loyalty,
+        uow,
+        event_publisher,
+    )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+
+    settings = await pricing_repository.get_settings()
+    assert diff.price_per_day is not None
+    assert (diff.price_per_day.old, diff.price_per_day.new) == (
+        Decimal("0.10"),
+        settings.price_per_day,
+    )
+    assert diff.price_per_gb is None
+    assert [(t.old, t.new) for t in diff.loyalty_thresholds] == [
+        (Decimal("10.05"), tier.threshold) for tier in (await loyalty.get_settings()).tiers
+    ]
+    assert diff.rescaled_transactions == await transactions.count_anchor_amounts()
+
+
+async def test_non_anchor_preview_leaves_the_anchor_fields_empty(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await _seed_catalog(plan_repository, addon_repository)
+
+    diff = await PreviewPricingChangeUseCase(
+        plan_repository,
+        addon_repository,
+        pricing_repository,
+        TransactionRepository(session),
+        LoyaltyRepository(session),
+        uow,
+    )(
+        OWNER,
+        PricingChangePreviewDto(
+            adjust=AdjustBasePricesDto(scope=PriceAdjustScope.ALL_PLANS, factor=Decimal("2"))
+        ),
+    )
+
+    assert diff.changes
+    assert diff.price_per_day is None
+    assert diff.loyalty_thresholds == []
+    assert diff.rescaled_transactions == 0

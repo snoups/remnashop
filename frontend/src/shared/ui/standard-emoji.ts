@@ -1,7 +1,7 @@
 /** Telegram's standard emoji: every fully-qualified emoji in the Unicode tables,
  * minus the skin-tone variants, as the glyph plus the Unicode name the picker
  * searches on. Standard emoji have no custom_emoji_id a bot can use, so they are
- * stored as the glyph itself and ride in the button's own label text.
+ * stored as the glyph itself and ride in the button's label text.
  *
  * Generated from https://unicode.org/Public/emoji/16.0/emoji-test.txt. */
 export interface StandardEmoji {

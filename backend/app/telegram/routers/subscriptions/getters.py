@@ -1,4 +1,4 @@
-from typing import Any, Final, Optional
+from typing import Any, Awaitable, Callable, Final, Optional, TypeAlias
 
 from aiogram_dialog import DialogManager
 from aiogram_dialog.api.entities import MediaAttachment
@@ -203,61 +203,34 @@ async def devices_getter(
     return data
 
 
-@inject
-async def device_confirm_delete_getter(
-    dialog_manager: DialogManager,
-    i18n: FromDishka[TranslatorHub],
-    dialog_config_cache: FromDishka[DialogConfigCache],
-    **kwargs: Any,
-) -> dict[str, Any]:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-    data: dict[str, Any] = {
-        "confirm_message": render_window_text(
-            runner, "msg-menu-devices-confirm-delete", **resolve_variable_kwargs({})
-        )
-    }
-    data["buttons"] = await render_dialog_buttons(
-        "menu.device_confirm_delete", dialog_config_cache, runner, data
-    )
-    return data
+_Getter: TypeAlias = Callable[..., Awaitable[dict[str, Any]]]
 
 
-@inject
-async def device_confirm_delete_all_getter(
-    dialog_manager: DialogManager,
-    i18n: FromDishka[TranslatorHub],
-    dialog_config_cache: FromDishka[DialogConfigCache],
-    **kwargs: Any,
-) -> dict[str, Any]:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-    data: dict[str, Any] = {
-        "confirm_message": render_window_text(
-            runner, "msg-menu-devices-confirm-delete-all", **resolve_variable_kwargs({})
-        )
-    }
-    data["buttons"] = await render_dialog_buttons(
-        "menu.device_confirm_delete_all", dialog_config_cache, runner, data
-    )
-    return data
+def _confirm_getter(text_key: str, window_key: str) -> _Getter:
+    @inject
+    async def getter(
+        dialog_manager: DialogManager,
+        i18n: FromDishka[TranslatorHub],
+        dialog_config_cache: FromDishka[DialogConfigCache],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        user: UserDto = dialog_manager.middleware_data[USER_KEY]
+        runner = get_translator(i18n, user)
+        data: dict[str, Any] = {
+            "confirm_message": render_window_text(runner, text_key, **resolve_variable_kwargs({}))
+        }
+        data["buttons"] = await render_dialog_buttons(window_key, dialog_config_cache, runner, data)
+        return data
+
+    return getter
 
 
-@inject
-async def device_confirm_reissue_getter(
-    dialog_manager: DialogManager,
-    i18n: FromDishka[TranslatorHub],
-    dialog_config_cache: FromDishka[DialogConfigCache],
-    **kwargs: Any,
-) -> dict[str, Any]:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-    data: dict[str, Any] = {
-        "confirm_message": render_window_text(
-            runner, "msg-menu-devices-confirm-reissue", **resolve_variable_kwargs({})
-        )
-    }
-    data["buttons"] = await render_dialog_buttons(
-        "menu.device_confirm_reissue", dialog_config_cache, runner, data
-    )
-    return data
+device_confirm_delete_getter: Final[_Getter] = _confirm_getter(
+    "msg-menu-devices-confirm-delete", "menu.device_confirm_delete"
+)
+device_confirm_delete_all_getter: Final[_Getter] = _confirm_getter(
+    "msg-menu-devices-confirm-delete-all", "menu.device_confirm_delete_all"
+)
+device_confirm_reissue_getter: Final[_Getter] = _confirm_getter(
+    "msg-menu-devices-confirm-reissue", "menu.device_confirm_reissue"
+)

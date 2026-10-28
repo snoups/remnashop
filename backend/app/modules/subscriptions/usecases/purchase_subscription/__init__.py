@@ -82,7 +82,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 return existing
             data = replace(data, claim_token=token)
 
-        # Releasing the key lets a retry (taskiq's own, or the reconcile sweep)
+        # Releasing the key lets a retry (taskiq's, or the reconcile sweep)
         # start over from scratch. A RENEW keeps its key once its target
         # expire_at is pinned: the retry then resumes with that same absolute
         # value instead of computing a new one. A NEW mints a fresh panel user

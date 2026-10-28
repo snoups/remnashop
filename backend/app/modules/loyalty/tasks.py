@@ -1,4 +1,4 @@
-from typing import Final, Optional
+from typing import Final, Optional, cast
 
 from dishka.integrations.taskiq import FromDishka, inject
 from redis.asyncio import Redis
@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from app.core.broker import broker
 from app.core.constants import REDIS_KEY_PREFIX
 from app.core.utils.lock import cron_lock
+from app.modules.loyalty.dispatch import LoyaltyRecalcDispatch
 from app.modules.loyalty.dto import RecalculateLoyaltyDto
 from app.modules.loyalty.usecases import RecalculateLoyaltyDiscountsUseCase
 
@@ -32,4 +33,4 @@ async def recalculate_loyalty_discounts_task(
     # checked after the lock is released: a request blocked before that has left its mark,
     # one arriving after takes the lock itself
     if await redis.getdel(_RERUN_KEY):
-        await recalculate_loyalty_discounts_task.kiq()  # type: ignore[call-overload]
+        await cast(LoyaltyRecalcDispatch, recalculate_loyalty_discounts_task).kiq()

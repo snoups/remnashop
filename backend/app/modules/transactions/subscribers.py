@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Final, Union, cast
 
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent
@@ -8,12 +8,23 @@ from app.modules.subscriptions import (
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
 )
+from app.modules.transactions.dispatch import (
+    MarkOrderFulfilledDispatch,
+    NotifyPaymentWaitlistDispatch,
+)
 from app.modules.transactions.tasks import mark_order_fulfilled_task, notify_payment_waitlist_task
+
+_notify_payment_waitlist: Final[NotifyPaymentWaitlistDispatch] = cast(
+    NotifyPaymentWaitlistDispatch, notify_payment_waitlist_task
+)
+_mark_order_fulfilled: Final[MarkOrderFulfilledDispatch] = cast(
+    MarkOrderFulfilledDispatch, mark_order_fulfilled_task
+)
 
 
 async def _notify_waitlist(event: AccessSettingsChangedEvent, entry: StoredEvent) -> None:
     if event.payments_reenabled:
-        await notify_payment_waitlist_task.kiq()  # type: ignore[call-overload]
+        await _notify_payment_waitlist.kiq()
 
 
 async def _mark_fulfilled(
@@ -21,7 +32,7 @@ async def _mark_fulfilled(
     entry: StoredEvent,
 ) -> None:
     if event.payment_key is not None:
-        await mark_order_fulfilled_task.kiq(  # type: ignore[call-overload]
+        await _mark_order_fulfilled.kiq(
             payment_key=event.payment_key, subscription_id=event.subscription_id
         )
 

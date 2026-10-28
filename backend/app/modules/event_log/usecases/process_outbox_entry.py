@@ -66,7 +66,7 @@ class ProcessOutboxEntryUseCase(UseCase[int, None]):
                     _target_id(row.payload) if row.event_type == UserDeletedEvent.__name__ else None
                 )
                 if deleted_user_id is not None:
-                    # in this transaction, so the deletion's own entry is covered too
+                    # in this transaction, so the deletion's entry is covered too
                     await self._event_log_repository.anonymize_user(deleted_user_id)
                     await self._outbox_repository.anonymize_user(deleted_user_id)
                 error_message = await self._bus.dispatch_stored(

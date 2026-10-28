@@ -2168,7 +2168,9 @@
     "diff": {
       "old": "Old",
       "new": "New",
-      "empty": "No prices will change."
+      "empty": "No prices will change.",
+      "loyaltyThreshold": "Loyalty tier threshold",
+      "rescaledTransactions": "Transactions with recalculated anchor amounts: {{count}}"
     }
   },
   "blacklist": {

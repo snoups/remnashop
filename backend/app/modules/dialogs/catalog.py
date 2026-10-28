@@ -8,7 +8,7 @@ from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 Resolver = Callable[..., object]
 
 # Fluent identifiers can't contain dots. A dotted catalog key works only in
-# url_value's own ${var} substitution, so it's left out of what Fluent text
+# url_value's ${var} substitution, so it's left out of what Fluent text
 # is offered.
 _FLUENT_IDENTIFIER_RE: Final[re.Pattern[str]] = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]*$")
 
@@ -118,7 +118,7 @@ def register_variable(key: str, resolver: Resolver, *, category: str) -> None:
     # Named <category>_<field> (user_name, not name): a bare field name is
     # ambiguous once more than one thing in the bot has it.
     if key in _RESERVED_VARIABLE_NAMES:
-        # These collide with runner.get(key, **kwargs)'s own positional params
+        # These collide with runner.get(key, **kwargs)'s positional params
         # -> "got multiple values for argument" at render time.
         raise ValueError(f"Reserved variable name: {key}")
     _register(_VARIABLES, key, resolver, "variable")  # type: ignore[arg-type]
@@ -139,7 +139,7 @@ def get_window(key: str) -> CatalogWindow:
 
 def window_text_keys(window_key: str) -> tuple[str, ...]:
     # A custom window isn't in the in-process catalog; its body follows the fixed
-    # naming convention create_custom_window.py generates.
+    # naming convention CreateCustomDialogWindowUseCase generates.
     window = _WINDOWS.get(window_key)
     return window.text_keys if window is not None else (f"{_WINDOW_TEXT_KEY_PREFIX}{window_key}",)
 

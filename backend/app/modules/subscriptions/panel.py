@@ -43,7 +43,7 @@ def configure_for_plan(
 ) -> UpdateUserRequestDto:
     return UpdateUserRequestDto(
         id=remnawave_user_id,
-        # None keeps the panel's own status
+        # None keeps the panel's status
         status=UserStatus.ACTIVE if enable else None,
         expire_at=expire_at,
         traffic_limit_bytes=plan.traffic_limit * GB_TO_BYTES,

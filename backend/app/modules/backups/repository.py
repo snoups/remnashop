@@ -46,7 +46,7 @@ class BackupRepository:
         return self._to_settings_dto(row)
 
     async def reset_settings(self) -> BackupSettingsDto:
-        # the row is recreated from the model's own defaults
+        # the row is recreated from the model's defaults
         await self.session.execute(delete(BackupSettings))
         return await self.get_settings()
 

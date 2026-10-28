@@ -1,7 +1,12 @@
+import hashlib
+import json
 from types import SimpleNamespace
 from typing import Any
 
+import cbor2
 import pytest
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
 from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
 
 from app.core.db.uow import UnitOfWork
@@ -17,6 +22,7 @@ from app.modules.passkeys.dto import (
     RenamePasskeyDto,
     VerifyPasskeyRegistrationDto,
 )
+from app.modules.passkeys.events import PasskeyLoginFailedEvent, PasskeyLoginSucceededEvent
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.passkeys.usecases import (
     DeletePasskeyUseCase,
@@ -461,3 +467,154 @@ async def test_verify_registration_rejects_an_oversized_credential_id(
         )
 
     assert error.value.code is ErrorCode.PASSKEY_REGISTRATION_FAILED
+
+
+class _Authenticator:
+    """A software P-256 authenticator signing real WebAuthn assertions."""
+
+    def __init__(self) -> None:
+        self._key = ec.generate_private_key(ec.SECP256R1())
+        self.credential_id = bytes_to_base64url(b"software-authenticator")
+        numbers = self._key.public_key().public_numbers()
+        self.public_key = cbor2.dumps(
+            {
+                1: 2,  # kty: EC2
+                3: -7,  # alg: ES256
+                -1: 1,  # crv: P-256
+                -2: numbers.x.to_bytes(32, "big"),
+                -3: numbers.y.to_bytes(32, "big"),
+            }
+        )
+
+    def assertion(self, challenge: str, sign_count: int) -> dict[str, Any]:
+        # flags: user present + user verified
+        authenticator_data = (
+            hashlib.sha256(RP_ID.encode()).digest() + bytes([0x05]) + sign_count.to_bytes(4, "big")
+        )
+        client_data = json.dumps(
+            {"type": "webauthn.get", "challenge": challenge, "origin": ORIGIN}
+        ).encode()
+        signature = self._key.sign(
+            authenticator_data + hashlib.sha256(client_data).digest(), ec.ECDSA(hashes.SHA256())
+        )
+        return {
+            "id": self.credential_id,
+            "rawId": self.credential_id,
+            "response": {
+                "authenticatorData": bytes_to_base64url(authenticator_data),
+                "clientDataJSON": bytes_to_base64url(client_data),
+                "signature": bytes_to_base64url(signature),
+            },
+            "type": "public-key",
+            "clientExtensionResults": {},
+        }
+
+
+async def _sign_in_with_passkey(
+    *,
+    user: UserDto,
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+    publisher: RecordingEventPublisher,
+):  # type: ignore[no-untyped-def]
+    await _enable_passkeys(settings_repository)
+    authenticator = _Authenticator()
+    async with uow:
+        await passkey_repository.create(
+            CreatePasskeyCredentialDto(
+                user_id=user.id,
+                credential_id=authenticator.credential_id,
+                public_key=authenticator.public_key,
+                sign_count=4,
+                transports=None,
+                device_type="single_device",
+                backed_up=False,
+                name="Software key",
+            )
+        )
+    challenge = bytes_to_base64url(b"challenge-" + str(user.id).encode())
+    await redis_challenge_store.store_authentication_challenge(challenge)
+    use_case = VerifyPasskeyAuthenticationUseCase(
+        settings_repository,
+        passkey_repository,
+        user_repository,
+        redis_challenge_store,
+        SessionIssuer(session_repository, uow, config),
+        uow,
+        publisher,
+    )
+    return await use_case.execute(authenticator.assertion(challenge, 5), CLIENT_IP, USER_AGENT)
+
+
+async def test_verify_authentication_signs_a_staff_member_in(
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+) -> None:
+    owner = await _create_user(user_repository, uow, "owner")
+    publisher = RecordingEventPublisher()
+
+    user, issued = await _sign_in_with_passkey(
+        user=owner,
+        settings_repository=settings_repository,
+        passkey_repository=passkey_repository,
+        user_repository=user_repository,
+        redis_challenge_store=redis_challenge_store,
+        uow=uow,
+        session_repository=session_repository,
+        config=config,
+        publisher=publisher,
+    )
+
+    assert user.id == owner.id
+    assert issued.access_token
+    stored = await passkey_repository.find_by_credential_id(_Authenticator().credential_id)
+    assert stored is not None and stored.sign_count == 5
+    [event] = publisher.events
+    assert isinstance(event, PasskeyLoginSucceededEvent)
+
+
+@pytest.mark.parametrize("refusal", ["blocked", "no_longer_staff"])
+async def test_verify_authentication_refuses_a_valid_key_of_a_user_without_access(
+    refusal: str,
+    settings_repository: SettingsRepository,
+    passkey_repository: PasskeyRepository,
+    user_repository: UserRepository,
+    redis_challenge_store: PasskeyChallengeStore,
+    uow: UnitOfWork,
+    session_repository,
+    config,
+) -> None:
+    role = Role.ADMIN if refusal == "blocked" else Role.USER
+    user = await _create_user(user_repository, uow, "former", role=role)
+    if refusal == "blocked":
+        async with uow:
+            await user_repository.set_blocked(user.id, True)
+    publisher = RecordingEventPublisher()
+
+    with pytest.raises(AuthenticationError, match="not recognized"):
+        await _sign_in_with_passkey(
+            user=user,
+            settings_repository=settings_repository,
+            passkey_repository=passkey_repository,
+            user_repository=user_repository,
+            redis_challenge_store=redis_challenge_store,
+            uow=uow,
+            session_repository=session_repository,
+            config=config,
+            publisher=publisher,
+        )
+
+    stored = await passkey_repository.find_by_credential_id(_Authenticator().credential_id)
+    assert stored is not None and stored.sign_count == 4
+    [event] = publisher.events
+    assert isinstance(event, PasskeyLoginFailedEvent)

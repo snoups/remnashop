@@ -13,7 +13,7 @@ from app.core.utils.telegram_text import (
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
 
-# Telegram's own limits; going over any of them fails the whole message.
+# Telegram's limits; going over any of them fails the whole message.
 MAX_BUTTONS_PER_ROW: Final[int] = 8
 MAX_BUTTONS: Final[int] = 100
 MAX_TEXT_LENGTH: Final[int] = TELEGRAM_TEXT_LIMIT

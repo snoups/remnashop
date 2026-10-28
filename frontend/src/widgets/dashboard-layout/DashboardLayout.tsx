@@ -118,7 +118,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
       <EntityDialogHost>
       <motion.div
         // A collapsed sidebar gives its 176px (w-62 - 72px) back by narrowing the
-        // shell, not widening the card, on the sidebar's own timing, so the card
+        // shell, not widening the card, on the sidebar's timing, so the card
         // keeps its width (both ends use min() to stay linear on narrow screens).
         className={`mx-auto flex h-dvh max-w-[min(1280px,100%)] flex-col text-foreground transition-[max-width] duration-200 ease-out md:h-screen md:flex-row ${
           isSidebarCollapsed ? "xl:max-w-[calc(min(1280px,100%)-11rem)]" : ""

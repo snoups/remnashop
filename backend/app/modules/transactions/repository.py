@@ -292,25 +292,21 @@ class TransactionRepository:
         return [self._to_dto(row) for row in rows]
 
     async def mark_fulfilled_by_key(self, idempotency_key: str, subscription_id: int) -> None:
-        await self.session.execute(
-            update(Transaction)
-            .where(
-                Transaction.idempotency_key == idempotency_key,
-                Transaction.fulfilled_at.is_(None),
-            )
-            .values(
-                fulfilled_at=NOW_FUNC,
-                fulfilled_subscription_id=subscription_id,
-                updated_at=Transaction.updated_at,
-            )
+        await self._mark_fulfilled_where(
+            Transaction.idempotency_key == idempotency_key, subscription_id
         )
 
     async def mark_fulfilled(self, order_id: int, subscription_id: int) -> None:
+        await self._mark_fulfilled_where(Transaction.id == order_id, subscription_id)
+
+    async def _mark_fulfilled_where(
+        self, condition: ColumnElement[bool], subscription_id: int
+    ) -> None:
         # updated_at is the paid-at timestamp every revenue query groups by;
         # pinned to itself, since Core update() still applies its onupdate
         await self.session.execute(
             update(Transaction)
-            .where(Transaction.id == order_id, Transaction.fulfilled_at.is_(None))
+            .where(condition, Transaction.fulfilled_at.is_(None))
             .values(
                 fulfilled_at=NOW_FUNC,
                 fulfilled_subscription_id=subscription_id,
@@ -480,6 +476,9 @@ class TransactionRepository:
             )
         )
 
+    async def count_anchor_amounts(self) -> int:
+        return await self.session.scalar(select(func.count()).select_from(Transaction)) or 0
+
     async def list_gateway_types(self) -> list[PaymentGatewayType]:
         rows = await self.session.scalars(
             select(Transaction.gateway_type)
@@ -523,7 +522,7 @@ class TransactionRepository:
         # (paid orders, discount amount in the anchor currency)
         stmt = select(
             func.count(),
-            # the plan's own discount isn't the promocode's
+            # the plan's discount isn't the promocode's
             func.sum(
                 Transaction.anchor_base_price * (100 - Transaction.plan_discount_percent) / 100
                 - Transaction.anchor_final_price

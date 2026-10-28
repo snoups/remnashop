@@ -86,7 +86,7 @@ const ACTIONS: { key: string; icon: ComponentType<{ className?: string }>; run: 
   { key: "divider", icon: Minus, run: (c) => c.setHorizontalRule() },
 ];
 
-// Tailwind resets headings and lists; the letter's own look is applied by the backend
+// Tailwind resets headings and lists; the letter's look is applied by the backend
 const BODY_CLASS = [
   "min-h-64 w-full px-3.5 py-3 text-sm leading-relaxed text-foreground outline-none",
   "[&_p]:my-1 [&_h1]:my-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-semibold",

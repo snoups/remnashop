@@ -134,7 +134,7 @@ async def test_listener_keeps_its_subscription_through_a_quiet_spell(
     config: AppConfig,
 ) -> None:
     # the client times reads out fast; a silent channel must not look like a
-    # lost one. Without redis-py's own retry, so a dropped read shows here as a
+    # lost one. Without redis-py's retry, so a dropped read shows here as a
     # second subscription instead of a silent reconnect.
     client = Redis.from_url(
         config.redis.dsn,

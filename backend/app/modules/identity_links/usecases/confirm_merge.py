@@ -31,7 +31,7 @@ class ConfirmMergeUseCase:
         if ticket is None or ticket.user_id != user.id:
             raise _invalid()
         async with self._uow:
-            # the same order as the merge's own lock_users, so the two never deadlock;
+            # the same order as the merge's lock_users, so the two never deadlock;
             # an unlink or link on either account waits until the merge commits
             for user_id in sorted((user.id, ticket.other_user_id)):
                 await self._user_repository.find_for_update(user_id)

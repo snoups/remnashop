@@ -847,7 +847,7 @@ async def test_change_credit_converts_at_list_price_not_the_discounted_price(
         expected_days - 1,
         expected_days,
     )
-    # The discounted-denominator bug would land at ~90 days.
+    # a denominator discounted along with the price lands at ~90 days
     assert (changed.expire_at - datetime_now()).days < 70
 
 

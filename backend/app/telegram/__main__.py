@@ -44,7 +44,7 @@ def build_app(
     container = create_aiogram_container(config, bg_manager_factory, bot, translator_hub)
     # Must run before setup_dispatcher(): outer middlewares run in registration
     # order, and UserMiddleware (registered there) reads data[CONTAINER_KEY],
-    # which only exists once dishka's own outer middleware has populated it.
+    # which only exists once dishka's outer middleware has populated it.
     setup_aiogram_dishka(container, dispatcher, auto_inject=True)
     setup_dispatcher(dispatcher)
 

@@ -52,5 +52,5 @@ def test_a_link_signed_before_the_derived_key_still_unsubscribes() -> None:
     token = f"42.{base64.urlsafe_b64encode(legacy).rstrip(b'=').decode()}"
 
     assert read_unsubscribe_token(token, secret) == 42
-    # new links no longer sign with the crypt key itself
+    # fresh links sign with the derived key, not the crypt key
     assert unsubscribe_token(42, secret) != token

@@ -136,7 +136,7 @@ export function bannerNameForMode(mode: BannerMode, windowKey: string): string |
 }
 
 const URL_VARIABLE_RE = /\$\{([a-z0-9_.]+)\}/g;
-/** Mirrors the backend's own rule (modules/dialogs/catalog.py): Telegram rejects
+/** Mirrors the backend's rule (modules/dialogs/catalog.py): Telegram rejects
  * a whole keyboard over one bad button URL. */
 const URL_SCHEMES = ["https://", "http://", "tg://"];
 /** Telegram opens a Mini App only over HTTPS. */

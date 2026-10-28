@@ -16,7 +16,7 @@ interface PremiumEmojiProps {
   size: number;
 }
 
-/** Telegram's own artwork: a lottie animation or a .webm, the static thumbnail
+/** Telegram's artwork: a lottie animation or a .webm, the static thumbnail
  * while it loads (or for a pack imported before animations were stored), and
  * the plain glyph as the last resort. Every emoji in an open pack animates at
  * once, as in Telegram; pause off-screen ones if a large pack stutters. */

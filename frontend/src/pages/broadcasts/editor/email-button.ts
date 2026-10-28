@@ -14,7 +14,7 @@ export const EmailButton = Mark.create({
   },
 
   parseHTML() {
-    // ahead of the link's own a[href] rule
+    // ahead of the link's a[href] rule
     return [
       {
         tag: "a[data-button][href]",

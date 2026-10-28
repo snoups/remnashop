@@ -22,7 +22,7 @@ interface FieldProps {
 
 export function Field({ label, htmlFor, required = false, info, aside, hint, error, className = "", children }: FieldProps) {
   const ref = useRef<HTMLDivElement>(null);
-  // the browser's own constraint (required, min, step...) failing on submit; see form-validation.ts
+  // the browser's constraint (required, min, step...) failing on submit; see form-validation.ts
   const [nativeError, setNativeError] = useState<string | null>(null);
 
   useEffect(() => {

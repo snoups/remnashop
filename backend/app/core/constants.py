@@ -120,7 +120,7 @@ TTL_30D: Final[int] = TIME_1D * 30
 # Plan.traffic_limit / AddOn.amount are stored as whole GB (binary, matching
 # "give this plan 100 GB" as an admin would type it). Remnawave's API takes
 # bytes (CreateUserRequestDto.traffic_limit_bytes): convert at the SDK call
-# only, never store bytes in our own schema.
+# only, never store bytes in our schema.
 GB_TO_BYTES: Final[int] = 1024**3
 
 # Cap on what a webhook handler will buffer. Both webhook routes are

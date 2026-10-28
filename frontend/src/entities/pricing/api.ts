@@ -55,9 +55,19 @@ export interface PricingDiffRow {
   new: string;
 }
 
+export interface ScaledAmount {
+  old: string;
+  new: string;
+}
+
 export interface PricingDiff {
   changes: PricingDiffRow[];
   affected_count: number;
+  // filled only for an anchor switch
+  price_per_day: ScaledAmount | null;
+  price_per_gb: ScaledAmount | null;
+  loyalty_thresholds: ScaledAmount[];
+  rescaled_transactions: number;
 }
 
 export function getPriceBook(signal?: AbortSignal): Promise<PriceBook> {

@@ -114,7 +114,7 @@ def test_select_expression_is_disallowed() -> None:
 
 
 def test_engines_own_dollar_brace_token_syntax_is_disallowed() -> None:
-    # ${name} is url_value's own substitution, not Fluent, and must not pass
+    # ${name} is url_value's substitution, not Fluent, and must not pass
     # for a { $name } reference
     result = find_disallowed_placeable("${name}", _ALLOWED)
     assert result is not None

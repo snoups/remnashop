@@ -1,9 +1,13 @@
-from typing import Any, Optional, Union
+from typing import Any, Final, Optional, Union, cast
 
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent, UserEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
+from app.modules.customer_notifications.dispatch import (
+    NotifyCustomerDispatch,
+    ShowPaymentCanceledDispatch,
+)
 from app.modules.customer_notifications.tasks import (
     notify_customer_task,
     show_payment_canceled_task,
@@ -32,6 +36,11 @@ from app.modules.transactions import (
     TransactionRefundedEvent,
 )
 
+_notify_customer: Final[NotifyCustomerDispatch] = cast(NotifyCustomerDispatch, notify_customer_task)
+_show_payment_canceled: Final[ShowPaymentCanceledDispatch] = cast(
+    ShowPaymentCanceledDispatch, show_payment_canceled_task
+)
+
 
 async def _notify(
     entry: StoredEvent,
@@ -43,7 +52,7 @@ async def _notify(
     # the system actor owns nothing
     if user_id <= 0:
         return
-    await notify_customer_task.kiq(  # type: ignore[call-overload]
+    await _notify_customer.kiq(
         user_id=user_id,
         event_type=entry.event_type,
         outbox_id=entry.outbox_id,
@@ -95,7 +104,7 @@ async def _on_not_fulfilled(event: PaidOrderNotFulfilledEvent, entry: StoredEven
 async def _on_abandoned(
     event: Union[TransactionCanceledEvent, TransactionExpiredEvent], entry: StoredEvent
 ) -> None:
-    await show_payment_canceled_task.kiq(order_id=event.order_id)  # type: ignore[call-overload]
+    await _show_payment_canceled.kiq(order_id=event.order_id)
 
 
 async def _on_hours(

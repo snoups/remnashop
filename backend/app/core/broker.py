@@ -20,7 +20,7 @@ broker = ListQueueBroker(
 # going through the broker.
 
 # Shared Redis keys: SmartRetryMiddleware below schedules a delayed retry,
-# scheduler.py dispatches it when due.
+# the worker scheduler dispatches it when due.
 RETRY_SCHEDULE_PREFIX: Final[str] = "taskiq_retry_schedule"
 
 retry_schedule_source = ListRedisScheduleSource(

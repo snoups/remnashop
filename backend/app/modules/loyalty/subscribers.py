@@ -1,6 +1,9 @@
+from typing import Final, cast
+
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent, UserEvent
 from app.modules.account_merge import AccountsMergedEvent
+from app.modules.loyalty.dispatch import LoyaltyRecalcDispatch
 from app.modules.loyalty.tasks import recalculate_loyalty_discounts_task
 from app.modules.subscriptions import (
     SubscriptionChangedEvent,
@@ -9,23 +12,21 @@ from app.modules.subscriptions import (
 )
 from app.modules.transactions import TransactionRefundedEvent
 
+_recalc: Final[LoyaltyRecalcDispatch] = cast(
+    LoyaltyRecalcDispatch, recalculate_loyalty_discounts_task
+)
+
 
 async def _recalculate_buyer(event: UserEvent, entry: StoredEvent) -> None:
-    await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[event.user.id]
-    )
+    await _recalc.kiq(user_ids=[event.user.id])
 
 
 async def _recalculate_refunded(event: TransactionRefundedEvent, entry: StoredEvent) -> None:
-    await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[event.user_id]
-    )
+    await _recalc.kiq(user_ids=[event.user_id])
 
 
 async def _recalculate_merged(event: AccountsMergedEvent, entry: StoredEvent) -> None:
-    await recalculate_loyalty_discounts_task.kiq(  # type: ignore[call-overload]
-        user_ids=[event.target.id]
-    )
+    await _recalc.kiq(user_ids=[event.target.id])
 
 
 def register_subscribers(bus: EventBus) -> None:

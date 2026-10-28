@@ -125,7 +125,7 @@ def panel_lags_behind(subscription: SubscriptionDto, user: UserResponseDto) -> b
 
 def _disabled_mismatch(subscription: SubscriptionDto, user: UserResponseDto) -> bool:
     # only the switch an admin flips is ours to push; expired and limited are
-    # the panel's own verdicts
+    # the panel's verdicts
     return (subscription.status is SubscriptionStatus.DISABLED) != (
         user.status == UserStatus.DISABLED
     )

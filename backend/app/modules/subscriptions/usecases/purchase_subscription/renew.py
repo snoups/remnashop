@@ -75,7 +75,7 @@ class RenewPurchase:
                 )
 
         if data.idempotency_key is None:
-            # No retry path re-runs a keyless grant, so the panel's own atomic
+            # No retry path re-runs a keyless grant, so the panel's atomic
             # relative extend is safe here.
             panel_user = await self._remnawave_sdk.users.extend_user(
                 target.remnawave_user_id, ExtendUserRequestDto(days=data.duration_days)

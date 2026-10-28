@@ -10,7 +10,7 @@ from aiogram.utils.token import TokenValidationError, validate_token
 from python_socks import ProxyError
 
 _DEFAULT_TIMEOUT_S: Final[float] = 10.0
-# what a Bot API call outside the bot process can raise: the API's own answer,
+# what a Bot API call outside the bot process can raise: the API's answer,
 # a network or decode failure (both aiogram's), a malformed token, a dead proxy
 BOT_API_ERRORS: Final[tuple[type[Exception], ...]] = (
     AiogramError,
@@ -21,7 +21,7 @@ BOT_API_ERRORS: Final[tuple[type[Exception], ...]] = (
 
 
 def bot_api_error_text(error: Exception) -> str:
-    # Telegram's own description where there is one ("Unauthorized")
+    # Telegram's description where there is one ("Unauthorized")
     if isinstance(error, DetailedAiogramError):
         return error.message
     return str(error) or type(error).__name__

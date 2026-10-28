@@ -28,7 +28,7 @@ _BANNER_UPLOAD_PREFIX: Final[str] = f"{API_V1}/banners/"
 _BROADCAST_MEDIA_RE: Final[re.Pattern[str]] = re.compile(rf"^{API_V1}/broadcasts/\d+/media$")
 _BROADCAST_MEDIA_BODY_LIMIT: Final[int] = BROADCAST_MEDIA_MAX_BYTES + 64 * 1024
 
-# setdefault, not overwrite: a route with a stricter policy of its own (the
+# setdefault, not overwrite: a route with a stricter policy (the
 # public appearance images) keeps it.
 _SECURITY_HEADERS: Final[tuple[tuple[str, str], ...]] = (
     ("Content-Security-Policy", "frame-ancestors 'none'"),

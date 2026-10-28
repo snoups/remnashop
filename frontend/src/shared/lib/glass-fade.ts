@@ -1,6 +1,6 @@
 // Glass controls (backdrop-filter) ignore their scroller's scroll-fade mask, so each one carries
 // its own (app/styles.css): this keeps --fade-top/--fade-bottom at the scroller's top and bottom
-// edges in the control's own coordinates.
+// edges in the control's coordinates.
 
 const SCROLLERS = ".scroll-fade-top, .scroll-fade-y";
 const GLASS = '[class*="backdrop-blur"]:not(.sticky)';

@@ -128,7 +128,7 @@ _SNAPSHOT_ADAPTER: Final[TypeAdapter[ActorSnapshot]] = TypeAdapter(ActorSnapshot
 
 
 E = TypeVar("E", bound=BaseEvent)
-# stored in the outbox row's own columns, not in the payload
+# stored in the outbox row's columns, not in the payload
 EVENT_ROW_FIELDS: Final[frozenset[str]] = frozenset({"occurred_at", "ip_address"})
 
 

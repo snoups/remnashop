@@ -290,6 +290,7 @@ class UserRepository:
         return old - (new or 0)
 
     async def debit_points_floor(self, user_id: int, amount: Decimal) -> Decimal:
+        # row lock: RETURNING only sees the new value, the old one is needed for "taken"
         old = await self.session.scalar(
             select(User.points).where(User.id == user_id).with_for_update()
         )

@@ -6,7 +6,7 @@ export function currencySymbol(currency: string): string {
 }
 
 /**
- * The locale's own currency format: "1 234 ₽" in ru, "₽1,234" in en. `exact`
+ * The locale's currency format: "1 234 ₽" in ru, "₽1,234" in en. `exact`
  * keeps kopecks/cents when there are any (a single order, an average), otherwise
  * whole units (totals). Telegram Stars aren't an ISO currency, so Intl can't
  * format them: always "1 234 ★".

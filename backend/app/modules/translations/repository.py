@@ -107,6 +107,12 @@ class TranslationRepository:
     async def get(
         self, locale: Locale, message_id: str, attribute_id: str
     ) -> Optional[TranslationEntryDto]:
+        row = await self._find_row(locale, message_id, attribute_id)
+        return self._to_dto(row) if row is not None else None
+
+    async def _find_row(
+        self, locale: Locale, message_id: str, attribute_id: str
+    ) -> Optional[BotTranslation]:
         result = await self.session.execute(
             select(BotTranslation).where(
                 BotTranslation.locale == locale,
@@ -114,8 +120,16 @@ class TranslationRepository:
                 BotTranslation.attribute_id == attribute_id,
             )
         )
-        row = result.scalar_one_or_none()
-        return self._to_dto(row) if row is not None else None
+        return result.scalar_one_or_none()
+
+    async def _get_row(self, locale: Locale, message_id: str, attribute_id: str) -> BotTranslation:
+        row = await self._find_row(locale, message_id, attribute_id)
+        if row is None:
+            raise NotFoundError(
+                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}",
+                code=ErrorCode.TRANSLATION_NOT_FOUND,
+            )
+        return row
 
     async def seed_missing(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
@@ -160,19 +174,7 @@ class TranslationRepository:
     async def update_value(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> TranslationEntryDto:
-        result = await self.session.execute(
-            select(BotTranslation).where(
-                BotTranslation.locale == locale,
-                BotTranslation.message_id == message_id,
-                BotTranslation.attribute_id == attribute_id,
-            )
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            raise NotFoundError(
-                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}",
-                code=ErrorCode.TRANSLATION_NOT_FOUND,
-            )
+        row = await self._get_row(locale, message_id, attribute_id)
         row.value = value
         await self.session.flush()
         await self.session.refresh(row)
@@ -181,19 +183,7 @@ class TranslationRepository:
     async def reset_value(
         self, locale: Locale, message_id: str, attribute_id: str
     ) -> TranslationEntryDto:
-        result = await self.session.execute(
-            select(BotTranslation).where(
-                BotTranslation.locale == locale,
-                BotTranslation.message_id == message_id,
-                BotTranslation.attribute_id == attribute_id,
-            )
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            raise NotFoundError(
-                f"Translation {message_id}.{attribute_id} not found for locale {locale.value}",
-                code=ErrorCode.TRANSLATION_NOT_FOUND,
-            )
+        row = await self._get_row(locale, message_id, attribute_id)
         row.value = row.default_value
         await self.session.flush()
         await self.session.refresh(row)

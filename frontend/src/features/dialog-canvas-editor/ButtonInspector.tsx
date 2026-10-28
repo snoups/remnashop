@@ -87,7 +87,7 @@ export function ButtonInspector({
     );
   };
   // Only one of the two is ever filled: a glyph rides in the label text, a
-  // premium id goes to Telegram's own icon field.
+  // premium id goes to Telegram's icon field.
   const iconGlyph = valueOf(iconTextKey(button.text_key));
   const urlFieldRef = useRef<HTMLInputElement>(null);
   const iconId = valueOf(iconIdTextKey(button.text_key));

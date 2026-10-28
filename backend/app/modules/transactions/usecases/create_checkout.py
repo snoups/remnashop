@@ -228,7 +228,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
                 if failed:
                     await give_back_purchase_discount(self._user_repository, order)
-            # the provider's own answer stays in the log: it can name the merchant
+            # the provider's answer stays in the log: it can name the merchant
             # account or the request, which is not the customer's business
             logger.exception(
                 f"Gateway '{data.gateway_type}' failed to create a payment for order {order.id}"

@@ -38,7 +38,7 @@ function anchorWith(align: PortalPopoverProps["align"], trigger: DOMRect, maxHei
   return align === "right" ? rightAnchorFor(trigger, maxHeight) : leftAnchorFor(trigger, maxHeight);
 }
 
-// Portalled to the body: rendered in place, the dashboard panel's own
+// Portalled to the body: rendered in place, the dashboard panel's
 // backdrop-filter becomes the popover's backdrop root, and its glass stops
 // blurring anything behind the panel.
 // measured on open only; useCloseOnScroll closes it when the trigger moves.

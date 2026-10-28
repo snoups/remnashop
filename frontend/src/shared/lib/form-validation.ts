@@ -24,7 +24,7 @@ export function validationMessage(el: Validatable): string {
 
 let pending = false;
 
-// Browsers draw their own unstyled bubble for required/min/step/pattern/type=url...;
+// Browsers draw an unstyled bubble for required/min/step/pattern/type=url...;
 // cancel it: a control inside Field gets the message under itself, anything else a toast.
 // Every invalid control of a form fires; only the first one takes the focus.
 export function installFormValidationMessages(): void {

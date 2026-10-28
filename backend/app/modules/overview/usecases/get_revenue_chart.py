@@ -15,7 +15,7 @@ from app.modules.users import UserStatsRepository
 
 
 class GetRevenueChartUseCase(UseCase[GetOverviewChartDto, RevenueChartDto]):
-    # gated inside by the section's own read permission, like GetOverviewUseCase
+    # gated inside by the section's read permission, like GetOverviewUseCase
     required_permission = Permission.PUBLIC
 
     def __init__(

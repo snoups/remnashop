@@ -17,7 +17,7 @@ interface PillTabsProps<T extends string> {
 }
 
 /** The settings TabBar's capsule, for tabs that switch state instead of routes:
- * the editor's own tabs, the locale row, the inspector's pair. */
+ * the editor's tabs, the locale row, the inspector's pair. */
 export function PillTabs<T extends string>({
   items,
   activeKey,

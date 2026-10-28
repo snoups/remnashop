@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from loguru import logger
 
 from app.core.actor import Actor
@@ -13,15 +11,13 @@ from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import PriceBookDto, SwitchAnchorCurrencyDto
 from app.modules.plans.ports import AnchorAmountRescaler, LoyaltyThresholdRescaler
 from app.modules.plans.price_book import build_price_book
+from app.modules.plans.price_projection import anchor_switch, scale_unit_price
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (
-    BASE_PRICE_PRECISION,
     NON_ANCHOR_CURRENCIES,
-    RATE_PRECISION,
     AnchorSwitchedEvent,
     PricingRepository,
     UpdatePricingSettingsDto,
-    scale_base_price,
 )
 
 
@@ -62,44 +58,23 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
                     "That currency is already the anchor", code=ErrorCode.ANCHOR_CURRENCY_UNCHANGED
                 )
 
-            f = table.rows[data.new_anchor].rate
-            new_rates = {
-                currency: (row.rate / f).quantize(RATE_PRECISION)
-                for currency, row in table.rows.items()
-            }
-            new_rates[data.new_anchor] = Decimal("1.000000")
-
-            await self._pricing_repository.set_anchor(data.new_anchor, new_rates)
-            await self._anchor_amount_rescaler.rescale_anchor_amounts(f)
-            await self._loyalty_threshold_rescaler.rescale_thresholds(f)
-
             plans = await self._plan_repository.list_all()
-            plan_updates = {
-                duration.id: scale_base_price(duration.base_price, f)
-                for plan in plans
-                for duration in plan.durations
-            }
-            if plan_updates:
-                await self._plan_repository.set_duration_base_prices(plan_updates)
-
             addons = await self._addon_repository.list_all()
-            addon_updates = {addon.id: scale_base_price(addon.base_price, f) for addon in addons}
-            if addon_updates:
-                await self._addon_repository.set_base_prices(addon_updates)
+            switch = anchor_switch(table, data.new_anchor, plans, addons)
+
+            await self._pricing_repository.set_anchor(data.new_anchor, switch.rates)
+            await self._anchor_amount_rescaler.rescale_anchor_amounts(switch.factor)
+            await self._loyalty_threshold_rescaler.rescale_thresholds(switch.factor)
+            if switch.plan_base_prices:
+                await self._plan_repository.set_duration_base_prices(switch.plan_base_prices)
+            if switch.addon_base_prices:
+                await self._addon_repository.set_base_prices(switch.addon_base_prices)
 
             settings = await self._pricing_repository.get_settings()
             await self._pricing_repository.update_settings(
                 UpdatePricingSettingsDto(
-                    price_per_day=(
-                        (settings.price_per_day * f).quantize(BASE_PRICE_PRECISION)
-                        if settings.price_per_day is not None
-                        else None
-                    ),
-                    price_per_gb=(
-                        (settings.price_per_gb * f).quantize(BASE_PRICE_PRECISION)
-                        if settings.price_per_gb is not None
-                        else None
-                    ),
+                    price_per_day=scale_unit_price(settings.price_per_day, switch.factor),
+                    price_per_gb=scale_unit_price(settings.price_per_gb, switch.factor),
                 )
             )
             await self._event_publisher.publish(

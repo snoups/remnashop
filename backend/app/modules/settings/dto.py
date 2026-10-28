@@ -97,7 +97,7 @@ class BotCommandDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class GetBotCommandsDto:
-    # BOT_COMMANDS' own order instead of the stored one, for the "reset order" button
+    # BOT_COMMANDS' order instead of the stored one, for the "reset order" button
     default_order: bool = False
 
 

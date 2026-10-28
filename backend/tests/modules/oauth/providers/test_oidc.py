@@ -60,7 +60,7 @@ async def test_discover_raises_key_error_on_non_dict_json(monkeypatch: pytest.Mo
 async def test_discover_does_not_follow_a_redirect_off_the_issuer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The SSRF guard only vets the issuer's own host, so a followed redirect
+    # The SSRF guard only vets the issuer's host, so a followed redirect
     # would carry this server-side request to an unvetted one.
     requested: list[str] = []
 

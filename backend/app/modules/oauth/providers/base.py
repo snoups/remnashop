@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import Final, Optional, Protocol
+from typing import Final, Optional, Protocol, cast
 
 import httpx
 import jwt
 from authlib.integrations.base_client.errors import OAuthError
+from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.enums import OAuthProvider
 from app.core.exceptions import ValidationError
@@ -55,3 +56,24 @@ def build_redirect_uri(domain: str, provider: OAuthProvider) -> str:
 
 def build_cabinet_redirect_uri(cabinet_url: str, provider: OAuthProvider) -> str:
     return f"{cabinet_url.rstrip('/')}/login/callback/{provider.value.lower()}"
+
+
+async def build_authorization_url(
+    *,
+    client_id: str,
+    client_secret: str,
+    endpoint: str,
+    scope: str,
+    redirect_uri: str,
+    state: str,
+    code_verifier: Optional[str],
+) -> str:
+    async with AsyncOAuth2Client(
+        client_id,
+        client_secret,
+        redirect_uri=redirect_uri,
+        scope=scope,
+        code_challenge_method="S256",
+    ) as client:
+        url, _ = client.create_authorization_url(endpoint, state=state, code_verifier=code_verifier)
+        return cast(str, url)

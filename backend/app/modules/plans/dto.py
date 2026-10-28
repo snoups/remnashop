@@ -240,6 +240,14 @@ class AdjustBasePricesDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class AnchorSwitchDto:
+    factor: Decimal
+    rates: dict[Currency, Decimal]
+    plan_base_prices: dict[int, Decimal]
+    addon_base_prices: dict[int, Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
 class PricingChangePreviewDto:
     # exactly one of the three is set; the usecase checks it
     rate: Optional[UpdateCurrencyRateDto] = None
@@ -256,9 +264,19 @@ class PricingDiffRow(BaseDto):
     new: Decimal
 
 
+class ScaledAmountDto(BaseDto):
+    old: Decimal
+    new: Decimal
+
+
 class PricingDiffDto(BaseDto):
     changes: list[PricingDiffRow]
     affected_count: int
+    # set only for an anchor switch, which rescales these along with the prices
+    price_per_day: Optional[ScaledAmountDto] = None
+    price_per_gb: Optional[ScaledAmountDto] = None
+    loyalty_thresholds: list[ScaledAmountDto] = Field(default_factory=list)
+    rescaled_transactions: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)

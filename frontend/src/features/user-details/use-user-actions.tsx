@@ -89,7 +89,7 @@ export function useUserActions({
     const canBlock =
       canManage &&
       (user.role !== "ADMIN" || permissions.includes("ADMINS_MANAGE"));
-    // binding and merging touch a staff account only under the backend's own gate for it
+    // binding and merging touch a staff account only under the backend's gate for it
     const canTouchStaff =
       user.role === "USER" ||
       (permissions.includes("ADMINS_MANAGE") &&

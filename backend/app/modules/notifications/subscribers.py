@@ -1,13 +1,20 @@
+from typing import Final, cast
+
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent
+from app.modules.notifications.dispatch import DeliverNotificationDispatch
 from app.modules.notifications.dto import NOTIFICATION_GROUPS
 from app.modules.notifications.tasks import deliver_notification_task
+
+_deliver_notification: Final[DeliverNotificationDispatch] = cast(
+    DeliverNotificationDispatch, deliver_notification_task
+)
 
 
 async def _deliver(entry: StoredEvent) -> None:
     # fields, not the event-log row: this runs inside the outbox transaction,
     # so the row may not be committed when the task starts
-    await deliver_notification_task.kiq(  # type: ignore[call-overload]
+    await _deliver_notification.kiq(
         outbox_id=entry.outbox_id,
         event_type=entry.event_type,
         payload=entry.payload,

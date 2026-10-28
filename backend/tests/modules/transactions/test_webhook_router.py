@@ -576,7 +576,7 @@ async def test_yookassa_webhook_from_trusted_ip_is_accepted(client) -> None:
 
 
 async def test_yookassa_webhook_spoofed_forwarded_for_is_not_trusted(client) -> None:
-    # only the rightmost entry is the proxy's own view of the peer
+    # only the rightmost entry is the proxy's view of the peer
     response = await client.post(
         "/api/v1/payments/yookassa",
         content=_YOOKASSA_PAID_BODY,

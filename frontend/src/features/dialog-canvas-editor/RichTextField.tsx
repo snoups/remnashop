@@ -72,7 +72,7 @@ function serializeChildren(parent: ParentNode): string {
 }
 
 function insertMarkup(markup: string) {
-  // execCommand goes through the browser's own editing, so undo keeps working
+  // execCommand goes through native browser editing, so undo keeps working
   if (markup.match(PREMIUM_EMOJI_RE)) document.execCommand("insertHTML", false, markupToHtml(markup));
   else document.execCommand("insertText", false, markup);
 }

@@ -28,7 +28,7 @@ _ALREADY_REFUNDED: Final[str] = "CHARGE_ALREADY_REFUNDED"
 
 
 class StarsRuntimeSettings(TelegramStarsSettings):
-    # not dashboard fields: the bot's own token and proxy, added by with_bot_settings()
+    # not dashboard fields: the bot's token and proxy, added by with_bot_settings()
     bot_token: SecretStr
     bot_proxy: Optional[str] = None
 

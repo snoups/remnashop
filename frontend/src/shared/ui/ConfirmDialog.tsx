@@ -16,7 +16,7 @@ interface ConfirmDialogProps {
   size?: "sm" | "md" | "lg";
   /** header icon for a non-danger dialog; danger always shows the warning icon */
   icon?: LucideIcon;
-  /** false renders inline in the parent's own container instead of portaling to document.body */
+  /** false renders inline in the parent's container instead of portaling to document.body */
   portal?: boolean;
   /** extra content between the message and the buttons: a diff table, a small form */
   children?: ReactNode;

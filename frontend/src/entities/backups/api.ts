@@ -87,7 +87,7 @@ export function deleteBackupRun(runId: number): Promise<void> {
   return apiDelete<void>(`/backups/runs/${runId}`);
 }
 
-// the whole dump is buffered in the tab before the save dialog --
+// the whole dump is buffered in the tab before the save dialog:
 // fine for tens of MB; past that, a short-lived signed download URL the
 // browser streams straight to disk.
 export async function fetchBackupRunFile(runId: number): Promise<{ blob: Blob; filename: string }> {

@@ -44,7 +44,7 @@ void i18n.use(initReactI18next).init({
   },
 });
 
-// lang on <html> drives the browser's own hyphenation, spellcheck and translate offer
+// lang on <html> drives the browser's hyphenation, spellcheck and translate offer
 document.documentElement.lang = i18n.language;
 
 i18n.on("languageChanged", (language) => {

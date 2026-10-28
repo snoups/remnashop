@@ -136,7 +136,7 @@ def _resolve_rate_limit_identity(request: Request, jwt_secret: str) -> str:
         token = auth_header[len("Bearer ") :]
         try:
             payload = decode_access_token(token, jwt_secret)
-        except Exception:  # any decode failure just falls through to IP
+        except Exception:  # any decode failure falls through to IP
             pass
         else:
             return f"user:{payload.get('sub')}"

@@ -1,9 +1,9 @@
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional
 
 import jwt
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
-from app.modules.oauth.providers.base import OAuthProfile
+from app.modules.oauth.providers.base import OAuthProfile, build_authorization_url
 
 _AUTHORIZE_ENDPOINT: Final[str] = "https://oauth.telegram.org/auth"
 _TOKEN_ENDPOINT: Final[str] = "https://oauth.telegram.org/token"
@@ -26,17 +26,15 @@ class TelegramOAuthClient:
     async def authorization_url(
         self, redirect_uri: str, state: str, code_verifier: Optional[str]
     ) -> str:
-        client = AsyncOAuth2Client(
-            self._client_id,
-            self._client_secret,
-            redirect_uri=redirect_uri,
+        return await build_authorization_url(
+            client_id=self._client_id,
+            client_secret=self._client_secret,
+            endpoint=_AUTHORIZE_ENDPOINT,
             scope="openid profile",
-            code_challenge_method="S256",
+            redirect_uri=redirect_uri,
+            state=state,
+            code_verifier=code_verifier,
         )
-        url, _ = client.create_authorization_url(
-            _AUTHORIZE_ENDPOINT, state=state, code_verifier=code_verifier
-        )
-        return cast(str, url)
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]

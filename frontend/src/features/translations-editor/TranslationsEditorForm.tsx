@@ -33,7 +33,7 @@ import { Card } from "@shared/ui/Card";
 /** Every other locale starts life as a copy of this one. */
 const SOURCE_LOCALE = "en";
 
-/** Key prefixes are the project's own grouping: msg-, btn-, ntf- and so on. */
+/** Key prefixes are the project's grouping: msg-, btn-, ntf- and so on. */
 function groupOf(key: string): string {
   const dash = key.indexOf("-");
   return dash === -1 ? key : key.slice(0, dash);

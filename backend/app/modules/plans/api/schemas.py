@@ -262,6 +262,15 @@ class PricingDiffRowResponse(BaseModel):
     new: Decimal
 
 
+class ScaledAmountResponse(BaseModel):
+    old: Decimal
+    new: Decimal
+
+
 class PricingDiffResponse(BaseModel):
     changes: list[PricingDiffRowResponse]
     affected_count: int
+    price_per_day: Optional[ScaledAmountResponse] = None
+    price_per_gb: Optional[ScaledAmountResponse] = None
+    loyalty_thresholds: list[ScaledAmountResponse]
+    rescaled_transactions: int

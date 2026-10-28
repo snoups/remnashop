@@ -57,6 +57,37 @@ def _find(status: str = "Completed", success: bool = True) -> dict[str, object]:
     }
 
 
+async def test_create_payment_sends_the_order_and_returns_the_payment_page() -> None:
+    http = HttpRecorder(
+        json_response({"Success": True, "Model": {"Id": "cp-9", "Url": "https://pay.cp/9"}})
+    )
+
+    intent = await _gateway(http=http.client).create_payment(make_order())
+
+    body = http.last_json()
+    assert intent.confirmation_url == "https://pay.cp/9"
+    assert intent.provider_payment_id == "cp-9"
+    assert body["InvoiceId"] == ORDER_REF
+    assert body["Amount"] == 500.0
+    assert body["Currency"] == "RUB"
+    assert body["AccountId"] == "7"
+    assert body["SuccessRedirectUrl"] == RETURN_URL
+    expected_auth = base64.b64encode(b"pk_1:secret").decode()
+    assert http.last.headers["Authorization"] == f"Basic {expected_auth}"
+
+
+async def test_create_payment_raises_when_the_api_refuses() -> None:
+    http = HttpRecorder(json_response({"Success": False, "Message": "Invalid amount"}))
+    with pytest.raises(PaymentGatewayError):
+        await _gateway(http=http.client).create_payment(make_order())
+
+
+async def test_create_payment_requires_a_payment_page() -> None:
+    http = HttpRecorder(json_response({"Success": True, "Model": {"Id": "cp-9"}}))
+    with pytest.raises(PaymentGatewayError):
+        await _gateway(http=http.client).create_payment(make_order())
+
+
 async def test_parse_webhook_verifies_the_raw_body_hmac() -> None:
     raw, headers = _signed()
     gateway = _gateway()

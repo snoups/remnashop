@@ -28,7 +28,7 @@ class RemnawaveProvider(Provider):
             headers["x-forwarded-proto"] = "https"
             headers["x-forwarded-for"] = "127.0.0.1"
 
-        # with transport= given, AsyncClient ignores its own verify/limits/...
+        # with transport= given, AsyncClient ignores verify/limits/...
         # kwargs, so TLS and pooling go on AsyncHTTPTransport(...)
         transport = PanelWriteRecorder(ResilientTransport(AsyncHTTPTransport()), redis)
         client = AsyncClient(

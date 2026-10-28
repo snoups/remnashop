@@ -113,7 +113,7 @@ class VerifyPasskeyAuthenticationUseCase:
                 credential=credential,
                 expected_challenge=base64url_to_bytes(challenge),
                 expected_rp_id=settings.passkey_rp_id,
-                # same origin allowance as verify_registration.py
+                # same origin allowance as VerifyPasskeyRegistrationUseCase
                 expected_origin=[settings.passkey_origin, f"https://{settings.passkey_rp_id}"],
                 credential_public_key=stored.public_key,
                 credential_current_sign_count=stored.sign_count,

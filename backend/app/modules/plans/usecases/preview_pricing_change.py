@@ -3,7 +3,7 @@ from typing import Optional
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, PriceAdjustScope
+from app.core.enums import Currency
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
@@ -11,21 +11,24 @@ from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     AddOnDto,
-    AdjustBasePricesDto,
     PlanDto,
-    PlanDurationDto,
     PricingChangePreviewDto,
     PricingDiffDto,
     PricingDiffRow,
+    ScaledAmountDto,
+)
+from app.modules.plans.ports import AnchorAmountRescaler, LoyaltyThresholdRescaler
+from app.modules.plans.price_projection import (
+    adjusted_base_prices,
+    anchor_switch,
+    scale_unit_price,
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (
     NON_ANCHOR_CURRENCIES,
-    RATE_PRECISION,
     CurrencyRateTable,
     PricingRepository,
     resolve_price,
-    scale_base_price,
 )
 
 
@@ -37,11 +40,15 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
         plan_repository: PlanRepository,
         addon_repository: AddOnRepository,
         pricing_repository: PricingRepository,
+        anchor_amount_rescaler: AnchorAmountRescaler,
+        loyalty_threshold_rescaler: LoyaltyThresholdRescaler,
         uow: UnitOfWork,
     ) -> None:
         self._plan_repository = plan_repository
         self._addon_repository = addon_repository
         self._pricing_repository = pricing_repository
+        self._anchor_amount_rescaler = anchor_amount_rescaler
+        self._loyalty_threshold_rescaler = loyalty_threshold_rescaler
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: PricingChangePreviewDto) -> PricingDiffDto:
@@ -88,7 +95,31 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                     new_table=projected_table,
                 )
 
-            return PricingDiffDto(changes=changes, affected_count=len(changes))
+            diff = PricingDiffDto(changes=changes, affected_count=len(changes))
+            if data.anchor is None:
+                return diff
+            return await self._with_anchor_side_effects(diff, table.rows[data.anchor].rate)
+
+    async def _with_anchor_side_effects(
+        self, diff: PricingDiffDto, factor: Decimal
+    ) -> PricingDiffDto:
+        settings = await self._pricing_repository.get_settings()
+        return diff.model_copy(
+            update={
+                "price_per_day": self._scaled(settings.price_per_day, factor),
+                "price_per_gb": self._scaled(settings.price_per_gb, factor),
+                "loyalty_thresholds": (
+                    await self._loyalty_threshold_rescaler.preview_rescaled_thresholds(factor)
+                ),
+                "rescaled_transactions": await self._anchor_amount_rescaler.count_anchor_amounts(),
+            }
+        )
+
+    def _scaled(self, price: Optional[Decimal], factor: Decimal) -> Optional[ScaledAmountDto]:
+        new = scale_unit_price(price, factor)
+        if price is None or new is None:
+            return None
+        return ScaledAmountDto(old=price, new=new)
 
     def _diff_row(
         self,
@@ -134,53 +165,16 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             return CurrencyRateTable(anchor=table.anchor, rows=rows), {}, {}
 
         if data.anchor is not None:
-            factor = table.rows[data.anchor].rate
+            switch = anchor_switch(table, data.anchor, plans, addons)
             rows = {
-                currency: row.model_copy(
-                    update={"rate": (row.rate / factor).quantize(RATE_PRECISION)}
-                )
+                currency: row.model_copy(update={"rate": switch.rates[currency]})
                 for currency, row in table.rows.items()
             }
-            rows[data.anchor] = rows[data.anchor].model_copy(update={"rate": Decimal("1.000000")})
-            projected_table = CurrencyRateTable(anchor=data.anchor, rows=rows)
-            plan_base_prices = {
-                duration.id: scale_base_price(duration.base_price, factor)
-                for plan in plans
-                for duration in plan.durations
-            }
-            addon_base_prices = {
-                addon.id: scale_base_price(addon.base_price, factor) for addon in addons
-            }
-            return projected_table, plan_base_prices, addon_base_prices
+            return (
+                CurrencyRateTable(anchor=data.anchor, rows=rows),
+                switch.plan_base_prices,
+                switch.addon_base_prices,
+            )
 
         assert data.adjust is not None
-        return table, *self._project_adjust(data.adjust, plans, addons)
-
-    def _project_adjust(
-        self, adjust: AdjustBasePricesDto, plans: list[PlanDto], addons: list[AddOnDto]
-    ) -> tuple[dict[int, Decimal], dict[int, Decimal]]:
-        plan_base_prices: dict[int, Decimal] = {}
-        addon_base_prices: dict[int, Decimal] = {}
-
-        if adjust.scope in (PriceAdjustScope.ALL_PLANS, PriceAdjustScope.SELECTED):
-            durations: list[PlanDurationDto] = [
-                duration for plan in plans for duration in plan.durations
-            ]
-            if adjust.scope is PriceAdjustScope.SELECTED:
-                selected_ids = set(adjust.plan_duration_ids)
-                durations = [duration for duration in durations if duration.id in selected_ids]
-            plan_base_prices = {
-                duration.id: scale_base_price(duration.base_price, adjust.factor)
-                for duration in durations
-            }
-
-        if adjust.scope in (PriceAdjustScope.ALL_ADDONS, PriceAdjustScope.SELECTED):
-            targets = addons
-            if adjust.scope is PriceAdjustScope.SELECTED:
-                selected_ids = set(adjust.addon_ids)
-                targets = [addon for addon in targets if addon.id in selected_ids]
-            addon_base_prices = {
-                addon.id: scale_base_price(addon.base_price, adjust.factor) for addon in targets
-            }
-
-        return plan_base_prices, addon_base_prices
+        return table, *adjusted_base_prices(data.adjust, plans, addons)

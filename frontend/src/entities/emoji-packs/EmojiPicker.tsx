@@ -16,7 +16,7 @@ import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 
-/** A standard emoji is a glyph the bot puts in the button's own label; a premium
+/** A standard emoji is a glyph the bot puts in the button's label; a premium
  * one is an id Telegram renders itself, and only for a bot whose owner has
  * Premium. Exactly one of the two is ever set. */
 export type PickedEmoji = { glyph: string } | { customEmojiId: string; fallback: string };

@@ -133,7 +133,7 @@ async def test_funnel_steps_are_nested(
         is_trial=True,
     )
     await _connect(session, connected_only.id)
-    # connected on a trial row that was later replaced -- still connected
+    # connected on a trial row that was later replaced is still connected
     trial_payer = await create_subscription(
         subscription_repository,
         user_repository,

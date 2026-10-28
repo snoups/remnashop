@@ -22,9 +22,9 @@ export function toTwoDecimals(value: string): string {
 }
 
 // type="number" doesn't filter typed characters everywhere (Firefox and Safari
-// take letters too), so only printable keys are checked against a whitelist --
+// take letters too), so only printable keys are checked against a whitelist:
 // arrows, Backspace, Tab and Ctrl/Cmd shortcuts pass through, and the
-// browser's own min/max/step validation stays intact.
+// browser's min/max/step validation stays intact.
 const INTEGER_KEY = /^\d$/;
 const DECIMAL_KEY = /^[\d.]$/;
 

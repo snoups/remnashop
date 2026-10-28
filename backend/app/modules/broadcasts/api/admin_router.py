@@ -1,5 +1,8 @@
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import AsyncIterator, Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -93,6 +96,32 @@ def _save_dto(body: BroadcastRequest) -> SaveBroadcastDto:
         email_fallback=body.email_fallback,
         email_contents=body.email_contents,
     )
+
+
+@dataclass(frozen=True, kw_only=True)
+class _Upload:
+    source: Path
+    size: int
+    content_type: str
+
+
+@asynccontextmanager
+async def _receive_upload(request: Request, media_dir: Path, limit: int) -> AsyncIterator[_Upload]:
+    # the file is gone on exit; a usecase that took it has already moved it
+    source = upload_path(media_dir)
+    source.parent.mkdir(parents=True, exist_ok=True)
+    size = 0
+    try:
+        with source.open("wb") as file:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    break  # one byte over is enough for the usecase to reject it
+                file.write(chunk)
+        content_type = request.headers.get("content-type", "").split(";")[0].strip()
+        yield _Upload(source=source, size=size, content_type=content_type)
+    finally:
+        source.unlink(missing_ok=True)
 
 
 @router.get("", response_model=BroadcastPageResponse)
@@ -276,25 +305,16 @@ async def upload_broadcast_media(
     # the permission is checked before the body too, so a refused caller uploads nothing
     if not PermissionPolicy.has_permission(actor, Permission.BROADCASTS_MEDIA_SET):
         raise PermissionDeniedError
-    source = upload_path(config.media_dir)
-    source.parent.mkdir(parents=True, exist_ok=True)
-    size = 0
-    try:
-        with source.open("wb") as file:
-            async for chunk in request.stream():
-                size += len(chunk)
-                if size > BROADCAST_MEDIA_MAX_BYTES:
-                    break  # one byte over is enough for the usecase to reject it
-                file.write(chunk)
-        content_type = request.headers.get("content-type", "").split(";")[0].strip()
+    async with _receive_upload(request, config.media_dir, BROADCAST_MEDIA_MAX_BYTES) as upload:
         result = await use_case(
             actor,
             SetBroadcastMediaDto(
-                broadcast_id=broadcast_id, content_type=content_type, source=source, size=size
+                broadcast_id=broadcast_id,
+                content_type=upload.content_type,
+                source=upload.source,
+                size=upload.size,
             ),
         )
-    finally:
-        source.unlink(missing_ok=True)  # already moved on success
     return BroadcastResponse.model_validate(result, from_attributes=True)
 
 
@@ -340,25 +360,16 @@ async def upload_broadcast_email_image(
     # permission before the body, as with media: a refused caller uploads nothing
     if not PermissionPolicy.has_permission(actor, Permission.BROADCASTS_EMAIL_IMAGE_ADD):
         raise PermissionDeniedError
-    source = upload_path(config.media_dir)
-    source.parent.mkdir(parents=True, exist_ok=True)
-    size = 0
-    try:
-        with source.open("wb") as file:
-            async for chunk in request.stream():
-                size += len(chunk)
-                if size > MAX_EMAIL_IMAGE_BYTES:
-                    break  # one byte over is enough for the usecase to reject it
-                file.write(chunk)
-        content_type = request.headers.get("content-type", "").split(";")[0].strip()
+    async with _receive_upload(request, config.media_dir, MAX_EMAIL_IMAGE_BYTES) as upload:
         result = await use_case(
             actor,
             AddEmailImageDto(
-                broadcast_id=broadcast_id, content_type=content_type, source=source, size=size
+                broadcast_id=broadcast_id,
+                content_type=upload.content_type,
+                source=upload.source,
+                size=upload.size,
             ),
         )
-    finally:
-        source.unlink(missing_ok=True)  # already moved on success
     return BroadcastEmailImageResponse.model_validate(result, from_attributes=True)
 
 

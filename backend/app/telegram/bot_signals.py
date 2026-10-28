@@ -63,7 +63,7 @@ async def listen_for_bot_signals(redis: Redis, handlers: Mapping[str, SignalHand
                         # one bad message must not stop the bot picking up the next one
                         logger.exception(f"Bot signal on '{channel}' failed; still listening")
         except (RedisConnectionError, RedisTimeoutError, OSError) as error:
-            # outlasted redis-py's own retries: subscribe again once Redis is back
+            # outlasted redis-py's retries: subscribe again once Redis is back
             logger.warning(f"Bot signal subscription lost ({error}); retrying in {delay}s")
             await asyncio.sleep(delay)
             delay = min(delay * 2, _RECONNECT_MAX_DELAY_S)

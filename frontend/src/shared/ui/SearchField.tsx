@@ -16,7 +16,7 @@ interface SearchFieldProps {
   onChange: (value: string) => void;
 }
 
-/** Clears a search input; the browsers' own (x) is hidden in app/styles.css since Firefox has none.
+/** Clears a search input; the native (x) is hidden in app/styles.css since Firefox has none.
  * `size`/`className` put it at an equal inset from the field's top, bottom and right edge. */
 export function SearchClearButton({
   onClear,

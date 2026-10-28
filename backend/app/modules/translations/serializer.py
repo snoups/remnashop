@@ -139,7 +139,7 @@ def assert_plain_translation_value(value: str) -> None:
         # Kept single-line even though serialize_to_fluent() indents continuations:
         # bot command descriptions are repushed to Telegram, which rejects
         # multi-line ones. Dialog window bodies get their newlines through
-        # modules/dialogs' own text endpoint instead.
+        # modules/dialogs' text endpoint instead.
         raise ValidationError(
             "Translation values cannot contain newlines", code=ErrorCode.TRANSLATION_HAS_NEWLINES
         )
@@ -156,7 +156,7 @@ def assert_plain_translation_value(value: str) -> None:
 def _check_placeable_expression(
     expression: object, allowed_variables: frozenset[str]
 ) -> Optional[str]:
-    # the serializer's own escapes: a line start (_escape_line_start) or an empty value
+    # the serializer's escapes: a line start (_escape_line_start) or an empty value
     if isinstance(expression, StringLiteral) and (
         expression.value in _LINE_START_SPECIAL or expression.value == ""
     ):

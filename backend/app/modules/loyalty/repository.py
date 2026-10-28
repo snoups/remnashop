@@ -7,6 +7,7 @@ from app.core.constants import ONE_CENT
 from app.core.db.models.loyalty_settings import LoyaltySettings
 from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.modules.loyalty.dto import LoyaltySettingsDto, LoyaltyTierDto, UpdateLoyaltySettingsDto
+from app.modules.plans import ScaledAmountDto
 
 
 class LoyaltyRepository:
@@ -51,7 +52,22 @@ class LoyaltyRepository:
         if row is None or not row.tiers:
             return
         row.tiers = [
-            {**tier, "threshold": str((Decimal(tier["threshold"]) * factor).quantize(ONE_CENT))}
+            {**tier, "threshold": str(self._scale_threshold(tier["threshold"], factor))}
             for tier in row.tiers
         ]
         await self.session.flush()
+
+    async def preview_rescaled_thresholds(self, factor: Decimal) -> list[ScaledAmountDto]:
+        row = await self.session.get(LoyaltySettings, SINGLETON_ID)
+        if row is None:
+            return []
+        return [
+            ScaledAmountDto(
+                old=Decimal(tier["threshold"]),
+                new=self._scale_threshold(tier["threshold"], factor),
+            )
+            for tier in row.tiers
+        ]
+
+    def _scale_threshold(self, threshold: str, factor: Decimal) -> Decimal:
+        return (Decimal(threshold) * factor).quantize(ONE_CENT)

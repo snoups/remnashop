@@ -1,4 +1,4 @@
-from typing import Final, Optional, cast
+from typing import Final, Optional
 from urllib.parse import urlsplit
 
 import httpx
@@ -7,7 +7,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.utils.http import assert_public_https_host
-from app.modules.oauth.providers.base import OAuthProfile
+from app.modules.oauth.providers.base import OAuthProfile, build_authorization_url
 
 _DISCOVERY_PATH: Final[str] = "/.well-known/openid-configuration"
 
@@ -24,7 +24,7 @@ class OIDCOAuthClient:
         # re-checked here, not only on save, to narrow the DNS-rebinding window
         # (assert_public_https_host)
         await assert_public_https_host(self._issuer_url)
-        # No redirects: the guard above only vets the issuer's own host, and a
+        # No redirects: the guard above only vets the issuer's host, and a
         # redirect would carry this server-side request to an unvetted one
         # (link-local metadata, anything on the internal network). OIDC
         # Discovery serves the document at the issuer itself.
@@ -50,17 +50,15 @@ class OIDCOAuthClient:
             raise ValidationError(
                 "authorization_endpoint must be an https:// URL", code=ErrorCode.URL_NOT_HTTPS
             )
-        async with AsyncOAuth2Client(
-            self._client_id,
-            self._client_secret,
-            redirect_uri=redirect_uri,
+        return await build_authorization_url(
+            client_id=self._client_id,
+            client_secret=self._client_secret,
+            endpoint=endpoint,
             scope="openid profile email",
-            code_challenge_method="S256",
-        ) as client:
-            url, _ = client.create_authorization_url(
-                endpoint, state=state, code_verifier=code_verifier
-            )
-            return cast(str, url)
+            redirect_uri=redirect_uri,
+            state=state,
+            code_verifier=code_verifier,
+        )
 
     async def fetch_identity(
         self, redirect_uri: str, code: str, code_verifier: Optional[str]
