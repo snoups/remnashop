@@ -100,6 +100,7 @@ class _Fixture:
         outbox_id: int = 1,
         payment_key: Optional[str] = None,
         subscription_id: Optional[int] = None,
+        telegram_refused: bool = False,
     ) -> None:
         await self.use_case.system(
             NotifyCustomerDto(
@@ -109,6 +110,7 @@ class _Fixture:
                 args={},
                 payment_key=payment_key,
                 subscription_id=subscription_id,
+                telegram_refused=telegram_refused,
             )
         )
 
@@ -141,6 +143,15 @@ async def test_telegram_and_email_both_queued(fx: _Fixture) -> None:
             "user_id": user.id,
             "text": "Activated\n\nSubscription is active.",
             "buttons": [{"text": "Close", "callback_data": "cn:close"}],
+            "notification": {
+                "user_id": user.id,
+                "event_type": _PURCHASED,
+                "outbox_id": 1,
+                "args": {},
+                "payment_key": None,
+                "subscription_id": None,
+                "telegram_refused": False,
+            },
         }
     ]
     assert len(fx.email.messages) == 1
@@ -287,6 +298,32 @@ async def test_bot_blocked_customer_gets_email_instead(fx: _Fixture) -> None:
     await fx.notify(user, "SubscriptionExpiringEvent")
 
     assert fx.telegram.messages == []
+    assert len(fx.email.messages) == 1
+
+
+async def test_a_refused_telegram_send_goes_out_by_email(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8202, email="a@example.com")
+    # the cooldown run already took its slot when Telegram refused
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=41)
+    assert fx.email.messages == []
+    async with fx.uow:
+        await fx.users.set_bot_blocked(user.id, True)
+
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=41, telegram_refused=True)
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=41, telegram_refused=True)
+
+    assert len(fx.telegram.messages) == 1
+    assert [m["to"] for m in fx.email.messages] == ["a@example.com"]
+
+
+async def test_a_refused_receipt_is_not_emailed_twice(fx: _Fixture) -> None:
+    user = await fx.create(name="a", telegram_id=8203, email="a@example.com")
+    await fx.notify(user, outbox_id=42)
+    async with fx.uow:
+        await fx.users.set_bot_blocked(user.id, True)
+
+    await fx.notify(user, outbox_id=42, telegram_refused=True)
+
     assert len(fx.email.messages) == 1
 
 

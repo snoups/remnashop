@@ -2,7 +2,7 @@ from typing import Any, Awaitable, Callable, Final, Optional
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramNetworkError
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -64,6 +64,10 @@ async def is_channel_member(
         return True
     try:
         member = await bot.get_chat_member(chat_id=channel_id, user_id=telegram_id)
+    except TelegramNetworkError as error:
+        # Telegram unreachable for a moment: the channel setup itself is fine
+        logger.warning(f"Channel {channel_id} membership check skipped: {error}")
+        return True
     except TelegramAPIError as error:
         # a broken channel setup must not lock every customer out
         logger.warning(f"Channel {channel_id} membership check failed: {error}")

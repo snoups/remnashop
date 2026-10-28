@@ -45,16 +45,26 @@ class CheckoutPricer:
         self._promocode_liveness = promocode_liveness
 
     async def load_purchasable_plan(
-        self, user_id: int, plan_id: int, plan_code: Optional[str]
+        self,
+        user_id: int,
+        plan_id: int,
+        plan_code: Optional[str],
+        renew_subscription_id: Optional[int] = None,
     ) -> tuple[PlanDto, UserDto]:
         plan = await self._plan_repository.get_by_id(plan_id)
         user = await self._user_repository.find_by_id(user_id)
         if user is None:
             raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
 
-        if not await self._eligibility.is_purchasable(plan, user) or not link_code_matches(
-            plan, plan_code
-        ):
+        if renew_subscription_id is not None:
+            allowed = bool(
+                await self._eligibility.renewable([plan], user.id, renew_subscription_id)
+            )
+        else:
+            allowed = await self._eligibility.is_purchasable(plan, user) and link_code_matches(
+                plan, plan_code
+            )
+        if not allowed:
             # Same answer as a missing plan: a distinct one would let anyone
             # walk plan ids and learn which hidden plans exist.
             raise NotFoundError(f"Plan '{plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND)

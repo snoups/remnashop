@@ -432,3 +432,34 @@ async def test_plan_code_keeps_the_plan_availability_rules(
     assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="oldCode1"))).plans == []
     assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="nope"))).plans == []
     assert (await use_case(REGULAR_USER, ListActivePlansDto(plan_code="тест"))).plans == []
+
+
+async def test_renewal_catalog_offers_the_owned_plan_its_availability_no_longer_admits(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    newbie_id = await _plan_with_access(plan_repository, "newRenew", PlanAvailability.NEW)
+    owner = await user_repository.create(CreateUserDto(name="Owner", telegram_id=921))
+    stranger = await user_repository.create(CreateUserDto(name="Stranger", telegram_id=922))
+    subscription = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=owner.id,
+            remnawave_user_id=921_001,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime_now(),
+            url="https://example.com/sub/921",
+            plan_snapshot=make_plan_snapshot(plan_id=newbie_id),
+        )
+    )
+    use_case = _use_case(plan_repository, uow)
+    renew = ListActivePlansDto(renew_subscription_id=subscription.id)
+
+    # bought once, so the plain catalog no longer offers it
+    assert (await use_case(owner)).plans == []
+    assert [plan.id for plan in (await use_case(owner, renew)).plans] == [newbie_id]
+    assert (await use_case(stranger, renew)).plans == []

@@ -404,6 +404,8 @@ class CatalogPlanDto:
 class ListActivePlansDto:
     # a plan's public code: the catalog shrinks to that one plan, LINK plans included
     plan_code: Optional[str] = None
+    # the catalog shrinks to that subscription's plan, whatever its availability
+    renew_subscription_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

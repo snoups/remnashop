@@ -724,7 +724,8 @@
       "RescueCliUsedEvent": {
         "reset_owner_access": "Owner access reset (console)",
         "enable_password_login": "Password sign-in enabled (console)",
-        "restore_backup": "Backup restored (console)"
+        "restore_backup": "Backup restored (console)",
+        "reset_encrypted_secrets": "Secrets erased (console)"
       },
       "subscriptionExpiredDays_one": "Subscription expired ({{count}} day ago)",
       "subscriptionExpiredDays_other": "Subscription expired ({{count}} days ago)"

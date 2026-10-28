@@ -42,8 +42,12 @@ async def list_active_plans(
     use_case: FromDishka[ListActivePlansUseCase],
     actor: UserDto = Depends(get_current_user),
     plan_code: Optional[str] = Query(None, max_length=64),
+    renew_subscription_id: Optional[int] = Query(None),
 ) -> PublicPlanListResponse:
-    catalog = await use_case(actor, ListActivePlansDto(plan_code=plan_code))
+    catalog = await use_case(
+        actor,
+        ListActivePlansDto(plan_code=plan_code, renew_subscription_id=renew_subscription_id),
+    )
     items = [
         PublicPlanResponse.model_validate(plan, from_attributes=True) for plan in catalog.plans
     ]

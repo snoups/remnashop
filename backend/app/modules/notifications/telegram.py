@@ -3,7 +3,7 @@ from enum import auto
 from typing import Final, Optional
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from aiogram.types import InlineKeyboardMarkup
 from loguru import logger
 
@@ -13,11 +13,13 @@ from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
 # an alert waits out a short flood-wait once; a long one fails the delivery
 _MAX_RETRY_AFTER_S: Final[float] = 30.0
 TELEGRAM_TIMEOUT_SECONDS: Final[float] = 10.0
+# a 400, not a 403: a deleted account or an id Telegram never gave this bot
+_CHAT_NOT_FOUND: Final[str] = "chat not found"
 
 
 class TelegramSendResult(UpperStrEnum):
     SENT = auto()
-    # never pressed /start or blocked the bot: retrying won't help
+    # never pressed /start, blocked the bot or the account is gone: retrying won't help
     FORBIDDEN = auto()
     FAILED = auto()
 
@@ -51,6 +53,14 @@ async def send_telegram_text(
         else:
             await _send_with_retry(bot, chat_id, text, reply_markup)
     except TelegramForbiddenError as error:
+        logger.info(f"Telegram notification to {chat_id} refused: {error.message}")
+        return TelegramSendResult.FORBIDDEN
+    except TelegramBadRequest as error:
+        if _CHAT_NOT_FOUND not in error.message.lower():
+            logger.warning(
+                f"Telegram notification to {chat_id} failed: {bot_api_error_text(error)}"
+            )
+            return TelegramSendResult.FAILED
         logger.info(f"Telegram notification to {chat_id} refused: {error.message}")
         return TelegramSendResult.FORBIDDEN
     except BOT_API_ERRORS as error:

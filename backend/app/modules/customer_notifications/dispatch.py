@@ -2,7 +2,14 @@ from typing import Any, Optional, Protocol
 
 
 class SendCustomerTelegramDispatch(Protocol):
-    async def kiq(self, *, user_id: int, text: str, buttons: list[dict[str, str]]) -> object: ...
+    async def kiq(
+        self,
+        *,
+        user_id: int,
+        text: str,
+        buttons: list[dict[str, str]],
+        notification: dict[str, Any],
+    ) -> object: ...
 
 
 class NotifyCustomerDispatch(Protocol):
@@ -15,6 +22,7 @@ class NotifyCustomerDispatch(Protocol):
         args: dict[str, Any],
         payment_key: Optional[str] = None,
         subscription_id: Optional[int] = None,
+        telegram_refused: bool = False,
     ) -> object: ...
 
 

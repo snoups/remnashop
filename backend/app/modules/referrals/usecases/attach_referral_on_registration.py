@@ -30,12 +30,13 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: AttachReferralOnRegistrationDto) -> None:
-        # a stale, foreign or disabled link just leaves the newcomer unattached
+        # a stale or foreign link just leaves the newcomer unattached; the
+        # program being off only holds back rewards, the invitation still counts
         async with self._uow:
             settings = await self._referral_repository.get_settings()
             user = await self._user_repository.find_by_id(data.user_id)
             referrer = await self._user_repository.find_by_referral_code(data.referral_code)
-        if user is None or user.deleted_at is not None or not settings.enabled:
+        if user is None or user.deleted_at is not None:
             return
         if referrer is None or referrer.id == user.id or referrer.is_blocked:
             logger.info(f"{user.log} Referral code '{data.referral_code}' not usable, skipping")
@@ -62,7 +63,7 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
 
     async def _reward_invitee(self, user: UserDto, settings: ReferralSettingsDto) -> None:
         amount = settings.invitee_reward_amount
-        if amount <= 0:
+        if not settings.enabled or amount <= 0:
             return
         if settings.invitee_reward_type is ReferralRewardType.EXTRA_DAYS:
             await self._user_repository.credit_bonus_days(user.id, amount)

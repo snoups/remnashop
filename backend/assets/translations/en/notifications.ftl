@@ -105,6 +105,7 @@ ntf-panel-login-succeeded = Remnawave panel sign-in as “{ $username }”. IP: 
 ntf-rescue-cli-used = { $action ->
         [reset_owner_access] The owner’s access was reset from the rescue console: new password, IP allowlist cleared, sessions, passkeys and linked accounts removed.
         [enable_password_login] Password sign-in was turned on from the rescue console.
+        [reset_encrypted_secrets] Every secret stored in the database was erased from the rescue console: enter the bot token, gateway, OAuth, SMTP and captcha credentials again.
        *[restore_backup] The database was restored from a backup from the rescue console.
     }
     .title = Rescue console

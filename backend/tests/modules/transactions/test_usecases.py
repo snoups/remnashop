@@ -1319,6 +1319,67 @@ async def test_create_checkout_refuses_to_renew_or_change_a_trial(
     assert error.value.code is ErrorCode.TRIAL_NOT_RENEWABLE
 
 
+def _renew_dto(plan: PlanDto, subscription_id: int) -> CreateCheckoutDto:
+    return CreateCheckoutDto(
+        channel=PurchaseChannel.BOT,
+        plan_id=plan.id,
+        duration_days=30,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=subscription_id,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+    )
+
+
+@pytest.mark.parametrize(
+    "availability", [PlanAvailability.NEW, PlanAvailability.LINK, PlanAvailability.ALLOWED]
+)
+async def test_create_checkout_renews_an_owned_plan_its_availability_no_longer_admits(
+    availability: PlanAvailability,
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_103, plan_id=plan.id
+    )
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=plan.id,
+            availability=availability,
+            # someone else's: the buyer was taken off the list
+            allowed_telegram_ids=[1] if availability is PlanAvailability.ALLOWED else [],
+            allowed_emails=[],
+        )
+    )
+
+    result = await create_checkout_use_case(actor, _renew_dto(plan, subscription_id))
+
+    assert result.order_id > 0
+
+
+async def test_create_checkout_refuses_to_renew_an_inactive_plan(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_104, plan_id=plan.id
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=False))
+
+    with pytest.raises(NotFoundError) as error:
+        await create_checkout_use_case(actor, _renew_dto(plan, subscription_id))
+
+    assert error.value.code is ErrorCode.PLAN_NOT_FOUND
+
+
 async def test_checkout_with_payments_off_refuses_and_waitlists_the_buyer(
     create_checkout_use_case: CreateCheckoutUseCase,
     settings_repository: SettingsRepository,

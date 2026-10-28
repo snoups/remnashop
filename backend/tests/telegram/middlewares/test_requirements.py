@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 import pytest
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.methods import GetChatMember
 from aiogram.types import CallbackQuery, Chat, Message, User
 from fluentogram import TranslatorHub
@@ -96,12 +96,17 @@ class _Container:
 
 
 class _Bot:
-    def __init__(self, status: Optional[str]) -> None:
+    def __init__(self, status: Optional[str], network_down: bool = False) -> None:
         self._status = status  # None -> Telegram API error
+        self._network_down = network_down
         self.calls = 0
 
     async def get_chat_member(self, chat_id: int, user_id: int) -> Any:
         self.calls += 1
+        if self._network_down:
+            raise TelegramNetworkError(
+                method=GetChatMember(chat_id=chat_id, user_id=user_id), message="timeout"
+            )
         if self._status is None:
             raise TelegramBadRequest(
                 method=GetChatMember(chat_id=chat_id, user_id=user_id), message="chat not found"
@@ -218,6 +223,16 @@ async def test_broken_channel_setup_lets_customers_through(redis: Redis) -> None
     assert [(r.kind, r.channel_id) for r in container.report.reports] == [
         (BotStatusKind.CHANNEL_CHECK_FAILED, -100)
     ]
+
+
+async def test_a_network_outage_lets_customers_through_without_a_report(redis: Redis) -> None:
+    user = UserDto(id=1, name="c", telegram_id=45)
+    container = _Container(_CHANNEL, redis)
+    bot = _Bot(None, network_down=True)
+
+    assert await _run(_message([]), user, _CHANNEL, bot, redis, container) is True
+
+    assert container.report.reports == []
 
 
 async def test_membership_is_cached_per_channel(redis: Redis) -> None:

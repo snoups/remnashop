@@ -760,7 +760,8 @@
       "RescueCliUsedEvent": {
         "reset_owner_access": "Сброс доступа владельца (консоль)",
         "enable_password_login": "Включён вход по паролю (консоль)",
-        "restore_backup": "Восстановление из бэкапа (консоль)"
+        "restore_backup": "Восстановление из бэкапа (консоль)",
+        "reset_encrypted_secrets": "Секреты стёрты (консоль)"
       },
       "subscriptionExpiredDays_one": "Подписка истекла ({{count}} день назад)",
       "subscriptionExpiredDays_few": "Подписка истекла ({{count}} дня назад)",

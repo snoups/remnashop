@@ -13,6 +13,7 @@ from loguru import logger
 
 from app.core.config import AppConfig
 from app.core.constants import TELEGRAM_LOGS_KEY
+from app.core.db.crypt_key import assert_crypt_key_matches
 from app.core.logger import add_redis_sink, setup_logger
 from app.modules.settings import BotSettingsDto, read_bot_settings
 from app.telegram.app import get_app
@@ -70,6 +71,7 @@ if __name__ == "__main__":
         # `factory=True` callable from inside a running loop, where asyncio.run()
         # fails. Hence the token is fetched here and a concrete app is built.
         # No hot-reload.
+        asyncio.run(assert_crypt_key_matches(_config))
         _bot_settings = asyncio.run(read_bot_settings(_config))
         # without a token build_app serves the idle app, and on a fresh deploy
         # read_translator_hub raises (no active locale yet)

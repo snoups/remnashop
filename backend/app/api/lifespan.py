@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.broker import broker
 from app.core.config import AppConfig
+from app.core.db.crypt_key import assert_crypt_key_matches
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.metrics import register_db_pool_metrics
@@ -25,6 +26,7 @@ from app.modules.users import UserRepository
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container: AsyncContainer = app.state.dishka_container
+    await assert_crypt_key_matches(await container.get(AppConfig))
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=REGISTRY)
 

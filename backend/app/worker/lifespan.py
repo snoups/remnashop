@@ -11,6 +11,7 @@ from taskiq import TaskiqEvents, TaskiqState
 
 from app.core.broker import RETRY_SCHEDULE_PREFIX, broker
 from app.core.config import AppConfig
+from app.core.db.crypt_key import assert_crypt_key_matches
 from app.core.event_bus import EventBus
 from app.core.logger import setup_logger
 from app.core.metrics import WORKER_METRICS_REGISTRY, register_db_pool_metrics
@@ -29,6 +30,7 @@ async def _setup_logging(state: TaskiqState) -> None:
 @broker.on_event(TaskiqEvents.WORKER_STARTUP)
 async def _setup_worker_container(state: TaskiqState) -> None:
     config = AppConfig.get()
+    await assert_crypt_key_matches(config)
     ProcessCollector(registry=WORKER_METRICS_REGISTRY)
     PlatformCollector(registry=WORKER_METRICS_REGISTRY)
     GCCollector(registry=WORKER_METRICS_REGISTRY)

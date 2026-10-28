@@ -4,7 +4,7 @@ from typing import ClassVar, Literal, Optional, TypeAlias
 from app.core.events import ActorTargetEvent, BaseEvent, EventCategory, SystemEvent, UserEvent
 
 RescueCliAction: TypeAlias = Literal[
-    "enable_password_login", "reset_owner_access", "restore_backup"
+    "enable_password_login", "reset_owner_access", "restore_backup", "reset_encrypted_secrets"
 ]
 
 
@@ -54,6 +54,6 @@ class RescueCliUsedEvent(SystemEvent):
     """A break-glass action run from `python -m app.cli` on the server."""
 
     category: ClassVar[EventCategory] = EventCategory.AUTH
-    # reset_owner_access | enable_password_login | restore_backup
+    # reset_owner_access | enable_password_login | restore_backup | reset_encrypted_secrets
     action: RescueCliAction
     user_id: Optional[int] = None

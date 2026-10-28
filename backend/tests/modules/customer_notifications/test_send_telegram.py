@@ -4,7 +4,7 @@ import pytest
 
 from app.core.db.uow import UnitOfWork
 from app.core.exceptions import RetryableTaskError
-from app.modules.customer_notifications.dto import SendCustomerTelegramDto
+from app.modules.customer_notifications.dto import NotifyCustomerDto, SendCustomerTelegramDto
 from app.modules.customer_notifications.usecases import (
     SendCustomerTelegramUseCase,
     send_customer_telegram,
@@ -12,6 +12,7 @@ from app.modules.customer_notifications.usecases import (
 from app.modules.notifications import TelegramSendResult
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.events import RecordingEventPublisher
 
 _RESULT: Final[dict[str, TelegramSendResult]] = {}
@@ -40,15 +41,27 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str]]:
     return calls
 
 
+_NOTIFY = RecordingDispatch()
+
+
 async def _run(
-    users: UserRepository, uow: UnitOfWork, token: Optional[str], **fields: Any
+    users: UserRepository,
+    uow: UnitOfWork,
+    token: Optional[str],
+    notification: Optional[NotifyCustomerDto] = None,
+    **fields: Any,
 ) -> tuple[UserDto, RecordingEventPublisher]:
     async with uow:
         user: UserDto = await users.create(CreateUserDto(name="a", **fields))
         await uow.commit()
     publisher = RecordingEventPublisher()
-    use_case = SendCustomerTelegramUseCase(users, cast(Any, _Tokens(token)), uow, publisher)
-    await use_case.system(SendCustomerTelegramDto(user_id=user.id, text="hi"))
+    _NOTIFY.messages.clear()
+    use_case = SendCustomerTelegramUseCase(
+        users, cast(Any, _Tokens(token)), uow, publisher, cast(Any, _NOTIFY)
+    )
+    await use_case.system(
+        SendCustomerTelegramDto(user_id=user.id, text="hi", notification=notification)
+    )
     return user, publisher
 
 
@@ -70,6 +83,39 @@ async def test_forbidden_is_final(
     assert [e.user_id for e in publisher.events] == [user.id]  # type: ignore[attr-defined]
 
 
+async def test_forbidden_requeues_the_notification_for_email(
+    user_repository: UserRepository, uow: UnitOfWork, sent: list[tuple[int, str]]
+) -> None:
+    _RESULT["value"] = TelegramSendResult.FORBIDDEN
+    notification = NotifyCustomerDto(
+        user_id=0, event_type="SubscriptionExpiringEvent", outbox_id=7, args={"days": 3}
+    )
+
+    await _run(user_repository, uow, "t", notification, telegram_id=9005)
+
+    assert _NOTIFY.messages == [
+        {
+            "user_id": 0,
+            "event_type": "SubscriptionExpiringEvent",
+            "outbox_id": 7,
+            "args": {"days": 3},
+            "payment_key": None,
+            "subscription_id": None,
+            "telegram_refused": True,
+        }
+    ]
+
+
+async def test_a_message_queued_without_its_notification_is_not_requeued(
+    user_repository: UserRepository, uow: UnitOfWork, sent: list[tuple[int, str]]
+) -> None:
+    _RESULT["value"] = TelegramSendResult.FORBIDDEN
+
+    await _run(user_repository, uow, "t", telegram_id=9006)
+
+    assert _NOTIFY.messages == []
+
+
 async def test_no_token_sends_nothing(
     user_repository: UserRepository, uow: UnitOfWork, sent: list[tuple[int, str]]
 ) -> None:
@@ -89,7 +135,9 @@ async def test_forbidden_marks_the_bot_blocked_and_stops_sending(
 ) -> None:
     _RESULT["value"] = TelegramSendResult.FORBIDDEN
     user, publisher = await _run(user_repository, uow, "t", telegram_id=9004)
-    use_case = SendCustomerTelegramUseCase(user_repository, cast(Any, _Tokens("t")), uow, publisher)
+    use_case = SendCustomerTelegramUseCase(
+        user_repository, cast(Any, _Tokens("t")), uow, publisher, cast(Any, _NOTIFY)
+    )
 
     await use_case.system(SendCustomerTelegramDto(user_id=user.id, text="again"))
 

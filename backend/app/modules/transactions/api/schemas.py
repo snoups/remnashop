@@ -43,6 +43,7 @@ class QuoteCheckoutRequest(BaseModel):
     duration_days: int = Field(gt=0)
     currency: Currency
     plan_code: Optional[str] = Field(default=None, max_length=64)
+    renew_subscription_id: Optional[int] = None
 
 
 class CheckoutQuoteResponse(BaseModel):

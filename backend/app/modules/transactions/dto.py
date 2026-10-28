@@ -143,6 +143,7 @@ class QuoteCheckoutDto:
     duration_days: int
     currency: Currency
     plan_code: Optional[str] = None
+    renew_subscription_id: Optional[int] = None
 
 
 class CheckoutResultDto(BaseDto):

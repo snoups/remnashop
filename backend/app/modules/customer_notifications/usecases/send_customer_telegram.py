@@ -1,3 +1,5 @@
+from dataclasses import asdict, replace
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 
@@ -6,6 +8,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.exceptions import RetryableTaskError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
+from app.modules.customer_notifications.dispatch import NotifyCustomerDispatch
 from app.modules.customer_notifications.dto import SendCustomerTelegramDto
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.routing import CustomerChannel
@@ -22,11 +25,13 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
         token_source: BotTokenSource,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        notify_dispatch: NotifyCustomerDispatch,
     ) -> None:
         self._user_repository = user_repository
         self._token_source = token_source
         self._uow = uow
         self._event_publisher = event_publisher
+        self._notify_dispatch = notify_dispatch
 
     async def _execute(self, actor: Actor, data: SendCustomerTelegramDto) -> None:
         token, proxy = await self._token_source.get_bot_token()
@@ -63,5 +68,10 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             logger.info(f"{user.log} Cannot receive bot messages")
             async with self._uow:
                 await mark_bot_blocked(self._user_repository, self._event_publisher, user.id)
+            if data.notification is not None:
+                # the customer is unreachable by the bot now, so this run picks email
+                await self._notify_dispatch.kiq(
+                    **asdict(replace(data.notification, telegram_refused=True))
+                )
         if result is TelegramSendResult.FAILED:
             raise RetryableTaskError(f"Telegram send to user {user.id} failed")

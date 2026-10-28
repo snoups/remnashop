@@ -19,7 +19,7 @@ class QuoteCheckoutUseCase(UseCase[QuoteCheckoutDto, PriceQuote, UserDto]):
     async def _execute(self, actor: UserDto, data: QuoteCheckoutDto) -> PriceQuote:
         async with self._uow:
             plan, user = await self._pricer.load_purchasable_plan(
-                actor.id, data.plan_id, data.plan_code
+                actor.id, data.plan_id, data.plan_code, data.renew_subscription_id
             )
         user = await self._pricer.drop_dead_promocode_discounts(user)
         return await self._pricer.quote(plan, data.duration_days, data.currency, user)

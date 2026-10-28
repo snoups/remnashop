@@ -26,6 +26,7 @@ async def notify_customer_task(
     # defaulted: messages queued before the field existed still deserialize
     payment_key: Optional[str] = None,
     subscription_id: Optional[int] = None,
+    telegram_refused: bool = False,
 ) -> None:
     await use_case.system(
         NotifyCustomerDto(
@@ -35,6 +36,7 @@ async def notify_customer_task(
             args=args,
             payment_key=payment_key,
             subscription_id=subscription_id,
+            telegram_refused=telegram_refused,
         )
     )
 
@@ -46,9 +48,15 @@ async def send_customer_telegram_task(
     text: str,
     use_case: FromDishka[SendCustomerTelegramUseCase],
     buttons: Optional[list[dict[str, str]]] = None,
+    notification: Optional[dict[str, Any]] = None,
 ) -> None:
     await use_case.system(
-        SendCustomerTelegramDto(user_id=user_id, text=text, buttons=buttons or [])
+        SendCustomerTelegramDto(
+            user_id=user_id,
+            text=text,
+            buttons=buttons or [],
+            notification=NotifyCustomerDto(**notification) if notification else None,
+        )
     )
 
 

@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from typing import Final, Optional
 
 from loguru import logger
@@ -134,7 +135,8 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             return
         # set only once there is something to send: a failure above must leave
         # the retry free to deliver, and nothing sent must not silence the next one
-        cooldown_key = _cooldown_key(data.event_type, user.id)
+        # a requeue after Telegram refused: the first run already took the cooldown slot
+        cooldown_key = None if data.telegram_refused else _cooldown_key(data.event_type, user.id)
         if cooldown_key is not None and not await self._redis.set(
             cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
         ):
@@ -197,6 +199,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
                 user_id=user.id,
                 text=f"{title}\n\n{body}",
                 buttons=await self._telegram_buttons(data, user, renderer),
+                notification=asdict(data),
             )
             return
         assert user.email is not None

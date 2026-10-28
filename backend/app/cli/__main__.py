@@ -6,6 +6,7 @@ from app.cli.audit import record_rescue
 from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
+from app.core.db.crypt_key import reset_encrypted_secrets
 from app.core.db.standalone import standalone_session
 from app.modules.settings import enable_password_login
 
@@ -14,6 +15,7 @@ _MENU: Final[str] = """Remnashop Rescue CLI
     1. Enable password authentication
     2. Restore backup
     3. Reset owner access (new password, clear IP allowlist)
+    4. Reset encrypted secrets (after APP_CRYPT_KEY changed)
     0. Exit
 """
 
@@ -50,6 +52,24 @@ async def _reset_owner_access() -> None:
     print(f"Owner access reset. Login: {owner.login}")
     print(f"New password: {password}")
     print("Telegram was unlinked from the owner; connect it again from the dashboard.")
+
+
+async def _reset_encrypted_secrets() -> None:
+    if not _confirm(
+        "This erases every secret stored in the database: the bot token and proxy, payment "
+        "gateway credentials (gateways are switched off), OAuth clients, SMTP passwords, the "
+        "captcha secret and the web push keys. Enter them in the dashboard again afterwards. "
+        "Continue?"
+    ):
+        print("Aborted.")
+        return
+
+    async with standalone_session(AppConfig.get()) as session:
+        await reset_encrypted_secrets(session)
+        await record_rescue(session, "reset_encrypted_secrets")
+        await session.commit()
+    print("Encrypted secrets cleared. Restart the containers, then enter the secrets again.")
+    print('Staff passwords are peppered with the same key: use "Reset owner access" too.')
 
 
 def _confirm(prompt: str) -> bool:
@@ -105,6 +125,8 @@ async def _run() -> None:
         await _restore_backup()
     elif choice == "3":
         await _reset_owner_access()
+    elif choice == "4":
+        await _reset_encrypted_secrets()
     elif choice == "0":
         pass
     else:

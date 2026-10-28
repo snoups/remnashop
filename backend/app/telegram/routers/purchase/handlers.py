@@ -70,10 +70,15 @@ def plans_for(
 
 
 def catalog_query(manager: DialogManager) -> ListActivePlansDto:
+    start = manager.start_data if isinstance(manager.start_data, dict) else {}
     code = manager.dialog_data.get(PLAN_CODE_KEY)
-    if code is None and isinstance(manager.start_data, dict):
-        code = manager.start_data.get(PLAN_CODE_KEY)
-    return ListActivePlansDto(plan_code=code)
+    if code is None:
+        code = start.get(PLAN_CODE_KEY)
+    purchase_type = manager.dialog_data.get("purchase_type", start.get("purchase_type"))
+    renew_id = (
+        selected_subscription_id(manager) if purchase_type == PurchaseType.RENEW.value else None
+    )
+    return ListActivePlansDto(plan_code=code, renew_subscription_id=renew_id)
 
 
 def selected_plan(catalog: PlanCatalogDto, dialog_data: dict[str, Any]) -> Optional[CatalogPlanDto]:

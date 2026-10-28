@@ -145,7 +145,10 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         async with self._uow:
             gateway_settings = await self._load_gateway_settings(actor.id, data)
             plan, user = await self._pricer.load_purchasable_plan(
-                actor.id, data.plan_id, data.plan_code
+                actor.id,
+                data.plan_id,
+                data.plan_code,
+                data.target_subscription_id if data.purchase_type is PurchaseType.RENEW else None,
             )
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
@@ -169,9 +172,12 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             open_orders = await self._transaction_repository.count_open_new_orders(
                 actor.id, datetime_now()
             )
-            if not await self._eligibility.is_purchasable(
-                plan, user, has_open_order=open_orders > 0
-            ) or not link_code_matches(plan, data.plan_code):
+            if data.purchase_type is not PurchaseType.RENEW and (
+                not await self._eligibility.is_purchasable(
+                    plan, user, has_open_order=open_orders > 0
+                )
+                or not link_code_matches(plan, data.plan_code)
+            ):
                 raise NotFoundError(
                     f"Plan '{data.plan_id}' not found", code=ErrorCode.PLAN_NOT_FOUND
                 )

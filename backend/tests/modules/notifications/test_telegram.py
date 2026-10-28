@@ -1,5 +1,5 @@
 import pytest
-from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from aiogram.methods import SendMessage
 from aiogram.types import Chat, Message
 
@@ -77,6 +77,24 @@ async def test_blocked_bot_is_forbidden(monkeypatch: pytest.MonkeyPatch) -> None
 
     assert await send_telegram_text(_TOKEN, None, 1, "hi") is TelegramSendResult.FORBIDDEN
     assert await send_telegram_message(_TOKEN, None, 1, "hi") is False
+
+
+async def test_a_chat_telegram_does_not_know_is_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
+    unknown = TelegramBadRequest(
+        method=SendMessage(chat_id=1, text="hi"), message="Bad Request: chat not found"
+    )
+    use_fake_bot(monkeypatch, FakeBotSession({"SendMessage": unknown}))
+
+    assert await send_telegram_text(_TOKEN, None, 1, "hi") is TelegramSendResult.FORBIDDEN
+
+
+async def test_any_other_bad_request_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    malformed = TelegramBadRequest(
+        method=SendMessage(chat_id=1, text="hi"), message="Bad Request: can't parse entities"
+    )
+    use_fake_bot(monkeypatch, FakeBotSession({"SendMessage": malformed}))
+
+    assert await send_telegram_text(_TOKEN, None, 1, "hi") is TelegramSendResult.FAILED
 
 
 async def test_a_malformed_token_fails_instead_of_raising() -> None:

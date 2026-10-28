@@ -834,7 +834,27 @@ async def test_a_redelivered_registration_rewards_once(
     assert (await user_repository.find_by_id(newcomer)).bonus_days == 7
 
 
-@pytest.mark.parametrize("case", ["disabled", "unknown", "own", "cycle"])
+async def test_registration_with_the_program_off_links_without_a_reward(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    attach_on_registration: AttachReferralOnRegistrationUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(enabled=False, invitee_reward_amount=7)
+    )
+    referrer = await _create_user(user_repository, 4232)
+    newcomer = await _create_user(user_repository, 4233)
+
+    await _register(
+        attach_on_registration, newcomer, await _referral_code(user_repository, referrer)
+    )
+
+    edge = await referral_repository.find_by_referred_id(newcomer)
+    assert edge is not None and edge.referrer_id == referrer
+    assert (await user_repository.find_by_id(newcomer)).bonus_days == 0
+
+
+@pytest.mark.parametrize("case", ["unknown", "own", "cycle"])
 async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
     referral_repository: ReferralRepository,
     user_repository: UserRepository,
@@ -851,10 +871,7 @@ async def test_registration_with_an_unusable_link_neither_links_nor_rewards(
         await _register(
             attach_on_registration, other, await _referral_code(user_repository, newcomer)
         )
-    if case == "disabled":
-        await referral_repository.update_settings(UpdateReferralSettingsDto(enabled=False))
     code = {
-        "disabled": await _referral_code(user_repository, other),
         "unknown": "NOPE0000",
         "own": await _referral_code(user_repository, newcomer),
         "cycle": await _referral_code(user_repository, other),
