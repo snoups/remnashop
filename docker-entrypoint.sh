@@ -49,8 +49,11 @@ case "$TARGET" in
         # buckets) all pending retries.
         exec taskiq scheduler app.worker.scheduler:scheduler app.modules.event_log.tasks app.modules.subscriptions.tasks app.modules.transactions.tasks app.modules.auth.tasks app.modules.backups.tasks app.modules.blacklist.tasks app.modules.users.tasks app.modules.overview.tasks app.modules.announcements.tasks app.modules.loyalty.tasks app.modules.notifications.tasks app.modules.broadcasts.tasks app.modules.promocodes.tasks
         ;;
+    cli)
+        exec python -m app.cli
+        ;;
     *)
-        echo "Usage: docker-entrypoint.sh {api|telegram|worker|scheduler}" >&2
+        echo "Usage: docker-entrypoint.sh {api|telegram|worker|scheduler|cli}" >&2
         exit 1
         ;;
 esac

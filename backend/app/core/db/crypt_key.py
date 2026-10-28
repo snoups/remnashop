@@ -43,8 +43,8 @@ async def assert_crypt_key_matches(config: AppConfig) -> None:
     if column is not None:
         raise RuntimeError(
             f"APP_CRYPT_KEY does not decrypt {column}: the database was set up with another "
-            "key. Put that key back, or run the rescue CLI (docker compose run --rm "
-            '--entrypoint python remnashop -m app.cli) and choose "Reset encrypted secrets", '
+            "key. Put that key back, or run the rescue CLI "
+            '(docker compose run --rm remnashop cli) and choose "Reset encrypted secrets", '
             'then "Reset owner access", and enter the secrets in the dashboard again.'
         )
 

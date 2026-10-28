@@ -1237,7 +1237,7 @@
         "rescueTitle": "Emergency re-enable",
         "rescueIntro": "If you disabled password login and lost access to the other sign-in methods, re-enable it via the Rescue CLI:",
         "rescueCommandLabel": "Command",
-        "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
+        "rescueCommandValue": "docker compose run --rm remnashop cli",
         "rescueNote": "After it starts, choose “Enable password authentication”."
       },
       "redirectHint": "Redirect URI: your cabinet address followed by {{path}}"

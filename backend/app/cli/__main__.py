@@ -10,7 +10,7 @@ from app.core.db.crypt_key import reset_encrypted_secrets
 from app.core.db.standalone import standalone_session
 from app.modules.settings import enable_password_login
 
-# Break-glass tool, run via `docker exec -it <api-container> python -m app.cli`.
+# Break-glass tool, run via `docker compose run --rm remnashop cli`.
 _MENU: Final[str] = """Remnashop Rescue CLI
     1. Enable password authentication
     2. Restore backup

@@ -1283,7 +1283,7 @@
         "rescueTitle": "Экстренное включение",
         "rescueIntro": "Если вы отключили вход по паролю и потеряли доступ к другим методам входа, включите его через Rescue CLI:",
         "rescueCommandLabel": "Команда",
-        "rescueCommandValue": "docker exec -it <api-container> python -m app.cli",
+        "rescueCommandValue": "docker compose run --rm remnashop cli",
         "rescueNote": "После запуска выберите пункт «Enable password authentication»."
       },
       "redirectHint": "Redirect URI: адрес вашего кабинета и {{path}}"
