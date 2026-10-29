@@ -638,6 +638,25 @@ def upgrade() -> None:
         sa.UniqueConstraint("kind"),
     )
     op.create_table(
+        "connect_guide_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("catalog", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_table(
         "loyalty_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("enabled", sa.Boolean(), server_default="false", nullable=False),
@@ -2525,6 +2544,7 @@ def downgrade() -> None:
     op.drop_table("oauth_settings")
     op.drop_table("notification_settings")
     op.drop_table("loyalty_settings")
+    op.drop_table("connect_guide_settings")
     op.drop_table("legal_documents")
     op.drop_table("emoji_packs")
     op.drop_table("email_settings")

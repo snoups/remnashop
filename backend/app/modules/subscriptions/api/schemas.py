@@ -15,6 +15,7 @@ from app.core.enums import (
     PlanType,
     SubscriptionStatus,
 )
+from app.core.security.connect_signature import sign_subscription_url
 from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 
 
@@ -151,10 +152,12 @@ class OwnSubscriptionResponse(BaseModel):
     plan_id: int
     link_reset_at: Optional[datetime] = None
     used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
+    # vouches for `url` to the cabinet's public deep link page (core/security/connect_signature)
+    connect_signature: str
 
     @classmethod
     def from_dto(
-        cls, subscription: SubscriptionDto, *, used_traffic: Optional[int] = None
+        cls, subscription: SubscriptionDto, *, secret: str, used_traffic: Optional[int] = None
     ) -> "OwnSubscriptionResponse":
         return cls.model_validate(
             {
@@ -162,6 +165,7 @@ class OwnSubscriptionResponse(BaseModel):
                 "plan_name": subscription.plan_snapshot.name,
                 "plan_id": subscription.plan_snapshot.plan_id,
                 "used_traffic": used_traffic,
+                "connect_signature": sign_subscription_url(subscription.url, secret),
             }
         )
 

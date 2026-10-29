@@ -712,7 +712,8 @@
       "BotBlockedByUserEvent": "Bot blocked by customer",
       "PasskeyRenamedEvent": "Passkey renamed",
       "AdLinkAttributedEvent": "Came from an ad link",
-      "BackupCompletedEvent": "Backup completed"
+      "BackupCompletedEvent": "Backup completed",
+      "ConnectGuideChangedEvent": "Connect guide changed"
     },
     "eventVariants": {
       "CabinetUserRegisteredEvent": {
@@ -1075,6 +1076,7 @@
       "general": "General",
       "bot": "Telegram bot",
       "cabinet": "Web cabinet",
+      "connect": "Connect guide",
       "apiTokens": "API tokens",
       "appearance": "Appearance",
       "gateways": "Payment gateways",
@@ -1834,6 +1836,9 @@
     "EMAIL_SETTINGS_BULK_RESET": "Reset the broadcast SMTP profile",
     "CABINET_AUTH_SETTINGS_VIEW": "View cabinet sign-in methods",
     "CABINET_AUTH_SETTINGS_MANAGE": "Manage cabinet sign-in methods",
+    "CONNECT_GUIDE_VIEW": "View the connect guide",
+    "CONNECT_GUIDE_MANAGE": "Manage the connect guide",
+    "CONNECT_GUIDE_RESET": "Reset the connect guide",
     "BANNERS_IMAGE_VIEW": "View banner image",
     "BANNERS_UPLOAD": "Upload banners",
     "BANNERS_DELETE": "Delete banners",
@@ -2083,7 +2088,8 @@
     "cabinetAuthSettings": "Cabinet sign-in",
     "emailSettings": "Email",
     "legalDocuments": "Documents",
-    "legalAcceptances": "Document acceptances"
+    "legalAcceptances": "Document acceptances",
+    "connectGuide": "Connect guide"
   },
   "permissionPicker": {
     "read": "Read",
@@ -4290,5 +4296,68 @@
       "channel": "Channel",
       "channelAll": "All channels"
     }
+  },
+  "connectGuide": {
+    "title": "Connect guide",
+    "description": "The cabinet's “Connect” screen: apps for each platform and steps with buttons",
+    "enabledHint": "Off: the cabinet shows only the QR code and the subscription link",
+    "defaultNote": "The default catalog is in use. It follows the releases until you save your own",
+    "platforms": {
+      "ios": "iOS",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "androidtv": "Android TV",
+      "appletv": "Apple TV"
+    },
+    "apps": "Apps",
+    "noApps": "No apps: the platform is hidden in the cabinet",
+    "addApp": "Add app",
+    "newApp": "New app",
+    "newStep": "Install the app",
+    "appName": "Name",
+    "featured": "Recommended",
+    "steps": "Steps",
+    "addStep": "Add step",
+    "stepTitle": "Title",
+    "stepBody": "Text",
+    "stepIcon": "Icon",
+    "icons": {
+      "download": "Download",
+      "plus": "Add",
+      "power": "Power",
+      "settings": "Settings",
+      "check": "Done",
+      "link": "Link",
+      "qr": "QR code",
+      "info": "Info",
+      "shield": "Shield",
+      "globe": "Globe"
+    },
+    "buttons": "Buttons",
+    "addButton": "Add button",
+    "buttonKind": "Button type",
+    "kinds": {
+      "external": "Link",
+      "deep_link": "Open the app",
+      "copy_link": "Copy link"
+    },
+    "buttonLabel": "Label",
+    "encode": "Substitution",
+    "encodes": {
+      "raw": "Link as is",
+      "component": "Link encoded"
+    },
+    "templateHint": "{{token}} becomes the customer's subscription link",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "saved": "Guide saved",
+    "error": "Couldn't save the guide",
+    "resetConfirmTitle": "Reset the guide?",
+    "resetConfirmText": "Your catalog is deleted and the cabinet goes back to the default one",
+    "resetSuccess": "Guide reset",
+    "resetError": "Couldn't reset the guide"
   }
 }

@@ -19,6 +19,7 @@ import {
   Share2,
   ShieldCheck,
   SlidersHorizontal,
+  Smartphone,
   Ticket,
   Users,
 } from "lucide-react";
@@ -76,6 +77,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
     anyOf: ["BOT_SETTINGS_VIEW", "BOT_REQUIREMENTS_VIEW", "BOT_COMMANDS_VIEW", "DIALOGS_CATALOG_VIEW", "TRANSLATIONS_VIEW", "EMOJI_PACKS_VIEW"],
   },
   { key: "cabinet", to: "cabinet", icon: Globe, anyOf: ["CABINET_AUTH_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW"] },
+  { key: "connect", to: "connect", icon: Smartphone, anyOf: ["CONNECT_GUIDE_VIEW"] },
   { key: "apiTokens", to: "api-tokens", icon: KeyRound, anyOf: ["API_TOKENS_MANAGE"] },
   {
     key: "appearance",

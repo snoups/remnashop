@@ -1,3 +1,5 @@
+import base64
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import AsyncIterator
 
@@ -79,6 +81,41 @@ async def test_lists_only_own_active_subscriptions(
     assert item["plan_id"] == mine.plan_snapshot.plan_id
     # no panel in router tests: the lookup fails and degrades to None
     assert item["used_traffic"] is None
+
+
+async def test_the_connect_signature_vouches_for_its_own_link_only(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    mine = await create_subscription(
+        subscription_repository, user_repository, telegram_id=77003, remnawave_user_id=77003
+    )
+    headers = await _bearer(mine.user_id, session_repository, config)
+    item = (await client.get(f"{API_V1}/subscriptions/me", headers=headers)).json()["items"][0]
+
+    def digest(url: str) -> str:
+        return base64.urlsafe_b64encode(hashlib.sha256(url.encode()).digest()).rstrip(b"=").decode()
+
+    async def verify(body: dict[str, str]) -> httpx.Response:
+        # no session: the page asking runs in a browser that never signed in
+        return await client.post(f"{API_V1}/shop/connect-guide/verify", json=body)
+
+    signature = item["connect_signature"]
+    ok = await verify({"digest": digest(item["url"]), "signature": signature})
+    assert ok.status_code == 200
+    assert ok.json() == {"valid": True}
+    assert ok.headers["cache-control"] == "no-store"
+
+    forged = await verify({"digest": digest("https://evil.example/sub"), "signature": signature})
+    assert forged.json() == {"valid": False}
+    # a link sent along is refused outright: the page never sends one
+    leaked = await verify(
+        {"digest": digest(item["url"]), "signature": signature, "url": item["url"]}
+    )
+    assert leaked.status_code == 422
 
 
 async def test_a_foreign_subscription_is_refused_like_a_missing_one(

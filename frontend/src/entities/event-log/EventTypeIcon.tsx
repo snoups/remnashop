@@ -163,6 +163,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   PricingSettingsChangedEvent: Settings2,
   ReferralSettingsChangedEvent: Settings2,
   LoyaltySettingsChangedEvent: Settings2,
+  ConnectGuideChangedEvent: Settings2,
   UserLoyaltyExclusionChangedEvent: BadgePercent,
   SubscriptionEditedEvent: PencilLine,
   AccessSettingsChangedEvent: ShieldCheck,

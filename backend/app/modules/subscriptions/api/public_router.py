@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
+from app.core.config import AppConfig
 from app.modules.subscriptions.api.schemas import (
     DeviceListResponse,
     DeviceResponse,
@@ -63,10 +64,12 @@ own_router = APIRouter(prefix="/subscriptions/me", tags=["subscriptions"])
 @inject
 async def list_own_subscriptions(
     use_case: FromDishka[ListOwnSubscriptionsUsageUseCase],
+    config: FromDishka[AppConfig],
     actor: UserDto = Depends(get_current_user),
 ) -> OwnSubscriptionListResponse:
+    secret = config.jwt_secret.get_secret_value()
     items = [
-        OwnSubscriptionResponse.from_dto(r.subscription, used_traffic=r.used_traffic)
+        OwnSubscriptionResponse.from_dto(r.subscription, secret=secret, used_traffic=r.used_traffic)
         for r in await use_case(actor)
     ]
     return OwnSubscriptionListResponse(items=items, total=len(items))
@@ -102,9 +105,12 @@ async def get_own_trial(
 @inject
 async def activate_own_trial(
     activate: FromDishka[ActivateTrialSubscriptionUseCase],
+    config: FromDishka[AppConfig],
     actor: UserDto = Depends(get_current_user),
 ) -> OwnSubscriptionResponse:
-    return OwnSubscriptionResponse.from_dto(await activate(actor))
+    return OwnSubscriptionResponse.from_dto(
+        await activate(actor), secret=config.jwt_secret.get_secret_value()
+    )
 
 
 @own_router.get(

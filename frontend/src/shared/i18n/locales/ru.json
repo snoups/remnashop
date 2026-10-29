@@ -748,7 +748,8 @@
       "BotBlockedByUserEvent": "Клиент заблокировал бота",
       "PasskeyRenamedEvent": "Passkey переименован",
       "AdLinkAttributedEvent": "Пришёл по рекламной ссылке",
-      "BackupCompletedEvent": "Резервная копия создана"
+      "BackupCompletedEvent": "Резервная копия создана",
+      "ConnectGuideChangedEvent": "Инструкция подключения изменена"
     },
     "eventVariants": {
       "CabinetUserRegisteredEvent": {
@@ -1123,6 +1124,7 @@
       "general": "Общие",
       "bot": "Telegram-бот",
       "cabinet": "Веб-кабинет",
+      "connect": "Подключение",
       "apiTokens": "API-токены",
       "appearance": "Внешний вид",
       "gateways": "Платёжные шлюзы",
@@ -1884,6 +1886,9 @@
     "EMAIL_SETTINGS_BULK_RESET": "Сброс SMTP-профиля рассылок",
     "CABINET_AUTH_SETTINGS_VIEW": "Просмотр способов входа в кабинет",
     "CABINET_AUTH_SETTINGS_MANAGE": "Управление способами входа в кабинет",
+    "CONNECT_GUIDE_VIEW": "Просмотр инструкции подключения",
+    "CONNECT_GUIDE_MANAGE": "Управление инструкцией подключения",
+    "CONNECT_GUIDE_RESET": "Сброс инструкции подключения",
     "BANNERS_IMAGE_VIEW": "Просмотр изображения баннера",
     "BANNERS_UPLOAD": "Загрузка баннеров",
     "BANNERS_DELETE": "Удаление баннеров",
@@ -2133,7 +2138,8 @@
     "cabinetAuthSettings": "Вход в кабинет",
     "emailSettings": "Почта",
     "legalDocuments": "Документы",
-    "legalAcceptances": "Принятия документов"
+    "legalAcceptances": "Принятия документов",
+    "connectGuide": "Инструкция подключения"
   },
   "permissionPicker": {
     "read": "Чтение",
@@ -4378,5 +4384,68 @@
       "channel": "Канал",
       "channelAll": "Все каналы"
     }
+  },
+  "connectGuide": {
+    "title": "Инструкция подключения",
+    "description": "Экран «Подключиться» в кабинете: приложения для каждой платформы и шаги с кнопками",
+    "enabledHint": "Выключено — кабинет показывает только QR-код и ссылку подписки",
+    "defaultNote": "Сейчас действует каталог по умолчанию. Он обновляется вместе с релизами, пока вы не сохраните свой",
+    "platforms": {
+      "ios": "iOS",
+      "android": "Android",
+      "windows": "Windows",
+      "macos": "macOS",
+      "linux": "Linux",
+      "androidtv": "Android TV",
+      "appletv": "Apple TV"
+    },
+    "apps": "Приложения",
+    "noApps": "Нет приложений — платформа не показывается в кабинете",
+    "addApp": "Добавить приложение",
+    "newApp": "Новое приложение",
+    "newStep": "Установите приложение",
+    "appName": "Название",
+    "featured": "Рекомендуем",
+    "steps": "Шаги",
+    "addStep": "Добавить шаг",
+    "stepTitle": "Заголовок",
+    "stepBody": "Текст",
+    "stepIcon": "Иконка",
+    "icons": {
+      "download": "Загрузка",
+      "plus": "Добавить",
+      "power": "Включение",
+      "settings": "Настройки",
+      "check": "Готово",
+      "link": "Ссылка",
+      "qr": "QR-код",
+      "info": "Инфо",
+      "shield": "Защита",
+      "globe": "Глобус"
+    },
+    "buttons": "Кнопки",
+    "addButton": "Добавить кнопку",
+    "buttonKind": "Тип кнопки",
+    "kinds": {
+      "external": "Ссылка",
+      "deep_link": "Открыть приложение",
+      "copy_link": "Скопировать ссылку"
+    },
+    "buttonLabel": "Подпись",
+    "encode": "Подстановка",
+    "encodes": {
+      "raw": "Ссылка как есть",
+      "component": "Ссылка закодирована"
+    },
+    "templateHint": "{{token}} заменяется ссылкой подписки клиента",
+    "moveUp": "Выше",
+    "moveDown": "Ниже",
+    "remove": "Удалить",
+    "saved": "Инструкция сохранена",
+    "error": "Не удалось сохранить инструкцию",
+    "resetConfirmTitle": "Сбросить инструкцию?",
+    "resetConfirmText": "Ваш каталог будет удалён, кабинет вернётся к каталогу по умолчанию",
+    "resetSuccess": "Инструкция сброшена",
+    "resetError": "Не удалось сбросить инструкцию"
   }
 }

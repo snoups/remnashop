@@ -48,6 +48,9 @@ class Permission(UpperStrEnum):
     EMAIL_SETTINGS_BULK_RESET = auto()
     CABINET_AUTH_SETTINGS_VIEW = auto()
     CABINET_AUTH_SETTINGS_MANAGE = auto()
+    CONNECT_GUIDE_VIEW = auto()
+    CONNECT_GUIDE_MANAGE = auto()
+    CONNECT_GUIDE_RESET = auto()
     BANNERS_IMAGE_VIEW = auto()
     BANNERS_UPLOAD = auto()
     BANNERS_DELETE = auto()
@@ -281,6 +284,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.CABINET_AUTH_SETTINGS_MANAGE: PermissionMeta(
         resource="cabinet_auth_settings", kind="write"
     ),
+    Permission.CONNECT_GUIDE_VIEW: PermissionMeta(resource="connect_guide", kind="read"),
+    Permission.CONNECT_GUIDE_MANAGE: PermissionMeta(resource="connect_guide", kind="write"),
+    Permission.CONNECT_GUIDE_RESET: PermissionMeta(resource="connect_guide", kind="write"),
     Permission.BANNERS_IMAGE_VIEW: PermissionMeta(resource="banners", kind="read"),
     Permission.BANNERS_UPLOAD: PermissionMeta(resource="banners", kind="write"),
     Permission.BANNERS_DELETE: PermissionMeta(resource="banners", kind="write"),
@@ -627,6 +633,9 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.EMAIL_SETTINGS_BULK_RESET,
             Permission.CABINET_AUTH_SETTINGS_VIEW,
             Permission.CABINET_AUTH_SETTINGS_MANAGE,
+            Permission.CONNECT_GUIDE_VIEW,
+            Permission.CONNECT_GUIDE_MANAGE,
+            Permission.CONNECT_GUIDE_RESET,
             Permission.LOCALES_VIEW,
             Permission.LOCALES_ADD,
             Permission.LOCALES_REMOVE,
