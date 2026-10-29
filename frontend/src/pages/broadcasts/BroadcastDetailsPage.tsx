@@ -111,6 +111,10 @@ function BroadcastDetails({ id }: { id: number }) {
     let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       const epoch = actionEpochRef.current;
+      if (document.hidden) {
+        timer = setTimeout(() => void tick(), POLL_INTERVAL_MS);
+        return;
+      }
       try {
         const data = await getBroadcast(id, controller.signal);
         if (controller.signal.aborted || epoch !== actionEpochRef.current) return;

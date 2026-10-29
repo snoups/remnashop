@@ -363,15 +363,15 @@ function BulkAdjustButton({ onChanged }: { onChanged: () => void }) {
   };
 
   const handleConfirm = async () => {
+    // closed first: the factor multiplies current prices, a second click would apply it twice
+    setStep("closed");
+    setDiff(null);
     try {
       await adjustBasePrices(buildBody());
       toast.success(t("pricing.matrix.applied"));
       onChanged();
     } catch (err) {
       toast.error(getErrorMessage(err, t("pricing.matrix.applyError")));
-    } finally {
-      setStep("closed");
-      setDiff(null);
     }
   };
 

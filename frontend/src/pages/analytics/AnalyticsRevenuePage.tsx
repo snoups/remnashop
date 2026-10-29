@@ -7,6 +7,7 @@ import { getRevenue } from "@entities/analytics/api";
 import type { AnalyticsPeriod, GatewayStats, Revenue, RevenueGranularity, RevenueGroup } from "@entities/analytics/api";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { parseIsoDate } from "@shared/lib/iso-date";
+import { DAY_MS } from "@shared/lib/period";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
@@ -22,7 +23,6 @@ import { useAnalyticsPeriod } from "@pages/analytics/period";
 import { countTrend, relativeTrend } from "@pages/analytics/trends";
 
 const GRANULARITIES: RevenueGranularity[] = ["day", "week", "month"];
-const DAY_MS = 86_400_000;
 const MAX_DAILY_RANGE_DAYS = 92;
 
 function defaultGranularity(period: AnalyticsPeriod): RevenueGranularity {

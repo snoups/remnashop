@@ -19,7 +19,7 @@ import { listPlans, type Plan } from "@entities/plans/api";
 import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { listUsers, type UserListItem } from "@entities/user/api";
-import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { usePermissions } from "@entities/user/use-current-user";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
@@ -70,7 +70,6 @@ export function HeaderSearch() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openUser, openOrder, openSubscription, openPromocode, openPlan } = useOpenEntity();
-  const userState = useCurrentUser();
   const permissions = usePermissions();
   const canViewUsers = permissions.includes("USERS_VIEW");
 
@@ -126,15 +125,13 @@ export function HeaderSearch() {
       if (!signal.aborted) setIsFetching(false);
     });
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
-  }, [debounced, userState]);
+  }, [debounced, canViewUsers, permissions]);
 
   const wantsCatalog = debounced !== "";
   useEffect(() => {
     if (!wantsCatalog) return;
     if (permissions.includes("PLANS_VIEW") && plans.length === 0) listPlans().then(setPlans).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per session on first query
-  }, [wantsCatalog, userState]);
+  }, [wantsCatalog, permissions, plans.length]);
 
   const pages = useMemo<Entry[]>(() => {
     const nav = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map(
@@ -153,8 +150,7 @@ export function HeaderSearch() {
         )
       : [];
     return [...nav, ...tabs];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
-  }, [t, userState]);
+  }, [t, permissions]);
 
   const entries = useMemo<Entry[]>(() => {
     const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -180,7 +176,7 @@ export function HeaderSearch() {
     const subscriptionEntries = subscriptions.map((sub) => ({
       id: `subscription:${sub.id}`,
       label: `${t("header.searchSubscriptions")} #${sub.id}`,
-      hint: [sub.tag, `user ${sub.user_id}`].filter(Boolean).join(" · "),
+      hint: [sub.tag, t("header.searchSubscriptionUser", { id: sub.user_id })].filter(Boolean).join(" · "),
       open: () => openSubscription(sub.id, { data: sub }),
       icon: Layers,
     }));
@@ -224,8 +220,23 @@ export function HeaderSearch() {
       ...promocodeEntries,
       ...eventEntries,
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- permissions is a fresh array each render; its content only changes with the user
-  }, [query, pages, users, orders, subscriptions, plans, promocodes, debounced, t, userState]);
+  }, [
+    query,
+    pages,
+    users,
+    orders,
+    subscriptions,
+    plans,
+    promocodes,
+    debounced,
+    t,
+    permissions,
+    openUser,
+    openOrder,
+    openSubscription,
+    openPromocode,
+    openPlan,
+  ]);
 
   useEffect(() => setActive(0), [entries]);
 

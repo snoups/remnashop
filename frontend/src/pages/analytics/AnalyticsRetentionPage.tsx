@@ -9,6 +9,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { initials } from "@shared/lib/initials";
+import { DAY_MS } from "@shared/lib/period";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
@@ -26,7 +27,6 @@ import type { BarRow, Column } from "@pages/analytics/charts";
 const MONTH_COLUMNS = 12;
 // above this fill the cell is light enough to need dark text
 const DARK_TEXT_FROM = 0.45;
-const DAY_MS = 86_400_000;
 const SOON_DAYS = 7;
 const CURVE_COHORTS = 3;
 const CURVE_MIN_MONTHS = 6;

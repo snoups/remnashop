@@ -6,6 +6,8 @@ import { type ApiToken, type CreatedApiToken, issueDocsOtt, listApiTokens, revok
 import { SCOPE_WILDCARD, tokenScopeLabel } from "@entities/api-tokens/scopes";
 import { CreateApiTokenDialog } from "@features/api-tokens/CreateApiTokenDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { DAY_MS } from "@shared/lib/period";
+import { formatDateTime } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
@@ -157,7 +159,6 @@ export function ApiTokensForm() {
 }
 
 const ROW_GRID = "md:grid-cols-[minmax(0,1fr)_170px_210px_36px] md:gap-5";
-const DAY_MS = 86_400_000;
 const EXPIRING_SOON_DAYS = 7;
 const CHIP_GAP = 4;
 const MORE_CLASS =
@@ -273,7 +274,7 @@ function ApiTokenRow({ token, isFullAccess, onRevoke }: ApiTokenRowProps) {
       <div className="col-span-2 pl-11 md:col-span-1 md:pl-0">
         {token.last_used_at ? (
           <p className="truncate text-sm leading-8 text-foreground">
-            {new Date(token.last_used_at).toLocaleString(i18n.language)}
+            {formatDateTime(token.last_used_at, i18n.language)}
           </p>
         ) : (
           <p className="text-sm leading-8 text-muted-foreground italic">{t("apiTokens.neverUsed")}</p>

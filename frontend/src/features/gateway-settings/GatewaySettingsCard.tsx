@@ -130,6 +130,7 @@ export function GatewaySettingsCard({
   useEffect(() => {
     if (testOrderId === null || testStatus !== "PENDING") return;
     const timer = setInterval(() => {
+      if (document.hidden) return;
       getTestPaymentStatus(testOrderId)
         .then(({ status }) => {
           if (status === "PENDING") return;

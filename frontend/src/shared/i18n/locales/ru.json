@@ -1106,6 +1106,7 @@
     "searchEvents": "Искать в журнале событий",
     "searchOrders": "Транзакция",
     "searchSubscriptions": "Подписка",
+    "searchSubscriptionUser": "пользователь {{id}}",
     "searchPromocode": "Промокод",
     "searchPlan": "План",
     "tabNews": "Новости",
@@ -3021,6 +3022,7 @@
       "basePriceLabel": "Базовая цена",
       "saved": "План сохранён.",
       "error": "Не удалось сохранить план.",
+      "durationsError": "Параметры плана сохранены, длительности — нет: {{error}}",
       "sections": {
         "durations": "Длительности"
       },
@@ -4438,9 +4440,6 @@
       "component": "Ссылка закодирована"
     },
     "templateHint": "{{token}} заменяется ссылкой подписки клиента",
-    "moveUp": "Выше",
-    "moveDown": "Ниже",
-    "remove": "Удалить",
     "saved": "Инструкция сохранена",
     "error": "Не удалось сохранить инструкцию",
     "resetConfirmTitle": "Сбросить инструкцию?",

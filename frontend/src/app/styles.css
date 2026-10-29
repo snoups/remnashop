@@ -273,38 +273,12 @@ textarea::-webkit-resizer {
 }
 
 /* A backdrop-filter element is drawn on its own layer that ignores an
-   ancestor's mask, so glass controls would cut off hard at a faded edge.
-   Each gets its own mask instead: shared/lib/glass-fade.ts sets
-   --fade-top/--fade-bottom to where the scroller's edges fall in the
-   element's box. Unset (not near an edge yet): fully opaque. */
-.scroll-fade-top [class*="backdrop-blur"]:not(.sticky) {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent var(--fade-top, -100000px),
-    black calc(var(--fade-top, -100000px) + 24px)
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent var(--fade-top, -100000px),
-    black calc(var(--fade-top, -100000px) + 24px)
-  );
-}
-
-.scroll-fade-y [class*="backdrop-blur"]:not(.sticky) {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent var(--fade-top, -100000px),
-    black calc(var(--fade-top, -100000px) + var(--fade-top-size, 12px)),
-    black calc(var(--fade-bottom, 100000px) - 16px),
-    transparent var(--fade-bottom, 100000px)
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent var(--fade-top, -100000px),
-    black calc(var(--fade-top, -100000px) + var(--fade-top-size, 12px)),
-    black calc(var(--fade-bottom, 100000px) - 16px),
-    transparent var(--fade-bottom, 100000px)
-  );
+   ancestor's mask, so a glass control would cut off hard at a faded edge.
+   Inside a fading scroller it drops the blur and fades with the scroller;
+   a sticky one stays at the edge and keeps it. */
+:is(.scroll-fade-top, .scroll-fade-y) [class*="backdrop-blur"]:not(.sticky) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Scrolls without reserving the app-wide scrollbar's height/width, for

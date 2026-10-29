@@ -24,17 +24,30 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
   const permissions = usePermissions();
   const canDelete = permissions.includes("SUBSCRIPTIONS_DEVICES_DELETE");
   const canDeleteAll = permissions.includes("SUBSCRIPTIONS_DEVICES_DELETE_ALL");
-  const [state, reload] = useAsyncResource((signal) => listSubscriptionDevices(subscriptionId, signal));
+  const [state, reload, setData] = useAsyncResource((signal) => listSubscriptionDevices(subscriptionId, signal));
   const [isConfirmingAll, setIsConfirmingAll] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
   const run = async (action: () => Promise<void>, done: string) => {
+    setIsBusy(true);
     try {
       await action();
       toast.success(done);
       reload();
     } catch (err) {
       toast.error(getErrorMessage(err, t("subscriptions.devices.error")));
+    } finally {
+      setIsBusy(false);
     }
+  };
+
+  // the row goes at once, so it can't be clicked again while the list reloads
+  const deleteDevice = async (hwid: string) => {
+    await deleteSubscriptionDevice(subscriptionId, hwid);
+    setData((prev) => ({
+      items: prev.items.filter((device) => device.hwid !== hwid),
+      total: prev.total - 1,
+    }));
   };
 
   return (
@@ -64,9 +77,8 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
                 <IconButton
                   size="8"
                   tone="danger"
-                  onClick={() =>
-                    void run(() => deleteSubscriptionDevice(subscriptionId, device.hwid), t("subscriptions.devices.deleted"))
-                  }
+                  disabled={isBusy}
+                  onClick={() => void run(() => deleteDevice(device.hwid), t("subscriptions.devices.deleted"))}
                 >
                   <Trash2 className="size-3.5" />
                 </IconButton>
@@ -76,7 +88,7 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
       </Card>
       {canDeleteAll && state.kind === "ready" && state.data.items.length > 0 && (
         <div className="flex justify-end">
-          <Button variant="danger" onClick={() => setIsConfirmingAll(true)}>
+          <Button variant="danger" disabled={isBusy} onClick={() => setIsConfirmingAll(true)}>
             {t("subscriptions.devices.deleteAll")}
           </Button>
         </div>

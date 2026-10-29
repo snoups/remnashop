@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import type { BroadcastMediaType } from "@entities/broadcasts/api";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
+import { DAY_MS } from "@shared/lib/period";
 import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 import type { EditorForm } from "@pages/broadcasts/editor/form";
 
 const SAMPLE_DAYS_LEFT = 4;
-const DAY_MS = 24 * 3600 * 1000;
 
 interface TelegramPreviewProps {
   form: EditorForm;

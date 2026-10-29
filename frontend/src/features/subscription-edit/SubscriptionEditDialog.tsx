@@ -32,7 +32,6 @@ import { Field } from "@shared/ui/Field";
 
 const STRATEGIES: TrafficLimitStrategy[] = ["NO_RESET", "DAY", "WEEK", "MONTH", "MONTH_ROLLING"];
 const QUICK_EXTEND_DAYS = [7, 30, 90] as const;
-const DAY_MS = 86_400_000;
 
 type Tab = "params" | "plan" | "devices";
 
@@ -146,8 +145,13 @@ function SubscriptionParamsForm({ subscription, onSaved, onDeleted }: Omit<Subsc
   const initialExpireAt = toLocalInput(subscription.expire_at);
   const [expireAt, setExpireAt] = useState(initialExpireAt);
 
+  // calendar days, so a DST switch doesn't move the hour; a cleared field counts from the current expiry
   const addDays = (days: number) =>
-    setExpireAt((value) => toLocalInput(new Date(new Date(value).getTime() + days * DAY_MS).toISOString()));
+    setExpireAt((value) => {
+      const date = new Date(value || initialExpireAt);
+      date.setDate(date.getDate() + days);
+      return toLocalInput(date.toISOString());
+    });
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

@@ -1058,6 +1058,7 @@
     "searchEvents": "Search event log",
     "searchOrders": "Transaction",
     "searchSubscriptions": "Subscription",
+    "searchSubscriptionUser": "user {{id}}",
     "searchPromocode": "Promocode",
     "searchPlan": "Plan",
     "tabNews": "News",
@@ -2957,6 +2958,7 @@
       "basePriceLabel": "Base price",
       "saved": "Plan saved.",
       "error": "Failed to save the plan.",
+      "durationsError": "Plan settings saved, durations weren’t: {{error}}",
       "sections": {
         "durations": "Durations"
       },
@@ -4350,9 +4352,6 @@
       "component": "Link encoded"
     },
     "templateHint": "{{token}} becomes the customer's subscription link",
-    "moveUp": "Move up",
-    "moveDown": "Move down",
-    "remove": "Remove",
     "saved": "Guide saved",
     "error": "Couldn't save the guide",
     "resetConfirmTitle": "Reset the guide?",

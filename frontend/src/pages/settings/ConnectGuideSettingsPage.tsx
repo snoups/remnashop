@@ -1,4 +1,26 @@
-import { ArrowDown, ArrowUp, Plus, Smartphone, Star, Trash2 } from "lucide-react";
+import {
+  AppWindow,
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Code,
+  Copy,
+  Download,
+  ExternalLink,
+  Globe,
+  Info,
+  Link,
+  MousePointerClick,
+  Plus,
+  Power,
+  QrCode,
+  Settings,
+  Shield,
+  Smartphone,
+  Star,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,10 +38,12 @@ import {
   type ConnectStep,
   type LocalizedText,
   type PlatformId,
+  type StepIcon,
 } from "@entities/connect-guide/api";
 import { listActiveLocales } from "@entities/translations/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
@@ -37,15 +61,52 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { TextArea, TextInput } from "@shared/ui/TextInput";
 
+// client-only keys, so a moved step or button keeps its React identity; stripped on save
+type DraftButton = ConnectButton & { key: string };
+type DraftStep = Omit<ConnectStep, "buttons"> & { key: string; buttons: DraftButton[] };
+type DraftApp = Omit<ConnectApp, "steps"> & { steps: DraftStep[] };
 // the editor keeps every platform; one without apps is left out on save
-type Draft = Record<PlatformId, ConnectApp[]>;
+type Draft = Record<PlatformId, DraftApp[]>;
 
 const BUTTON_KINDS = ["external", "deep_link", "copy_link"] as const;
+const BUTTON_KIND_ICONS: Record<ConnectButton["kind"], LucideIcon> = {
+  external: ExternalLink,
+  deep_link: AppWindow,
+  copy_link: Copy,
+};
+const STEP_ICON_COMPONENTS: Record<StepIcon, LucideIcon> = {
+  download: Download,
+  plus: Plus,
+  power: Power,
+  settings: Settings,
+  check: Check,
+  link: Link,
+  qr: QrCode,
+  info: Info,
+  shield: Shield,
+  globe: Globe,
+};
+// the backend catalog's limits
+const MAX_APPS = 12;
+const MAX_STEPS = 10;
+const MAX_BUTTONS = 4;
+const APP_NAME_MAX_LENGTH = 40;
+const LINE_MAX_LENGTH = 120;
+const PARAGRAPH_MAX_LENGTH = 1000;
+const ADDRESS_MAX_LENGTH = 2000;
 const BLOCK_CLASS = "flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5";
 
 function toDraft(catalog: ConnectCatalog): Draft {
-  const draft = Object.fromEntries(PLATFORM_IDS.map((id) => [id, [] as ConnectApp[]])) as Draft;
-  for (const platform of catalog.platforms) draft[platform.id] = platform.apps;
+  const draft = Object.fromEntries(PLATFORM_IDS.map((id) => [id, [] as DraftApp[]])) as Draft;
+  for (const platform of catalog.platforms)
+    draft[platform.id] = platform.apps.map((app) => ({
+      ...app,
+      steps: app.steps.map((step) => ({
+        ...step,
+        key: randomId(),
+        buttons: step.buttons.map((button) => ({ ...button, key: randomId() })),
+      })),
+    }));
   return draft;
 }
 
@@ -60,13 +121,13 @@ function toCatalog(draft: Draft): ConnectCatalog {
       id,
       apps: draft[id].map((app) => ({
         ...app,
-        steps: app.steps.map((step) => {
+        steps: app.steps.map(({ key: _stepKey, ...step }) => {
           const body = step.body && clean(step.body);
           return {
             ...step,
             title: clean(step.title),
             body: body && Object.keys(body).length > 0 ? body : null,
-            buttons: step.buttons.map((button) => ({ ...button, label: clean(button.label) })),
+            buttons: step.buttons.map(({ key: _buttonKey, ...button }) => ({ ...button, label: clean(button.label) })),
           };
         }),
       })),
@@ -80,6 +141,7 @@ function catalogLocales(catalog: ConnectCatalog): string[] {
     for (const app of platform.apps)
       for (const step of app.steps) {
         Object.keys(step.title).forEach((locale) => found.add(locale));
+        Object.keys(step.body ?? {}).forEach((locale) => found.add(locale));
         step.buttons.forEach((button) => Object.keys(button.label).forEach((locale) => found.add(locale)));
       }
   return [...found];
@@ -93,10 +155,14 @@ function move<T>(items: T[], from: number, to: number): T[] {
   return next;
 }
 
-function newButton(kind: ConnectButton["kind"], label: LocalizedText): ConnectButton {
-  if (kind === "external") return { kind, label, url: "https://" };
-  if (kind === "deep_link") return { kind, label, template: `app://add/${SUBSCRIPTION_LINK_TOKEN}`, encode: "raw" };
-  return { kind, label };
+function newButton(kind: ConnectButton["kind"], label: LocalizedText, key = randomId()): DraftButton {
+  if (kind === "external") return { key, kind, label, url: "https://" };
+  if (kind === "deep_link") return { key, kind, label, template: `app://add/${SUBSCRIPTION_LINK_TOKEN}`, encode: "raw" };
+  return { key, kind, label };
+}
+
+function newStep(title: LocalizedText, icon: StepIcon): DraftStep {
+  return { key: randomId(), title, body: null, icon, buttons: [] };
 }
 
 function OrderControls({
@@ -112,21 +178,19 @@ function OrderControls({
   onMove: (to: number) => void;
   onRemove: () => void;
 }) {
-  const { t } = useTranslation();
   return (
     <div className="flex shrink-0 items-center gap-0.5">
-      <IconButton size="8" aria-label={t("connectGuide.moveUp")} disabled={disabled || index === 0} onClick={() => onMove(index - 1)}>
+      <IconButton size="8" disabled={disabled || index === 0} onClick={() => onMove(index - 1)}>
         <ArrowUp className="size-4" />
       </IconButton>
       <IconButton
         size="8"
-        aria-label={t("connectGuide.moveDown")}
         disabled={disabled || index === count - 1}
         onClick={() => onMove(index + 1)}
       >
         <ArrowDown className="size-4" />
       </IconButton>
-      <IconButton size="8" tone="danger" aria-label={t("connectGuide.remove")} disabled={disabled} onClick={onRemove}>
+      <IconButton size="8" tone="danger" disabled={disabled} onClick={onRemove}>
         <Trash2 className="size-4" />
       </IconButton>
     </div>
@@ -159,17 +223,17 @@ function StepEditor({
   onMove,
   onRemove,
 }: {
-  step: ConnectStep;
+  step: DraftStep;
   index: number;
   count: number;
   locale: string;
   disabled: boolean;
-  onChange: (step: ConnectStep) => void;
+  onChange: (step: DraftStep) => void;
   onMove: (to: number) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
-  const setButton = (at: number, button: ConnectButton) =>
+  const setButton = (at: number, button: DraftButton) =>
     onChange({ ...step, buttons: step.buttons.map((b, i) => (i === at ? button : b)) });
 
   return (
@@ -182,7 +246,11 @@ function StepEditor({
           <SelectDropdown
             value={step.icon}
             onChange={(icon) => onChange({ ...step, icon: icon as ConnectStep["icon"] })}
-            options={STEP_ICONS.map((icon) => ({ value: icon, label: t(`connectGuide.icons.${icon}`) }))}
+            options={STEP_ICONS.map((icon) => ({
+              value: icon,
+              label: t(`connectGuide.icons.${icon}`),
+              icon: STEP_ICON_COMPONENTS[icon],
+            }))}
             placeholder={t("connectGuide.stepIcon")}
             icon={Smartphone}
             disabled={disabled}
@@ -197,7 +265,7 @@ function StepEditor({
         <TextInput
           value={step.title[locale] ?? ""}
           disabled={disabled}
-          maxLength={120}
+          maxLength={LINE_MAX_LENGTH}
           onChange={(event) => onChange({ ...step, title: { ...step.title, [locale]: event.target.value } })}
         />
       </Field>
@@ -206,22 +274,26 @@ function StepEditor({
           rows={2}
           value={step.body?.[locale] ?? ""}
           disabled={disabled}
-          maxLength={1000}
+          maxLength={PARAGRAPH_MAX_LENGTH}
           onChange={(event) => onChange({ ...step, body: { ...step.body, [locale]: event.target.value } })}
         />
       </Field>
 
       <span className={EYEBROW_CLASS}>{t("connectGuide.buttons")}</span>
       {step.buttons.map((button, at) => (
-        <div key={at} className="flex flex-col gap-2 rounded-xl bg-white/[0.03] p-2.5">
+        <div key={button.key} className="flex flex-col gap-2 rounded-xl bg-white/[0.03] p-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <div className="w-48">
               <SelectDropdown
                 value={button.kind}
-                onChange={(kind) => setButton(at, newButton(kind as ConnectButton["kind"], button.label))}
-                options={BUTTON_KINDS.map((kind) => ({ value: kind, label: t(`connectGuide.kinds.${kind}`) }))}
+                onChange={(kind) => setButton(at, newButton(kind as ConnectButton["kind"], button.label, button.key))}
+                options={BUTTON_KINDS.map((kind) => ({
+                  value: kind,
+                  label: t(`connectGuide.kinds.${kind}`),
+                  icon: BUTTON_KIND_ICONS[kind],
+                }))}
                 placeholder={t("connectGuide.buttonKind")}
-                icon={Smartphone}
+                icon={MousePointerClick}
                 disabled={disabled}
                 size="compact"
                 variant="form"
@@ -232,7 +304,7 @@ function StepEditor({
               placeholder={t("connectGuide.buttonLabel")}
               value={button.label[locale] ?? ""}
               disabled={disabled}
-              maxLength={120}
+              maxLength={LINE_MAX_LENGTH}
               onChange={(event) => setButton(at, { ...button, label: { ...button.label, [locale]: event.target.value } })}
             />
             <OrderControls
@@ -248,6 +320,7 @@ function StepEditor({
               placeholder="https://"
               value={button.url}
               disabled={disabled}
+              maxLength={ADDRESS_MAX_LENGTH}
               onChange={(event) => setButton(at, { ...button, url: event.target.value })}
             />
           )}
@@ -257,6 +330,7 @@ function StepEditor({
                 className="min-w-60 flex-1 font-mono"
                 value={button.template}
                 disabled={disabled}
+                maxLength={ADDRESS_MAX_LENGTH}
                 onChange={(event) => setButton(at, { ...button, template: event.target.value })}
               />
               <div className="w-56">
@@ -268,7 +342,7 @@ function StepEditor({
                     label: t(`connectGuide.encodes.${encode}`),
                   }))}
                   placeholder={t("connectGuide.encode")}
-                  icon={Smartphone}
+                  icon={Code}
                   disabled={disabled}
                   size="compact"
                   variant="form"
@@ -281,7 +355,7 @@ function StepEditor({
           )}
         </div>
       ))}
-      {step.buttons.length < 4 && (
+      {step.buttons.length < MAX_BUTTONS && (
         <AddRow
           label={t("connectGuide.addButton")}
           disabled={disabled}
@@ -312,7 +386,6 @@ export function ConnectGuideSettingsPage() {
     setEnabled(guide.enabled);
     setIsDefault(guide.is_default);
     setDraft(toDraft(guide.catalog));
-    setAppIndex(0);
   };
 
   const load = async (signal?: AbortSignal) => {
@@ -335,8 +408,8 @@ export function ConnectGuideSettingsPage() {
 
   const apps = draft[platform];
   const app = apps[appIndex];
-  const setApps = (next: ConnectApp[]) => setDraft((prev) => ({ ...prev, [platform]: next }));
-  const setApp = (next: ConnectApp) => setApps(apps.map((a, i) => (i === appIndex ? next : a)));
+  const setApps = (next: DraftApp[]) => setDraft((prev) => ({ ...prev, [platform]: next }));
+  const setApp = (next: DraftApp) => setApps(apps.map((a, i) => (i === appIndex ? next : a)));
 
   const addApp = () => {
     const name = t("connectGuide.newApp");
@@ -346,7 +419,7 @@ export function ConnectGuideSettingsPage() {
         id: `app-${Date.now().toString(36)}`,
         name,
         featured: false,
-        steps: [{ title: { [locale]: t("connectGuide.newStep") }, body: null, icon: "download", buttons: [] }],
+        steps: [newStep({ [locale]: t("connectGuide.newStep") }, "download")],
       },
     ]);
     setAppIndex(apps.length);
@@ -367,11 +440,15 @@ export function ConnectGuideSettingsPage() {
 
   const handleReset = async () => {
     setIsResetConfirmOpen(false);
+    setIsSaving(true);
     try {
       apply(await resetConnectGuide());
+      setAppIndex(0);
       toast.success(t("connectGuide.resetSuccess"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("connectGuide.resetError")));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -446,7 +523,7 @@ export function ConnectGuideSettingsPage() {
                 </button>
               ))}
               {apps.length === 0 && <p className="px-3 text-[12px] text-muted-foreground">{t("connectGuide.noApps")}</p>}
-              {apps.length < 12 && <AddRow label={t("connectGuide.addApp")} disabled={disabled} onClick={addApp} />}
+              {apps.length < MAX_APPS && <AddRow label={t("connectGuide.addApp")} disabled={disabled} onClick={addApp} />}
             </div>
 
             {app && (
@@ -457,7 +534,7 @@ export function ConnectGuideSettingsPage() {
                       <TextInput
                         value={app.name}
                         disabled={disabled}
-                        maxLength={40}
+                        maxLength={APP_NAME_MAX_LENGTH}
                         required
                         onChange={(event) => setApp({ ...app, name: event.target.value })}
                       />
@@ -492,7 +569,7 @@ export function ConnectGuideSettingsPage() {
                 <span className={`px-1 ${EYEBROW_CLASS}`}>{t("connectGuide.steps")}</span>
                 {app.steps.map((step, index) => (
                   <StepEditor
-                    key={index}
+                    key={step.key}
                     step={step}
                     index={index}
                     count={app.steps.length}
@@ -503,12 +580,12 @@ export function ConnectGuideSettingsPage() {
                     onRemove={() => setApp({ ...app, steps: app.steps.filter((_, i) => i !== index) })}
                   />
                 ))}
-                {app.steps.length < 10 && (
+                {app.steps.length < MAX_STEPS && (
                   <AddRow
                     label={t("connectGuide.addStep")}
                     disabled={disabled}
                     onClick={() =>
-                      setApp({ ...app, steps: [...app.steps, { title: {}, body: null, icon: "check", buttons: [] }] })
+                      setApp({ ...app, steps: [...app.steps, newStep({}, "check")] })
                     }
                   />
                 )}
@@ -525,7 +602,7 @@ export function ConnectGuideSettingsPage() {
               </Button>
             )}
             {canReset && !isDefault && (
-              <Button variant="outline" type="button" onClick={() => setIsResetConfirmOpen(true)}>
+              <Button variant="outline" type="button" disabled={isSaving} onClick={() => setIsResetConfirmOpen(true)}>
                 {t("common.reset")}
               </Button>
             )}

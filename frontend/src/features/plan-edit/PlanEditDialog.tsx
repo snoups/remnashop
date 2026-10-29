@@ -28,6 +28,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
+import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -66,6 +67,11 @@ interface PlanEditDialogProps {
   onSaved: (plan: Plan) => void;
 }
 
+// what setPlanDurations would change; unchanged durations aren't sent
+function durationsKey(rows: DurationRow[]): string {
+  return JSON.stringify(rows.map((row) => [row.days, row.base_price]));
+}
+
 const labelClassName = "text-sm font-medium text-foreground/80";
 const hintClassName = "text-[12px] text-muted-foreground";
 
@@ -83,7 +89,9 @@ function PlanEditDialogBody({
   onSaved,
 }: Pick<PlanEditDialogProps, "plan" | "anchorCurrency" | "onSaved">) {
   const { t } = useTranslation();
-  const canShare = usePermissions().includes("PLANS_SHARE_VIEW");
+  const permissions = usePermissions();
+  const canShare = permissions.includes("PLANS_SHARE_VIEW");
+  const canManageDurations = permissions.includes("PLANS_DURATIONS_MANAGE");
   const close = useModalClose();
   const isCreate = plan === null;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,19 +107,20 @@ function PlanEditDialogBody({
   const [allowBonusDays, setAllowBonusDays] = useState(plan?.allow_bonus_days ?? true);
   const [allowPromocodes, setAllowPromocodes] = useState(plan?.allow_promocodes ?? true);
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
-  const [durations, setDurations] = useState<DurationRow[]>(
+  const [initialDurations] = useState<DurationRow[]>(() =>
     (plan?.durations ?? [])
       .slice()
       .sort((a, b) => a.order_index - b.order_index)
-      .map((d) => ({ id: crypto.randomUUID(), days: String(d.days), base_price: d.base_price })),
+      .map((d) => ({ id: randomId(), days: String(d.days), base_price: d.base_price })),
   );
+  const [durations, setDurations] = useState(initialDurations);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const addDuration = (days: string) =>
-    setDurations((rows) => [...rows, { id: crypto.randomUUID(), days, base_price: "0" }]);
+    setDurations((rows) => [...rows, { id: randomId(), days, base_price: "0" }]);
   const removeDuration = (id: string) => setDurations((rows) => rows.filter((row) => row.id !== id));
   const updateDuration = (id: string, patch: Partial<DurationRow>) =>
     setDurations((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -129,7 +138,7 @@ function PlanEditDialogBody({
   const usedDays = new Set(durations.map((row) => Number(row.days)));
   // a trial plan has exactly one duration
   const presets = isTrial && durations.length > 0 ? [] : DURATION_PRESETS.filter((days) => !usedDays.has(days));
-  const canAddDuration = !isTrial || durations.length === 0;
+  const canAddDuration = canManageDurations && (!isTrial || durations.length === 0);
   const handleTrialChange = (checked: boolean) => {
     setIsTrial(checked);
     if (checked) setDurations((rows) => rows.slice(0, 1));
@@ -174,7 +183,7 @@ function PlanEditDialogBody({
         toast.success(t("plans.edit.saved"));
         onSaved(created);
       } else {
-        // two PUTs, not atomic: a failed second one leaves the fields saved without the durations
+        // two requests, not atomic: a failed second one leaves the fields saved without the durations
         let updated = await updatePlan(plan.id, {
           name: name.trim(),
           description: description.trim() || null,
@@ -189,14 +198,25 @@ function PlanEditDialogBody({
           allow_bonus_days: allowBonusDays,
           allow_promocodes: allowPromocodes,
         });
-        updated = await setPlanDurations(
-          plan.id,
-          parsedDurations.map((row, index) => ({
-            days: row.parsedDays!,
-            order_index: index,
-            base_price: row.base_price,
-          })),
-        );
+        if (durationsKey(durations) !== durationsKey(initialDurations)) {
+          try {
+            updated = await setPlanDurations(
+              plan.id,
+              parsedDurations.map((row, index) => ({
+                days: row.parsedDays!,
+                order_index: index,
+                base_price: row.base_price,
+              })),
+            );
+          } catch (err) {
+            // the fields are already saved: the list shows them, the dialog stays open for another try
+            onSaved(updated);
+            toast.error(
+              t("plans.edit.durationsError", { error: getErrorMessage(err, t("common.errors.generic")) }),
+            );
+            return;
+          }
+        }
         toast.success(t("plans.edit.saved"));
         onSaved(updated);
       }
@@ -356,6 +376,7 @@ function PlanEditDialogBody({
                               key={row.id}
                               row={row}
                               currencySuffix={currencySuffix}
+                              disabled={!canManageDurations}
                               onChange={(patch) => updateDuration(row.id, patch)}
                               onRemove={() => removeDuration(row.id)}
                             />
@@ -466,17 +487,20 @@ function LimitField({
 function DurationRowItem({
   row,
   currencySuffix,
+  disabled,
   onChange,
   onRemove,
 }: {
   row: DurationRow;
   currencySuffix: string | null;
+  disabled: boolean;
   onChange: (patch: Partial<DurationRow>) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
+    disabled,
   });
 
   return (
@@ -490,7 +514,8 @@ function DurationRowItem({
         type="button"
         {...attributes}
         {...listeners}
-        className="flex h-9 cursor-grab touch-none items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+        disabled={disabled}
+        className="flex h-9 cursor-grab touch-none disabled:cursor-not-allowed disabled:opacity-50 items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
       >
         <GripVertical className="size-3.5" />
       </button>
@@ -500,6 +525,7 @@ function DurationRowItem({
         min={1}
         step="1"
         value={row.days}
+        disabled={disabled}
         onChange={(event) => onChange({ days: event.target.value })}
         suffix={t("plans.edit.daysSuffix")}
       />
@@ -509,12 +535,11 @@ function DurationRowItem({
         min={0}
         step="0.01"
         value={row.base_price}
+        disabled={disabled}
         onChange={(event) => onChange({ base_price: event.target.value })}
         suffix={currencySuffix}
       />
-      <IconButton size="9.5" tone="danger"
-        onClick={onRemove}
-      >
+      <IconButton size="9.5" tone="danger" disabled={disabled} onClick={onRemove}>
         <Trash2 className="size-4" />
       </IconButton>
     </div>

@@ -51,6 +51,7 @@ import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
 import { getErrorMessage } from "@shared/api/http";
 import { bounceTap } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
+import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
@@ -60,12 +61,6 @@ import { Badge } from "@shared/ui/Badge";
 
 export type Selection =
   { kind: "text" } | { kind: "button"; buttonKey: string };
-
-function randomId(): string {
-  return (
-    crypto.randomUUID?.() ?? Math.random().toString(16).slice(2).padEnd(32, "0")
-  );
-}
 
 function useSelectedWindow(
   windows: DialogWindow[],
@@ -161,7 +156,11 @@ export function DialogCanvasEditor() {
       });
     return () => {
       controller.abort();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrl) {
+        // a revoked URL left in state shows a broken image until the next banner loads
+        setBannerUrl(null);
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [selectedWindow, previewLocale, bannerNonce]);
 

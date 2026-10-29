@@ -69,7 +69,9 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
   const anyRunning = DIRECTIONS.some(({ direction }) => isRunning(status, direction));
   useEffect(() => {
     if (!anyRunning) return;
-    const timer = setInterval(load, POLL_INTERVAL_MS);
+    const timer = setInterval(() => {
+      if (!document.hidden) load();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [anyRunning, load]);
 

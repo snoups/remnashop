@@ -213,9 +213,12 @@ export function NotificationChannelsForm() {
               <PushDevicesList
                 version={devicesVersion}
                 onRemoved={(endpoint) => {
-                  void currentPushEndpoint().then((own) => {
-                    if (own === endpoint) void disablePush(pushApi, { optOut: true }).then(() => setPushOn(false));
-                  });
+                  // disablePush unsubscribes the browser even when the server call fails
+                  void currentPushEndpoint()
+                    .then((own) =>
+                      own === endpoint ? disablePush(pushApi, { optOut: true }).finally(() => setPushOn(false)) : undefined,
+                    )
+                    .catch(() => undefined);
                 }}
               />
             )}
