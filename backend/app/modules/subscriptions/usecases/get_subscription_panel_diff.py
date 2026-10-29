@@ -6,7 +6,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionPanelDiffDto
-from app.modules.subscriptions.eligibility import get_manageable_subscription
+from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.panel_sync import panel_diff
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
@@ -32,6 +32,7 @@ class GetSubscriptionPanelDiffUseCase(UseCase[int, SubscriptionPanelDiffDto]):
             subscription = await get_manageable_subscription(
                 self._subscription_repository, self._user_repository, actor, data
             )
+            owner = await subscription_owner(self._user_repository, subscription)
         try:
             user = await self._remnawave_sdk.users.get_user_by_id(subscription.remnawave_user_id)
         except RemnawaveNotFoundError:
@@ -41,5 +42,5 @@ class GetSubscriptionPanelDiffUseCase(UseCase[int, SubscriptionPanelDiffDto]):
         return SubscriptionPanelDiffDto(
             subscription_id=subscription.id,
             missing_in_panel=False,
-            fields=panel_diff(subscription, user),
+            fields=panel_diff(subscription, user, owner),
         )

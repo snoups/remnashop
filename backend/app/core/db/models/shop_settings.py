@@ -1,5 +1,6 @@
 from typing import Optional
 
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -26,3 +27,8 @@ class ShopSettings(BaseSql, TimestampMixin):
     link_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
     referral_reset_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
     referral_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
+
+    # Where a customer reaches support, both optional: a Telegram username (without
+    # "@") and a page opened in the browser. The cabinet offers whichever is set.
+    support_telegram: Mapped[Optional[str]] = mapped_column(String(32))
+    support_url: Mapped[Optional[str]] = mapped_column(String(512))

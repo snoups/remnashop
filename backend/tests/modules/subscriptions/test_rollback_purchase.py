@@ -57,6 +57,7 @@ def purchase(
         SubscriptionLifecycleService(subscription_repository),
         pricing_repository,
         idempotency_repository,
+        UserRepository(subscription_repository.session),
     )
 
 

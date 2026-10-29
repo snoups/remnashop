@@ -91,6 +91,7 @@ async def _create_subscription(
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
+        UserRepository(subscription_repository.session),
     )
     subscription = await use_case(
         buyer,

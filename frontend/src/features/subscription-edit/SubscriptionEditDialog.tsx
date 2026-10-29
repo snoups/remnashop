@@ -159,6 +159,12 @@ function SubscriptionParamsForm({ subscription, onSaved, onDeleted }: Omit<Subsc
       toast.error(t("errors.invalidNumber"));
       return;
     }
+    // an untouched past expiry stays out of the request and doesn't block the rest
+    const expireAtChanged = expireAt !== initialExpireAt;
+    if (expireAtChanged && parsedExpireAt.getTime() <= Date.now()) {
+      toast.error(t("subscriptions.edit.expireAtInPast"));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -168,7 +174,7 @@ function SubscriptionParamsForm({ subscription, onSaved, onDeleted }: Omit<Subsc
         device_limit: parsedDeviceLimit,
         traffic_limit_strategy: strategy,
         // untouched expiry stays out of the request, so the panel isn't written for nothing
-        ...(expireAt !== initialExpireAt && { expire_at: parsedExpireAt.toISOString() }),
+        ...(expireAtChanged && { expire_at: parsedExpireAt.toISOString() }),
       });
       toast.success(t("subscriptions.edit.saved"));
       onSaved?.(updated);

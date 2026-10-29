@@ -3,7 +3,7 @@ from typing import Optional
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.modules.settings.dto import UpdateBotSettingsDto
+from app.modules.settings.dto import UpdateBotSettingsDto, UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import GetCabinetSettingsUseCase
 from app.modules.users.dto import UserDto
@@ -61,3 +61,22 @@ async def test_cabinet_settings_survive_an_unreachable_bot(
     await _configure_bot(settings_repository, uow)
     _patch_username(monkeypatch, None)
     assert (await use_case(_USER)).bot_username is None
+
+
+async def test_cabinet_settings_carry_the_support_contacts(
+    use_case: GetCabinetSettingsUseCase,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await settings_repository.update_shop_settings(
+            UpdateShopSettingsDto(
+                support_telegram="shop_help",
+                support_url="https://help.example.com",
+                fields_set=frozenset({"support_telegram", "support_url"}),
+            )
+        )
+        await uow.commit()
+    result = await use_case(_USER)
+    assert result.support_telegram == "shop_help"
+    assert result.support_url == "https://help.example.com"

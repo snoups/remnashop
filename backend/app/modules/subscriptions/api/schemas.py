@@ -6,7 +6,15 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 from remnapy.enums import TrafficLimitStrategy
 
-from app.core.enums import AddOnType, Currency, PanelSyncDirection, PlanType, SubscriptionStatus
+from app.core.constants import PANEL_TAG_MAX_LENGTH, PANEL_TAG_PATTERN
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    PanelSyncDirection,
+    PlanBadge,
+    PlanType,
+    SubscriptionStatus,
+)
 from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
 
 
@@ -52,11 +60,17 @@ class SubscriptionPageResponse(BaseModel):
 
 
 class UpdateSubscriptionRequest(BaseModel):
-    tag: Optional[str] = Field(default=None, max_length=32)
+    tag: Optional[str] = Field(
+        default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN
+    )
     traffic_limit: Optional[int] = Field(default=None, ge=0)
     device_limit: Optional[int] = Field(default=None, ge=0)
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
     expire_at: Optional[datetime] = None
+
+
+class DeletedSubscriptionsResponse(BaseModel):
+    deleted: int
 
 
 class UpdateSubscriptionSquadsRequest(BaseModel):
@@ -92,6 +106,8 @@ class PublicPlanPriceResponse(BaseModel):
     currency: Currency
     # 0 only for a free trial plan opened by its code
     price: Decimal = Field(ge=0)
+    # the price with the plan's running promotion off it, absent while there is none
+    discounted_price: Optional[Decimal] = None
 
 
 class PublicPlanDurationResponse(BaseModel):
@@ -104,7 +120,7 @@ class PublicPlanResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    tag: Optional[str] = None
+    badge: Optional[PlanBadge] = None
     type: PlanType
     traffic_limit_strategy: TrafficLimitStrategy
     traffic_limit: int
@@ -112,6 +128,8 @@ class PublicPlanResponse(BaseModel):
     is_trial: bool
     order_index: int
     durations: list[PublicPlanDurationResponse]
+    discount_percent: int = 0
+    discount_ends_at: Optional[datetime] = None
 
 
 class PublicPlanListResponse(BaseModel):
@@ -172,6 +190,9 @@ class PanelSyncResultResponse(BaseModel):
     updated: int
     failed: int
     missing: int
+    recreated: int
+    imported: int
+    deleted: int
     finished_at: datetime
 
 

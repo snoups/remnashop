@@ -42,6 +42,7 @@ async def purchase_subscription_task(
             idempotency_key=idempotency_key,
             # every queued purchase is a customer's order
             reset_traffic=True,
+            apply_plan_tag=True,
         )
     )
 

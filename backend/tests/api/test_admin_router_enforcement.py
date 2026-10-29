@@ -89,6 +89,7 @@ def test_discovery_actually_found_the_known_admin_routers() -> None:
         "referrals.user_router",
         "settings.router",
         "subscriptions.router",
+        "subscriptions.user_router",
         "transactions.router",
         "translations.locales_router",
         "translations.router",

@@ -39,7 +39,11 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
 
   const announce = useCallback(
     (result: PanelSyncResult) => {
-      toast.success(t("subscriptions.panelSync.bulk.finished", { ...result }));
+      const key =
+        result.direction === "TO_PANEL"
+          ? "subscriptions.panelSync.bulk.finishedToPanel"
+          : "subscriptions.panelSync.bulk.finished";
+      toast.success(t(key, { ...result }));
       onFinished();
     },
     [onFinished, t],

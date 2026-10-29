@@ -1,4 +1,6 @@
 import hmac
+from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from app.core.db.uow import UnitOfWork
@@ -6,8 +8,9 @@ from app.core.enums import Currency, PlanAvailability
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, PlanRepository
-from app.modules.pricing import CurrencyRateTable, PricingRepository, price_for
+from app.modules.pricing import CurrencyRateTable, PricingRepository, apply_discounts, price_for
 from app.modules.subscriptions.dto import (
     CatalogDurationDto,
     CatalogPlanDto,
@@ -19,12 +22,13 @@ from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.users import UserDto
 
 
-def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
+def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable, now: datetime) -> CatalogPlanDto:
+    discount = plan.active_discount(now)
     return CatalogPlanDto(
         id=plan.id,
         name=plan.name,
         description=plan.description,
-        tag=plan.tag,
+        badge=plan.badge,
         type=plan.type,
         traffic_limit_strategy=plan.traffic_limit_strategy,
         traffic_limit=plan.traffic_limit,
@@ -36,15 +40,32 @@ def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable) -> CatalogPlanDto:
                 days=duration.days,
                 order_index=duration.order_index,
                 prices=[
-                    CatalogPriceDto(
-                        currency=currency,
-                        price=price_for(duration.base_price, duration.overrides, currency, rates),
+                    _catalog_price(
+                        price_for(duration.base_price, duration.overrides, currency, rates),
+                        currency,
+                        rates,
+                        discount,
                     )
                     for currency in Currency
                 ],
             )
             for duration in plan.sellable_durations()
         ],
+        discount_percent=discount,
+        discount_ends_at=plan.discount_ends_at if discount else None,
+    )
+
+
+def _catalog_price(
+    price: Decimal, currency: Currency, rates: CurrencyRateTable, discount: int
+) -> CatalogPriceDto:
+    # the quote's own formula: the catalog shows what checkout will charge before a user discount
+    return CatalogPriceDto(
+        currency=currency,
+        price=price,
+        discounted_price=(
+            apply_discounts(price, rates.for_currency(currency), discount) if discount else None
+        ),
     )
 
 
@@ -95,9 +116,12 @@ class ListActivePlansUseCase(UseCase[ListActivePlansDto, PlanCatalogDto, UserDto
                     actor,
                 )
             rates = await self._pricing_repository.get_rate_table()
+        now = datetime_now()
         return PlanCatalogDto(
             plans=[
-                _to_catalog_plan(plan, rates) for plan in purchasable if plan.sellable_durations()
+                _to_catalog_plan(plan, rates, now)
+                for plan in purchasable
+                if plan.sellable_durations()
             ],
             anchor_currency=rates.anchor,
         )

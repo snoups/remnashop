@@ -14,6 +14,7 @@ from app.core.enums import (
     AddOnType,
     Currency,
     PanelSyncDirection,
+    PlanBadge,
     PlanType,
     PurchaseType,
     SubscriptionStatus,
@@ -38,6 +39,7 @@ class PlanSnapshot:
     is_trial: bool
     internal_squads: list[UUID] = field(default_factory=list)
     external_squad: Optional[UUID] = None
+    tag: Optional[str] = None
     # money and days behind the current credit, accumulated by RENEW and grants since
     # the last NEW/CHANGE; None on a snapshot written before they existed
     credit_paid: Optional[Decimal] = None
@@ -65,6 +67,7 @@ class PlanSnapshot:
             "is_trial": self.is_trial,
             "internal_squads": [str(squad) for squad in self.internal_squads],
             "external_squad": str(self.external_squad) if self.external_squad else None,
+            "tag": self.tag,
             "credit_paid": str(self.credit_paid) if self.credit_paid is not None else None,
             "credit_days": self.credit_days,
         }
@@ -84,6 +87,7 @@ class PlanSnapshot:
             is_trial=data["is_trial"],
             internal_squads=[UUID(squad) for squad in data["internal_squads"]],
             external_squad=UUID(data["external_squad"]) if data["external_squad"] else None,
+            tag=data.get("tag"),
             credit_paid=(
                 Decimal(data["credit_paid"]) if data.get("credit_paid") is not None else None
             ),
@@ -113,6 +117,7 @@ class PlanSnapshot:
             is_trial=plan.is_trial or is_trial,
             internal_squads=plan.internal_squads,
             external_squad=plan.external_squad,
+            tag=plan.tag,
             credit_paid=price_paid,
             credit_days=duration_days,
         )
@@ -244,6 +249,9 @@ class PurchaseSubscriptionDto:
     # CHANGE only: zero the panel's traffic counter; set for a customer's paid
     # change, whose credit already deducts the spent traffic
     reset_traffic: bool = False
+    # RENEW only: give the subscription the snapshot's tag; set for a checkout
+    # order, whose snapshot is the plan as sold now, not the target's own
+    apply_plan_tag: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -325,8 +333,14 @@ class PanelSyncResultDto(BaseDto):
     checked: int
     updated: int
     failed: int
-    # panel users gone (from panel) or rows with no panel user (to panel)
+    # panel users gone (from panel only)
     missing: int
+    # rows given a new panel user in place of a gone one (to panel only)
+    recreated: int = 0
+    # rows made for a shop user's panel user without one (from panel only)
+    imported: int = 0
+    # shop users' panel users without a row, deleted (to panel only)
+    deleted: int = 0
     finished_at: datetime
 
 
@@ -345,6 +359,11 @@ class PanelFieldDiffDto(BaseDto):
     field: str
     shop: str
     panel: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeletedSubscriptionsDto:
+    deleted: int
 
 
 class SubscriptionPanelDiffDto(BaseDto):
@@ -376,6 +395,8 @@ class PublishPanelEventDto:
 class CatalogPriceDto:
     currency: Currency
     price: Decimal
+    # the price with the plan's running promotion off it, None while there is none
+    discounted_price: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -390,7 +411,7 @@ class CatalogPlanDto:
     id: int
     name: str
     description: Optional[str]
-    tag: Optional[str]
+    badge: Optional[PlanBadge]
     type: PlanType
     traffic_limit_strategy: TrafficLimitStrategy
     traffic_limit: int
@@ -398,6 +419,9 @@ class CatalogPlanDto:
     is_trial: bool
     order_index: int
     durations: list[CatalogDurationDto]
+    # the plan's promotion running now: 0 and None while there is none
+    discount_percent: int = 0
+    discount_ends_at: Optional[datetime] = None
 
 
 @dataclass(frozen=True, kw_only=True)

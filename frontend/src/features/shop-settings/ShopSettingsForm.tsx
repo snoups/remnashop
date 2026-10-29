@@ -1,4 +1,4 @@
-import { Layers, Link2, MonitorSmartphone, Share2, ShoppingBag, Smartphone } from "lucide-react";
+import { Globe, Layers, Link2, MonitorSmartphone, Send, Share2, ShoppingBag, Smartphone } from "lucide-react";
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -33,6 +33,8 @@ export function ShopSettingsForm() {
   const [linkResetCooldownHours, setLinkResetCooldownHours] = useState("0");
   const [referralResetEnabled, setReferralResetEnabled] = useState(true);
   const [referralResetCooldownHours, setReferralResetCooldownHours] = useState("0");
+  const [supportTelegram, setSupportTelegram] = useState("");
+  const [supportUrl, setSupportUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -48,6 +50,8 @@ export function ShopSettingsForm() {
     setLinkResetCooldownHours(String(state.data.link_reset_cooldown_hours));
     setReferralResetEnabled(state.data.referral_reset_enabled);
     setReferralResetCooldownHours(String(state.data.referral_reset_cooldown_hours));
+    setSupportTelegram(state.data.support_telegram ?? "");
+    setSupportUrl(state.data.support_url ?? "");
   }, [state]);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -81,6 +85,9 @@ export function ShopSettingsForm() {
         link_reset_cooldown_hours: parsedLinkCooldown,
         referral_reset_enabled: referralResetEnabled,
         referral_reset_cooldown_hours: parsedReferralCooldown,
+        // blank clears it; the backend takes "@name" and t.me links as well
+        support_telegram: supportTelegram.trim() || null,
+        support_url: supportUrl.trim() || null,
       });
       setData(settings);
       toast.success(t("common.saved"));
@@ -163,6 +170,26 @@ export function ShopSettingsForm() {
               onCooldownChange={setReferralResetCooldownHours}
             />
           </div>
+
+          {/* where the cabinet's "Support" leads: either or both */}
+          <div className="mt-2 flex flex-col gap-1 border-t border-white/[0.08] pt-2">
+            <SupportRow
+              icon={Send}
+              label={t("settings.shop.supportTelegramLabel")}
+              hint={t("settings.shop.supportTelegramHint")}
+              placeholder="@support"
+              value={supportTelegram}
+              onChange={setSupportTelegram}
+            />
+            <SupportRow
+              icon={Globe}
+              label={t("settings.shop.supportUrlLabel")}
+              hint={t("settings.shop.supportUrlHint")}
+              placeholder="https://"
+              value={supportUrl}
+              onChange={setSupportUrl}
+            />
+          </div>
           </fieldset>
 
           {canManage && (
@@ -221,6 +248,35 @@ function ResetRow({
       <div className="mr-1 flex">
         <Switch checked={enabled} onChange={onEnabledChange} />
       </div>
+    </div>
+  );
+}
+
+interface SupportRowProps {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function SupportRow({ icon: Icon, label, hint, placeholder, value, onChange }: SupportRowProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
+      <div className={rowIconClassName}>
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-medium text-foreground">{label}</p>
+        <p className="text-[12px] text-muted-foreground">{hint}</p>
+      </div>
+      <TextInput
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-56 shrink-0"
+      />
     </div>
   );
 }

@@ -91,6 +91,10 @@ export function deleteSubscription(subscriptionId: number): Promise<void> {
   return apiDelete<void>(`/subscriptions/${subscriptionId}`);
 }
 
+export function deleteUserSubscriptions(userId: number): Promise<{ deleted: number }> {
+  return apiPost<{ deleted: number }, Record<string, never>>(`/users/${userId}/subscriptions/bulk/delete`, {});
+}
+
 export interface GrantSubscriptionRequest {
   user_id: number;
   plan_id: number;
@@ -159,6 +163,9 @@ export interface PanelSyncResult {
   updated: number;
   failed: number;
   missing: number;
+  recreated: number;
+  imported: number;
+  deleted: number;
   finished_at: string;
 }
 

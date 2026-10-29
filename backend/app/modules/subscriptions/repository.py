@@ -238,6 +238,15 @@ class SubscriptionRepository:
         stmt = select(func.count()).select_from(Subscription).where(*conditions)
         return bool(await self.session.scalar(stmt))
 
+    async def list_linked_remnawave_user_ids(self) -> set[int]:
+        """Panel users some subscription still stands for (anything but DELETED)."""
+        result = await self.session.scalars(
+            select(Subscription.remnawave_user_id).where(
+                Subscription.status != SubscriptionStatus.DELETED
+            )
+        )
+        return set(result)
+
     async def list_non_terminal(self) -> list[SubscriptionDto]:
         # recently EXPIRED rows too: a renewal that reached the panel but not
         # our commit leaves the row EXPIRED until reconcile pulls it in
@@ -468,6 +477,25 @@ class SubscriptionRepository:
     async def set_url(self, subscription_id: int, url: str) -> SubscriptionDto:
         row = await self._get_or_raise(subscription_id)
         row.url = url
+        await self.session.flush()
+        await self.session.refresh(row)
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
+
+    async def relink_panel_user(
+        self, subscription_id: int, remnawave_user_id: int, url: str
+    ) -> SubscriptionDto:
+        row = await self._get_or_raise(subscription_id)
+        row.remnawave_user_id = remnawave_user_id
+        row.url = url
+        await self.session.flush()
+        await self.session.refresh(row)
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
+
+    async def set_tag(self, subscription_id: int, tag: Optional[str]) -> SubscriptionDto:
+        row = await self._get_or_raise(subscription_id)
+        row.tag = tag
         await self.session.flush()
         await self.session.refresh(row)
         entitlements_by_subscription = await self._load_entitlements([row.id])

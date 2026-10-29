@@ -11,6 +11,7 @@ from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENG
 from app.core.enums import SubscriptionStatus
 from app.modules.subscriptions.api.schemas import (
     ChangeSubscriptionPlanRequest,
+    DeletedSubscriptionsResponse,
     DeviceListResponse,
     DeviceResponse,
     GrantSubscriptionRequest,
@@ -38,6 +39,7 @@ from app.modules.subscriptions.usecases import (
     AdminReissueSubscriptionUseCase,
     ChangeSubscriptionPlanUseCase,
     DeleteSubscriptionUseCase,
+    DeleteUserSubscriptionsUseCase,
     GetPanelSyncStatusUseCase,
     GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
@@ -54,6 +56,7 @@ from app.modules.subscriptions.usecases import (
 )
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+user_router = APIRouter(prefix="/users", tags=["subscriptions"])
 
 
 @router.get("/panel-sync", response_model=PanelSyncStatusResponse)
@@ -205,6 +208,22 @@ async def delete_subscription(
     actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor, subscription_id)
+
+
+@user_router.post(
+    "/{user_id:int}/subscriptions/bulk/delete",
+    response_model=DeletedSubscriptionsResponse,
+    responses=error_responses(404, 503),
+)
+@inject
+async def delete_user_subscriptions(
+    user_id: int,
+    use_case: FromDishka[DeleteUserSubscriptionsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> DeletedSubscriptionsResponse:
+    return DeletedSubscriptionsResponse.model_validate(
+        await use_case(actor, user_id), from_attributes=True
+    )
 
 
 @router.get(
@@ -392,7 +411,7 @@ async def pull_subscription_from_panel(
 @router.post(
     "/{subscription_id:int}/actions/push-to-panel",
     response_model=SubscriptionResponse,
-    responses=error_responses(400, 404, 409, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def push_subscription_to_panel(

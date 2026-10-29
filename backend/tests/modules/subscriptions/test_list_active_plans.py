@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -9,11 +10,13 @@ from app.modules.plans.dto import (
     SetPlanDurationDto,
     SetPlanDurationsDto,
     UpdatePlanAccessDto,
+    UpdatePlanDiscountDto,
     UpdatePlanDto,
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing.repository import PricingRepository
+from app.modules.pricing.resolver import apply_discounts
 from app.modules.referrals import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto, ListActivePlansDto
@@ -463,3 +466,47 @@ async def test_renewal_catalog_offers_the_owned_plan_its_availability_no_longer_
     assert (await use_case(owner)).plans == []
     assert [plan.id for plan in (await use_case(owner, renew)).plans] == [newbie_id]
     assert (await use_case(stranger, renew)).plans == []
+
+
+async def test_catalog_carries_the_running_promotion(
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+) -> None:
+    plan_id = await _plan_with_access(plan_repository, "promo", PlanAvailability.ALL)
+    ends_at = datetime_now() + timedelta(days=3)
+    await plan_repository.update_discount(
+        UpdatePlanDiscountDto(
+            plan_id=plan_id, discount_percent=20, discount_starts_at=None, discount_ends_at=ends_at
+        )
+    )
+    rates = await PricingRepository(plan_repository.session).get_rate_table()
+
+    (plan,) = (await _use_case(plan_repository, uow)(REGULAR_USER)).plans
+
+    assert plan.discount_percent == 20
+    assert plan.discount_ends_at == ends_at
+    usd = next(p for p in plan.durations[0].prices if p.currency is Currency.USD)
+    # what the checkout quote charges before a user discount
+    assert usd.discounted_price == apply_discounts(usd.price, rates.for_currency(Currency.USD), 20)
+    assert usd.discounted_price is not None and usd.discounted_price < usd.price
+
+
+async def test_catalog_drops_an_ended_promotion(
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+) -> None:
+    plan_id = await _plan_with_access(plan_repository, "promo", PlanAvailability.ALL)
+    await plan_repository.update_discount(
+        UpdatePlanDiscountDto(
+            plan_id=plan_id,
+            discount_percent=20,
+            discount_starts_at=None,
+            discount_ends_at=datetime_now() - timedelta(minutes=1),
+        )
+    )
+
+    (plan,) = (await _use_case(plan_repository, uow)(REGULAR_USER)).plans
+
+    assert plan.discount_percent == 0
+    assert plan.discount_ends_at is None
+    assert all(p.discounted_price is None for d in plan.durations for p in d.prices)

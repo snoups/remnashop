@@ -52,6 +52,18 @@ def round_amount(amount: Decimal, rate: CurrencyRateDto, *, charm: bool = True) 
     return _apply_rounding(rounded, rate.rounding_mode)
 
 
+def apply_discounts(price: Decimal, rate: CurrencyRateDto, *percents: int) -> Decimal:
+    """The price with each percent off in turn: -20% and -10% make -28%, 100% makes it free."""
+    if any(percent >= 100 for percent in percents):
+        return ZERO_AMOUNT
+    if not any(percents):
+        return price
+    discounted = price
+    for percent in percents:
+        discounted *= _HUNDRED - Decimal(percent)
+    return round_amount(discounted / _HUNDRED ** len(percents), rate, charm=False)
+
+
 def resolve_price(
     base_anchor: Decimal,
     currency: Currency,

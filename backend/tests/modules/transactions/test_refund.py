@@ -693,6 +693,7 @@ async def race(
                     SubscriptionLifecycleService(subscriptions),
                     PricingRepository(purchase_session),
                     PurchaseIdempotencyRepository(purchase_session),
+                    UserRepository(subscriptions.session),
                 ),
                 purchase_session=purchase_session,
             )

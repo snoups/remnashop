@@ -3,16 +3,18 @@ from typing import Optional
 
 from loguru import logger
 from remnapy import RemnawaveSDK
-from remnapy.models import UpdateUserRequestDto
 
 from app.core.actor import Actor
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, SubscriptionStatus
+from app.core.error_codes import ErrorCode
 from app.core.events import changed_fields
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionDto
 from app.modules.subscriptions.eligibility import (
     get_manageable_subscription,
@@ -21,7 +23,7 @@ from app.modules.subscriptions.eligibility import (
 )
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
-from app.modules.subscriptions.panel import restore
+from app.modules.subscriptions.panel import panel_update, restore
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
@@ -52,6 +54,12 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
         self._lifecycle_service = lifecycle_service
 
     async def _execute(self, actor: Actor, data: UpdateSubscriptionDto) -> SubscriptionDto:
+        # the panel refuses a past expireAt on update
+        if data.expire_at is not None and data.expire_at <= datetime_now():
+            raise ValidationError(
+                "The expiry date must be in the future",
+                code=ErrorCode.SUBSCRIPTION_EXPIRE_AT_IN_PAST,
+            )
         async with self._uow:
             old = await get_manageable_subscription(
                 self._subscription_repository, self._user_repository, actor, data.subscription_id
@@ -71,7 +79,7 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
             traffic_limit = old.traffic_limit if data.traffic_limit is None else data.traffic_limit
             device_limit = old.device_limit if data.device_limit is None else data.device_limit
             panel_user = await self._remnawave_sdk.users.update_user(
-                UpdateUserRequestDto(
+                panel_update(
                     id=old.remnawave_user_id,
                     traffic_limit_bytes=_effective(traffic_limit, old, AddOnType.TRAFFIC)
                     * GB_TO_BYTES,

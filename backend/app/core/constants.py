@@ -123,6 +123,11 @@ TTL_30D: Final[int] = TIME_1D * 30
 # only, never store bytes in our schema.
 GB_TO_BYTES: Final[int] = 1024**3
 
+# what Remnawave accepts as a user tag (CreateUserRequestDto.tag); a plan's tag goes
+# onto every panel user it provisions
+PANEL_TAG_PATTERN: Final[str] = r"^[A-Z0-9_]+$"
+PANEL_TAG_MAX_LENGTH: Final[int] = 16
+
 # Cap on what a webhook handler will buffer. Both webhook routes are
 # unauthenticated and read the whole body before the signature check, and the
 # panel one skips the global rate limiter; without this only the reverse proxy

@@ -7,7 +7,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDownUp, Columns2, GripVertical, Infinity as InfinityIcon, Layers, Plus, Smartphone, Trash2 } from "lucide-react";
+import { ArrowDownUp, Columns2, GripVertical, Infinity as InfinityIcon, Layers, Plus, Smartphone, Sparkles, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { type ComponentType, type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import {
   type CreatePlanRequest,
   createPlan,
   type Plan,
+  type PlanBadge,
   type PlanType,
   setPlanDurations,
   type TrafficLimitStrategy,
@@ -30,6 +31,7 @@ import { blockNonDecimalKeys, blockNonIntegerKeys, parseRequiredInt } from "@sha
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
@@ -40,6 +42,7 @@ import { Field } from "@shared/ui/Field";
 import { IconButton } from "@shared/ui/IconButton";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 
+const PLAN_BADGES: PlanBadge[] = ["POPULAR", "BEST_VALUE"];
 const PLAN_TYPES: PlanType[] = ["TRAFFIC", "DEVICES", "BOTH", "UNLIMITED"];
 const PLAN_TYPE_ICON: Record<PlanType, ComponentType<{ className?: string }>> = {
   TRAFFIC: ArrowDownUp,
@@ -87,6 +90,7 @@ function PlanEditDialogBody({
   const [name, setName] = useState(plan?.name ?? "");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [tag, setTag] = useState(plan?.tag ?? "");
+  const [badge, setBadge] = useState<PlanBadge | "">(plan?.badge ?? "");
   const [type, setType] = useState<PlanType>(plan?.type ?? "BOTH");
   const [strategy, setStrategy] = useState<TrafficLimitStrategy>(plan?.traffic_limit_strategy ?? "NO_RESET");
   const [trafficLimit, setTrafficLimit] = useState(String(plan?.traffic_limit ?? 0));
@@ -157,6 +161,7 @@ function PlanEditDialogBody({
           name: name.trim(),
           description: description.trim() || null,
           tag: tag.trim() || null,
+          badge: badge || null,
           type,
           traffic_limit_strategy: strategy,
           traffic_limit: parsedTrafficLimit,
@@ -174,6 +179,7 @@ function PlanEditDialogBody({
           name: name.trim(),
           description: description.trim() || null,
           tag: tag.trim() || null,
+          badge: badge || null,
           type,
           traffic_limit_strategy: strategy,
           traffic_limit: parsedTrafficLimit,
@@ -235,10 +241,33 @@ function PlanEditDialogBody({
                 rows={2}
               />
             </Field>
-            <Field label={t("plans.edit.tagLabel")} htmlFor="plan-tag">
-              <TextInput id="plan-tag" value={tag} onChange={(event) => setTag(event.target.value)}  />
-              <span className={hintClassName}>{t("plans.edit.tagHint")}</span>
-            </Field>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label={t("plans.edit.badgeLabel")} htmlFor="plan-badge">
+                <SelectDropdown
+                  variant="form"
+                  id="plan-badge"
+                  value={badge}
+                  onChange={(value) => setBadge(value as PlanBadge | "")}
+                  icon={Sparkles}
+                  placeholder={badge ? t(`plans.edit.badges.${badge}`) : t("plans.edit.badges.none")}
+                  options={[
+                    { value: "", label: t("plans.edit.badges.none") },
+                    ...PLAN_BADGES.map((value) => ({ value, label: t(`plans.edit.badges.${value}`) })),
+                  ]}
+                />
+                <span className={hintClassName}>{t("plans.edit.badgeHint")}</span>
+              </Field>
+              <Field label={t("plans.edit.tagLabel")} htmlFor="plan-tag">
+                {/* Remnawave takes only these characters in a user tag */}
+                <TextInput
+                  id="plan-tag"
+                  value={tag}
+                  maxLength={16}
+                  onChange={(event) => setTag(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
+                />
+                <span className={hintClassName}>{t("plans.edit.tagHint")}</span>
+              </Field>
+            </div>
           </Card>
 
           <Card variant="form">

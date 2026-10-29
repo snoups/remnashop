@@ -8,23 +8,28 @@ from remnapy.models import UserResponseDto
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PanelSyncDirection
+from app.core.enums import PanelSyncDirection, SubscriptionStatus
 from app.core.exceptions import RemnawavePanelUnavailableError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.plans import PlanRepository
 from app.modules.subscriptions.dto import PanelSyncResultDto
 from app.modules.subscriptions.events import PanelSyncCompletedEvent, StatusSyncSource
 from app.modules.subscriptions.panel_sync import (
     differs_from_panel,
     finish_panel_sync,
     from_panel,
+    imported_row,
+    is_orphan,
+    match_shop_user,
     panel_users,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.sync_subscription_status import (
     SyncSubscriptionStatusUseCase,
 )
+from app.modules.users import UserRepository
 
 _SOURCE: Final[StatusSyncSource] = "panel_sync"
 
@@ -35,6 +40,7 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
     One stream of the whole panel finds the candidates; each one is read again
     on its own before it is written, so a row changed while the stream ran is
     judged by the panel's current state, not the minutes-old snapshot.
+    A shop user's panel user that no subscription stands for is imported.
     """
 
     required_permission = None
@@ -42,6 +48,8 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
     def __init__(
         self,
         subscription_repository: SubscriptionRepository,
+        user_repository: UserRepository,
+        plan_repository: PlanRepository,
         remnawave_sdk: RemnawaveSDK,
         sync_use_case: SyncSubscriptionStatusUseCase,
         uow: UnitOfWork,
@@ -49,6 +57,8 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         event_publisher: EventPublisher,
     ) -> None:
         self._subscription_repository = subscription_repository
+        self._user_repository = user_repository
+        self._plan_repository = plan_repository
         self._remnawave_sdk = remnawave_sdk
         self._sync_use_case = sync_use_case
         self._uow = uow
@@ -58,7 +68,8 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
     async def _execute(self, actor: Actor, data: None) -> PanelSyncResultDto:
         async with self._uow:
             subscriptions = await self._subscription_repository.list_non_terminal()
-        updated = failed = missing = 0
+            linked = await self._subscription_repository.list_linked_remnawave_user_ids()
+        updated = failed = missing = imported = 0
         try:
             snapshot = {user.id: user async for user in panel_users(self._remnawave_sdk)}
             for position, subscription in enumerate(subscriptions):
@@ -89,6 +100,9 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
                     missing += 1
                 else:
                     updated += 1
+            else:
+                imported, import_failed = await self._import_orphans(actor, snapshot, linked)
+                failed += import_failed
         except Exception:
             logger.exception(f"{actor.log} Panel sync from the panel failed")
             failed = len(subscriptions) - updated - missing
@@ -98,6 +112,7 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
             updated=updated,
             failed=failed,
             missing=missing,
+            imported=imported,
             finished_at=datetime_now(),
         )
         await finish_panel_sync(self._redis, PanelSyncDirection.FROM_PANEL, result)
@@ -109,10 +124,48 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
                     updated=result.updated,
                     failed=result.failed,
                     missing=result.missing,
+                    imported=result.imported,
                 )
             )
         logger.info(f"{actor.log} Synced subscriptions from the panel: {result}")
         return result
+
+    async def _import_orphans(
+        self, actor: Actor, snapshot: dict[int, UserResponseDto], linked: set[int]
+    ) -> tuple[int, int]:
+        """(imported, failed) for the panel users no subscription stands for."""
+        now = datetime_now()
+        orphans = [user for user in snapshot.values() if is_orphan(user, linked, now)]
+        if not orphans:
+            return 0, 0
+        async with self._uow:
+            plans = await self._plan_repository.list_all()
+        imported = failed = 0
+        for user in orphans:
+            try:
+                async with self._uow:
+                    owner = await match_shop_user(self._user_repository, user)
+                    if owner is None or owner.deleted_at is not None:
+                        continue
+                    # linked while the sync ran
+                    existing = await self._subscription_repository.find_by_remnawave_user_id(
+                        user.id
+                    )
+                    if existing is not None and existing.status is not SubscriptionStatus.DELETED:
+                        continue
+                    created = await self._subscription_repository.create(
+                        imported_row(user, owner, plans)
+                    )
+            except Exception:
+                logger.exception(f"Import of panel user {user.id} failed")
+                failed += 1
+                continue
+            imported += 1
+            logger.info(
+                f"{actor.log} Imported panel user {user.id} "
+                f"as subscription '{created.id}' of user '{owner.id}'"
+            )
+        return imported, failed
 
     async def _fresh(self, remnawave_user_id: int) -> Optional[UserResponseDto]:
         try:

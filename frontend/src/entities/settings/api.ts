@@ -207,6 +207,10 @@ export interface ShopSettings {
   link_reset_cooldown_hours: number;
   referral_reset_enabled: boolean;
   referral_reset_cooldown_hours: number;
+  // a Telegram username without "@"; null = not set
+  support_telegram: string | null;
+  // an https page; null = not set
+  support_url: string | null;
 }
 
 export type UpdateShopSettingsPayload = ShopSettings;

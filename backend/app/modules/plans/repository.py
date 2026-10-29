@@ -97,6 +97,7 @@ class PlanRepository:
             name=row.name,
             description=row.description,
             tag=row.tag,
+            badge=row.badge,
             type=row.type,
             availability=row.availability,
             traffic_limit_strategy=row.traffic_limit_strategy,
@@ -160,6 +161,7 @@ class PlanRepository:
             name=data.name,
             description=data.description,
             tag=data.tag,
+            badge=data.badge,
             type=data.type,
             availability=PlanAvailability.ALL,
             traffic_limit_strategy=data.traffic_limit_strategy,
@@ -198,7 +200,9 @@ class PlanRepository:
     async def update(self, data: UpdatePlanDto) -> PlanDto:
         row = await self._get_or_raise(data.plan_id)
 
-        apply_partial_update(row, data, skip=frozenset({"plan_id"}))
+        apply_partial_update(row, data, skip=frozenset({"plan_id", "cleared"}))
+        for name in data.cleared:
+            setattr(row, name, None)
 
         row.traffic_limit, row.device_limit = _zero_irrelevant_limits(
             row.type, row.traffic_limit, row.device_limit

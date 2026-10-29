@@ -20,7 +20,7 @@ from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionRenewedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
-from app.modules.subscriptions.panel import revert_panel_to_owner
+from app.modules.subscriptions.panel import panel_update, revert_panel_to_owner
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -86,8 +86,20 @@ class RenewPurchase:
                 target, data.idempotency_key, data.claim_token, data.duration_days, keep_key
             )
 
+        tag_applied = False
+        if data.apply_plan_tag and data.plan_snapshot.tag != target.tag:
+            # a renewal takes the plan's current tag, as a new purchase would;
+            # the days are paid for, a tag left behind must not hold them back
+            try:
+                await self._remnawave_sdk.users.update_user(
+                    panel_update(id=target.remnawave_user_id, tag=data.plan_snapshot.tag)
+                )
+                tag_applied = True
+            except Exception:
+                logger.exception(f"Failed to give subscription '{target.id}' its plan's tag")
+
         try:
-            return await self._finish(actor, data, target, expire_at)
+            return await self._finish(actor, data, target, expire_at, tag_applied=tag_applied)
         except OrderNotPaidError:
             # refunded while the panel was being extended: take the extension back
             await revert_panel_to_owner(
@@ -101,6 +113,8 @@ class RenewPurchase:
         data: PurchaseSubscriptionDto,
         target: SubscriptionDto,
         expire_at: datetime,
+        *,
+        tag_applied: bool,
     ) -> SubscriptionDto:
         async with self._uow:
             if data.idempotency_key is not None:
@@ -120,6 +134,11 @@ class RenewPurchase:
             subscription = await self._lifecycle_service.renew(
                 locked.id, expire_at, paid=paid, days=data.duration_days
             )
+            # only what reached the panel: the row must not claim a tag the panel lacks
+            if tag_applied and subscription.tag != data.plan_snapshot.tag:
+                subscription = await self._subscription_repository.set_tag(
+                    subscription.id, data.plan_snapshot.tag
+                )
             if data.idempotency_key is not None:
                 await self._idempotency.link(
                     data.idempotency_key, subscription.id, data.claim_token

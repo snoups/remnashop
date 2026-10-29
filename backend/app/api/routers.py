@@ -51,6 +51,7 @@ from app.modules.subscriptions.api import admin_router as subscriptions_admin_ro
 from app.modules.subscriptions.api import own_router as subscriptions_own_router
 from app.modules.subscriptions.api import public_router as subscriptions_public_router
 from app.modules.subscriptions.api import router as subscriptions_router
+from app.modules.subscriptions.api import user_router as subscriptions_user_router
 from app.modules.transactions.api import admin_router as transactions_admin_router
 from app.modules.transactions.api import public_router as transactions_public_router
 from app.modules.transactions.api import router as transactions_router
@@ -93,6 +94,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     subscriptions_public_router,
     subscriptions_own_router,
     subscriptions_router,
+    subscriptions_user_router,
     backups_admin_router,
     banners_admin_router,
     legal_admin_router,

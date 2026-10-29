@@ -8,6 +8,26 @@ import httpx
 FakeUserStore = dict[int, dict[str, Any]]
 FakeHwidStore = dict[int, list[dict[str, Any]]]
 
+# the panel's contract refuses null in these (UpdateUserCommand/CreateUserCommand)
+_NOT_NULLABLE: tuple[str, ...] = (
+    "status",
+    "expireAt",
+    "trafficLimitBytes",
+    "trafficLimitStrategy",
+    "activeInternalSquads",
+)
+
+
+def _refused(body: dict[str, Any], *, update: bool) -> Optional[httpx.Response]:
+    nulls = [name for name in _NOT_NULLABLE if name in body and body[name] is None]
+    if nulls:
+        return httpx.Response(400, json={"message": f"fake panel: null in {nulls}"})
+    if update and "expireAt" in body:
+        expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))
+        if expire_at <= datetime.now(timezone.utc):
+            return httpx.Response(400, json={"message": "Expiration date cannot be in the past"})
+    return None
+
 
 def _user_payload(
     *,
@@ -61,6 +81,8 @@ def _handle_create_user(
     request: httpx.Request, store: FakeUserStore, next_id: dict[str, int]
 ) -> httpx.Response:
     body = json.loads(request.content)
+    if (refused := _refused(body, update=False)) is not None:
+        return refused
     user_id = next_id["value"]
     next_id["value"] += 1
     expire_at = datetime.fromisoformat(body["expireAt"].replace("Z", "+00:00"))
@@ -74,17 +96,26 @@ def _handle_create_user(
         active_internal_squads=body.get("activeInternalSquads"),
         external_squad_uuid=body.get("externalSquadUuid"),
     )
+    payload["status"] = body.get("status") or "ACTIVE"
+    payload["telegramId"] = body.get("telegramId")
+    payload["email"] = body.get("email")
+    payload["tag"] = body.get("tag")
     store[user_id] = payload
     return httpx.Response(201, json={"response": payload})
 
 
 def _handle_update_user(request: httpx.Request, store: FakeUserStore) -> httpx.Response:
     body = json.loads(request.content)
+    if (refused := _refused(body, update=True)) is not None:
+        return refused
     payload = store[body["id"]]
     if "trafficLimitBytes" in body:
         payload["trafficLimitBytes"] = body["trafficLimitBytes"]
     if "hwidDeviceLimit" in body:
         payload["hwidDeviceLimit"] = body["hwidDeviceLimit"]
+    for field in ("tag", "telegramId", "email"):
+        if field in body:
+            payload[field] = body[field]
     if body.get("trafficLimitStrategy") is not None:
         payload["trafficLimitStrategy"] = body["trafficLimitStrategy"]
     if body.get("status") is not None:

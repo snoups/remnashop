@@ -8,7 +8,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.domain import SupersededError
@@ -25,6 +25,7 @@ from app.modules.subscriptions.panel import (
     subscription_row,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.users import UserRepository
 
 
 class _AlreadyProvisionedError(Exception):
@@ -42,6 +43,7 @@ class NewPurchase:
         remnawave_sdk: RemnawaveSDK,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        user_repository: UserRepository,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -49,6 +51,7 @@ class NewPurchase:
         self._remnawave_sdk = remnawave_sdk
         self._uow = uow
         self._event_publisher = event_publisher
+        self._user_repository = user_repository
 
     async def run(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
@@ -67,6 +70,11 @@ class NewPurchase:
                 ),
                 None,
             )
+            buyer = await self._user_repository.find_by_id(data.user_id)
+            if buyer is None:
+                raise NotFoundError(
+                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
+                )
         if active_trial is not None:
             return await self._upgrade_trial_in_place(actor, data, active_trial)
 
@@ -80,7 +88,7 @@ class NewPurchase:
         plan = data.plan_snapshot
         expire_at = datetime_now() + timedelta(days=data.duration_days)
         panel_user = await self._remnawave_sdk.users.create_user(
-            new_panel_user(data.user_id, plan, expire_at)
+            new_panel_user(buyer, plan, expire_at)
         )
 
         late_trials: list[SubscriptionDto] = []

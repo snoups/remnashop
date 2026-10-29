@@ -106,6 +106,9 @@ class PanelSyncCompletedEvent(SystemEvent):
     updated: int
     failed: int
     missing: int
+    recreated: int = 0
+    imported: int = 0
+    deleted: int = 0
 
 
 @dataclass(frozen=True, kw_only=True)

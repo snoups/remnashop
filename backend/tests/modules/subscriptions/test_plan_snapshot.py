@@ -24,6 +24,7 @@ def test_round_trips_through_json() -> None:
         is_trial=False,
         internal_squads=[squad],
         external_squad=uuid4(),
+        tag="VIP",
     )
 
     restored = PlanSnapshot.from_json(snapshot.to_json())
@@ -48,6 +49,13 @@ def test_round_trips_with_no_squads() -> None:
     restored = PlanSnapshot.from_json(snapshot.to_json())
 
     assert restored == snapshot
+
+
+def test_reads_a_snapshot_written_before_the_tag_as_untagged() -> None:
+    data = make_plan_snapshot().to_json()
+    del data["tag"]
+
+    assert PlanSnapshot.from_json(data).tag is None
 
 
 def test_from_json_raises_on_missing_key() -> None:

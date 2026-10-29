@@ -303,7 +303,7 @@ function PlanCard({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`relative flex flex-col gap-3.5 rounded-[20px] border p-4 transition-[border-color,background-color,opacity] ${CARD_HEIGHT_CLASSNAME} ${
-        plan.tag ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18]"
+        plan.badge ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18]"
       } ${plan.is_active ? "" : "opacity-55"} ${isDragging ? "z-10 shadow-2xl shadow-black/50" : ""}`}
     >
       <div className="flex items-start gap-2.5">
@@ -322,11 +322,12 @@ function PlanCard({
                 {t("plans.edit.isTrialLabel")}
               </Badge>
             )}
-            {plan.tag && (
+            {plan.badge && (
               <Badge tone="accent">
-                {plan.tag}
+                {t(`plans.edit.badges.${plan.badge}`)}
               </Badge>
             )}
+            {plan.tag && <Tag>{plan.tag}</Tag>}
             {discountStatus && (
               <Badge tone={PLAN_DISCOUNT_STATUS_TONE[discountStatus]}>
                 {t("plans.discount.badge", { percent: plan.discount_percent })}

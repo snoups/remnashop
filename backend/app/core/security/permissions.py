@@ -136,6 +136,7 @@ class Permission(UpperStrEnum):
     SUBSCRIPTIONS_UPDATE = auto()
     SUBSCRIPTIONS_SQUADS_MANAGE = auto()
     SUBSCRIPTIONS_DELETE = auto()
+    SUBSCRIPTIONS_DELETE_ALL = auto()
     SUBSCRIPTIONS_GRANT = auto()
     SUBSCRIPTIONS_PLAN_CHANGE = auto()
     SUBSCRIPTIONS_STATUS_MANAGE = auto()
@@ -366,6 +367,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_SQUADS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_DELETE: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_DELETE_ALL: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_GRANT: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_PLAN_CHANGE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_STATUS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
@@ -530,6 +532,7 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         # a Telegram id is how a customer logs into the bot
         Permission.USERS_TELEGRAM_BIND,
         Permission.SUBSCRIPTIONS_LINK_REISSUE,
+        Permission.SUBSCRIPTIONS_DELETE_ALL,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
         # every subscription at once, one side overwriting the other
@@ -668,6 +671,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.SUBSCRIPTIONS_UPDATE,
             Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
             Permission.SUBSCRIPTIONS_DELETE,
+            Permission.SUBSCRIPTIONS_DELETE_ALL,
             Permission.SUBSCRIPTIONS_GRANT,
             Permission.SUBSCRIPTIONS_PLAN_CHANGE,
             Permission.SUBSCRIPTIONS_STATUS_MANAGE,

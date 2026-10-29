@@ -817,6 +817,14 @@
       "trialAvailable": "Available",
       "trialUsed": "Used"
     },
+    "deleteSubscriptions": {
+      "action": "Delete all subscriptions",
+      "confirmTitle": "Delete all subscriptions?",
+      "confirm": "Every live subscription of “{{name}}” is deleted, together with its user in the panel: the VPN stops working. This cannot be undone.",
+      "done_one": "Deleted {{count}} subscription.",
+      "done_other": "Deleted {{count}} subscriptions.",
+      "error": "Failed to delete the subscriptions."
+    },
     "delete": {
       "button": "Delete user",
       "confirmTitle": "Delete user?",
@@ -1254,6 +1262,10 @@
       "linkResetLabel": "Subscription link reset",
       "referralResetLabel": "Referral link reset",
       "cooldownHoursLabel": "Cooldown, h",
+      "supportTelegramLabel": "Support on Telegram",
+      "supportTelegramHint": "A username or a t.me link, blank to hide",
+      "supportUrlLabel": "Support in the browser",
+      "supportUrlHint": "An https:// page, blank to hide",
       "invalidInput": "Check the entered values."
     },
     "gateways": {
@@ -1889,6 +1901,7 @@
     "SUBSCRIPTIONS_UPDATE": "Edit subscriptions",
     "SUBSCRIPTIONS_SQUADS_MANAGE": "Manage subscription squads",
     "SUBSCRIPTIONS_DELETE": "Delete subscriptions",
+    "SUBSCRIPTIONS_DELETE_ALL": "Delete all subscriptions of a user",
     "SUBSCRIPTIONS_GRANT": "Grant subscriptions",
     "SUBSCRIPTIONS_PLAN_CHANGE": "Change subscription plans",
     "SUBSCRIPTIONS_STATUS_MANAGE": "Enable and disable subscriptions",
@@ -2942,7 +2955,14 @@
         "durations": "Durations"
       },
       "publicCodeHint": "Generated automatically. For a link-only plan it is the access code — share it only with those who should buy the plan.",
-      "tagHint": "Shown as a badge on the plan card",
+      "tagHint": "Remnawave user tag: capital Latin letters, digits and “_”",
+      "badgeLabel": "Badge",
+      "badgeHint": "Shown to customers on the plan card",
+      "badges": {
+        "none": "No badge",
+        "POPULAR": "Popular",
+        "BEST_VALUE": "Best value"
+      },
       "trafficShortLabel": "Traffic",
       "deviceShortLabel": "Devices",
       "limitHint": "0 — unlimited",
@@ -3183,6 +3203,7 @@
       "saved": "Subscription updated.",
       "error": "Failed to update the subscription.",
       "expireAtLabel": "Valid until",
+      "expireAtInPast": "Pick a date in the future.",
       "plusDays": "+{{days}}d",
       "tabs": {
         "params": "Settings",
@@ -3258,7 +3279,7 @@
       "menuItem": "Sync with panel",
       "title": "Sync with the panel",
       "inSync": "The subscription matches the panel.",
-      "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted.",
+      "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted, sending to the panel creates a new one.",
       "columns": {
         "field": "Field",
         "shop": "Shop",
@@ -3273,7 +3294,9 @@
         "traffic_limit_strategy": "Traffic reset",
         "tag": "Tag",
         "internal_squads": "Internal squads",
-        "external_squad": "External squad"
+        "external_squad": "External squad",
+        "telegram_id": "Telegram ID",
+        "email": "Email"
       },
       "pull": "Take from panel",
       "push": "Send to panel",
@@ -3284,11 +3307,12 @@
         "pull": "From panel",
         "push": "To panel",
         "pullTitle": "Sync everything from the panel?",
-        "pullConfirm": "Every subscription that differs takes the panel’s status, expiry, limits, squads, tag and link.",
+        "pullConfirm": "Every subscription that differs takes the panel’s status, expiry, limits, squads, tag and link. A shop user’s panel user with no subscription is imported.",
         "pushTitle": "Sync everything to the panel?",
-        "pushConfirm": "The panel takes the shop’s configuration and on/off state for every subscription that differs.",
+        "pushConfirm": "The panel takes the shop’s configuration and on/off state for every subscription that differs; a subscription with no panel user gets a new one, and a shop user’s panel user with no subscription is deleted from the panel.",
         "started": "Sync started.",
-        "finished": "Sync finished: {{updated}} updated, {{missing}} missing, {{failed}} failed.",
+        "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{missing}} missing, {{failed}} failed.",
+        "finishedToPanel": "Sync finished: {{updated}} updated, {{recreated}} recreated in the panel, {{deleted}} deleted from the panel, {{failed}} failed.",
         "error": "Failed to start the sync."
       }
     }
@@ -3828,10 +3852,10 @@
     "SHOP_SUBSCRIPTION_LIMIT_INVALID": "The limit must be positive, or empty for unlimited.",
     "SUBSCRIPTION_DELETED": "The subscription has been deleted.",
     "SUBSCRIPTION_DISABLED": "This subscription is disabled.",
+    "SUBSCRIPTION_EXPIRE_AT_IN_PAST": "The expiry date must be in the future.",
     "TRIAL_NOT_RENEWABLE": "A trial can’t be renewed or changed. Buy a subscription instead.",
     "SUBSCRIPTION_LIMIT_REACHED": "The subscription limit is reached.",
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
-    "SUBSCRIPTION_PANEL_USER_MISSING": "The panel has no user for this subscription.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can’t be rolled back.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn’t allowed.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",

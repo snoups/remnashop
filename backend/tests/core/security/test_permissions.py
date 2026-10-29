@@ -231,6 +231,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,
+        Permission.SUBSCRIPTIONS_DELETE_ALL,
         Permission.SUBSCRIPTIONS_GRANT,
         Permission.SUBSCRIPTIONS_PLAN_CHANGE,
         Permission.SUBSCRIPTIONS_STATUS_MANAGE,
@@ -606,6 +607,7 @@ def test_irreversible_subscription_actions_are_not_token_grantable() -> None:
     assert Permission.SUBSCRIPTIONS_LINK_REISSUE not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.SUBSCRIPTIONS_DEVICES_DELETE not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL not in TOKEN_GRANTABLE_PERMISSIONS
+    assert Permission.SUBSCRIPTIONS_DELETE_ALL not in TOKEN_GRANTABLE_PERMISSIONS
     assert Permission.SUBSCRIPTIONS_GRANT in TOKEN_GRANTABLE_PERMISSIONS
 
 

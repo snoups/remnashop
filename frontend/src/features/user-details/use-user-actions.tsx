@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { deleteAdmin } from "@entities/admin/api";
 import { resetUserReferralCode } from "@entities/referrals/api";
+import { deleteUserSubscriptions } from "@entities/subscriptions/api";
 import {
   type UserListItem,
   blockUser,
@@ -30,12 +31,14 @@ export type UserAction =
   | "resetReferralCode"
   | "clearEmailUndeliverable"
   | "merge"
+  | "deleteSubscriptions"
   | "delete";
 
 interface UserActionsOptions {
   /** the account after a promote, block, unblock, referral code reset, Telegram binding or merge */
   onUpdated: (user: UserListItem) => void;
   onDeleted: (user: UserListItem) => void;
+  onSubscriptionsDeleted?: (user: UserListItem) => void;
 }
 
 interface UserActions {
@@ -57,6 +60,7 @@ const ROLE_RANK: Record<Role, number> = {
 export function useUserActions({
   onUpdated,
   onDeleted,
+  onSubscriptionsDeleted,
 }: UserActionsOptions): UserActions {
   const { t } = useTranslation();
   const permissions = usePermissions();
@@ -72,6 +76,7 @@ export function useUserActions({
       | "blockAdmin"
       | "resetReferralCode"
       | "merge"
+      | "deleteSubscriptions"
       | "delete";
     user: UserListItem;
     /** the merge counterpart, preset when a Telegram ID turned out taken */
@@ -123,6 +128,9 @@ export function useUserActions({
       permissions.includes("USERS_MERGE_PREVIEW")
         ? ["merge" as const]
         : []),
+      ...(canManage && permissions.includes("SUBSCRIPTIONS_DELETE_ALL")
+        ? ["deleteSubscriptions" as const]
+        : []),
       ...(canDelete ? ["delete" as const] : []),
     ];
   };
@@ -156,6 +164,16 @@ export function useUserActions({
       toast.success(t("users.emailUndeliverable.cleared"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
+    }
+  };
+
+  const removeSubscriptions = async (user: UserListItem) => {
+    try {
+      const { deleted } = await deleteUserSubscriptions(user.id);
+      toast.success(t("users.deleteSubscriptions.done", { count: deleted }));
+      onSubscriptionsDeleted?.(user);
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.deleteSubscriptions.error")));
     }
   };
 
@@ -232,6 +250,19 @@ export function useUserActions({
         danger
         onConfirm={() => {
           void resetReferralCode(pending.user);
+          close();
+        }}
+        onCancel={close}
+      />
+    ) : pending.action === "deleteSubscriptions" ? (
+      <ConfirmDialog
+        title={t("users.deleteSubscriptions.confirmTitle")}
+        message={t("users.deleteSubscriptions.confirm", { name: pending.user.name })}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        danger
+        onConfirm={() => {
+          void removeSubscriptions(pending.user);
           close();
         }}
         onCancel={close}

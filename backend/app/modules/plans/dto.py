@@ -8,7 +8,14 @@ from pydantic import Field
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AddOnType, Currency, PlanAvailability, PlanType, PriceAdjustScope
+from app.core.enums import (
+    AddOnType,
+    Currency,
+    PlanAvailability,
+    PlanBadge,
+    PlanType,
+    PriceAdjustScope,
+)
 from app.modules.pricing import CurrencyRateDto, PricingSettingsDto, UpdateCurrencyRateDto
 
 
@@ -30,6 +37,7 @@ class PlanDto(BaseDto, TimestampMixin):
     name: str
     description: Optional[str] = None
     tag: Optional[str] = None
+    badge: Optional[PlanBadge] = None
     type: PlanType
     availability: PlanAvailability = PlanAvailability.ALL
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
@@ -77,6 +85,7 @@ class CreatePlanDto:
     device_limit: int
     description: Optional[str] = None
     tag: Optional[str] = None
+    badge: Optional[PlanBadge] = None
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
     is_trial: bool = False
     allow_bonus_days: bool = True
@@ -91,6 +100,7 @@ class UpdatePlanDto:
     name: Optional[str] = None
     description: Optional[str] = None
     tag: Optional[str] = None
+    badge: Optional[PlanBadge] = None
     type: Optional[PlanType] = None
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
     traffic_limit: Optional[int] = None
@@ -99,6 +109,8 @@ class UpdatePlanDto:
     is_trial: Optional[bool] = None
     allow_bonus_days: Optional[bool] = None
     allow_promocodes: Optional[bool] = None
+    # fields sent as null: None above means "leave as is", these are emptied
+    cleared: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)

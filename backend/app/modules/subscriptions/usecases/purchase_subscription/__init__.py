@@ -22,6 +22,7 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.change import ChangePurchase
 from app.modules.subscriptions.usecases.purchase_subscription.new import NewPurchase
 from app.modules.subscriptions.usecases.purchase_subscription.renew import RenewPurchase
+from app.modules.users import UserRepository
 
 STALE_CLAIM_AFTER: Final[timedelta] = timedelta(minutes=15)
 
@@ -39,6 +40,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         lifecycle_service: SubscriptionLifecycleService,
         pricing_repository: PricingRepository,
         idempotency_repository: PurchaseIdempotencyRepository,
+        user_repository: UserRepository,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -51,6 +53,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             remnawave_sdk,
             uow,
             event_publisher,
+            user_repository,
         )
         self._renew = RenewPurchase(
             subscription_repository,

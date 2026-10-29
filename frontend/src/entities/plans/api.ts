@@ -3,6 +3,7 @@ import type { ListResponse } from "@shared/api/http";
 
 export type PlanType = "TRAFFIC" | "DEVICES" | "BOTH" | "UNLIMITED";
 export type PlanAvailability = "ALL" | "NEW" | "EXISTING" | "INVITED" | "ALLOWED" | "LINK";
+export type PlanBadge = "POPULAR" | "BEST_VALUE";
 export type TrafficLimitStrategy = "NO_RESET" | "DAY" | "WEEK" | "MONTH" | "MONTH_ROLLING";
 
 export interface PlanPriceOverride {
@@ -23,6 +24,7 @@ export interface Plan {
   name: string;
   description: string | null;
   tag: string | null;
+  badge: PlanBadge | null;
   type: PlanType;
   availability: PlanAvailability;
   traffic_limit_strategy: TrafficLimitStrategy;
@@ -55,6 +57,7 @@ export interface CreatePlanRequest {
   name: string;
   description?: string | null;
   tag?: string | null;
+  badge?: PlanBadge | null;
   type: PlanType;
   traffic_limit_strategy: TrafficLimitStrategy;
   traffic_limit: number;
@@ -72,6 +75,7 @@ export interface UpdatePlanRequest {
   name?: string;
   description?: string | null;
   tag?: string | null;
+  badge?: PlanBadge | null;
   type?: PlanType;
   traffic_limit_strategy?: TrafficLimitStrategy;
   traffic_limit?: number;

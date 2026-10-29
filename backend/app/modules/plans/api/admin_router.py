@@ -1,3 +1,5 @@
+from typing import Final
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, status
@@ -86,6 +88,9 @@ from app.modules.pricing import (
     UpdatePricingSettingsUseCase,
 )
 
+# optional texts an admin can empty by sending null
+_CLEARABLE_FIELDS: Final[frozenset[str]] = frozenset({"description", "tag", "badge"})
+
 router = APIRouter(prefix="/plans", tags=["plans"])
 addons_router = APIRouter(prefix="/addons", tags=["addons"])
 pricing_router = APIRouter(prefix="/pricing", tags=["pricing"])
@@ -120,6 +125,7 @@ async def create_plan(
             name=payload.name,
             description=payload.description,
             tag=payload.tag,
+            badge=payload.badge,
             type=payload.type,
             traffic_limit_strategy=payload.traffic_limit_strategy,
             traffic_limit=payload.traffic_limit,
@@ -159,6 +165,7 @@ async def update_plan(
             name=payload.name,
             description=payload.description,
             tag=payload.tag,
+            badge=payload.badge,
             type=payload.type,
             traffic_limit_strategy=payload.traffic_limit_strategy,
             traffic_limit=payload.traffic_limit,
@@ -167,6 +174,11 @@ async def update_plan(
             is_trial=payload.is_trial,
             allow_bonus_days=payload.allow_bonus_days,
             allow_promocodes=payload.allow_promocodes,
+            cleared=frozenset(
+                name
+                for name in _CLEARABLE_FIELDS & payload.model_fields_set
+                if getattr(payload, name) is None
+            ),
         ),
     )
     return PlanResponse.model_validate(plan, from_attributes=True)

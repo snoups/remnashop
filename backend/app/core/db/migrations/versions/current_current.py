@@ -791,6 +791,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("tag", sa.String(), nullable=True),
+        sa.Column("badge", sa.Enum("POPULAR", "BEST_VALUE", name="planbadge"), nullable=True),
         sa.Column(
             "type",
             sa.Enum("TRAFFIC", "DEVICES", "BOTH", "UNLIMITED", name="plantype"),
@@ -935,6 +936,8 @@ def upgrade() -> None:
         sa.Column(
             "referral_reset_cooldown_hours", sa.Integer(), server_default="0", nullable=False
         ),
+        sa.Column("support_telegram", sa.String(length=32), nullable=True),
+        sa.Column("support_url", sa.String(length=512), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

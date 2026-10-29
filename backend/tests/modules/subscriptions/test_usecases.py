@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -9,6 +9,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import AddOnType, Locale, Role, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
+from app.core.utils.time import datetime_now, truncate_to_ms
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     ListSubscriptionsDto,
@@ -265,7 +266,7 @@ async def test_regular_user_cannot_delete_subscription(
         await use_case(REGULAR_USER, created.id)
 
 
-async def test_update_expire_at_pushes_to_panel_and_syncs_status(
+async def test_update_expire_at_pushes_to_panel(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -276,15 +277,39 @@ async def test_update_expire_at_pushes_to_panel_and_syncs_status(
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9501))
     _seed_panel_user(remnawave_store, 9501)
     created = await subscription_repository.create(_create_dto(user.id, 9501))
-    past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    later = truncate_to_ms(datetime_now() + timedelta(days=90))
 
     updated = await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
-        OWNER, UpdateSubscriptionDto(subscription_id=created.id, expire_at=past)
+        OWNER, UpdateSubscriptionDto(subscription_id=created.id, expire_at=later)
     )
 
-    assert updated.expire_at == past
-    assert updated.status is SubscriptionStatus.EXPIRED
-    assert remnawave_store[9501]["status"] == "EXPIRED"
+    assert updated.expire_at == later
+    assert updated.status is SubscriptionStatus.ACTIVE
+    assert datetime.fromisoformat(remnawave_store[9501]["expireAt"]) == later
+
+
+async def test_update_refuses_an_expiry_in_the_past(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9503))
+    _seed_panel_user(remnawave_store, 9503)
+    created = await subscription_repository.create(_create_dto(user.id, 9503))
+
+    with pytest.raises(ValidationError) as error:
+        await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
+            OWNER,
+            UpdateSubscriptionDto(
+                subscription_id=created.id, expire_at=datetime(2020, 1, 1, tzinfo=timezone.utc)
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_EXPIRE_AT_IN_PAST
+    assert (await subscription_repository.get_by_id(created.id)).expire_at == created.expire_at
 
 
 async def test_update_keeps_db_unchanged_when_panel_fails(

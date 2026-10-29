@@ -86,3 +86,31 @@ def test_update_shop_settings_request_tracks_sent_fields() -> None:
 def test_update_shop_settings_request_rejects_null_for_non_nullable_fields() -> None:
     with pytest.raises(ValidationError):
         UpdateShopSettingsRequest.model_validate({"link_reset_enabled": None})
+
+
+@pytest.mark.parametrize(
+    "typed", ["shop_help", "@shop_help", "t.me/shop_help", "https://t.me/shop_help/"]
+)
+def test_update_shop_settings_request_keeps_the_support_username(typed: str) -> None:
+    request = UpdateShopSettingsRequest.model_validate({"support_telegram": typed})
+    assert request.support_telegram == "shop_help"
+
+
+@pytest.mark.parametrize("typed", ["sh", "https://example.com/shop_help", "shop help"])
+def test_update_shop_settings_request_rejects_a_bad_support_username(typed: str) -> None:
+    with pytest.raises(ValidationError):
+        UpdateShopSettingsRequest.model_validate({"support_telegram": typed})
+
+
+def test_update_shop_settings_request_wants_an_https_support_url() -> None:
+    with pytest.raises(ValidationError):
+        UpdateShopSettingsRequest.model_validate({"support_url": "http://help.example.com"})
+    request = UpdateShopSettingsRequest.model_validate({"support_url": "https://help.example.com"})
+    assert request.support_url == "https://help.example.com"
+
+
+def test_update_shop_settings_request_clears_support_with_a_blank() -> None:
+    request = UpdateShopSettingsRequest.model_validate({"support_telegram": " ", "support_url": ""})
+    assert request.support_telegram is None
+    assert request.support_url is None
+    assert request.model_fields_set == {"support_telegram", "support_url"}

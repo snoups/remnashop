@@ -31,4 +31,6 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
             device_all_reset_enabled=shop.device_all_reset_enabled,
             link_reset_enabled=shop.link_reset_enabled,
             bot_username=username,
+            support_telegram=shop.support_telegram,
+            support_url=shop.support_url,
         )

@@ -3,6 +3,7 @@ import {
   CreditCard,
   GitMerge,
   History,
+  ListX,
   Lock,
   MailCheck,
   MonitorSmartphone,
@@ -85,6 +86,8 @@ function UserDetailsDialogBody({
   const { t } = useTranslation();
   const close = useModalClose();
   const [user, setUser] = useState(initialUser);
+  // remounts the subscriptions tab once they're deleted
+  const [subscriptionsVersion, setSubscriptionsVersion] = useState(0);
   const handleUpdated = (updated: UserListItem) => {
     setUser(updated);
     onChanged?.(updated);
@@ -96,6 +99,7 @@ function UserDetailsDialogBody({
       // a merge deletes the other account while this one stays open
       if (deleted.id === user.id) close();
     },
+    onSubscriptionsDeleted: () => setSubscriptionsVersion((version) => version + 1),
   });
   const available = actions.available(user);
   const [tab, setTab] = useState<UserDetailsTab>(initialTab);
@@ -170,7 +174,7 @@ function UserDetailsDialogBody({
           <div ref={contentRef}>
             {tab === "profile" && <ProfileTab user={user} onChanged={handleUpdated} />}
             {tab === "analytics" && <AnalyticsTab userId={user.id} />}
-            {tab === "subscriptions" && <SubscriptionsTab userId={user.id} />}
+            {tab === "subscriptions" && <SubscriptionsTab key={subscriptionsVersion} userId={user.id} />}
             {tab === "transactions" && <TransactionsTab userId={user.id} />}
             {tab === "promocodes" && <PromocodesTab userId={user.id} />}
             {tab === "invited" && <InvitedTab userId={user.id} />}
@@ -213,6 +217,15 @@ function UserDetailsDialogBody({
                     : []),
                   ...(available.includes("merge")
                     ? [{ label: t("users.merge.action"), icon: GitMerge, onClick: () => actions.run("merge", user) }]
+                    : []),
+                  ...(available.includes("deleteSubscriptions")
+                    ? [
+                        {
+                          label: t("users.deleteSubscriptions.action"),
+                          icon: ListX,
+                          onClick: () => actions.run("deleteSubscriptions", user),
+                        },
+                      ]
                     : []),
                   ...(available.includes("delete")
                     ? [{ label: t("common.delete"), icon: Trash2, onClick: () => actions.run("delete", user) }]

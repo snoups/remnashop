@@ -47,6 +47,12 @@ class PlanType(UpperStrEnum):
     UNLIMITED = auto()
 
 
+# a fixed set so the clients translate it, no per-plan texts
+class PlanBadge(UpperStrEnum):
+    POPULAR = auto()
+    BEST_VALUE = auto()
+
+
 class PlanAvailability(UpperStrEnum):
     ALL = auto()
     NEW = auto()

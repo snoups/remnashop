@@ -90,7 +90,14 @@ def _reconcile_use_case(
         SubscriptionLifecycleService(subscription_repository),
     )
     return SyncAllFromPanelUseCase(
-        subscription_repository, remnawave_sdk, sync, uow, redis, event_publisher
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        PlanRepository(subscription_repository.session),
+        remnawave_sdk,
+        sync,
+        uow,
+        redis,
+        event_publisher,
     )
 
 

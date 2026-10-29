@@ -12,11 +12,11 @@ from app.modules.pricing.dto import (
 from app.modules.pricing.events import AnchorSwitchedEvent, BasePricesAdjustedEvent
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.resolver import (
+    apply_discounts,
     assert_overridable_currency,
     convert_for_report,
     price_for,
     resolve_price,
-    round_amount,
     scale_base_price,
 )
 from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
@@ -35,11 +35,11 @@ __all__ = [
     "UpdateCurrencyRateUseCase",
     "UpdatePricingSettingsDto",
     "UpdatePricingSettingsUseCase",
+    "apply_discounts",
     "assert_overridable_currency",
     "convert_for_report",
     "get_pricing_providers",
     "price_for",
     "resolve_price",
-    "round_amount",
     "scale_base_price",
 ]

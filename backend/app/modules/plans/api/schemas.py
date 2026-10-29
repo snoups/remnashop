@@ -6,10 +6,12 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 from remnapy.enums import TrafficLimitStrategy
 
+from app.core.constants import PANEL_TAG_MAX_LENGTH, PANEL_TAG_PATTERN
 from app.core.enums import (
     AddOnType,
     Currency,
     PlanAvailability,
+    PlanBadge,
     PlanType,
     PriceAdjustScope,
     RoundingMode,
@@ -52,6 +54,7 @@ class PlanResponse(BaseModel):
     name: str
     description: Optional[str] = None
     tag: Optional[str] = None
+    badge: Optional[PlanBadge] = None
     type: PlanType
     availability: PlanAvailability
     traffic_limit_strategy: TrafficLimitStrategy
@@ -75,7 +78,11 @@ class PlanResponse(BaseModel):
 class CreatePlanRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     description: Optional[str] = Field(default=None, max_length=500)
-    tag: Optional[str] = Field(default=None, max_length=32)
+    tag: Optional[str] = Field(
+        default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN
+    )
+    # shown to customers on the plan's card
+    badge: Optional[PlanBadge] = None
     type: PlanType
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
     traffic_limit: int = Field(ge=0)
@@ -88,7 +95,11 @@ class CreatePlanRequest(BaseModel):
 class UpdatePlanRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=100)
     description: Optional[str] = Field(default=None, max_length=500)
-    tag: Optional[str] = Field(default=None, max_length=32)
+    tag: Optional[str] = Field(
+        default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN
+    )
+    # shown to customers on the plan's card
+    badge: Optional[PlanBadge] = None
     type: Optional[PlanType] = None
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
     traffic_limit: Optional[int] = Field(default=None, ge=0)

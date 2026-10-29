@@ -6,11 +6,13 @@ from remnapy import RemnawaveSDK
 
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PanelSyncDirection, Role, SubscriptionStatus
+from app.core.enums import Locale, PanelSyncDirection, PlanType, Role, SubscriptionStatus
 from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import TOKEN_GRANTABLE_PERMISSIONS, Permission
 from app.core.utils.time import datetime_now
+from app.modules.plans.dto import CreatePlanDto
+from app.modules.plans.repository import PlanRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.panel_sync import release_panel_sync
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -20,10 +22,11 @@ from app.modules.subscriptions.usecases import (
     PullSubscriptionFromPanelUseCase,
     PushSubscriptionToPanelUseCase,
     StartPanelSyncFromUseCase,
+    SyncAllFromPanelUseCase,
     SyncAllToPanelUseCase,
     SyncSubscriptionStatusUseCase,
 )
-from app.modules.users.dto import UserDto
+from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.remnawave import FakeUserStore, _user_payload
@@ -80,7 +83,7 @@ async def test_a_second_start_while_running_is_refused(
         await release_panel_sync(redis, PanelSyncDirection.FROM_PANEL)
 
 
-async def test_sync_to_panel_pushes_rows_that_differ_and_counts_missing(
+async def test_sync_to_panel_pushes_rows_that_differ_and_recreates_missing(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
@@ -95,7 +98,7 @@ async def test_sync_to_panel_pushes_rows_that_differ_and_counts_missing(
     in_sync = await create_subscription(
         subscription_repository, user_repository, telegram_id=89_002, remnawave_user_id=89_002
     )
-    await create_subscription(
+    gone = await create_subscription(
         subscription_repository, user_repository, telegram_id=89_003, remnawave_user_id=89_003
     )
     remnawave_store[89_001] = _panel_user(
@@ -104,11 +107,14 @@ async def test_sync_to_panel_pushes_rows_that_differ_and_counts_missing(
     remnawave_store[89_002] = _panel_user(89_002, expireAt=in_sync.expire_at.isoformat())
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, remnawave_sdk, uow, redis, event_publisher
+        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
     ).system()
 
     assert remnawave_store[89_001]["trafficLimitBytes"] == 100 * GB_TO_BYTES
-    assert result.updated >= 1 and result.missing >= 1
+    assert result.updated >= 1 and result.recreated >= 1 and result.missing == 0
+    relinked = await subscription_repository.get_by_id(gone.id)
+    assert relinked.remnawave_user_id != 89_003
+    assert remnawave_store[relinked.remnawave_user_id]["telegramId"] == 89_003
     status = await GetPanelSyncStatusUseCase(redis)(OWNER)
     assert status.to_panel.last is not None
     assert status.to_panel.last.direction is PanelSyncDirection.TO_PANEL
@@ -138,21 +144,172 @@ async def test_push_disables_the_panel_user_of_a_disabled_row(
     assert remnawave_store[89_011]["status"] == "DISABLED"
 
 
-async def test_push_without_a_panel_user_is_a_conflict(
+async def test_sync_to_panel_fills_the_owners_contacts_and_keeps_unknown_ones(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    created = await create_subscription(
+        subscription_repository, user_repository, telegram_id=89_031, remnawave_user_id=89_031
+    )
+    # no email in the shop: the panel's own stays
+    remnawave_store[89_031] = _panel_user(
+        89_031, expireAt=created.expire_at.isoformat(), email="panel@example.com"
+    )
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
+    ).system()
+
+    assert result.updated >= 1
+    assert remnawave_store[89_031]["telegramId"] == 89_031
+    assert remnawave_store[89_031]["email"] == "panel@example.com"
+
+
+async def test_diff_lists_a_telegram_id_the_panel_lacks(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+) -> None:
+    created = await create_subscription(
+        subscription_repository, user_repository, telegram_id=89_041, remnawave_user_id=89_041
+    )
+    remnawave_store[89_041] = _panel_user(89_041, expireAt=created.expire_at.isoformat())
+
+    diff = await GetSubscriptionPanelDiffUseCase(
+        subscription_repository, user_repository, remnawave_sdk, uow
+    )(OWNER, created.id)
+
+    assert [(f.field, f.shop, f.panel) for f in diff.fields] == [("telegram_id", "89041", "")]
+
+
+def _old() -> str:
+    # past the guard for a panel user still being provisioned
+    return (datetime_now() - timedelta(days=2)).isoformat()
+
+
+async def test_sync_from_panel_imports_a_shop_users_panel_user(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="owner", telegram_id=89_051))
+    fresh = await user_repository.create(CreateUserDto(name="fresh", telegram_id=89_053))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="import-vip",
+            name="VIP",
+            type=PlanType.BOTH,
+            traffic_limit=50,
+            device_limit=1,
+            tag="IMPORT_VIP",
+        )
+    )
+    remnawave_store[89_051] = _panel_user(
+        89_051, telegramId=89_051, tag="IMPORT_VIP", createdAt=_old()
+    )
+    remnawave_store[89_052] = _panel_user(89_052, telegramId=1_777, createdAt=_old())
+    remnawave_store[89_053] = _panel_user(89_053, telegramId=fresh.telegram_id)
+
+    result = await SyncAllFromPanelUseCase(
+        subscription_repository,
+        user_repository,
+        plan_repository,
+        remnawave_sdk,
+        _sync(subscription_repository, uow, event_publisher),
+        uow,
+        redis,
+        event_publisher,
+    ).system()
+
+    imported = await subscription_repository.find_by_remnawave_user_id(89_051)
+    assert imported is not None
+    assert imported.user_id == owner.id
+    assert imported.plan_snapshot.plan_id == plan.id
+    # the panel's limits, not the plan's
+    assert (imported.traffic_limit, imported.device_limit) == (100, 3)
+    assert await subscription_repository.find_by_remnawave_user_id(89_052) is None
+    assert await subscription_repository.find_by_remnawave_user_id(89_053) is None
+    assert result.imported == 1
+
+
+async def test_sync_to_panel_deletes_a_shop_users_panel_user_without_a_subscription(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    await user_repository.create(CreateUserDto(name="orphan", telegram_id=89_061))
+    long_expired = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=89_063,
+        remnawave_user_id=89_063,
+        status=SubscriptionStatus.EXPIRED,
+        expire_at=datetime_now() - timedelta(days=100),
+    )
+    remnawave_store[89_061] = _panel_user(89_061, telegramId=89_061, createdAt=_old())
+    remnawave_store[89_062] = _panel_user(89_062, telegramId=1_778, createdAt=_old())
+    remnawave_store[89_063] = _panel_user(
+        89_063,
+        telegramId=89_063,
+        createdAt=_old(),
+        expireAt=long_expired.expire_at.isoformat(),
+    )
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
+    ).system()
+
+    assert 89_061 not in remnawave_store
+    # someone else's, and one an expired subscription still stands for
+    assert 89_062 in remnawave_store and 89_063 in remnawave_store
+    assert result.deleted == 1
+
+
+async def test_push_without_a_panel_user_creates_one_from_the_row(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
 ) -> None:
     created = await create_subscription(
-        subscription_repository, user_repository, telegram_id=89_021, remnawave_user_id=89_021
+        subscription_repository,
+        user_repository,
+        telegram_id=89_021,
+        remnawave_user_id=89_021,
+        status=SubscriptionStatus.DISABLED,
     )
 
-    with pytest.raises(ConflictError):
-        await PushSubscriptionToPanelUseCase(
-            subscription_repository, user_repository, remnawave_sdk, event_publisher, uow
-        )(OWNER, created.id)
+    pushed = await PushSubscriptionToPanelUseCase(
+        subscription_repository, user_repository, remnawave_sdk, event_publisher, uow
+    )(OWNER, created.id)
+
+    panel_user = remnawave_store[pushed.remnawave_user_id]
+    assert pushed.remnawave_user_id != 89_021
+    assert pushed.url == panel_user["subscriptionUrl"]
+    assert panel_user["status"] == "DISABLED"
+    assert panel_user["trafficLimitBytes"] == 100 * GB_TO_BYTES
+    assert panel_user["hwidDeviceLimit"] == 3
+    assert (await subscription_repository.get_by_id(created.id)).remnawave_user_id == (
+        pushed.remnawave_user_id
+    )
 
 
 async def test_diff_lists_fields_that_differ_and_pull_takes_them(
@@ -167,7 +324,11 @@ async def test_diff_lists_fields_that_differ_and_pull_takes_them(
         subscription_repository, user_repository, telegram_id=89_031, remnawave_user_id=89_031
     )
     remnawave_store[89_031] = _panel_user(
-        89_031, hwidDeviceLimit=7, tag="VIP", expireAt=created.expire_at.isoformat()
+        89_031,
+        hwidDeviceLimit=7,
+        tag="VIP",
+        expireAt=created.expire_at.isoformat(),
+        telegramId=89_031,
     )
 
     diff = await GetSubscriptionPanelDiffUseCase(

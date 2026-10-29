@@ -58,6 +58,7 @@ from app.modules.subscriptions.usecases import (
     ApplyChannelMembershipUseCase,
     ChangeSubscriptionPlanUseCase,
     DeleteSubscriptionUseCase,
+    DeleteUserSubscriptionsUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
     ListOwnSubscriptionsUseCase,
@@ -115,6 +116,7 @@ def purchase_use_case(
         SubscriptionLifecycleService(subscription_repository),
         PricingRepository(subscription_repository.session),
         idempotency_repository,
+        UserRepository(subscription_repository.session),
     )
 
 
@@ -1080,3 +1082,78 @@ async def test_own_subscriptions_keep_an_expired_one_for_renewal(
     assert owner is not None and other is not None
     assert [s.id for s in await use_case(owner)] == [expired.id]
     assert await use_case(other) == []
+
+
+def _delete_all(
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> DeleteUserSubscriptionsUseCase:
+    return DeleteUserSubscriptionsUseCase(
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        PanelSubscriptionRevoker(subscription_repository, remnawave_sdk),
+        event_publisher,
+        uow,
+    )
+
+
+async def test_deleting_all_of_a_users_subscriptions_removes_their_panel_users(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="many", telegram_id=9901))
+    other = await user_repository.create(CreateUserDto(name="other", telegram_id=9902))
+    plan = await _plan(plan_repository, "delete-all")
+    mine = [
+        await grant_use_case(
+            OWNER, GrantSubscriptionDto(user_id=buyer.id, plan_id=plan.id, duration_days=30)
+        )
+        for _ in range(2)
+    ]
+    theirs = await grant_use_case(
+        OWNER, GrantSubscriptionDto(user_id=other.id, plan_id=plan.id, duration_days=30)
+    )
+
+    result = await _delete_all(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, buyer.id
+    )
+
+    assert result.deleted == 2
+    for subscription in mine:
+        row = await subscription_repository.get_by_id(subscription.id)
+        assert row.status is SubscriptionStatus.DELETED
+        assert subscription.remnawave_user_id not in remnawave_store
+    assert theirs.remnawave_user_id in remnawave_store
+    # nothing live left: a repeat deletes nothing
+    again = await _delete_all(subscription_repository, remnawave_sdk, event_publisher, uow)(
+        OWNER, buyer.id
+    )
+    assert again.deleted == 0
+
+
+async def test_an_admin_cannot_delete_the_owners_subscriptions(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(name="boss", telegram_id=9903, role=Role.OWNER)
+    )
+    admin = await user_repository.create(
+        CreateUserDto(name="helper", telegram_id=9904, role=Role.ADMIN)
+    )
+
+    with pytest.raises(NotFoundError):
+        await _delete_all(subscription_repository, remnawave_sdk, event_publisher, uow)(
+            admin, owner.id
+        )

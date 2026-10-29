@@ -2,7 +2,6 @@ from contextlib import suppress
 
 from loguru import logger
 from remnapy import RemnawaveSDK
-from remnapy.models import UpdateUserRequestDto
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
@@ -15,6 +14,7 @@ from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto, UpdateSubscriptionSquadsDto
 from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.panel import panel_update
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
@@ -43,7 +43,7 @@ class UpdateSubscriptionSquadsUseCase(UseCase[UpdateSubscriptionSquadsDto, Subsc
             )
 
         await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(
+            panel_update(
                 id=current.remnawave_user_id,
                 active_internal_squads=data.internal_squads or None,
                 external_squad_uuid=data.external_squad,
@@ -75,7 +75,7 @@ class UpdateSubscriptionSquadsUseCase(UseCase[UpdateSubscriptionSquadsDto, Subsc
             # best effort, outside the row lock: the edit lost its row, the panel user may not
             with suppress(Exception):
                 await self._remnawave_sdk.users.update_user(
-                    UpdateUserRequestDto(
+                    panel_update(
                         id=current.remnawave_user_id,
                         active_internal_squads=restored.internal_squads or None,
                         external_squad_uuid=restored.external_squad,

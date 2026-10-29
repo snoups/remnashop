@@ -7,6 +7,10 @@ from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode, CaptchaProvider, SmtpSecurity
 
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
+# a Telegram username as typed: "name", "@name", "t.me/name" or "https://t.me/name"
+_TELEGRAM_USERNAME: Final[re.Pattern[str]] = re.compile(
+    r"^(?:@|(?:https?://)?t\.me/)?([A-Za-z0-9_]{4,32})/?$"
+)
 # no control characters (a line break above all): it lands in an email header
 _HEADER_TEXT: Final[str] = r"^[^\x00-\x1f\x7f]*$"
 
@@ -45,6 +49,8 @@ class ShopSettingsResponse(BaseModel):
     link_reset_cooldown_hours: int
     referral_reset_enabled: bool
     referral_reset_cooldown_hours: int
+    support_telegram: Optional[str]
+    support_url: Optional[str]
 
 
 class UpdateShopSettingsRequest(BaseModel):
@@ -57,10 +63,29 @@ class UpdateShopSettingsRequest(BaseModel):
     link_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
     referral_reset_enabled: Optional[bool] = None
     referral_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    # null or "" clears either
+    support_telegram: Optional[str] = None
+    support_url: Optional[str] = Field(default=None, pattern=r"^https://.+", max_length=512)
+
+    @field_validator("support_telegram", "support_url", mode="before")
+    @classmethod
+    def blank_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("support_telegram")
+    @classmethod
+    def telegram_username(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        match = _TELEGRAM_USERNAME.match(value.strip())
+        if match is None:
+            raise ValueError("support_telegram must be a Telegram username or a t.me link")
+        return match.group(1)
 
     @model_validator(mode="after")
     def non_nullable_fields(self) -> "UpdateShopSettingsRequest":
-        for name in self.model_fields_set - {"max_active_subscriptions"}:
+        nullable = {"max_active_subscriptions", "support_telegram", "support_url"}
+        for name in self.model_fields_set - nullable:
             if getattr(self, name) is None:
                 raise ValueError(f"{name} cannot be null")
         return self
@@ -268,3 +293,5 @@ class CabinetSettingsResponse(BaseModel):
     device_all_reset_enabled: bool
     link_reset_enabled: bool
     bot_username: Optional[str]
+    support_telegram: Optional[str]
+    support_url: Optional[str]

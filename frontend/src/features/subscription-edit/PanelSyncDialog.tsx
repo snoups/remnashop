@@ -21,7 +21,7 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
 
 // machine values the panel and the shop store verbatim
-const MONO_FIELDS: ReadonlySet<string> = new Set(["url", "internal_squads", "external_squad"]);
+const MONO_FIELDS: ReadonlySet<string> = new Set(["url", "internal_squads", "external_squad", "telegram_id"]);
 
 type DiffState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; diff: SubscriptionPanelDiff };
 
@@ -122,7 +122,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
           <Button
             variant="accent"
             className="flex-1"
-            disabled={busy || state.kind !== "ready" || inSync || missing}
+            disabled={busy || state.kind !== "ready" || inSync}
             onClick={() =>
               void run(() => pushSubscriptionToPanel(subscription.id), t("subscriptions.panelSync.pushed"))
             }

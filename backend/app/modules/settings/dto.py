@@ -68,6 +68,8 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
     link_reset_cooldown_hours: int = 0
     referral_reset_enabled: bool = True
     referral_reset_cooldown_hours: int = 0
+    support_telegram: Optional[str] = None
+    support_url: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -78,6 +80,8 @@ class CabinetSettingsDto:
     device_all_reset_enabled: bool
     link_reset_enabled: bool
     bot_username: Optional[str]
+    support_telegram: Optional[str]
+    support_url: Optional[str]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -93,6 +97,8 @@ class UpdateShopSettingsDto:
     link_reset_cooldown_hours: Optional[int] = None
     referral_reset_enabled: Optional[bool] = None
     referral_reset_cooldown_hours: Optional[int] = None
+    support_telegram: Optional[str] = None
+    support_url: Optional[str] = None
     fields_set: frozenset[str] = frozenset()
 
 

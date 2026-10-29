@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
-from app.core.enums import PlanAvailability, PlanType
+from app.core.enums import PlanAvailability, PlanBadge, PlanType
 
 
 class Plan(BaseSql, TimestampMixin):
@@ -25,6 +25,7 @@ class Plan(BaseSql, TimestampMixin):
     name: Mapped[str] = mapped_column(unique=True, index=True)
     description: Mapped[Optional[str]]
     tag: Mapped[Optional[str]]
+    badge: Mapped[Optional[PlanBadge]]
 
     type: Mapped[PlanType]
     availability: Mapped[PlanAvailability]

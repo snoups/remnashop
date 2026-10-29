@@ -149,6 +149,54 @@ async def test_catalog_requires_authentication(client: httpx.AsyncClient) -> Non
     assert response.status_code == 401
 
 
+async def test_plan_tag_takes_only_what_the_panel_accepts(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    plan = {"name": "Basic", "type": "BOTH", "traffic_limit": 100, "device_limit": 3}
+
+    response = await client.post(
+        f"{API_V1}/plans",
+        headers={"Authorization": f"Bearer {token}"},
+        json={**plan, "tag": "Popular"},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_a_null_clears_a_plan_text_and_a_missing_field_keeps_it(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    headers = {"Authorization": f"Bearer {token}"}
+    created = await client.post(
+        f"{API_V1}/plans",
+        headers=headers,
+        json={
+            "name": "Basic",
+            "type": "BOTH",
+            "traffic_limit": 100,
+            "device_limit": 3,
+            "tag": "VIP",
+            "badge": "POPULAR",
+        },
+    )
+
+    response = await client.patch(
+        f"{API_V1}/plans/{created.json()['id']}", headers=headers, json={"badge": None}
+    )
+
+    assert (response.json()["badge"], response.json()["tag"]) == (None, "VIP")
+
+
 async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -167,6 +215,8 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
             "type": "BOTH",
             "traffic_limit": 100,
             "device_limit": 3,
+            "tag": "VIP_USERS",
+            "badge": "BEST_VALUE",
         },
     )
     plan_id = create_response.json()["id"]
@@ -198,6 +248,8 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     assert "allowed_emails" not in plan
     assert "allowed_telegram_ids" not in plan
     assert "internal_squads" not in plan
+    assert "tag" not in plan
+    assert plan["badge"] == "BEST_VALUE"
 
     code = create_response.json()["public_code"]
     by_code = await client.get(

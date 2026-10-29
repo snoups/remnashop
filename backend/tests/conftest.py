@@ -227,6 +227,7 @@ def purchase_subscription_use_case(
         SubscriptionLifecycleService(subscription_repository),
         pricing_repository,
         PurchaseIdempotencyRepository(subscription_repository.session),
+        UserRepository(subscription_repository.session),
     )
 
 

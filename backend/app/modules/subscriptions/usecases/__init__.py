@@ -16,6 +16,9 @@ from app.modules.subscriptions.usecases.change_subscription_plan import (
 from app.modules.subscriptions.usecases.delete_all_devices import DeleteAllDevicesUseCase
 from app.modules.subscriptions.usecases.delete_device import DeleteDeviceUseCase
 from app.modules.subscriptions.usecases.delete_subscription import DeleteSubscriptionUseCase
+from app.modules.subscriptions.usecases.delete_user_subscriptions import (
+    DeleteUserSubscriptionsUseCase,
+)
 from app.modules.subscriptions.usecases.fulfill_purchase import FulfillPurchaseUseCase
 from app.modules.subscriptions.usecases.get_available_trial import GetAvailableTrialUseCase
 from app.modules.subscriptions.usecases.get_panel_sync_status import GetPanelSyncStatusUseCase
@@ -79,6 +82,7 @@ __all__ = [
     "DeleteAllDevicesUseCase",
     "DeleteDeviceUseCase",
     "DeleteSubscriptionUseCase",
+    "DeleteUserSubscriptionsUseCase",
     "FulfillPurchaseUseCase",
     "GetAvailableTrialUseCase",
     "GetPanelSyncStatusUseCase",
