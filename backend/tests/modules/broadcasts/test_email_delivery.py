@@ -423,9 +423,19 @@ async def test_canceled_stops_chain(
     assert email_dispatch.messages == []
 
 
-@pytest.mark.parametrize("with_logo", [False, True])
+# customers see the cabinet's logo first, the dashboard's when the cabinet has none
+@pytest.mark.parametrize(
+    ("logo_targets", "expected_logo"),
+    [
+        ((), None),
+        ((AppearanceTarget.DASHBOARD,), b"dashboard"),
+        ((AppearanceTarget.CABINET,), b"cabinet"),
+        ((AppearanceTarget.DASHBOARD, AppearanceTarget.CABINET), b"cabinet"),
+    ],
+)
 async def test_inline_images_attached(
-    with_logo: bool,
+    logo_targets: tuple[AppearanceTarget, ...],
+    expected_logo: Optional[bytes],
     session: AsyncSession,
     user_repository: UserRepository,
     broadcast_repository: BroadcastRepository,
@@ -434,15 +444,15 @@ async def test_inline_images_attached(
     media_config: AppConfig,
     smtp: None,
 ) -> None:
-    if with_logo:
+    for target in logo_targets:
         await settings_repository.set_appearance_image(
-            AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "image/png", "png"
+            target, AppearanceImageKind.LOGO, "image/png", "png"
         )
         logo_path = appearance_image_path(
-            media_config.media_dir, AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "png"
+            media_config.media_dir, target, AppearanceImageKind.LOGO, "png"
         )
         logo_path.parent.mkdir(parents=True, exist_ok=True)
-        logo_path.write_bytes(b"logo")
+        logo_path.write_bytes(target.value.encode())
     ids = await _users(session, user_repository, 170, 1)
     broadcast = await _email_broadcast(broadcast_repository, ids)
     image = await broadcast_repository.add_email_image(broadcast.id, "image/png", "png", 3)
@@ -461,11 +471,11 @@ async def test_inline_images_attached(
 
     [email] = sender.sent
     expected = [InlineImageDto(cid=f"img-{image.id}", data=b"png", content_type="image/png")]
-    if with_logo:
-        expected.append(InlineImageDto(cid="logo", data=b"logo", content_type="image/png"))
+    if expected_logo is not None:
+        expected.append(InlineImageDto(cid="logo", data=expected_logo, content_type="image/png"))
     assert email.images == expected
     assert f"cid:img-{image.id}" in email.html
-    assert ("cid:logo" in email.html) is with_logo
+    assert ("cid:logo" in email.html) is (expected_logo is not None)
 
 
 async def test_opted_out_between_materialize_and_send(

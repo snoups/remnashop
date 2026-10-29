@@ -3,11 +3,9 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
-from app.core.enums import AppearanceImageKind, AppearanceTarget
-from app.core.exceptions import NotFoundError
 from app.modules.broadcasts.dto import EmailImageDto
 from app.modules.broadcasts.storage import email_image_path
-from app.modules.email import EmailBrandDto, InlineImageDto
+from app.modules.email import EmailBrandDto, InlineImageDto, load_email_logo_image
 from app.modules.settings import GetPublicAppearanceImageUseCase
 
 
@@ -31,8 +29,7 @@ async def load_email_logo(
 ) -> tuple[EmailBrandDto, Optional[InlineImageDto]]:
     if not brand.has_logo:
         return brand, None
-    try:
-        image = await appearance.execute(AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO)
-    except NotFoundError:
+    image = await load_email_logo_image(appearance)
+    if image is None:
         return replace(brand, has_logo=False), None
     return brand, InlineImageDto(cid="logo", data=image.data, content_type=image.content_type)

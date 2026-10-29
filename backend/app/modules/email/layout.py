@@ -2,9 +2,14 @@ import html
 import re
 from typing import Final, Optional, Protocol
 
-from app.core.enums import AppearanceTarget
+from app.core.enums import AppearanceImageKind, AppearanceTarget
+from app.core.exceptions import NotFoundError
 from app.modules.email.dto import EmailBrandDto
-from app.modules.settings import AppearanceSettingsDto
+from app.modules.settings import (
+    AppearanceImageDto,
+    AppearanceSettingsDto,
+    GetPublicAppearanceImageUseCase,
+)
 
 _COLOR: Final[re.Pattern[str]] = re.compile(r"^#[0-9a-fA-F]{6}$")
 _DEFAULT_COLOR: Final[str] = "#3b82f6"
@@ -15,13 +20,26 @@ class _AppearanceSource(Protocol):
     async def get_appearance_settings(self, target: AppearanceTarget) -> AppearanceSettingsDto: ...
 
 
+# emails go to customers: the cabinet's appearance, the dashboard's for whatever it leaves unset
 async def load_email_brand(settings_repository: _AppearanceSource) -> EmailBrandDto:
-    appearance = await settings_repository.get_appearance_settings(AppearanceTarget.DASHBOARD)
+    cabinet = await settings_repository.get_appearance_settings(AppearanceTarget.CABINET)
+    dashboard = await settings_repository.get_appearance_settings(AppearanceTarget.DASHBOARD)
     return EmailBrandDto(
-        brand=appearance.brand_name or _DEFAULT_BRAND,
-        color=appearance.primary_color,
-        has_logo=appearance.has_logo,
+        brand=cabinet.brand_name or dashboard.brand_name or _DEFAULT_BRAND,
+        color=cabinet.primary_color or dashboard.primary_color,
+        has_logo=cabinet.has_logo or dashboard.has_logo,
     )
+
+
+async def load_email_logo_image(
+    appearance: GetPublicAppearanceImageUseCase,
+) -> Optional[AppearanceImageDto]:
+    for target in (AppearanceTarget.CABINET, AppearanceTarget.DASHBOARD):
+        try:
+            return await appearance.execute(target, AppearanceImageKind.LOGO)
+        except NotFoundError:
+            continue
+    return None
 
 
 def brand_accent(color: Optional[str]) -> str:

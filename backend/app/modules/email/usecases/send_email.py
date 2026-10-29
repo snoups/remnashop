@@ -5,12 +5,12 @@ from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageKind, AppearanceTarget
-from app.core.exceptions import NotFoundError, RetryableTaskError
+from app.core.exceptions import RetryableTaskError
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.email.batch import SMTP_PAUSE_SECONDS, smtp_pause_key
 from app.modules.email.dto import EmailMessageDto
+from app.modules.email.layout import load_email_logo_image
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.settings import (
     AppearanceImageDto,
@@ -49,12 +49,7 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
             raise RetryableTaskError("SMTP unavailable")
         logo: Optional[AppearanceImageDto] = None
         if "cid:logo" in data.html:
-            try:
-                logo = await self._get_public_appearance_image_use_case.execute(
-                    AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO
-                )
-            except NotFoundError:
-                pass
+            logo = await load_email_logo_image(self._get_public_appearance_image_use_case)
         try:
             await self._sender.send(settings.profile(bulk=False), data, logo)
         except EmailSendError as error:

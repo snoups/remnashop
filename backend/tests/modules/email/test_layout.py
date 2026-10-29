@@ -1,4 +1,7 @@
-from app.modules.email import render_email, render_email_html
+from app.core.enums import AppearanceTarget
+from app.modules.email import EmailBrandDto, load_email_brand, render_email, render_email_html
+from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateAppearanceSettingsDto
 
 
 def test_layout_escapes_and_links_only_to_the_cabinet() -> None:
@@ -52,3 +55,24 @@ def test_render_email_html_keeps_body_markup_and_footer() -> None:
     assert 'src="cid:logo"' in page
     assert '<a href="https://x/u">Unsub</a>' in page
     assert "Shop" in page
+
+
+async def test_brand_takes_the_cabinet_and_falls_back_to_the_dashboard(
+    settings_repository: SettingsRepository,
+) -> None:
+    assert await load_email_brand(settings_repository) == EmailBrandDto(
+        brand="remnashop", color=None, has_logo=False
+    )
+
+    await settings_repository.update_appearance_settings(
+        UpdateAppearanceSettingsDto(
+            target=AppearanceTarget.DASHBOARD, brand_name="Panel", primary_color="#111111"
+        )
+    )
+    await settings_repository.update_appearance_settings(
+        UpdateAppearanceSettingsDto(target=AppearanceTarget.CABINET, brand_name="Shop")
+    )
+
+    assert await load_email_brand(settings_repository) == EmailBrandDto(
+        brand="Shop", color="#111111", has_logo=False
+    )
