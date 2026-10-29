@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 
 import pytest
@@ -13,8 +14,13 @@ from app.core.security.permissions import TOKEN_GRANTABLE_PERMISSIONS, Permissio
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
+from app.modules.subscriptions import panel_sync
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
-from app.modules.subscriptions.panel_sync import release_panel_sync
+from app.modules.subscriptions.panel_sync import (
+    claim_panel_sync,
+    holding_panel_sync,
+    release_panel_sync,
+)
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import (
     GetPanelSyncStatusUseCase,
@@ -81,6 +87,57 @@ async def test_a_second_start_while_running_is_refused(
         assert status.from_panel.running is True
     finally:
         await release_panel_sync(redis, PanelSyncDirection.FROM_PANEL)
+
+
+async def test_a_long_run_keeps_its_running_mark(
+    redis: Redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(panel_sync, "_RUNNING_REFRESH_S", 0.05)
+    key = panel_sync._running_key(PanelSyncDirection.TO_PANEL)
+    await release_panel_sync(redis, PanelSyncDirection.TO_PANEL)
+    try:
+        await claim_panel_sync(redis, PanelSyncDirection.TO_PANEL)
+        await redis.expire(key, 1)
+        async with holding_panel_sync(redis, PanelSyncDirection.TO_PANEL):
+            await asyncio.sleep(0.2)
+            assert await redis.ttl(key) > 1
+            await release_panel_sync(redis, PanelSyncDirection.TO_PANEL)
+            await asyncio.sleep(0.2)
+            # a finished run's mark doesn't come back
+            assert not await redis.exists(key)
+    finally:
+        await release_panel_sync(redis, PanelSyncDirection.TO_PANEL)
+
+
+async def test_sync_to_panel_skips_a_row_deleted_while_it_ran(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subscription = await create_subscription(
+        subscription_repository, user_repository, telegram_id=89_011, remnawave_user_id=89_011
+    )
+    remnawave_store[89_011] = _panel_user(
+        89_011, trafficLimitBytes=10 * GB_TO_BYTES, expireAt=subscription.expire_at.isoformat()
+    )
+    deleted = subscription.model_copy(update={"status": SubscriptionStatus.DELETED})
+
+    async def _deleted(subscription_id: int) -> object:
+        return deleted
+
+    monkeypatch.setattr(subscription_repository, "get_by_id", _deleted)
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
+    ).system()
+
+    assert remnawave_store[89_011]["trafficLimitBytes"] == 10 * GB_TO_BYTES
+    assert result.updated == 0 and result.failed == 0
 
 
 async def test_sync_to_panel_pushes_rows_that_differ_and_recreates_missing(

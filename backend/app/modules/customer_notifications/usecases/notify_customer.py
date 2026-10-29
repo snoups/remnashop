@@ -133,9 +133,8 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         if not body:
             logger.error(f"No customer notification text for {data.event_type}")
             return
-        # set only once there is something to send: a failure above must leave
-        # the retry free to deliver, and nothing sent must not silence the next one
-        # a requeue after Telegram refused: the first run already took the cooldown slot
+        # taken only once there is something to send, so a failure above leaves the
+        # retry free; a requeue after Telegram refused already holds the slot
         cooldown_key = None if data.telegram_refused else _cooldown_key(data.event_type, user.id)
         if cooldown_key is not None and not await self._redis.set(
             cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]

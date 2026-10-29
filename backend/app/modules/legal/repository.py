@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.legal_document import (
@@ -46,12 +47,17 @@ class LegalRepository:
     async def _ensure_documents(self) -> dict[LegalDocumentKind, LegalDocument]:
         result = await self.session.execute(select(LegalDocument))
         rows = {row.kind: row for row in result.scalars()}
-        for kind in LegalDocumentKind:
-            if kind not in rows:
-                rows[kind] = LegalDocument(kind=kind)
-                self.session.add(rows[kind])
-        await self.session.flush()
-        return rows
+        missing = [kind for kind in LegalDocumentKind if kind not in rows]
+        if not missing:
+            return rows
+        # concurrent first readers: the losers find the winner's rows
+        await self.session.execute(
+            pg_insert(LegalDocument)
+            .values([{"kind": kind} for kind in missing])
+            .on_conflict_do_nothing(index_elements=["kind"])
+        )
+        result = await self.session.execute(select(LegalDocument))
+        return {row.kind: row for row in result.scalars()}
 
     async def list_documents(self) -> list[LegalDocumentDto]:
         rows = await self._ensure_documents()

@@ -5,6 +5,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.db.filters import in_ids
 from app.core.db.models.payment_waitlist import PaymentWaitlistEntry
 
 
@@ -32,7 +33,7 @@ class WaitlistRepository:
     async def remove(self, user_ids: set[int]) -> None:
         if user_ids:
             await self.session.execute(
-                delete(PaymentWaitlistEntry).where(PaymentWaitlistEntry.user_id.in_(user_ids))
+                delete(PaymentWaitlistEntry).where(in_ids(PaymentWaitlistEntry.user_id, user_ids))
             )
 
     async def count(self) -> int:

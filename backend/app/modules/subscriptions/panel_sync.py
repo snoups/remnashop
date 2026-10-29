@@ -1,16 +1,18 @@
+import asyncio
 from collections.abc import AsyncIterator, Sequence
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from functools import partial
 from typing import Final, Optional
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from remnapy import RemnawaveSDK
 from remnapy.enums import UserStatus
 from remnapy.models import UserResponseDto
 
 from app.core.actor import Actor
-from app.core.constants import GB_TO_BYTES, REDIS_KEY_PREFIX, TTL_1H, TTL_7D, ZERO_AMOUNT
+from app.core.constants import GB_TO_BYTES, REDIS_KEY_PREFIX, TTL_1H, TTL_5M, TTL_7D, ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PanelSyncDirection, SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -47,6 +49,8 @@ from app.modules.users import UserDto, UserRepository
 _STREAM_PAGE: Final[int] = 500
 # a crashed run must not block the next one for long
 _RUNNING_TTL_S: Final[int] = TTL_1H
+# a live run outlasting the TTL keeps its mark, so a second one can't start
+_RUNNING_REFRESH_S: Final[int] = TTL_5M
 _RESULT_TTL_S: Final[int] = TTL_7D
 # a purchase creates its panel user before its row commits: a younger panel
 # user without a row may be one still being provisioned
@@ -324,6 +328,24 @@ async def read_panel_sync_status(redis: Redis, direction: PanelSyncDirection) ->
     raw = await redis.get(_result_key(direction))
     last = PanelSyncResultDto.model_validate_json(raw) if raw else None
     return PanelSyncStatusDto(direction=direction, running=running, last=last)
+
+
+@asynccontextmanager
+async def holding_panel_sync(redis: Redis, direction: PanelSyncDirection) -> AsyncIterator[None]:
+    async def _refresh() -> None:
+        while True:
+            await asyncio.sleep(_RUNNING_REFRESH_S)
+            # EXPIRE on a released mark is a no-op: nothing comes back after finish
+            with suppress(RedisError):
+                await redis.expire(_running_key(direction), _RUNNING_TTL_S)
+
+    task = asyncio.create_task(_refresh())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 async def release_panel_sync(redis: Redis, direction: PanelSyncDirection) -> None:

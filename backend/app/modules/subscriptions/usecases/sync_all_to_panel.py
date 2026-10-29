@@ -14,6 +14,7 @@ from app.modules.subscriptions.dto import PanelSyncResultDto
 from app.modules.subscriptions.events import PanelSyncCompletedEvent
 from app.modules.subscriptions.panel_sync import (
     finish_panel_sync,
+    holding_panel_sync,
     is_orphan,
     match_shop_user,
     panel_lags_behind,
@@ -49,6 +50,10 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: None) -> PanelSyncResultDto:
+        async with holding_panel_sync(self._redis, PanelSyncDirection.TO_PANEL):
+            return await self._sync(actor)
+
+    async def _sync(self, actor: Actor) -> PanelSyncResultDto:
         async with self._uow:
             subscriptions = await self._subscription_repository.list_non_terminal()
             linked = await self._subscription_repository.list_linked_remnawave_user_ids()
@@ -70,6 +75,8 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
                     # the row as it is now, not as listed before the stream
                     async with self._uow:
                         current = await self._subscription_repository.get_by_id(subscription.id)
+                    if current.status is SubscriptionStatus.DELETED:
+                        continue  # deleted while the sync ran
                     if user is None:
                         await recreate_in_panel(
                             self._remnawave_sdk,

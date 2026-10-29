@@ -20,6 +20,7 @@ from app.modules.subscriptions.panel_sync import (
     differs_from_panel,
     finish_panel_sync,
     from_panel,
+    holding_panel_sync,
     imported_row,
     is_orphan,
     match_shop_user,
@@ -66,6 +67,10 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         self._event_publisher = event_publisher
 
     async def _execute(self, actor: Actor, data: None) -> PanelSyncResultDto:
+        async with holding_panel_sync(self._redis, PanelSyncDirection.FROM_PANEL):
+            return await self._sync(actor)
+
+    async def _sync(self, actor: Actor) -> PanelSyncResultDto:
         async with self._uow:
             subscriptions = await self._subscription_repository.list_non_terminal()
             linked = await self._subscription_repository.list_linked_remnawave_user_ids()

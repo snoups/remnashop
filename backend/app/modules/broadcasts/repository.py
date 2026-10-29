@@ -107,7 +107,7 @@ class BroadcastRepository:
         if not user_ids:
             return {}
         rows = await self.session.execute(
-            select(User.id, func.coalesce(User.login, User.name)).where(User.id.in_(user_ids))
+            select(User.id, func.coalesce(User.login, User.name)).where(in_ids(User.id, user_ids))
         )
         return dict(rows.tuples().all())
 
@@ -703,7 +703,7 @@ class BroadcastRepository:
                 Subscription.expire_at,
             )
             .where(
-                Subscription.user_id.in_(user_ids),
+                in_ids(Subscription.user_id, user_ids),
                 Subscription.status.in_((SubscriptionStatus.ACTIVE, SubscriptionStatus.LIMITED)),
             )
             .order_by(Subscription.user_id, Subscription.expire_at.desc())
@@ -713,7 +713,7 @@ class BroadcastRepository:
         rows = await self.session.execute(
             select(User, live.c.plan_name, live.c.expire_at)
             .outerjoin(live, live.c.user_id == User.id)
-            .where(User.id.in_(user_ids))
+            .where(in_ids(User.id, user_ids))
         )
         return {
             user.id: RecipientContextDto(
