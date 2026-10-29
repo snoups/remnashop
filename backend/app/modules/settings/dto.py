@@ -7,7 +7,14 @@ from pydantic import Field, SecretStr
 
 from app.core.constants import DEFAULT_ALLOWED_EMAIL_DOMAINS
 from app.core.dto import BaseDto, TimestampMixin
-from app.core.enums import AccessMode, CaptchaProvider, OAuthProvider, SmtpSecurity, UpperStrEnum
+from app.core.enums import (
+    AccessMode,
+    AppearanceTarget,
+    CaptchaProvider,
+    OAuthProvider,
+    SmtpSecurity,
+    UpperStrEnum,
+)
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -220,6 +227,7 @@ class AppearanceSettingsDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class UpdateAppearanceSettingsDto:
+    target: AppearanceTarget
     brand_name: Optional[str] = None
     primary_color: Optional[str] = None
     shader_palette: Optional[list[str]] = None
@@ -228,6 +236,7 @@ class UpdateAppearanceSettingsDto:
 
 @dataclass(frozen=True, kw_only=True)
 class UploadAppearanceImageDto:
+    target: AppearanceTarget
     content_type: str
     data: bytes
 

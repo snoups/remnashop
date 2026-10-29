@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal, TypeAlias
 
+from app.core.enums import AppearanceTarget
 from app.core.events import ActorEvent, EventCategory, SystemEvent
 
 AppearanceAction: TypeAlias = Literal[
@@ -55,6 +56,7 @@ class BotSettingsChangedEvent(ActorEvent):
 class AppearanceSettingsChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
     action: AppearanceAction
+    target: AppearanceTarget
     changed_fields: list[str] = field(default_factory=list)
 
 

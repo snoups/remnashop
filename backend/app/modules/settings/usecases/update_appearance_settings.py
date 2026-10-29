@@ -26,13 +26,16 @@ class UpdateAppearanceSettingsUseCase(UseCase[UpdateAppearanceSettingsDto, Appea
         self, actor: Actor, data: UpdateAppearanceSettingsDto
     ) -> AppearanceSettingsDto:
         async with self._uow:
-            before = await self._settings_repository.get_appearance_settings()
+            before = await self._settings_repository.get_appearance_settings(data.target)
             settings = await self._settings_repository.update_appearance_settings(data)
             await self._event_publisher.publish(
                 AppearanceSettingsChangedEvent(
                     actor=actor,
                     action="update",
-                    changed_fields=changed_fields(before, settings, vars(data)),
+                    target=data.target,
+                    changed_fields=changed_fields(
+                        before, settings, (name for name in vars(data) if name != "target")
+                    ),
                 )
             )
         return settings

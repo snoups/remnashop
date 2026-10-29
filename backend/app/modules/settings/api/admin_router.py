@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, status
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.enums import AppearanceTarget
 from app.modules.settings.api.schemas import (
     AccessSettingsResponse,
     AppearanceResponse,
@@ -409,9 +410,10 @@ async def update_oauth_settings(
     return OAuthSettingsResponse.model_validate(settings, from_attributes=True)
 
 
-@router.patch("/appearance", response_model=AppearanceResponse)
+@router.patch("/appearance/{target}", response_model=AppearanceResponse)
 @inject
 async def update_appearance_settings(
+    target: AppearanceTarget,
     payload: UpdateAppearanceRequest,
     use_case: FromDishka[UpdateAppearanceSettingsUseCase],
     actor: Actor = Depends(require_admin),
@@ -419,6 +421,7 @@ async def update_appearance_settings(
     settings = await use_case(
         actor,
         UpdateAppearanceSettingsDto(
+            target=target,
             brand_name=payload.brand_name,
             primary_color=payload.primary_color,
             shader_palette=payload.shader_palette,
@@ -428,19 +431,23 @@ async def update_appearance_settings(
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
-@router.post("/appearance/actions/reset", response_model=AppearanceResponse)
+@router.post("/appearance/{target}/actions/reset", response_model=AppearanceResponse)
 @inject
 async def reset_appearance_settings(
+    target: AppearanceTarget,
     use_case: FromDishka[ResetAppearanceSettingsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
-    settings = await use_case(actor)
+    settings = await use_case(actor, target)
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
-@router.put("/appearance/logo", response_model=AppearanceResponse, responses=error_responses(400))
+@router.put(
+    "/appearance/{target}/logo", response_model=AppearanceResponse, responses=error_responses(400)
+)
 @inject
 async def upload_appearance_logo(
+    target: AppearanceTarget,
     use_case: FromDishka[UploadAppearanceLogoUseCase],
     file: UploadFile = File(...),
     actor: Actor = Depends(require_admin),
@@ -448,27 +455,31 @@ async def upload_appearance_logo(
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
     settings = await use_case(
         actor,
-        UploadAppearanceImageDto(content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(target=target, content_type=file.content_type or "", data=data),
     )
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.delete(
-    "/appearance/logo", response_model=AppearanceResponse, responses=error_responses(404)
+    "/appearance/{target}/logo", response_model=AppearanceResponse, responses=error_responses(404)
 )
 @inject
 async def delete_appearance_logo(
+    target: AppearanceTarget,
     use_case: FromDishka[DeleteAppearanceLogoUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
-    return AppearanceResponse.model_validate(await use_case(actor), from_attributes=True)
+    return AppearanceResponse.model_validate(await use_case(actor, target), from_attributes=True)
 
 
 @router.put(
-    "/appearance/favicon", response_model=AppearanceResponse, responses=error_responses(400)
+    "/appearance/{target}/favicon",
+    response_model=AppearanceResponse,
+    responses=error_responses(400),
 )
 @inject
 async def upload_appearance_favicon(
+    target: AppearanceTarget,
     use_case: FromDishka[UploadAppearanceFaviconUseCase],
     file: UploadFile = File(...),
     actor: Actor = Depends(require_admin),
@@ -476,17 +487,20 @@ async def upload_appearance_favicon(
     data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
     settings = await use_case(
         actor,
-        UploadAppearanceImageDto(content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(target=target, content_type=file.content_type or "", data=data),
     )
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
 @router.delete(
-    "/appearance/favicon", response_model=AppearanceResponse, responses=error_responses(404)
+    "/appearance/{target}/favicon",
+    response_model=AppearanceResponse,
+    responses=error_responses(404),
 )
 @inject
 async def delete_appearance_favicon(
+    target: AppearanceTarget,
     use_case: FromDishka[DeleteAppearanceFaviconUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
-    return AppearanceResponse.model_validate(await use_case(actor), from_attributes=True)
+    return AppearanceResponse.model_validate(await use_case(actor, target), from_attributes=True)

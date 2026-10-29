@@ -431,6 +431,11 @@ class AppearanceImageKind(StrEnum):
     FAVICON = auto()
 
 
+class AppearanceTarget(StrEnum):
+    DASHBOARD = auto()
+    CABINET = auto()
+
+
 class AppearanceImageFormat(StrEnum):
     JPG = auto()
     PNG = auto()

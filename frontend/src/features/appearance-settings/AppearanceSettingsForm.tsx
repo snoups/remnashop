@@ -1,4 +1,4 @@
-import { Palette, RotateCcw, Upload, X } from "lucide-react";
+import { Globe, Palette, RotateCcw, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   type AppearanceImageKind,
   type AppearanceSettings,
+  type AppearanceTarget,
   appearanceImageUrl,
   deleteAppearanceImage,
   getAppearance,
@@ -61,6 +62,7 @@ const SHADER_PALETTE_KEYS = ["base", "amplitude", "frequency", "phase"] as const
 
 
 interface ImageSlotProps {
+  target: AppearanceTarget;
   kind: AppearanceImageKind;
   hasImage: boolean;
   label: string;
@@ -71,7 +73,7 @@ interface ImageSlotProps {
   onChanged: (hasImage: boolean) => void;
 }
 
-function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, className = "", onChanged }: ImageSlotProps) {
+function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, className = "", onChanged }: ImageSlotProps) {
   const { t } = useTranslation();
   const [isBusy, setIsBusy] = useState(false);
 
@@ -106,7 +108,7 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
           return;
         }
       }
-      await uploadAppearanceImage(kind, file);
+      await uploadAppearanceImage(target, kind, file);
       onChanged(true);
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.uploadError")));
@@ -118,7 +120,7 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
   const handleDelete = async () => {
     setIsBusy(true);
     try {
-      await deleteAppearanceImage(kind);
+      await deleteAppearanceImage(target, kind);
       onChanged(false);
     } catch (err) {
       toast.error(getErrorMessage(err, t("settings.appearance.deleteError")));
@@ -136,7 +138,7 @@ function ImageSlot({ kind, hasImage, label, hint, canUpload, canDelete, classNam
         }`}
       >
         {hasImage ? (
-          <img src={appearanceImageUrl(kind)} alt="" className="h-full w-full object-contain p-11" />
+          <img src={appearanceImageUrl(target, kind)} alt="" className="h-full w-full object-contain p-11" />
         ) : (
           <>
             <BrandLogo className="size-1/2 text-primary" />
@@ -183,8 +185,10 @@ function Section({ children }: { children: ReactNode }) {
   return <div className="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">{children}</div>;
 }
 
-export function AppearanceSettingsForm() {
+// The cabinet's card has no live preview: it would repaint the dashboard, not the cabinet.
+export function AppearanceSettingsForm({ target }: { target: AppearanceTarget }) {
   const { t } = useTranslation();
+  const isDashboard = target === "dashboard";
   const reloadAppearance = useReloadAppearance();
   const { setPreviewColor, setPreviewPalette, setPreviewShaderEnabled } = useAppearancePreview();
   const permissions = usePermissions();
@@ -217,7 +221,7 @@ export function AppearanceSettingsForm() {
     setShaderEnabled(data.shader_enabled);
   };
 
-  const [state, , setData] = useAsyncResource(getAppearance, {
+  const [state, , setData] = useAsyncResource((signal) => getAppearance(target, signal), {
     onSuccess: (data) => {
       seedBranding(data);
       seedColors(data);
@@ -231,26 +235,27 @@ export function AppearanceSettingsForm() {
 
   // live preview across the dashboard until a save or reset clears colorTouched
   useEffect(() => {
-    setPreviewColor(colorTouched ? accentColor : null);
-  }, [accentColor, colorTouched, setPreviewColor]);
+    if (isDashboard) setPreviewColor(colorTouched ? accentColor : null);
+  }, [isDashboard, accentColor, colorTouched, setPreviewColor]);
 
   useEffect(() => {
-    setPreviewPalette(paletteTouched ? shaderPalette : null);
-  }, [shaderPalette, paletteTouched, setPreviewPalette]);
+    if (isDashboard) setPreviewPalette(paletteTouched ? shaderPalette : null);
+  }, [isDashboard, shaderPalette, paletteTouched, setPreviewPalette]);
 
   // a boolean has no "unset" state, so no touched gate
   useEffect(() => {
-    setPreviewShaderEnabled(shaderEnabled);
-  }, [shaderEnabled, setPreviewShaderEnabled]);
+    if (isDashboard) setPreviewShaderEnabled(shaderEnabled);
+  }, [isDashboard, shaderEnabled, setPreviewShaderEnabled]);
 
   // AppearanceProvider outlives this form: leaving unsaved must drop the preview
   useEffect(() => {
+    if (!isDashboard) return;
     return () => {
       setPreviewColor(null);
       setPreviewPalette(null);
       setPreviewShaderEnabled(null);
     };
-  }, [setPreviewColor, setPreviewPalette, setPreviewShaderEnabled]);
+  }, [isDashboard, setPreviewColor, setPreviewPalette, setPreviewShaderEnabled]);
 
   const setAccent = (value: string) => {
     if (!ACCENT_COLOR_PRESETS.includes(value.toLowerCase())) {
@@ -284,7 +289,7 @@ export function AppearanceSettingsForm() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      await updateAppearance({
+      await updateAppearance(target, {
         brand_name: brandName.trim() || undefined,
         primary_color: colorTouched ? accentColor : undefined,
         shader_palette: paletteTouched ? shaderPalette : undefined,
@@ -306,12 +311,12 @@ export function AppearanceSettingsForm() {
     try {
       // Each image goes through its own delete endpoint so its permission still applies.
       if (state.kind === "ready" && state.data.has_logo && permissions.includes("APPEARANCE_LOGO_DELETE")) {
-        await deleteAppearanceImage("logo");
+        await deleteAppearanceImage(target, "logo");
       }
       if (state.kind === "ready" && state.data.has_favicon && permissions.includes("APPEARANCE_FAVICON_DELETE")) {
-        await deleteAppearanceImage("favicon");
+        await deleteAppearanceImage(target, "favicon");
       }
-      const data = await resetAppearanceSettings();
+      const data = await resetAppearanceSettings(target);
       seedBranding(data);
       seedColors(data);
       setData(data);
@@ -342,9 +347,11 @@ export function AppearanceSettingsForm() {
   return (
     <Card>
       <CardHeader
-        icon={Palette}
-        title={t("settings.appearance.dashboardTitle")}
-        description={t("settings.appearance.dashboardDescription")}
+        icon={isDashboard ? Palette : Globe}
+        title={t(isDashboard ? "settings.appearance.dashboardTitle" : "settings.appearance.cabinetTitle")}
+        description={t(
+          isDashboard ? "settings.appearance.dashboardDescription" : "settings.appearance.cabinetDescription",
+        )}
       />
 
       {state.kind === "loading" && <Spinner size="card" />}
@@ -356,9 +363,9 @@ export function AppearanceSettingsForm() {
             {(canManage || canLogo || canFavicon) && (
               <Section>
                 {canManage && (
-                  <Field label={t("settings.appearance.brandNameLabel")} htmlFor="appearance-brand-name">
+                  <Field label={t("settings.appearance.brandNameLabel")} htmlFor={`appearance-${target}-brand-name`}>
                     <TextInput
-                      id="appearance-brand-name"
+                      id={`appearance-${target}-brand-name`}
                       type="text"
                       value={brandName}
                       onChange={(event) => setBrandName(event.target.value)}
@@ -372,6 +379,7 @@ export function AppearanceSettingsForm() {
                   <div className="flex flex-wrap gap-4">
                     {canLogo && (
                       <ImageSlot
+                        target={target}
                         kind="logo"
                         hasImage={state.data.has_logo}
                         label={t("settings.appearance.logoLabel")}
@@ -384,6 +392,7 @@ export function AppearanceSettingsForm() {
                     )}
                     {canFavicon && (
                       <ImageSlot
+                        target={target}
                         kind="favicon"
                         hasImage={state.data.has_favicon}
                         label={t("settings.appearance.faviconLabel")}
@@ -401,7 +410,7 @@ export function AppearanceSettingsForm() {
 
             {canManage && (
               <Section>
-                <Field label={t("settings.appearance.accentColorLabel")} htmlFor="appearance-accent-hex">
+                <Field label={t("settings.appearance.accentColorLabel")} htmlFor={`appearance-${target}-accent-hex`}>
                   <div className="flex items-center gap-3.5 rounded-xl bg-white/[0.03] p-3">
                     <div className="flex items-center gap-2">
                       <ColorPickerField
@@ -409,7 +418,7 @@ export function AppearanceSettingsForm() {
                         onChange={setAccent}
                       />
                       <TextInput
-                        id="appearance-accent-hex"
+                        id={`appearance-${target}-accent-hex`}
                         type="text"
                         value={hexInput}
                         onChange={handleHexInputChange}

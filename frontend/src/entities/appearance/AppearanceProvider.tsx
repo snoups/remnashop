@@ -43,7 +43,7 @@ async function defaultFaviconHref(color: string | null): Promise<string> {
 }
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
-  const [state, reload] = useAsyncResource(getAppearance);
+  const [state, reload] = useAsyncResource((signal) => getAppearance("dashboard", signal));
   // unsaved picks from the Appearance settings form; null falls back to the fetched value
   const [previewColor, setPreviewColor] = useState<string | null>(null);
   const effectiveColor = previewColor ?? (state.kind === "ready" ? state.data.primary_color : null);
@@ -59,7 +59,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (!link) return;
     if (state.data.has_favicon) {
-      link.href = appearanceImageUrl("favicon");
+      link.href = appearanceImageUrl("dashboard", "favicon");
       return;
     }
     // guards against a slower earlier color resolving after a newer one

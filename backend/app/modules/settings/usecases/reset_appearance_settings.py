@@ -1,5 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.enums import AppearanceTarget
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -8,7 +9,7 @@ from app.modules.settings.events import AppearanceSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
 
-class ResetAppearanceSettingsUseCase(UseCase[None, AppearanceSettingsDto]):
+class ResetAppearanceSettingsUseCase(UseCase[AppearanceTarget, AppearanceSettingsDto]):
     required_permission = Permission.APPEARANCE_SETTINGS_RESET
 
     def __init__(
@@ -23,10 +24,10 @@ class ResetAppearanceSettingsUseCase(UseCase[None, AppearanceSettingsDto]):
 
     # Images aren't touched here: they go through their own delete usecases,
     # so each keeps its own permission.
-    async def _execute(self, actor: Actor, data: None) -> AppearanceSettingsDto:
+    async def _execute(self, actor: Actor, data: AppearanceTarget) -> AppearanceSettingsDto:
         async with self._uow:
-            settings = await self._settings_repository.reset_appearance_settings()
+            settings = await self._settings_repository.reset_appearance_settings(data)
             await self._event_publisher.publish(
-                AppearanceSettingsChangedEvent(actor=actor, action="reset")
+                AppearanceSettingsChangedEvent(actor=actor, action="reset", target=data)
             )
         return settings

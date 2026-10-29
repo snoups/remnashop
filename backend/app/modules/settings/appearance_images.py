@@ -5,7 +5,7 @@ from typing import Final
 from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageFormat, AppearanceImageKind
+from app.core.enums import AppearanceImageFormat, AppearanceImageKind, AppearanceTarget
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
@@ -111,18 +111,20 @@ async def upload_appearance_image(
         _validate_raster(data.data, image_format, limits)
 
     async with uow:
-        existing = await settings_repository.find_appearance_image_meta(kind)
+        existing = await settings_repository.find_appearance_image_meta(data.target, kind)
         result = await settings_repository.set_appearance_image(
-            kind, data.content_type, image_format.value
+            data.target, kind, data.content_type, image_format.value
         )
         await event_publisher.publish(
-            AppearanceSettingsChangedEvent(actor=actor, action=_UPLOAD_ACTIONS[kind])
+            AppearanceSettingsChangedEvent(
+                actor=actor, action=_UPLOAD_ACTIONS[kind], target=data.target
+            )
         )
     # files change only after the row commits: a failed commit must not
     # leave the row pointing at a file already overwritten or deleted
-    save_appearance_image(config.media_dir, kind, image_format.value, data.data)
+    save_appearance_image(config.media_dir, data.target, kind, image_format.value, data.data)
     if existing is not None and existing[0] != image_format.value:
-        delete_appearance_image(config.media_dir, kind, existing[0])
+        delete_appearance_image(config.media_dir, data.target, kind, existing[0])
     return result
 
 
@@ -132,17 +134,18 @@ async def remove_appearance_image(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     actor: Actor,
+    target: AppearanceTarget,
     kind: AppearanceImageKind,
 ) -> AppearanceSettingsDto:
     async with uow:
-        meta = await settings_repository.find_appearance_image_meta(kind)
+        meta = await settings_repository.find_appearance_image_meta(target, kind)
         if meta is None:
             raise NotFoundError(
                 f"Appearance image not set: {kind}", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET
             )
-        settings = await settings_repository.clear_appearance_image(kind)
+        settings = await settings_repository.clear_appearance_image(target, kind)
         await event_publisher.publish(
-            AppearanceSettingsChangedEvent(actor=actor, action=_DELETE_ACTIONS[kind])
+            AppearanceSettingsChangedEvent(actor=actor, action=_DELETE_ACTIONS[kind], target=target)
         )
-    delete_appearance_image(config.media_dir, kind, meta[0])
+    delete_appearance_image(config.media_dir, target, kind, meta[0])
     return settings

@@ -1125,6 +1125,8 @@
     "appearance": {
       "dashboardTitle": "Dashboard",
       "dashboardDescription": "Branding and colors of the dashboard",
+      "cabinetTitle": "Web cabinet",
+      "cabinetDescription": "Branding and colors of the web cabinet; what’s left empty comes from the dashboard",
       "brandNameLabel": "Brand name",
       "brandNamePlaceholder": "Remnashop",
       "accentColorLabel": "Accent color",

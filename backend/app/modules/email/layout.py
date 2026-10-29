@@ -2,6 +2,7 @@ import html
 import re
 from typing import Final, Optional, Protocol
 
+from app.core.enums import AppearanceTarget
 from app.modules.email.dto import EmailBrandDto
 from app.modules.settings import AppearanceSettingsDto
 
@@ -11,11 +12,11 @@ _DEFAULT_BRAND: Final[str] = "remnashop"
 
 
 class _AppearanceSource(Protocol):
-    async def get_appearance_settings(self) -> AppearanceSettingsDto: ...
+    async def get_appearance_settings(self, target: AppearanceTarget) -> AppearanceSettingsDto: ...
 
 
 async def load_email_brand(settings_repository: _AppearanceSource) -> EmailBrandDto:
-    appearance = await settings_repository.get_appearance_settings()
+    appearance = await settings_repository.get_appearance_settings(AppearanceTarget.DASHBOARD)
     return EmailBrandDto(
         brand=appearance.brand_name or _DEFAULT_BRAND,
         color=appearance.primary_color,

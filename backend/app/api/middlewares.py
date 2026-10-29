@@ -16,11 +16,9 @@ from app.core.error_codes import ErrorCode
 _DEFAULT_BODY_LIMIT: Final[int] = 1024 * 1024
 # image uploads: the largest per-route file cap (banners, 5 MB) plus multipart framing
 _UPLOAD_BODY_LIMIT: Final[int] = 6 * 1024 * 1024
-_UPLOAD_PATHS: Final[frozenset[str]] = frozenset(
-    {
-        f"{API_V1}/settings/appearance/logo",
-        f"{API_V1}/settings/appearance/favicon",
-    }
+# PUT /settings/appearance/{target}/{logo,favicon}
+_APPEARANCE_UPLOAD_RE: Final[re.Pattern[str]] = re.compile(
+    rf"^{API_V1}/settings/appearance/[a-z]+/(?:logo|favicon)$"
 )
 # PUT /banners/{name}/{locale}
 _BANNER_UPLOAD_PREFIX: Final[str] = f"{API_V1}/banners/"
@@ -76,7 +74,7 @@ def _limit_for(scope: Scope) -> int:
         return _DEFAULT_BODY_LIMIT
     if _BROADCAST_MEDIA_RE.match(path):
         return _BROADCAST_MEDIA_BODY_LIMIT
-    if path in _UPLOAD_PATHS or path.startswith(_BANNER_UPLOAD_PREFIX):
+    if _APPEARANCE_UPLOAD_RE.match(path) or path.startswith(_BANNER_UPLOAD_PREFIX):
         return _UPLOAD_BODY_LIMIT
     return _DEFAULT_BODY_LIMIT
 

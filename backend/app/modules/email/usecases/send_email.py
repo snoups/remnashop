@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageKind
+from app.core.enums import AppearanceImageKind, AppearanceTarget
 from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -51,7 +51,7 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
         if "cid:logo" in data.html:
             try:
                 logo = await self._get_public_appearance_image_use_case.execute(
-                    AppearanceImageKind.LOGO
+                    AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO
                 )
             except NotFoundError:
                 pass

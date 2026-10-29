@@ -14,7 +14,7 @@ from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.shop_settings import ShopSettings
 from app.core.db.partial_update import apply_partial_update
 from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
-from app.core.enums import AppearanceImageKind, SmtpSecurity
+from app.core.enums import AppearanceImageKind, AppearanceTarget, SmtpSecurity
 from app.modules.settings.dto import (
     AccessSettingsDto,
     AppearanceSettingsDto,
@@ -40,11 +40,16 @@ from app.modules.settings.dto import (
 # replacements would otherwise both insert.
 _BOT_COMMANDS_LOCK_KEY: Final[int] = 8221937
 
+_APPEARANCE_ROW_IDS: Final[dict[AppearanceTarget, int]] = {
+    AppearanceTarget.DASHBOARD: SINGLETON_ID,
+    AppearanceTarget.CABINET: 2,
+}
+_APPEARANCE_UPDATE_SKIP: Final[frozenset[str]] = frozenset({"target"})
+
 _SingletonRow = TypeVar(
     "_SingletonRow",
     BotSettings,
     OAuthSettings,
-    AppearanceSettings,
     ShopSettings,
     AccessSettings,
     BotRequirements,
@@ -239,22 +244,27 @@ class SettingsRepository:
             updated_at=row.updated_at,
         )
 
-    async def get_appearance_settings(self) -> AppearanceSettingsDto:
-        row = await self.session.get(AppearanceSettings, SINGLETON_ID)
+    async def _get_or_create_appearance(self, target: AppearanceTarget) -> AppearanceSettings:
+        return await get_or_create_singleton(
+            self.session, AppearanceSettings, _APPEARANCE_ROW_IDS[target]
+        )
+
+    async def get_appearance_settings(self, target: AppearanceTarget) -> AppearanceSettingsDto:
+        row = await self.session.get(AppearanceSettings, _APPEARANCE_ROW_IDS[target])
         return self._to_appearance_dto(row)
 
     async def update_appearance_settings(
         self, data: UpdateAppearanceSettingsDto
     ) -> AppearanceSettingsDto:
-        row = await self._get_or_create_singleton(AppearanceSettings)
-        apply_partial_update(row, data)
+        row = await self._get_or_create_appearance(data.target)
+        apply_partial_update(row, data, skip=_APPEARANCE_UPDATE_SKIP)
 
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_appearance_dto(row)
 
-    async def reset_appearance_settings(self) -> AppearanceSettingsDto:
-        row = await self._get_or_create_singleton(AppearanceSettings)
+    async def reset_appearance_settings(self, target: AppearanceTarget) -> AppearanceSettingsDto:
+        row = await self._get_or_create_appearance(target)
 
         row.brand_name = None
         row.primary_color = None
@@ -266,9 +276,9 @@ class SettingsRepository:
         return self._to_appearance_dto(row)
 
     async def find_appearance_image_meta(
-        self, kind: AppearanceImageKind
+        self, target: AppearanceTarget, kind: AppearanceImageKind
     ) -> Optional[tuple[str, str]]:
-        row = await self.session.get(AppearanceSettings, SINGLETON_ID)
+        row = await self.session.get(AppearanceSettings, _APPEARANCE_ROW_IDS[target])
         if row is None:
             return None
 
@@ -282,9 +292,9 @@ class SettingsRepository:
         return row.favicon_extension, row.favicon_content_type
 
     async def set_appearance_image(
-        self, kind: AppearanceImageKind, content_type: str, extension: str
+        self, target: AppearanceTarget, kind: AppearanceImageKind, content_type: str, extension: str
     ) -> AppearanceSettingsDto:
-        row = await self._get_or_create_singleton(AppearanceSettings)
+        row = await self._get_or_create_appearance(target)
 
         if kind == AppearanceImageKind.LOGO:
             row.logo_content_type = content_type
@@ -297,8 +307,10 @@ class SettingsRepository:
         await self.session.refresh(row)
         return self._to_appearance_dto(row)
 
-    async def clear_appearance_image(self, kind: AppearanceImageKind) -> AppearanceSettingsDto:
-        row = await self._get_or_create_singleton(AppearanceSettings)
+    async def clear_appearance_image(
+        self, target: AppearanceTarget, kind: AppearanceImageKind
+    ) -> AppearanceSettingsDto:
+        row = await self._get_or_create_appearance(target)
 
         if kind == AppearanceImageKind.LOGO:
             row.logo_content_type = None

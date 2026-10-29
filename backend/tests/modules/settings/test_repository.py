@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.oauth_settings import OAuthSettings
-from app.core.enums import AppearanceImageKind
+from app.core.enums import AppearanceImageKind, AppearanceTarget
 from app.modules.settings.dto import (
     UpdateAppearanceSettingsDto,
     UpdateBotSettingsDto,
@@ -306,7 +306,7 @@ async def test_replace_bot_commands_persists_enabled_flag(
 async def test_get_appearance_settings_returns_defaults_when_missing(
     settings_repository: SettingsRepository,
 ) -> None:
-    settings = await settings_repository.get_appearance_settings()
+    settings = await settings_repository.get_appearance_settings(AppearanceTarget.DASHBOARD)
 
     assert settings.brand_name is None
     assert settings.primary_color is None
@@ -320,10 +320,11 @@ async def test_update_appearance_settings_persists_partial_updates(
     settings_repository: SettingsRepository,
 ) -> None:
     await settings_repository.update_appearance_settings(
-        UpdateAppearanceSettingsDto(brand_name="Acme VPN")
+        UpdateAppearanceSettingsDto(target=AppearanceTarget.DASHBOARD, brand_name="Acme VPN")
     )
     settings = await settings_repository.update_appearance_settings(
         UpdateAppearanceSettingsDto(
+            target=AppearanceTarget.DASHBOARD,
             primary_color="#ff0000",
             shader_palette=["#111111", "#222222", "#333333", "#444444"],
             shader_enabled=False,
@@ -341,13 +342,14 @@ async def test_reset_appearance_settings_clears_all_fields(
 ) -> None:
     await settings_repository.update_appearance_settings(
         UpdateAppearanceSettingsDto(
+            target=AppearanceTarget.DASHBOARD,
             brand_name="Acme VPN",
             primary_color="#ff0000",
             shader_palette=["#111111", "#222222", "#333333", "#444444"],
             shader_enabled=False,
         )
     )
-    settings = await settings_repository.reset_appearance_settings()
+    settings = await settings_repository.reset_appearance_settings(AppearanceTarget.DASHBOARD)
 
     assert settings.brand_name is None
     assert settings.primary_color is None
@@ -359,38 +361,53 @@ async def test_set_appearance_image_marks_has_logo(
     settings_repository: SettingsRepository,
 ) -> None:
     settings = await settings_repository.set_appearance_image(
-        AppearanceImageKind.LOGO, "image/png", "png"
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "image/png", "png"
     )
 
     assert settings.has_logo is True
     assert settings.has_favicon is False
-    meta = await settings_repository.find_appearance_image_meta(AppearanceImageKind.LOGO)
+    meta = await settings_repository.find_appearance_image_meta(
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO
+    )
     assert meta == ("png", "image/png")
 
 
 async def test_get_appearance_image_meta_returns_none_when_unset(
     settings_repository: SettingsRepository,
 ) -> None:
-    meta = await settings_repository.find_appearance_image_meta(AppearanceImageKind.FAVICON)
+    meta = await settings_repository.find_appearance_image_meta(
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.FAVICON
+    )
     assert meta is None
 
 
 async def test_clear_appearance_image_resets_has_logo(
     settings_repository: SettingsRepository,
 ) -> None:
-    await settings_repository.set_appearance_image(AppearanceImageKind.LOGO, "image/png", "png")
-    settings = await settings_repository.clear_appearance_image(AppearanceImageKind.LOGO)
+    await settings_repository.set_appearance_image(
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "image/png", "png"
+    )
+    settings = await settings_repository.clear_appearance_image(
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO
+    )
 
     assert settings.has_logo is False
-    assert await settings_repository.find_appearance_image_meta(AppearanceImageKind.LOGO) is None
+    assert (
+        await settings_repository.find_appearance_image_meta(
+            AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO
+        )
+        is None
+    )
 
 
 async def test_set_appearance_image_kinds_are_independent(
     settings_repository: SettingsRepository,
 ) -> None:
-    await settings_repository.set_appearance_image(AppearanceImageKind.LOGO, "image/png", "png")
+    await settings_repository.set_appearance_image(
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "image/png", "png"
+    )
     settings = await settings_repository.set_appearance_image(
-        AppearanceImageKind.FAVICON, "image/svg+xml", "svg"
+        AppearanceTarget.DASHBOARD, AppearanceImageKind.FAVICON, "image/svg+xml", "svg"
     )
 
     assert settings.has_logo is True

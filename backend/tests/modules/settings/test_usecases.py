@@ -12,7 +12,7 @@ from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import AppearanceImageKind, Locale, OAuthProvider, Role
+from app.core.enums import AppearanceImageKind, AppearanceTarget, Locale, OAuthProvider, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import (
     NotFoundError,
@@ -984,7 +984,7 @@ async def test_get_public_appearance_returns_defaults(
 ) -> None:
     use_case = GetPublicAppearanceUseCase(settings_repository, uow)
 
-    settings = await use_case.execute()
+    settings = await use_case.execute(AppearanceTarget.DASHBOARD)
 
     assert settings.brand_name is None
     assert settings.has_logo is False
@@ -998,6 +998,7 @@ async def test_owner_can_update_appearance_settings(
     settings = await use_case(
         OWNER,
         UpdateAppearanceSettingsDto(
+            target=AppearanceTarget.DASHBOARD,
             brand_name="Acme VPN",
             primary_color="#22d3ee",
             shader_palette=["#111111", "#222222", "#333333", "#444444"],
@@ -1011,13 +1012,35 @@ async def test_owner_can_update_appearance_settings(
     assert settings.shader_enabled is False
 
 
+async def test_cabinet_appearance_is_separate_from_dashboard(
+    settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    publisher = RecordingEventPublisher()
+    use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow, publisher)
+
+    await use_case(
+        OWNER,
+        UpdateAppearanceSettingsDto(target=AppearanceTarget.CABINET, brand_name="Acme Cabinet"),
+    )
+
+    get_use_case = GetPublicAppearanceUseCase(settings_repository, uow)
+    assert (await get_use_case.execute(AppearanceTarget.CABINET)).brand_name == "Acme Cabinet"
+    assert (await get_use_case.execute(AppearanceTarget.DASHBOARD)).brand_name is None
+    event = publisher.events[-1]
+    assert event.target == AppearanceTarget.CABINET
+    assert event.changed_fields == ["brand_name"]
+
+
 async def test_regular_user_cannot_update_appearance_settings(
     settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
     use_case = UpdateAppearanceSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER, UpdateAppearanceSettingsDto(brand_name="Acme VPN"))
+        await use_case(
+            REGULAR_USER,
+            UpdateAppearanceSettingsDto(target=AppearanceTarget.DASHBOARD, brand_name="Acme VPN"),
+        )
 
 
 async def test_owner_can_reset_appearance_settings(
@@ -1033,13 +1056,14 @@ async def test_owner_can_reset_appearance_settings(
     await update_use_case(
         OWNER,
         UpdateAppearanceSettingsDto(
+            target=AppearanceTarget.DASHBOARD,
             brand_name="Acme VPN",
             primary_color="#22d3ee",
             shader_palette=["#111111", "#222222", "#333333", "#444444"],
             shader_enabled=False,
         ),
     )
-    settings = await reset_use_case(OWNER)
+    settings = await reset_use_case(OWNER, AppearanceTarget.DASHBOARD)
 
     assert settings.brand_name is None
     assert settings.primary_color is None
@@ -1053,7 +1077,7 @@ async def test_regular_user_cannot_reset_appearance_settings(
     use_case = ResetAppearanceSettingsUseCase(settings_repository, uow, RecordingEventPublisher())
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER)
+        await use_case(REGULAR_USER, AppearanceTarget.DASHBOARD)
 
 
 async def test_owner_can_upload_and_fetch_logo(
@@ -1067,11 +1091,13 @@ async def test_owner_can_upload_and_fetch_logo(
 
     settings = await upload_use_case(
         OWNER,
-        UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=FAKE_PNG_APPEARANCE
+        ),
     )
     assert settings.has_logo is True
 
-    image = await get_use_case.execute(AppearanceImageKind.LOGO)
+    image = await get_use_case.execute(AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO)
     data, content_type = image.data, image.content_type
     assert data == FAKE_PNG_APPEARANCE
     assert content_type == "image/png"
@@ -1090,7 +1116,10 @@ async def test_upload_accepts_plain_square_svg(
     svg_data = f"<svg {_SVG_NS} viewBox='0 0 64 64'><rect width='64' height='64'/></svg>".encode()
 
     settings = await logo_use_case(
-        OWNER, UploadAppearanceImageDto(content_type="image/svg+xml", data=svg_data)
+        OWNER,
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/svg+xml", data=svg_data
+        ),
     )
 
     assert settings.has_logo is True
@@ -1124,7 +1153,10 @@ async def test_upload_rejects_unsafe_or_invalid_svg(
 
     with pytest.raises(ValidationError):
         await use_case(
-            OWNER, UploadAppearanceImageDto(content_type="image/svg+xml", data=svg.encode())
+            OWNER,
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD, content_type="image/svg+xml", data=svg.encode()
+            ),
         )
 
 
@@ -1136,7 +1168,12 @@ async def test_upload_rejects_unsupported_content_type(
     )
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, UploadAppearanceImageDto(content_type="application/pdf", data=b"x"))
+        await use_case(
+            OWNER,
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD, content_type="application/pdf", data=b"x"
+            ),
+        )
 
 
 async def test_upload_rejects_content_not_matching_declared_type(
@@ -1150,6 +1187,7 @@ async def test_upload_rejects_content_not_matching_declared_type(
         await use_case(
             OWNER,
             UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD,
                 content_type="image/png",
                 data=b"this is not actually a png",
             ),
@@ -1165,7 +1203,12 @@ async def test_upload_rejects_oversized_file(
     oversized = FAKE_PNG_APPEARANCE + b"x" * (1024 * 1024 + 1)
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, UploadAppearanceImageDto(content_type="image/png", data=oversized))
+        await use_case(
+            OWNER,
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD, content_type="image/png", data=oversized
+            ),
+        )
 
 
 async def test_upload_favicon_has_its_own_weight_limit(
@@ -1177,7 +1220,12 @@ async def test_upload_favicon_has_its_own_weight_limit(
     oversized = _png(32, 32) + b"x" * (256 * 1024 + 1)
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, UploadAppearanceImageDto(content_type="image/png", data=oversized))
+        await use_case(
+            OWNER,
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD, content_type="image/png", data=oversized
+            ),
+        )
 
 
 @pytest.mark.parametrize(("width", "height"), [(128, 64), (64, 64), (2048, 2048)])
@@ -1195,7 +1243,12 @@ async def test_upload_logo_rejects_bad_dimensions(
 
     with pytest.raises(ValidationError):
         await use_case(
-            OWNER, UploadAppearanceImageDto(content_type="image/png", data=_png(width, height))
+            OWNER,
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD,
+                content_type="image/png",
+                data=_png(width, height),
+            ),
         )
 
 
@@ -1207,7 +1260,10 @@ async def test_upload_favicon_accepts_small_square(
     )
 
     settings = await use_case(
-        OWNER, UploadAppearanceImageDto(content_type="image/png", data=_png(32, 32))
+        OWNER,
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=_png(32, 32)
+        ),
     )
 
     assert settings.has_favicon is True
@@ -1224,7 +1280,7 @@ async def test_get_appearance_image_missing_raises_not_found(
     )
 
     with pytest.raises(NotFoundError):
-        await use_case.execute(AppearanceImageKind.LOGO)
+        await use_case.execute(AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO)
 
 
 async def test_owner_can_delete_uploaded_logo(
@@ -1240,9 +1296,11 @@ async def test_owner_can_delete_uploaded_logo(
 
     await upload_use_case(
         OWNER,
-        UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=FAKE_PNG_APPEARANCE
+        ),
     )
-    settings = await delete_use_case(OWNER)
+    settings = await delete_use_case(OWNER, AppearanceTarget.DASHBOARD)
 
     assert settings.has_logo is False
     assert not (tmp_path / "appearance" / "logo.png").exists()
@@ -1256,7 +1314,7 @@ async def test_delete_missing_appearance_image_raises_not_found(
     )
 
     with pytest.raises(NotFoundError):
-        await delete_use_case(OWNER)
+        await delete_use_case(OWNER, AppearanceTarget.DASHBOARD)
 
 
 async def test_admin_with_only_logo_permission_cannot_upload_favicon(
@@ -1280,14 +1338,20 @@ async def test_admin_with_only_logo_permission_cannot_upload_favicon(
 
     settings = await logo_use_case(
         limited_admin,
-        UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=FAKE_PNG_APPEARANCE
+        ),
     )
     assert settings.has_logo is True
 
     with pytest.raises(PermissionDeniedError):
         await favicon_use_case(
             limited_admin,
-            UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD,
+                content_type="image/png",
+                data=FAKE_PNG_APPEARANCE,
+            ),
         )
 
 
@@ -1312,11 +1376,13 @@ async def test_admin_with_upload_permission_cannot_delete(
 
     await upload_use_case(
         upload_only_admin,
-        UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=FAKE_PNG_APPEARANCE
+        ),
     )
 
     with pytest.raises(PermissionDeniedError):
-        await delete_use_case(upload_only_admin)
+        await delete_use_case(upload_only_admin, AppearanceTarget.DASHBOARD)
 
 
 async def test_admin_with_only_favicon_permission_cannot_upload_logo(
@@ -1340,14 +1406,20 @@ async def test_admin_with_only_favicon_permission_cannot_upload_logo(
 
     settings = await favicon_use_case(
         limited_admin,
-        UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+        UploadAppearanceImageDto(
+            target=AppearanceTarget.DASHBOARD, content_type="image/png", data=FAKE_PNG_APPEARANCE
+        ),
     )
     assert settings.has_favicon is True
 
     with pytest.raises(PermissionDeniedError):
         await logo_use_case(
             limited_admin,
-            UploadAppearanceImageDto(content_type="image/png", data=FAKE_PNG_APPEARANCE),
+            UploadAppearanceImageDto(
+                target=AppearanceTarget.DASHBOARD,
+                content_type="image/png",
+                data=FAKE_PNG_APPEARANCE,
+            ),
         )
 
 

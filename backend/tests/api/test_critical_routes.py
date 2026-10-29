@@ -185,35 +185,54 @@ async def test_passkey_verify_rejects_garbage_credential(client: httpx.AsyncClie
 
 
 async def test_public_appearance_needs_no_session(client: httpx.AsyncClient) -> None:
-    response = await client.get(f"{API_V1}/appearance")
+    response = await client.get(f"{API_V1}/appearance/dashboard")
 
     assert response.status_code == 200
     assert response.json()["has_logo"] is False
 
 
 async def test_public_appearance_images_404_when_unset(client: httpx.AsyncClient) -> None:
-    for kind in ("logo", "favicon"):
-        response = await client.get(f"{API_V1}/appearance/{kind}")
-        assert response.status_code == 404
-        assert response.json()["detail"] != "Not Found"  # usecase miss, not an unrouted path
+    for target in ("dashboard", "cabinet"):
+        for kind in ("logo", "favicon"):
+            response = await client.get(f"{API_V1}/appearance/{target}/{kind}")
+            assert response.status_code == 404
+            assert response.json()["detail"] != "Not Found"  # usecase miss, not an unrouted path
 
 
 async def test_public_logo_is_served_sandboxed(
     client: httpx.AsyncClient, owner_headers: dict[str, str]
 ) -> None:
     upload = await client.put(
-        f"{API_V1}/settings/appearance/logo",
+        f"{API_V1}/settings/appearance/dashboard/logo",
         files={"file": ("logo.svg", _SVG_LOGO, "image/svg+xml")},
         headers=owner_headers,
     )
     assert upload.status_code == 200
 
-    response = await client.get(f"{API_V1}/appearance/logo")
+    response = await client.get(f"{API_V1}/appearance/dashboard/logo")
 
     assert response.status_code == 200
     assert response.content == _SVG_LOGO
     assert "sandbox" in response.headers["content-security-policy"]
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+async def test_cabinet_logo_is_separate_from_dashboard(
+    client: httpx.AsyncClient, owner_headers: dict[str, str]
+) -> None:
+    upload = await client.put(
+        f"{API_V1}/settings/appearance/cabinet/logo",
+        files={"file": ("logo.svg", _SVG_LOGO, "image/svg+xml")},
+        headers=owner_headers,
+    )
+    assert upload.status_code == 200
+    assert upload.json()["has_logo"] is True
+
+    cabinet = await client.get(f"{API_V1}/appearance/cabinet/logo")
+    dashboard = await client.get(f"{API_V1}/appearance/dashboard")
+
+    assert cabinet.content == _SVG_LOGO
+    assert dashboard.json()["has_logo"] is False
 
 
 @pytest.mark.parametrize("kind", ["thumbnails", "animations"])

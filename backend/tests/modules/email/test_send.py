@@ -85,7 +85,7 @@ class _Logo:
         self.found = found
         self.calls = 0
 
-    async def execute(self, kind: object) -> tuple[bytes, str]:
+    async def execute(self, target: object, kind: object) -> tuple[bytes, str]:
         self.calls += 1
         if not self.found:
             raise NotFoundError("no logo", code=ErrorCode.APPEARANCE_IMAGE_NOT_SET)

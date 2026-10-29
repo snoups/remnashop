@@ -1171,6 +1171,8 @@
     "appearance": {
       "dashboardTitle": "Панель управления",
       "dashboardDescription": "Брендинг и цвета панели управления",
+      "cabinetTitle": "Веб-кабинет",
+      "cabinetDescription": "Брендинг и цвета веб-кабинета; не заданное берётся из панели управления",
       "brandNameLabel": "Название бренда",
       "brandNamePlaceholder": "Remnashop",
       "accentColorLabel": "Акцентный цвет",

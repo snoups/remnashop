@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Response
 
 from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
-from app.core.enums import AppearanceImageKind
+from app.core.enums import AppearanceImageKind, AppearanceTarget
 from app.modules.settings.api.schemas import AppearanceResponse, CabinetSettingsResponse
 from app.modules.settings.usecases import (
     GetCabinetSettingsUseCase,
@@ -25,24 +25,30 @@ _IMAGE_HEADERS: Final[dict[str, str]] = {
 }
 
 
-@router.get("", response_model=AppearanceResponse)
+@router.get("/{target}", response_model=AppearanceResponse)
 @inject
-async def get_appearance(use_case: FromDishka[GetPublicAppearanceUseCase]) -> AppearanceResponse:
-    settings = await use_case.execute()
+async def get_appearance(
+    target: AppearanceTarget, use_case: FromDishka[GetPublicAppearanceUseCase]
+) -> AppearanceResponse:
+    settings = await use_case.execute(target)
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
 
-@router.get("/logo", responses=error_responses(404))
+@router.get("/{target}/logo", responses=error_responses(404))
 @inject
-async def get_appearance_logo(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    image = await use_case.execute(AppearanceImageKind.LOGO)
+async def get_appearance_logo(
+    target: AppearanceTarget, use_case: FromDishka[GetPublicAppearanceImageUseCase]
+) -> Response:
+    image = await use_case.execute(target, AppearanceImageKind.LOGO)
     return Response(content=image.data, media_type=image.content_type, headers=_IMAGE_HEADERS)
 
 
-@router.get("/favicon", responses=error_responses(404))
+@router.get("/{target}/favicon", responses=error_responses(404))
 @inject
-async def get_appearance_favicon(use_case: FromDishka[GetPublicAppearanceImageUseCase]) -> Response:
-    image = await use_case.execute(AppearanceImageKind.FAVICON)
+async def get_appearance_favicon(
+    target: AppearanceTarget, use_case: FromDishka[GetPublicAppearanceImageUseCase]
+) -> Response:
+    image = await use_case.execute(target, AppearanceImageKind.FAVICON)
     return Response(content=image.data, media_type=image.content_type, headers=_IMAGE_HEADERS)
 
 

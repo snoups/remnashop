@@ -3,7 +3,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
-from app.core.enums import AppearanceImageKind
+from app.core.enums import AppearanceImageKind, AppearanceTarget
 from app.core.exceptions import NotFoundError
 from app.modules.broadcasts.dto import EmailImageDto
 from app.modules.broadcasts.storage import email_image_path
@@ -32,7 +32,7 @@ async def load_email_logo(
     if not brand.has_logo:
         return brand, None
     try:
-        image = await appearance.execute(AppearanceImageKind.LOGO)
+        image = await appearance.execute(AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO)
     except NotFoundError:
         return replace(brand, has_logo=False), None
     return brand, InlineImageDto(cid="logo", data=image.data, content_type=image.content_type)

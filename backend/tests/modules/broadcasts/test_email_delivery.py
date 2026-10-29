@@ -18,6 +18,7 @@ from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AppearanceImageKind,
+    AppearanceTarget,
     BroadcastCategory,
     BroadcastDelivery,
     BroadcastRecipientStatus,
@@ -434,8 +435,12 @@ async def test_inline_images_attached(
     smtp: None,
 ) -> None:
     if with_logo:
-        await settings_repository.set_appearance_image(AppearanceImageKind.LOGO, "image/png", "png")
-        logo_path = appearance_image_path(media_config.media_dir, AppearanceImageKind.LOGO, "png")
+        await settings_repository.set_appearance_image(
+            AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "image/png", "png"
+        )
+        logo_path = appearance_image_path(
+            media_config.media_dir, AppearanceTarget.DASHBOARD, AppearanceImageKind.LOGO, "png"
+        )
         logo_path.parent.mkdir(parents=True, exist_ok=True)
         logo_path.write_bytes(b"logo")
     ids = await _users(session, user_repository, 170, 1)
