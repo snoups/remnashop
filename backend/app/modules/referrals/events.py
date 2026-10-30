@@ -20,12 +20,6 @@ class ReferralRewardIssuedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class PointsWithdrawalRequestedEvent(UserEvent):
-    category: ClassVar[EventCategory] = EventCategory.REFERRAL
-    amount: str
-
-
-@dataclass(frozen=True, kw_only=True)
 class UserPointsAdjustedEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     delta: str

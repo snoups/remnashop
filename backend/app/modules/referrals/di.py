@@ -21,7 +21,6 @@ from app.modules.referrals.usecases import (
     ListOwnInvitedUsersUseCase,
     ListReferralsUseCase,
     RedeemBonusDaysUseCase,
-    RequestPointsWithdrawalUseCase,
     ResetOwnReferralCodeUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
@@ -38,7 +37,6 @@ class ReferralsProvider(Provider):
     referral_repository = provide(ReferralRepository)
     bonus_days_targets = provide(BonusDaysTargets)
     use_cases = provide_all(
-        RequestPointsWithdrawalUseCase,
         AdjustUserPointsUseCase,
         AdjustUserBonusDaysUseCase,
         GetReferralSettingsUseCase,

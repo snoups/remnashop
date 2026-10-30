@@ -20,7 +20,6 @@ class NotificationGroup(StrEnum):
     FAILURES = auto()
     INFRASTRUCTURE = auto()
     BROADCASTS = auto()
-    REQUESTS = auto()
     MONEY = auto()
     ADMINS = auto()
     CUSTOMERS = auto()
@@ -73,7 +72,6 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
         }
     ),
     NotificationGroup.BROADCASTS: frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),
-    NotificationGroup.REQUESTS: frozenset({"PointsWithdrawalRequestedEvent"}),
     NotificationGroup.MONEY: frozenset(
         {
             "SubscriptionPurchasedEvent",

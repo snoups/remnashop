@@ -1,45 +1,27 @@
 import io
-from decimal import Decimal, InvalidOperation
 
 import segno
 from aiogram import Bot
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
-from aiogram_dialog import DialogManager, ShowMode
-from aiogram_dialog.widgets.input import MessageInput
+from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
-from redis.asyncio import Redis
 
-from app.core.constants import (
-    POINTS_WITHDRAW_RATE_KEY,
-    POINTS_WITHDRAW_RATE_LIMIT,
-    TIME_1H,
-    USER_KEY,
-    ZERO_AMOUNT,
-)
+from app.core.constants import USER_KEY
 from app.core.exceptions import CooldownError, NotFoundError, ValidationError
-from app.core.utils.rate_counter import hit_counter, user_rate_key
 from app.modules.referrals import (
     GetOwnReferralStatsUseCase,
     ListBonusDaysTargetsUseCase,
     RedeemBonusDaysDto,
     RedeemBonusDaysUseCase,
-    RequestPointsWithdrawalDto,
-    RequestPointsWithdrawalUseCase,
     ResetOwnReferralCodeUseCase,
 )
 from app.modules.users import UserDto
 from app.telegram.i18n import format_datetime, get_translator
 from app.telegram.routers.referrals.getters import referral_url
 from app.telegram.states import Referrals
-
-
-async def on_withdraw_points(
-    callback: CallbackQuery, widget: Keyboard, dialog_manager: DialogManager
-) -> None:
-    await dialog_manager.switch_to(Referrals.WITHDRAW)
 
 
 @inject
@@ -88,43 +70,6 @@ async def on_reset_referral_code(
         await callback.answer(runner.get("ntf-referrals.reset-disabled"), show_alert=True)
         return
     await callback.answer(runner.get("ntf-referrals.code-reset"), show_alert=True)
-
-
-@inject
-async def on_withdraw_input(
-    message: Message,
-    widget: MessageInput,
-    dialog_manager: DialogManager,
-    request_points_withdrawal: FromDishka[RequestPointsWithdrawalUseCase],
-    redis: FromDishka[Redis],
-    i18n: FromDishka[TranslatorHub],
-) -> None:
-    dialog_manager.show_mode = ShowMode.EDIT
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-
-    key = user_rate_key(POINTS_WITHDRAW_RATE_KEY, user.id)
-    if await hit_counter(redis, key, TIME_1H) > POINTS_WITHDRAW_RATE_LIMIT:
-        await message.answer(runner.get("ntf-referrals.too-many-attempts"))
-        return
-
-    try:
-        amount = Decimal((message.text or "").strip().replace(",", "."))
-    except InvalidOperation:
-        amount = ZERO_AMOUNT
-    # is_finite: Decimal accepts "NaN" and "Infinity"
-    if not amount.is_finite() or amount <= 0:
-        await message.answer(runner.get("ntf-referrals.invalid-amount"))
-        return
-
-    try:
-        await request_points_withdrawal(user, RequestPointsWithdrawalDto(amount=amount))
-    except (NotFoundError, ValidationError):
-        await message.answer(runner.get("ntf-referrals.withdraw-failed"))
-        return
-
-    await message.answer(runner.get("ntf-referrals.withdraw-requested"))
-    await dialog_manager.switch_to(Referrals.MAIN)
 
 
 async def _redeem(

@@ -35,7 +35,6 @@ from app.modules.referrals.dto import (
     AdjustUserPointsDto,
     ListInvitedUsersDto,
     ListReferralsDto,
-    RequestPointsWithdrawalDto,
     UpdateReferralSettingsDto,
 )
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
@@ -49,7 +48,6 @@ from app.modules.referrals.usecases import (
     GetUserReferralStatsUseCase,
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
-    RequestPointsWithdrawalUseCase,
     ResetOwnReferralCodeUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
@@ -105,30 +103,6 @@ async def _create_subscription(
         )
     )
     return sub.id
-
-
-async def test_request_withdrawal_rejects_amount_above_points(
-    user_repository: UserRepository, uow, event_publisher
-) -> None:
-    user = await _create_user(user_repository, 5001)
-    use_case = RequestPointsWithdrawalUseCase(uow, event_publisher)
-
-    with pytest.raises(ValidationError):
-        await use_case(user, RequestPointsWithdrawalDto(amount=Decimal("1")))
-
-
-async def test_request_withdrawal_does_not_touch_points(
-    user_repository: UserRepository, uow, event_publisher
-) -> None:
-    user = await _create_user(user_repository, 5002)
-    await user_repository.credit_points(user.id, Decimal("50"))
-    refreshed = await user_repository.find_by_id(user.id)
-    use_case = RequestPointsWithdrawalUseCase(uow, event_publisher)
-
-    await use_case(refreshed, RequestPointsWithdrawalDto(amount=Decimal("20")))
-
-    unchanged = await user_repository.find_by_id(user.id)
-    assert unchanged.points == Decimal("50")
 
 
 async def test_adjust_user_points_requires_permission(

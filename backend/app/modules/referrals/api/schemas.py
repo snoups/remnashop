@@ -123,10 +123,6 @@ class AdjustBonusDaysRequest(BaseModel):
     delta: int = Field(ge=-MAX_BONUS_DAYS, le=MAX_BONUS_DAYS)
 
 
-class WithdrawPointsRequest(BaseModel):
-    amount: _WholeDecimal = Field(gt=0)
-
-
 class RedeemBonusDaysRequest(BaseModel):
     subscription_id: int
     days: int = Field(ge=1, le=MAX_BONUS_DAYS)

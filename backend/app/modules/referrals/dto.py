@@ -227,11 +227,6 @@ class ListReferralsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class RequestPointsWithdrawalDto:
-    amount: Decimal
-
-
-@dataclass(frozen=True, kw_only=True)
 class RedeemBonusDaysDto:
     subscription_id: int
     days: int

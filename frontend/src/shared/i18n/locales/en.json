@@ -604,7 +604,6 @@
       "PasskeyRegisteredEvent": "Passkey added",
       "PasskeyRemovedEvent": "Passkey removed",
       "PlanChangedEvent": "Plan changed",
-      "PointsWithdrawalRequestedEvent": "Points withdrawal request",
       "BonusDaysRedeemedEvent": "Bonus days redeemed",
       "PromocodeActivatedEvent": "Promocode activated",
       "PromocodeChangedEvent": "Promocode changed",
@@ -678,7 +677,6 @@
       "AccessSettingsChangedEvent": "Access settings changed",
       "BotRequirementsChangedEvent": "Bot requirements changed",
       "ShopSettingsChangedEvent": "Shop settings changed",
-      "UserRulesAcceptedEvent": "Rules accepted",
       "EmailSettingsChangedEvent": "Email settings changed",
       "CabinetAuthSettingsChangedEvent": "Cabinet sign-in settings changed",
       "SubscriptionExpiredAgoEvent": "Subscription expired a while ago",
@@ -1746,10 +1744,6 @@
           "title": "Broadcasts",
           "description": "Finished and failed broadcasts"
         },
-        "requests": {
-          "title": "Requests",
-          "description": "Referral points withdrawal requests"
-        },
         "money": {
           "title": "Transactions",
           "description": "Purchases, renewals and refunds"
@@ -2440,6 +2434,7 @@
       "user_points": "User points",
       "subscription_url": "Connection link",
       "cabinet_url": "Web cabinet link",
+      "support_url": "Support link",
       "devices_current": "Devices connected",
       "devices_max": "Device limit",
       "name": "Name",
@@ -3898,8 +3893,6 @@
     "WEBHOOK_SIGNATURE_INVALID": "Invalid webhook signature.",
     "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn’t trusted.",
     "WEBHOOK_STALE": "The webhook is outdated.",
-    "WITHDRAWAL_AMOUNT_INVALID": "The amount must be positive.",
-    "WITHDRAWAL_EXCEEDS_POINTS": "Not enough points.",
     "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port."
   },
   "loyalty": {

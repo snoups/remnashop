@@ -146,7 +146,6 @@ btn-subscription =
     .renew = Продлить
     .change = Сменить план
 
-msg-referrals-withdraw = Баллов на счёте: { $points }. Введите, сколько вывести:
 msg-referrals-redeem-target = Бонусных дней: { $bonus_days }. Выберите подписку, к которой их добавить:
 
 btn-referrals =
@@ -261,10 +260,6 @@ gateway-name =
     .PAYPEAR = PayPear
 
 ntf-referrals =
-    .invalid-amount = Введите положительное число баллов.
-    .too-many-attempts = Слишком много запросов. Попробуйте через час.
-    .withdraw-failed = Не удалось вывести такую сумму.
-    .withdraw-requested = Запрос на вывод отправлен. Мы свяжемся с вами.
     .no-subscription = У вас нет активной подписки, к которой можно добавить дни.
     .days-redeemed = Бонусные дни добавлены к подписке: { $days }.
     .redeem-failed = Бонусные дни нельзя добавить к этой подписке.

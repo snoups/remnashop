@@ -4,7 +4,6 @@ import {
   BellRing,
   CalendarX,
   CircleAlert,
-  HandCoins,
   Send,
   Server,
   ShieldAlert,
@@ -39,7 +38,6 @@ import { PushDevicesList } from "@features/notification-settings/PushDevicesList
 const GROUP_ICONS: Record<string, LucideIcon> = {
   security: ShieldAlert,
   failures: CircleAlert,
-  requests: HandCoins,
   money: ShoppingCart,
   admins: UserCog,
   infrastructure: Server,

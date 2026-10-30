@@ -49,7 +49,6 @@ def test_main_menu_offers_the_customer_sections() -> None:
         "purchase_change",
         "open_subscriptions",
         "promocode",
-        "withdraw_points",
         "redeem_days",
     } <= catalog.action_keys()
 

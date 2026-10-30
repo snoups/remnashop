@@ -80,7 +80,11 @@ async def referrals_getter(
     me = await bot.me()
     data["has_points"] = stats.points > 0
     data["has_bonus_days"] = stats.bonus_days > 0
-    data["referral_reset_enabled"] = (await get_shop_settings.system()).referral_reset_enabled
+    shop = await get_shop_settings.system()
+    data["referral_reset_enabled"] = shop.referral_reset_enabled
+    data["support_url"] = (
+        f"https://t.me/{shop.support_telegram}" if shop.support_telegram else shop.support_url or ""
+    )
     data["referral_url"] = (
         referral_url(me.username, stats.referral_code)
         if stats.referral_code and me.username
@@ -101,22 +105,6 @@ async def referrals_getter(
         "referrals.main", dialog_config_cache, runner, data
     )
     return data
-
-
-@inject
-async def withdraw_getter(
-    dialog_manager: DialogManager,
-    i18n: FromDishka[TranslatorHub],
-    **kwargs: Any,
-) -> dict[str, Any]:
-    user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    runner = get_translator(i18n, user)
-    return {
-        "window_text": render_window_text(
-            runner, "msg-referrals-withdraw", points=str(user.points)
-        ),
-        "back_text": label_with_icon(runner, "btn-back.general"),
-    }
 
 
 @inject

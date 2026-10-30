@@ -1,16 +1,10 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies.public import get_current_user
-from app.api.dependencies.rate_limit import user_rate_limit
 from app.api.errors import error_responses
-from app.core.constants import (
-    DEFAULT_PAGE_SIZE,
-    POINTS_WITHDRAW_RATE_KEY,
-    POINTS_WITHDRAW_RATE_LIMIT,
-    TIME_1H,
-)
+from app.core.constants import DEFAULT_PAGE_SIZE
 from app.modules.referrals.api.schemas import (
     BonusDaysTargetsResponse,
     OwnInvitedUserPageResponse,
@@ -18,19 +12,16 @@ from app.modules.referrals.api.schemas import (
     OwnReferralStatsResponse,
     RedeemBonusDaysRequest,
     RedeemBonusDaysResponse,
-    WithdrawPointsRequest,
 )
 from app.modules.referrals.dto import (
     ListOwnInvitedUsersDto,
     RedeemBonusDaysDto,
-    RequestPointsWithdrawalDto,
 )
 from app.modules.referrals.usecases import (
     GetOwnReferralStatsUseCase,
     ListBonusDaysTargetsUseCase,
     ListOwnInvitedUsersUseCase,
     RedeemBonusDaysUseCase,
-    RequestPointsWithdrawalUseCase,
 )
 from app.modules.users import UserDto
 
@@ -59,30 +50,6 @@ async def list_my_invited_users(
         items=[OwnInvitedUserResponse.model_validate(item, from_attributes=True) for item in items],
         total=total,
     )
-
-
-@router.post(
-    "/me/actions/withdraw",
-    status_code=status.HTTP_204_NO_CONTENT,
-    # each request is an audit-log row an admin works through by hand
-    dependencies=[
-        Depends(
-            user_rate_limit(
-                key=POINTS_WITHDRAW_RATE_KEY,
-                limit=POINTS_WITHDRAW_RATE_LIMIT,
-                window_seconds=TIME_1H,
-            )
-        )
-    ],
-    responses=error_responses(400, 404),
-)
-@inject
-async def withdraw_points(
-    payload: WithdrawPointsRequest,
-    use_case: FromDishka[RequestPointsWithdrawalUseCase],
-    actor: UserDto = Depends(get_current_user),
-) -> None:
-    await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))
 
 
 # what bonus days can extend, by the redemption's own rule: the cabinet's pick list

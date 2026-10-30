@@ -302,5 +302,3 @@ class ErrorCode(UpperStrEnum):
     WEBHOOK_SIGNATURE_INVALID = auto()
     WEBHOOK_SOURCE_UNTRUSTED = auto()
     WEBHOOK_STALE = auto()
-    WITHDRAWAL_AMOUNT_INVALID = auto()
-    WITHDRAWAL_EXCEEDS_POINTS = auto()

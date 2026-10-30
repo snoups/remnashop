@@ -146,7 +146,6 @@ btn-subscription =
     .renew = Renew
     .change = Change plan
 
-msg-referrals-withdraw = You have { $points } points. Enter how many to withdraw:
 msg-referrals-redeem-target = Choose which subscription gets your { $bonus_days } bonus days:
 
 btn-referrals =
@@ -261,10 +260,6 @@ gateway-name =
     .PAYPEAR = PayPear
 
 ntf-referrals =
-    .invalid-amount = Enter a positive number of points.
-    .too-many-attempts = Too many requests. Try again in an hour.
-    .withdraw-failed = Can't withdraw that amount.
-    .withdraw-requested = Withdrawal requested. We'll get in touch with you.
     .no-subscription = You have no active subscription to add the days to.
     .days-redeemed = { $days } bonus days added to your subscription.
     .redeem-failed = Bonus days can't be added to this subscription.

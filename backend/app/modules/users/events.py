@@ -105,11 +105,6 @@ class UserPurchaseDiscountChangedEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
-class UserRulesAcceptedEvent(UserEvent):
-    category: ClassVar[EventCategory] = EventCategory.USER
-
-
-@dataclass(frozen=True, kw_only=True)
 class PasswordChangedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
 

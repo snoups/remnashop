@@ -6,7 +6,6 @@ import httpx
 import pytest
 from dishka import AsyncContainer, Provider, Scope
 from fastapi import FastAPI
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
@@ -185,49 +184,6 @@ async def test_manual_referral_attach_is_gone(
     assert response.status_code in (404, 405)
 
 
-async def test_withdraw_points_rejects_amount_above_points(
-    client: httpx.AsyncClient, actor: tuple[UserDto, dict[str, str]]
-) -> None:
-    _, headers = actor
-    response = await client.post(
-        f"{API_V1}/referrals/me/actions/withdraw",
-        json={"amount": "10.00"},
-        headers=headers,
-    )
-    assert response.status_code == 400
-
-
-async def test_withdraw_points_is_rate_limited_per_user(
-    test_container: AsyncContainer,
-    actor: tuple[UserDto, dict[str, str]],
-    redis: Redis,
-    api_app: FastAPI,
-) -> None:
-    # Each request is an audit-log row an admin works through by hand: one user
-    # must not bury the rest, and a new source address must not reset the budget.
-    user, headers = actor
-    app = api_app
-    app.state.dishka_container = test_container
-    key = f"remnashop:ratelimit:points_withdraw:user:{user.id}"
-    await redis.delete(key)
-
-    responses = []
-    for index in range(6):
-        transport = httpx.ASGITransport(app=app, client=(f"203.0.113.{30 + index}", 12345))
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            responses.append(
-                await client.post(
-                    f"{API_V1}/referrals/me/actions/withdraw",
-                    json={"amount": "10.00"},
-                    headers=headers,
-                )
-            )
-
-    await redis.delete(key)
-
-    assert [r.status_code for r in responses] == [400] * 5 + [429]
-
-
 async def test_api_token_cannot_use_customer_endpoints(
     client: httpx.AsyncClient,
     api_token_repository: ApiTokenRepository,
@@ -252,8 +208,8 @@ async def test_api_token_cannot_use_customer_endpoints(
         )
 
     response = await client.post(
-        f"{API_V1}/referrals/me/actions/withdraw",
-        json={"amount": "1"},
+        f"{API_V1}/referrals/me/actions/redeem-days",
+        json={"subscription_id": 1, "days": 1},
         headers={"Authorization": f"Bearer {secret}"},
     )
 

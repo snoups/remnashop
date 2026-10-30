@@ -37,5 +37,4 @@ class Promocode(StatesGroup):
 
 class Referrals(StatesGroup):
     MAIN = State()
-    WITHDRAW = State()
     REDEEM_TARGET = State()

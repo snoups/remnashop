@@ -7,7 +7,6 @@ def register_referrals_metadata() -> None:
     if catalog.has_window("referrals.main"):
         return
 
-    catalog.register_action_key("withdraw_points")
     catalog.register_action_key("redeem_days")
     catalog.register_action_key("referral_qr")
     catalog.register_action_key("reset_referral_code")
@@ -19,6 +18,9 @@ def register_referrals_metadata() -> None:
     )
     catalog.register_variable(
         "referral_url", lambda data: data.get("referral_url", ""), category="referral"
+    )
+    catalog.register_variable(
+        "support_url", lambda data: data.get("support_url", ""), category="other"
     )
 
     catalog.register_window(
@@ -56,8 +58,8 @@ def register_referrals_metadata() -> None:
                     text_key="btn-referrals.withdraw",
                     row=1,
                     column=0,
-                    link_type=ButtonLinkType.ACTION,
-                    action_key="withdraw_points",
+                    link_type=ButtonLinkType.URL,
+                    url_value="${support_url}",
                     visibility_condition="has_points",
                 ),
                 catalog.CatalogButton(

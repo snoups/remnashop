@@ -640,7 +640,6 @@
       "PasskeyRegisteredEvent": "Passkey добавлен",
       "PasskeyRemovedEvent": "Passkey удалён",
       "PlanChangedEvent": "План изменён",
-      "PointsWithdrawalRequestedEvent": "Запрос на вывод баллов",
       "BonusDaysRedeemedEvent": "Бонусные дни потрачены",
       "PromocodeActivatedEvent": "Промокод активирован",
       "PromocodeChangedEvent": "Промокод изменён",
@@ -714,7 +713,6 @@
       "AccessSettingsChangedEvent": "Настройки доступа изменены",
       "BotRequirementsChangedEvent": "Требования бота изменены",
       "ShopSettingsChangedEvent": "Настройки магазина изменены",
-      "UserRulesAcceptedEvent": "Правила приняты",
       "EmailSettingsChangedEvent": "Настройки почты изменены",
       "CabinetAuthSettingsChangedEvent": "Настройки входа в кабинет изменены",
       "SubscriptionExpiredAgoEvent": "Подписка истекла давно",
@@ -1796,10 +1794,6 @@
           "title": "Рассылки",
           "description": "Завершённые рассылки и рассылки с ошибкой"
         },
-        "requests": {
-          "title": "Запросы",
-          "description": "Запросы на вывод реферальных баллов"
-        },
         "money": {
           "title": "Транзакции",
           "description": "Покупки, продления и возвраты"
@@ -2492,6 +2486,7 @@
       "user_points": "Баллы пользователя",
       "subscription_url": "Ссылка подключения",
       "cabinet_url": "Ссылка на веб-кабинет",
+      "support_url": "Ссылка на поддержку",
       "devices_current": "Подключено устройств",
       "devices_max": "Лимит устройств",
       "name": "Имя",
@@ -3968,8 +3963,6 @@
     "WEBHOOK_SIGNATURE_INVALID": "Неверная подпись вебхука.",
     "WEBHOOK_SOURCE_UNTRUSTED": "Источник вебхука не доверенный.",
     "WEBHOOK_STALE": "Вебхук устарел.",
-    "WITHDRAWAL_AMOUNT_INVALID": "Сумма должна быть больше нуля.",
-    "WITHDRAWAL_EXCEEDS_POINTS": "Недостаточно баллов.",
     "BOT_PROXY_URL_INVALID": "Неверный адрес прокси: нужен socks5, socks5h или http с хостом и портом."
   },
   "loyalty": {

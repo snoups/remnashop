@@ -1,6 +1,5 @@
 from aiogram.enums import ParseMode
 from aiogram_dialog import Dialog, Window
-from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, CopyText, ListGroup, SwitchTo
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.text import Format
@@ -11,9 +10,8 @@ from app.telegram.routers.referrals.catalog import register_referrals_catalog
 from app.telegram.routers.referrals.getters import (
     redeem_target_getter,
     referrals_getter,
-    withdraw_getter,
 )
-from app.telegram.routers.referrals.handlers import on_redeem_target_selected, on_withdraw_input
+from app.telegram.routers.referrals.handlers import on_redeem_target_selected
 from app.telegram.states import Referrals
 
 register_referrals_catalog()
@@ -26,15 +24,6 @@ referrals_main = Window(
     parse_mode=ParseMode.HTML,
     state=Referrals.MAIN,
     getter=referrals_getter,
-)
-
-withdraw = Window(
-    Format("{window_text}"),
-    MessageInput(on_withdraw_input),
-    SwitchTo(Format("{back_text}"), id="back", state=Referrals.MAIN),
-    parse_mode=ParseMode.HTML,
-    state=Referrals.WITHDRAW,
-    getter=withdraw_getter,
 )
 
 redeem_target = Window(
@@ -51,4 +40,4 @@ redeem_target = Window(
     getter=redeem_target_getter,
 )
 
-router = Dialog(referrals_main, withdraw, redeem_target)
+router = Dialog(referrals_main, redeem_target)
