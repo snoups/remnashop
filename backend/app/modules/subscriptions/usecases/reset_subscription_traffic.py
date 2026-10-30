@@ -9,6 +9,7 @@ from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.panel import sync_status_after_reset
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
@@ -36,7 +37,12 @@ class ResetSubscriptionTrafficUseCase(UseCase[int, SubscriptionDto]):
                 self._subscription_repository, self._user_repository, actor, data
             )
 
-        await self._remnawave_sdk.users.reset_user_traffic(subscription.remnawave_user_id)
+        panel_user = await self._remnawave_sdk.users.reset_user_traffic(
+            subscription.remnawave_user_id
+        )
+        subscription = await sync_status_after_reset(
+            self._subscription_repository, self._uow, subscription, panel_user
+        )
 
         async with self._uow:
             subscriber = await subscription_owner(self._user_repository, subscription)

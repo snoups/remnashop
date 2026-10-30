@@ -9,9 +9,17 @@ from fluentogram import TranslatorHub
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
 from app.modules.banners import GetBannerForDisplayUseCase
-from app.modules.referrals import GetOwnReferralStatsUseCase, GetReferralSettingsUseCase
+from app.modules.referrals import (
+    GetOwnReferralStatsUseCase,
+    GetReferralSettingsUseCase,
+    ListBonusDaysTargetsUseCase,
+)
 from app.modules.settings import GetShopSettingsUseCase
-from app.modules.subscriptions import GetAvailableTrialUseCase, ListOwnActiveSubscriptionsUseCase
+from app.modules.subscriptions import (
+    GetAvailableTrialUseCase,
+    ListOwnActiveSubscriptionsUseCase,
+    ListOwnSubscriptionsUseCase,
+)
 from app.modules.users import UserDto
 from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
@@ -36,6 +44,7 @@ async def referrals_getter(
     config: FromDishka[AppConfig],
     get_banner: FromDishka[GetBannerForDisplayUseCase],
     list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     get_shop_settings: FromDishka[GetShopSettingsUseCase],
     get_referral_settings: FromDishka[GetReferralSettingsUseCase],
@@ -48,8 +57,9 @@ async def referrals_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     active = await list_own_active_subscriptions(user)
+    # the purchase cap counts an expired subscription too, as checkout does
     can_purchase, referral_enabled = await menu_flags(
-        active, get_shop_settings, get_referral_settings
+        await list_own_subscriptions(user), get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
         user,
@@ -112,7 +122,7 @@ async def withdraw_getter(
 @inject
 async def redeem_target_getter(
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_bonus_days_targets: FromDishka[ListBonusDaysTargetsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -121,7 +131,7 @@ async def redeem_target_getter(
     return {
         "subscriptions": [
             {"id": s.id, "label": f"{s.plan_snapshot.name} — {format_date(s.expire_at)}"}
-            for s in await list_own_active_subscriptions(user)
+            for s in await list_bonus_days_targets(user)
         ],
         "window_text": render_window_text(
             runner, "msg-referrals-redeem-target", bonus_days=user.bonus_days

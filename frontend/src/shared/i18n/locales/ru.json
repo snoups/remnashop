@@ -3735,6 +3735,7 @@
     "BONUS_DAYS_PLAN_NOT_ALLOWED": "Бонусные дни нельзя потратить на этот план.",
     "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Бонусные дни нельзя добавить к отключённой подписке.",
     "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Бонусные дни нельзя добавить к пробной подписке.",
+    "BONUS_DAYS_TRAFFIC_SPENT": "Трафик подписки исчерпан и не сбрасывается, бонусные дни ей не помогут.",
     "BOT_COMMANDS_MISMATCH": "Список команд устарел — обновите страницу.",
     "BOT_REQUIREMENTS_INCOMPLETE": "Укажите ссылку (и ID канала) для каждого включённого требования.",
     "CABINET_EMAIL_DISABLED": "Вход по почте отключён.",

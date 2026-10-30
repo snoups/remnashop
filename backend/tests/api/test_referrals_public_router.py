@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
-from app.core.enums import SessionAudience
+from app.core.enums import SessionAudience, SubscriptionStatus
 from app.core.security import create_access_token, hash_refresh_token
 from app.core.security.permissions import Permission
 from app.modules.api_tokens.dto import CreateApiTokenDto
@@ -22,9 +22,12 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.pricing import PricingRepository
 from app.modules.referrals.dto import UpdateReferralSettingsDto
 from app.modules.referrals.repository import ReferralRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.container import make_test_container
+from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
 def _pricing_repository_provider() -> Provider:
@@ -314,3 +317,35 @@ async def test_own_stats_carry_the_program(
     assert {"reward_type", "reward_strategy", "reward_amounts"} <= program.keys()
     assert {"invitee_reward_type", "invitee_reward_amount"} <= program.keys()
     assert {"accrual_strategy", "max_level"} <= program.keys()
+
+
+async def test_redeem_targets_list_the_actors_subscriptions_days_can_extend(
+    client: httpx.AsyncClient,
+    actor: tuple[UserDto, dict[str, str]],
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    actor_user, actor_headers = actor
+
+    async def owned(remnawave_user_id: int, *, is_trial: bool = False) -> int:
+        sub = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=actor_user.id,
+                remnawave_user_id=remnawave_user_id,
+                status=SubscriptionStatus.ACTIVE,
+                is_trial=is_trial,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+                url=f"https://example.com/sub/{remnawave_user_id}",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        return sub.id
+
+    paid = await owned(95001)
+    await owned(95002, is_trial=True)
+
+    response = await client.get(f"{API_V1}/referrals/me/redeem-targets", headers=actor_headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"subscription_ids": [paid]}

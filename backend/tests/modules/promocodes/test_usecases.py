@@ -49,6 +49,7 @@ from app.modules.promocodes.dto import (
     UpdatePromocodeDto,
 )
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.promocodes.targets import PromocodeTargets
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
     CreatePromocodeUseCase,
@@ -62,6 +63,7 @@ from app.modules.promocodes.usecases import (
 from app.modules.referrals import ReferralRepository
 from app.modules.settings import SettingsRepository
 from app.modules.settings.dto import UpdateShopSettingsDto
+from app.modules.subscriptions import PanelTrafficUsage
 from app.modules.subscriptions.dto import CreateSubscriptionDto, PurchaseSubscriptionDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
@@ -395,6 +397,12 @@ def _activate_use_case(
         uow,
         event_publisher,
         grant_addon_dispatch or RecordingDispatch(),
+        PromocodeTargets(
+            PlanRepository(promocode_repository.session),
+            AddOnRepository(promocode_repository.session),
+            PanelTrafficUsage(remnawave_sdk),
+            uow,
+        ),
     )
 
 

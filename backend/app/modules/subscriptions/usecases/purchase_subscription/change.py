@@ -176,7 +176,9 @@ class ChangePurchase:
                 await self._remnawave_sdk.users.update_user(restore(old))
             raise
 
-        await reset_traffic_if_paid(self._remnawave_sdk, data, updated)
+        updated = await reset_traffic_if_paid(
+            self._remnawave_sdk, self._subscription_repository, self._uow, data, updated
+        )
 
         logger.info(
             f"{actor.log} Changed subscription '{old.id}' to plan '{plan.plan_id}' "

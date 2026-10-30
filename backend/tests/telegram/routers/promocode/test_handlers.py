@@ -10,8 +10,7 @@ from redis.asyncio import Redis
 from app.core.constants import USER_KEY
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
-from app.modules.promocodes import ValidatePromocodeUseCase
-from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
+from app.modules.promocodes import ListPromocodeTargetsUseCase, ValidatePromocodeUseCase
 from app.telegram.routers.promocode.handlers import (
     _NOTIFICATION_BY_CODE,
     PROMOCODE_INPUT_LIMIT,
@@ -55,7 +54,7 @@ async def _send_codes(redis: Redis, user_id: int, count: int) -> tuple[AsyncMock
     validate = AsyncMock(side_effect=NotFoundError("missing", code=ErrorCode.PROMOCODE_NOT_FOUND))
     provider = Provider(scope=Scope.APP)
     provider.provide(source=lambda: validate, provides=ValidatePromocodeUseCase)
-    provider.provide(source=lambda: AsyncMock(), provides=ListOwnActiveSubscriptionsUseCase)
+    provider.provide(source=lambda: AsyncMock(), provides=ListPromocodeTargetsUseCase)
     provider.provide(source=lambda: _Hub(), provides=TranslatorHub)
     provider.provide(source=lambda: redis, provides=Redis)
     container = make_async_container(provider)

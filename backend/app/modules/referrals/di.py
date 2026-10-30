@@ -2,6 +2,7 @@ from typing import cast
 
 from dishka import Provider, Scope, alias, provide, provide_all
 
+from app.modules.referrals.bonus_targets import BonusDaysTargets
 from app.modules.referrals.dispatch import BonusRenewalDispatch
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.tasks import resume_bonus_renewal_task
@@ -15,6 +16,7 @@ from app.modules.referrals.usecases import (
     GetReferralSummaryUseCase,
     GetUserReferralRevenueUseCase,
     GetUserReferralStatsUseCase,
+    ListBonusDaysTargetsUseCase,
     ListInvitedUsersUseCase,
     ListOwnInvitedUsersUseCase,
     ListReferralsUseCase,
@@ -34,6 +36,7 @@ class ReferralsProvider(Provider):
     scope = Scope.REQUEST
 
     referral_repository = provide(ReferralRepository)
+    bonus_days_targets = provide(BonusDaysTargets)
     use_cases = provide_all(
         RequestPointsWithdrawalUseCase,
         AdjustUserPointsUseCase,
@@ -54,6 +57,7 @@ class ReferralsProvider(Provider):
         ReverseReferralRewardsUseCase,
         GetUserReferralRevenueUseCase,
         RedeemBonusDaysUseCase,
+        ListBonusDaysTargetsUseCase,
         ResumeBonusRenewalUseCase,
     )
     referrer_lookup = alias(source=ReferralRepository, provides=ReferrerLookup)

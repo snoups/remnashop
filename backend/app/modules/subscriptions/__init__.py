@@ -44,6 +44,7 @@ from app.modules.subscriptions.ports import (
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
+from app.modules.subscriptions.usage import PanelTrafficUsage, traffic_spent_for_good
 from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
     ApplyChannelMembershipUseCase,
@@ -81,6 +82,7 @@ __all__ = [
     "LiveSubscriptionDto",
     "OpenOrderCounter",
     "OrderFailer",
+    "PanelTrafficUsage",
     "PlanCatalogDto",
     "PlanSnapshot",
     "PurchaseEligibility",
@@ -112,4 +114,5 @@ __all__ = [
     "TorrentBlockerReportEvent",
     "get_owned_target",
     "get_subscriptions_providers",
+    "traffic_spent_for_good",
 ]

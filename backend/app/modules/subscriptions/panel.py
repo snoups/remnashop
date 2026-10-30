@@ -19,6 +19,7 @@ from app.modules.subscriptions.dto import (
     PurchaseSubscriptionDto,
     SubscriptionDto,
 )
+from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
@@ -184,12 +185,40 @@ def subscription_row(
 
 
 async def reset_traffic_if_paid(
-    sdk: RemnawaveSDK, data: PurchaseSubscriptionDto, subscription: SubscriptionDto
-) -> None:
+    sdk: RemnawaveSDK,
+    repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    data: PurchaseSubscriptionDto,
+    subscription: SubscriptionDto,
+) -> SubscriptionDto:
     if not data.reset_traffic:
-        return
+        return subscription
     # a failure leaves the old counter running, nothing to revert
     try:
-        await sdk.users.reset_user_traffic(subscription.remnawave_user_id)
+        panel_user = await sdk.users.reset_user_traffic(subscription.remnawave_user_id)
     except Exception:
         logger.exception(f"Failed to reset traffic of subscription '{subscription.id}'")
+        return subscription
+    return await sync_status_after_reset(repository, uow, subscription, panel_user)
+
+
+async def sync_status_after_reset(
+    repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    subscription: SubscriptionDto,
+    panel_user: UserResponseDto,
+) -> SubscriptionDto:
+    # the reset lifts LIMITED, but the row holds the panel's state from before
+    # it, and the webhook that would sync it may never come
+    if subscription.status is not SubscriptionStatus.LIMITED or (
+        SubscriptionStatus(panel_user.status) is not SubscriptionStatus.ACTIVE
+    ):
+        return subscription
+    try:
+        async with uow:
+            return await SubscriptionLifecycleService(repository).sync_status(
+                subscription.id, SubscriptionStatus.ACTIVE
+            )
+    except Exception:
+        logger.exception(f"Failed to sync status of subscription '{subscription.id}'")
+        return subscription

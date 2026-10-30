@@ -181,6 +181,9 @@ def _handle_reset_traffic(path: str, store: FakeUserStore) -> httpx.Response:
     if payload is None:
         return httpx.Response(404, json={"message": f"user {user_id} not found"})
     payload["userTraffic"]["usedTrafficBytes"] = 0
+    # as the panel's resetUserTraffic: a reset lifts LIMITED
+    if payload["status"] == "LIMITED":
+        payload["status"] = "ACTIVE"
     payload["lastTrafficResetAt"] = datetime.now(timezone.utc).isoformat()
     return httpx.Response(200, json={"response": payload})
 

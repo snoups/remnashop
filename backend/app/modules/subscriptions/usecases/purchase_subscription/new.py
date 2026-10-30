@@ -220,7 +220,9 @@ class NewPurchase:
                     await self._remnawave_sdk.users.disable_user(trial.remnawave_user_id)
             raise
 
-        await reset_traffic_if_paid(self._remnawave_sdk, data, subscription)
+        subscription = await reset_traffic_if_paid(
+            self._remnawave_sdk, self._subscription_repository, self._uow, data, subscription
+        )
 
         logger.info(
             f"{actor.log} Purchased subscription '{subscription.id}' "

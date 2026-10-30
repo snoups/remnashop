@@ -19,6 +19,7 @@ from app.modules.subscriptions.tasks import (
     purchase_subscription_task,
     run_panel_sync_task,
 )
+from app.modules.subscriptions.usage import PanelTrafficUsage
 from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
     AdminDeleteAllDevicesUseCase,
@@ -75,6 +76,7 @@ class SubscriptionsProvider(Provider):
         PurchaseEligibility,
         PanelSubscriptionRevoker,
         PurchaseRollbackService,
+        PanelTrafficUsage,
     )
     use_cases = provide_all(
         ListSubscriptionsUseCase,

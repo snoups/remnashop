@@ -7,6 +7,7 @@ from fluentogram import TranslatorHub
 
 from app.core.constants import USER_KEY
 from app.core.enums import PromocodeRewardType
+from app.modules.promocodes import ListPromocodeTargetsDto, ListPromocodeTargetsUseCase
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
@@ -30,19 +31,21 @@ async def promocode_input_getter(
 @inject
 async def promocode_target_getter(
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_promocode_targets: FromDishka[ListPromocodeTargetsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    active = await list_own_active_subscriptions(user)
+    targets = await list_promocode_targets(
+        user, ListPromocodeTargetsDto(code=dialog_manager.dialog_data.get("promo_code", ""))
+    )
     subscriptions = [
         {
             "id": sub.id,
             "label": f"{sub.plan_snapshot.name} — {format_datetime(sub.expire_at)}",
         }
-        for sub in active
+        for sub in targets
     ]
     return {
         "subscriptions": subscriptions,

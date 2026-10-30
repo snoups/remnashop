@@ -49,12 +49,13 @@ class PurchaseEligibility:
         max_active = (await self._settings_repository.get_shop_settings()).max_active_subscriptions
         if max_active is None:
             return
+        # an EXPIRED subscription holds its slot too: it's renewed in place, not bought over
         if lock:
-            active = await self._subscription_repository.get_active_by_user_for_update(user_id)
+            owned = await self._subscription_repository.get_live_by_user_for_update(user_id)
         else:
-            active = await self._subscription_repository.get_active_by_user(user_id)
+            owned = await self._subscription_repository.get_live_by_user(user_id)
         # a NEW purchase upgrades an active trial in place, so the trial holds no slot
-        paid = [subscription for subscription in active if not subscription.is_trial]
+        paid = [subscription for subscription in owned if not subscription.is_trial]
         if len(paid) + pending >= max_active:
             raise ValidationError(
                 f"User '{user_id}' is already at the concurrent-subscription cap",

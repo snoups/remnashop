@@ -12,6 +12,7 @@ from app.core.constants import (
     TIME_1H,
 )
 from app.modules.referrals.api.schemas import (
+    BonusDaysTargetsResponse,
     OwnInvitedUserPageResponse,
     OwnInvitedUserResponse,
     OwnReferralStatsResponse,
@@ -26,6 +27,7 @@ from app.modules.referrals.dto import (
 )
 from app.modules.referrals.usecases import (
     GetOwnReferralStatsUseCase,
+    ListBonusDaysTargetsUseCase,
     ListOwnInvitedUsersUseCase,
     RedeemBonusDaysUseCase,
     RequestPointsWithdrawalUseCase,
@@ -81,6 +83,16 @@ async def withdraw_points(
     actor: UserDto = Depends(get_current_user),
 ) -> None:
     await use_case(actor, RequestPointsWithdrawalDto(amount=payload.amount))
+
+
+# what bonus days can extend, by the redemption's own rule: the cabinet's pick list
+@router.get("/me/redeem-targets", response_model=BonusDaysTargetsResponse)
+@inject
+async def list_my_redeem_targets(
+    use_case: FromDishka[ListBonusDaysTargetsUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> BonusDaysTargetsResponse:
+    return BonusDaysTargetsResponse(subscription_ids=[s.id for s in await use_case(actor)])
 
 
 @router.post(

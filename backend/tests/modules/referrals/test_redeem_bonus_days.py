@@ -3,8 +3,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from remnapy import RemnawaveSDK
+from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy import select, update
 
+from app.core.constants import GB_TO_BYTES
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
@@ -26,8 +29,14 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.referrals.bonus_targets import BonusDaysTargets
 from app.modules.referrals.dto import RedeemBonusDaysDto, ResumeBonusRenewalDto
-from app.modules.referrals.usecases import RedeemBonusDaysUseCase, ResumeBonusRenewalUseCase
+from app.modules.referrals.usecases import (
+    ListBonusDaysTargetsUseCase,
+    RedeemBonusDaysUseCase,
+    ResumeBonusRenewalUseCase,
+)
+from app.modules.subscriptions import PanelTrafficUsage
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     PurchaseSubscriptionDto,
@@ -39,6 +48,7 @@ from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.remnawave import FakeUserStore
 from tests.modules.subscriptions.factories import make_plan_snapshot, snapshot_from_plan
 
 
@@ -52,11 +62,12 @@ def redeem(
     uow: UnitOfWork,
     event_publisher: EventPublisher,
     bonus_renewal_dispatch: RecordingDispatch,
+    remnawave_sdk: RemnawaveSDK,
 ) -> RedeemBonusDaysUseCase:
     return RedeemBonusDaysUseCase(
         user_repository,
         subscription_repository,
-        plan_repository,
+        BonusDaysTargets(plan_repository, PanelTrafficUsage(remnawave_sdk), uow),
         purchase_subscription_use_case,
         idempotency_repository,
         uow,
@@ -388,7 +399,7 @@ async def test_redeem_is_refused_when_the_subscription_is_disabled_mid_redemptio
     async def _disabled_right_after_the_check(target: SubscriptionDto) -> None:
         await _set_status(subscription_repository, subscription.id, SubscriptionStatus.DISABLED)
 
-    monkeypatch.setattr(redeem, "_assert_redeemable", _disabled_right_after_the_check)
+    monkeypatch.setattr(redeem._targets, "assert_accepts", _disabled_right_after_the_check)
 
     with pytest.raises(ValidationError) as error:
         await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=3))
@@ -626,3 +637,67 @@ async def test_resume_flags_a_renewal_whose_subscription_is_gone(
 
     [payload] = await _stuck_events(user_repository.session)
     assert payload["subscription_id"] == 999_999_999
+
+
+async def _spend_the_traffic(
+    remnawave_store: FakeUserStore, subscription: SubscriptionDto, strategy: str
+) -> None:
+    panel_user = remnawave_store[subscription.remnawave_user_id]
+    panel_user["userTraffic"]["usedTrafficBytes"] = (
+        subscription.effective_traffic_limit * GB_TO_BYTES
+    )
+    panel_user["trafficLimitStrategy"] = strategy
+
+
+@pytest.mark.parametrize("status", [SubscriptionStatus.EXPIRED, SubscriptionStatus.LIMITED])
+async def test_redeem_refuses_days_a_spent_traffic_would_waste(
+    status: SubscriptionStatus,
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    plan = await _plan(plan_repository)
+    user = await _user_with_days(user_repository, 940_020 + len(status.value), 5)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+    await _set_status(subscription_repository, subscription.id, status)
+    await _spend_the_traffic(remnawave_store, subscription, "NO_RESET")
+
+    with pytest.raises(ValidationError) as error:
+        await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=5))
+
+    assert error.value.code is ErrorCode.BONUS_DAYS_TRAFFIC_SPENT
+    assert await _bonus_days(user_repository, user.id) == 5
+
+
+async def test_bonus_days_targets_keep_a_spent_subscription_whose_traffic_resets(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+) -> None:
+    plan = await _plan(plan_repository)
+    user = await _user_with_days(user_repository, 940_030, 5)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+    await _set_status(subscription_repository, subscription.id, SubscriptionStatus.LIMITED)
+    await _spend_the_traffic(remnawave_store, subscription, "MONTH")
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription.id)
+        .values(traffic_limit_strategy=TrafficLimitStrategy.MONTH)
+    )
+    list_targets = ListBonusDaysTargetsUseCase(subscription_repository, redeem._targets, uow)
+
+    assert [s.id for s in await list_targets(user)] == [subscription.id]
+
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription.id)
+        .values(traffic_limit_strategy=TrafficLimitStrategy.NO_RESET)
+    )
+    assert await list_targets(user) == []

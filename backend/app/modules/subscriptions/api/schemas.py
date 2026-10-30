@@ -150,6 +150,7 @@ class OwnSubscriptionResponse(BaseModel):
     traffic_limit_strategy: TrafficLimitStrategy
     plan_name: str
     plan_id: int
+    device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
     used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
     # vouches for `url` to the cabinet's public deep link page (core/security/connect_signature)

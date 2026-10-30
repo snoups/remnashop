@@ -114,8 +114,10 @@ async def menu_getter(
     )
 
     active = await list_own_active_subscriptions(user)
+    # an expired subscription still opens from "My subscriptions" to be renewed, and holds its slot
+    owned = await list_own_subscriptions(user)
     can_purchase, referral_enabled = await menu_flags(
-        active, get_shop_settings, get_referral_settings
+        owned, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
         user,
@@ -125,8 +127,7 @@ async def menu_getter(
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
     )
-    # an expired subscription still opens from "My subscriptions" to be renewed
-    data["subscriptions_count"] = len(await list_own_subscriptions(user))
+    data["subscriptions_count"] = len(owned)
     data["legal_available"] = bool(
         await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     )

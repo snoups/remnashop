@@ -79,6 +79,10 @@ class ActivatePromocodeRequest(BaseModel):
     target_subscription_id: Optional[int] = None
 
 
+class PromocodeTargetsResponse(BaseModel):
+    subscription_ids: list[int]
+
+
 class GeneratedPromocodeCodeResponse(BaseModel):
     code: str
 

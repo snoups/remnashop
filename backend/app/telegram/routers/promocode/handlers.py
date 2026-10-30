@@ -19,10 +19,11 @@ from app.core.utils.rate_counter import hit_counter
 from app.modules.promocodes import (
     ActivatePromocodeDto,
     ActivatePromocodeUseCase,
+    ListPromocodeTargetsDto,
+    ListPromocodeTargetsUseCase,
     ValidatePromocodeDto,
     ValidatePromocodeUseCase,
 )
-from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu, Promocode
@@ -50,7 +51,7 @@ async def continue_with_code(
     user: UserDto,
     dialog_manager: DialogManager,
     validate_promocode: ValidatePromocodeUseCase,
-    list_own_active_subscriptions: ListOwnActiveSubscriptionsUseCase,
+    list_promocode_targets: ListPromocodeTargetsUseCase,
     reply: Callable[[str], Awaitable[object]],
     runner: TranslatorRunner,
 ) -> None:
@@ -68,12 +69,13 @@ async def continue_with_code(
         await dialog_manager.switch_to(state=Promocode.CONFIRM)
         return
 
-    active = await list_own_active_subscriptions(user)
-    if not active:
+    # only what the reward leaves active: no trial, no lapse it can't lift
+    targets = await list_promocode_targets(user, ListPromocodeTargetsDto(code=promo.code))
+    if not targets:
         await reply(runner.get("ntf-promocode.no-target-subscription"))
         return
-    if len(active) == 1:
-        dialog_manager.dialog_data["target_subscription_id"] = active[0].id
+    if len(targets) == 1:
+        dialog_manager.dialog_data["target_subscription_id"] = targets[0].id
         await dialog_manager.switch_to(state=Promocode.CONFIRM)
         return
 
@@ -94,7 +96,7 @@ async def on_promocode_input(
     widget: MessageInput,
     dialog_manager: DialogManager,
     validate_promocode: FromDishka[ValidatePromocodeUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_promocode_targets: FromDishka[ListPromocodeTargetsUseCase],
     redis: FromDishka[Redis],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
@@ -115,7 +117,7 @@ async def on_promocode_input(
         user,
         dialog_manager,
         validate_promocode,
-        list_own_active_subscriptions,
+        list_promocode_targets,
         reply=message.answer,
         runner=runner,
     )

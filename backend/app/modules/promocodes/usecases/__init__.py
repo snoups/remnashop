@@ -7,6 +7,7 @@ from app.modules.promocodes.usecases.get_promocode_summary import GetPromocodeSu
 from app.modules.promocodes.usecases.list_promocode_activated_users import (
     ListPromocodeActivatedUsersUseCase,
 )
+from app.modules.promocodes.usecases.list_promocode_targets import ListPromocodeTargetsUseCase
 from app.modules.promocodes.usecases.list_promocodes import ListPromocodesUseCase
 from app.modules.promocodes.usecases.list_user_promocode_activations import (
     ListUserPromocodeActivationsUseCase,
@@ -25,6 +26,7 @@ __all__ = [
     "GetPromocodeSummaryUseCase",
     "GetPromocodeUseCase",
     "ListPromocodeActivatedUsersUseCase",
+    "ListPromocodeTargetsUseCase",
     "ListPromocodesUseCase",
     "ListUserPromocodeActivationsUseCase",
     "UpdatePromocodeUseCase",

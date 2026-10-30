@@ -2908,6 +2908,46 @@ async def test_a_second_change_credits_back_the_credit_the_first_one_carried(
     assert 30 + 205 <= (second.expire_at - datetime_now()).days <= 30 + 209
 
 
+async def test_a_paid_change_of_a_limited_subscription_comes_back_active(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_store: FakeUserStore,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9206)
+    plan = await _create_plan(plan_repository, "limited-change")
+
+    def dto(purchase_type: PurchaseType, target: Optional[int] = None) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("100"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("100"),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+            reset_traffic=True,
+        )
+
+    old = await purchase_subscription_use_case(buyer, dto(PurchaseType.NEW))
+    remnawave_store[old.remnawave_user_id]["status"] = "LIMITED"
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == old.id)
+        .values(status=SubscriptionStatus.LIMITED)
+    )
+
+    # same plan, same traffic limit: the panel keeps LIMITED until the reset lifts it
+    changed = await purchase_subscription_use_case(buyer, dto(PurchaseType.CHANGE, old.id))
+
+    assert remnawave_store[old.remnawave_user_id]["status"] == "ACTIVE"
+    assert changed.status is SubscriptionStatus.ACTIVE
+    assert (await subscription_repository.get_by_id(changed.id)).status is SubscriptionStatus.ACTIVE
+
+
 async def test_a_change_outrun_by_renewals_twice_gives_up_and_restores_the_panel(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,

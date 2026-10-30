@@ -291,6 +291,7 @@ class CabinetSettingsResponse(BaseModel):
     max_active_subscriptions: Optional[int]
     device_single_reset_enabled: bool
     device_all_reset_enabled: bool
+    device_all_reset_cooldown_hours: int
     link_reset_enabled: bool
     bot_username: Optional[str]
     support_telegram: Optional[str]

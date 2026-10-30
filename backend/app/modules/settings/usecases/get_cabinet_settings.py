@@ -29,6 +29,7 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
             max_active_subscriptions=shop.max_active_subscriptions,
             device_single_reset_enabled=shop.device_single_reset_enabled,
             device_all_reset_enabled=shop.device_all_reset_enabled,
+            device_all_reset_cooldown_hours=shop.device_all_reset_cooldown_hours,
             link_reset_enabled=shop.link_reset_enabled,
             bot_username=username,
             support_telegram=shop.support_telegram,

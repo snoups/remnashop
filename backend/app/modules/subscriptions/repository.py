@@ -282,10 +282,13 @@ class SubscriptionRepository:
         entitlements_by_subscription = await self._load_entitlements([row.id])
         return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
 
-    async def get_active_by_user_for_update(self, user_id: int) -> list[SubscriptionDto]:
+    async def get_live_by_user_for_update(self, user_id: int) -> list[SubscriptionDto]:
         result = await self.session.execute(
             select(Subscription)
-            .where(Subscription.user_id == user_id, Subscription.status.in_(OWNED_STATUSES))
+            .where(
+                Subscription.user_id == user_id,
+                Subscription.status != SubscriptionStatus.DELETED,
+            )
             .order_by(Subscription.id)
             .with_for_update()
             .execution_options(populate_existing=True)

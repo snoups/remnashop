@@ -74,10 +74,12 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
 
 @dataclass(frozen=True, kw_only=True)
 class CabinetSettingsDto:
-    # the part of the shop settings a customer needs, without admin-only cooldowns
+    # the part of the shop settings a customer needs; the all-devices cooldown lets the cabinet
+    # hold its button until the next reset is allowed
     max_active_subscriptions: Optional[int]
     device_single_reset_enabled: bool
     device_all_reset_enabled: bool
+    device_all_reset_cooldown_hours: int
     link_reset_enabled: bool
     bot_username: Optional[str]
     support_telegram: Optional[str]

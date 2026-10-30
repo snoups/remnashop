@@ -3665,6 +3665,7 @@
     "BONUS_DAYS_PLAN_NOT_ALLOWED": "Bonus days can’t be used on this plan.",
     "BONUS_DAYS_SUBSCRIPTION_DISABLED": "Bonus days can’t be added to a disabled subscription.",
     "BONUS_DAYS_TRIAL_SUBSCRIPTION": "Bonus days can’t be added to a trial subscription.",
+    "BONUS_DAYS_TRAFFIC_SPENT": "The subscription’s traffic is used up and never resets, so bonus days won’t help.",
     "BOT_COMMANDS_MISMATCH": "The command list is out of date — reload the page.",
     "BOT_REQUIREMENTS_INCOMPLETE": "Fill in the link (and the channel ID) for every enabled requirement.",
     "CABINET_EMAIL_DISABLED": "Email sign-in is turned off.",

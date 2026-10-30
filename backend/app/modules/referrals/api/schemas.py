@@ -132,6 +132,10 @@ class RedeemBonusDaysRequest(BaseModel):
     days: int = Field(ge=1, le=MAX_BONUS_DAYS)
 
 
+class BonusDaysTargetsResponse(BaseModel):
+    subscription_ids: list[int]
+
+
 class RedeemBonusDaysResponse(BaseModel):
     subscription_id: int
     expire_at: datetime

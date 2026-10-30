@@ -68,6 +68,11 @@ class ActivatePromocodeDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ListPromocodeTargetsDto:
+    code: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class UserPromocodeActivationDto:
     activation_id: int
     promocode_id: int

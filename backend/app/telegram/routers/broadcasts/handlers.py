@@ -11,8 +11,7 @@ from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import INT32_MAX, T_ME
 from app.modules.broadcasts import GetBroadcastPromocodeUseCase
-from app.modules.promocodes import ValidatePromocodeUseCase
-from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
+from app.modules.promocodes import ListPromocodeTargetsUseCase, ValidatePromocodeUseCase
 from app.modules.users import SetMarketingOptOutDto, SetMarketingOptOutUseCase, UserDto
 from app.telegram.broadcast_callbacks import (
     MENU_CALLBACK,
@@ -61,7 +60,7 @@ async def _open_promocode(
     runner: TranslatorRunner,
     get_broadcast_promocode: GetBroadcastPromocodeUseCase,
     validate_promocode: ValidatePromocodeUseCase,
-    list_own_active_subscriptions: ListOwnActiveSubscriptionsUseCase,
+    list_promocode_targets: ListPromocodeTargetsUseCase,
     reply: Callable[[str], Awaitable[object]],
 ) -> bool:
     code = await get_broadcast_promocode(user, broadcast_id) if broadcast_id is not None else None
@@ -76,7 +75,7 @@ async def _open_promocode(
         user,
         dialog_manager,
         validate_promocode,
-        list_own_active_subscriptions,
+        list_promocode_targets,
         reply=reply,
         runner=runner,
     )
@@ -91,7 +90,7 @@ async def on_start_broadcast(
     dialog_manager: DialogManager,
     get_broadcast_promocode: FromDishka[GetBroadcastPromocodeUseCase],
     validate_promocode: FromDishka[ValidatePromocodeUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_promocode_targets: FromDishka[ListPromocodeTargetsUseCase],
     i18n: FromDishka[TranslatorHub],
     user: Optional[UserDto] = None,
 ) -> None:
@@ -106,7 +105,7 @@ async def on_start_broadcast(
         runner,
         get_broadcast_promocode,
         validate_promocode,
-        list_own_active_subscriptions,
+        list_promocode_targets,
         message.answer,
     )
     if not opened:

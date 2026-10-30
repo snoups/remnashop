@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 import pytest
 
-from app.core.enums import PlanAvailability, PlanType
+from app.core.enums import PlanAvailability, PlanType, SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.time import datetime_now
 from app.modules.plans.dto import PlanDto
 from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.settings.repository import SettingsRepository
@@ -98,3 +101,30 @@ async def test_an_active_trial_holds_no_slot_a_purchase_would_take(
     # a second unpaid order would be the second subscription
     with pytest.raises(ValidationError):
         await eligibility.assert_below_cap(trial.user_id, lock=True, pending=1)
+
+
+async def test_an_expired_subscription_holds_its_slot(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    await settings_repository.update_shop_settings(
+        UpdateShopSettingsDto(
+            max_active_subscriptions=1, fields_set=frozenset({"max_active_subscriptions"})
+        )
+    )
+    eligibility = make_eligibility(subscription_repository.session)
+    expired = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=91020,
+        remnawave_user_id=91020,
+        status=SubscriptionStatus.EXPIRED,
+        expire_at=datetime_now() - timedelta(days=3),
+    )
+
+    # renewed in place, not bought over: no room for a second one
+    for lock in (False, True):
+        with pytest.raises(ValidationError) as error:
+            await eligibility.assert_below_cap(expired.user_id, lock=lock)
+        assert error.value.code is ErrorCode.SUBSCRIPTION_LIMIT_REACHED

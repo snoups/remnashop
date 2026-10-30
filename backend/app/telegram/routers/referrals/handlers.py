@@ -23,13 +23,13 @@ from app.core.exceptions import CooldownError, NotFoundError, ValidationError
 from app.core.utils.rate_counter import hit_counter, user_rate_key
 from app.modules.referrals import (
     GetOwnReferralStatsUseCase,
+    ListBonusDaysTargetsUseCase,
     RedeemBonusDaysDto,
     RedeemBonusDaysUseCase,
     RequestPointsWithdrawalDto,
     RequestPointsWithdrawalUseCase,
     ResetOwnReferralCodeUseCase,
 )
-from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import format_datetime, get_translator
 from app.telegram.routers.referrals.getters import referral_url
@@ -159,16 +159,17 @@ async def on_redeem_days(
     widget: Keyboard,
     dialog_manager: DialogManager,
     redeem_bonus_days: FromDishka[RedeemBonusDaysUseCase],
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_bonus_days_targets: FromDishka[ListBonusDaysTargetsUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    active = await list_own_active_subscriptions(user)
-    if not active:
+    # what the days can extend: no trial, no disabled one, none whose traffic never comes back
+    targets = await list_bonus_days_targets(user)
+    if not targets:
         runner = get_translator(i18n, user)
         await callback.answer(runner.get("ntf-referrals.no-subscription"), show_alert=True)
-    elif len(active) == 1:
-        await _redeem(callback, dialog_manager, redeem_bonus_days, i18n, active[0].id)
+    elif len(targets) == 1:
+        await _redeem(callback, dialog_manager, redeem_bonus_days, i18n, targets[0].id)
     else:
         await dialog_manager.switch_to(Referrals.REDEEM_TARGET)
 

@@ -463,6 +463,37 @@ async def test_reset_traffic_zeroes_used_bytes(
     assert payload is not None and payload["target"]["id"] == granted.user_id
 
 
+async def test_reset_traffic_brings_a_limited_subscription_back_active(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    granted = await _granted(grant_use_case, user_repository, plan_repository, 9703, "limited")
+    remnawave_store[granted.remnawave_user_id]["status"] = "LIMITED"
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == granted.id)
+        .values(status=SubscriptionStatus.LIMITED)
+    )
+    use_case = ResetSubscriptionTrafficUseCase(
+        subscription_repository,
+        UserRepository(subscription_repository.session),
+        remnawave_sdk,
+        event_publisher,
+        uow,
+    )
+
+    reset = await use_case(OWNER, granted.id)
+
+    assert reset.status is SubscriptionStatus.ACTIVE
+    assert (await subscription_repository.get_by_id(granted.id)).status is SubscriptionStatus.ACTIVE
+
+
 async def test_admin_reissue_updates_url_without_client_cooldown(
     grant_use_case: GrantSubscriptionUseCase,
     user_repository: UserRepository,

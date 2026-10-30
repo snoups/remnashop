@@ -69,10 +69,9 @@ async def subscriptions_list_getter(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     subscriptions = await list_own_subscriptions(user)
-    # an expired subscription takes no slot of the purchase cap
     active = [s for s in subscriptions if s.status is not SubscriptionStatus.EXPIRED]
     can_purchase, referral_enabled = await menu_flags(
-        active, get_shop_settings, get_referral_settings
+        subscriptions, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
         user,

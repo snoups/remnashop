@@ -2,6 +2,7 @@ from dishka import Provider, Scope, alias, provide, provide_all
 
 from app.modules.plans import PlanReferenceCleaner
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.promocodes.targets import PromocodeTargets
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
     CreatePromocodeUseCase,
@@ -11,6 +12,7 @@ from app.modules.promocodes.usecases import (
     GetPromocodeUseCase,
     ListPromocodeActivatedUsersUseCase,
     ListPromocodesUseCase,
+    ListPromocodeTargetsUseCase,
     ListUserPromocodeActivationsUseCase,
     UpdatePromocodeUseCase,
     ValidatePromocodeUseCase,
@@ -24,6 +26,7 @@ class PromocodesProvider(Provider):
     scope = Scope.REQUEST
 
     promocode_repository = provide(PromocodeRepository)
+    promocode_targets = provide(PromocodeTargets)
     promocode_liveness = alias(source=PromocodeRepository, provides=PromocodeLiveness)
     user_promocode_liveness = alias(source=PromocodeRepository, provides=UserPromocodeLiveness)
     plan_reference_cleaner = alias(source=PromocodeRepository, provides=PlanReferenceCleaner)
@@ -38,6 +41,7 @@ class PromocodesProvider(Provider):
         GetPromocodeSummaryUseCase,
         ListPromocodeActivatedUsersUseCase,
         ActivatePromocodeUseCase,
+        ListPromocodeTargetsUseCase,
         ValidatePromocodeUseCase,
         WarnExpiringPromocodeDiscountsUseCase,
     )

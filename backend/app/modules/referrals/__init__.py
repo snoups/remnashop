@@ -5,6 +5,7 @@ from app.modules.referrals.repository import ReferralRepository
 from app.modules.referrals.usecases import (
     GetOwnReferralStatsUseCase,
     GetReferralSettingsUseCase,
+    ListBonusDaysTargetsUseCase,
     RedeemBonusDaysUseCase,
     RequestPointsWithdrawalUseCase,
     ResetOwnReferralCodeUseCase,
@@ -14,6 +15,7 @@ __all__ = [
     "GetOwnReferralStatsUseCase",
     "GetReferralSettingsUseCase",
     "InviteeRewardIssuedEvent",
+    "ListBonusDaysTargetsUseCase",
     "RedeemBonusDaysDto",
     "RedeemBonusDaysUseCase",
     "ReferralRepository",

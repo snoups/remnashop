@@ -7,13 +7,13 @@ from loguru import logger
 
 from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Currency, PurchaseType, SubscriptionStatus
+from app.core.enums import Currency, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.plans import PlanRepository
+from app.modules.referrals.bonus_targets import BonusDaysTargets
 from app.modules.referrals.dispatch import BonusRenewalDispatch
 from app.modules.referrals.dto import BonusDaysRedemptionDto, RedeemBonusDaysDto
 from app.modules.referrals.events import BonusDaysRedeemedEvent, BonusDaysRenewalStuckEvent
@@ -36,7 +36,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
         self,
         user_repository: UserRepository,
         subscription_repository: SubscriptionRepository,
-        plan_repository: PlanRepository,
+        targets: BonusDaysTargets,
         purchase_subscription_use_case: PurchaseSubscriptionUseCase,
         idempotency_repository: PurchaseIdempotencyRepository,
         uow: UnitOfWork,
@@ -45,7 +45,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
     ) -> None:
         self._user_repository = user_repository
         self._subscription_repository = subscription_repository
-        self._plan_repository = plan_repository
+        self._targets = targets
         self._purchase_subscription_use_case = purchase_subscription_use_case
         self._idempotency = idempotency_repository
         self._uow = uow
@@ -57,7 +57,7 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             target = await get_owned_target(
                 self._subscription_repository, data.subscription_id, actor.id
             )
-        await self._assert_redeemable(target)
+        await self._targets.assert_accepts(target)
         if data.days > actor.bonus_days:
             raise ValidationError("Not enough bonus days", code=ErrorCode.BONUS_DAYS_INSUFFICIENT)
 
@@ -158,30 +158,3 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
             bonus_days=refreshed.bonus_days,
             pending=pending_key is not None,
         )
-
-    async def _assert_redeemable(self, target: SubscriptionDto) -> None:
-        if target.is_trial:
-            raise ValidationError(
-                "Bonus days can't extend a trial", code=ErrorCode.BONUS_DAYS_TRIAL_SUBSCRIPTION
-            )
-        if target.status is SubscriptionStatus.DELETED:
-            raise ValidationError(
-                "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
-            )
-        # disabled on purpose; a free extension mustn't undo that (the renewal
-        # re-checks it right before touching the panel)
-        if target.status is SubscriptionStatus.DISABLED:
-            raise ValidationError(
-                "Bonus days can't extend a disabled subscription",
-                code=ErrorCode.BONUS_DAYS_SUBSCRIPTION_DISABLED,
-            )
-        async with self._uow:
-            try:
-                plan = await self._plan_repository.get_by_id(target.plan_snapshot.plan_id)
-            except NotFoundError:
-                return  # a deleted plan keeps the defaults: allowed
-        if not plan.allow_bonus_days:
-            raise ValidationError(
-                "The subscription's plan doesn't accept bonus days",
-                code=ErrorCode.BONUS_DAYS_PLAN_NOT_ALLOWED,
-            )
