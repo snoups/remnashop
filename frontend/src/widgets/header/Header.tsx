@@ -2,7 +2,7 @@ import { ChevronDown, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useOnAccessSettingsSaved } from "@entities/settings/access-sync";
@@ -21,9 +21,8 @@ import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { IconButton } from "@shared/ui/IconButton";
+import { MotionLink } from "@shared/ui/MotionLink";
 import { PortalPopover } from "@shared/ui/PortalPopover";
-
-const MotionLink = motion.create(Link);
 
 // Popover grows out of its own top-right corner, toward the trigger.
 const POPOVER_MOTION = {

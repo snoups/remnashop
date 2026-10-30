@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap } from "@shared/lib/bounceState";
+import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { DialogHeader } from "@shared/ui/DialogHeader";
@@ -28,7 +28,7 @@ export function DonateButton() {
         whileHover="hover"
         {...bounceTap()}
       >
-        <BounceIcon icon={Crown} size={17} hoverSize={23.5} />
+        <BounceIcon icon={Crown} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
         <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>
       </motion.button>
 

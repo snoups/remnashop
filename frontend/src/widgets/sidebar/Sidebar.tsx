@@ -2,28 +2,23 @@ import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, NavLink } from "react-router-dom";
+import { Link, useMatch, useResolvedPath } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { usePermissions } from "@entities/user/use-current-user";
-import { bounceTap } from "@shared/lib/bounceState";
+import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { toggleSidebarCollapsed, useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
 import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 import { IconButton } from "@shared/ui/IconButton";
+import { MotionLink } from "@shared/ui/MotionLink";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
 import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import type { NavItem } from "@widgets/sidebar/nav-items";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME, SIDEBAR_PILL_SHAPE_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
-const MotionNavLink = motion.create(NavLink);
-
-const linkClassName = ({ isActive }: { isActive: boolean }) =>
-  isActive
-    ? `relative isolate ${SIDEBAR_PILL_SHAPE_CLASSNAME} font-semibold text-primary`
-    : SIDEBAR_PILL_CLASSNAME;
 
 interface Hint {
   text: string;
@@ -42,16 +37,19 @@ function NavItemLink({
   label: string;
   onHint: (hint: Hint | null) => void;
 }) {
+  // NavLink's rule: the path itself, or below it unless `end`
+  const isActive = useMatch({ path: useResolvedPath(item.to).pathname, end: item.end ?? false }) !== null;
   const showHint = (event: { currentTarget: HTMLElement }) => {
     const rect = event.currentTarget.getBoundingClientRect();
     onHint({ text: label, top: rect.top + rect.height / 2, left: rect.right + 14 });
   };
 
   return (
-    <MotionNavLink
+    <MotionLink
       to={item.to}
-      end={item.end}
-      className={linkClassName}
+      className={
+        isActive ? `relative isolate ${SIDEBAR_PILL_SHAPE_CLASSNAME} font-semibold text-primary` : SIDEBAR_PILL_CLASSNAME
+      }
       initial="rest"
       whileHover="hover"
       onPointerEnter={showHint}
@@ -60,21 +58,17 @@ function NavItemLink({
       onBlur={() => onHint(null)}
       {...tapProps}
     >
-      {({ isActive }) => (
-        <>
-          {/* one shared layoutId, so the highlight glides between rows instead of jumping */}
-          {isActive && (
-            <motion.span
-              layoutId="sidebar-active-pill"
-              className="absolute inset-0 -z-10 rounded-full bg-accent"
-              transition={{ type: "spring", stiffness: 420, damping: 36 }}
-            />
-          )}
-          <BounceIcon icon={item.icon} size={17} hoverSize={23.5} />
-          <span className={LABEL_CLASSNAME}>{label}</span>
-        </>
+      {/* one shared layoutId, so the highlight glides between rows instead of jumping */}
+      {isActive && (
+        <motion.span
+          layoutId="sidebar-active-pill"
+          className="absolute inset-0 -z-10 rounded-full bg-accent"
+          transition={{ type: "spring", stiffness: 420, damping: 36 }}
+        />
       )}
-    </MotionNavLink>
+      <BounceIcon icon={item.icon} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
+      <span className={LABEL_CLASSNAME}>{label}</span>
+    </MotionLink>
   );
 }
 
@@ -119,7 +113,7 @@ export function Sidebar() {
             whileHover="hover"
             onClick={toggleSidebarCollapsed}
           >
-            <BounceIcon icon={isCollapsed ? ChevronsRight : ChevronsLeft} size={17} hoverSize={21.25} />
+            <BounceIcon icon={isCollapsed ? ChevronsRight : ChevronsLeft} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
           </IconButton>
         </div>
       </div>

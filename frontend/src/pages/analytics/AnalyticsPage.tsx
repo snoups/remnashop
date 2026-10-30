@@ -36,7 +36,6 @@ export function AnalyticsPage() {
   const items: TabBarItem[] = TABS.filter(allowed).map((tab) => ({
     key: tab.key,
     to: tab.to,
-    end: tab.to === "",
     icon: tab.icon,
     label: t(`analytics.tabs.${tab.key}`),
     isActive: isActive(tab),

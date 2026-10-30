@@ -36,7 +36,6 @@ export function SettingsPage() {
         items={tabs.map((tab) => ({
           key: tab.key,
           to: tab.to,
-          end: tab.to === "",
           icon: tab.icon,
           label: t(`settings.tabs.${tab.key}`),
           isActive: isActive(tab),

@@ -32,7 +32,7 @@ export function DebugPage() {
   const isVariantsActive = useMatch("/dashboard/debug/variants") !== null;
 
   const items: TabBarItem[] = [
-    { key: "kit", to: "", end: true, icon: LayoutGrid, label: t("debugPage.tabs.kit"), isActive: isKitActive },
+    { key: "kit", to: "", icon: LayoutGrid, label: t("debugPage.tabs.kit"), isActive: isKitActive },
     { key: "variants", to: "variants", icon: FlaskConical, label: t("debugPage.tabs.variants"), isActive: isVariantsActive },
   ];
 

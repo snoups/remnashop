@@ -12,9 +12,10 @@ interface BounceIconProps {
 
 /**
  * Icon that grows on hover by animating width/height: `transform: scale`
- * blurs a small SVG. It sits absolutely inside a rest-sized placeholder, so
- * the row's layout never moves, and is centered with translate because auto
- * margins can't go negative once it outgrows the placeholder.
+ * blurs a small SVG. It sits inside a rest-sized placeholder, so the row's
+ * layout never moves, and flex centering spills it evenly past the
+ * placeholder's edges. No translate: Firefox snaps a transform that stops
+ * changing to whole pixels, and the icon jumps once the animation settles.
  *
  * Takes the "hover"/"rest" variant from an ancestor motion component, so the
  * whole row triggers it.
@@ -23,9 +24,9 @@ export function BounceIcon({ icon: Icon, size, hoverSize, className = "" }: Boun
   const scaledHover = size + (hoverSize - size) * BOUNCE_STRENGTH;
 
   return (
-    <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+    <span className="inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
       <motion.span
-        className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+        className="flex shrink-0 items-center justify-center"
         // also as a plain style: under AnimatePresence initial={false} (every
         // dashboard page) the "rest" variant is never applied
         style={{ width: size, height: size }}

@@ -1,14 +1,11 @@
 import { Compass } from "lucide-react";
-import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { bounceTap } from "@shared/lib/bounceState";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
+import { MotionLink } from "@shared/ui/MotionLink";
 import { FULL_SCREEN_ACTION_CLASS, FullScreenMessage } from "@widgets/full-screen-message/FullScreenMessage";
-
-const MotionLink = motion.create(Link);
 
 export function NotFoundPage() {
   const { t } = useTranslation();

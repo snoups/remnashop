@@ -1,19 +1,16 @@
 import { motion } from "motion/react";
 import { useEffect, useId, useRef } from "react";
 import type { ComponentType, MouseEvent } from "react";
-import { NavLink } from "react-router-dom";
 
-import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
+import { NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE, TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
 import { BounceIcon } from "@shared/ui/BounceIcon";
-
-const MotionNavLink = motion.create(NavLink);
+import { MotionLink } from "@shared/ui/MotionLink";
 
 export interface TabBarItem {
   key: string;
   to: string;
-  end?: boolean;
   icon: ComponentType<{ className?: string }>;
   label: string;
   isActive: boolean;
@@ -29,11 +26,11 @@ function preventNavigationWhenActive(isActive: boolean) {
 
 // The bounce is on a pill behind the icon and label: scaling text with
 // `transform` blurs it.
-function Tab({ to, end, icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
+function Tab({ to, icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
   return (
-    <MotionNavLink
+    <MotionLink
       to={to}
-      end={end}
+      aria-current={isActive ? "page" : undefined}
       onClick={preventNavigationWhenActive(isActive)}
       className="group relative isolate block shrink-0 rounded-full text-sm font-medium"
       initial="rest"
@@ -53,10 +50,10 @@ function Tab({ to, end, icon, label, isActive, pillId }: TabBarItem & { pillId: 
           isActive ? "text-primary" : "text-foreground"
         }`}
       >
-        <BounceIcon icon={icon} size={16} hoverSize={20} />
+        <BounceIcon icon={icon} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
         {label}
       </span>
-    </MotionNavLink>
+    </MotionLink>
   );
 }
 

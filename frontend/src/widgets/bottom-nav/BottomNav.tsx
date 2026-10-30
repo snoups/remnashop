@@ -12,7 +12,6 @@ export function BottomNav() {
   const items = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map((item) => ({
     key: item.key,
     to: item.to,
-    end: item.end,
     icon: item.icon,
     label: t(`sidebar.${item.key}`),
     isActive: item.end ? pathname === item.to : pathname.startsWith(item.to),

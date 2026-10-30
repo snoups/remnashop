@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
-import { bounceTap } from "@shared/lib/bounceState";
+import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
 import { githubApiUrl, isHttpsUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
@@ -128,7 +128,7 @@ export function BuildInfoBadge() {
         whileHover="hover"
         {...bounceTap()}
       >
-        <BounceIcon icon={Info} size={17} hoverSize={23.5} />
+        <BounceIcon icon={Info} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
         <span className={`${LABEL_CLASSNAME} font-mono`}>{currentVersion}</span>
         {isUpdateAvailable && release && (
           <span
