@@ -4,7 +4,14 @@ from typing import Any, ClassVar
 
 import pytest
 
-from app.core.enums import CabinetSignInMethod, Locale, OAuthProvider, ReferralRewardType, Role
+from app.core.enums import (
+    AddOnType,
+    CabinetSignInMethod,
+    Locale,
+    OAuthProvider,
+    ReferralRewardType,
+    Role,
+)
 from app.core.event_bus import EventBus
 from app.core.events import BaseEvent, EventCategory, StoredEvent
 from app.core.outbox_event_publisher import _build_payload
@@ -117,7 +124,12 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         SubscriptionTrafficThresholdEvent(user=_USER, subscription_id=1),
         CabinetNewDeviceSignInEvent(user=_USER, browser="Firefox on Linux"),
         SubscriptionAddOnGrantedEvent(
-            user=_USER, target=_TARGET, subscription_id=1, addon_id=1, amount=10
+            user=_USER,
+            target=_TARGET,
+            subscription_id=1,
+            addon_id=1,
+            addon_type=AddOnType.TRAFFIC,
+            amount=10,
         ),
         SubscriptionGrantedEvent(
             actor=_USER, target=_TARGET, subscription_id=1, plan_id=1, duration_days=30

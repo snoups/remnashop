@@ -12,6 +12,7 @@ from app.core.db.models import (
     AnnouncementView,
     Broadcast,
     BroadcastRecipient,
+    CustomerNotification,
     LegalAcceptance,
     LegalDocumentRevision,
     OAuthIdentity,
@@ -454,3 +455,21 @@ async def test_merge_moves_legal_acceptances(
     session.expire_all()
     [acceptance] = (await session.scalars(select(LegalAcceptance))).all()
     assert acceptance.user_id == target.id
+
+
+async def test_reassign_moves_customer_notifications_dedup_by_outbox(
+    session: AsyncSession, user_repository: UserRepository, merge_repository
+) -> None:
+    source = await user_repository.create(CreateUserDto(name="s"))
+    target = await user_repository.create(CreateUserDto(name="t"))
+
+    def row(user_id: int, outbox_id: int) -> CustomerNotification:
+        return CustomerNotification(user_id=user_id, outbox_id=outbox_id, event_type="e", args={})
+
+    session.add_all([row(source.id, 1), row(source.id, 2), row(target.id, 1)])
+    await session.flush()
+
+    await merge_repository.reassign(source.id, target.id, {})
+
+    rows = (await session.scalars(select(CustomerNotification))).all()
+    assert sorted((r.user_id, r.outbox_id) for r in rows) == [(target.id, 1), (target.id, 2)]

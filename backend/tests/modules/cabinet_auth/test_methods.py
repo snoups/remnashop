@@ -27,8 +27,17 @@ async def test_methods_empty_by_default(
 
 
 async def test_enabled_method_hidden_until_configured(
-    settings_repository: SettingsRepository, cabinet_config: AppConfig, uow: UnitOfWork
+    settings_repository: SettingsRepository,
+    cabinet_config: AppConfig,
+    uow: UnitOfWork,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    async def _username(token: str, proxy: object) -> str:
+        return "shop_bot"
+
+    monkeypatch.setattr(
+        "app.modules.cabinet_auth.usecases.get_cabinet_methods.fetch_bot_username", _username
+    )
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
             UpdateCabinetAuthSettingsDto(telegram_enabled=True)
@@ -41,7 +50,16 @@ async def test_enabled_method_hidden_until_configured(
             UpdateBotSettingsDto(token="1:abc", secret_token="s")
         )
     methods = await GetCabinetMethodsUseCase(settings_repository, cabinet_config, uow).execute()
-    assert methods.telegram_webapp and methods.telegram_deeplink
+    assert methods.telegram_webapp and methods.bot_username == "shop_bot"
+    # the bot sign-in link has its own switch: off, the Mini App is the only way in
+    assert not methods.telegram_deeplink
+
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(telegram_deeplink_enabled=True)
+        )
+    methods = await GetCabinetMethodsUseCase(settings_repository, cabinet_config, uow).execute()
+    assert methods.telegram_deeplink
 
 
 async def test_email_method_needs_smtp(

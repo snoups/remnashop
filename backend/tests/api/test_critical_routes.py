@@ -191,6 +191,15 @@ async def test_public_appearance_needs_no_session(client: httpx.AsyncClient) -> 
     assert response.json()["has_logo"] is False
 
 
+async def test_cabinet_manifest_is_public(client: httpx.AsyncClient) -> None:
+    response = await client.get(f"{API_V1}/appearance/cabinet/manifest.webmanifest")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/manifest+json")
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.json()["name"]
+
+
 async def test_public_appearance_images_404_when_unset(client: httpx.AsyncClient) -> None:
     for target in ("dashboard", "cabinet"):
         for kind in ("logo", "favicon"):

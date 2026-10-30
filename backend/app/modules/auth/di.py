@@ -11,9 +11,11 @@ from app.modules.auth.usecases import (
     LogoutUseCase,
     PruneStaleSessionsUseCase,
     RefreshSessionUseCase,
+    RevokeOtherCabinetSessionsUseCase,
     RevokeSessionUseCase,
     RevokeUserSessionUseCase,
 )
+from app.modules.settings import AudienceSessionRevoker
 from app.modules.users import SessionRevoker
 
 
@@ -32,11 +34,13 @@ class AuthProvider(Provider):
         LogoutUseCase,
         ListSessionsUseCase,
         RevokeSessionUseCase,
+        RevokeOtherCabinetSessionsUseCase,
         ListUserSessionsUseCase,
         RevokeUserSessionUseCase,
         PruneStaleSessionsUseCase,
     )
     session_revoker = alias(source=SessionRepository, provides=SessionRevoker)
+    audience_session_revoker = alias(source=SessionRepository, provides=AudienceSessionRevoker)
 
 
 def get_auth_providers() -> list[Provider]:

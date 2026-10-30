@@ -10,13 +10,13 @@ from app.core.utils.time import datetime_now
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 
-NewSession = Callable[[int], Awaitable[int]]
+NewSession = Callable[..., Awaitable[int]]
 
 
 @pytest.fixture
 def new_session(session_repository: SessionRepository) -> NewSession:
     # a push subscription only counts while the session that made it is live
-    async def create(user_id: int) -> int:
+    async def create(user_id: int, audience: SessionAudience = SessionAudience.DASHBOARD) -> int:
         created = await session_repository.create(
             CreateSessionDto(
                 user_id=user_id,
@@ -24,7 +24,7 @@ def new_session(session_repository: SessionRepository) -> NewSession:
                 ip_address="127.0.0.1",
                 user_agent=None,
                 expires_at=datetime_now() + timedelta(days=30),
-                audience=SessionAudience.DASHBOARD,
+                audience=audience,
             )
         )
         return created.id

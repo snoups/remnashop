@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.notifications.dto import SubscribePushDto
@@ -50,6 +50,31 @@ async def test_same_browser_moves_to_the_admin_signed_in_now(
     listing = ListPushSubscriptionsUseCase(notification_repository, uow)
     assert await listing(first, None) == []
     assert [s.endpoint for s in await listing(second, None)] == [ENDPOINT]
+
+
+async def test_list_push_subscriptions_filters_by_audience(
+    user_repository: UserRepository,
+    notification_repository: NotificationRepository,
+    uow: UnitOfWork,
+    new_session: NewSession,
+) -> None:
+    admin = await _admin(user_repository, uow, "both")
+    subscribe = SubscribePushUseCase(notification_repository, uow)
+    dashboard = await new_session(admin.id, SessionAudience.DASHBOARD)
+    cabinet = await new_session(admin.id, SessionAudience.CABINET)
+    await subscribe(admin, _sub(dashboard, "https://fcm.googleapis.com/fcm/send/panel"))
+    await subscribe(admin, _sub(cabinet, "https://fcm.googleapis.com/fcm/send/cabinet"))
+
+    async with uow:
+        panel = await notification_repository.list_push_subscriptions(
+            admin.id, SessionAudience.DASHBOARD
+        )
+        cab = await notification_repository.list_push_subscriptions(
+            admin.id, SessionAudience.CABINET
+        )
+
+    assert [s.endpoint for s in panel] == ["https://fcm.googleapis.com/fcm/send/panel"]
+    assert [s.endpoint for s in cab] == ["https://fcm.googleapis.com/fcm/send/cabinet"]
 
 
 async def test_cannot_delete_someone_elses_subscription(

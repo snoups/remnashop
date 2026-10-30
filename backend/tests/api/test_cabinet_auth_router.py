@@ -92,6 +92,7 @@ async def test_methods_is_public_and_lowercases_providers(
         "oauth": [],
         "allowed_email_domains": list(DEFAULT_ALLOWED_EMAIL_DOMAINS),
         "captcha": None,
+        "bot_username": None,
     }
 
     enabled = await client.patch(
@@ -158,3 +159,58 @@ async def test_captcha_cannot_be_switched_on_without_keys(
 
     assert rejected.status_code == 400
     assert rejected.json()["code"] == "CAPTCHA_NOT_CONFIGURED"
+
+
+async def test_turning_off_every_browser_sign_in_revokes_cabinet_sessions(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _owner_headers(user_repository, session_repository, uow, config)
+    async with uow:
+        customer = await user_repository.create(
+            CreateUserDto(login="minicustomer", name="minicustomer", language=Locale.EN)
+        )
+        await uow.commit()
+
+    async def _cabinet_session(refresh_token: str) -> int:
+        session = await session_repository.create(
+            CreateSessionDto(
+                user_id=customer.id,
+                refresh_token_hash=hash_refresh_token(refresh_token),
+                ip_address="127.0.0.1",
+                user_agent=None,
+                expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+                audience=SessionAudience.CABINET,
+            )
+        )
+        return session.id
+
+    first = await _cabinet_session("cabinet-first")
+    on = await client.patch(
+        f"{API_V1}/settings/cabinet-auth",
+        json={"telegram_enabled": True, "telegram_deeplink_enabled": True},
+        headers=headers,
+    )
+    assert on.json()["telegram_deeplink_enabled"] is True
+    # turning a way in on keeps sessions
+    assert await session_repository.find_active_by_id(first) is not None
+
+    off = await client.patch(
+        f"{API_V1}/settings/cabinet-auth",
+        json={"telegram_deeplink_enabled": False},
+        headers=headers,
+    )
+    assert off.status_code == 200
+    assert await session_repository.find_active_by_id(first) is None
+    # the admin's dashboard session survives
+    assert (await client.get(f"{API_V1}/settings/cabinet-auth", headers=headers)).status_code == 200
+
+    # already Mini App only: saving again revokes nothing new
+    second = await _cabinet_session("cabinet-second")
+    await client.patch(
+        f"{API_V1}/settings/cabinet-auth", json={"telegram_enabled": True}, headers=headers
+    )
+    assert await session_repository.find_active_by_id(second) is not None

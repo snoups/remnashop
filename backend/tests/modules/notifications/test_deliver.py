@@ -3,7 +3,7 @@ from typing import Any, Optional
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.exceptions import RetryableTaskError
 from app.modules.notifications.dto import DeliverNotificationDto, PushMessage
 from app.modules.notifications.render import NotificationRenderer
@@ -24,8 +24,10 @@ BROKEN_CHAT: int = 500
 class FakePush:
     def __init__(self) -> None:
         self.sent: list[tuple[int, PushMessage]] = []
+        self.audiences: set[SessionAudience] = set()
 
-    async def send(self, user_id: int, message: PushMessage) -> int:
+    async def send(self, user_id: int, message: PushMessage, audience: SessionAudience) -> int:
+        self.audiences.add(audience)
         self.sent.append((user_id, message))
         return 1
 
@@ -112,6 +114,7 @@ async def test_delivers_to_permitted_staff_except_the_actor(
     assert (message.title, message.body) == ("Login failed", "Wrong password for x")
     assert message.url == "/dashboard?bell=open"
     assert message.tag == "LoginFailedEvent"
+    assert push.audiences == {SessionAudience.DASHBOARD}
 
 
 async def test_revoked_permission_and_switched_off_channel_get_nothing(

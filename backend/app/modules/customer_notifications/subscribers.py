@@ -1,7 +1,7 @@
 from typing import Any, Final, Optional, Union, cast
 
 from app.core.event_bus import EventBus
-from app.core.events import StoredEvent, UserEvent
+from app.core.events import StoredEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
 from app.modules.customer_notifications.dispatch import (
@@ -62,41 +62,57 @@ async def _notify(
     )
 
 
-async def _on_purchase(event: UserEvent, entry: StoredEvent) -> None:
-    await _notify(entry, event.user.id, {})
-
-
 async def _on_paid(
     event: Union[SubscriptionPurchasedEvent, SubscriptionChangedEvent], entry: StoredEvent
 ) -> None:
-    await _notify(entry, event.user.id, {}, event.payment_key)
+    await _notify(entry, event.user.id, {}, event.payment_key, event.subscription_id)
 
 
 async def _on_renewed(event: SubscriptionRenewedEvent, entry: StoredEvent) -> None:
-    await _notify(entry, event.user.id, {"duration_days": event.duration_days}, event.payment_key)
+    await _notify(
+        entry,
+        event.user.id,
+        {"duration_days": event.duration_days},
+        event.payment_key,
+        event.subscription_id,
+    )
 
 
 async def _on_addon(event: SubscriptionAddOnGrantedEvent, entry: StoredEvent) -> None:
     # the owner is `target`; `user` is the system actor on the promocode path
-    await _notify(entry, (event.target or event.user).id, {})
+    await _notify(
+        entry,
+        (event.target or event.user).id,
+        {"addon_type": event.addon_type, "amount": event.amount},
+        subscription_id=event.subscription_id,
+    )
 
 
 async def _on_granted(event: SubscriptionGrantedEvent, entry: StoredEvent) -> None:
-    await _notify(entry, event.target.id, {"duration_days": event.duration_days})
+    await _notify(
+        entry,
+        event.target.id,
+        {"duration_days": event.duration_days},
+        subscription_id=event.subscription_id,
+    )
 
 
 async def _on_refund(
     event: Union[TransactionRefundedEvent, TransactionPartiallyRefundedEvent],
     entry: StoredEvent,
 ) -> None:
-    await _notify(entry, event.user_id, {"amount": event.amount, "currency": event.currency})
+    await _notify(
+        entry,
+        event.user_id,
+        {"order_id": event.order_id, "amount": event.amount, "currency": event.currency},
+    )
 
 
 async def _on_not_fulfilled(event: PaidOrderNotFulfilledEvent, entry: StoredEvent) -> None:
     await _notify(
         entry,
         event.user_id,
-        {"amount": event.amount, "currency": event.currency},
+        {"order_id": event.order_id, "amount": event.amount, "currency": event.currency},
         event.payment_key,
     )
 
@@ -118,8 +134,14 @@ async def _on_hours(
     )
 
 
-async def _on_lapsed(
-    event: Union[SubscriptionExpiredEvent, SubscriptionTrafficLimitedEvent], entry: StoredEvent
+async def _on_subscription(
+    event: Union[
+        SubscriptionExpiredEvent,
+        SubscriptionTrafficLimitedEvent,
+        SubscriptionTrafficThresholdEvent,
+        TorrentBlockerReportEvent,
+    ],
+    entry: StoredEvent,
 ) -> None:
     await _notify(entry, event.user.id, {}, subscription_id=event.subscription_id)
 
@@ -169,12 +191,12 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(TransactionCanceledEvent, _on_abandoned)
     bus.subscribe(TransactionExpiredEvent, _on_abandoned)
     bus.subscribe(SubscriptionExpiringEvent, _on_hours)
-    bus.subscribe(SubscriptionExpiredEvent, _on_lapsed)
-    bus.subscribe(SubscriptionTrafficLimitedEvent, _on_lapsed)
-    bus.subscribe(SubscriptionTrafficThresholdEvent, _on_purchase)
+    bus.subscribe(SubscriptionExpiredEvent, _on_subscription)
+    bus.subscribe(SubscriptionTrafficLimitedEvent, _on_subscription)
+    bus.subscribe(SubscriptionTrafficThresholdEvent, _on_subscription)
     bus.subscribe(SubscriptionNotConnectedEvent, _on_hours)
     bus.subscribe(SubscriptionExpiredAgoEvent, _on_hours)
-    bus.subscribe(TorrentBlockerReportEvent, _on_purchase)
+    bus.subscribe(TorrentBlockerReportEvent, _on_subscription)
     bus.subscribe(CabinetNewDeviceSignInEvent, _on_new_device)
     bus.subscribe(AccountsMergedEvent, _on_accounts_merged)
     bus.subscribe(ReferralRewardIssuedEvent, _on_reward)

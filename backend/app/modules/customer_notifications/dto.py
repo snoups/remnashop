@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from datetime import datetime, timedelta
+from typing import Any, Final, Optional, Union
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -27,3 +28,34 @@ class SendCustomerTelegramDto:
 @dataclass(frozen=True, kw_only=True)
 class ShowPaymentCanceledDto:
     order_id: int
+
+
+FEED_LIMIT: Final = 50
+FEED_RETENTION: Final = timedelta(days=90)
+
+
+@dataclass(frozen=True, kw_only=True)
+class CustomerNotificationDto:
+    id: int
+    event_type: str
+    args: dict[str, Any]
+    subscription_id: Optional[int]
+    created_at: datetime
+    read_at: Optional[datetime]
+
+
+@dataclass(frozen=True, kw_only=True)
+class CustomerFeedItemDto:
+    id: int
+    event_type: str
+    title: str
+    body: str
+    url: str
+    created_at: datetime
+    read: bool
+
+
+@dataclass(frozen=True, kw_only=True)
+class CustomerFeedDto:
+    items: list[CustomerFeedItemDto]
+    unread_count: int

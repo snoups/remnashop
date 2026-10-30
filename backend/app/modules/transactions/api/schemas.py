@@ -173,6 +173,9 @@ class OwnTransactionResponse(BaseModel):
     plan_name: str
     duration_days: int
     created_at: Optional[datetime]
+    # what a failed payment's "try again" reopens: the plan, and the subscription a renewal or change was for
+    plan_id: int
+    target_subscription_id: Optional[int]
 
     @classmethod
     def from_dto(cls, order: TransactionDto) -> "OwnTransactionResponse":
@@ -190,6 +193,8 @@ class OwnTransactionResponse(BaseModel):
             plan_name=order.plan_snapshot.name,
             duration_days=order.duration_days,
             created_at=order.created_at,
+            plan_id=order.plan_snapshot.plan_id,
+            target_subscription_id=order.target_subscription_id,
         )
 
 

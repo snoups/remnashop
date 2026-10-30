@@ -18,6 +18,8 @@ class CabinetMethodsDto:
     oauth: list[OAuthProvider]
     allowed_email_domains: Optional[list[str]]
     captcha: Optional[CaptchaWidgetDto] = None
+    # where the cabinet sends a browser when the Mini App is the only way in
+    bot_username: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -65,6 +65,7 @@ class SubscriptionAddOnGrantedEvent(UserEvent):
     target: Optional[Actor]
     subscription_id: int
     addon_id: int
+    addon_type: AddOnType
     amount: int
 
 

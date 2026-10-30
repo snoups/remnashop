@@ -37,7 +37,7 @@ class BotSignInUseCase:
     ) -> tuple[UserDto, IssuedSession]:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
-        if not cabinet.telegram_enabled:
+        if not cabinet.telegram_deeplink_enabled:
             raise AuthenticationError(
                 "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )

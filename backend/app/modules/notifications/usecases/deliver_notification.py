@@ -4,7 +4,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
+from app.core.enums import Role, SessionAudience
 from app.core.exceptions import RetryableTaskError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
@@ -96,6 +96,7 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
                     await self._push_sender.send(
                         user.id,
                         PushMessage(title=title, body=body, url=PUSH_URL, tag=data.event_type),
+                        SessionAudience.DASHBOARD,
                     )
                 except Exception:
                     logger.exception(f"Push notification for {user.log} failed")

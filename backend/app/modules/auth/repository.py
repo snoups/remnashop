@@ -141,7 +141,11 @@ class SessionRepository:
         await self.session.flush()
 
     async def revoke_all_by_user(
-        self, user_id: int, *, keep_session_id: Optional[int] = None
+        self,
+        user_id: int,
+        *,
+        keep_session_id: Optional[int] = None,
+        audience: Optional[SessionAudience] = None,
     ) -> None:
         now = datetime_now()
         stmt = (
@@ -149,9 +153,19 @@ class SessionRepository:
             .where(
                 UserSession.user_id == user_id,
                 UserSession.id != keep_session_id if keep_session_id is not None else true(),
+                UserSession.audience == audience if audience is not None else true(),
                 *self._active_clause(),
             )
             .values(revoked_at=now)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def revoke_all_by_audience(self, audience: SessionAudience) -> None:
+        stmt = (
+            update(UserSession)
+            .where(UserSession.audience == audience, *self._active_clause())
+            .values(revoked_at=datetime_now())
         )
         await self.session.execute(stmt)
         await self.session.flush()

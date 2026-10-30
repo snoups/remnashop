@@ -1,20 +1,37 @@
-from typing import Any, Optional, cast
+import secrets
+from datetime import timedelta
+from typing import Any, Optional, Union, cast
 
 import pytest
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.constants import REDIS_KEY_PREFIX
+from app.core.db.models import CustomerNotification
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PaymentOutcome, PurchaseChannel, SubscriptionStatus
+from app.core.enums import (
+    Locale,
+    PaymentOutcome,
+    PurchaseChannel,
+    SessionAudience,
+    SubscriptionStatus,
+)
 from app.core.exceptions import RetryableTaskError
 from app.core.metrics import WORKER_METRICS_REGISTRY
+from app.core.security import hash_refresh_token
 from app.core.utils.time import datetime_now
+from app.modules.auth.dto import CreateSessionDto
+from app.modules.auth.repository import SessionRepository
 from app.modules.customer_notifications.dto import NotifyCustomerDto
+from app.modules.customer_notifications.links import customer_url
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
+from app.modules.customer_notifications.repository import CustomerNotificationRepository
 from app.modules.customer_notifications.usecases import NotifyCustomerUseCase
+from app.modules.notifications.dto import PushMessage
 from app.modules.notifications.render import NotificationRenderer
+from app.modules.notifications.repository import NotificationRepository
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
@@ -32,8 +49,13 @@ ntf-customer-button-buy = Buy
 ntf-customer-button-close = Close
 ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
-ntf-customer-subscription-expiring = Expires soon.
+ntf-customer-subscription-expiring = Expires soon. { $is_trial ->
+        [yes] Buy one.
+       *[no] Renew it.
+    }
     .title = Expiring
+ntf-customer-subscription-not-connected = Subscribed { $span } { $span_unit } ago.
+    .title = Connect
 ntf-customer-paid-order-not-fulfilled = Not issued.
     .title = Problem
 ntf-customer-torrent-blocker-report = Torrents are forbidden.
@@ -55,6 +77,15 @@ class _Tokens:
         return self.token, None
 
 
+class _Push:
+    def __init__(self) -> None:
+        self.sent: list[tuple[int, PushMessage, SessionAudience]] = []
+
+    async def send(self, user_id: int, message: PushMessage, audience: SessionAudience) -> int:
+        self.sent.append((user_id, message, audience))
+        return 1
+
+
 class _Fixture:
     def __init__(
         self,
@@ -67,9 +98,12 @@ class _Fixture:
     ) -> None:
         self.telegram = RecordingDispatch()
         self.email = RecordingDispatch()
+        self.push = _Push()
         self.users = users
         self.orders = orders
         self.uow = uow
+        self.feed = CustomerNotificationRepository(orders.session)
+        self.notifications = NotificationRepository(orders.session)
         self.tokens = _Tokens("token")
         self.signals = FakeBotSignals()
         self.use_case = NotifyCustomerUseCase(
@@ -82,6 +116,9 @@ class _Fixture:
             cast(Any, self.signals),
             cast(Any, self.telegram),
             cast(Any, self.email),
+            self.feed,
+            self.notifications,
+            cast(Any, self.push),
             redis,
             config,
             uow,
@@ -101,18 +138,46 @@ class _Fixture:
         payment_key: Optional[str] = None,
         subscription_id: Optional[int] = None,
         telegram_refused: bool = False,
+        args: Optional[dict[str, Union[str, int]]] = None,
     ) -> None:
         await self.use_case.system(
             NotifyCustomerDto(
                 user_id=user.id,
                 event_type=event_type,
                 outbox_id=outbox_id,
-                args={},
+                args=args or {},
                 payment_key=payment_key,
                 subscription_id=subscription_id,
                 telegram_refused=telegram_refused,
             )
         )
+
+    async def subscribe_push(self, user: UserDto, audience: SessionAudience) -> None:
+        async with self.uow:
+            session = await SessionRepository(self.orders.session).create(
+                CreateSessionDto(
+                    user_id=user.id,
+                    refresh_token_hash=hash_refresh_token(secrets.token_urlsafe(16)),
+                    ip_address="127.0.0.1",
+                    user_agent=None,
+                    expires_at=datetime_now() + timedelta(days=30),
+                    audience=audience,
+                )
+            )
+            await self.notifications.upsert_push_subscription(
+                user_id=user.id,
+                session_id=session.id,
+                endpoint=f"https://push.example/{secrets.token_hex(4)}",
+                p256dh="k",
+                auth="a",
+                user_agent=None,
+            )
+
+    async def feed_rows(self, user: UserDto) -> list[CustomerNotification]:
+        rows = await self.orders.session.scalars(
+            select(CustomerNotification).where(CustomerNotification.user_id == user.id)
+        )
+        return list(rows)
 
     async def order(self, user: UserDto, channel: PurchaseChannel, key: str) -> int:
         order = await create_order(self.orders, self.uow, user_id=user.id, channel=channel, key=key)
@@ -430,3 +495,137 @@ async def test_expiring_trial_gets_a_buy_button(fx: _Fixture) -> None:
 
     (message,) = fx.telegram.messages
     assert message["buttons"][0] == {"text": "Buy", "callback_data": "cn:buy"}
+    assert message["text"] == "Expiring\n\nExpires soon. Buy one."
+    (row,) = await fx.feed_rows(user)
+    assert row.args == {"is_trial": "yes"}
+
+
+async def test_hours_are_rendered_as_a_span_but_stored_as_hours(fx: _Fixture) -> None:
+    user = await fx.create(name="h", telegram_id=8092)
+
+    await fx.notify(user, "SubscriptionNotConnectedEvent", subscription_id=5, args={"hours": 48})
+
+    (message,) = fx.telegram.messages
+    assert message["text"] == "Connect\n\nSubscribed 2 day ago."
+    (row,) = await fx.feed_rows(user)
+    assert row.args == {"hours": 48}
+
+
+async def test_feed_row_written(fx: _Fixture) -> None:
+    user = await fx.create(name="f", telegram_id=8301)
+
+    await fx.notify(user, "SubscriptionExpiringEvent", subscription_id=5)
+
+    (row,) = await fx.feed_rows(user)
+    assert (row.event_type, row.args, row.subscription_id, row.outbox_id) == (
+        "SubscriptionExpiringEvent",
+        {"is_trial": "no"},
+        5,
+        1,
+    )
+
+
+async def test_feed_row_without_any_channel(fx: _Fixture) -> None:
+    user = await fx.create(name="f")
+
+    await fx.notify(user)
+
+    assert len(await fx.feed_rows(user)) == 1
+    assert fx.telegram.messages == []
+    assert fx.email.messages == []
+
+
+async def test_feed_not_duplicated_on_retry(fx: _Fixture) -> None:
+    user = await fx.create(name="f", telegram_id=8302)
+
+    await fx.notify(user, outbox_id=51)
+    await fx.notify(user, outbox_id=51)
+
+    assert len(await fx.feed_rows(user)) == 1
+
+
+async def test_feed_not_duplicated_on_retry_after_channel_failure(
+    fx: _Fixture, redis: Redis
+) -> None:
+    user = await fx.create(name="f", telegram_id=8307)
+    await fx.subscribe_push(user, SessionAudience.CABINET)
+    sent = fx.push.sent
+
+    async def boom(*args: Any) -> int:
+        raise RuntimeError("push gateway down")
+
+    healthy = fx.push.send
+    fx.push.send = boom  # type: ignore[method-assign]
+    with pytest.raises(RetryableTaskError):
+        await fx.notify(user, outbox_id=52)
+
+    assert len(await fx.feed_rows(user)) == 1
+    assert len(fx.telegram.messages) == 1
+    assert not await redis.exists(f"{REDIS_KEY_PREFIX}customer_notified:52:PUSH")
+
+    fx.push.send = healthy  # type: ignore[method-assign]
+    await fx.notify(user, outbox_id=52)
+
+    assert len(await fx.feed_rows(user)) == 1
+    assert len(fx.telegram.messages) == 1
+    assert len(sent) == 1
+
+
+async def test_feed_respects_cooldown(fx: _Fixture) -> None:
+    user = await fx.create(name="f", telegram_id=8303)
+
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=61)
+    await fx.notify(user, "TorrentBlockerReportEvent", outbox_id=62)
+
+    assert len(await fx.feed_rows(user)) == 1
+
+
+async def test_push_sent_to_cabinet_when_subscribed(fx: _Fixture) -> None:
+    user = await fx.create(name="p", telegram_id=8304, email="p@example.com")
+    await fx.subscribe_push(user, SessionAudience.CABINET)
+
+    await fx.notify(user, "SubscriptionExpiringEvent", subscription_id=9)
+
+    assert fx.push.sent == [
+        (
+            user.id,
+            PushMessage(
+                title="Expiring",
+                body="Expires soon. Renew it.",
+                url=customer_url("SubscriptionExpiringEvent", 9, {}),
+                tag="SubscriptionExpiringEvent",
+            ),
+            SessionAudience.CABINET,
+        )
+    ]
+    assert len(fx.telegram.messages) == 1
+    assert fx.email.messages == []
+
+
+async def test_push_only_customer_gets_push(fx: _Fixture) -> None:
+    user = await fx.create(name="p")
+    await fx.subscribe_push(user, SessionAudience.CABINET)
+
+    await fx.notify(user)
+
+    assert len(fx.push.sent) == 1
+
+
+async def test_push_not_sent_twice_for_one_outbox(fx: _Fixture) -> None:
+    user = await fx.create(name="p", telegram_id=8305)
+    await fx.subscribe_push(user, SessionAudience.CABINET)
+
+    await fx.notify(user, outbox_id=71)
+    await fx.notify(user, outbox_id=71)
+
+    assert len(fx.push.sent) == 1
+
+
+async def test_no_push_without_cabinet_subscription(fx: _Fixture) -> None:
+    user = await fx.create(name="p", telegram_id=8306)
+    await fx.subscribe_push(user, SessionAudience.DASHBOARD)
+
+    await fx.notify(user)
+
+    assert fx.push.sent == []
+    assert len(fx.telegram.messages) == 1

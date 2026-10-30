@@ -44,31 +44,61 @@ ntf-customer-open-cabinet = Open cabinet
 ntf-customer-button-renew = Renew subscription
 ntf-customer-button-buy = Buy a subscription
 ntf-customer-button-close = Close
-ntf-customer-subscription-purchased = Your subscription is active. Connection details are in the cabinet and the bot.
+ntf-customer-subscription-purchased = Your subscription is active. Connect a device to start using it.
     .title = Subscription activated
-ntf-customer-subscription-renewed = Your subscription was extended by { $duration_days } days.
+ntf-customer-subscription-renewed = Your subscription was extended by { $duration_days ->
+        [one] { $duration_days } day
+       *[other] { $duration_days } days
+    }.
     .title = Subscription renewed
-ntf-customer-subscription-changed = Your plan was changed. Connection details are in the cabinet and the bot.
+ntf-customer-subscription-changed = Your plan was changed. Your connection stays the same, nothing to set up.
     .title = Plan changed
-ntf-customer-subscription-add-on-granted = An add-on was added to your subscription.
+ntf-customer-subscription-add-on-granted = { $addon_type ->
+        [TRAFFIC] { $amount } GB of traffic was added to your subscription.
+       *[DEVICES] { $amount ->
+            [one] { $amount } device
+           *[other] { $amount } devices
+        } added to your subscription.
+    }
     .title = Add-on activated
-ntf-customer-subscription-granted = You were given a subscription for { $duration_days } days.
+ntf-customer-subscription-granted = You were given a subscription for { $duration_days ->
+        [one] { $duration_days } day
+       *[other] { $duration_days } days
+    }.
     .title = Subscription granted
-ntf-customer-transaction-refunded = Your payment of { $amount } { $currency } was refunded.
+ntf-customer-transaction-refunded = Your payment of { $money } was refunded.
     .title = Payment refunded
-ntf-customer-transaction-partially-refunded = { $amount } { $currency } of your payment was refunded.
+ntf-customer-transaction-partially-refunded = { $money } of your payment was refunded.
     .title = Partial refund
-ntf-customer-paid-order-not-fulfilled = We received your payment of { $amount } { $currency }, but issuing the subscription is taking longer than usual. We're on it; if it doesn't arrive soon, contact support.
+ntf-customer-paid-order-not-fulfilled = We received your payment of { $money }, but issuing the subscription is taking longer than usual. We're on it; if it doesn't arrive soon, contact support.
     .title = Payment received
-ntf-customer-subscription-expiring = Your subscription ends in { $hours } h.
+ntf-customer-subscription-expiring = Your subscription ends in { $span_unit ->
+        [day] { $span ->
+            [one] { $span } day
+           *[other] { $span } days
+        }
+       *[hour] { $span } h
+    }. { $is_trial ->
+        [yes] Get a subscription to keep your access.
+       *[no] Renew it to keep your access.
+    }
     .title = Subscription ending soon
-ntf-customer-subscription-expired = Your subscription has expired.
+ntf-customer-subscription-expired = Your subscription has expired. { $is_trial ->
+        [yes] Get a subscription to get your access back.
+       *[no] Renew it to get your access back.
+    }
     .title = Subscription expired
-ntf-customer-subscription-traffic-limited = Your traffic limit is reached.
+ntf-customer-subscription-traffic-limited = Your traffic limit is reached. { $is_trial ->
+        [yes] Get a subscription to get your access back.
+       *[no] Renew your subscription to get your access back.
+    }
     .title = Traffic limit reached
-ntf-customer-subscription-traffic-threshold = Your traffic is running low.
+ntf-customer-subscription-traffic-threshold = Your traffic is running low. { $is_trial ->
+        [yes] Get a subscription to keep your access.
+       *[no] Renew your subscription to keep your access.
+    }
     .title = Traffic running low
-ntf-customer-cabinet-new-device-sign-in = New sign-in to your cabinet from { $ip } ({ $browser }). If it wasn't you, sign out everywhere in the cabinet and contact support.
+ntf-customer-cabinet-new-device-sign-in = New sign-in to your cabinet from { $ip } ({ $browser }). If it wasn't you, sign out on all other devices and contact support.
     .title = New sign-in
 ntf-customer-accounts-merged = Your accounts were merged: the other account's subscriptions, payments and sign-in methods are now here. If it wasn't you, contact support.
     .title = Accounts merged
@@ -151,11 +181,35 @@ ntf-subscription-revoked = { $user }'s subscription link was reissued.
     .title = Link reissued
 ntf-subscription-not-connected = { $user } hasn't connected { $hours } h after subscribing.
     .title = Not connected
-ntf-customer-subscription-not-connected = You subscribed { $hours } h ago but haven't connected yet. Open the cabinet for setup instructions.
+ntf-customer-subscription-not-connected = You subscribed { $span_unit ->
+        [day] { $span ->
+            [one] { $span } day
+           *[other] { $span } days
+        }
+       *[hour] { $span } h
+    } ago but haven't connected yet. Connect a device, it only takes a couple of minutes.
     .title = Let's get you connected
-ntf-customer-subscription-expired-ago = Your subscription expired { $hours } h ago. Renew it to get back online.
+ntf-customer-subscription-expired-ago = Your subscription expired { $span_unit ->
+        [day] { $span ->
+            [one] { $span } day
+           *[other] { $span } days
+        }
+       *[hour] { $span } h
+    } ago. { $is_trial ->
+        [yes] Get a subscription to get your access back.
+       *[no] Renew it to get your access back.
+    }
     .title = Subscription expired
 ntf-customer-torrent-blocker-report = Using torrents with the VPN on is forbidden. Your torrent traffic was blocked; repeated violations may lead to restrictions.
     .title = Torrents are not allowed
-ntf-customer-promocode-discount-expiring = Your { $percent }% discount from promocode { $code } is valid for { $hours } more h. Make your purchase before it’s gone.
+ntf-customer-promocode-discount-expiring = Your { $percent }% discount from promocode { $code } is valid for { $span_unit ->
+        [day] { $span ->
+            [one] { $span } more day
+           *[other] { $span } more days
+        }
+       *[hour] { $span ->
+            [one] { $span } more hour
+           *[other] { $span } more hours
+        }
+    }. Make your purchase before it’s gone.
     .title = Your discount is about to expire

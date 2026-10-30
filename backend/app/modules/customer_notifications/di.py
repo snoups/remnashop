@@ -6,20 +6,29 @@ from app.modules.customer_notifications.dispatch import (
     NotifyCustomerDispatch,
     SendCustomerTelegramDispatch,
 )
+from app.modules.customer_notifications.repository import CustomerNotificationRepository
 from app.modules.customer_notifications.tasks import (
     notify_customer_task,
     send_customer_telegram_task,
 )
 from app.modules.customer_notifications.usecases import (
+    GetCustomerFeedUseCase,
+    MarkCustomerFeedReadUseCase,
     NotifyCustomerUseCase,
+    PruneCustomerNotificationsUseCase,
     SendCustomerTelegramUseCase,
     ShowPaymentCanceledUseCase,
 )
 
 
 class CustomerNotificationsProvider(Provider):
+    customer_notification_repository = provide(CustomerNotificationRepository, scope=Scope.REQUEST)
+
     use_cases = provide_all(
+        GetCustomerFeedUseCase,
+        MarkCustomerFeedReadUseCase,
         NotifyCustomerUseCase,
+        PruneCustomerNotificationsUseCase,
         SendCustomerTelegramUseCase,
         ShowPaymentCanceledUseCase,
         scope=Scope.REQUEST,

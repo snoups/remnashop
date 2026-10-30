@@ -3,7 +3,14 @@ import { useTranslation } from "react-i18next";
 import { CopyableValue } from "@shared/ui/CopyableValue";
 import { GuideDialog } from "@shared/ui/GuideDialog";
 
-export type GuideMethod = "telegramBot" | "telegramOAuth" | "google" | "yandex" | "email" | "captcha";
+export type GuideMethod =
+  | "telegramMiniApp"
+  | "telegramDeeplink"
+  | "telegramOAuth"
+  | "google"
+  | "yandex"
+  | "email"
+  | "captcha";
 
 interface GuideSection {
   title: string;

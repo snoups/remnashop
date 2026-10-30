@@ -1,4 +1,4 @@
-import { Bot, DoorOpen, Mail, MailCheck, ShieldCheck } from "lucide-react";
+import { Bot, DoorOpen, Mail, MailCheck, ShieldCheck, Smartphone } from "lucide-react";
 import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +35,7 @@ import { CabinetMethodGuideDialog, type GuideMethod } from "./CabinetMethodGuide
 
 type MethodKey =
   | "telegram_enabled"
+  | "telegram_deeplink_enabled"
   | "telegram_oauth_enabled"
   | "google_enabled"
   | "yandex_enabled"
@@ -43,7 +44,8 @@ type MethodKey =
 type OAuthMethod = "telegram" | "google" | "yandex";
 
 const METHODS: { key: MethodKey; label: Exclude<GuideMethod, "captcha">; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
-  { key: "telegram_enabled", label: "telegramBot", icon: Bot },
+  { key: "telegram_enabled", label: "telegramMiniApp", icon: Smartphone },
+  { key: "telegram_deeplink_enabled", label: "telegramDeeplink", icon: Bot },
   { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
   { key: "google_enabled", label: "google", icon: GoogleIcon, oauth: "google" },
   { key: "yandex_enabled", label: "yandex", icon: YandexIcon, oauth: "yandex" },
@@ -113,7 +115,11 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
           <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
             {METHODS.map(({ key, label, icon: Icon, oauth }) => {
               const isConfigured =
-                label === "telegramBot" ? isBotConfigured : label === "email" ? isEmailConfigured : undefined;
+                label === "telegramMiniApp" || label === "telegramDeeplink"
+                  ? isBotConfigured
+                  : label === "email"
+                    ? isEmailConfigured
+                    : undefined;
               return oauth && oauthSettings ? (
                 <OAuthMethodPanel
                   key={key}
@@ -149,9 +155,11 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
                         <p className="text-[12px] text-muted-foreground">
                           {oauth
                             ? t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })
-                            : label === "telegramBot"
-                              ? t("settings.cabinetAuth.telegramBotHint")
-                              : t("settings.cabinetAuth.emailHint")}
+                            : label === "telegramMiniApp"
+                              ? t("settings.cabinetAuth.telegramMiniAppHint")
+                              : label === "telegramDeeplink"
+                                ? t("settings.cabinetAuth.telegramDeeplinkHint")
+                                : t("settings.cabinetAuth.emailHint")}
                         </p>
                       )}
                     </div>

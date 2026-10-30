@@ -5,6 +5,7 @@ import pytest
 
 from app.core.actor import SyntheticActor
 from app.core.enums import (
+    AddOnType,
     Currency,
     Locale,
     PaymentGatewayType,
@@ -28,6 +29,7 @@ from app.modules.subscriptions import (
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
     SubscriptionTrafficLimitedEvent,
+    SubscriptionTrafficThresholdEvent,
     TorrentBlockerReportEvent,
 )
 from app.modules.transactions import (
@@ -86,17 +88,27 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
         ),
         (
             SubscriptionAddOnGrantedEvent(
-                user=_SYSTEM, target=_user(9), addon_id=1, amount=10, **_SUB
+                user=_SYSTEM,
+                target=_user(9),
+                addon_id=1,
+                addon_type=AddOnType.TRAFFIC,
+                amount=10,
+                **_SUB,
             ),
             9,
-            {},
+            {"addon_type": AddOnType.TRAFFIC, "amount": 10},
         ),
         (
             SubscriptionAddOnGrantedEvent(
-                user=_user(7), target=None, addon_id=1, amount=10, **_SUB
+                user=_user(7),
+                target=None,
+                addon_id=1,
+                addon_type=AddOnType.DEVICES,
+                amount=2,
+                **_SUB,
             ),
             7,
-            {},
+            {"addon_type": AddOnType.DEVICES, "amount": 2},
         ),
         (
             SubscriptionGrantedEvent(
@@ -115,7 +127,7 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
                 currency=Currency.USD,
             ),
             3,
-            {"amount": "10.00", "currency": Currency.USD},
+            {"order_id": 1, "amount": "10.00", "currency": Currency.USD},
         ),
         (
             TransactionPartiallyRefundedEvent(
@@ -126,7 +138,7 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
                 currency=Currency.USD,
             ),
             3,
-            {"amount": "1.00", "currency": Currency.USD},
+            {"order_id": 1, "amount": "1.00", "currency": Currency.USD},
         ),
         (
             ReferralRewardIssuedEvent(
@@ -158,6 +170,18 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
             7,
             {"reward_type": ReferralRewardType.EXTRA_DAYS, "amount": 3},
         ),
+        (
+            PaidOrderNotFulfilledEvent(
+                order_id=4,
+                user_id=3,
+                payment_key="k",
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                amount="10.00",
+                currency=Currency.USD,
+            ),
+            3,
+            {"order_id": 4, "amount": "10.00", "currency": Currency.USD},
+        ),
     ],
     ids=lambda value: type(value).__name__ if isinstance(value, BaseEvent) else "",
 )
@@ -171,7 +195,7 @@ async def test_event_enqueues_notification(
         event_type=event.event_type,
         outbox_id=5,
         args=args,
-        payment_key=None,
+        payment_key=ANY,
         subscription_id=ANY,
     )
 
@@ -258,4 +282,39 @@ async def test_abandoned_order_shows_cancel_window(event_class: type[BaseEvent])
 async def test_lapsing_subscription_is_named_for_its_renew_button(event: BaseEvent) -> None:
     kiq = await _dispatch(event)
 
+    assert kiq.await_args.kwargs["subscription_id"] == 1
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        SubscriptionPurchasedEvent(
+            user=_user(7), plan_id=1, purchase_type=PurchaseType.NEW, **_SUB
+        ),
+        SubscriptionChangedEvent(
+            user=_user(7), previous_subscription_id=2, previous_plan_snapshot={}, **_SUB
+        ),
+        SubscriptionRenewedEvent(user=_user(7), duration_days=30, **_SUB),
+        SubscriptionAddOnGrantedEvent(
+            user=_SYSTEM,
+            target=_user(9),
+            addon_id=1,
+            addon_type=AddOnType.TRAFFIC,
+            amount=10,
+            **_SUB,
+        ),
+        SubscriptionGrantedEvent(
+            actor=_user(1), target=_user(9), plan_id=1, duration_days=5, **_SUB
+        ),
+        SubscriptionTrafficThresholdEvent(user=_user(7), **_SUB),
+        TorrentBlockerReportEvent(
+            user=_user(7), node_name="n", destination="d", blocked_until="t", **_SUB
+        ),
+    ],
+    ids=lambda event: type(event).__name__,
+)
+async def test_subscription_event_names_its_subscription(event: BaseEvent) -> None:
+    kiq = await _dispatch(event)
+
+    # a plan change names the new subscription, not the replaced one
     assert kiq.await_args.kwargs["subscription_id"] == 1

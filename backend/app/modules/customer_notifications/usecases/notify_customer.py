@@ -1,4 +1,4 @@
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Final, Optional
 
 from loguru import logger
@@ -15,21 +15,27 @@ from app.core.constants import (
     TTL_7D,
 )
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PaymentOutcome, PurchaseChannel
+from app.core.enums import AppearanceTarget, PaymentOutcome, PurchaseChannel, SessionAudience
 from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.ports import BotSignals
 from app.core.usecase import UseCase
 from app.modules.customer_notifications.dispatch import SendCustomerTelegramDispatch
 from app.modules.customer_notifications.dto import NotifyCustomerDto
+from app.modules.customer_notifications.links import customer_url
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
+from app.modules.customer_notifications.render_args import customer_render_args
+from app.modules.customer_notifications.repository import CustomerNotificationRepository
 from app.modules.customer_notifications.routing import CustomerChannel, channels_for
 from app.modules.email import SendEmailDispatch, load_email_brand, render_email
 from app.modules.notifications import (
     BotTokenSource,
     NotificationRenderer,
     NotificationRendererFactory,
+    NotificationRepository,
+    PushMessage,
+    WebPushSender,
 )
-from app.modules.settings import SettingsRepository
+from app.modules.settings import SettingsRepository, push_icon_path
 from app.modules.subscriptions import (
     SubscriptionChangedEvent,
     SubscriptionExpiredAgoEvent,
@@ -39,6 +45,7 @@ from app.modules.subscriptions import (
     SubscriptionRenewedEvent,
     SubscriptionRepository,
     SubscriptionTrafficLimitedEvent,
+    SubscriptionTrafficThresholdEvent,
     TorrentBlockerReportEvent,
 )
 from app.modules.transactions import PaidOrderNotFulfilledEvent, TransactionRepository
@@ -66,6 +73,8 @@ _RENEWABLE: Final[frozenset[str]] = frozenset(
         SubscriptionTrafficLimitedEvent,
     )
 )
+# a trial is told to buy a subscription, not to renew it
+_TRIAL_AWARE: Final[frozenset[str]] = _RENEWABLE | {SubscriptionTrafficThresholdEvent.__name__}
 
 
 def _cooldown_key(event_type: str, user_id: int) -> Optional[str]:
@@ -88,6 +97,9 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         bot_signals: BotSignals,
         send_telegram: SendCustomerTelegramDispatch,
         send_email: SendEmailDispatch,
+        feed_repository: CustomerNotificationRepository,
+        notification_repository: NotificationRepository,
+        web_push: WebPushSender,
         redis: Redis,
         config: AppConfig,
         uow: UnitOfWork,
@@ -101,6 +113,9 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         self._bot_signals = bot_signals
         self._send_telegram = send_telegram
         self._send_email = send_email
+        self._feed_repository = feed_repository
+        self._notification_repository = notification_repository
+        self._web_push = web_push
         self._redis = redis
         self._config = config
         self._uow = uow
@@ -118,6 +133,56 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             user = await self._user_repository.find_by_id(data.user_id)
         if user is None or user.is_blocked or user.deleted_at is not None:
             return
+        if data.event_type in _TRIAL_AWARE and data.subscription_id is not None:
+            is_trial = await self._is_trial(data.subscription_id)
+            # stored with the feed row, the bell renders it again later
+            data = replace(data, args={**data.args, "is_trial": "yes" if is_trial else "no"})
+        renderer = await self._renderer_factory.build()
+        title, body = renderer.render(
+            user.language,
+            f"Customer{data.event_type}",
+            customer_render_args(data.args, user.language),
+        )
+        if not body:
+            logger.error(f"No customer notification text for {data.event_type}")
+            return
+        # taken before the channels: the feed row obeys it too; a requeue after
+        # Telegram refused already holds the slot
+        cooldown_key = None if data.telegram_refused else _cooldown_key(data.event_type, user.id)
+        if cooldown_key is not None and not await self._redis.set(
+            cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
+        ):
+            return
+        try:
+            await self._send(data, user, renderer, title, body)
+        except Exception:
+            # the retry must not find its own cooldown and give up
+            if cooldown_key is not None:
+                await self._redis.delete(cooldown_key)
+            raise
+
+    async def _send(
+        self,
+        data: NotifyCustomerDto,
+        user: UserDto,
+        renderer: NotificationRenderer,
+        title: str,
+        body: str,
+    ) -> None:
+        # the bell shows every event, even to a customer we cannot reach
+        async with self._uow:
+            await self._feed_repository.add(
+                user_id=user.id,
+                outbox_id=data.outbox_id,
+                event_type=data.event_type,
+                args=data.args,
+                subscription_id=data.subscription_id,
+            )
+            has_push = bool(
+                await self._notification_repository.list_push_subscriptions(
+                    user.id, SessionAudience.CABINET
+                )
+            )
         token, _ = await self._token_source.get_bot_token()
         channels = channels_for(
             data.event_type,
@@ -125,20 +190,11 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             # a mailbox that refused us for good is skipped until the address is proven again
             email=user.email if user.email_undeliverable_at is None else None,
         )
+        # push adds to Telegram/email, it never replaces them
+        if has_push:
+            channels.append(CustomerChannel.PUSH)
         if not channels:
             logger.info(f"No channel to notify {user.log} about {data.event_type}")
-            return
-        renderer = await self._renderer_factory.build()
-        title, body = renderer.render(user.language, f"Customer{data.event_type}", data.args)
-        if not body:
-            logger.error(f"No customer notification text for {data.event_type}")
-            return
-        # taken only once there is something to send, so a failure above leaves the
-        # retry free; a requeue after Telegram refused already holds the slot
-        cooldown_key = None if data.telegram_refused else _cooldown_key(data.event_type, user.id)
-        if cooldown_key is not None and not await self._redis.set(
-            cooldown_key, "1", nx=True, ex=_COOLDOWNS[data.event_type]
-        ):
             return
         first_error: Optional[Exception] = None
         for channel in channels:
@@ -154,9 +210,6 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
                 continue
             CUSTOMER_NOTIFICATIONS.labels(channel=channel.value, result=result).inc()
         if first_error is not None:
-            # the retry must not find its own cooldown and give up
-            if cooldown_key is not None:
-                await self._redis.delete(cooldown_key)
             raise first_error
 
     async def _deliver(
@@ -199,6 +252,27 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
                 text=f"{title}\n\n{body}",
                 buttons=await self._telegram_buttons(data, user, renderer),
                 notification=asdict(data),
+            )
+            return
+        if channel is CustomerChannel.PUSH:
+            async with self._uow:
+                cabinet = await self._settings_repository.get_appearance_settings(
+                    AppearanceTarget.CABINET
+                )
+                dashboard = await self._settings_repository.get_appearance_settings(
+                    AppearanceTarget.DASHBOARD
+                )
+            # already in the worker: per-device failures are swallowed by the sender
+            await self._web_push.send(
+                user.id,
+                PushMessage(
+                    title=title,
+                    body=body,
+                    url=customer_url(data.event_type, data.subscription_id, data.args),
+                    tag=data.event_type,
+                    icon=push_icon_path(cabinet, dashboard),
+                ),
+                SessionAudience.CABINET,
             )
             return
         assert user.email is not None

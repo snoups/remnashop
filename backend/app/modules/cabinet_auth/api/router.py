@@ -5,7 +5,11 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from app.api.dependencies.public import forbid_cabinet_proxy
+from app.api.dependencies.public import (
+    forbid_cabinet_proxy,
+    get_current_session_id,
+    get_current_user,
+)
 from app.api.dependencies.rate_limit import (
     FailureLimit,
     failure_rate_limit,
@@ -20,6 +24,7 @@ from app.core.utils.http import resolve_client_ip
 from app.modules.auth import (
     DEEPLINK_BINDING_COOKIE,
     OAUTH_BINDING_COOKIE,
+    RevokeOtherCabinetSessionsUseCase,
     clear_oauth_binding_cookie,
     set_audience_cookies,
     set_oauth_binding_cookie,
@@ -61,6 +66,7 @@ from app.modules.oauth import (
     OAuthLoginCallbackUseCase,
     OAuthStateStore,
 )
+from app.modules.users import UserDto
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -309,3 +315,20 @@ async def oauth_callback(
         login=user.login,
         role=user.role,
     )
+
+
+@router.post(
+    "/sessions/actions/revoke-others",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        Depends(rate_limit(key="cabinet_revoke_others", limit=5, window_seconds=TIME_1M))
+    ],
+    responses=error_responses(401, 403),
+)
+@inject
+async def revoke_other_sessions(
+    use_case: FromDishka[RevokeOtherCabinetSessionsUseCase],
+    user: UserDto = Depends(get_current_user),
+    session_id: int = Depends(get_current_session_id),
+) -> None:
+    await use_case(user, session_id)

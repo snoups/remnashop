@@ -238,6 +238,7 @@ class UpdateEmailSettingsRequest(BaseModel):
 
 class CabinetAuthSettingsResponse(BaseModel):
     telegram_enabled: bool
+    telegram_deeplink_enabled: bool
     telegram_oauth_enabled: bool
     google_enabled: bool
     yandex_enabled: bool
@@ -252,6 +253,7 @@ class CabinetAuthSettingsResponse(BaseModel):
 
 class UpdateCabinetAuthSettingsRequest(BaseModel):
     telegram_enabled: Optional[bool] = None
+    telegram_deeplink_enabled: Optional[bool] = None
     telegram_oauth_enabled: Optional[bool] = None
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None

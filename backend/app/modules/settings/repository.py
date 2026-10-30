@@ -240,6 +240,8 @@ class SettingsRepository:
             shader_enabled=row.shader_enabled,
             has_logo=row.logo_extension is not None,
             has_favicon=row.favicon_extension is not None,
+            logo_content_type=row.logo_content_type,
+            favicon_content_type=row.favicon_content_type,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )

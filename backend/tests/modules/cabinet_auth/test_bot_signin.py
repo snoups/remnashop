@@ -28,7 +28,7 @@ def store(redis: Redis) -> DeeplinkStore:
 async def telegram_enabled(settings_repository: SettingsRepository, uow: UnitOfWork) -> None:
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
-            UpdateCabinetAuthSettingsDto(telegram_enabled=True)
+            UpdateCabinetAuthSettingsDto(telegram_deeplink_enabled=True)
         )
 
 

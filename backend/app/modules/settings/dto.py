@@ -231,6 +231,8 @@ class AppearanceSettingsDto(BaseDto, TimestampMixin):
     shader_enabled: bool = True
     has_logo: bool = False
     has_favicon: bool = False
+    logo_content_type: Optional[str] = None
+    favicon_content_type: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -356,6 +358,7 @@ class UpdateEmailSettingsDto:
 
 class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
     telegram_enabled: bool = False
+    telegram_deeplink_enabled: bool = False
     telegram_oauth_enabled: bool = False
     google_enabled: bool = False
     yandex_enabled: bool = False
@@ -373,6 +376,16 @@ class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
     def is_captcha_configured(self) -> bool:
         return self.captcha_site_key is not None and self.captcha_secret_key is not None
 
+    @property
+    def has_browser_sign_in(self) -> bool:
+        return (
+            self.telegram_deeplink_enabled
+            or self.email_enabled
+            or self.telegram_oauth_enabled
+            or self.google_enabled
+            or self.yandex_enabled
+        )
+
     def is_oauth_enabled(self, provider: OAuthProvider) -> bool:
         if provider is OAuthProvider.TELEGRAM:
             return self.telegram_oauth_enabled
@@ -386,6 +399,7 @@ class CabinetAuthSettingsDto(BaseDto, TimestampMixin):
 @dataclass(frozen=True, kw_only=True)
 class UpdateCabinetAuthSettingsDto:
     telegram_enabled: Optional[bool] = None
+    telegram_deeplink_enabled: Optional[bool] = None
     telegram_oauth_enabled: Optional[bool] = None
     google_enabled: Optional[bool] = None
     yandex_enabled: Optional[bool] = None

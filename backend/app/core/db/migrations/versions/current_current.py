@@ -457,6 +457,9 @@ def upgrade() -> None:
         "cabinet_auth_settings",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("telegram_enabled", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "telegram_deeplink_enabled", sa.Boolean(), server_default="false", nullable=False
+        ),
         sa.Column("telegram_oauth_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("google_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("yandex_enabled", sa.Boolean(), server_default="false", nullable=False),
@@ -1521,6 +1524,37 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_broadcasts_status"), "broadcasts", ["status"], unique=False)
     op.create_table(
+        "customer_notifications",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("outbox_id", sa.Integer(), nullable=False),
+        sa.Column("event_type", sa.String(length=128), nullable=False),
+        sa.Column("args", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("subscription_id", sa.Integer(), nullable=True),
+        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("user_id", "outbox_id"),
+    )
+    op.create_index(
+        op.f("ix_customer_notifications_user_id"),
+        "customer_notifications",
+        ["user_id"],
+        unique=False,
+    )
+    op.create_table(
         "event_outbox",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column(
@@ -2492,6 +2526,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_event_outbox_category"), table_name="event_outbox")
     op.drop_index(op.f("ix_event_outbox_actor_id"), table_name="event_outbox")
     op.drop_table("event_outbox")
+    op.drop_index(op.f("ix_customer_notifications_user_id"), table_name="customer_notifications")
+    op.drop_table("customer_notifications")
     op.drop_index(op.f("ix_broadcasts_status"), table_name="broadcasts")
     op.drop_index(op.f("ix_broadcasts_scheduled_at"), table_name="broadcasts")
     op.drop_index(op.f("ix_broadcasts_promocode_id"), table_name="broadcasts")

@@ -24,7 +24,13 @@ class RequestDeeplinkUseCase:
         async with self._uow:
             cabinet = await self._settings_repository.get_cabinet_auth_settings()
             bot = await self._settings_repository.get_bot_settings()
-        if not cabinet.telegram_enabled or bot.token is None:
+        # linking an account to Telegram stays with the Mini App's switch
+        enabled = (
+            cabinet.telegram_enabled
+            if link_user_id is not None
+            else cabinet.telegram_deeplink_enabled
+        )
+        if not enabled or bot.token is None:
             raise AuthenticationError(
                 "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )

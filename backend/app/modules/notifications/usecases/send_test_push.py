@@ -1,4 +1,5 @@
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SessionAudience
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
@@ -35,10 +36,14 @@ class SendTestPushUseCase(UseCase[None, int, UserDto]):
                 raise ValidationError(
                     "Web push is not configured", code=ErrorCode.PUSH_NOT_CONFIGURED
                 )
-            if not await self._notification_repository.list_push_subscriptions(actor.id):
+            if not await self._notification_repository.list_push_subscriptions(
+                actor.id, SessionAudience.DASHBOARD
+            ):
                 raise ValidationError("No push subscriptions", code=ErrorCode.PUSH_NO_SUBSCRIPTIONS)
         renderer = await self._renderer_factory.build()
         title, body = renderer.render(actor.language, TEST_EVENT_TYPE, {})
         return await self._sender.send(
-            actor.id, PushMessage(title=title, body=body, url=PUSH_URL, tag=TEST_EVENT_TYPE)
+            actor.id,
+            PushMessage(title=title, body=body, url=PUSH_URL, tag=TEST_EVENT_TYPE),
+            SessionAudience.DASHBOARD,
         )

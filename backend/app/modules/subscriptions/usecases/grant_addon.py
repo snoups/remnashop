@@ -84,6 +84,7 @@ class GrantAddOnUseCase(UseCase[GrantAddOnDto, SubscriptionDto]):
                     target=recipient,
                     subscription_id=subscription.id,
                     addon_id=addon.id,
+                    addon_type=addon.type,
                     amount=addon.amount,
                 )
             )

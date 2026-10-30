@@ -271,7 +271,10 @@ async def test_cabinet_telegram_login_limits_only_failures(
 async def test_telegram_signin_unknown_token_is_failure_limited(
     client: httpx.AsyncClient, settings_repository: SettingsRepository, uow: UnitOfWork
 ) -> None:
-    await _enable_telegram(settings_repository, uow)
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(telegram_deeplink_enabled=True)
+        )
     url = f"{API_V1}/auth/telegram/signin"
 
     for _ in range(20):

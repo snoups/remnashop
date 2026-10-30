@@ -5,7 +5,7 @@ from py_vapid.utils import b64urlencode
 from pydantic import ValidationError as PydanticValidationError
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SessionAudience
 from app.core.exceptions import PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.notifications.api.schemas import UpdateNotificationSettingsRequest
@@ -60,7 +60,10 @@ async def test_generate_keys_wipes_subscriptions_and_configures_push(
     result = await use_case(owner)
 
     assert result.is_push_configured
-    assert await notification_repository.list_push_subscriptions(owner.id) == []
+    assert (
+        await notification_repository.list_push_subscriptions(owner.id, SessionAudience.DASHBOARD)
+        == []
+    )
     settings = await GetNotificationSettingsUseCase(notification_repository, uow)(owner)
     assert settings.vapid_public_key == result.vapid_public_key
 

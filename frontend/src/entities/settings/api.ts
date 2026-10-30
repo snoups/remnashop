@@ -169,6 +169,7 @@ export function resetBulkEmailSettings(): Promise<EmailSettings> {
 
 export interface CabinetAuthSettings {
   telegram_enabled: boolean;
+  telegram_deeplink_enabled: boolean;
   telegram_oauth_enabled: boolean;
   google_enabled: boolean;
   yandex_enabled: boolean;

@@ -1443,10 +1443,12 @@
       "restrictDomains": "Only allowed email domains",
       "allowedDomains": "Allowed domains",
       "allowedDomainsHint": "New email sign-ups only from these domains. Existing customers sign in with any address.",
-      "telegramBotHint": "Mini App and sign-in link from the bot",
+      "telegramMiniAppHint": "The cabinet inside Telegram, signs in automatically",
+      "telegramDeeplinkHint": "Telegram button on the browser sign-in page",
       "emailHint": "Sign-in code by email, needs SMTP configured below",
       "methods": {
-        "telegramBot": "Telegram bot",
+        "telegramMiniApp": "Telegram Mini App",
+        "telegramDeeplink": "Sign-in via the bot",
         "telegramOAuth": "Telegram OAuth",
         "google": "Google",
         "yandex": "Yandex",
@@ -1482,26 +1484,39 @@
             }
           ]
         },
-        "telegramBot": {
-          "title": "Sign-in via the Telegram bot",
+        "telegramMiniApp": {
+          "title": "Telegram Mini App",
           "sections": [
             {
               "title": "How it works",
-              "body": "On the sign-in page the customer presses the Telegram button: the bot opens and sends a confirmation button that signs them in to the cabinet. When the cabinet is opened as a Mini App inside Telegram, sign-in happens automatically."
+              "body": "The cabinet opens right inside Telegram and the customer is signed in automatically, with no codes or passwords."
             },
             {
               "title": "Requirements",
-              "body": "A bot token in the “Telegram bot” section and the cabinet domain in the CABINET_DOMAIN environment variable."
-            },
-            {
-              "title": "Mini App",
-              "body": "Optional. To open the cabinet right from Telegram, in @BotFather pick the bot → Mini Apps, enable the Main App and set the cabinet address. The same address can go into the Menu Button so the cabinet also opens from the menu button in the bot chat.",
+              "body": "A bot token in the “Telegram bot” section. In @BotFather pick the bot → Mini Apps, enable the Main App and set the cabinet address. The same address can go into the Menu Button so the cabinet also opens from the menu button in the bot chat.",
               "values": [
                 {
                   "label": "URL",
                   "value": "https://YOUR_CABINET_DOMAIN"
                 }
               ]
+            },
+            {
+              "title": "Mini App only",
+              "body": "Turn the other sign-in methods off and the cabinet works only inside Telegram: in a browser it offers to open the bot. Browser sessions already open are ended."
+            }
+          ]
+        },
+        "telegramDeeplink": {
+          "title": "Sign-in via the bot",
+          "sections": [
+            {
+              "title": "How it works",
+              "body": "On the sign-in page the customer presses the Telegram button: the bot opens and sends a confirmation button that signs them in to the cabinet."
+            },
+            {
+              "title": "Requirements",
+              "body": "A bot token in the “Telegram bot” section and the cabinet domain in the CABINET_DOMAIN environment variable."
             }
           ]
         },

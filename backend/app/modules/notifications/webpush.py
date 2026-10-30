@@ -8,6 +8,7 @@ from pywebpush import WebPushException, webpush
 
 from app.core.constants import TTL_1D
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SessionAudience
 from app.modules.notifications.dto import PushMessage, PushSubscriptionDto
 from app.modules.notifications.repository import NotificationRepository
 
@@ -24,17 +25,23 @@ class WebPushSender:
         self._repository = notification_repository
         self._uow = uow
 
-    async def send(self, user_id: int, message: PushMessage) -> int:
+    async def send(self, user_id: int, message: PushMessage, audience: SessionAudience) -> int:
         async with self._uow:
             settings = await self._repository.get_settings()
-            subscriptions = await self._repository.list_push_subscriptions(user_id)
+            subscriptions = await self._repository.list_push_subscriptions(user_id, audience)
         if settings.vapid_private_key is None or not subscriptions:
             return 0
         private_key = settings.vapid_private_key.get_secret_value()
         contact = settings.vapid_contact or _DEFAULT_CONTACT
-        payload = json.dumps(
-            {"title": message.title, "body": message.body, "url": message.url, "tag": message.tag}
-        )
+        fields = {
+            "title": message.title,
+            "body": message.body,
+            "url": message.url,
+            "tag": message.tag,
+        }
+        if message.icon is not None:
+            fields["icon"] = message.icon
+        payload = json.dumps(fields)
         delivered = 0
         for subscription in subscriptions:
             status = await self._send_one(subscription, payload, private_key, contact)

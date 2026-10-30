@@ -200,6 +200,7 @@ async def test_grant_addon_event_records_subscription_owner_as_target(
     ).one()
     assert row.payload["target"]["id"] == buyer.id
     assert row.payload["target"]["telegram_id"] == 436
+    assert row.payload["addon_type"] == addon.type
 
 
 async def test_real_actor_cannot_call_grant_addon_directly(

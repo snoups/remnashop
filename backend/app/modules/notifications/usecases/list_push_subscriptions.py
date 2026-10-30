@@ -1,4 +1,7 @@
+from typing import ClassVar
+
 from app.core.db.uow import UnitOfWork
+from app.core.enums import SessionAudience
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.notifications.dto import (
@@ -10,6 +13,7 @@ from app.modules.users import UserDto
 
 class ListPushSubscriptionsUseCase(UseCase[None, list[PushSubscriptionDto], UserDto]):
     required_permission = Permission.OWN_ACCOUNT_MANAGE
+    audience: ClassVar[SessionAudience] = SessionAudience.DASHBOARD
 
     def __init__(self, notification_repository: NotificationRepository, uow: UnitOfWork) -> None:
         self._notification_repository = notification_repository
@@ -17,4 +21,6 @@ class ListPushSubscriptionsUseCase(UseCase[None, list[PushSubscriptionDto], User
 
     async def _execute(self, actor: UserDto, data: None) -> list[PushSubscriptionDto]:
         async with self._uow:
-            return await self._notification_repository.list_push_subscriptions(actor.id)
+            return await self._notification_repository.list_push_subscriptions(
+                actor.id, self.audience
+            )

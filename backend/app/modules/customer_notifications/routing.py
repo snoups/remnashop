@@ -21,6 +21,8 @@ from app.modules.transactions import (
 class CustomerChannel(UpperStrEnum):
     TELEGRAM = auto()
     EMAIL = auto()
+    # added by NotifyCustomerUseCase on top of these routes, never by channels_for
+    PUSH = auto()
 
 
 # money and account security: worth a receipt by email even when the bot delivered it

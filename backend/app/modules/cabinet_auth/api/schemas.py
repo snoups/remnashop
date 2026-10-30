@@ -19,6 +19,7 @@ class CabinetMethodsResponse(BaseModel):
     oauth: list[str]
     allowed_email_domains: Optional[list[str]]
     captcha: Optional[CaptchaWidgetResponse]
+    bot_username: Optional[str]
 
     @field_validator("oauth", mode="before")
     @classmethod

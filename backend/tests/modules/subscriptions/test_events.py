@@ -1,6 +1,6 @@
 from dataclasses import fields
 
-from app.core.enums import Locale, Role
+from app.core.enums import AddOnType, Locale, Role
 from app.core.events import EventCategory
 from app.modules.subscriptions.events import (
     SubscriptionAddOnGrantedEvent,
@@ -57,7 +57,12 @@ def test_subscription_changed_event_carries_previous_subscription_id() -> None:
 
 def test_subscription_addon_granted_event_carries_addon_id() -> None:
     event = SubscriptionAddOnGrantedEvent(
-        user=_user(), target=_user(), subscription_id=1, addon_id=3, amount=10
+        user=_user(),
+        target=_user(),
+        subscription_id=1,
+        addon_id=3,
+        addon_type=AddOnType.DEVICES,
+        amount=10,
     )
     assert event.addon_id == 3
     assert event.amount == 10

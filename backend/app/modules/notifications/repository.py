@@ -8,6 +8,7 @@ from app.core.db.models.notification_settings import NotificationSettings
 from app.core.db.models.push_subscription import PushSubscription
 from app.core.db.models.user_session import UserSession
 from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
+from app.core.enums import SessionAudience
 from app.core.utils.time import datetime_now
 from app.modules.notifications.dto import (
     NotificationSettingsDto,
@@ -84,13 +85,16 @@ class NotificationRepository:
         await self.session.flush()
         return self._to_push_subscription_dto(row), existing is None
 
-    async def list_push_subscriptions(self, user_id: int) -> list[PushSubscriptionDto]:
+    async def list_push_subscriptions(
+        self, user_id: int, audience: SessionAudience
+    ) -> list[PushSubscriptionDto]:
         # only devices whose signing-in session is still live
         rows = await self.session.scalars(
             select(PushSubscription)
             .join(UserSession, UserSession.id == PushSubscription.session_id)
             .where(
                 PushSubscription.user_id == user_id,
+                UserSession.audience == audience,
                 UserSession.revoked_at.is_(None),
                 UserSession.expires_at > datetime_now(),
             )

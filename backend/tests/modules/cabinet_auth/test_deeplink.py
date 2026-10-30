@@ -36,7 +36,7 @@ async def test_signin_with_unknown_token_is_expired(
 ) -> None:
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
-            UpdateCabinetAuthSettingsDto(telegram_enabled=True)
+            UpdateCabinetAuthSettingsDto(telegram_deeplink_enabled=True)
         )
     response = await client.post(_SIGNIN, json={"token": "x" * 43})
     assert response.status_code == 401
@@ -60,7 +60,7 @@ async def test_deeplink_then_bot_link_signs_in_once(
     monkeypatch.setattr(config.cabinet, "domain", "cabinet.example.com")
     async with uow:
         await settings_repository.update_cabinet_auth_settings(
-            UpdateCabinetAuthSettingsDto(telegram_enabled=True)
+            UpdateCabinetAuthSettingsDto(telegram_deeplink_enabled=True)
         )
         await settings_repository.update_bot_settings(UpdateBotSettingsDto(token="1:abc"))
 

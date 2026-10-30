@@ -10,6 +10,7 @@ from app.modules.customer_notifications.dto import (
 )
 from app.modules.customer_notifications.usecases import (
     NotifyCustomerUseCase,
+    PruneCustomerNotificationsUseCase,
     SendCustomerTelegramUseCase,
     ShowPaymentCanceledUseCase,
 )
@@ -67,3 +68,11 @@ async def show_payment_canceled_task(
     order_id: int, use_case: FromDishka[ShowPaymentCanceledUseCase]
 ) -> None:
     await use_case.system(ShowPaymentCanceledDto(order_id=order_id))
+
+
+@broker.task(schedule=[{"cron": "15 4 * * *"}])
+@inject(patch_module=True)
+async def prune_customer_notifications_task(
+    use_case: FromDishka[PruneCustomerNotificationsUseCase],
+) -> None:
+    await use_case.system()

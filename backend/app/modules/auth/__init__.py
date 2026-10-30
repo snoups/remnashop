@@ -10,6 +10,7 @@ from app.modules.auth.session_cookies import (
 )
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.auth.session_response import AuthResponse, set_session_cookies, to_auth_response
+from app.modules.auth.usecases import RevokeOtherCabinetSessionsUseCase
 
 __all__ = [
     "DEEPLINK_BINDING_COOKIE",
@@ -18,6 +19,7 @@ __all__ = [
     "IssuedSession",
     "RescueCliAction",
     "RescueCliUsedEvent",
+    "RevokeOtherCabinetSessionsUseCase",
     "SessionIssuer",
     "SessionRepository",
     "clear_oauth_binding_cookie",

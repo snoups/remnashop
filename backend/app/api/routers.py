@@ -18,6 +18,9 @@ from app.modules.broadcasts.api import admin_router as broadcasts_admin_router
 from app.modules.cabinet_auth.api import router as cabinet_auth_router
 from app.modules.connect_guide.api import admin_router as connect_guide_admin_router
 from app.modules.connect_guide.api import router as connect_guide_router
+from app.modules.customer_notifications.api import (
+    public_router as customer_notifications_public_router,
+)
 from app.modules.dialogs.api import admin_router as dialogs_admin_router
 from app.modules.email.api import admin_router as email_admin_router
 from app.modules.emoji_packs.api import admin_router as emoji_packs_admin_router
@@ -32,6 +35,7 @@ from app.modules.legal.api import user_router as legal_user_router
 from app.modules.loyalty.api import admin_router as loyalty_admin_router
 from app.modules.loyalty.api import user_router as loyalty_user_router
 from app.modules.notifications.api import admin_router as notifications_admin_router
+from app.modules.notifications.api import public_router as notifications_public_router
 from app.modules.notifications.api import settings_router as notifications_settings_router
 from app.modules.oauth.api import admin_router as oauth_admin_router
 from app.modules.overview.api import admin_router as overview_admin_router
@@ -110,6 +114,8 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     event_log_admin_router,
     notifications_admin_router,
     notifications_settings_router,
+    customer_notifications_public_router,
+    notifications_public_router,
     announcements_admin_router,
     email_admin_router,
     gateways_admin_router,
@@ -143,4 +149,6 @@ CABINET_ROUTERS: Final[tuple[APIRouter, ...]] = (
     subscriptions_public_router,
     subscriptions_own_router,
     transactions_public_router,
+    customer_notifications_public_router,
+    notifications_public_router,
 )

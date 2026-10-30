@@ -22,6 +22,7 @@ from app.core.db.models.broadcast import Broadcast, BroadcastEmailImage, Broadca
 from app.core.db.models.cabinet_auth_settings import CabinetAuthSettings
 from app.core.db.models.connect_guide_settings import ConnectGuideSettings
 from app.core.db.models.currency_rate import CurrencyRate
+from app.core.db.models.customer_notification import CustomerNotification
 from app.core.db.models.dialog_button import DialogButton
 from app.core.db.models.dialog_window import DialogWindow
 from app.core.db.models.email_settings import EmailSettings
@@ -85,6 +86,7 @@ __all__ = [
     "CabinetAuthSettings",
     "ConnectGuideSettings",
     "CurrencyRate",
+    "CustomerNotification",
     "DialogButton",
     "DialogWindow",
     "EmailSettings",

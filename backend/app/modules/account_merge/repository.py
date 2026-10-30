@@ -10,6 +10,7 @@ from app.core.db.models import (
     AnnouncementView,
     ApiToken,
     BroadcastRecipient,
+    CustomerNotification,
     LegalAcceptance,
     OAuthIdentity,
     PasskeyCredential,
@@ -46,6 +47,7 @@ REASSIGNED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("oauth_identities", "user_id"),
         ("broadcast_recipients", "user_id"),
         ("announcement_views", "user_id"),
+        ("customer_notifications", "user_id"),
         ("payment_waitlist", "user_id"),
         ("ad_link_attributions", "user_id"),
         ("user_registrations", "user_id"),
@@ -176,6 +178,9 @@ class AccountMergeRepository:
         )
         await self._move_deduplicated(
             AnnouncementView.user_id, (AnnouncementView.announcement_id,), s, t
+        )
+        await self._move_deduplicated(
+            CustomerNotification.user_id, (CustomerNotification.outbox_id,), s, t
         )
         await self._keep_earliest(
             PaymentWaitlistEntry.user_id, PaymentWaitlistEntry.created_at, s, t
