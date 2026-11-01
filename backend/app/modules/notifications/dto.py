@@ -221,13 +221,6 @@ class DeliverNotificationDto:
 
 
 @dataclass(frozen=True, kw_only=True)
-class SendTelegramTextsDto:
-    user_ids: list[int]
-    # "<message>.<attribute>" from the bot's translations
-    key: str
-
-
-@dataclass(frozen=True, kw_only=True)
 class UpdateNotificationChannelsDto:
     # group -> channels; a group left out is switched off
     channels: dict[str, list[str]]

@@ -2,7 +2,6 @@ import { motion } from "motion/react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
-import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { ActivePill } from "@shared/ui/ActivePill";
 
 export type PeriodDays = 0 | 7 | 30 | 90;
@@ -29,8 +28,6 @@ export function PeriodPills({
           key={days}
           type="button"
           onClick={() => onChange(days)}
-          initial="rest"
-          whileTap="tap"
           className="group relative isolate shrink-0 whitespace-nowrap rounded-full"
         >
           {/* only the pill scales, so the label stays crisp */}
@@ -38,7 +35,6 @@ export function PeriodPills({
             <ActivePill layoutId={pillId} />
           ) : (
             <motion.span
-              variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
             />
           )}

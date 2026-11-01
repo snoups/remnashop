@@ -7,6 +7,7 @@ import { Modal } from "@shared/ui/Modal";
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { Tag } from "@shared/ui/Tag";
+import { Pressable } from "@shared/ui/Pressable";
 
 const COPIED_MS = 1200;
 
@@ -53,7 +54,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
       <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
         <div className="grid grid-cols-8 gap-2">
           {pack.items.map((item) => (
-            <button
+            <Pressable
               key={item.custom_emoji_id}
               type="button"
               onClick={() => handleCopy(item.custom_emoji_id)}
@@ -66,7 +67,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
               ) : (
                 <PremiumEmoji item={item} size={32} />
               )}
-            </button>
+            </Pressable>
           ))}
         </div>
       </div>

@@ -1,5 +1,4 @@
 import { Plus, Smile, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +10,6 @@ import {
 } from "@entities/emoji-packs/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { EMOJI_PACKS_ANCHOR_ID } from "@shared/lib/emoji-packs-anchor";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -25,6 +23,7 @@ import { Tag } from "@shared/ui/Tag";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { Pressable } from "@shared/ui/Pressable";
 
 // mirrors backend emoji_packs/telegram_api.py's _SET_NAME_RE: a t.me/addemoji link or the bare set name
 const SET_LINK_RE = /^(?:https?:\/\/)?(?:t\.me\/addemoji\/)?[A-Za-z0-9_]{1,64}\/?(?:\?.*)?$/;
@@ -115,17 +114,11 @@ export function EmojiPacksManager() {
         {packsState.kind === "ready" && packsState.data.length > 0 && (
           <div className="flex flex-col divide-y divide-border/50 px-2">
             {packsState.data.map((pack) => (
-              <motion.div
+              <Pressable
+                as="div"
                 key={pack.set_name}
-                tabIndex={0}
                 onClick={() => setOpenPack(pack)}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  setOpenPack(pack);
-                }}
-                {...bounceTap(0.03)}
-                className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+                className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
                   <PremiumEmoji item={pack.items[0]} size={18} />
@@ -137,7 +130,7 @@ export function EmojiPacksManager() {
                   </Tag>
                 </div>
                 {canDelete && (
-                  <button
+                  <Pressable
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
@@ -146,9 +139,9 @@ export function EmojiPacksManager() {
                     className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-error/[0.08] text-error transition-colors hover:bg-error/15"
                   >
                     <Trash2 className="size-3.5" />
-                  </button>
+                  </Pressable>
                 )}
-              </motion.div>
+              </Pressable>
             ))}
           </div>
         )}

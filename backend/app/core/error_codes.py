@@ -241,6 +241,7 @@ class ErrorCode(UpperStrEnum):
     PURCHASE_DISCOUNT_USED = auto()
     PURCHASE_IN_PROGRESS = auto()
     PURCHASE_SUPERSEDED = auto()
+    PUSH_CONTACT_REQUIRED = auto()
     PUSH_ENDPOINT_NOT_ALLOWED = auto()
     PUSH_NOT_CONFIGURED = auto()
     PUSH_NO_SUBSCRIPTIONS = auto()

@@ -15,7 +15,6 @@ import {
 import { PillTabs } from "@shared/ui/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { initials } from "@shared/lib/initials";
@@ -29,6 +28,7 @@ import { Button } from "@shared/ui/Button";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 import { BlacklistCard, KindBadge } from "./BlacklistCard";
+import { Pressable } from "@shared/ui/Pressable";
 
 const PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 200;
@@ -179,7 +179,6 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   <motion.tr
                     key={match.user.id}
                     onClick={() => setDetailsUser(match.user)}
-                    {...bounceTap(0.03)}
                     className="cursor-pointer [&>td]:transition-colors hover:[&>td]:bg-white/[0.04] [&>td:first-child]:rounded-l-full [&>td:last-child]:rounded-r-full"
                   >
                     <td className="px-3 py-2">
@@ -253,22 +252,22 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                 })}
               </span>
               <div className="flex gap-1.5">
-                <button
+                <Pressable
                   type="button"
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
                   className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4" />
-                </button>
-                <button
+                </Pressable>
+                <Pressable
                   type="button"
                   onClick={() => setPage(page + 1)}
                   disabled={page >= pageCount}
                   className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronRight className="size-4" />
-                </button>
+                </Pressable>
               </div>
             </div>
           )}

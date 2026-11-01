@@ -4,11 +4,11 @@ import { Fragment, useRef, useState, type ComponentType } from "react";
 
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { Button } from "@shared/ui/Button";
 import { IconButton } from "@shared/ui/IconButton";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Tooltip } from "@shared/ui/Tooltip";
+import { Ripple } from "@shared/ui/Ripple";
 
 // separators aside: 36px per item plus the popover padding
 const ITEM_HEIGHT = 36;
@@ -51,7 +51,6 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
       ) : (
         <IconButton
           size="8"
-          bounce={0.12}
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           propagate={{ tap: false }}
@@ -70,9 +69,6 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        // claims the press so a bouncing parent row doesn't bounce along
-        whileTap={{}}
-        propagate={{ tap: false }}
         tabIndex={-1}
         className="min-w-44 outline-none p-1.5"
       >
@@ -90,13 +86,12 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
                   setIsOpen(false);
                   item.onClick();
                 }}
-                initial="rest"
-                whileHover={item.disabled ? undefined : "hover"}
-                className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium transition-colors enabled:hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`relative flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium transition-colors enabled:hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 ${
                   item.variant === "danger" ? "text-error" : "text-foreground"
                 }`}
               >
-                <BounceIcon icon={item.icon} size={15} hoverSize={18.75} />
+                <Ripple />
+                <item.icon className="size-4 shrink-0" />
                 <span className="truncate">{item.label}</span>
               </motion.button>
               {item.hint && <Tooltip text={item.hint} side="top" />}

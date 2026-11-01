@@ -2,12 +2,11 @@ import { Check, ChevronDown } from "lucide-react";
 import { motion } from "motion/react";
 import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
+import { Ripple } from "@shared/ui/Ripple";
 
 const POPOVER_MAX_HEIGHT = 288;
 
@@ -25,8 +24,8 @@ interface SelectDropdownProps {
   onChange: (value: string) => void;
   icon: ComponentType<{ className?: string }>;
   disabled?: boolean;
-  // compact: the dialog editor's panels, 36px like its PillTabs
-  size?: "default" | "compact";
+  // compact: the dialog editor's panels, 36px like its PillTabs; lg: 40px, next to DialogTabs
+  size?: "default" | "compact" | "lg";
   // form: inside a form, the same dark surface as TextInput; glass is for filters
   variant?: "glass" | "form";
 }
@@ -125,9 +124,9 @@ export function SelectDropdown({
         onClick={toggleOpen}
         onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
-        {...bounceTap(0.04)}
-        className={`group flex w-full items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : "py-2 text-sm"} font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`relative group flex w-full items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
+        <Ripple />
         <TriggerIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown
@@ -159,13 +158,13 @@ export function SelectDropdown({
               type="button"
               onClick={() => selectIndex(index)}
               onMouseEnter={() => setActiveIndex(index)}
-              initial="rest"
               animate={index === activeIndex ? "hover" : "rest"}
-              className={`flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
+              className={`relative flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
             >
+              <Ripple />
               <span className="flex min-w-0 items-center gap-2">
                 {option.icon && (
-                  <BounceIcon icon={option.icon} size={14} hoverSize={17} className="text-muted-foreground" />
+                  <option.icon className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 <span className="truncate">{option.label}</span>
               </span>

@@ -49,6 +49,7 @@ import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface PermissionPickerProps {
   selected: Set<Permission>;
@@ -161,7 +162,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
         return (
           <div key={group.resource} className="flex flex-col">
             <div className="-mx-2 flex h-11 items-center gap-2 rounded-full px-2 transition-colors hover:bg-white/[0.04]">
-              <button
+              <Pressable
                 type="button"
                 onClick={() => toggleExpand(group.resource)}
                 className="flex min-w-0 flex-1 items-center gap-2"
@@ -176,7 +177,7 @@ export function PermissionPicker(props: PermissionPickerProps) {
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
                   {selectedCount}/{allKeys.length}
                 </span>
-              </button>
+              </Pressable>
 
               <div className="flex shrink-0 items-center gap-1.5">
                 {group.read.length > 0 && (

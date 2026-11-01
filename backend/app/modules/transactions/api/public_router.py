@@ -25,6 +25,7 @@ from app.modules.transactions.dto import (
 from app.modules.transactions.usecases import (
     CreateCheckoutUseCase,
     GetOwnTransactionUseCase,
+    JoinPaymentWaitlistUseCase,
     ListOwnTransactionsUseCase,
     ListPaymentMethodsUseCase,
     QuoteCheckoutUseCase,
@@ -109,6 +110,15 @@ async def list_checkout_methods(
     methods = await use_case(actor)
     items = [PaymentMethodResponse.model_validate(m, from_attributes=True) for m in methods]
     return PaymentMethodListResponse(items=items, total=len(items))
+
+
+@router.post("/checkout/waitlist", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def join_payment_waitlist(
+    use_case: FromDishka[JoinPaymentWaitlistUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> None:
+    await use_case(actor)
 
 
 @router.get("/transactions/me", response_model=OwnTransactionListResponse)

@@ -31,7 +31,7 @@ export function SettingsPage() {
     // scrollbar, keeping the tabs as wide as before. The 12px under the tabs is 4px outside the
     // scroller and 8px of padding under its 8px fade, so content stays 12px off the tabs both at
     // rest and while scrolling
-    <div data-fills-main className="-mb-6 flex min-h-0 flex-1 flex-col pr-2.5 md:-mb-8">
+    <div data-fills-main className="flex flex-1 flex-col md:min-h-0 md:pr-2.5 md:-mb-8">
       <TabBar
         items={tabs.map((tab) => ({
           key: tab.key,
@@ -41,7 +41,7 @@ export function SettingsPage() {
           isActive: isActive(tab),
         }))}
       />
-      <div className="scroll-fade-y -mr-4 mt-1 min-h-0 flex-1 overflow-y-auto pt-2 [--fade-top-size:8px] [scrollbar-gutter:stable] pb-6 pr-[calc(1rem-10px)] md:-mr-8 md:pb-8 md:pr-[calc(2rem-10px)]">
+      <div className="scroll-fade-y page-scroll mt-1 pt-2 md:min-h-0 md:flex-1 md:overflow-y-auto [--fade-top-size:8px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-8 md:pb-8 md:pr-[calc(2rem-10px)]">
         <Outlet />
       </div>
     </div>

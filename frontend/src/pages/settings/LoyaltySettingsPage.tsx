@@ -27,6 +27,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { SuffixInput } from "@shared/ui/TextInput";
+import { ListRow } from "@shared/ui/ListRow";
 
 const MAX_PERCENT = 100;
 const MAX_TIERS = 20;
@@ -270,17 +271,17 @@ export function LoyaltySettingsPage() {
                     );
                   })}
                   {canManage && tiers.length < MAX_TIERS && (
-                    <button
+                    <ListRow
                       type="button"
                       onClick={addTier}
                       disabled={areSettingsLocked}
-                      className={`${TIER_ROW_CLASS} ${LIST_ROW_CLASS} w-full text-left text-[13px] font-medium text-muted-foreground hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
+                      className={`${TIER_ROW_CLASS} text-[13px] font-medium text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
                     >
                       <span className="flex size-7 items-center justify-center rounded-full border border-dashed border-white/[0.18]">
                         <Plus className="size-3.5" />
                       </span>
                       <span className="col-span-4">{t("loyalty.settings.addTier")}</span>
-                    </button>
+                    </ListRow>
                   )}
                 </div>
               </div>

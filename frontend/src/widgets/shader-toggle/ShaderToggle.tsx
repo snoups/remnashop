@@ -20,7 +20,6 @@ export function ShaderToggle() {
     <IconButton
       size="9"
       tone="glass"
-      bounce={0.12}
       className="group relative"
       onClick={toggleShaderMuted}
     >

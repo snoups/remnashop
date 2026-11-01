@@ -24,7 +24,7 @@ _mark_order_fulfilled: Final[MarkOrderFulfilledDispatch] = cast(
 
 async def _notify_waitlist(event: AccessSettingsChangedEvent, entry: StoredEvent) -> None:
     if event.payments_reenabled:
-        await _notify_payment_waitlist.kiq()
+        await _notify_payment_waitlist.kiq(outbox_id=entry.outbox_id)
 
 
 async def _mark_fulfilled(

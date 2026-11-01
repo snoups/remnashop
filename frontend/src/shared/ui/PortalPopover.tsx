@@ -21,6 +21,8 @@ interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "class
   align: "left" | "right" | "stretch";
   /** opens upward when this much room is missing below the trigger */
   maxHeight: number;
+  /** Extra space beyond the standard 8px gap from the trigger. */
+  extraGap?: number;
   /** size and padding only (w-80 p-1.5...) */
   className: string;
   /** no backdrop blur: for content that repaints every frame (animated emoji), which a blur re-renders */
@@ -48,6 +50,7 @@ export function PortalPopover({
   popoverRef,
   align,
   maxHeight,
+  extraGap = 0,
   className,
   solid = false,
   modal = true,
@@ -59,7 +62,10 @@ export function PortalPopover({
 
   useLayoutEffect(() => {
     const trigger = open ? triggerRef.current?.getBoundingClientRect() : undefined;
-    if (trigger) setAnchor(anchorWith(align, trigger, maxHeight));
+    if (trigger) {
+      const next = anchorWith(align, trigger, maxHeight + extraGap);
+      setAnchor("top" in next ? { ...next, top: next.top + extraGap } : { ...next, bottom: next.bottom + extraGap });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- measured once per open
   }, [open]);
 

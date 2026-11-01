@@ -16,7 +16,6 @@ import {
 } from "@entities/appearance/api";
 import { getErrorMessage } from "@shared/api/http";
 import { useAppearancePreview, useReloadAppearance } from "@entities/appearance/use-appearance";
-import { bounceTap } from "@shared/lib/bounceState";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hueRotateHex } from "@shared/lib/color";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -33,6 +32,7 @@ import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { Pressable } from "@shared/ui/Pressable";
 
 const SVG_MIME_TYPE = "image/svg+xml";
 const ACCEPTED_FILE_TYPES = `image/jpeg,image/png,image/webp,${SVG_MIME_TYPE}`;
@@ -148,19 +148,17 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
           </>
         )}
         {hasImage && canDelete && (
-          <motion.button
+          <Pressable
             type="button"
             onClick={() => void handleDelete()}
             disabled={isBusy}
-            {...bounceTap()}
             className="absolute right-3.5 top-3.5 flex size-6 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/75 disabled:opacity-60"
           >
             <X className="size-3" />
-          </motion.button>
+          </Pressable>
         )}
         {canUpload && (
           <motion.label
-            {...bounceTap()}
             data-disabled={isBusy || undefined}
             className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.08] text-sm font-medium text-foreground/60 transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
           >
@@ -428,14 +426,11 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
                       />
                     </div>
                     {previousColor && (
-                      <motion.button
+                      <Pressable
                         type="button"
                         onClick={() => setAccent(previousColor)}
                         style={{ backgroundColor: previousColor }}
-                        whileHover={{ scale: 1.15 }}
-                        {...bounceTap()}
-                        className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`}
-                      />
+                        className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`} />
                     )}
                   </div>
                 </Field>
@@ -444,15 +439,12 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
                   <span className={EYEBROW_CLASS}>{t("settings.appearance.presetsLabel")}</span>
                   <div className="flex flex-wrap items-center gap-2.5">
                     {ACCENT_COLOR_PRESETS.map((preset) => (
-                      <motion.button
+                      <Pressable
                         key={preset}
                         type="button"
                         onClick={() => setAccent(preset)}
                         style={{ backgroundColor: preset }}
-                        whileHover={{ scale: 1.15 }}
-                        {...bounceTap()}
-                        className={swatchClass(accentColor.toLowerCase() === preset)}
-                      />
+                        className={swatchClass(accentColor.toLowerCase() === preset)} />
                     ))}
                   </div>
                 </div>
@@ -485,15 +477,14 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
                             </span>
                             <span className="font-mono text-[11px] text-muted-foreground">{shownColor}</span>
                           </div>
-                          <motion.button
+                          <Pressable
                             type="button"
                             onClick={() => setPaletteColor(index, defaultColor)}
                             disabled={rawColor.toLowerCase() === defaultColor}
-                            {...bounceTap()}
                             className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground/70"
                           >
                             <RotateCcw className="size-3.5" />
-                          </motion.button>
+                          </Pressable>
                         </div>
                       );
                     })}

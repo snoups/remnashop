@@ -1,5 +1,4 @@
-// overflow is clipped only while the height animates; left on, it would cut
-// off the rows' tap bounce once the section is open
+// overflow is clipped only while the height animates, then lets go of the content's edges
 export const COLLAPSE_MOTION = {
   initial: { height: 0, opacity: 0, overflow: "hidden" },
   animate: { height: "auto", opacity: 1, transitionEnd: { overflow: "visible" } },

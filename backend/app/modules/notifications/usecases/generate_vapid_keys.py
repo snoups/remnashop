@@ -1,5 +1,7 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -25,6 +27,10 @@ class GenerateVapidKeysUseCase(UseCase[None, NotificationSettingsDto]):
     async def _execute(self, actor: Actor, data: None) -> NotificationSettingsDto:
         public_key, private_key = generate_vapid_keypair()
         async with self._uow:
+            if (await self._notification_repository.get_settings()).vapid_contact is None:
+                raise ValidationError(
+                    "A contact email is required for push", code=ErrorCode.PUSH_CONTACT_REQUIRED
+                )
             # endpoints minted for the old key reject pushes signed with the new one
             removed = await self._notification_repository.delete_all_push_subscriptions()
             settings = await self._notification_repository.set_vapid_keys(public_key, private_key)

@@ -27,6 +27,7 @@ import { Tag } from "@shared/ui/Tag";
 import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
 import { CurrencyNote, Legend } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
+import { ListRow } from "@shared/ui/ListRow";
 
 const KINDS: SourceKind[] = ["organic", "ad_link", "referral"];
 const KIND_KEY = {
@@ -366,11 +367,11 @@ function TopReferrers({ data }: { data: Sources }) {
         </p>
       ) : (
         rows.map((row) => (
-          <button
+          <ListRow
             key={row.user_id}
             type="button"
             onClick={() => openUser(row.user_id)}
-            className={`grid w-full grid-cols-[36px_minmax(0,1fr)_auto_auto] items-center gap-3 ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+            className={`grid grid-cols-[36px_minmax(0,1fr)_auto_auto] items-center gap-3`}
           >
             <span className="flex size-9 items-center justify-center rounded-full bg-violet-400/10 text-[12px] font-bold text-violet-300">
               {initials(row.name)}
@@ -392,7 +393,7 @@ function TopReferrers({ data }: { data: Sources }) {
             <span className="w-16 text-right text-[12px] tabular-nums text-muted-foreground">
               {t("plans.daysShort", { count: row.reward_days })}
             </span>
-          </button>
+          </ListRow>
         ))
       )}
     </Card>

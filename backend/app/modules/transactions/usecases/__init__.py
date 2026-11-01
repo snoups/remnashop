@@ -10,6 +10,7 @@ from app.modules.transactions.usecases.get_test_payment_status import GetTestPay
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
 from app.modules.transactions.usecases.handle_payment_webhook import HandlePaymentWebhookUseCase
+from app.modules.transactions.usecases.join_payment_waitlist import JoinPaymentWaitlistUseCase
 from app.modules.transactions.usecases.list_own_transactions import ListOwnTransactionsUseCase
 from app.modules.transactions.usecases.list_payment_methods import ListPaymentMethodsUseCase
 from app.modules.transactions.usecases.list_transaction_gateways import (
@@ -42,6 +43,7 @@ __all__ = [
     "GetTransactionSummaryUseCase",
     "GetTransactionUseCase",
     "HandlePaymentWebhookUseCase",
+    "JoinPaymentWaitlistUseCase",
     "ListOwnTransactionsUseCase",
     "ListPaymentMethodsUseCase",
     "ListTransactionGatewaysUseCase",

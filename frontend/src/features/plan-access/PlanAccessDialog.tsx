@@ -15,6 +15,7 @@ import { ChipsInput } from "@shared/ui/ChipsInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { Tag } from "@shared/ui/Tag";
+import { Pressable } from "@shared/ui/Pressable";
 
 const AVAILABILITIES: PlanAvailability[] = ["ALL", "NEW", "EXISTING", "INVITED", "ALLOWED", "LINK"];
 const RESTRICTED_AVAILABILITIES: ReadonlySet<PlanAvailability> = new Set(["INVITED", "ALLOWED", "LINK"]);
@@ -81,7 +82,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
                 {AVAILABILITIES.map((value) => {
                   const isSelected = availability === value;
                   return (
-                    <button
+                    <Pressable
                       key={value}
                       type="button"
                       onClick={() => setAvailability(value)}
@@ -107,7 +108,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
                           {t("plans.access.restricted")}
                         </Badge>
                       )}
-                    </button>
+                    </Pressable>
                   );
                 })}
               </div>

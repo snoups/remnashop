@@ -11,6 +11,8 @@ from app.modules.legal.dto import CreateLegalRevisionDto
 from app.modules.legal.repository import LegalRepository
 from app.modules.translations.repository import TranslationRepository
 
+pytestmark = pytest.mark.usefixtures("shown_documents")
+
 URL = f"{API_V1}/legal/documents"
 
 

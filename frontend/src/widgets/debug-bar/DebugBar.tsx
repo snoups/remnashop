@@ -20,7 +20,6 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import {
   setDebugState,
   useDebugState,
@@ -32,6 +31,7 @@ import type { ToastVariant } from "@shared/lib/toast";
 import { getSessionId, saveAccessToken } from "@shared/lib/token-storage";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { ShaderToggle } from "@widgets/shader-toggle/ShaderToggle";
+import { Pressable } from "@shared/ui/Pressable";
 
 const VARIANTS: ToastVariant[] = ["info", "success", "warning", "error"];
 
@@ -68,10 +68,9 @@ function DebugButton({
 }) {
 
   return (
-    <motion.button
+    <Pressable
       type="button"
       onClick={onClick}
-      {...bounceTap(0.12)}
       className={`${className} group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
         active
           ? "bg-accent text-primary"
@@ -80,7 +79,7 @@ function DebugButton({
     >
       <Icon className="size-[17px]" />
       <Tooltip text={label} />
-    </motion.button>
+    </Pressable>
   );
 }
 

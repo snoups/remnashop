@@ -13,7 +13,6 @@ from app.modules.notifications.usecases import (
     GetPushPublicKeyUseCase,
     ListCustomerPushSubscriptionsUseCase,
     ListPushSubscriptionsUseCase,
-    SendTelegramTextsUseCase,
     SendTestPushUseCase,
     SubscribeCustomerPushUseCase,
     SubscribePushUseCase,
@@ -46,7 +45,6 @@ class NotificationsProvider(Provider):
         DeleteCustomerPushSubscriptionUseCase,
         SendTestPushUseCase,
         DeliverNotificationUseCase,
-        SendTelegramTextsUseCase,
     )
 
 

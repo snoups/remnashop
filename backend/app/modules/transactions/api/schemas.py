@@ -173,7 +173,8 @@ class OwnTransactionResponse(BaseModel):
     plan_name: str
     duration_days: int
     created_at: Optional[datetime]
-    # what a failed payment's "try again" reopens: the plan, and the subscription a renewal or change was for
+    # what a failed payment's "try again" reopens: the plan, and the subscription
+    # a renewal or change was for
     plan_id: int
     target_subscription_id: Optional[int]
 

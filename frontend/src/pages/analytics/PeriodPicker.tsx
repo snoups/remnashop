@@ -13,6 +13,7 @@ import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { periodLabel, useAnalyticsPeriod } from "@pages/analytics/period";
+import { Pressable } from "@shared/ui/Pressable";
 
 type PillValue = "7" | "30" | "90" | "365" | "custom";
 type Draft = { kind: "all" } | { kind: "range"; from: string; to: string };
@@ -111,7 +112,7 @@ export function PeriodPicker() {
         <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
           <div className="grid grid-cols-2 gap-0.5 sm:flex sm:flex-col">
             {presetDrafts(new Date()).map((preset) => (
-              <button
+              <Pressable
                 key={preset.key}
                 type="button"
                 onClick={() => setDraft(preset.draft)}
@@ -120,7 +121,7 @@ export function PeriodPicker() {
                 }`}
               >
                 {t(preset.label)}
-              </button>
+              </Pressable>
             ))}
           </div>
           <div className="flex flex-col gap-2.5">

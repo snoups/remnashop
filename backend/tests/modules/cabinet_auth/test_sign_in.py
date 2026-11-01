@@ -351,6 +351,8 @@ async def _publish(
             kind=kind, locale=locale, channel=None, title=kind.value, body="text", created_by=None
         )
     )
+    # documents start hidden
+    await legal_repository.update_document(kind, show_in_bot=True, show_in_cabinet=True)
     return revision.id
 
 

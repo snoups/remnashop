@@ -16,7 +16,7 @@ export function dotIcon(colorClassName: string): OptionIcon {
 // matches GatewaySettingsCard's first-letter avatar
 export function letterIcon(label: string): OptionIcon {
   return function LetterIcon({ className }) {
-    // SVG text scales with the viewBox, so the letter grows with BounceIcon too
+    // SVG text scales with the viewBox, so the letter follows the icon size
     return (
       <svg viewBox="0 0 14 14" className={`${className ?? ""} rounded-full bg-white/[0.1] text-foreground`}>
         <text x="7" y="7" textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="700" fill="currentColor">

@@ -54,6 +54,7 @@ export function setDebugState(patch: Partial<DebugState>): void {
 }
 
 export function toggleDebugBar(): void {
+  if (window.matchMedia("(width < 768px)").matches) return;
   setDebugState({ barVisible: !state.barVisible });
 }
 

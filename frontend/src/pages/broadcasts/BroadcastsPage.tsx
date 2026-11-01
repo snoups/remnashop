@@ -1,6 +1,5 @@
 import { ChevronRight, Plus, Send } from "lucide-react";
 import type { ParseKeys } from "i18next";
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +21,6 @@ import {
 } from "@entities/broadcasts/display";
 import { listPlans } from "@entities/plans/api";
 import { usePermissions } from "@entities/user/use-current-user";
-import { bounceTap } from "@shared/lib/bounceState";
 import { formatPercent } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -33,12 +31,13 @@ import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { Spinner } from "@shared/ui/Spinner";
+import { ListRow } from "@shared/ui/ListRow";
 
 const FILTER_DEBOUNCE_MS = 300;
 
@@ -260,13 +259,12 @@ export function BroadcastsPage() {
                   const tone = BROADCAST_STATUS_TONE[b.status];
                   const { label, percent } = progress(b);
                   return (
-                    <motion.button
+                    <ListRow
                       key={b.id}
                       type="button"
                       disabled={!canOpen}
                       onClick={() => openBroadcast(b)}
-                      {...bounceTap(0.03)}
-                      className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left ${canOpen ? "hover:bg-white/[0.04]" : "cursor-default"}`}
+                      className={`${ROW_GRID_CLASSNAME} ${canOpen ? "" : "cursor-default"}`}
                     >
                       <span className={`flex size-9 items-center justify-center rounded-full ${ICON_TONE_CLASS[tone]}`}>
                         <Send className="size-4" />
@@ -302,7 +300,7 @@ export function BroadcastsPage() {
                       </span>
                       <span className="text-[12.5px] tabular-nums text-foreground/80">{when(b)}</span>
                       {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                    </motion.button>
+                    </ListRow>
                   );
                 })}
               </div>

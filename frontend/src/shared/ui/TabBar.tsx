@@ -2,10 +2,8 @@ import { motion } from "motion/react";
 import { useEffect, useId, useRef } from "react";
 import type { ComponentType, MouseEvent } from "react";
 
-import { NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE, TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { MotionLink } from "@shared/ui/MotionLink";
 
 export interface TabBarItem {
@@ -16,32 +14,25 @@ export interface TabBarItem {
   isActive: boolean;
 }
 
-// Navigating to the active tab still runs navigate(), which resets Motion's
-// tap state on that link and kills every later bounce, so it's skipped.
+// Navigating to the active tab would only re-run navigate(), so it's skipped.
 function preventNavigationWhenActive(isActive: boolean) {
   return (event: MouseEvent) => {
     if (isActive) event.preventDefault();
   };
 }
 
-// The bounce is on a pill behind the icon and label: scaling text with
-// `transform` blurs it.
-function Tab({ to, icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
+function Tab({ to, icon: Icon, label, isActive, pillId }: TabBarItem & { pillId: string }) {
   return (
     <MotionLink
       to={to}
       aria-current={isActive ? "page" : undefined}
       onClick={preventNavigationWhenActive(isActive)}
       className="group relative isolate block shrink-0 rounded-full text-sm font-medium"
-      initial="rest"
-      whileHover="hover"
-      whileTap="tap"
     >
       {isActive ? (
         <ActivePill layoutId={pillId} />
       ) : (
         <motion.span
-          variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
           className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
         />
       )}
@@ -50,7 +41,7 @@ function Tab({ to, icon, label, isActive, pillId }: TabBarItem & { pillId: strin
           isActive ? "text-primary" : "text-foreground"
         }`}
       >
-        <BounceIcon icon={icon} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
+        <Icon className="size-4 shrink-0" />
         {label}
       </span>
     </MotionLink>
@@ -77,9 +68,7 @@ export function TabBar({ items }: { items: TabBarItem[] }) {
   return (
     <nav ref={navRef} className="inline-flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
       {/* No padding of its own: inset by the pill's `p-1`, it's a concentric
-          capsule whose `rounded-full` clip nests in the outer one.
-          `overflow-x-auto` forces `overflow-y: auto`, which may clip a sliver
-          of the bounce's overshoot. */}
+          capsule whose `rounded-full` clip nests in the outer one. */}
       <motion.div ref={tabsRef} layoutScroll className="no-scrollbar flex gap-1 overflow-x-auto rounded-full">
         {items.map(({ key, ...item }) => (
           <Tab key={key} {...item} pillId={pillId} />

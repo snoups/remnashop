@@ -14,17 +14,26 @@ export interface LegalText {
   last_reacceptance_at: string | null;
 }
 
+export interface LegalTemplate {
+  locale: string;
+  title: string;
+  body: string;
+}
+
 export interface LegalDocument {
   kind: LegalKind;
   show_in_bot: boolean;
   show_in_cabinet: boolean;
   texts: LegalText[];
+  /** starting text for an empty document; braces mark what the owner fills in */
+  templates: LegalTemplate[];
 }
+
+type LegalDocumentFlags = Omit<LegalDocument, "texts" | "templates">;
 
 export interface LegalDocumentsResponse {
   items: LegalDocument[];
   total: number;
-  offer_missing_in: LegalChannel[];
   locales: string[];
 }
 
@@ -49,8 +58,8 @@ export function listLegalDocuments(signal?: AbortSignal): Promise<LegalDocuments
 export function updateLegalDocument(
   kind: LegalKind,
   payload: { show_in_bot?: boolean; show_in_cabinet?: boolean },
-): Promise<Omit<LegalDocument, "texts">> {
-  return apiPatch<Omit<LegalDocument, "texts">, typeof payload>(`/legal-documents/${kind}`, payload);
+): Promise<LegalDocumentFlags> {
+  return apiPatch<LegalDocumentFlags, typeof payload>(`/legal-documents/${kind}`, payload);
 }
 
 function textPath(kind: LegalKind, locale: string, channel: LegalChannel | null): string {

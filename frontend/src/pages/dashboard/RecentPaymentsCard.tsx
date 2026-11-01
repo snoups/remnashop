@@ -13,7 +13,8 @@ import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { LIST_BODY_CLASS } from "@shared/ui/classes";
+import { ListRow } from "@shared/ui/ListRow";
 
 function formatPaidAt(iso: string, language: string): string {
   const date = new Date(iso);
@@ -56,12 +57,12 @@ export function RecentPaymentsCard({
       ) : (
         <div className={`${LIST_BODY_CLASS} pt-1.5`}>
           {payments.map((payment, index) => (
-            <button
+            <ListRow
               key={`${payment.user_id}-${payment.paid_at}-${index}`}
               type="button"
               disabled={!canOpenUsers}
               onClick={() => openUser(payment.user_id)}
-              className={`grid w-full grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 text-left enabled:hover:bg-white/[0.04] ${LIST_ROW_CLASS}`}
+              className={`grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3`}
             >
               <span className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
                 {initials(payment.name)}
@@ -81,7 +82,7 @@ export function RecentPaymentsCard({
                 </span>
                 <Badge tone="neutral">{t(`transactions.purchaseType.${payment.purchase_type}`)}</Badge>
               </span>
-            </button>
+            </ListRow>
           ))}
         </div>
       )}

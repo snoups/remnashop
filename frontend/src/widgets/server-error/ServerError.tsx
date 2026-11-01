@@ -1,10 +1,9 @@
 import type { ParseKeys } from "i18next";
 import { ServerCrash, Unplug, type LucideIcon } from "lucide-react";
-import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { FULL_SCREEN_ACTION_CLASS, FullScreenMessage } from "@widgets/full-screen-message/FullScreenMessage";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface FullScreenErrorProps {
   icon: LucideIcon;
@@ -22,14 +21,13 @@ function FullScreenError({ icon, titleKey, descriptionKey }: FullScreenErrorProp
       title={t(titleKey)}
       description={t(descriptionKey)}
       action={
-        <motion.button
+        <Pressable
           type="button"
           onClick={() => window.location.reload()}
-          {...bounceTap()}
-          className={FULL_SCREEN_ACTION_CLASS}
+          className={`${FULL_SCREEN_ACTION_CLASS}`}
         >
           {t("errors.retry")}
-        </motion.button>
+        </Pressable>
       }
     />
   );

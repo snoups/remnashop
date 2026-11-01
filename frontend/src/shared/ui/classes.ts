@@ -26,3 +26,9 @@ export const LIST_DIVIDER_CLASS =
 export const LIST_BODY_CLASS = `list-rows flex flex-col ${LIST_DIVIDER_CLASS}`;
 // 36px icon + 12px inset on every side = concentric pill; taller content overflows instead of growing the row.
 export const LIST_ROW_CLASS = "h-15 rounded-full px-3 [transition-property:background-color] duration-150";
+
+/** Settings card: rows of one section, a thin line between them (SettingsRow, OAuth providers). */
+export const SETTINGS_ROWS_CLASS =
+  "flex flex-col [&>*:not(:last-child)]:border-b [&>*:not(:last-child)]:border-border/50";
+/** Settings card: the line that starts the next section. */
+export const SETTINGS_SECTION_CLASS = "mt-2 border-t border-white/[0.08] pt-2";

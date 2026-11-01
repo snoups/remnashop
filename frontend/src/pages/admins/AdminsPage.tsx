@@ -9,7 +9,6 @@ import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalo
 import { AdminCreateForm } from "@features/admin-create/AdminCreateForm";
 import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
 import { AdminDetailsFlow, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
@@ -20,6 +19,7 @@ import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { LIST_DIVIDER_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
+import { Pressable } from "@shared/ui/Pressable";
 
 export function AdminsPage() {
   const { t } = useTranslation();
@@ -88,15 +88,13 @@ export function AdminsPage() {
               return (
                 <motion.div
                   key={admin.id}
-                  {...bounceTap(0.03)}
                   className={`relative col-span-full grid grid-cols-subgrid items-center has-[[aria-expanded=true]]:z-20 gap-y-0 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
                 >
                   {/* whole-row hit area; sits under the menu and channel icons (z-10) */}
-                  <button
+                  <Pressable
                     type="button"
                     onClick={() => setDetails({ admin, tab: "profile" })}
-                    className="absolute inset-0 cursor-pointer rounded-full"
-                  />
+                    className="absolute inset-0 cursor-pointer rounded-full" />
                   <div
                     className={`row-span-2 flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${
                       admin.id === currentUserId ? "bg-accent text-primary" : "bg-white/[0.06] text-foreground"

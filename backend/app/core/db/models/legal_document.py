@@ -19,8 +19,8 @@ class LegalDocument(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[LegalDocumentKind] = mapped_column(unique=True)
-    show_in_bot: Mapped[bool] = mapped_column(default=True, server_default="true")
-    show_in_cabinet: Mapped[bool] = mapped_column(default=True, server_default="true")
+    show_in_bot: Mapped[bool] = mapped_column(default=False, server_default="false")
+    show_in_cabinet: Mapped[bool] = mapped_column(default=False, server_default="false")
 
 
 class LegalDocumentRevision(BaseSql):

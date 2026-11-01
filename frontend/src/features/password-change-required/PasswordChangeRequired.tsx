@@ -48,7 +48,7 @@ export function PasswordChangeRequired() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <form
         onSubmit={(event) => void handleSubmit(event)}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl max-md:rounded-card border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
       >
         <div className="flex flex-col gap-1.5">
           <h1 className="text-xl font-bold tracking-tight text-foreground">{t("auth.passwordChange.title")}</h1>

@@ -16,7 +16,6 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -32,7 +31,6 @@ import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { formatTime } from "@shared/lib/relative-time";
@@ -47,7 +45,8 @@ import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import { ListRow } from "@shared/ui/ListRow";
 
 // Mirrors `EventCategory` (backend/app/core/events.py), in sidebar order.
 const CATEGORIES = [
@@ -199,10 +198,8 @@ export function EventLogPage() {
             {state.items.length > 0 && (
               <>
                 {/* overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar */}
-                <div className="-mx-2 overflow-x-auto overflow-y-hidden">
-                  {/* px-2: the rows' whileTap scale grows into padding, so the scroll
-                      container's width holds and no scrollbar flickers on tap */}
-                  <div className="min-w-[640px] px-2">
+                <div className="overflow-x-auto overflow-y-hidden">
+                  <div className="min-w-[640px]">
                     <div className="grid grid-cols-[2fr_64px_1fr_140px_16px] gap-4 border-b border-border px-3 pb-2.5">
                       <span className={EYEBROW_CLASS}>
                         {t("eventLog.columns.eventType")}
@@ -226,18 +223,10 @@ export function EventLogPage() {
                           </h3>
                           <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
                           {group.items.map((entry) => (
-                            <motion.div
+                            <ListRow
                               key={entry.id}
-                              tabIndex={0}
                               onClick={() => setSelectedEntry(entry)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  setSelectedEntry(entry);
-                                }
-                              }}
-                              {...bounceTap(0.03)}
-                              className={`grid cursor-pointer grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
+                              className="grid grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4"
                             >
                               <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
                                 <span
@@ -257,7 +246,7 @@ export function EventLogPage() {
                                 {entry.ip_address ?? "—"}
                               </span>
                               <ChevronRight className="size-4 text-muted-foreground" />
-                            </motion.div>
+                            </ListRow>
                           ))}
                           </Collapse>
                         </section>

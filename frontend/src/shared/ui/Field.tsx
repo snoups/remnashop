@@ -10,6 +10,8 @@ interface FieldProps {
   info?: string;
   /** red asterisk after the label */
   required?: boolean;
+  /** full-white label instead of the muted one (settings cards) */
+  bright?: boolean;
   /** extra element after the label, e.g. a count Tag */
   aside?: ReactNode;
   /** text under the control */
@@ -20,7 +22,7 @@ interface FieldProps {
   children: ReactNode;
 }
 
-export function Field({ label, htmlFor, required = false, info, aside, hint, error, className = "", children }: FieldProps) {
+export function Field({ label, htmlFor, required = false, bright = false, info, aside, hint, error, className = "", children }: FieldProps) {
   const ref = useRef<HTMLDivElement>(null);
   // the browser's constraint (required, min, step...) failing on submit; see form-validation.ts
   const [nativeError, setNativeError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export function Field({ label, htmlFor, required = false, info, aside, hint, err
   const shownError = error ?? nativeError;
   return (
     <div ref={ref} className={`flex flex-col gap-1 ${className}`}>
-      <label htmlFor={htmlFor} className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+      <label htmlFor={htmlFor} className={`flex items-center gap-1.5 text-sm font-medium ${bright ? "text-foreground" : "text-foreground/80"}`}>
         {label}
         {required && <span className="text-error">*</span>}
         {info && <FieldHint text={info} />}

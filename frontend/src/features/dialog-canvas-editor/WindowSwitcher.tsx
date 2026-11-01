@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
-import { TAP_PILL_SCALE, bounceTap } from "@shared/lib/bounceState";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface WindowSwitcherProps {
   windows: DialogWindow[];
@@ -71,21 +71,18 @@ function WindowChip({
   const { t } = useTranslation();
   return (
     <motion.div
-      initial="rest"
-      whileTap="tap"
       className="group relative isolate flex items-center gap-1 rounded-full px-1"
     >
       {/* Only the pill behind the row scales on tap, same split as TabBar. */}
       <motion.span
-        variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
         className={`absolute inset-0 rounded-full transition-colors ${
           isSelected ? "bg-accent" : "group-hover:bg-white/[0.04]"
         }`}
       />
-      <button
+      <Pressable
         type="button"
         onClick={onSelect}
-        className={`relative z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-[13px] ${
+        className={`z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-[13px] ${
           isSelected ? "font-medium text-primary" : "text-foreground/80"
         } ${window.is_enabled ? "" : "opacity-55"}`}
       >
@@ -95,7 +92,7 @@ function WindowChip({
         {isDirty && <span className="size-1.5 shrink-0 rounded-full bg-warning" />}
         {!window.is_enabled && <StateBadge label={t("dialogs.windowList.disabledBadge")} />}
         {isUnreachable && <StateBadge label={t("dialogs.windowList.unlinkedBadge")} />}
-      </button>
+      </Pressable>
       {canDelete && window.kind === "custom" ? (
         <button
           type="button"
@@ -144,15 +141,12 @@ export function WindowSwitcher({
         const isCollapsed = isFlowCollapsed(flow);
         return (
           <div key={flow}>
-            <motion.button
+            <Pressable
               type="button"
               onClick={() => toggleFlow(flow)}
-              initial="rest"
-              whileTap="tap"
               className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
             >
               <motion.span
-                variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                 className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
               />
               <ChevronRight
@@ -164,7 +158,7 @@ export function WindowSwitcher({
               <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
                 {items.length}
               </span>
-            </motion.button>
+            </Pressable>
             <Collapse open={!isCollapsed} className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
               {items.map((window) => (
                 <WindowChip
@@ -184,15 +178,14 @@ export function WindowSwitcher({
         );
       })}
       {canCreate && (
-        <motion.button
+        <Pressable
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          {...bounceTap()}
           className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
           {t("dialogs.windowList.addWindow")}
-        </motion.button>
+        </Pressable>
       )}
       {isLimitReached && (
         <span className="mt-1 text-[12px] text-muted-foreground">

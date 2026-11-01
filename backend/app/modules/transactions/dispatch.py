@@ -8,7 +8,7 @@ class ConfirmStarsPaymentDispatch(Protocol):
 
 
 class NotifyPaymentWaitlistDispatch(Protocol):
-    async def kiq(self) -> object: ...
+    async def kiq(self, *, outbox_id: int) -> object: ...
 
 
 class MarkOrderFulfilledDispatch(Protocol):

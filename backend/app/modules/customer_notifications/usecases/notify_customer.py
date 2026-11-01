@@ -198,7 +198,8 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             return
         first_error: Optional[Exception] = None
         for channel in channels:
-            key = f"{REDIS_KEY_PREFIX}customer_notified:{data.outbox_id}:{channel}"
+            # one outbox event can notify many customers (the payment waitlist)
+            key = f"{REDIS_KEY_PREFIX}customer_notified:{data.outbox_id}:{user.id}:{channel}"
             if not await self._redis.set(key, "1", nx=True, ex=_DEDUP_TTL_S):
                 continue
             try:

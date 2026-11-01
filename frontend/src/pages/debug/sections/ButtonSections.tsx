@@ -1,10 +1,8 @@
 import { Bell, GripVertical, Plus, RefreshCw, Trash2, X } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
-import { bounceTap } from "@shared/lib/bounceState";
 import { Button } from "@shared/ui/Button";
 import { CopyableValue } from "@shared/ui/CopyableValue";
 import { DatePickerField } from "@shared/ui/DatePickerField";
@@ -14,6 +12,7 @@ import { POPOVER_CLASS } from "@shared/ui/classes";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { TextInput } from "@shared/ui/TextInput";
+import { Pressable } from "@shared/ui/Pressable";
 
 export function ButtonsSection() {
   const k = useKit();
@@ -68,14 +67,13 @@ export function ButtonsSection() {
         <LoadMoreButton shown={20} total={134} onClick={() => undefined} />
       </Specimen>
       <Specimen name="dashed" usage={k("u.dashed")}>
-        <motion.button
+        <Pressable
           type="button"
-          {...bounceTap()}
           className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
           {k("s.add")}
-        </motion.button>
+        </Pressable>
       </Specimen>
     </DebugSection>
   );
@@ -155,11 +153,11 @@ export function IconButtonsSection() {
           <DialogHeader title={k("s.dialogTitle")} onClose={() => undefined} />
         </div>
       </Specimen>
-      <Specimen name='tone="glass" bounce' usage={k("u.glass")}>
-        <IconButton size="8" tone="glass" bounce={0.12}>
+      <Specimen name='tone="glass"' usage={k("u.glass")}>
+        <IconButton size="8" tone="glass">
           <RefreshCw className="size-[15px]" />
         </IconButton>
-        <IconButton size="9" tone="glass" bounce={0.12}>
+        <IconButton size="9" tone="glass">
           <Bell className="size-[17px]" />
         </IconButton>
       </Specimen>

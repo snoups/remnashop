@@ -1,5 +1,8 @@
-import { ChevronDown, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
-import { motion } from "motion/react";
+import { ChevronDown, Menu, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+import { MobileMenu } from "@widgets/sidebar/MobileMenu";
+
+import { AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useSearchParams } from "react-router-dom";
@@ -8,7 +11,6 @@ import { useBrandName } from "@entities/appearance/use-appearance";
 import { useOnAccessSettingsSaved } from "@entities/settings/access-sync";
 import { getAccessSettings } from "@entities/settings/api";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
@@ -16,13 +18,12 @@ import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { initials } from "@shared/lib/initials";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { IconButton } from "@shared/ui/IconButton";
-import { MotionLink } from "@shared/ui/MotionLink";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Pressable } from "@shared/ui/Pressable";
 
 // Popover grows out of its own top-right corner, toward the trigger.
 const POPOVER_MOTION = {
@@ -40,6 +41,14 @@ interface HeaderProps {
 }
 
 export function Header({ onLogout }: HeaderProps) {
+  const [mobile, setMobile] = useState(() => window.matchMedia("(width < 768px)").matches);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(width < 768px)");
+    const update = () => { setMobile(query.matches); setMenuOpen(false); };
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const { t } = useTranslation();
   const brandName = useBrandName();
   const pageTitle = usePageTitle(brandName);
@@ -78,15 +87,17 @@ export function Header({ onLogout }: HeaderProps) {
   }, [searchParams, setSearchParams]);
 
 
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-5 md:px-8 md:py-5">
-      <div className="flex items-center gap-2.5">
-        <span className="text-[21px] font-bold tracking-tight text-foreground">{pageTitle}</span>
-        {isOverviewPage && (
+  const header = (
+    <header className={mobile
+      ? "fixed inset-x-2 top-[calc(8px+env(safe-area-inset-top))] z-30 flex h-16 items-center justify-between gap-3 rounded-card border border-glass-border bg-surface/50 px-3 text-foreground shadow-2xl backdrop-blur-[28px] backdrop-saturate-150"
+      : "flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-5 md:px-8 md:py-5"}>
+      <div className="flex items-center gap-2.5 max-md:min-w-0">
+        {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-5" /></IconButton>}
+        <span className="text-[21px] font-bold tracking-tight text-foreground max-md:truncate max-md:text-[17px]">{pageTitle}</span>
+        {!mobile && isOverviewPage && (
           <IconButton
             size="8"
             tone="glass"
-            bounce={0.12}
             onClick={handleRefresh}
             disabled={isRefreshing}
           >
@@ -95,12 +106,12 @@ export function Header({ onLogout }: HeaderProps) {
         )}
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-3.5">
-        <HeaderSearch />
+      <div className="flex flex-1 items-center justify-end gap-3.5 max-md:flex-none max-md:shrink-0 max-md:gap-2">
+        {!mobile && <HeaderSearch />}
 
-        {permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
+        {!mobile && permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
-        <LanguagePicker />
+        {!mobile && <LanguagePicker />}
 
         <div ref={notifRef} className="relative shrink-0">
           <NotificationsBell
@@ -112,11 +123,12 @@ export function Header({ onLogout }: HeaderProps) {
           />
         </div>
 
-        <div ref={menuRef} className="relative shrink-0 border-l border-border pl-3.5">
-          <motion.button
+        <div ref={menuRef} className="relative shrink-0 md:border-l md:border-border md:pl-3.5">
+          <Pressable
             type="button"
+            aria-label={t("header.profile")}
+            aria-expanded={openPopover === "user"}
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
-            {...bounceTap(0.05)}
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1"
           >
             <span
@@ -125,12 +137,12 @@ export function Header({ onLogout }: HeaderProps) {
             <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas">
               {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
-            <div className="relative z-10 hidden text-left leading-tight sm:block">
+            <div className="relative z-10 hidden text-left leading-tight md:block">
               <span className="block text-[13px] font-semibold text-foreground">{login ?? t("header.account")}</span>
               {role && <span className="block text-[12px] text-muted-foreground">{t(`roles.${role}`)}</span>}
             </div>
-            <ChevronDown className={`relative z-10 size-3.5 text-muted-foreground transition-transform ${openPopover === "user" ? "rotate-180" : ""}`} />
-          </motion.button>
+            <ChevronDown className={`relative z-10 hidden size-3.5 text-muted-foreground transition-transform md:block ${openPopover === "user" ? "rotate-180" : ""}`} />
+          </Pressable>
 
           <PortalPopover
             open={openPopover === "user"}
@@ -141,30 +153,34 @@ export function Header({ onLogout }: HeaderProps) {
             {...POPOVER_MOTION}
             className="w-48 p-1.5"
           >
-            <MotionLink
+            <Pressable as="link"
               to="/dashboard/profile"
               onClick={() => setOpenPopover(null)}
               className="flex h-9 items-center gap-2.5 rounded-popover-item px-2.5 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]"
-              initial="rest"
-              whileHover="hover"
             >
-              <BounceIcon icon={UserIcon} size={15} hoverSize={18.75} />
+              <UserIcon className="size-4 shrink-0" />
               {t("header.profile")}
-            </MotionLink>
-            <motion.button
+            </Pressable>
+            <Pressable
               type="button"
               onClick={onLogout}
               className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-error transition-colors hover:bg-white/[0.07]"
-              initial="rest"
-              whileHover="hover"
             >
-              <BounceIcon icon={LogOut} size={15} hoverSize={18.75} />
+              <LogOut className="size-4 shrink-0" />
               {t("header.logout")}
-            </motion.button>
+            </Pressable>
           </PortalPopover>
         </div>
       </div>
     </header>
+  );
+  return (
+    <>
+      {mobile ? createPortal(header, document.body) : header}
+      <AnimatePresence>
+        {mobile && menuOpen && <MobileMenu key="mobile-menu" onClose={() => setMenuOpen(false)} />}
+      </AnimatePresence>
+    </>
   );
 }
 

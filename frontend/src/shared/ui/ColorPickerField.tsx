@@ -30,7 +30,7 @@ export function ColorPickerField({ value, onChange, displayValue }: ColorPickerF
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         style={{ backgroundColor: displayValue ?? value }}
-        className="size-9.5 shrink-0 rounded-full border-2 border-glass-border shadow-inner transition-transform hover:scale-105"
+        className="size-9.5 shrink-0 rounded-full border-2 border-glass-border shadow-inner"
       />
 
       <PortalPopover

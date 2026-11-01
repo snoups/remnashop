@@ -15,7 +15,6 @@ import {
 } from "@entities/gateways/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { isHttpsUrl } from "@shared/lib/external-links";
 import { toast } from "@shared/lib/toast";
 import { Switch } from "@shared/ui/Switch";
@@ -27,6 +26,7 @@ import { CopyableValue } from "@shared/ui/CopyableValue";
 import { GATEWAY_DOCS_URLS } from "./docs-links";
 import { GATEWAY_LOGOS } from "./logos";
 import { inputModeFor, sanitizeFieldValue } from "./field-input";
+import { Pressable } from "@shared/ui/Pressable";
 
 const CURRENCY_HINT_GATEWAYS = new Set([
   "CRYPTOMUS",
@@ -167,16 +167,11 @@ export function GatewaySettingsCard({
 
   return (
     <div>
-      <motion.div
-        tabIndex={0}
+      <Pressable
+        as="div"
+        disabled={!canExpand}
         onClick={toggleOpen}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          toggleOpen();
-        }}
-        {...bounceTap(0.03)}
-        className={`flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04] ${canExpand ? "cursor-pointer" : ""}`}
+        className={`flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors ${canExpand ? "hover:bg-white/[0.04]" : ""}`}
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-bold text-foreground">
           {logoUrl ? (
@@ -203,7 +198,7 @@ export function GatewaySettingsCard({
           </span>
         )}
         {docsUrl && (
-          <a
+          <Pressable as="a"
             href={docsUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -211,7 +206,7 @@ export function GatewaySettingsCard({
             className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
           >
             <BookOpen className="size-4" />
-          </a>
+          </Pressable>
         )}
         <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
           <Switch
@@ -220,7 +215,7 @@ export function GatewaySettingsCard({
             disabled={!permissions.includes("GATEWAYS_ACTIVE_SET") || isToggling || !gateway.is_configured}
           />
         </div>
-      </motion.div>
+      </Pressable>
 
       <AnimatePresence initial={false}>
         {isOpen && canExpand && (

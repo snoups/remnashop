@@ -1,5 +1,4 @@
 import { CreditCard, Gift, Receipt, Ticket } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { ParseKeys, TFunction } from "i18next";
@@ -17,7 +16,6 @@ import { TransactionDetailsDialog } from "@features/transaction-details/Transact
 import { InvitedUsersPage } from "@features/user-referrals/InvitedUsersList";
 import { ReferralKpis } from "@features/user-referrals/ReferralOverview";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
@@ -31,6 +29,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { formatDate } from "@shared/lib/relative-time";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
 // Commerce tabs of the user details dialog: analytics, transactions, subscriptions, promocodes, referrals.
 
@@ -203,12 +202,11 @@ export function TransactionsTab({ userId }: { userId: number }) {
         state.items.map((order) => {
           const symbol = currencySymbol(order.currency);
           return (
-            <motion.button
+            <Pressable
               key={order.id}
               type="button"
               disabled={!canViewDetails}
               onClick={() => setOpenedOrder(order)}
-              {...(canViewDetails && bounceTap(0.03))}
               className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
             >
               <span className={ROW_ICON_CLASSNAME}>
@@ -231,7 +229,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
               <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
-            </motion.button>
+            </Pressable>
           );
         })}
       {state.kind === "ready" && hasMore && (
@@ -278,12 +276,11 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
         )}
         {state.kind === "ready" &&
           state.data.items.map((subscription) => (
-            <motion.button
+            <Pressable
               key={subscription.id}
               type="button"
               disabled={!canOpen}
               onClick={() => openSubscription(subscription.id, { data: subscription, onChanged: reload })}
-              {...(canOpen && bounceTap(0.03))}
               className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
             >
               <span className={ROW_ICON_CLASSNAME}>
@@ -312,7 +309,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
               <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                 {t(`subscriptions.status.${subscription.status}`)}
               </Badge>
-            </motion.button>
+            </Pressable>
           ))}
       </Card>
       {isGranting && (

@@ -60,6 +60,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { TextArea, TextInput } from "@shared/ui/TextInput";
+import { Pressable } from "@shared/ui/Pressable";
 
 // client-only keys, so a moved step or button keeps its React identity; stripped on save
 type DraftButton = ConnectButton & { key: string };
@@ -94,7 +95,7 @@ const APP_NAME_MAX_LENGTH = 40;
 const LINE_MAX_LENGTH = 120;
 const PARAGRAPH_MAX_LENGTH = 1000;
 const ADDRESS_MAX_LENGTH = 2000;
-const BLOCK_CLASS = "flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5";
+const BLOCK_CLASS = "flex flex-col gap-3 rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-3.5";
 
 function toDraft(catalog: ConnectCatalog): Draft {
   const draft = Object.fromEntries(PLATFORM_IDS.map((id) => [id, [] as DraftApp[]])) as Draft;
@@ -199,7 +200,7 @@ function OrderControls({
 
 function AddRow({ label, disabled, onClick }: { label: ReactNode; disabled: boolean; onClick: () => void }) {
   return (
-    <button
+    <Pressable
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -209,7 +210,7 @@ function AddRow({ label, disabled, onClick }: { label: ReactNode; disabled: bool
         <Plus className="size-3.5" />
       </span>
       {label}
-    </button>
+    </Pressable>
   );
 }
 
@@ -510,7 +511,7 @@ export function ConnectGuideSettingsPage() {
             <div className="flex flex-col gap-1">
               <span className={`px-3 pb-1 ${EYEBROW_CLASS}`}>{t("connectGuide.apps")}</span>
               {apps.map((candidate, index) => (
-                <button
+                <Pressable
                   key={candidate.id}
                   type="button"
                   onClick={() => setAppIndex(index)}
@@ -520,7 +521,7 @@ export function ConnectGuideSettingsPage() {
                 >
                   <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
                   {candidate.featured && <Star className="size-3.5 shrink-0 fill-warning text-warning" />}
-                </button>
+                </Pressable>
               ))}
               {apps.length === 0 && <p className="px-3 text-[12px] text-muted-foreground">{t("connectGuide.noApps")}</p>}
               {apps.length < MAX_APPS && <AddRow label={t("connectGuide.addApp")} disabled={disabled} onClick={addApp} />}

@@ -108,7 +108,7 @@ export function KpiTile({
   const tone = trend && trendTone(trend.delta);
   return (
     <div
-      className={`flex min-w-0 flex-col gap-1.5 rounded-2xl border px-[18px] py-4 ${
+      className={`flex min-w-0 flex-col gap-1.5 rounded-2xl max-md:rounded-card border px-[18px] py-4 ${
         highlighted ? "border-primary/25 bg-accent/60" : "border-white/[0.08] bg-white/[0.03]"
       }`}
     >

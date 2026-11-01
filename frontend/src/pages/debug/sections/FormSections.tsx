@@ -8,15 +8,27 @@ import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { normalizeEmail } from "@shared/lib/chip-normalizers";
 import { ChipsInput } from "@shared/ui/ChipsInput";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import {
+  EYEBROW_CLASS,
+  LIST_BODY_CLASS,
+  LIST_HEAD_CLASS,
+  LIST_ROW_CLASS,
+  SETTINGS_ROWS_CLASS,
+  SETTINGS_SECTION_CLASS,
+} from "@shared/ui/classes";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
 import { Field } from "@shared/ui/Field";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { ListRow } from "@shared/ui/ListRow";
 import { PasswordInput } from "@shared/ui/PasswordInput";
+import { PillTabs } from "@shared/ui/PillTabs";
+import { Pressable } from "@shared/ui/Pressable";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { SettingsRow } from "@shared/ui/SettingsRow";
 import { Slider } from "@shared/ui/Slider";
 import { Switch } from "@shared/ui/Switch";
 import { Tag } from "@shared/ui/Tag";
@@ -104,7 +116,7 @@ export function FieldsSection() {
           onChange={setSearch}
         />
       </Specimen>
-      <Specimen name='SelectDropdown · size="default | compact"' usage={k("u.select")} stage="stretch">
+      <Specimen name='SelectDropdown · size="default | compact | lg"' usage={k("u.select")} stage="stretch">
         <SelectDropdown value={select} options={options} placeholder="—" onChange={setSelect} icon={Globe} />
         <SelectDropdown
           value={select}
@@ -114,6 +126,7 @@ export function FieldsSection() {
           icon={Globe}
           size="compact"
         />
+        <SelectDropdown value={select} options={options} placeholder="—" onChange={setSelect} icon={Globe} size="lg" />
       </Specimen>
       <Specimen name="Switch · ColorPickerField" usage={`${k("u.switch")} ${k("u.color")}`}>
         <Switch checked={isOn} onChange={setIsOn} />
@@ -166,6 +179,9 @@ export function CardsSection() {
           />
           <p className="mt-4 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
         </Card>
+      </Specimen>
+      <Specimen name="Card · SettingsRow · SaveFooter" usage={k("u.settingsRow")} stage="stretch">
+        <SettingsCardDemo />
       </Specimen>
       <Specimen name='Card variant="form" title' usage={k("u.cardForm")} stage="stretch">
         <Card variant="form" title={k("s.sectionTitle")}>
@@ -246,6 +262,34 @@ export function TablesSection() {
           </div>
         </Card>
       </Specimen>
+      <Specimen name="ListRow · disabled" usage={k("u.listRow")} stage="stretch" wide>
+        <Card>
+          <div className={`${LIST_BODY_CLASS} text-[13px]`}>
+            {ROWS.map((row, index) => (
+              <ListRow key={row.days} className={GRID} disabled={index === 2}>
+                <span className="text-foreground">{days(row.days)}</span>
+                <span className="text-right tabular-nums text-foreground/90">{row.rub}</span>
+                <span className="text-right tabular-nums text-foreground/90">{row.usd}</span>
+                <span className="text-right tabular-nums text-muted-foreground">{row.share}</span>
+              </ListRow>
+            ))}
+          </div>
+        </Card>
+      </Specimen>
+      <Specimen name="SettingsRow onClick · expanded · glyph" usage={k("u.settingsRowPress")} stage="stretch">
+        <PressableRowDemo />
+      </Specimen>
+      <Specimen name='Pressable as="button | link | a | div"' usage={k("u.pressable")} stage="stretch">
+        <div className="flex flex-wrap gap-2">
+          {(["button", "link", "a", "div"] as const).map((kind) => {
+            const look = "flex h-9 items-center rounded-full border border-glass-border bg-white/[0.05] px-4 text-[13px] font-medium text-foreground";
+            if (kind === "link") return <Pressable key={kind} as="link" to="/dashboard/debug" className={look}>link</Pressable>;
+            if (kind === "a") return <Pressable key={kind} as="a" href="#tables" className={look}>a</Pressable>;
+            if (kind === "div") return <Pressable key={kind} as="div" onClick={() => undefined} className={look}>div</Pressable>;
+            return <Pressable key={kind} className={look}>button</Pressable>;
+          })}
+        </div>
+      </Specimen>
       <Specimen name="GroupToggle · leading" usage={k("u.groupToggle")} stage="stretch">
         <GroupToggleDemo />
       </Specimen>
@@ -323,5 +367,59 @@ function GroupToggleDemo() {
         count={12}
       />
     </div>
+  );
+}
+
+function SettingsCardDemo() {
+  const k = useKit();
+  const [mode, setMode] = useState<"a" | "b">("a");
+  const [isOn, setIsOn] = useState(true);
+  const [hours, setHours] = useState("24");
+  const dirty = mode !== "a" || !isOn || hours !== "24";
+  return (
+    <Card>
+      <CardHeader icon={Layers} title={k("s.sectionTitle")} description={k("s.cardHeaderDescription")} />
+      <div className={`mt-4 ${SETTINGS_ROWS_CLASS}`}>
+        <SettingsRow icon={Globe} label={k("s.sectionTitle")} description={k("s.body")}>
+          <PillTabs
+            items={[
+              { key: "a", label: "A" },
+              { key: "b", label: "B" },
+            ]}
+            activeKey={mode}
+            onSelect={setMode}
+          />
+        </SettingsRow>
+        <SettingsRow icon={TrendingUp} label={k("s.sectionTitle")} hint={k("s.body")}>
+          <SuffixInput suffix="h" value={hours} onChange={(event) => setHours(event.target.value)} className="w-24 shrink-0" />
+          <Switch checked={isOn} onChange={setIsOn} />
+        </SettingsRow>
+      </div>
+      <div className={SETTINGS_SECTION_CLASS}>
+        <SettingsRow icon={Receipt} label={k("s.sectionTitle")}>
+          <Switch checked={isOn} onChange={setIsOn} />
+        </SettingsRow>
+      </div>
+      <SaveFooter dirty={dirty} saving={false} onSave={() => {}} />
+    </Card>
+  );
+}
+
+function PressableRowDemo() {
+  const k = useKit();
+  const [open, setOpen] = useState(false);
+  const [isOn, setIsOn] = useState(true);
+  return (
+    <Card>
+      <SettingsRow
+        glyph={<span className="text-[13px] font-bold">Y</span>}
+        label={k("s.sectionTitle")}
+        description={<span className="text-success">{k("s.status")}</span>}
+        onClick={() => setOpen((value) => !value)}
+        expanded={open}
+      >
+        <Switch checked={isOn} onChange={setIsOn} />
+      </SettingsRow>
+    </Card>
   );
 }

@@ -1,7 +1,6 @@
 import { motion } from "motion/react";
 import { useId } from "react";
 
-import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { ActivePill } from "@shared/ui/ActivePill";
 
 export interface SegmentedPillsOption<T extends string | number> {
@@ -38,8 +37,6 @@ export function SegmentedPills<T extends string | number>({
           type="button"
           disabled={disabled}
           onClick={() => onChange(option.value)}
-          initial="rest"
-          whileTap="tap"
           className={`group relative isolate whitespace-nowrap rounded-full disabled:cursor-not-allowed ${stretch ? "flex-1" : "shrink-0"}`}
         >
           {/* only the pill scales, so the label stays crisp */}
@@ -47,7 +44,6 @@ export function SegmentedPills<T extends string | number>({
             <ActivePill layoutId={pillId} />
           ) : (
             <motion.span
-              variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
               className="absolute inset-0 rounded-full transition-colors group-enabled:group-hover:bg-white/[0.06]"
             />
           )}

@@ -1,7 +1,10 @@
+import re
 from datetime import datetime
-from typing import Optional
+from typing import Final, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+_EMAIL: Final[re.Pattern[str]] = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class NotificationChannelsResponse(BaseModel):
@@ -23,20 +26,18 @@ class NotificationSettingsResponse(BaseModel):
 
 
 class UpdateNotificationSettingsRequest(BaseModel):
-    # empty string clears it
-    vapid_contact: Optional[str] = Field(
-        default=None, max_length=255, pattern=r"^(mailto:[^@\s]+@[^@\s]+|https://\S+)?$"
-    )
+    # an email, stored as the mailto: subject push services want (RFC 8292); can't be cleared
+    vapid_contact: Optional[str] = Field(default=None, max_length=255)
 
-    @field_validator("vapid_contact", mode="before")
+    @field_validator("vapid_contact")
     @classmethod
-    def plain_email_to_mailto(cls, value: object) -> object:
-        if not isinstance(value, str):
-            return value
-        value = value.strip()
-        if "@" in value and not value.startswith(("mailto:", "https://")):
-            return f"mailto:{value}"
-        return value
+    def email_to_mailto(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        email = value.strip().removeprefix("mailto:")
+        if not _EMAIL.match(email):
+            raise ValueError("vapid_contact must be an email")
+        return f"mailto:{email}"
 
 
 class PushPublicKeyResponse(BaseModel):

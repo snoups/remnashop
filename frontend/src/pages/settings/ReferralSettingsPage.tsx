@@ -11,7 +11,6 @@ import {
   Repeat,
   Users,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -27,7 +26,6 @@ import {
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
@@ -42,6 +40,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { SuffixInput } from "@shared/ui/TextInput";
+import { Pressable } from "@shared/ui/Pressable";
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -90,12 +89,11 @@ function OptionGroup<T extends string>({
         {options.map(({ value: option, icon: Icon }) => {
           const isActive = option === value;
           return (
-            <motion.button
+            <Pressable
               key={option}
               type="button"
               disabled={disabled}
               onClick={() => onChange(option)}
-              {...(!disabled && bounceTap())}
               className={`flex items-start gap-2.5 rounded-[14px] border p-3 text-left transition-colors disabled:cursor-not-allowed ${
                 isActive
                   ? "border-primary/45 bg-primary/[0.07]"
@@ -113,7 +111,7 @@ function OptionGroup<T extends string>({
                 <span className="text-[13px] font-semibold text-foreground">{name(option)}</span>
                 <span className="text-xs leading-snug text-muted-foreground">{describe(option)}</span>
               </div>
-            </motion.button>
+            </Pressable>
           );
         })}
       </div>

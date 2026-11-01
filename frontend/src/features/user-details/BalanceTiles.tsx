@@ -22,6 +22,7 @@ import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { SuffixInput, TextInput } from "@shared/ui/TextInput";
+import { Pressable } from "@shared/ui/Pressable";
 
 // Points, bonus days, discount and loyalty tiles of the user profile; each opens its own editor.
 
@@ -202,13 +203,13 @@ function EditableKpi({
 
   return (
     <div ref={ref} className="group relative min-w-0">
-      <button
+      <Pressable
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="block w-full rounded-2xl text-left transition-colors hover:bg-white/[0.04]"
+        className="block w-full rounded-2xl max-md:rounded-card text-left transition-colors hover:bg-white/[0.04]"
       >
         <KpiTile label={label} value={value} highlighted={isOpen} />
-      </button>
+      </Pressable>
       <Pencil
         className={`pointer-events-none absolute right-3.5 top-4 size-3.5 transition-opacity ${
           isOpen ? "text-accent-foreground opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100"
@@ -338,7 +339,7 @@ function LastChange({
   if (!entry) return null;
 
   return (
-    <button
+    <Pressable
       type="button"
       onClick={() => onOpen(entry)}
       className="truncate border-t border-white/[0.08] pt-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
@@ -347,7 +348,7 @@ function LastChange({
         name: entry.actor_name ?? entry.actor_login ?? t("common.none"),
         when: formatRelative(entry.occurred_at, i18n.language),
       })}
-    </button>
+    </Pressable>
   );
 }
 

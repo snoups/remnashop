@@ -6,7 +6,8 @@ from pydantic import ValidationError as PydanticValidationError
 
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
-from app.core.exceptions import PermissionDeniedError
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.modules.notifications.api.schemas import UpdateNotificationSettingsRequest
 from app.modules.notifications.dto import UpdateNotificationSettingsDto
@@ -56,6 +57,9 @@ async def test_generate_keys_wipes_subscriptions_and_configures_push(
             auth="a",
             user_agent=None,
         )
+        await notification_repository.update_settings(
+            UpdateNotificationSettingsDto(vapid_contact="mailto:ops@example.com")
+        )
     use_case = GenerateVapidKeysUseCase(notification_repository, uow, event_publisher)
     result = await use_case(owner)
 
@@ -92,14 +96,25 @@ async def test_admin_cannot_generate_keys(
     [
         ("ops@example.com", "mailto:ops@example.com"),
         ("  mailto:ops@example.com ", "mailto:ops@example.com"),
-        ("https://example.com/abuse", "https://example.com/abuse"),
-        ("", ""),
     ],
 )
 def test_contact_accepts_a_plain_email(raw: str, stored: str) -> None:
     assert UpdateNotificationSettingsRequest(vapid_contact=raw).vapid_contact == stored
 
 
-def test_contact_rejects_garbage() -> None:
+@pytest.mark.parametrize("raw", ["not a contact", "", "https://example.com/abuse"])
+def test_contact_must_be_an_email(raw: str) -> None:
     with pytest.raises(PydanticValidationError):
-        UpdateNotificationSettingsRequest(vapid_contact="not a contact")
+        UpdateNotificationSettingsRequest(vapid_contact=raw)
+
+
+async def test_keys_need_a_contact(
+    owner: UserDto,
+    notification_repository: NotificationRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    use_case = GenerateVapidKeysUseCase(notification_repository, uow, event_publisher)
+    with pytest.raises(ValidationError) as caught:
+        await use_case(owner)
+    assert caught.value.code == ErrorCode.PUSH_CONTACT_REQUIRED

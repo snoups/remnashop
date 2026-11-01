@@ -10,7 +10,7 @@ import { formatDate } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
@@ -18,6 +18,7 @@ import { Tag } from "@shared/ui/Tag";
 import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
 import { BarRows, ColumnChart, CurrencyNote } from "@pages/analytics/charts";
 import type { BarRow, Column } from "@pages/analytics/charts";
+import { ListRow } from "@shared/ui/ListRow";
 
 const RANK_CLASS = ["bg-warning/15 text-warning", "bg-white/[0.08] text-foreground", "bg-orange-400/15 text-orange-300"];
 const TOP_GRID = "grid grid-cols-[36px_minmax(0,1.4fr)_minmax(0,1fr)_80px_110px_110px] items-center gap-3";
@@ -197,11 +198,11 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
               </div>
               <div className={LIST_BODY_CLASS}>
                 {data.top_payers.map((payer, index) => (
-                  <button
+                  <ListRow
                     key={payer.user_id}
                     type="button"
                     onClick={() => openUser(payer.user_id)}
-                    className={`${TOP_GRID} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                    className={TOP_GRID}
                   >
                     <span
                       className={`flex size-9 items-center justify-center rounded-full text-[12px] font-bold ${
@@ -226,7 +227,7 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
                     <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
                       {formatDate(payer.last_paid_at, language)}
                     </span>
-                  </button>
+                  </ListRow>
                 ))}
               </div>
             </div>

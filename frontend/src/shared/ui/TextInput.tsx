@@ -11,8 +11,21 @@ export function TextInput({ className = "", ...props }: ComponentProps<"input">)
   return <input className={`rounded-full ${TEXT_FIELD_CLASS} ${className}`} {...props} />;
 }
 
+/** Multiline field. The border sits on a clipping wrapper: a scrollbar ignores its own element's
+ *  rounded corners but not an ancestor's overflow clip, so a long text keeps round corners.
+ *  className: layout only, goes on the wrapper (the textarea inherits its font). */
 export function TextArea({ className = "", ...props }: ComponentProps<"textarea">) {
-  return <textarea className={`min-h-[38px] resize-none rounded-xl ${TEXT_FIELD_CLASS} ${className}`} {...props} />;
+  return (
+    // 19px: the corner of a 38px rounded-full TextInput
+    <label
+      className={`flex cursor-text flex-col overflow-hidden rounded-[19px] ${FIELD_SURFACE_CLASS} focus-within:border-primary has-[[aria-invalid=true]]:border-error has-[[aria-invalid=true]]:focus-within:border-error has-[[data-invalid-native]]:border-error has-[[data-invalid-native]]:focus-within:border-error has-disabled:cursor-not-allowed has-disabled:opacity-50 ${className}`}
+    >
+      <textarea
+        className={`min-h-9 resize-none bg-transparent px-3 py-2 ${FIELD_TEXT_CLASS} disabled:cursor-not-allowed`}
+        {...props}
+      />
+    </label>
+  );
 }
 
 /** TextInput with a unit after the value ("дн.", "₽"); the suffix takes only its own width.

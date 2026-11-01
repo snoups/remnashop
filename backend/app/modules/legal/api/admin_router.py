@@ -15,6 +15,7 @@ from app.modules.legal.api.schemas import (
     LegalDocumentItemResponse,
     LegalDocumentResponse,
     LegalDocumentsResponse,
+    LegalTemplateResponse,
     LegalTextRequest,
     LegalTextResponse,
     UpdateLegalDocumentRequest,
@@ -47,13 +48,17 @@ async def list_legal_documents(
                 for text in result.texts
                 if text.kind == document.kind
             ],
+            templates=[
+                LegalTemplateResponse.model_validate(template, from_attributes=True)
+                for template in result.templates
+                if template.kind == document.kind
+            ],
         )
         for document in result.documents
     ]
     return LegalDocumentsResponse(
         items=items,
         total=len(items),
-        offer_missing_in=result.offer_missing_in,
         locales=result.locales,
     )
 

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 
 import { updateOwnProfile } from "@entities/user/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
 import { initials } from "@shared/lib/initials";
@@ -18,6 +17,7 @@ import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Field } from "@shared/ui/Field";
 import { Card } from "@shared/ui/Card";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface EditProfileDialogProps {
   name: string;
@@ -115,17 +115,16 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
             </Field>
 
             <div>
-              <motion.button
+              <Pressable
                 type="button"
                 onClick={() => setIsPasswordOpen((open) => !open)}
-                {...bounceTap()}
                 className="flex w-full items-center justify-between rounded-xl py-1 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
               >
                 {t("profile.edit.changePassword")}
                 <ChevronDown
                   className={`size-4 text-muted-foreground transition-transform ${isPasswordOpen ? "rotate-180" : ""}`}
                 />
-              </motion.button>
+              </Pressable>
 
               <AnimatePresence initial={false}>
                 {isPasswordOpen && (

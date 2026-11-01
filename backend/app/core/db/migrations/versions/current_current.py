@@ -623,8 +623,8 @@ def upgrade() -> None:
             sa.Enum("OFFER", "USER_AGREEMENT", "PRIVACY_POLICY", name="legaldocumentkind"),
             nullable=False,
         ),
-        sa.Column("show_in_bot", sa.Boolean(), server_default="true", nullable=False),
-        sa.Column("show_in_cabinet", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("show_in_bot", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column("show_in_cabinet", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

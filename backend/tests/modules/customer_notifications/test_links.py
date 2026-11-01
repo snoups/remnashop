@@ -27,6 +27,7 @@ _ORDER = {"order_id": 42}
         ("ReferralRewardIssuedEvent", None, {}, "/invite/friends"),
         ("InviteeRewardIssuedEvent", None, {}, "/profile"),
         ("PromocodeDiscountExpiringEvent", None, {}, "/purchase"),
+        ("PaymentsRestored", None, {}, "/purchase"),
         ("SomethingUnknownEvent", 7, {}, "/"),
     ],
 )

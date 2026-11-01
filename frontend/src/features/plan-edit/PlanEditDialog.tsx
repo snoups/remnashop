@@ -8,7 +8,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDownUp, Columns2, GripVertical, Infinity as InfinityIcon, Layers, Plus, Smartphone, Sparkles, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
 import { type ComponentType, type FormEvent, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -26,7 +25,6 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { PlanShareLinks } from "@features/plan-edit/PlanShareLinks";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
@@ -42,6 +40,7 @@ import { CopyableValue } from "@shared/ui/CopyableValue";
 import { Field } from "@shared/ui/Field";
 import { IconButton } from "@shared/ui/IconButton";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
+import { Pressable } from "@shared/ui/Pressable";
 
 const PLAN_BADGES: PlanBadge[] = ["POPULAR", "BEST_VALUE"];
 const PLAN_TYPES: PlanType[] = ["TRAFFIC", "DEVICES", "BOTH", "UNLIMITED"];
@@ -297,11 +296,10 @@ function PlanEditDialogBody({
                   const Icon = PLAN_TYPE_ICON[value];
                   const isSelected = type === value;
                   return (
-                    <motion.button
+                    <Pressable
                       key={value}
                       type="button"
                       onClick={() => setType(value)}
-                      {...bounceTap(0.03)}
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
@@ -310,7 +308,7 @@ function PlanEditDialogBody({
                     >
                       <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
                       <span className="text-[12.5px] font-semibold">{t(`plans.edit.type.${value}`)}</span>
-                    </motion.button>
+                    </Pressable>
                   );
                 })}
               </div>

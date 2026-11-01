@@ -1,5 +1,4 @@
 import { Dices, Package, Tag, Ticket } from "lucide-react";
-import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -27,7 +26,6 @@ import {
   PromocodeLimitsFields,
 } from "@entities/promocodes/PromocodeLimitsFields";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -39,6 +37,7 @@ import { SuffixInput, TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
+import { Pressable } from "@shared/ui/Pressable";
 
 const DAY_PRESETS = [7, 30, 90];
 
@@ -214,11 +213,10 @@ function PromocodeCreateDialogBody({
                   const Icon = REWARD_TYPE_ICON[type];
                   const isSelected = rewardType === type;
                   return (
-                    <motion.button
+                    <Pressable
                       key={type}
                       type="button"
                       onClick={() => setRewardType(type)}
-                      {...bounceTap(0.03)}
                       className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
                         isSelected
                           ? "border-primary/50 bg-accent text-primary"
@@ -227,7 +225,7 @@ function PromocodeCreateDialogBody({
                     >
                       <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
                       <span className="text-[12.5px] font-semibold">{t(`promocodes.rewardTypeShort.${type}`)}</span>
-                    </motion.button>
+                    </Pressable>
                   );
                 })}
               </div>

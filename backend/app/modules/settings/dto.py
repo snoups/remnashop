@@ -84,6 +84,7 @@ class CabinetSettingsDto:
     bot_username: Optional[str]
     support_telegram: Optional[str]
     support_url: Optional[str]
+    payments_enabled: bool
 
 
 @dataclass(frozen=True, kw_only=True)

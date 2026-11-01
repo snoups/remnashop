@@ -74,10 +74,18 @@ class AcceptLegalDocumentsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class LegalTemplateDto:
+    kind: LegalDocumentKind
+    locale: Locale
+    title: str
+    body: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class LegalDocumentsDto:
     documents: list[LegalDocumentDto]
     texts: list[LegalRevisionDto]
-    offer_missing_in: list[PurchaseChannel]
+    templates: list[LegalTemplateDto]
     locales: list[Locale]
 
 

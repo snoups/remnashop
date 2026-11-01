@@ -1,3 +1,5 @@
+import pytest
+
 from app.core.enums import LegalAcceptanceTrigger, LegalDocumentKind, Locale, PurchaseChannel
 from app.modules.legal.dto import CreateLegalRevisionDto
 from app.modules.legal.recorder import LegalAcceptanceRecorder
@@ -5,6 +7,8 @@ from app.modules.legal.repository import LegalRepository
 from app.modules.translations import TranslationRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+
+pytestmark = pytest.mark.usefixtures("shown_documents")
 
 ALL = frozenset(LegalDocumentKind)
 

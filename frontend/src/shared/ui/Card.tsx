@@ -24,7 +24,7 @@ export function Card({ variant = "page", title, icon: Icon, titleFor, className 
   const top = variant === "form" ? (title ? "pt-1.5" : "pt-3.5") : "";
   const Title = titleFor ? "label" : "h3";
   return (
-    <div className={`rounded-2xl border border-white/[0.08] bg-white/[0.03] ${PADDING[variant]} ${top} ${className}`} {...props}>
+    <div className={`rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] ${PADDING[variant]} ${top} ${className}`} {...props}>
       {title && (
         <Title
           htmlFor={titleFor}

@@ -7,38 +7,32 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
-from app.modules.notifications.dto import SendTelegramTextsDto
 from app.modules.settings.dto import UpdateAccessSettingsDto
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import GetAccessSettingsUseCase
-from app.modules.transactions.usecases import NotifyPaymentWaitlistUseCase, notify_payment_waitlist
+from app.modules.transactions.dto import NotifyPaymentWaitlistDto
+from app.modules.transactions.usecases import (
+    JoinPaymentWaitlistUseCase,
+    NotifyPaymentWaitlistUseCase,
+    notify_payment_waitlist,
+)
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
 
-class _FakeSender:
-    def __init__(
-        self,
-        fail: frozenset[int] = frozenset(),
-        on_send: Optional[Callable[[list[int]], Awaitable[None]]] = None,
-        only: Optional[set[int]] = None,
-    ) -> None:
-        self._fail = fail
-        self._on_send = on_send
-        self._only = only
-        self.calls: list[SendTelegramTextsDto] = []
+class _FakeNotifier:
+    def __init__(self, on_notify: Optional[Callable[[list[int]], Awaitable[None]]] = None) -> None:
+        self._on_notify = on_notify
+        self.calls: list[tuple[list[int], int]] = []
 
-    @property
-    def system(self) -> "_FakeSender":
-        return self
+    async def notify(self, user_ids: list[int], outbox_id: int) -> None:
+        self.calls.append((user_ids, outbox_id))
+        if self._on_notify is not None:
+            await self._on_notify(user_ids)
 
-    async def __call__(self, data: SendTelegramTextsDto) -> set[int]:
-        self.calls.append(data)
-        if self._on_send is not None:
-            await self._on_send(data.user_ids)
-        done = set(data.user_ids) - self._fail
-        return done if self._only is None else done & self._only
+
+_DTO = NotifyPaymentWaitlistDto(outbox_id=31)
 
 
 @pytest.fixture
@@ -53,12 +47,10 @@ def _use_case(
     session_maker: async_sessionmaker[AsyncSession],
     settings_repository: SettingsRepository,
     uow: UnitOfWork,
-    sender: _FakeSender,
+    notifier: _FakeNotifier,
 ) -> NotifyPaymentWaitlistUseCase:
     return NotifyPaymentWaitlistUseCase(
-        WaitlistClaims(session_maker),
-        GetAccessSettingsUseCase(settings_repository, uow),
-        sender,  # type: ignore[arg-type]
+        WaitlistClaims(session_maker), GetAccessSettingsUseCase(settings_repository, uow), notifier
     )
 
 
@@ -95,7 +87,7 @@ async def test_claim_batch_honours_limit_and_exclude(
         assert await waitlist_repository.claim_batch(5, {a}) == [b, c]
 
 
-async def test_notify_sends_in_batches_and_keeps_failed_users(
+async def test_notify_queues_in_batches_and_empties_the_waitlist(
     session_maker: async_sessionmaker[AsyncSession],
     settings_repository: SettingsRepository,
     waitlist_repository: WaitlistRepository,
@@ -105,14 +97,13 @@ async def test_notify_sends_in_batches_and_keeps_failed_users(
 ) -> None:
     monkeypatch.setattr(notify_payment_waitlist, "_BATCH_SIZE", 2)
     a, b, c = await _waitlisted(user_repository, uow, waitlist_repository, 3)
-    sender = _FakeSender(fail=frozenset({b}))
+    notifier = _FakeNotifier()
 
-    await _use_case(session_maker, settings_repository, uow, sender).system()
+    await _use_case(session_maker, settings_repository, uow, notifier).system(_DTO)
 
-    assert sender.calls[0].key == "ntf-access.payments-restored"
-    assert [call.user_ids for call in sender.calls] == [[a, b], [c]]
+    assert notifier.calls == [([a, b], _DTO.outbox_id), ([c], _DTO.outbox_id)]
     async with uow:
-        assert await waitlist_repository.claim_batch(100, set()) == [b]
+        assert await waitlist_repository.count() == 0
 
 
 async def test_notify_with_empty_waitlist_sends_nothing(
@@ -120,9 +111,9 @@ async def test_notify_with_empty_waitlist_sends_nothing(
     settings_repository: SettingsRepository,
     uow: UnitOfWork,
 ) -> None:
-    sender = _FakeSender()
-    await _use_case(session_maker, settings_repository, uow, sender).system()
-    assert sender.calls == []
+    notifier = _FakeNotifier()
+    await _use_case(session_maker, settings_repository, uow, notifier).system(_DTO)
+    assert notifier.calls == []
 
 
 async def test_notify_does_nothing_while_payments_are_disabled(
@@ -137,31 +128,11 @@ async def test_notify_does_nothing_while_payments_are_disabled(
         await settings_repository.update_access_settings(
             UpdateAccessSettingsDto(payments_enabled=False)
         )
-    sender = _FakeSender()
+    notifier = _FakeNotifier()
 
-    await _use_case(session_maker, settings_repository, uow, sender).system()
+    await _use_case(session_maker, settings_repository, uow, notifier).system(_DTO)
 
-    assert sender.calls == []
-    async with uow:
-        assert await waitlist_repository.claim_batch(100, set()) == ids
-
-
-async def test_a_batch_with_nobody_done_ends_the_run(
-    session_maker: async_sessionmaker[AsyncSession],
-    settings_repository: SettingsRepository,
-    waitlist_repository: WaitlistRepository,
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # no bot, missing translation or Telegram down: retrying further batches won't help
-    monkeypatch.setattr(notify_payment_waitlist, "_BATCH_SIZE", 2)
-    ids = await _waitlisted(user_repository, uow, waitlist_repository, 3)
-    sender = _FakeSender(fail=frozenset(ids))
-
-    await _use_case(session_maker, settings_repository, uow, sender).system()
-
-    assert len(sender.calls) == 1
+    assert notifier.calls == []
     async with uow:
         assert await waitlist_repository.claim_batch(100, set()) == ids
 
@@ -188,11 +159,32 @@ async def test_concurrent_run_skips_rows_claimed_by_a_running_batch(
             seen_by_second_run.extend(await WaitlistRepository(other).claim_batch(500, set()))
 
     try:
-        sender = _FakeSender(on_send=_claim_from_second_run, only=set(ids))
-        await _use_case(real_sessions, settings_repository, uow, sender).system()
+        notifier = _FakeNotifier(on_notify=_claim_from_second_run)
+        await _use_case(real_sessions, settings_repository, uow, notifier).system(_DTO)
 
-        assert set(ids) <= set(sender.calls[0].user_ids)
+        assert set(ids) <= set(notifier.calls[0][0])
         assert not set(ids) & set(seen_by_second_run)
     finally:
         async with real_sessions() as cleanup, cleanup.begin():
             await cleanup.execute(delete(User).where(User.id.in_(ids)))
+
+
+@pytest.mark.parametrize("payments_enabled", [False, True])
+async def test_join_adds_the_user_only_while_payments_are_off(
+    payments_enabled: bool,
+    settings_repository: SettingsRepository,
+    waitlist_repository: WaitlistRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        user = await user_repository.create(CreateUserDto(name="j", telegram_id=813_001))
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(payments_enabled=payments_enabled)
+        )
+    use_case = JoinPaymentWaitlistUseCase(
+        GetAccessSettingsUseCase(settings_repository, uow), waitlist_repository, uow
+    )
+    await use_case(user)
+    async with uow:
+        assert await waitlist_repository.count() == (0 if payments_enabled else 1)

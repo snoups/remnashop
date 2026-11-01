@@ -298,3 +298,4 @@ class CabinetSettingsResponse(BaseModel):
     bot_username: Optional[str]
     support_telegram: Optional[str]
     support_url: Optional[str]
+    payments_enabled: bool

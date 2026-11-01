@@ -1,5 +1,4 @@
 import { Play } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +6,6 @@ import { type BackupKind, type BackupRun, type BackupStats, createBackupRun } fr
 import { usePermissions } from "@entities/user/use-current-user";
 import { BACKUP_KINDS, KIND_ICON } from "@pages/backups/kinds";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { formatBytes } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
@@ -15,6 +13,7 @@ import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { Pressable } from "@shared/ui/Pressable";
 
 export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | null; onRunStarted: (run: BackupRun) => void }) {
   const { t, i18n } = useTranslation();
@@ -57,10 +56,9 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
                 const Icon = KIND_ICON[kind];
                 const isActive = runKind === kind;
                 return (
-                  <motion.button
+                  <Pressable
                     key={kind}
                     type="button"
-                    {...bounceTap()}
                     onClick={() => setRunKind(kind)}
                     className={`flex items-start gap-3 rounded-[14px] border p-3.5 text-left transition-colors ${
                       isActive
@@ -81,7 +79,7 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
                         {t(`backups.kindDescription.${kind}`)}
                       </span>
                     </div>
-                  </motion.button>
+                  </Pressable>
                 );
               })}
             </div>

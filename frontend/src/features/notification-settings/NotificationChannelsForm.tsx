@@ -139,7 +139,7 @@ export function NotificationChannelsForm() {
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && (
           <>
-            <div className="flex flex-col gap-2 rounded-2xl border border-border/60 p-3">
+            <div className="flex flex-col gap-2 rounded-2xl max-md:rounded-card border border-border/60 p-3">
               <div className="flex flex-wrap items-center gap-3">
                 <BellRing className="size-4 text-muted-foreground" />
                 <span className="flex-1 text-[13px] font-medium text-foreground">

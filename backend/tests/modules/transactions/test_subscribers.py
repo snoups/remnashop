@@ -10,10 +10,10 @@ _ADMIN = UserDto(id=1, login="admin", name="admin", role=Role.ADMIN, language=Lo
 
 
 async def test_only_a_reenable_kicks_the_waitlist(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    kicked: list[bool] = []
+    kicked: list[int] = []
 
-    async def _kiq() -> None:
-        kicked.append(True)
+    async def _kiq(*, outbox_id: int) -> None:
+        kicked.append(outbox_id)
 
     monkeypatch.setattr(subscribers.notify_payment_waitlist_task, "kiq", _kiq)
     bus = EventBus()
@@ -25,7 +25,7 @@ async def test_only_a_reenable_kicks_the_waitlist(monkeypatch) -> None:  # type:
         )
         await bus.dispatch_stored(stored_event(event))
 
-    assert kicked == [True]
+    assert kicked == [5]
 
 
 async def test_a_paid_delivery_marks_its_order_fulfilled(monkeypatch) -> None:  # type: ignore[no-untyped-def]

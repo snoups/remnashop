@@ -22,6 +22,8 @@ from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.container import make_test_container
 
+pytestmark = pytest.mark.usefixtures("shown_documents")
+
 URL = f"{API_V1}/cabinet/legal"
 
 

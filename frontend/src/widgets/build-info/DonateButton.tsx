@@ -1,45 +1,43 @@
+import { createPortal } from "react-dom";
 import { Crown, PiggyBank, Wallet } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { Card } from "@shared/ui/Card";
 import { useDialogFocus } from "@shared/ui/modal-hooks";
 import { GLASS_DIALOG_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
-export function DonateButton() {
+export function DonateButton({ mobile = false }: { mobile?: boolean }) {
+  const renderOverlay = (content: ReactNode) => mobile ? createPortal(content, document.body) : content;
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const tapProps = bounceTap(0.12);
 
   return (
     <>
-      <motion.button
+      <Pressable
         type="button"
+        aria-label={t("donate.button")}
         onClick={() => setIsOpen(true)}
-        className={SIDEBAR_PILL_CLASSNAME}
-        initial="rest"
-        whileHover="hover"
-        {...bounceTap()}
+        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-[12.5px] font-semibold text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >
-        <BounceIcon icon={Crown} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
-        <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>
-      </motion.button>
+        {mobile ? <Crown className="size-5" /> : <Crown className="size-4 shrink-0" />}
+        {!mobile && <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>}
+      </Pressable>
 
-      <AnimatePresence>
+      {renderOverlay(<AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4"
+            className={`fixed inset-0 ${mobile ? "z-[60]" : "z-40"} flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4`}
           >
             <button
               type="button"
@@ -55,46 +53,43 @@ export function DonateButton() {
                 <p className="text-[12.5px] text-foreground">{t("donate.description")}</p>
 
                 <div className="flex gap-2">
-                  <motion.a
+                  <Pressable as="a"
                     href={BOOSTY_URL}
                     target="_blank"
                     rel="noreferrer"
-                    {...tapProps}
                     className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
                   >
                     <PiggyBank className="size-4" />
                     {t("donate.boostyLabel")}
-                  </motion.a>
-                  <motion.a
+                  </Pressable>
+                  <Pressable as="a"
                     href={YOOKASSA_URL}
                     target="_blank"
                     rel="noreferrer"
-                    {...tapProps}
                     className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
                   >
                     <Wallet className="size-4" />
                     {t("donate.yookassaLabel")}
-                  </motion.a>
+                  </Pressable>
                 </div>
 
                 <Card>
                   <div className="text-[13px] font-semibold text-foreground">{t("donate.communityTitle")}</div>
                   <p className="mt-1 text-[12.5px] text-muted-foreground">{t("donate.communityDescription")}</p>
-                  <motion.a
+                  <Pressable as="a"
                     href={COMMUNITY_URL}
                     target="_blank"
                     rel="noreferrer"
-                    {...tapProps}
                     className="mt-3 flex items-center justify-center gap-2 rounded-full border border-transparent bg-accent h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
                   >
                     {t("donate.communityButton")}
-                  </motion.a>
+                  </Pressable>
                 </Card>
               </div>
             </DonatePanel>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>)}
     </>
   );
 }

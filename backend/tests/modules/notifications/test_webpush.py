@@ -9,7 +9,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
 from app.modules.auth.repository import SessionRepository
 from app.modules.notifications import webpush as webpush_module
-from app.modules.notifications.dto import PushMessage
+from app.modules.notifications.dto import PushMessage, UpdateNotificationSettingsDto
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.notifications.vapid import generate_vapid_keypair
 from app.modules.notifications.webpush import WebPushSender
@@ -38,6 +38,9 @@ async def subscribed(
             CreateUserDto(login="o", name="o", role=Role.OWNER, language=Locale.EN)
         )
         await notification_repository.set_vapid_keys(*generate_vapid_keypair())
+        await notification_repository.update_settings(
+            UpdateNotificationSettingsDto(vapid_contact="mailto:ops@example.com")
+        )
         await notification_repository.upsert_push_subscription(
             user_id=user.id,
             session_id=await new_session(user.id),
@@ -244,6 +247,9 @@ async def test_deliver_skips_cabinet_subscriptions(
             CreateUserDto(login="a", name="a", role=Role.OWNER, language=Locale.EN)
         )
         await notification_repository.set_vapid_keys(*generate_vapid_keypair())
+        await notification_repository.update_settings(
+            UpdateNotificationSettingsDto(vapid_contact="mailto:ops@example.com")
+        )
         await notification_repository.upsert_push_subscription(
             user_id=admin.id,
             session_id=await new_session(admin.id, SessionAudience.CABINET),

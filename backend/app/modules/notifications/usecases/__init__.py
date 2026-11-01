@@ -17,7 +17,6 @@ from app.modules.notifications.usecases.get_notification_settings import (
 )
 from app.modules.notifications.usecases.get_push_public_key import GetPushPublicKeyUseCase
 from app.modules.notifications.usecases.list_push_subscriptions import ListPushSubscriptionsUseCase
-from app.modules.notifications.usecases.send_telegram_texts import SendTelegramTextsUseCase
 from app.modules.notifications.usecases.send_test_push import SendTestPushUseCase
 from app.modules.notifications.usecases.subscribe_push import SubscribePushUseCase
 from app.modules.notifications.usecases.update_notification_channels import (
@@ -38,7 +37,6 @@ __all__ = [
     "GetPushPublicKeyUseCase",
     "ListCustomerPushSubscriptionsUseCase",
     "ListPushSubscriptionsUseCase",
-    "SendTelegramTextsUseCase",
     "SendTestPushUseCase",
     "SubscribeCustomerPushUseCase",
     "SubscribePushUseCase",

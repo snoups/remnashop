@@ -1,5 +1,4 @@
 import { ShieldPlus } from "lucide-react";
-import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +6,6 @@ import { createAdmin } from "@entities/admin/api";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
@@ -18,6 +16,7 @@ import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import type { Permission } from "@shared/types/rbac";
+import { Pressable } from "@shared/ui/Pressable";
 
 const labelClassName = "text-sm font-medium text-foreground/80";
 
@@ -31,17 +30,16 @@ export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
 
   return (
     <>
-      <motion.button
+      <Pressable
         type="button"
         onClick={() => setIsOpen(true)}
-        {...bounceTap(0.03)}
         className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">
           <ShieldPlus className="size-4" />
         </span>
         {t("admins.create.button")}
-      </motion.button>
+      </Pressable>
 
       {isOpen && (
         <Modal onClose={() => setIsOpen(false)} size="lg" scrollable>

@@ -2,8 +2,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { TextInput } from "@shared/ui/TextInput";
+import { Ripple } from "@shared/ui/Ripple";
 
 /** TextInput with a show/hide eye; className sizes the wrapper. */
 export function PasswordInput({ className = "", ...props }: Omit<ComponentProps<typeof TextInput>, "type">) {
@@ -15,9 +15,9 @@ export function PasswordInput({ className = "", ...props }: Omit<ComponentProps<
         type="button"
         onClick={() => setIsVisible((value) => !value)}
         tabIndex={-1}
-        {...bounceTap(0.12)}
         className="absolute inset-y-0 right-0 flex items-center px-3 text-foreground/50 hover:text-foreground"
       >
+        <Ripple />
         {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
       </motion.button>
     </div>

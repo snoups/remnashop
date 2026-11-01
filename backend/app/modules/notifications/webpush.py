@@ -17,7 +17,6 @@ _TIMEOUT_SECONDS: Final[float] = 10.0
 _GONE_STATUSES: Final[frozenset[int]] = frozenset({404, 410})
 # our payload was too big, not the device's fault
 _PAYLOAD_TOO_LARGE: Final[int] = 413
-_DEFAULT_CONTACT: Final[str] = "mailto:admin@localhost"
 
 
 class WebPushSender:
@@ -31,8 +30,12 @@ class WebPushSender:
             subscriptions = await self._repository.list_push_subscriptions(user_id, audience)
         if settings.vapid_private_key is None or not subscriptions:
             return 0
+        if settings.vapid_contact is None:
+            # push services reject a token without a real subject
+            logger.warning("Push skipped: no VAPID contact set")
+            return 0
         private_key = settings.vapid_private_key.get_secret_value()
-        contact = settings.vapid_contact or _DEFAULT_CONTACT
+        contact = settings.vapid_contact
         fields = {
             "title": message.title,
             "body": message.body,

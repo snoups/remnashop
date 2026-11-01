@@ -126,7 +126,7 @@ export function ButtonInspector({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className="rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
         <div className="mb-4 min-w-0">
           <span className="block truncate text-sm font-semibold text-foreground">
             {t("dialogs.inspector.buttonTitle")}

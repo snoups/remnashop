@@ -277,6 +277,11 @@ class PaymentAttemptDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class NotifyPaymentWaitlistDto:
+    outbox_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class PaymentWaitlistCountDto:
     total: int
 

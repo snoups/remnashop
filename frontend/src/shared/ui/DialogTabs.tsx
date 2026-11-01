@@ -2,10 +2,8 @@ import { motion } from "motion/react";
 import { useEffect, useId, useRef } from "react";
 import type { ComponentType } from "react";
 
-import { NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE, TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 
 export interface DialogTabItem<T extends string> {
   key: T;
@@ -55,15 +53,11 @@ export function DialogTabs<T extends string>({
               onClick={() => onSelect(item.key)}
               // flex-1 without min-w-0: equal widths while they fit, never narrower than the label
               className="group relative isolate block flex-1 rounded-full text-sm font-medium"
-              initial="rest"
-              whileHover="hover"
-              whileTap="tap"
             >
               {isActive ? (
                 <ActivePill layoutId={pillId} />
               ) : (
                 <motion.span
-                  variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                   className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
                 />
               )}
@@ -72,7 +66,7 @@ export function DialogTabs<T extends string>({
                   isActive ? "text-primary" : "text-foreground"
                 }`}
               >
-                <BounceIcon icon={item.icon} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
+                <item.icon className="size-4 shrink-0" />
                 {item.label}
               </span>
             </motion.button>

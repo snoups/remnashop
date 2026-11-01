@@ -15,13 +15,13 @@ import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { RefreshSignalContext } from "@shared/lib/refresh-signal";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
-import { BottomNav } from "@widgets/bottom-nav/BottomNav";
 import { EntityDialogHost } from "@widgets/entity-dialog-host/EntityDialogHost";
 import { Header } from "@widgets/header/Header";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
 import { Spinner } from "@shared/ui/Spinner";
+import { MobileNotice } from "./MobileNotice";
 
 // Keyed by the first segment under /dashboard, so switching tabs inside
 // settings doesn't fade the whole page. useOutlet() instead of <Outlet /> keeps
@@ -43,7 +43,7 @@ function AnimatedOutlet() {
       <motion.div
         key={section}
         // a page that scrolls on its own (data-fills-main) gets main's height, not its content's
-        className="flex flex-1 flex-col has-[>[data-fills-main]]:min-h-0"
+        className="flex flex-1 flex-col md:has-[>[data-fills-main]]:min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 0.18, ease: "easeOut" } }}
         exit={{ opacity: 0, transition: { duration: 0.15, ease: "easeIn" } }}
@@ -130,7 +130,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
       >
         <Sidebar />
         <motion.div
-          className="mx-2 mt-2 flex min-h-0 flex-1 md:mx-0 md:my-3 md:mr-3 flex-col overflow-hidden rounded-3xl border border-glass-border bg-surface/50 shadow-2xl backdrop-blur-[28px] backdrop-saturate-150"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden md:my-3 md:mr-3 md:rounded-3xl md:border md:border-glass-border md:bg-surface/50 md:shadow-2xl md:backdrop-blur-[28px] md:backdrop-saturate-150"
           initial={isIntro ? { opacity: 0, y: 14 } : false}
           animate={isLeaving ? { opacity: 0, y: 14 } : { opacity: 1, y: 0 }}
           transition={isLeaving ? { duration: 0.25, ease: "easeIn" } : { delay: 0.1, duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
@@ -138,13 +138,13 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
           <Header onLogout={onLogout} />
           {/* the stable gutter's 10px comes out of the right padding, like dialog bodies (app/styles.css) */}
           {/* a page with its own scroller (data-fills-main) takes the gutter for its scrollbar */}
-          <main className="scroll-fade-top flex flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] has-[[data-fills-main]]:[scrollbar-gutter:auto] pb-6 pl-4 pr-[calc(1rem-10px)] pt-2 md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
+          <main className="scroll-fade-top page-scroll flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] has-[[data-fills-main]]:[scrollbar-gutter:auto] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden pb-[calc(1rem+env(safe-area-inset-bottom))] px-4 pt-[calc(88px+env(safe-area-inset-top))] md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
             <AnimatedOutlet />
           </main>
           {/* dialogs portal here, not into `main` (see DialogPortal) */}
           <div id="dialog-root" />
         </motion.div>
-        <BottomNav />
+        <MobileNotice />
       </motion.div>
       </EntityDialogHost>
     </RefreshSignalContext.Provider>

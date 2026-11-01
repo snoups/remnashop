@@ -204,7 +204,6 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       <IconButton
         size="9"
         tone="glass"
-        bounce={0.12}
         className="relative"
         onClick={onToggle}
       >
@@ -223,7 +222,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         align="right"
         maxHeight={POPOVER_MAX_HEIGHT}
         {...POPOVER_MOTION}
-        className="flex max-h-[420px] w-80 flex-col p-1.5"
+        className="flex max-h-[min(420px,calc(100dvh-96px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] flex-col p-1.5 max-md:top-[calc(84px+env(safe-area-inset-top))]! max-md:bottom-auto! max-md:left-2! max-md:right-2! md:max-h-[420px] md:w-80"
       >
         {(showTabs || activeCount > 0) && (
         <div className="flex shrink-0 items-center gap-1.5 pb-1.5">

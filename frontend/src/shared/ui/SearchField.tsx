@@ -2,9 +2,9 @@ import { Search, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, type ComponentProps } from "react";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { IconButton } from "@shared/ui/IconButton";
+import { Ripple } from "@shared/ui/Ripple";
 
 interface SearchFieldProps {
   id: string;
@@ -41,11 +41,10 @@ export function SearchField({ id, label, hideLabel = false, placeholder, value, 
   return (
     <div className="flex min-w-40 flex-1 flex-col gap-1.5">
       {!hideLabel && <span className={EYEBROW_CLASS}>{label}</span>}
-      {/* the border sits on the scaled element: a scaled wrapper around a bordered <input> leaves seams in Firefox */}
       <motion.label
-        {...bounceTap(0.04)}
-        className="group flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"
+        className="group relative flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"
       >
+        <Ripple />
         <Search className="size-3.5 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
           ref={inputRef}

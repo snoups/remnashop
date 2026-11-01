@@ -1,5 +1,4 @@
 import { Check, Languages } from "lucide-react";
-import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +6,7 @@ import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@shared/i18n";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Pressable } from "@shared/ui/Pressable";
 
 const POPOVER_MAX_HEIGHT = 120;
 
@@ -15,7 +15,7 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   ru: "Русский",
 };
 
-export function LanguagePicker() {
+export function LanguagePicker({ iconOnly = false }: { iconOnly?: boolean }) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -34,19 +34,15 @@ export function LanguagePicker() {
 
   return (
     <div ref={ref} className="relative shrink-0">
-      {/* the border lives on a static sibling: a rounded border scaled via
-          `transform` thickens at the curved ends in Chrome */}
-      <motion.button
+      <Pressable
         type="button"
+        aria-label={LANGUAGE_LABELS[currentLanguage]}
         onClick={() => setIsOpen((open) => !open)}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        style={{ willChange: "transform" }}
-        className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+        className={`flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground ${iconOnly ? "size-11 justify-center" : "h-9 px-3"}`}
       >
-        <Languages className="size-4 shrink-0" />
-        {currentLanguageLabel}
-      </motion.button>
+        <Languages className={iconOnly ? "size-5 shrink-0" : "size-4 shrink-0"} />
+        {!iconOnly && currentLanguageLabel}
+      </Pressable>
       <span className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />
 
       <PortalPopover
@@ -55,6 +51,7 @@ export function LanguagePicker() {
         popoverRef={popoverRef}
         align="right"
         maxHeight={POPOVER_MAX_HEIGHT}
+        extraGap={iconOnly ? 4 : 0}
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.85 }}
@@ -62,7 +59,7 @@ export function LanguagePicker() {
         className="min-w-44 p-1.5"
       >
         {SUPPORTED_LANGUAGES.map((language) => (
-          <button
+          <Pressable
             key={language}
             type="button"
             onClick={() => handleSelect(language)}
@@ -70,7 +67,7 @@ export function LanguagePicker() {
           >
             <span className="flex-1">{LANGUAGE_LABELS[language]}</span>
             {language === currentLanguage && <Check className="size-[15px] text-primary" />}
-          </button>
+          </Pressable>
         ))}
       </PortalPopover>
     </div>

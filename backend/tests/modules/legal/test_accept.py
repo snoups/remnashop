@@ -20,6 +20,8 @@ from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 
+pytestmark = pytest.mark.usefixtures("shown_documents")
+
 BOT = PurchaseChannel.BOT
 
 

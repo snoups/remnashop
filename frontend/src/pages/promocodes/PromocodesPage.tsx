@@ -1,5 +1,4 @@
 import { ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
@@ -26,7 +25,6 @@ import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
@@ -35,8 +33,9 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
+import { ListRow } from "@shared/ui/ListRow";
 
 const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px_16px] items-center gap-3";
 
@@ -190,12 +189,11 @@ export function PromocodesPage() {
                 const promoStatus = getPromocodeStatus(promo);
                 const used = usedCount(promo);
                 return (
-                  <motion.button
+                  <ListRow
                     key={promo.id}
                     type="button"
                     onClick={() => setDetailsPromocode(promo)}
-                    {...bounceTap(0.03)}
-                    className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                    className={ROW_GRID_CLASSNAME}
                   >
                     <span
                       className={`flex size-9 items-center justify-center rounded-full ${
@@ -231,7 +229,7 @@ export function PromocodesPage() {
                       <Badge tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
                     </span>
                     <ChevronRight className="size-4 text-muted-foreground" />
-                  </motion.button>
+                  </ListRow>
                 );
               })}
             </div>

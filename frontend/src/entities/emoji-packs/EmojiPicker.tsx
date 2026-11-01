@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { listEmojiPacks } from "@entities/emoji-packs/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { scrollToEmojiPacks } from "@shared/lib/emoji-packs-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
@@ -15,6 +14,7 @@ import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Pressable } from "@shared/ui/Pressable";
 
 /** A standard emoji is a glyph the bot puts in the button's label; a premium
  * one is an id Telegram renders itself, and only for a bot whose owner has
@@ -50,12 +50,9 @@ export function PackTab({
     <motion.button
       type="button"
       onClick={onSelect}
-      initial="rest"
-      whileTap="tap"
       className="group relative isolate block shrink-0 cursor-pointer rounded-full"
     >
       <motion.span
-        variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
         className={`absolute inset-0 rounded-full transition-colors ${
           isActive ? "bg-accent" : "group-hover:bg-white/[0.06]"
         }`}
@@ -188,7 +185,7 @@ export function EmojiPicker({
           {activePack ? (
             <div className="grid grid-cols-8 gap-1">
               {activePack.items.map((item) => (
-                <button
+                <Pressable
                   key={item.custom_emoji_id}
                   type="button"
                   onClick={() =>
@@ -200,7 +197,7 @@ export function EmojiPicker({
                   className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
                 >
                   <PremiumEmoji item={item} size={22} />
-                </button>
+                </Pressable>
               ))}
             </div>
           ) : (
@@ -211,14 +208,14 @@ export function EmojiPicker({
                 </span>
                 <div className="grid grid-cols-8 gap-1">
                   {group.items.map((emoji) => (
-                    <button
+                    <Pressable
                       key={emoji.g}
                       type="button"
                       onClick={() => pick({ glyph: emoji.g })}
                       className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
                     >
                       {emoji.g}
-                    </button>
+                    </Pressable>
                   ))}
                 </div>
               </div>
@@ -227,7 +224,7 @@ export function EmojiPicker({
         </div>
 
         {current !== null && (
-          <button
+          <Pressable
             type="button"
             onClick={() => {
               onClear();
@@ -237,7 +234,7 @@ export function EmojiPicker({
           >
             <X className="size-3" />
             {t("dialogs.inspector.emojiClear")}
-          </button>
+          </Pressable>
         )}
       </PortalPopover>
     </div>

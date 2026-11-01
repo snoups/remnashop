@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, status
 from app.api.dependencies.public import get_current_user
 from app.modules.customer_notifications.api.schemas import CustomerFeedResponse
 from app.modules.customer_notifications.usecases import (
+    ClearCustomerFeedUseCase,
     GetCustomerFeedUseCase,
     MarkCustomerFeedReadUseCase,
 )
@@ -26,6 +27,15 @@ async def get_my_feed(
 @inject
 async def mark_my_feed_read(
     use_case: FromDishka[MarkCustomerFeedReadUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> None:
+    await use_case(actor)
+
+
+@router.post("/actions/clear", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+async def clear_my_feed(
+    use_case: FromDishka[ClearCustomerFeedUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> None:
     await use_case(actor)

@@ -8,7 +8,6 @@ import {
   Sparkles,
   Wallet,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
@@ -21,7 +20,6 @@ import { ALL_TIME_TREND_DAYS, DAY_MS } from "@shared/lib/period";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
 import { formatTime } from "@shared/lib/relative-time";
-import { bounceTap } from "@shared/lib/bounceState";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -36,7 +34,8 @@ import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
 import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { ListRow } from "@shared/ui/ListRow";
 
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
 
@@ -299,13 +298,12 @@ export function TransactionsPage() {
                           const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
 
                           return (
-                            <motion.button
+                            <ListRow
                               key={order.id}
                               type="button"
                               disabled={!canViewDetails}
                               onClick={() => setDetailsOrder(order)}
-                              {...(canViewDetails && bounceTap(0.03))}
-                              className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left enabled:hover:bg-white/[0.04] disabled:cursor-default`}
+                              className={ROW_GRID_CLASSNAME}
                             >
                               <span
                                 className={`flex size-9 items-center justify-center rounded-full text-[14px] font-semibold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
@@ -349,7 +347,7 @@ export function TransactionsPage() {
                                 </Badge>
                               </span>
                               {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                            </motion.button>
+                            </ListRow>
                           );
                         })}
                       </Collapse>

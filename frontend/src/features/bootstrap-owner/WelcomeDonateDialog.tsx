@@ -3,13 +3,13 @@ import { motion, type Variants } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
 import { DialogPortal } from "@shared/ui/DialogPortal";
 import { Button } from "@shared/ui/Button";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface WelcomeDonateDialogProps {
   onContinue: () => void;
@@ -40,7 +40,6 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
 
   const [isLeaving, setIsLeaving] = useState(false);
 
-  const tapProps = bounceTap(0.12);
 
   return (
     <DialogPortal>
@@ -89,7 +88,6 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
               className="w-full"
               type="button"
               onClick={() => setIsLeaving(true)}
-              {...tapProps}
             >
               {t("auth.welcome.continueButton")}
               <ArrowRight className="size-4" />
@@ -100,18 +98,18 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
             <LabeledDivider>{t("donate.title")}</LabeledDivider>
 
             <div className="flex w-full gap-2">
-              <motion.a href={BOOSTY_URL} target="_blank" rel="noreferrer" {...tapProps} className={donatePillClassName}>
+              <Pressable as="a" href={BOOSTY_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
                 <PiggyBank className="size-[15px]" />
                 {t("donate.boostyLabel")}
-              </motion.a>
-              <motion.a href={YOOKASSA_URL} target="_blank" rel="noreferrer" {...tapProps} className={donatePillClassName}>
+              </Pressable>
+              <Pressable as="a" href={YOOKASSA_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
                 <Wallet className="size-[15px]" />
                 {t("donate.yookassaLabel")}
-              </motion.a>
-              <motion.a href={TELEGRAM_URL} target="_blank" rel="noreferrer" {...tapProps} className={donatePillClassName}>
+              </Pressable>
+              <Pressable as="a" href={TELEGRAM_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
                 <TelegramIcon className="size-[15px]" />
                 {t("buildInfo.telegramButton")}
-              </motion.a>
+              </Pressable>
             </div>
           </motion.div>
         </motion.div>

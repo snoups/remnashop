@@ -78,6 +78,11 @@ class CustomerNotificationRepository:
             .values(read_at=datetime_now())
         )
 
+    async def delete_for_user(self, user_id: int) -> None:
+        await self.session.execute(
+            delete(CustomerNotification).where(CustomerNotification.user_id == user_id)
+        )
+
     async def delete_older_than(self, cutoff: datetime) -> int:
         result = await self.session.execute(
             delete(CustomerNotification).where(CustomerNotification.created_at < cutoff)

@@ -175,7 +175,6 @@ ntf-access =
     .registration-disabled = Sign-ups are closed right now.
     .invite-only = Sign-up is by invitation only. Ask a friend for their referral link.
     .payments-disabled = Payments are temporarily unavailable. We'll message you when they're back.
-    .payments-restored = Payments are available again — you can complete your purchase.
 
 ntf-common =
     .lost-context = The menu was refreshed, carry on from here.

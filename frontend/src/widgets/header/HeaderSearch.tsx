@@ -20,14 +20,14 @@ import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { listUsers, type UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { isNavItemVisible, NAV_ITEMS, SETTINGS_TABS } from "@widgets/sidebar/nav-items";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
+import { Ripple } from "@shared/ui/Ripple";
+import { Pressable } from "@shared/ui/Pressable";
 
 const DEBOUNCE_MS = 250;
 const USER_LIMIT = 5;
@@ -261,9 +261,9 @@ export function HeaderSearch() {
   return (
     <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
       <motion.label
-        {...bounceTap(0.03)}
-        className="group flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.07] focus-within:border-primary"
+        className="group relative flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.07] focus-within:border-primary"
       >
+        <Ripple />
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
           type="search"
@@ -316,22 +316,21 @@ export function HeaderSearch() {
           <p className="px-3 py-2 text-[12.5px] text-muted-foreground">{t("header.searchEmpty")}</p>
         ) : (
           entries.map((entry, index) => (
-            <motion.button
+            <Pressable
               key={entry.id}
               type="button"
               onMouseEnter={() => setActive(index)}
               onClick={() => go(entry)}
-              initial="rest"
               animate={index === active ? "hover" : "rest"}
               className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] ${
                 index === active ? "bg-accent text-primary" : "text-foreground"
               }`}
             >
-              <BounceIcon icon={entry.icon} size={16} hoverSize={20} />
+              <entry.icon className="size-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">{highlight(entry.label, tokens)}</span>
               {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{highlight(entry.hint, tokens)}</span>}
               {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
-            </motion.button>
+            </Pressable>
           ))
         )}
         </div>

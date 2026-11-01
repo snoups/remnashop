@@ -45,6 +45,7 @@ import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
 import { IconButton } from "@shared/ui/IconButton";
+import { Pressable } from "@shared/ui/Pressable";
 
 type Filter = "all" | "active" | "inactive";
 
@@ -220,16 +221,16 @@ export function PlansPage() {
                 );
               })}
               {canCreate && (
-                <button
+                <Pressable
                   type="button"
                   onClick={() => setEditingPlan("new")}
-                  className={`group flex flex-col items-center justify-center gap-2.5 rounded-[20px] border-[1.5px] border-dashed border-white/[0.18] text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground ${CARD_HEIGHT_CLASSNAME}`}
+                  className={`group flex flex-col items-center justify-center gap-2.5 rounded-[20px] max-md:rounded-card border-[1.5px] border-dashed border-white/[0.18] text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground ${CARD_HEIGHT_CLASSNAME}`}
                 >
                   <span className="flex size-11 items-center justify-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary/20">
                     <Plus className="size-[18px]" />
                   </span>
                   {t("plans.create.button")}
-                </button>
+                </Pressable>
               )}
             </div>
           </SortableContext>
@@ -302,7 +303,7 @@ function PlanCard({
     <article
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative flex flex-col gap-3.5 rounded-[20px] border p-4 transition-[border-color,background-color,opacity] ${CARD_HEIGHT_CLASSNAME} ${
+      className={`relative flex flex-col gap-3.5 rounded-[20px] max-md:rounded-card border p-4 transition-[border-color,background-color,opacity] ${CARD_HEIGHT_CLASSNAME} ${
         plan.badge ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18]"
       } ${plan.is_active ? "" : "opacity-55"} ${isDragging ? "z-10 shadow-2xl shadow-black/50" : ""}`}
     >

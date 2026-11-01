@@ -2,10 +2,9 @@ import { Compass } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
-import { MotionLink } from "@shared/ui/MotionLink";
 import { FULL_SCREEN_ACTION_CLASS, FullScreenMessage } from "@widgets/full-screen-message/FullScreenMessage";
+import { Pressable } from "@shared/ui/Pressable";
 
 export function NotFoundPage() {
   const { t } = useTranslation();
@@ -20,9 +19,9 @@ export function NotFoundPage() {
       title={t("errors.notFoundTitle")}
       description={t("errors.notFoundDescription")}
       action={
-        <MotionLink to="/" {...bounceTap()} className={FULL_SCREEN_ACTION_CLASS}>
+        <Pressable as="link" to="/" className={`${FULL_SCREEN_ACTION_CLASS}`}>
           {t("errors.notFoundButton")}
-        </MotionLink>
+        </Pressable>
       }
     />
   );

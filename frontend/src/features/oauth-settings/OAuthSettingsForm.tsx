@@ -1,6 +1,6 @@
 import { ChevronDown, FingerprintPattern, KeyRound, KeySquare, RectangleEllipsis } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -11,25 +11,27 @@ import {
 } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
-import { Button } from "@shared/ui/Button";
 import { PasswordInput } from "@shared/ui/PasswordInput";
 import { TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { SETTINGS_ROWS_CLASS, SETTINGS_SECTION_CLASS } from "@shared/ui/classes";
+import { SaveFooter } from "@shared/ui/SaveFooter";
+import { SettingsRow } from "@shared/ui/SettingsRow";
 
 import { GithubOAuthGuideDialog } from "./GithubOAuthGuideDialog";
 import { OidcOAuthGuideDialog } from "./OidcOAuthGuideDialog";
 import { PasskeyGuideDialog } from "./PasskeyGuideDialog";
 import { PasswordLoginGuideDialog } from "./PasswordLoginGuideDialog";
 import { TelegramOAuthGuideDialog } from "./TelegramOAuthGuideDialog";
+import { Pressable } from "@shared/ui/Pressable";
 
 export function OAuthSettingsForm() {
   const { t } = useTranslation();
@@ -46,31 +48,41 @@ export function OAuthSettingsForm() {
   const [passkeyRpId, setPasskeyRpId] = useState("");
   const [passkeyOrigin, setPasskeyOrigin] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [flags, setFlags] = useState<OAuthFlags | null>(null);
 
-  const toggle = async (payload: UpdateOAuthSettingsPayload) => setData(await updateOAuthSettings(payload));
+  useEffect(() => {
+    if (state.kind === "ready") setFlags(pickFlags(state.data));
+  }, [state]);
+
+  const saved = state.kind === "ready" ? pickFlags(state.data) : null;
+  const changedFlags: UpdateOAuthSettingsPayload =
+    flags && saved
+      ? Object.fromEntries(FLAG_KEYS.filter((key) => flags[key] !== saved[key]).map((key) => [key, flags[key]]))
+      : {};
+  const hasCredentials = [
+    githubClientId,
+    githubClientSecret,
+    telegramClientId,
+    telegramClientSecret,
+    oidcDisplayName,
+    oidcIssuerUrl,
+    oidcClientId,
+    oidcClientSecret,
+    passkeyRpId,
+    passkeyOrigin,
+  ].some(Boolean);
+  const dirty = hasCredentials || Object.keys(changedFlags).length > 0;
+  const setFlag = (key: keyof OAuthFlags) => async (next: boolean) =>
+    setFlags((prev) => (prev ? { ...prev, [key]: next } : prev));
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-
-    if (
-      !githubClientId &&
-      !githubClientSecret &&
-      !telegramClientId &&
-      !telegramClientSecret &&
-      !oidcDisplayName &&
-      !oidcIssuerUrl &&
-      !oidcClientId &&
-      !oidcClientSecret &&
-      !passkeyRpId &&
-      !passkeyOrigin
-    ) {
-      toast.error(t("settings.oauth.errorEmptyFields"));
-      return;
-    }
+    if (!dirty) return;
 
     setIsSubmitting(true);
     try {
       const settings = await updateOAuthSettings({
+        ...changedFlags,
         github_client_id: githubClientId || undefined,
         github_client_secret: githubClientSecret || undefined,
         telegram_client_id: telegramClientId || undefined,
@@ -122,10 +134,11 @@ export function OAuthSettingsForm() {
               icon={GithubIcon}
               label={t("profile.oauthAccounts.github")}
               isConfigured={state.data.is_github_configured}
-              isEnabled={state.data.github_enabled}
-              onToggle={(next) => toggle({ github_enabled: next })}
+              isEnabled={flags?.github_enabled}
+              onToggle={setFlag("github_enabled")}
               canToggle={canManage}
               guide={<GithubOAuthGuideDialog />}
+              brightLabels
               fields={[
                 {
                   key: "github_client_id",
@@ -145,10 +158,11 @@ export function OAuthSettingsForm() {
               icon={TelegramIcon}
               label={t("profile.oauthAccounts.telegram")}
               isConfigured={state.data.is_telegram_configured}
-              isEnabled={state.data.telegram_enabled}
-              onToggle={(next) => toggle({ telegram_enabled: next })}
+              isEnabled={flags?.telegram_enabled}
+              onToggle={setFlag("telegram_enabled")}
               canToggle={canManage}
               guide={<TelegramOAuthGuideDialog />}
+              brightLabels
               fields={[
                 {
                   key: "telegram_client_id",
@@ -168,10 +182,11 @@ export function OAuthSettingsForm() {
               icon={KeySquare}
               label={state.data.oidc_display_name ?? t("profile.oauthAccounts.oidcFallback")}
               isConfigured={state.data.is_oidc_configured}
-              isEnabled={state.data.oidc_enabled}
-              onToggle={(next) => toggle({ oidc_enabled: next })}
+              isEnabled={flags?.oidc_enabled}
+              onToggle={setFlag("oidc_enabled")}
               canToggle={canManage}
               guide={<OidcOAuthGuideDialog />}
+              brightLabels
               fields={[
                 {
                   key: "oidc_display_name",
@@ -201,32 +216,31 @@ export function OAuthSettingsForm() {
             />
             <PasskeyPanel
               isConfigured={state.data.is_passkey_configured}
-              isEnabled={state.data.passkey_enabled}
+              isEnabled={flags?.passkey_enabled ?? false}
+              onToggle={(next) => void setFlag("passkey_enabled")(next)}
               rpId={passkeyRpId}
               origin={passkeyOrigin}
               onRpIdChange={setPasskeyRpId}
               onOriginChange={setPasskeyOrigin}
-              onToggled={setData}
             />
           </div>
 
-          <div className="mt-2 border-t border-white/[0.08] pt-2">
-            <PasswordLoginToggle
-              isEnabled={state.data.password_login_enabled}
-              onToggled={setData}
-            />
-          </div>
-
-          {canManage && (
-            <Button
-              variant="accent"
-              className="mt-4 w-fit"
-              type="submit"
-              disabled={isSubmitting}
+          <div className={`${SETTINGS_SECTION_CLASS} ${SETTINGS_ROWS_CLASS}`}>
+            <SettingsRow
+              icon={RectangleEllipsis}
+              label={t("settings.oauth.passwordLoginLabel")}
+              description={t("settings.oauth.passwordLoginDescription")}
             >
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          )}
+              <PasswordLoginGuideDialog />
+              <Switch
+                checked={flags?.password_login_enabled ?? false}
+                onChange={(value) => void setFlag("password_login_enabled")(value)}
+                disabled={!canManage}
+              />
+            </SettingsRow>
+          </div>
+
+          {canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
         </form>
       )}
     </Card>
@@ -258,6 +272,8 @@ interface ProviderPanelProps {
   extra?: ReactNode;
   /** defaults to the OAuth settings permission */
   canEdit?: boolean;
+  /** full-white field labels (the General settings page) */
+  brightLabels?: boolean;
 }
 
 export function ProviderPanel({
@@ -273,6 +289,7 @@ export function ProviderPanel({
   onSubmit,
   extra,
   canEdit,
+  brightLabels = false,
 }: ProviderPanelProps) {
   const { t } = useTranslation();
   const canManageOAuth = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
@@ -296,16 +313,10 @@ export function ProviderPanel({
 
   return (
     <Wrapper onSubmit={onSubmit}>
-      <motion.div
-        tabIndex={0}
+      <Pressable
+        as="div"
         onClick={() => setIsOpen((open) => !open)}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          setIsOpen((open) => !open);
-        }}
-        {...bounceTap(0.03)}
-        className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+        className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
           <Icon className="size-4" />
@@ -335,7 +346,7 @@ export function ProviderPanel({
             />
           </div>
         )}
-      </motion.div>
+      </Pressable>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -349,7 +360,7 @@ export function ProviderPanel({
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
               {extra}
               {fields.map((field) => (
-                <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`}>
+                <Field key={field.key} label={field.label} htmlFor={`oauth-${field.key}`} bright={brightLabels}>
                   {(field.secret ?? field.key.endsWith("_client_secret")) ? (
                     <PasswordInput
                       id={`oauth-${field.key}`}
@@ -385,51 +396,32 @@ export function ProviderPanel({
 interface PasskeyPanelProps {
   isConfigured: boolean;
   isEnabled: boolean;
+  onToggle: (next: boolean) => void;
   rpId: string;
   origin: string;
   onRpIdChange: (value: string) => void;
   onOriginChange: (value: string) => void;
-  onToggled: (settings: OAuthSettings) => void;
 }
 
 function PasskeyPanel({
   isConfigured,
   isEnabled,
+  onToggle,
   rpId,
   origin,
   onRpIdChange,
   onOriginChange,
-  onToggled,
 }: PasskeyPanelProps) {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
   const [isOpen, setIsOpen] = useState(false);
-  const [isToggling, setIsToggling] = useState(false);
-
-  const handleToggle = async (next: boolean) => {
-    setIsToggling(true);
-    try {
-      const settings = await updateOAuthSettings({ passkey_enabled: next });
-      onToggled(settings);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    } finally {
-      setIsToggling(false);
-    }
-  };
 
   return (
     <div>
-      <motion.div
-        tabIndex={0}
+      <Pressable
+        as="div"
         onClick={() => setIsOpen((open) => !open)}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          event.preventDefault();
-          setIsOpen((open) => !open);
-        }}
-        {...bounceTap(0.03)}
-        className="flex cursor-pointer items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+        className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
           <FingerprintPattern className="size-4" />
@@ -455,11 +447,11 @@ function PasskeyPanel({
         <div className="mr-1 flex" onClick={(event) => event.stopPropagation()}>
           <Switch
             checked={isEnabled}
-            onChange={(value) => void handleToggle(value)}
-            disabled={!canManage || isToggling || !isConfigured}
+            onChange={onToggle}
+            disabled={!canManage || !isConfigured}
           />
         </div>
-      </motion.div>
+      </Pressable>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -471,7 +463,7 @@ function PasskeyPanel({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
-              <Field label={t("settings.oauth.passkeyRpIdLabel")}>
+              <Field bright label={t("settings.oauth.passkeyRpIdLabel")}>
                 <TextInput
                   type="text"
                   value={rpId}
@@ -481,7 +473,7 @@ function PasskeyPanel({
                   autoComplete="off"
                 />
               </Field>
-              <Field label={t("settings.oauth.passkeyOriginLabel")}>
+              <Field bright label={t("settings.oauth.passkeyOriginLabel")}>
                 <TextInput
                   type="text"
                   value={origin}
@@ -499,49 +491,16 @@ function PasskeyPanel({
   );
 }
 
-interface PasswordLoginToggleProps {
-  isEnabled: boolean;
-  onToggled: (settings: OAuthSettings) => void;
-}
+const FLAG_KEYS = [
+  "github_enabled",
+  "telegram_enabled",
+  "oidc_enabled",
+  "passkey_enabled",
+  "password_login_enabled",
+] as const;
 
-function PasswordLoginToggle({ isEnabled, onToggled }: PasswordLoginToggleProps) {
-  const { t } = useTranslation();
-  const canManage = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
-  const [isToggling, setIsToggling] = useState(false);
+type OAuthFlags = Pick<OAuthSettings, (typeof FLAG_KEYS)[number]>;
 
-  const handleToggle = async (next: boolean) => {
-    setIsToggling(true);
-    try {
-      const settings = await updateOAuthSettings({ password_login_enabled: next });
-      onToggled(settings);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-        <RectangleEllipsis className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground">
-          {t("settings.oauth.passwordLoginLabel")}
-        </p>
-        <p className="text-[12px] text-muted-foreground">
-          {t("settings.oauth.passwordLoginDescription")}
-        </p>
-      </div>
-      <PasswordLoginGuideDialog />
-      <div className="mr-1 flex">
-        <Switch
-          checked={isEnabled}
-          onChange={(value) => void handleToggle(value)}
-          disabled={!canManage || isToggling}
-        />
-      </div>
-    </div>
-  );
+function pickFlags(settings: OAuthSettings): OAuthFlags {
+  return Object.fromEntries(FLAG_KEYS.map((key) => [key, settings[key]])) as OAuthFlags;
 }

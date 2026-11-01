@@ -12,6 +12,7 @@ from app.modules.customer_notifications.tasks import (
     send_customer_telegram_task,
 )
 from app.modules.customer_notifications.usecases import (
+    ClearCustomerFeedUseCase,
     GetCustomerFeedUseCase,
     MarkCustomerFeedReadUseCase,
     NotifyCustomerUseCase,
@@ -19,12 +20,15 @@ from app.modules.customer_notifications.usecases import (
     SendCustomerTelegramUseCase,
     ShowPaymentCanceledUseCase,
 )
+from app.modules.customer_notifications.waitlist import PaymentsRestoredNotices
+from app.modules.transactions import PaymentsRestoredNotifier
 
 
 class CustomerNotificationsProvider(Provider):
     customer_notification_repository = provide(CustomerNotificationRepository, scope=Scope.REQUEST)
 
     use_cases = provide_all(
+        ClearCustomerFeedUseCase,
         GetCustomerFeedUseCase,
         MarkCustomerFeedReadUseCase,
         NotifyCustomerUseCase,
@@ -41,6 +45,12 @@ class CustomerNotificationsProvider(Provider):
     @provide(scope=Scope.APP)
     def notify_dispatch(self) -> NotifyCustomerDispatch:
         return cast(NotifyCustomerDispatch, notify_customer_task)
+
+    @provide(scope=Scope.APP)
+    def payments_restored_notifier(
+        self, notify: NotifyCustomerDispatch
+    ) -> PaymentsRestoredNotifier:
+        return PaymentsRestoredNotices(notify)
 
 
 def get_customer_notifications_providers() -> list[Provider]:

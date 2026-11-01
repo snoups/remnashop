@@ -48,6 +48,7 @@ _ARGS: dict[str, dict[str, Union[str, int]]] = {
     "SubscriptionNotConnectedEvent": {"hours": 5},
     "CabinetNewDeviceSignInEvent": {"ip": "1.2.3.4", "browser": "Firefox"},
     "PromocodeDiscountExpiringEvent": {"percent": 10, "code": "SALE", "hours": 1},
+    "PaymentsRestored": {},
 }
 
 
@@ -79,26 +80,26 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.RU,
             "SubscriptionExpiringEvent",
             {"hours": 23, "is_trial": "no"},
-            "Подписка закончится через 23 ч. Продлите её, чтобы не потерять доступ.",
+            "Доступ сохранится ещё 23 ч. Продлите подписку, чтобы не потерять его.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiringEvent",
             {"hours": 24, "is_trial": "yes"},
-            "Подписка закончится через 1 день. Оформите подписку, чтобы не потерять доступ.",
+            "Доступ сохранится ещё 1 день. Оформите подписку, чтобы не потерять его.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "no"},
-            "Подписка закончилась 2 дня назад. Продлите её, чтобы вернуть доступ.",
+            "Доступа нет уже 2 дня. Продлите подписку, чтобы вернуть его.",
         ),
         (
             Locale.RU,
             "SubscriptionNotConnectedEvent",
             {"hours": 120},
-            "Вы оформили подписку 5 дней назад, но ещё не подключились. "
-            "Подключите устройство, это займёт пару минут.",
+            "Вы оформили подписку 5 дней назад, но ещё ни разу ею не воспользовались. "
+            "Настройка займёт пару минут.",
         ),
         (
             Locale.RU,
@@ -116,31 +117,31 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.RU,
             "TransactionRefundedEvent",
             {"order_id": 1, "amount": "1500.00", "currency": "RUB"},
-            "Платёж на 1\xa0500\xa0₽ возвращён.",
+            "1\xa0500\xa0₽ вернутся тем же способом, которым вы платили.",
         ),
         (
             Locale.RU,
             "PromocodeDiscountExpiringEvent",
             {"percent": 10, "code": "SALE", "hours": 72},
-            "Скидка 10% по промокоду SALE действует ещё 3 дня. Успейте оформить покупку.",
+            "10% по промокоду SALE действуют ещё 3 дня. Успейте оформить покупку.",
         ),
         (
             Locale.EN,
             "SubscriptionTrafficThresholdEvent",
             {"is_trial": "yes"},
-            "Your traffic is running low. Get a subscription to keep your access.",
+            "Get a subscription to keep your access.",
         ),
         (
             Locale.EN,
             "SubscriptionExpiringEvent",
             {"hours": 1, "is_trial": "no"},
-            "Your subscription ends in 1 h. Renew it to keep your access.",
+            "1 h left. Renew your subscription to keep your access.",
         ),
         (
             Locale.EN,
             "SubscriptionRenewedEvent",
             {"duration_days": 1},
-            "Your subscription was extended by 1 day.",
+            "1 day added to your subscription.",
         ),
         (
             Locale.EN,
@@ -152,50 +153,50 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.EN,
             "TransactionPartiallyRefundedEvent",
             {"order_id": 1, "amount": "12.5", "currency": "USD"},
-            "$12.50 of your payment was refunded.",
+            "Part of your payment, $12.50, will go back the way you paid.",
         ),
         (
             Locale.EN,
             "PromocodeDiscountExpiringEvent",
             {"percent": 10, "code": "SALE", "hours": 1},
-            "Your 10% discount from promocode SALE is valid for 1 more hour. "
+            "Your 10% off with promocode SALE is valid for 1 more hour. "
             "Make your purchase before it’s gone.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiredEvent",
             {"is_trial": "yes"},
-            "Подписка закончилась. Оформите подписку, чтобы вернуть доступ.",
+            "Оформите подписку, чтобы вернуть доступ.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "yes"},
-            "Подписка закончилась 2 дня назад. Оформите подписку, чтобы вернуть доступ.",
+            "Доступа нет уже 2 дня. Оформите подписку, чтобы вернуть его.",
         ),
         (
             Locale.RU,
             "SubscriptionTrafficLimitedEvent",
             {"is_trial": "yes"},
-            "Лимит трафика исчерпан. Оформите подписку, чтобы вернуть доступ.",
+            "Оформите подписку, чтобы вернуть доступ.",
         ),
         (
             Locale.EN,
             "SubscriptionExpiredEvent",
             {"is_trial": "yes"},
-            "Your subscription has expired. Get a subscription to get your access back.",
+            "Get a subscription to get your access back.",
         ),
         (
             Locale.EN,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "yes"},
-            "Your subscription expired 2 days ago. Get a subscription to get your access back.",
+            "You've been without access for 2 days. Get a subscription to get it back.",
         ),
         (
             Locale.EN,
             "SubscriptionTrafficLimitedEvent",
             {"is_trial": "yes"},
-            "Your traffic limit is reached. Get a subscription to get your access back.",
+            "Get a subscription to get your access back.",
         ),
     ],
 )

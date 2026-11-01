@@ -24,11 +24,11 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { TAP_PILL_SCALE } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
+import { Pressable } from "@shared/ui/Pressable";
 
 /** Every other locale starts life as a copy of this one. */
 const SOURCE_LOCALE = "en";
@@ -252,15 +252,12 @@ export function TranslationsEditorForm() {
               const isCollapsed = isGroupCollapsed(group);
               return (
                 <div key={group}>
-                  <motion.button
+                  <Pressable
                     type="button"
                     onClick={() => toggleGroup(group)}
-                    initial="rest"
-                    whileTap="tap"
                     className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
                   >
                     <motion.span
-                      variants={{ rest: { scale: 1 }, tap: { scale: TAP_PILL_SCALE } }}
                       className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
                     />
                     <ChevronRight
@@ -275,22 +272,16 @@ export function TranslationsEditorForm() {
                     <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
                       {keys.length}
                     </span>
-                  </motion.button>
+                  </Pressable>
                   <Collapse open={!isCollapsed} className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
                     {keys.map((key) => (
-                      <motion.button
+                      <Pressable
                         key={key}
                         type="button"
                         onClick={() => setSelectedKey(key)}
-                        initial="rest"
-                        whileTap="tap"
                         className="group relative isolate flex min-w-0 cursor-pointer items-center rounded-full"
                       >
                         <motion.span
-                          variants={{
-                            rest: { scale: 1 },
-                            tap: { scale: TAP_PILL_SCALE },
-                          }}
                           className={`absolute inset-0 rounded-full transition-colors ${
                             key === selectedKey ? "bg-accent" : "group-hover:bg-white/[0.04]"
                           }`}
@@ -309,7 +300,7 @@ export function TranslationsEditorForm() {
                             className="relative z-10 mr-2.5 size-3.5 shrink-0 text-warning"
                           />
                         )}
-                      </motion.button>
+                      </Pressable>
                     ))}
                   </Collapse>
                 </div>

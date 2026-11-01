@@ -14,6 +14,7 @@ import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { TabBar } from "@shared/ui/TabBar";
 import { Tag } from "@shared/ui/Tag";
+import { StatusPill } from "@shared/ui/StatusPill";
 
 type DemoTab = "overview" | "users" | "settings";
 const DEMO_TABS: DemoTab[] = ["overview", "users", "settings"];
@@ -159,6 +160,11 @@ export function BadgesSection() {
           <ShieldCheck className="size-2.5" />
           {k("s.status")}
         </Badge>
+      </Specimen>
+      <Specimen name='StatusPill tone="success | warning | error"' usage={k("u.statusPill")}>
+        <StatusPill tone="success">{k("s.status")}</StatusPill>
+        <StatusPill tone="warning">{k("s.status")}</StatusPill>
+        <StatusPill tone="error">{k("s.status")}</StatusPill>
       </Specimen>
     </DebugSection>
   );

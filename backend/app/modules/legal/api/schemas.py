@@ -29,8 +29,15 @@ class LegalDocumentResponse(BaseModel):
     show_in_cabinet: bool
 
 
+class LegalTemplateResponse(BaseModel):
+    locale: Locale
+    title: str
+    body: str
+
+
 class LegalDocumentItemResponse(LegalDocumentResponse):
     texts: list[LegalTextResponse]
+    templates: list[LegalTemplateResponse]
 
 
 class UpdateLegalDocumentRequest(BaseModel):
@@ -41,7 +48,6 @@ class UpdateLegalDocumentRequest(BaseModel):
 class LegalDocumentsResponse(BaseModel):
     items: list[LegalDocumentItemResponse]
     total: int
-    offer_missing_in: list[PurchaseChannel]
     locales: list[Locale]
 
 

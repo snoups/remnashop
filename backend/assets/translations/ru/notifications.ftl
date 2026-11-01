@@ -1,4 +1,4 @@
-ntf-test = Пуш-уведомления на этом устройстве работают.
+ntf-test = Push-уведомления на этом устройстве работают.
     .title = Тестовое уведомление
 ntf-session-theft-detected = Повторное использование refresh-токена завершило сессию #{ $session_id } пользователя #{ $user_id }. IP: { $ip }
     .title = Кража сессии
@@ -44,15 +44,15 @@ ntf-customer-open-cabinet = Открыть кабинет
 ntf-customer-button-renew = Продлить подписку
 ntf-customer-button-buy = Купить подписку
 ntf-customer-button-close = Закрыть
-ntf-customer-subscription-purchased = Подписка активна. Подключите устройство, чтобы начать пользоваться.
+ntf-customer-subscription-purchased = Осталось подключить устройство — это займёт пару минут.
     .title = Подписка активирована
-ntf-customer-subscription-renewed = Подписка продлена на { $duration_days ->
+ntf-customer-subscription-renewed = Срок подписки увеличен на { $duration_days ->
         [one] { $duration_days } день
         [few] { $duration_days } дня
        *[other] { $duration_days } дней
     }.
     .title = Подписка продлена
-ntf-customer-subscription-changed = Тариф изменён. Подключение остаётся прежним, ничего настраивать не нужно.
+ntf-customer-subscription-changed = Подключение остаётся прежним, ничего настраивать не нужно.
     .title = Тариф изменён
 ntf-customer-subscription-add-on-granted = { $addon_type ->
         [TRAFFIC] К подписке добавлено { $amount } ГБ трафика.
@@ -63,19 +63,19 @@ ntf-customer-subscription-add-on-granted = { $addon_type ->
         }.
     }
     .title = Дополнение активировано
-ntf-customer-subscription-granted = Вам выдана подписка на { $duration_days ->
+ntf-customer-subscription-granted = Доступ открыт на { $duration_days ->
         [one] { $duration_days } день
         [few] { $duration_days } дня
        *[other] { $duration_days } дней
-    }.
+    }. Подключите устройство, чтобы начать пользоваться.
     .title = Подписка выдана
-ntf-customer-transaction-refunded = Платёж на { $money } возвращён.
+ntf-customer-transaction-refunded = { $money } вернутся тем же способом, которым вы платили.
     .title = Платёж возвращён
-ntf-customer-transaction-partially-refunded = Возвращено { $money } от суммы платежа.
+ntf-customer-transaction-partially-refunded = Часть платежа, { $money }, вернётся тем же способом, которым вы платили.
     .title = Частичный возврат
-ntf-customer-paid-order-not-fulfilled = Оплата { $money } получена, но выдача подписки занимает больше времени, чем обычно. Мы уже разбираемся; если подписка скоро не появится, напишите в поддержку.
-    .title = Оплата получена
-ntf-customer-subscription-expiring = Подписка закончится через { $span_unit ->
+ntf-customer-paid-order-not-fulfilled = Оплата { $money } получена, но подписка выдаётся дольше обычного. Мы уже разбираемся; если она скоро не появится, напишите в поддержку.
+    .title = Выдача задерживается
+ntf-customer-subscription-expiring = Доступ сохранится ещё { $span_unit ->
         [day] { $span ->
             [one] { $span } день
             [few] { $span } дня
@@ -83,28 +83,28 @@ ntf-customer-subscription-expiring = Подписка закончится че�
         }
        *[hour] { $span } ч
     }. { $is_trial ->
-        [yes] Оформите подписку, чтобы не потерять доступ.
-       *[no] Продлите её, чтобы не потерять доступ.
+        [yes] Оформите подписку, чтобы не потерять его.
+       *[no] Продлите подписку, чтобы не потерять его.
     }
     .title = Подписка скоро закончится
-ntf-customer-subscription-expired = Подписка закончилась. { $is_trial ->
+ntf-customer-subscription-expired = { $is_trial ->
         [yes] Оформите подписку, чтобы вернуть доступ.
-       *[no] Продлите её, чтобы вернуть доступ.
+       *[no] Продлите подписку, чтобы вернуть доступ.
     }
     .title = Подписка закончилась
-ntf-customer-subscription-traffic-limited = Лимит трафика исчерпан. { $is_trial ->
+ntf-customer-subscription-traffic-limited = { $is_trial ->
         [yes] Оформите подписку, чтобы вернуть доступ.
        *[no] Продлите подписку, чтобы вернуть доступ.
     }
     .title = Трафик закончился
-ntf-customer-subscription-traffic-threshold = Трафик подходит к концу. { $is_trial ->
+ntf-customer-subscription-traffic-threshold = { $is_trial ->
         [yes] Оформите подписку, чтобы не потерять доступ.
        *[no] Продлите подписку, чтобы не потерять доступ.
     }
     .title = Трафик на исходе
-ntf-customer-cabinet-new-device-sign-in = Новый вход в кабинет с { $ip } ({ $browser }). Если это были не вы — выйдите на всех других устройствах и напишите в поддержку.
+ntf-customer-cabinet-new-device-sign-in = В кабинет вошли с { $ip } ({ $browser }). Если это были не вы — выйдите на всех других устройствах и напишите в поддержку.
     .title = Новый вход
-ntf-customer-accounts-merged = Аккаунты объединены: подписки, платежи и способы входа другого аккаунта теперь здесь. Если это были не вы — напишите в поддержку.
+ntf-customer-accounts-merged = Подписки, платежи и способы входа другого аккаунта теперь здесь. Если это были не вы — напишите в поддержку.
     .title = Аккаунты объединены
 ntf-customer-referral-reward-issued = Вам начислено { $amount } { $reward_type ->
         [EXTRA_DAYS] { $amount ->
@@ -118,8 +118,8 @@ ntf-customer-referral-reward-issued = Вам начислено { $amount } { $r
            *[other] баллов
         }
        *[other] вознаграждение
-    } за приглашённого друга.
-    .title = Награда за приглашение
+    } — спасибо, что пригласили!
+    .title = Награда за друга
 ntf-customer-invitee-reward-issued = Вам начислено { $amount } { $reward_type ->
         [EXTRA_DAYS] { $amount ->
             [one] бонусный день
@@ -133,7 +133,7 @@ ntf-customer-invitee-reward-issued = Вам начислено { $amount } { $re
         }
        *[other] вознаграждение
     } за регистрацию по приглашению.
-    .title = Бонус за приглашение
+    .title = Приветственный бонус
 ntf-panel-login-failed = Неудачный вход в панель Remnawave под «{ $username }». IP: { $ip }
     .title = Неудачный вход в панель
 ntf-panel-login-succeeded = Вход в панель Remnawave под «{ $username }». IP: { $ip }
@@ -196,23 +196,23 @@ ntf-customer-subscription-not-connected = Вы оформили подписку
            *[other] { $span } дней
         }
        *[hour] { $span } ч
-    } назад, но ещё не подключились. Подключите устройство, это займёт пару минут.
+    } назад, но ещё ни разу ею не воспользовались. Настройка займёт пару минут.
     .title = Пора подключиться
-ntf-customer-subscription-expired-ago = Подписка закончилась { $span_unit ->
+ntf-customer-subscription-expired-ago = Доступа нет уже { $span_unit ->
         [day] { $span ->
             [one] { $span } день
             [few] { $span } дня
            *[other] { $span } дней
         }
        *[hour] { $span } ч
-    } назад. { $is_trial ->
-        [yes] Оформите подписку, чтобы вернуть доступ.
-       *[no] Продлите её, чтобы вернуть доступ.
+    }. { $is_trial ->
+        [yes] Оформите подписку, чтобы вернуть его.
+       *[no] Продлите подписку, чтобы вернуть его.
     }
     .title = Подписка закончилась
-ntf-customer-torrent-blocker-report = Использовать торренты с включённым VPN запрещено. Торрент-трафик заблокирован; при повторных нарушениях доступ может быть ограничен.
+ntf-customer-torrent-blocker-report = Торрент-трафик через VPN заблокирован. При повторных нарушениях доступ может быть ограничен.
     .title = Торренты запрещены
-ntf-customer-promocode-discount-expiring = Скидка { $percent }% по промокоду { $code } действует ещё { $span_unit ->
+ntf-customer-promocode-discount-expiring = { $percent }% по промокоду { $code } действуют ещё { $span_unit ->
         [day] { $span ->
             [one] { $span } день
             [few] { $span } дня
@@ -221,3 +221,5 @@ ntf-customer-promocode-discount-expiring = Скидка { $percent }% по пр�
        *[hour] { $span } ч
     }. Успейте оформить покупку.
     .title = Скидка скоро сгорит
+ntf-customer-payments-restored = Теперь можно оформить или продлить подписку.
+    .title = Оплата снова доступна

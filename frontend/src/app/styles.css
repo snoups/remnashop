@@ -23,6 +23,20 @@
   --color-warning: #f99c00;
   --color-error: #fb2c36;
 
+  --radius-card: 32px;
+  /* a tap's ripple from the pointer (shared/ui/use-ripple) */
+  --animate-tap-ripple: tap-ripple 0.6s ease-out forwards;
+  @keyframes tap-ripple {
+    from {
+      opacity: 1;
+      transform: scale(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1);
+    }
+  }
+
   --radius-popover: 24px;
   /* popover radius minus its p-1.5 (6px) padding, so item corners nest cleanly;
      on a 36px (h-9) item that's exactly a pill */
@@ -272,6 +286,15 @@ textarea::-webkit-resizer {
   mask-repeat: no-repeat, no-repeat;
 }
 
+/* Page masks are desktop-only. Keep this outside Tailwind layers, like
+   the fade rules above, so the mobile override wins in the cascade. */
+@media (width < 48rem) {
+  .page-scroll {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
 /* A backdrop-filter element is drawn on its own layer that ignores an
    ancestor's mask, so a glass control would cut off hard at a faded edge.
    Inside a fading scroller it drops the blur and fades with the scroller;
@@ -304,7 +327,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* Rows fade in when they mount: first load, a load-more page, a new row.
    Kept rows don't replay. Only the first 12 stagger, a load-more page comes in
-   at once. `translate`, not `transform`, so motion's tap scale on rows is untouched. */
+   at once. */
 @keyframes list-row-in {
   from {
     opacity: 0;

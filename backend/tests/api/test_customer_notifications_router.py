@@ -153,6 +153,25 @@ async def test_feed_is_own_only(
     assert theirs["unread_count"] == 1
 
 
+async def test_clear_empties_only_my_feed(
+    client: httpx.AsyncClient, make_user, session: AsyncSession, uow: UnitOfWork
+) -> None:
+    mine, my_headers = await make_user("clearer", 910_005)
+    other, other_headers = await make_user("keeper", 910_006)
+    repository = CustomerNotificationRepository(session)
+    await _add(repository, uow, mine.id, 1)
+    await _add(repository, uow, mine.id, 2)
+    await _add(repository, uow, other.id, 1)
+
+    cleared = await client.post(f"{API_V1}/notifications/me/actions/clear", headers=my_headers)
+
+    assert cleared.status_code == 204
+    feed = (await client.get(f"{API_V1}/notifications/me", headers=my_headers)).json()
+    assert feed == {"items": [], "unread_count": 0}
+    theirs = (await client.get(f"{API_V1}/notifications/me", headers=other_headers)).json()
+    assert len(theirs["items"]) == 1
+
+
 async def test_feed_requires_authentication(client: httpx.AsyncClient) -> None:
     assert (await client.get(f"{API_V1}/notifications/me")).status_code == 401
 

@@ -7,17 +7,15 @@ import { Link, useMatch, useResolvedPath } from "react-router-dom";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { usePermissions } from "@entities/user/use-current-user";
-import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { toggleSidebarCollapsed, useSidebarCollapsed } from "@shared/lib/sidebar-collapse";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 import { IconButton } from "@shared/ui/IconButton";
-import { MotionLink } from "@shared/ui/MotionLink";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
 import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import type { NavItem } from "@widgets/sidebar/nav-items";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME, SIDEBAR_PILL_SHAPE_CLASSNAME } from "@widgets/sidebar/nav-pill";
+import { Pressable } from "@shared/ui/Pressable";
 
 
 interface Hint {
@@ -28,12 +26,10 @@ interface Hint {
 
 function NavItemLink({
   item,
-  tapProps,
   label,
   onHint,
 }: {
   item: NavItem;
-  tapProps: ReturnType<typeof bounceTap>;
   label: string;
   onHint: (hint: Hint | null) => void;
 }) {
@@ -45,18 +41,15 @@ function NavItemLink({
   };
 
   return (
-    <MotionLink
+    <Pressable as="link"
       to={item.to}
       className={
         isActive ? `relative isolate ${SIDEBAR_PILL_SHAPE_CLASSNAME} font-semibold text-primary` : SIDEBAR_PILL_CLASSNAME
       }
-      initial="rest"
-      whileHover="hover"
       onPointerEnter={showHint}
       onPointerLeave={() => onHint(null)}
       onFocus={showHint}
       onBlur={() => onHint(null)}
-      {...tapProps}
     >
       {/* one shared layoutId, so the highlight glides between rows instead of jumping */}
       {isActive && (
@@ -66,9 +59,9 @@ function NavItemLink({
           transition={{ type: "spring", stiffness: 420, damping: 36 }}
         />
       )}
-      <BounceIcon icon={item.icon} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
+      <item.icon className="size-4 shrink-0" />
       <span className={LABEL_CLASSNAME}>{label}</span>
-    </MotionLink>
+    </Pressable>
   );
 }
 
@@ -86,7 +79,6 @@ export function Sidebar() {
   const permissions = usePermissions();
   const visibleItems = NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions));
   // `scale`, not width/height, so a pressed row never pushes its neighbours
-  const tapProps = bounceTap();
 
   return (
     <aside
@@ -108,19 +100,16 @@ export function Sidebar() {
         <div className="hidden xl:block xl:group-data-expanded/sidebar:pt-1.5">
           <IconButton
             size="8"
-            bounce={0.12}
-            initial="rest"
-            whileHover="hover"
             onClick={toggleSidebarCollapsed}
           >
-            <BounceIcon icon={isCollapsed ? ChevronsRight : ChevronsLeft} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
+            {isCollapsed ? <ChevronsRight className="size-4 shrink-0" /> : <ChevronsLeft className="size-4 shrink-0" />}
           </IconButton>
         </div>
       </div>
 
       <nav className="flex flex-col gap-0.5">
         {visibleItems.map((item) => (
-          <NavItemLink key={item.key} item={item} tapProps={tapProps} label={t(`sidebar.${item.key}`)} onHint={handleHint} />
+          <NavItemLink key={item.key} item={item} label={t(`sidebar.${item.key}`)} onHint={handleHint} />
         ))}
       </nav>
 

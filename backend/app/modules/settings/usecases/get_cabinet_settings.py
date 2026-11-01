@@ -20,6 +20,7 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
         async with self._uow:
             shop = await self._settings_repository.get_shop_settings()
             bot = await self._settings_repository.get_bot_settings()
+            access = await self._settings_repository.get_access_settings()
 
         # outside the transaction: the network call must not hold a connection
         username: Optional[str] = None
@@ -34,4 +35,5 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
             bot_username=username,
             support_telegram=shop.support_telegram,
             support_url=shop.support_url,
+            payments_enabled=access.payments_enabled,
         )

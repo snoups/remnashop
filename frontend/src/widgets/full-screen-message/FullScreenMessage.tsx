@@ -24,7 +24,7 @@ export function FullScreenMessage({ icon: Icon, iconClassName, code, title, desc
         <LanguagePicker />
       </div>
 
-      <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-glass-border bg-surface/40 p-8 text-center shadow-2xl backdrop-blur-xl">
+      <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl max-md:rounded-card border border-glass-border bg-surface/40 p-8 text-center shadow-2xl backdrop-blur-xl">
         <Icon className={`size-12 shrink-0 ${iconClassName}`} />
         <div>
           {code && <span className="font-mono text-3xl font-bold tracking-tight text-foreground">{code}</span>}

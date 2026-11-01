@@ -1,6 +1,7 @@
-import { motion, type HTMLMotionProps } from "motion/react";
+import type { HTMLMotionProps } from "motion/react";
+import type { ReactNode } from "react";
 
-import { bounceTap } from "@shared/lib/bounceState";
+import { Pressable } from "@shared/ui/Pressable";
 
 // size follows the container: equal inset on every side, concentric corners (see /dashboard/debug)
 const SIZE_CLASS = {
@@ -23,22 +24,29 @@ const TONE_CLASS = {
   glass: "border border-glass-border bg-white/[0.05] enabled:hover:bg-white/[0.06] enabled:hover:text-foreground",
 } as const;
 
-interface IconButtonProps extends HTMLMotionProps<"button"> {
+interface IconButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
+  children?: ReactNode;
   size: keyof typeof SIZE_CLASS;
   tone?: keyof typeof TONE_CLASS;
-  /** tap bounce multiplier (bounceTap's); omit for no bounce */
-  bounce?: number;
   /** layout and positioning only (absolute, -mr-1, cursor-grab...) */
   className?: string;
 }
 
-export function IconButton({ size, tone = "default", bounce, className = "", type = "button", ...props }: IconButtonProps) {
+export function IconButton({
+  size,
+  tone = "default",
+  className = "",
+  type = "button",
+  children,
+  ...props
+}: IconButtonProps) {
   return (
-    <motion.button
+    <Pressable
       type={type}
-      {...(bounce !== undefined ? bounceTap(bounce) : {})}
       className={`flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${TONE_CLASS[tone]} ${className}`}
       {...props}
-    />
+    >
+      {children}
+    </Pressable>
   );
 }

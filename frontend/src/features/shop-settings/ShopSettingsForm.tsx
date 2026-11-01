@@ -1,4 +1,4 @@
-import { Globe, Layers, Link2, MonitorSmartphone, Send, Share2, ShoppingBag, Smartphone } from "lucide-react";
+import { Layers, Link2, MonitorSmartphone, Share2, ShoppingBag, Smartphone } from "lucide-react";
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,14 +11,13 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
-import { Button } from "@shared/ui/Button";
-import { TextInput } from "@shared/ui/TextInput";
+import { Field } from "@shared/ui/Field";
+import { SuffixInput, TextInput } from "@shared/ui/TextInput";
+import { SETTINGS_ROWS_CLASS, SETTINGS_SECTION_CLASS } from "@shared/ui/classes";
+import { SaveFooter } from "@shared/ui/SaveFooter";
+import { SettingsRow } from "@shared/ui/SettingsRow";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-
-
-const rowIconClassName =
-  "flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground";
 
 export function ShopSettingsForm() {
   const { t } = useTranslation();
@@ -98,6 +97,21 @@ export function ShopSettingsForm() {
     }
   };
 
+  const saved = state.kind === "ready" ? state.data : null;
+  const dirty =
+    saved !== null &&
+    (maxActiveSubscriptions !== (saved.max_active_subscriptions === null ? "" : String(saved.max_active_subscriptions)) ||
+      deviceSingleResetEnabled !== saved.device_single_reset_enabled ||
+      deviceSingleResetCooldownHours !== String(saved.device_single_reset_cooldown_hours) ||
+      deviceAllResetEnabled !== saved.device_all_reset_enabled ||
+      deviceAllResetCooldownHours !== String(saved.device_all_reset_cooldown_hours) ||
+      linkResetEnabled !== saved.link_reset_enabled ||
+      linkResetCooldownHours !== String(saved.link_reset_cooldown_hours) ||
+      referralResetEnabled !== saved.referral_reset_enabled ||
+      referralResetCooldownHours !== String(saved.referral_reset_cooldown_hours) ||
+      supportTelegram !== (saved.support_telegram ?? "") ||
+      supportUrl !== (saved.support_url ?? ""));
+
   return (
     <Card>
       <CardHeader
@@ -115,28 +129,21 @@ export function ShopSettingsForm() {
       {state.kind === "ready" && (
         <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
           <fieldset disabled={!canManage} className="contents">
-          <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
-            <div className={rowIconClassName}>
-              <Layers className="size-4" />
-            </div>
-            <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
-              {t("settings.shop.maxActiveSubscriptionsLabel")}
-            </p>
-            <TextInput
-              type="number"
-              onKeyDown={blockNonIntegerKeys}
-              step="1"
-              min="1"
-              placeholder={t("settings.shop.unlimitedPlaceholder")}
-              value={maxActiveSubscriptions}
-              onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
-              className="w-24 shrink-0"
-            />
-            {/* switch-sized gap, so this input lines up with the reset rows' inputs */}
-            <span className="mr-1 w-10 shrink-0" />
-          </div>
-
-          <div className="mt-2 flex flex-col gap-1 border-t border-white/[0.08] pt-2">
+          <div className={SETTINGS_ROWS_CLASS}>
+            <SettingsRow icon={Layers} label={t("settings.shop.maxActiveSubscriptionsLabel")}>
+              <TextInput
+                type="number"
+                onKeyDown={blockNonIntegerKeys}
+                step="1"
+                min="1"
+                placeholder={t("settings.shop.unlimitedPlaceholder")}
+                value={maxActiveSubscriptions}
+                onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
+                className="w-24 shrink-0"
+              />
+              {/* switch-sized gap: this input lines up with the reset rows' hours */}
+              <span className="w-10 shrink-0" />
+            </SettingsRow>
             <ResetRow
               icon={Smartphone}
               label={t("settings.shop.deviceSingleResetLabel")}
@@ -172,36 +179,29 @@ export function ShopSettingsForm() {
           </div>
 
           {/* where the cabinet's "Support" leads: either or both */}
-          <div className="mt-2 flex flex-col gap-1 border-t border-white/[0.08] pt-2">
-            <SupportRow
-              icon={Send}
-              label={t("settings.shop.supportTelegramLabel")}
-              hint={t("settings.shop.supportTelegramHint")}
-              placeholder="@support"
-              value={supportTelegram}
-              onChange={setSupportTelegram}
-            />
-            <SupportRow
-              icon={Globe}
-              label={t("settings.shop.supportUrlLabel")}
-              hint={t("settings.shop.supportUrlHint")}
-              placeholder="https://"
-              value={supportUrl}
-              onChange={setSupportUrl}
-            />
+          <div className={SETTINGS_SECTION_CLASS}>
+            <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
+              <Field bright label={t("settings.shop.supportTelegramLabel")}>
+                <TextInput
+                  placeholder={t("settings.shop.supportTelegramPlaceholder")}
+                  value={supportTelegram}
+                  onChange={(event) => setSupportTelegram(event.target.value)}
+                  autoComplete="off"
+                />
+              </Field>
+              <Field bright label={t("settings.shop.supportUrlLabel")}>
+                <TextInput
+                  placeholder={t("settings.shop.supportUrlPlaceholder")}
+                  value={supportUrl}
+                  onChange={(event) => setSupportUrl(event.target.value)}
+                  autoComplete="off"
+                />
+              </Field>
+            </div>
           </div>
           </fieldset>
 
-          {canManage && (
-            <Button
-              variant="accent"
-              className="mt-4 w-fit"
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          )}
+          {canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
         </form>
       )}
     </Card>
@@ -218,7 +218,7 @@ interface ResetRowProps {
 }
 
 function ResetRow({
-  icon: Icon,
+  icon,
   label,
   enabled,
   onEnabledChange,
@@ -227,56 +227,19 @@ function ResetRow({
 }: ResetRowProps) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
-      <div className={rowIconClassName}>
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground">{label}</p>
-        <p className="text-[12px] text-muted-foreground">{t("settings.shop.cooldownHoursLabel")}</p>
-      </div>
-      <TextInput
+    <SettingsRow icon={icon} label={label}>
+      <SuffixInput
         type="number"
         onKeyDown={blockNonIntegerKeys}
         step="1"
         min="0"
+        suffix={t("settings.shop.hoursSuffix")}
         value={cooldownHours}
         onChange={(event) => onCooldownChange(event.target.value)}
         disabled={!enabled}
         className="w-24 shrink-0"
       />
-      <div className="mr-1 flex">
-        <Switch checked={enabled} onChange={onEnabledChange} />
-      </div>
-    </div>
-  );
-}
-
-interface SupportRowProps {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  hint: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function SupportRow({ icon: Icon, label, hint, placeholder, value, onChange }: SupportRowProps) {
-  return (
-    <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
-      <div className={rowIconClassName}>
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground">{label}</p>
-        <p className="text-[12px] text-muted-foreground">{hint}</p>
-      </div>
-      <TextInput
-        placeholder={placeholder}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-56 shrink-0"
-      />
-    </div>
+      <Switch checked={enabled} onChange={onEnabledChange} />
+    </SettingsRow>
   );
 }

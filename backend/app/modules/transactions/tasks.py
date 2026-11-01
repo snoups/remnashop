@@ -10,6 +10,7 @@ from app.core.exceptions import RetryableTaskError
 from app.core.utils.lock import cron_lock
 from app.modules.transactions.dto import (
     MarkOrderFulfilledDto,
+    NotifyPaymentWaitlistDto,
     ReconcilePaidTransactionsDto,
     StarsPaymentDto,
 )
@@ -62,9 +63,9 @@ async def mark_order_fulfilled_task(
 @broker.task
 @inject(patch_module=True)
 async def notify_payment_waitlist_task(
-    use_case: FromDishka[NotifyPaymentWaitlistUseCase],
+    outbox_id: int, use_case: FromDishka[NotifyPaymentWaitlistUseCase]
 ) -> None:
-    await use_case.system()
+    await use_case.system(NotifyPaymentWaitlistDto(outbox_id=outbox_id))
 
 
 @broker.task(retry_on_error=True, max_retries=3)

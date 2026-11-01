@@ -2,8 +2,8 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bounceTap } from "@shared/lib/bounceState";
 import { initials } from "@shared/lib/initials";
+import { Ripple } from "@shared/ui/Ripple";
 
 interface UserRowProps {
   /** empty for a deleted account: shown as users.deleted.name */
@@ -23,9 +23,9 @@ export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
       type="button"
       disabled={!onClick}
       onClick={onClick}
-      {...(onClick && bounceTap(0.03))}
-      className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
+      className="relative flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
     >
+      <Ripple />
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
         {initials(name)}
       </span>

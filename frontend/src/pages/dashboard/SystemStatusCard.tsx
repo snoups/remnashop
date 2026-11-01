@@ -10,7 +10,7 @@ import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { Tag } from "@shared/ui/Tag";
 import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dashboard/runtime";
 
-const SVC_CLASS = "flex flex-col gap-2 rounded-2xl border border-border bg-white/[0.03] p-4";
+const SVC_CLASS = "flex flex-col gap-2 rounded-2xl max-md:rounded-card border border-border bg-white/[0.03] p-4";
 const KV_CLASS = "flex items-center justify-between gap-2 text-[12.5px]";
 
 function Kv({ label, value }: { label: string; value: string }) {

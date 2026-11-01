@@ -1,13 +1,12 @@
 import { MonitorSmartphone, Trash2 } from "lucide-react";
-import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { formatDateTime } from "@shared/lib/relative-time";
 import type { Session } from "@entities/auth/sessions";
-import { bounceTap } from "@shared/lib/bounceState";
 import { parseUserAgent } from "@shared/lib/parse-user-agent";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { Badge } from "@shared/ui/Badge";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface SessionListProps {
   sessions: Session[];
@@ -30,11 +29,10 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
         const { browser, os } = parseUserAgent(session.user_agent);
         const isCurrent = session.id === currentSessionId;
         return (
-          <motion.button
+          <Pressable
             key={session.id}
             type="button"
             onClick={() => onRequestRevoke(session)}
-            {...bounceTap()}
             className="group flex w-full items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 text-left transition-colors hover:bg-white/[0.04]"
           >
             <div className="flex items-center gap-3">
@@ -58,7 +56,7 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke }: Ses
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover:bg-error/10 group-hover:text-error">
               <Trash2 className="size-4" />
             </span>
-          </motion.button>
+          </Pressable>
         );
       })}
     </div>

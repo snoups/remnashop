@@ -7,6 +7,8 @@ import { createPortal } from "react-dom";
 // wrapper, so the backdrop covers the whole panel. Falls back to
 // `document.body` outside DashboardLayout.
 export function DialogPortal({ children }: { children: ReactNode }) {
-  const target = document.getElementById("dialog-root") ?? document.body;
+  const target = window.matchMedia("(width < 768px)").matches
+    ? document.body
+    : document.getElementById("dialog-root") ?? document.body;
   return createPortal(children, target);
 }

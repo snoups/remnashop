@@ -49,7 +49,6 @@ import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel"
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
 import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
@@ -58,6 +57,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
+import { Pressable } from "@shared/ui/Pressable";
 
 export type Selection =
   { kind: "text" } | { kind: "button"; buttonKey: string };
@@ -186,7 +186,7 @@ export function DialogCanvasEditor() {
 
   if (windowsState.kind !== "ready") {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+      <div className="rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03]">
         <div className="flex items-center gap-2.5 border-b border-white/[0.08] p-4">
           {heading}
         </div>
@@ -377,7 +377,7 @@ export function DialogCanvasEditor() {
     if (previewLocale === null || entriesState.kind !== "ready") return null;
     if (selection.kind === "text") {
       return (
-        <div className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+        <div className="w-full rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
           <h3 className="mb-3 text-[13px] font-semibold text-foreground">
             {t("dialogs.inspector.textTitle")}
           </h3>
@@ -479,7 +479,7 @@ export function DialogCanvasEditor() {
   ];
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+    <div className="flex flex-col overflow-hidden rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03]">
       {/* The three panes are zones inside the card rather than separate
           floating blocks. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -563,15 +563,14 @@ export function DialogCanvasEditor() {
               />
             ) : null}
             {canEditButtons && catalog && (
-              <motion.button
+              <Pressable
                 type="button"
                 onClick={handleAddButton}
-                {...bounceTap()}
                 className="flex h-9 w-full max-w-sm cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
               >
                 <Plus className="size-3.5" />
                 {t("dialogs.inspector.buttonAdd")}
-              </motion.button>
+              </Pressable>
             )}
           </div>
 

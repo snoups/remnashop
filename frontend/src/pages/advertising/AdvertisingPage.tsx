@@ -1,5 +1,4 @@
 import { ChevronRight, Link2, Plus } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +17,6 @@ import { DAY_MS, previousWindow } from "@shared/lib/period";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney, formatPercent } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
@@ -28,7 +26,8 @@ import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { ListRow } from "@shared/ui/ListRow";
 
 const STATS_GRID_CLASSNAME =
   "grid grid-cols-[36px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
@@ -252,12 +251,11 @@ export function AdvertisingPage() {
                   metrics && metrics.attributions_count > 0 ? metrics.paid_count / metrics.attributions_count : null;
 
                 return (
-                  <motion.button
+                  <ListRow
                     key={link.id}
                     type="button"
                     onClick={() => setDetailsId(link.id)}
-                    {...bounceTap(0.03)}
-                    className={`${gridClassName} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                    className={gridClassName}
                   >
                     <span
                       className={`flex size-9 items-center justify-center rounded-full ${
@@ -307,7 +305,7 @@ export function AdvertisingPage() {
                       </Badge>
                     </span>
                     <ChevronRight className="size-4 text-muted-foreground" />
-                  </motion.button>
+                  </ListRow>
 
                 );
               })}

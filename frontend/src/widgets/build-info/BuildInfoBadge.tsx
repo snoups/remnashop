@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { ArrowUpCircle, Check, Clock, Copy, GitBranch, GitCommit, Info, Star } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -6,12 +7,10 @@ import { useTranslation } from "react-i18next";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { getSystemMetadata, type SystemMetadata } from "@shared/api/system";
-import { bounceTap, NAV_ICON_HOVER_SIZE, NAV_ICON_SIZE } from "@shared/lib/bounceState";
 import { toggleDebugBar, useDebugState } from "@shared/lib/debug-bar";
 import { githubApiUrl, isHttpsUrl, TELEGRAM_URL } from "@shared/lib/external-links";
 import { isNewerVersion } from "@shared/lib/version-compare";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
-import { BounceIcon } from "@shared/ui/BounceIcon";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { useDialogFocus } from "@shared/ui/modal-hooks";
@@ -19,6 +18,7 @@ import { Tag } from "@shared/ui/Tag";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { IconButton } from "@shared/ui/IconButton";
 import { EYEBROW_CLASS, GLASS_DIALOG_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface GithubRelease {
   tag_name: string;
@@ -30,7 +30,9 @@ const LONG_PRESS_MS = 600;
 const footerLinkClassName =
   "flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
 
-export function BuildInfoBadge() {
+export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
+  const labelClass = mobile ? "truncate" : LABEL_CLASSNAME;
+  const renderOverlay = (content: ReactNode) => mobile ? createPortal(content, document.body) : content;
   const { t, i18n } = useTranslation();
   const { fakeUpdate } = useDebugState();
   const [metadata, setMetadata] = useState<SystemMetadata | null>(null);
@@ -116,37 +118,34 @@ export function BuildInfoBadge() {
 
   return (
     <>
-      <motion.button
+      <Pressable
         type="button"
         onClick={handleOpen}
-        onPointerDown={startLongPress}
+        onPointerDown={mobile ? undefined : startLongPress}
         onPointerUp={cancelLongPress}
         onPointerLeave={cancelLongPress}
         onContextMenu={(event) => event.preventDefault()}
-        className={SIDEBAR_PILL_CLASSNAME}
-        initial="rest"
-        whileHover="hover"
-        {...bounceTap()}
+        className={mobile ? "flex h-11 min-w-0 flex-1 items-center justify-center gap-3 rounded-full border border-glass-border bg-white/[0.05] px-4 text-sm font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >
-        <BounceIcon icon={Info} size={NAV_ICON_SIZE} hoverSize={NAV_ICON_HOVER_SIZE} />
-        <span className={`${LABEL_CLASSNAME} font-mono`}>{currentVersion}</span>
-        {isUpdateAvailable && release && (
+        {mobile ? <Info className="size-5 shrink-0" /> : <Info className="size-4 shrink-0" />}
+        <span className={`${labelClass} font-mono`}>{currentVersion}</span>
+        {!mobile && isUpdateAvailable && release && (
           <span
-            className={`${LABEL_CLASSNAME} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[10px] font-semibold leading-none text-primary`}
+            className={`${labelClass} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[10px] font-semibold leading-none text-primary`}
           >
             {release.tag_name}
           </span>
         )}
-      </motion.button>
+      </Pressable>
 
-      <AnimatePresence>
+      {renderOverlay(<AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4"
+            className={`fixed inset-0 ${mobile ? "z-[60]" : "z-40"} flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4`}
           >
             <button
               type="button"
@@ -221,21 +220,19 @@ export function BuildInfoBadge() {
               </div>
 
               <div className="flex gap-2">
-                <motion.a
+                <Pressable as="a"
                   href={TELEGRAM_URL}
                   target="_blank"
                   rel="noreferrer"
-                  {...bounceTap()}
                   className={footerLinkClassName}
                 >
                   <TelegramIcon className="size-4" />
                   {t("buildInfo.telegramButton")}
-                </motion.a>
-                <motion.a
+                </Pressable>
+                <Pressable as="a"
                   href={metadata.repository_url}
                   target="_blank"
                   rel="noreferrer"
-                  {...bounceTap()}
                   className={footerLinkClassName}
                 >
                   <GithubIcon className="size-4" />
@@ -246,13 +243,13 @@ export function BuildInfoBadge() {
                       {stars}
                     </Tag>
                   )}
-                </motion.a>
+                </Pressable>
               </div>
             </div>
             </BuildInfoPanel>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>)}
     </>
   );
 }

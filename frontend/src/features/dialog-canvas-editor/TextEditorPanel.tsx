@@ -1,12 +1,10 @@
 import { Loader2 } from "lucide-react";
-import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { sentHtmlLength, sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
 import type { VariableOption } from "@entities/dialogs/api";
 import { getErrorMessage } from "@shared/api/http";
-import { bounceTap } from "@shared/lib/bounceState";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
@@ -15,6 +13,7 @@ import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-cla
 import { FormatToolbar } from "@features/dialog-canvas-editor/FormatToolbar";
 import { RichTextField, type RichTextFieldHandle } from "@features/dialog-canvas-editor/RichTextField";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
+import { Pressable } from "@shared/ui/Pressable";
 
 // right padding a one-line field reserves for the 26px pickers inside it
 const ACTION_PADDING = ["", "pr-10", "pr-[68px]"] as const;
@@ -201,29 +200,27 @@ export function TextEditorPanel({
       )}
       <div className="mt-2 flex gap-2">
         {canUpdate && (
-          <motion.button
+          <Pressable
             type="button"
             disabled={
               draft === (entry?.value ?? "") || (required && draft.trim() === "") || isTooLong
             }
             onClick={() => void handleSave()}
-            {...bounceTap()}
             className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
           >
             {t(canShowReset ? "common.save" : "dialogs.inspector.textSave")}
-          </motion.button>
+          </Pressable>
         )}
         {canShowReset && (
-          <motion.button
+          <Pressable
             type="button"
             onClick={() => void handleReset()}
             disabled={isResetting}
-            {...bounceTap()}
             className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isResetting && <Loader2 className="size-3.5 animate-spin" />}
             {t("common.reset")}
-          </motion.button>
+          </Pressable>
         )}
       </div>
     </div>

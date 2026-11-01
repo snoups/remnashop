@@ -1,3 +1,4 @@
+from app.modules.customer_notifications.usecases.clear_feed import ClearCustomerFeedUseCase
 from app.modules.customer_notifications.usecases.get_feed import GetCustomerFeedUseCase
 from app.modules.customer_notifications.usecases.mark_feed_read import (
     MarkCustomerFeedReadUseCase,
@@ -14,6 +15,7 @@ from app.modules.customer_notifications.usecases.show_payment_canceled import (
 )
 
 __all__ = [
+    "ClearCustomerFeedUseCase",
     "GetCustomerFeedUseCase",
     "MarkCustomerFeedReadUseCase",
     "NotifyCustomerUseCase",

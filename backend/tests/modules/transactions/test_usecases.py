@@ -1448,6 +1448,10 @@ async def _offer(legal_repository: LegalRepository, locale: Locale, title: str) 
             created_by=None,
         )
     )
+    # documents start hidden
+    await legal_repository.update_document(
+        LegalDocumentKind.OFFER, show_in_bot=True, show_in_cabinet=True
+    )
     return revision.id
 
 

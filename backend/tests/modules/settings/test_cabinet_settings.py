@@ -3,7 +3,11 @@ from typing import Optional
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.modules.settings.dto import UpdateBotSettingsDto, UpdateShopSettingsDto
+from app.modules.settings.dto import (
+    UpdateAccessSettingsDto,
+    UpdateBotSettingsDto,
+    UpdateShopSettingsDto,
+)
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import GetCabinetSettingsUseCase
 from app.modules.users.dto import UserDto
@@ -40,6 +44,7 @@ async def test_cabinet_settings_without_a_bot(use_case: GetCabinetSettingsUseCas
     assert result.device_all_reset_enabled is True
     assert result.device_all_reset_cooldown_hours == 0
     assert result.link_reset_enabled is True
+    assert result.payments_enabled is True
 
 
 async def test_cabinet_settings_reports_the_bot_username(
@@ -81,3 +86,13 @@ async def test_cabinet_settings_carry_the_support_contacts(
     result = await use_case(_USER)
     assert result.support_telegram == "shop_help"
     assert result.support_url == "https://help.example.com"
+
+
+async def test_cabinet_settings_report_payments_off(
+    use_case: GetCabinetSettingsUseCase, settings_repository: SettingsRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        await settings_repository.update_access_settings(
+            UpdateAccessSettingsDto(payments_enabled=False)
+        )
+    assert (await use_case(_USER)).payments_enabled is False

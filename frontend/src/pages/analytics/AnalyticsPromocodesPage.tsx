@@ -11,7 +11,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
@@ -20,6 +20,7 @@ import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
 import { BarRows, CurrencyNote } from "@pages/analytics/charts";
 import type { BarRow } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
+import { ListRow } from "@shared/ui/ListRow";
 
 const TABLE_GRID =
   "grid grid-cols-[minmax(120px,1fr)_120px_210px_100px_84px_84px] items-center gap-3";
@@ -158,11 +159,11 @@ function Overview({ data }: { data: PromocodeStats }) {
                 {data.codes.map((row) => {
                   const max = row.max_activations;
                   return (
-                    <button
+                    <ListRow
                       key={row.promocode_id}
                       type="button"
                       onClick={() => openPromocode(row.promocode_id)}
-                      className={`${TABLE_GRID} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                      className={TABLE_GRID}
                     >
                       <span className="truncate font-mono text-[12px] text-muted-foreground">
                         {row.code}
@@ -211,7 +212,7 @@ function Overview({ data }: { data: PromocodeStats }) {
                           {t(`promocodes.status.${row.status}` as ParseKeys)}
                         </Badge>
                       </span>
-                    </button>
+                    </ListRow>
                   );
                 })}
               </div>

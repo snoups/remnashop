@@ -1,5 +1,4 @@
 import { Bot, ScrollText } from "lucide-react";
-import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,17 +15,18 @@ import {
 import type { BotSettings, BotStatus } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { copyToClipboard } from "@shared/lib/clipboard";
-import { bounceTap } from "@shared/lib/bounceState";
 import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { StatusPill } from "@shared/ui/StatusPill";
 import { Modal } from "@shared/ui/Modal";
 import { Spinner } from "@shared/ui/Spinner";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/DialogHeader";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { Pressable } from "@shared/ui/Pressable";
 
 // Telegram's secret_token requirement: 1-256 chars, only A-Z, a-z, 0-9, "_", "-".
 const SECRET_TOKEN_CHARSET =
@@ -53,18 +53,16 @@ function StatusBadge({ status }: { status: BotStatus }) {
     status.error !== null ? t("settings.bot.statusError", { message: status.error }) : null;
   const hint = [failure, queued].filter((line) => line !== null).join("\n\n") || null;
   const [tone, label] = !status.is_configured
-    ? ["bg-warning/10 text-warning", t("settings.bot.notConfigured")]
+    ? (["warning", t("settings.bot.notConfigured")] as const)
     : status.is_running
-      ? ["bg-success/10 text-success", t("settings.bot.running")]
-      : ["bg-error/10 text-error", t("settings.bot.stopped")];
+      ? (["success", t("settings.bot.running")] as const)
+      : (["error", t("settings.bot.stopped")] as const);
 
   return (
-    <span
-      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-transparent px-4 text-[13px] font-semibold ${tone}`}
-    >
+    <StatusPill tone={tone}>
       {label}
       {hint !== null && <FieldHint text={hint} side="bottom" align="end" />}
-    </span>
+    </StatusPill>
   );
 }
 
@@ -97,14 +95,13 @@ function BotLogsDialogBody() {
         actions={
           <>
             {state.kind === "loading" && <Spinner />}
-            <motion.button
+            <Pressable
               type="button"
               onClick={reload}
-              {...bounceTap()}
               className="flex h-8 w-fit items-center rounded-full border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-white/[0.06]"
             >
               {t("settings.bot.refreshLogs")}
-            </motion.button>
+            </Pressable>
           </>
         }
       />
@@ -250,7 +247,7 @@ export function BotSettingsForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
         <CardHeader
           icon={Bot}
           title={t("settings.bot.title")}
@@ -265,9 +262,7 @@ export function BotSettingsForm() {
               {state.kind === "loading" && <Spinner />}
               {statusState.kind === "ready" && <StatusBadge status={statusState.data} />}
               {(state.kind === "error" || statusState.kind === "error") && (
-                <span className="flex h-9 shrink-0 items-center rounded-full border border-transparent bg-error/10 px-4 text-[13px] font-semibold text-error">
-                  {t("settings.bot.loadErrorBadge")}
-                </span>
+                <StatusPill tone="error">{t("settings.bot.loadErrorBadge")}</StatusPill>
               )}
             </>
           }
@@ -312,14 +307,13 @@ export function BotSettingsForm() {
                 autoComplete="off"
                 className="min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 pr-24 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
               />
-              <motion.button
+              <Pressable
                 type="button"
                 onClick={handleGenerateSecretToken}
-                {...bounceTap()}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
               >
                 {isSecretCopied ? t("settings.bot.secretTokenCopied") : t("settings.bot.generateSecretToken")}
-              </motion.button>
+              </Pressable>
             </div>
           </div>
 
@@ -349,15 +343,14 @@ export function BotSettingsForm() {
                 className={`min-w-0 w-full rounded-full border border-border bg-input/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 ${isProxyConfigured ? "pr-24" : ""}`}
               />
               {isProxyConfigured && permissions.includes("BOT_PROXY_REMOVE") && (
-                <motion.button
+                <Pressable
                   type="button"
                   onClick={() => void handleRemoveProxy()}
                   disabled={isRemovingProxy}
-                  {...bounceTap()}
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
                 >
                   {t("settings.bot.removeProxy")}
-                </motion.button>
+                </Pressable>
               )}
             </div>
           </div>

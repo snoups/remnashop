@@ -11,9 +11,9 @@ export function GeneralSettingsPage() {
     <div className="flex flex-col gap-4">
       {permissions.includes("OAUTH_SETTINGS_VIEW") && <OAuthSettingsForm />}
       {permissions.includes("ACCESS_SETTINGS_VIEW") && <AccessSettingsForm />}
-      {permissions.includes("LEGAL_DOCUMENTS_VIEW") && <LegalDocumentsEditor />}
       {permissions.includes("SHOP_SETTINGS_VIEW") && <ShopSettingsForm />}
       {permissions.includes("NOTIFICATION_SETTINGS_VIEW") && <WebPushSettingsForm />}
+      {permissions.includes("LEGAL_DOCUMENTS_VIEW") && <LegalDocumentsEditor />}
     </div>
   );
 }

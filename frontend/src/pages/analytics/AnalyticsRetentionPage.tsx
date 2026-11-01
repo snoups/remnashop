@@ -15,7 +15,7 @@ import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { CardHeader } from "@shared/ui/CardHeader";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
@@ -23,6 +23,7 @@ import { Tag } from "@shared/ui/Tag";
 import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
 import { BarRows, ColumnChart, CurrencyNote, Legend } from "@pages/analytics/charts";
 import type { BarRow, Column } from "@pages/analytics/charts";
+import { ListRow } from "@shared/ui/ListRow";
 
 const MONTH_COLUMNS = 12;
 // above this fill the cell is light enough to need dark text
@@ -207,11 +208,11 @@ function ExpiringCard({ data }: { data: Retention }) {
                 const days = Math.max(1, Math.floor((Date.parse(row.expire_at) - now) / DAY_MS));
                 const inDays = t("analytics.retention.inDays", { count: days });
                 return (
-                  <button
+                  <ListRow
                     key={row.user_id}
                     type="button"
                     onClick={() => openUser(row.user_id)}
-                    className={`${EXPIRING_GRID} w-full ${LIST_ROW_CLASS} text-left hover:bg-white/[0.04]`}
+                    className={EXPIRING_GRID}
                   >
                     <span className="flex size-9 items-center justify-center rounded-full bg-accent text-[12px] font-bold text-primary">
                       {initials(row.name)}
@@ -230,7 +231,7 @@ function ExpiringCard({ data }: { data: Retention }) {
                     <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
                       {row.renewals.toLocaleString(language)}
                     </span>
-                  </button>
+                  </ListRow>
                 );
               })}
             </div>

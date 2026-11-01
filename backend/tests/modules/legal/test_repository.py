@@ -86,7 +86,7 @@ async def test_list_documents_creates_all_kinds_once(legal_repository: LegalRepo
     documents = await legal_repository.list_documents()
 
     assert [d.kind for d in documents] == list(LegalDocumentKind)
-    assert all(d.show_in_bot and d.show_in_cabinet for d in documents)
+    assert not any(d.show_in_bot or d.show_in_cabinet for d in documents)
 
 
 async def test_concurrent_first_reads_create_documents_once(engine: AsyncEngine) -> None:

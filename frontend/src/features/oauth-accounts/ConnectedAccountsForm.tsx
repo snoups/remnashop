@@ -37,6 +37,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Field } from "@shared/ui/Field";
 import { TextInput } from "@shared/ui/TextInput";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { Pressable } from "@shared/ui/Pressable";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -321,15 +322,15 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
               </div>
             </div>
             <div className="flex shrink-0 gap-1">
-              <button
+              <Pressable
                 type="button"
                 onClick={() => setRenameTarget(passkey)}
                 disabled={pendingAction !== null}
                 className="rounded-full p-1.5 text-foreground/70 hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Pencil className="size-4" />
-              </button>
-              <button
+              </Pressable>
+              <Pressable
                 type="button"
                 onClick={() => setDeleteTarget(passkey)}
                 disabled={pendingAction !== null}
@@ -340,7 +341,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 ) : (
                   <Trash2 className="size-4" />
                 )}
-              </button>
+              </Pressable>
             </div>
           </div>
         ))}

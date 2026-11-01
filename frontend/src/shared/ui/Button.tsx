@@ -1,8 +1,8 @@
 import { Loader2, type LucideIcon } from "lucide-react";
-import { motion, type HTMLMotionProps } from "motion/react";
+import type { HTMLMotionProps } from "motion/react";
 import type { ReactNode } from "react";
 
-import { bounceTap } from "@shared/lib/bounceState";
+import { Pressable } from "@shared/ui/Pressable";
 
 // accent/solid/outline/danger: primary and destructive actions, dialog and form footers (14px).
 // secondary: card-header actions and buttons next to a field (12.5px semibold).
@@ -57,15 +57,14 @@ export function Button({
     size === "sm" ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}` : TYPE_CLASS[variant];
 
   return (
-    <motion.button
+    <Pressable
       type={type}
-      {...bounceTap()}
       className={`flex shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${COLOR_CLASS[variant]} ${typography} ${className}`}
       disabled={disabled || isLoading}
       {...props}
     >
       {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : Icon && <Icon className="size-3.5" />}
       {children}
-    </motion.button>
+    </Pressable>
   );
 }

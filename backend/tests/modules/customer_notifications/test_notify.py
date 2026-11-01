@@ -60,6 +60,8 @@ ntf-customer-paid-order-not-fulfilled = Not issued.
     .title = Problem
 ntf-customer-torrent-blocker-report = Torrents are forbidden.
     .title = Torrents
+ntf-customer-payments-restored = Payments are back.
+    .title = Payments
 """
 _PURCHASED = "SubscriptionPurchasedEvent"
 
@@ -285,7 +287,7 @@ async def test_failed_email_releases_its_key_and_keeps_telegram(fx: _Fixture, re
         await fx.notify(user)
 
     assert len(fx.telegram.messages) == 1
-    assert not await redis.exists(f"{REDIS_KEY_PREFIX}customer_notified:1:EMAIL")
+    assert not await redis.exists(f"{REDIS_KEY_PREFIX}customer_notified:1:{user.id}:EMAIL")
 
     fx.email.kiq = original  # type: ignore[method-assign]
     await fx.notify(user)
@@ -561,7 +563,7 @@ async def test_feed_not_duplicated_on_retry_after_channel_failure(
 
     assert len(await fx.feed_rows(user)) == 1
     assert len(fx.telegram.messages) == 1
-    assert not await redis.exists(f"{REDIS_KEY_PREFIX}customer_notified:52:PUSH")
+    assert not await redis.exists(f"{REDIS_KEY_PREFIX}customer_notified:52:{user.id}:PUSH")
 
     fx.push.send = healthy  # type: ignore[method-assign]
     await fx.notify(user, outbox_id=52)
@@ -629,3 +631,17 @@ async def test_no_push_without_cabinet_subscription(fx: _Fixture) -> None:
 
     assert fx.push.sent == []
     assert len(fx.telegram.messages) == 1
+
+
+async def test_one_outbox_event_reaches_every_customer_it_names(fx: _Fixture) -> None:
+    # the payment waitlist: one AccessSettingsChangedEvent, a notification per waiting customer
+    first = await fx.create(name="w1", telegram_id=8401)
+    second = await fx.create(name="w2", email="w2@example.com")
+
+    await fx.notify(first, event_type="PaymentsRestored", outbox_id=77)
+    await fx.notify(second, event_type="PaymentsRestored", outbox_id=77)
+
+    assert len(fx.telegram.messages) == 1
+    assert len(fx.email.messages) == 1
+    assert len(await fx.feed_rows(first)) == 1
+    assert len(await fx.feed_rows(second)) == 1

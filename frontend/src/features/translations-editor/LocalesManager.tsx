@@ -1,5 +1,4 @@
 import { Check, ChevronDown, Globe, Star } from "lucide-react";
-import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,11 +6,11 @@ import { addLocale, type ActiveLocalesResult, removeLocale, setDefaultLocale } f
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { localeLabel } from "@shared/i18n/locale-label";
-import { bounceTap } from "@shared/lib/bounceState";
 import { toast } from "@shared/lib/toast";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Pressable } from "@shared/ui/Pressable";
 
 // the list's max-h-72, same as SelectDropdown
 const POPOVER_MAX_HEIGHT = 288;
@@ -58,7 +57,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
 
   const row = (locale: string, isActive: boolean) => (
     <div key={locale} className="flex items-center">
-      <button
+      <Pressable
         type="button"
         disabled={
           locale === defaultLocale || isPending || !permissions.includes(isActive ? "LOCALES_REMOVE" : "LOCALES_ADD")
@@ -77,9 +76,9 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         <span className="ml-auto shrink-0 text-[11px] uppercase tabular-nums opacity-60">
           {locale}
         </span>
-      </button>
+      </Pressable>
       {isActive && (
-        <button
+        <Pressable
           type="button"
           disabled={locale === defaultLocale || isPending || !canSetDefault}
           onClick={() => void run(() => setDefaultLocale(locale))}
@@ -88,18 +87,17 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
           }`}
         >
           <Star className={`size-3.5 ${locale === defaultLocale ? "fill-current" : ""}`} />
-        </button>
+        </Pressable>
       )}
     </div>
   );
 
   return (
     <div ref={ref} onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}>
-      <motion.button
+      <Pressable
         ref={triggerRef}
         type="button"
         onClick={toggleOpen}
-        {...bounceTap()}
         // the PillTabs capsule next to it: same border, fill, text and hover
         className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-4 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06]"
       >
@@ -108,7 +106,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         <ChevronDown
           className={`ml-auto size-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
-      </motion.button>
+      </Pressable>
 
       <PortalPopover
         open={isOpen}

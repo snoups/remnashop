@@ -5,11 +5,17 @@
     "done": "Done",
     "copyFailed": "Failed to copy — the browser blocked clipboard access."
   },
+  "mobileNotice": {
+    "title": "Better on a computer",
+    "description": "The control panel is not yet adapted for small screens.",
+    "continueButton": "Continue"
+  },
   "common": {
     "today": "Today",
     "yesterday": "Yesterday",
     "cancel": "Cancel",
     "save": "Save",
+    "unsavedChanges": "Unsaved changes",
     "saving": "Saving…",
     "saved": "Saved.",
     "delete": "Delete",
@@ -647,7 +653,7 @@
       "BroadcastFailedEvent": "Broadcast failed",
       "BroadcastCanceledEvent": "Broadcast canceled",
       "BroadcastRecalledEvent": "Broadcast recalled",
-      "VapidKeysGeneratedEvent": "Web push keys generated",
+      "VapidKeysGeneratedEvent": "Push notification keys generated",
       "GatewayChangedEvent": "Payment gateway changed",
       "PricingSettingsChangedEvent": "Pricing settings changed",
       "ReferralSettingsChangedEvent": "Referral settings changed",
@@ -1046,6 +1052,8 @@
     "openLink": "Learn more"
   },
   "header": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
     "account": "Login",
     "profile": "Profile",
     "logout": "Log out",
@@ -1256,17 +1264,17 @@
     "shop": {
       "title": "Shop",
       "description": "Limits and rules",
-      "maxActiveSubscriptionsLabel": "Max active subscriptions per user",
+      "maxActiveSubscriptionsLabel": "Subscription limit per user",
       "unlimitedPlaceholder": "Unlimited",
       "deviceSingleResetLabel": "Single device reset",
       "deviceAllResetLabel": "Reset all devices",
       "linkResetLabel": "Subscription link reset",
       "referralResetLabel": "Referral link reset",
-      "cooldownHoursLabel": "Cooldown, h",
+      "hoursSuffix": "h",
       "supportTelegramLabel": "Support on Telegram",
-      "supportTelegramHint": "A username or a t.me link, blank to hide",
+      "supportTelegramPlaceholder": "@support or t.me/support",
       "supportUrlLabel": "Support in the browser",
-      "supportUrlHint": "An https:// page, blank to hide",
+      "supportUrlPlaceholder": "https://example.com/support",
       "invalidInput": "Check the entered values."
     },
     "gateways": {
@@ -1362,33 +1370,34 @@
       }
     },
     "webPush": {
-      "title": "Web push",
-      "description": "Keys browsers use to accept notifications from this shop",
+      "title": "Push notifications",
+      "description": "Shared keys for notifications in the dashboard and the cabinet",
       "configured": "Configured",
       "notConfigured": "Not configured",
       "publicKey": "Public key",
-      "contact": "Contact",
-      "contactHint": "Email or https:// — push services write here about problems",
+      "contact": "Contact email",
       "contactPlaceholder": "admin@example.com",
-      "generate": "Generate keys",
+      "test": "Test notification",
       "regenerate": "Regenerate keys",
+      "confirmAction": "Regenerate",
       "confirmTitle": "Regenerate keys?",
       "confirm": "Every device will have to turn push on again.",
       "generated": "Keys generated."
     },
     "access": {
-      "title": "Access",
-      "description": "Who can sign up and pay — in the bot and the web cabinet",
+      "title": "Service availability",
+      "description": "Access to sign-up and payment",
       "modes": {
-        "public": "Open to everyone",
+        "public": "Open",
         "invited": "Invite only",
-        "restricted": "Closed (maintenance)"
+        "restricted": "Closed"
       },
       "modeHints": {
         "public": "Anyone can sign up",
         "invited": "New users need a referral or an ad link",
         "restricted": "Only staff can use the bot and the cabinet"
       },
+      "modeLabel": "Access mode",
       "registrationLabel": "New user sign-ups",
       "paymentsLabel": "Accept payments",
       "waitlist_one": "{{count}} waiting to pay",
@@ -1613,38 +1622,32 @@
     },
     "legal": {
       "title": "Legal documents",
-      "description": "Offer, user agreement and privacy policy",
-      "offerMissing": "The offer is not visible in a channel where payment is possible: {{channels}}.",
+      "description": "Public offer, agreement and privacy policy",
       "channels": {
         "BOT": "bot",
         "CABINET": "cabinet"
       },
       "kinds": {
-        "OFFER": "Offer",
+        "OFFER": "Public offer",
         "USER_AGREEMENT": "User agreement",
         "PRIVACY_POLICY": "Privacy policy"
       },
-      "kindDescriptions": {
-        "OFFER": "Shown to a customer before payment",
-        "USER_AGREEMENT": "Accepted before using the bot and when signing in to the cabinet",
-        "PRIVACY_POLICY": "Accepted before using the bot and when signing in to the cabinet"
-      },
-      "showIn": {
-        "BOT": "Show in the bot",
-        "CABINET": "Show in the cabinet"
-      },
       "tabs": {
         "common": "Common",
+        "BOT": "Telegram bot",
+        "CABINET": "Web cabinet"
+      },
+      "chips": {
         "BOT": "Bot",
         "CABINET": "Cabinet"
       },
-      "ownText": "Own text",
-      "usesCommon": "The common text is used.",
+      "insertTemplate": "Insert template",
+      "resetToCommon": "Use the common text",
       "titleLabel": "Title",
       "bodyLabel": "Text",
-      "bodyHint": "Markdown. The title and text together are limited to 32768 characters.",
+      "bodyHint": "Markdown is supported. The title and text together are limited to {{limit}} characters.",
       "reaccept": "Ask customers to accept again",
-      "reacceptHint": "Every customer will see the new version on their next bot action or cabinet visit. Leave it off for minor edits.",
+      "reacceptHint": "Every customer will see the new version on their next bot action or cabinet visit.",
       "lastReaccept": "Last acceptance request: {{date}}"
     }
   },
@@ -1786,7 +1789,7 @@
         "telegram": "Telegram"
       },
       "push": {
-        "label": "Push on this device",
+        "label": "Push notifications on this device",
         "test": "Send test",
         "testSent": "Test notification sent.",
         "iosInstall": "Add the dashboard to the Home Screen to get push on iPhone",
@@ -2051,9 +2054,9 @@
     "DIALOGS_EXPORT": "Export windows",
     "DIALOGS_IMPORT": "Import windows",
     "NOTIFICATIONS_VIEW": "View notifications",
-    "NOTIFICATION_SETTINGS_VIEW": "View web push settings",
-    "NOTIFICATION_SETTINGS_MANAGE": "Change web push settings",
-    "NOTIFICATION_VAPID_KEYS_GENERATE": "Generate web push keys",
+    "NOTIFICATION_SETTINGS_VIEW": "View push notification settings",
+    "NOTIFICATION_SETTINGS_MANAGE": "Change push notification settings",
+    "NOTIFICATION_VAPID_KEYS_GENERATE": "Generate push notification keys",
     "LOYALTY_SETTINGS_VIEW": "View loyalty settings",
     "LOYALTY_SETTINGS_MANAGE": "Edit loyalty settings",
     "LOYALTY_SETTINGS_RESET": "Reset loyalty settings",
@@ -2093,7 +2096,7 @@
     "dialogs": "Bot windows",
     "emojiPacks": "Emoji packs",
     "loyalty": "Loyalty",
-    "notificationSettings": "Web push",
+    "notificationSettings": "Push notifications",
     "accessSettings": "Access",
     "cabinetAuthSettings": "Cabinet sign-in",
     "emailSettings": "Email",
@@ -3398,7 +3401,7 @@
         "cardCorner": "In a p-4 card corner, −mr/−mt 1.5 — 10/10 inset.",
         "toast": "In a p-3.5 toast, −my/−mr 1 — 10 inset all round.",
         "dialogClose": "In a px-5 py-4 dialog header.",
-        "glass": "Glass controls in the page header, with a tap bounce.",
+        "glass": "Glass controls in the page header.",
         "tabBar": "Page route tabs: settings, referrals, analytics.",
         "dialogTabs": "Dialog tabs: ad link, admin, event.",
         "segmented": "Page filters: plans, users, subscriptions.",
@@ -3410,6 +3413,7 @@
         "tag": "Counts and metadata: gray pill, no uppercase.",
         "badgeCount": "A number in a circle: subscriptions in the users list; stretches past one digit.",
         "badgeIcon": "Status with an icon.",
+        "statusPill": "Card-header status at button height: bot, push notifications. Not uppercase, unlike Badge.",
         "field": "Label, a 38px field and text under it.",
         "fieldInfo": "info — hint icon, aside — required star or a count.",
         "fieldError": "error replaces hint; the button beside it — secondary field.",
@@ -3428,6 +3432,9 @@
         "kpi": "Number tiles; highlighted variant.",
         "kpiIcon": "With an icon and a label hint.",
         "list": "Reference row list: admins, event log, transactions, ads, referrals.",
+        "pressable": "The base of everything pressable: positioning and the ripple, no look of its own. as picks the tag.",
+        "settingsRowPress": "A pressable settings row (OAuth, gateways, emoji packs): the row presses, its own controls keep their clicks; chevron via expanded, a custom badge via glyph.",
+        "listRow": "A table row that opens details: Pressable + LIST_ROW_CLASS, the grid via className. Disabled (no right to open): no hover, no ripple, third row.",
         "table": "Page table: analytics cohorts.",
         "compact": "Compact table in a dialog: price changes.",
         "dialogHeader": "Every dialog’s header: icon or glyph, badges, subtitle, actions, close.",
@@ -3451,6 +3458,7 @@
         "passwordInput": "Login, bootstrap, profile passwords and OAuth client secrets",
         "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red",
         "cardHeader": "Page and settings card header: icon, title, description, right-side block, divider",
+        "settingsRow": "Settings card rows (General tab): icon, label, description or hint, control on the right. A thin line between rows of a section, a plain one between sections; one Save with the unsaved mark.",
         "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards",
         "labeledDivider": "Rule with a label in the middle: “or” on sign-in, donation section.",
         "refetchSpinner": "Corner spinner over a loaded list while it refetches.",
@@ -3849,8 +3857,9 @@
     "PURCHASE_IN_PROGRESS": "This purchase is already being processed.",
     "PURCHASE_SUPERSEDED": "The subscription changed during the purchase — try again.",
     "PUSH_ENDPOINT_NOT_ALLOWED": "This browser’s push service isn’t supported.",
-    "PUSH_NOT_CONFIGURED": "Web push isn’t set up yet: the owner has to generate keys in Settings.",
-    "PUSH_NO_SUBSCRIPTIONS": "Turn on push on this device first.",
+    "PUSH_CONTACT_REQUIRED": "Set a contact email for push notifications first.",
+    "PUSH_NOT_CONFIGURED": "Push notifications aren’t set up yet: the owner has to generate keys in Settings.",
+    "PUSH_NO_SUBSCRIPTIONS": "Turn on “Push notifications on this device” in your profile under “Notifications”.",
     "PUSH_SUBSCRIPTION_NOT_FOUND": "Device not found.",
     "RATE_LIMITED": "Too many requests — try again later.",
     "REFERRAL_REWARD_ALREADY_GRANTED": "This reward was already granted.",

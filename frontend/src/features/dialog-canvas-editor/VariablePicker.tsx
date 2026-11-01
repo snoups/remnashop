@@ -7,6 +7,7 @@ import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
+import { Pressable } from "@shared/ui/Pressable";
 
 const POPOVER_MAX_HEIGHT = 340;
 // below this a scan is quicker than typing
@@ -52,7 +53,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
 
   return (
     <>
-      <button
+      <Pressable
         ref={triggerRef}
         type="button"
         disabled={disabled || variables.length === 0}
@@ -62,7 +63,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
         className="flex size-[26px] cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Braces className="size-[16px]" />
-      </button>
+      </Pressable>
 
       <PortalPopover
         open={isOpen}
@@ -101,7 +102,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
                 {t(`dialogs.variableCategories.${category}`, { defaultValue: category })}
               </span>
               {items.map(({ name }) => (
-                <button
+                <Pressable
                   key={name}
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
@@ -113,7 +114,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
                 >
                   <span className="text-[13px] font-medium text-foreground">{label(name)}</span>
                   <span className="font-mono text-[12px] text-muted-foreground">{format(name)}</span>
-                </button>
+                </Pressable>
               ))}
             </div>
           ))}

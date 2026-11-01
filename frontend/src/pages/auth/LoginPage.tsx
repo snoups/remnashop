@@ -62,7 +62,7 @@ export function LoginPage() {
         ) : (
           <motion.div
             key="card"
-            className="flex w-full max-w-sm flex-col items-center gap-8 rounded-2xl border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
+            className="flex w-full max-w-sm flex-col items-center gap-8 rounded-2xl max-md:rounded-card border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
             initial="leave"
             animate={isLeaving ? "leave" : "rest"}
             variants={CARD_VARIANTS}

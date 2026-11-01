@@ -14,7 +14,6 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -32,7 +31,6 @@ import { BalanceTiles } from "@features/user-details/BalanceTiles";
 import { LegalAcceptancesCard } from "@features/user-details/LegalAcceptancesCard";
 import { RegistrationCard } from "@features/user-details/RegistrationCard";
 import { userHandle } from "@features/user-referrals/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -44,6 +42,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
 // Profile/sessions/events tabs shared by the user and admin details dialogs.
 
@@ -229,11 +228,10 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
       )}
       {state.kind === "ready" &&
         state.items.map((entry) => (
-          <motion.button
+          <Pressable
             key={entry.id}
             type="button"
             onClick={() => setOpenedEntry(entry)}
-            {...bounceTap(0.03)}
             className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors hover:bg-white/[0.04]"
           >
             <span
@@ -247,7 +245,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
             <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
               {formatDateTime(entry.occurred_at, i18n.language)}
             </span>
-          </motion.button>
+          </Pressable>
         ))}
       {state.kind === "ready" && hasMore && (
         <div className="px-2.5 py-1">

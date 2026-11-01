@@ -1,5 +1,4 @@
 import { ChevronRight, Coins, CornerUpLeft, Gift, Layers } from "lucide-react";
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,7 +20,6 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
 import { formatTime } from "@shared/lib/relative-time";
-import { bounceTap } from "@shared/lib/bounceState";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
@@ -38,7 +36,8 @@ import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { Card } from "@shared/ui/Card";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { ListRow } from "@shared/ui/ListRow";
 
 const FILTER_DEBOUNCE_MS = 200;
 const LEVELS = [1, 2, 3];
@@ -250,13 +249,12 @@ export function ReferralsListPage() {
                       const canOpen = canViewStats && referred !== null;
                       const rewards = formatRewards(item);
                       return (
-                        <motion.button
+                        <ListRow
                           key={item.id}
                           type="button"
                           disabled={!canOpen}
                           onClick={() => setStatsUser(referred)}
-                          {...(canOpen && bounceTap(0.03))}
-                          className={`${ROW_GRID_CLASSNAME} w-full ${LIST_ROW_CLASS} text-left enabled:hover:bg-white/[0.04] disabled:cursor-default`}
+                          className={ROW_GRID_CLASSNAME}
                         >
                           <span
                             className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground"
@@ -307,7 +305,7 @@ export function ReferralsListPage() {
                             {formatTime(item.created_at, i18n.language)}
                           </span>
                           {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                        </motion.button>
+                        </ListRow>
                       );
                     })}
                   </Collapse>

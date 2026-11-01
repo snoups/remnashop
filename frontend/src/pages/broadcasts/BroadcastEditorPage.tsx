@@ -256,7 +256,7 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <IconButton size="9" tone="glass" bounce={0.12} onClick={() => navigate(LIST_PATH)}>
+        <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>
           <ChevronLeft className="size-4" />
         </IconButton>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

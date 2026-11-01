@@ -27,6 +27,7 @@ import { SuffixInput, TextInput } from "@shared/ui/TextInput";
 import { Card } from "@shared/ui/Card";
 import { Field } from "@shared/ui/Field";
 import { CardHeader } from "@shared/ui/CardHeader";
+import { Pressable } from "@shared/ui/Pressable";
 
 const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
@@ -314,7 +315,7 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
         {t("pricing.anchor.title")}
       </span>
       {ANCHOR_CURRENCIES.map((currency) => (
-        <button
+        <Pressable
           key={currency}
           type="button"
           disabled={isLoading}
@@ -324,7 +325,7 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
           }`}
         >
           {currency}
-        </button>
+        </Pressable>
       ))}
 
       {diff && (

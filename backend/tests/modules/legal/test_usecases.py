@@ -2,19 +2,16 @@ from typing import Optional
 
 import pytest
 
-from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     LegalAcceptanceTrigger,
     LegalDocumentKind,
     Locale,
-    PaymentGatewayType,
     PurchaseChannel,
     Role,
 )
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
-from app.modules.gateways import GatewayRepository
 from app.modules.legal.dto import (
     CreateLegalAcceptanceDto,
     CreateLegalRevisionDto,
@@ -31,8 +28,6 @@ from app.modules.legal.usecases import (
     SetLegalTextUseCase,
     UpdateLegalDocumentUseCase,
 )
-from app.modules.settings import SettingsRepository
-from app.modules.settings.dto import UpdateBotSettingsDto
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -250,11 +245,11 @@ async def test_update_publishes_changed_fields(
     document = await use_case(
         OWNER,
         UpdateLegalDocumentDto(
-            kind=OFFER, show_in_bot=False, show_in_cabinet=True, client_ip="1.1.1.1"
+            kind=OFFER, show_in_bot=True, show_in_cabinet=False, client_ip="1.1.1.1"
         ),
     )
 
-    assert document.show_in_bot is False
+    assert document.show_in_bot is True
     (event,) = events.events
     assert isinstance(event, LegalDocumentChangedEvent)
     assert event.changed == ["show_in_bot"]
@@ -275,86 +270,18 @@ async def test_requires_permission(legal_repository: LegalRepository, uow: UnitO
 
 def _list_use_case(
     legal_repository: LegalRepository,
-    gateway_repository: GatewayRepository,
-    settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
-    config: AppConfig,
     uow: UnitOfWork,
 ) -> ListLegalDocumentsUseCase:
-    return ListLegalDocumentsUseCase(
-        legal_repository,
-        gateway_repository,
-        settings_repository,
-        translation_repository,
-        config,
-        uow,
-    )
-
-
-async def test_offer_missing_in_lists_paying_channel_without_offer(
-    legal_repository: LegalRepository,
-    gateway_repository: GatewayRepository,
-    settings_repository: SettingsRepository,
-    translation_repository: TranslationRepository,
-    config: AppConfig,
-    uow: UnitOfWork,
-) -> None:
-    cabinet_config = config.model_copy(
-        update={"cabinet": config.cabinet.model_copy(update={"domain": "shop.example.com"})}
-    )
-    use_case = _list_use_case(
-        legal_repository,
-        gateway_repository,
-        settings_repository,
-        translation_repository,
-        cabinet_config,
-        uow,
-    )
-    await settings_repository.update_bot_settings(
-        UpdateBotSettingsDto(token="123:abc", secret_token="secret")
-    )
-
-    assert (await use_case(OWNER)).offer_missing_in == []
-
-    await gateway_repository.update_settings(
-        PaymentGatewayType.CRYPTOMUS, {"merchant_id": "m1", "api_key": "secret"}
-    )
-    await gateway_repository.set_active(PaymentGatewayType.CRYPTOMUS, True)
-    result = await use_case(OWNER)
-    assert result.offer_missing_in == [PurchaseChannel.BOT, PurchaseChannel.CABINET]
-
-    default = await translation_repository.get_default_locale()
-    await legal_repository.add_revision(
-        CreateLegalRevisionDto(
-            kind=OFFER,
-            locale=default,
-            channel=PurchaseChannel.BOT,
-            title="t",
-            body="b",
-            created_by=None,
-        )
-    )
-    result = await use_case(OWNER)
-    assert result.offer_missing_in == [PurchaseChannel.CABINET]
-    assert [t.body for t in result.texts] == ["b"]
+    return ListLegalDocumentsUseCase(legal_repository, translation_repository, uow)
 
 
 async def test_list_documents_reports_last_reacceptance_at(
     legal_repository: LegalRepository,
-    gateway_repository: GatewayRepository,
-    settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
-    config: AppConfig,
     uow: UnitOfWork,
 ) -> None:
-    use_case = _list_use_case(
-        legal_repository,
-        gateway_repository,
-        settings_repository,
-        translation_repository,
-        config,
-        uow,
-    )
+    use_case = _list_use_case(legal_repository, translation_repository, uow)
 
     def _revision(channel: Optional[PurchaseChannel], reaccept: bool) -> CreateLegalRevisionDto:
         return CreateLegalRevisionDto(

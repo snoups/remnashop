@@ -40,7 +40,6 @@ import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
-import { bounceTap } from "@shared/lib/bounceState";
 import { formatDate, formatRelative } from "@shared/lib/relative-time";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
@@ -58,6 +57,7 @@ import { SelectDropdown, type SelectOption } from "@shared/ui/SelectDropdown";
 import { dotIcon } from "@shared/ui/optionIcons";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
 type Kpi = "all" | "new" | "subscribed" | "blocked";
 
@@ -211,7 +211,7 @@ export function UsersPage() {
     const isActive = sort.by === by;
     const Arrow = sort.descending ? ArrowDown : ArrowUp;
     return (
-      <button
+      <Pressable
         type="button"
         onClick={() => toggleSort(by)}
         className={`flex items-center gap-1 uppercase transition-colors hover:text-foreground ${
@@ -220,7 +220,7 @@ export function UsersPage() {
       >
         {label}
         {isActive && <Arrow className="size-3" />}
-      </button>
+      </Pressable>
     );
   };
 
@@ -414,15 +414,13 @@ export function UsersPage() {
                   return (
                     <motion.div
                       key={user.id}
-                      {...bounceTap(0.03)}
                       className={`${ROW_GRID_CLASSNAME} relative ${LIST_ROW_CLASS} hover:bg-white/[0.04] has-[[aria-expanded=true]]:z-20`}
                     >
                       {/* whole-row hit area; sits under the action menu (z-10) */}
-                      <button
+                      <Pressable
                         type="button"
                         onClick={() => setDetailsUser(user)}
-                        className="absolute inset-0 cursor-pointer rounded-full"
-                      />
+                        className="absolute inset-0 cursor-pointer rounded-full" />
                       <span
                         className={`flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >

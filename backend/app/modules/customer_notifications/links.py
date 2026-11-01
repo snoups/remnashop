@@ -2,6 +2,7 @@ from typing import Any, Final, Mapping, Optional
 
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
+from app.modules.customer_notifications.waitlist import PAYMENTS_RESTORED
 from app.modules.promocodes import PromocodeDiscountExpiringEvent
 from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
 from app.modules.subscriptions import (
@@ -31,6 +32,7 @@ _FIXED: Final[dict[str, str]] = {
     ReferralRewardIssuedEvent.__name__: "/invite/friends",
     InviteeRewardIssuedEvent.__name__: "/profile",
     PromocodeDiscountExpiringEvent.__name__: "/purchase",
+    PAYMENTS_RESTORED: "/purchase",
 }
 _SUBSCRIPTION: Final[frozenset[str]] = frozenset(
     e.__name__

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { useKit } from "@pages/debug/use-kit";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 
 export interface DebugSectionLink {
   id: string;
@@ -32,7 +33,7 @@ export function DebugNav({ links }: { links: DebugSectionLink[] }) {
       className="no-scrollbar sticky top-0 z-20 flex gap-1 overflow-x-auto rounded-full border border-glass-border bg-popover/60 p-1 backdrop-blur-2xl backdrop-saturate-150"
     >
       {links.map(({ id, label }) => (
-        <button
+        <Pressable
           key={id}
           type="button"
           onClick={() => {
@@ -44,7 +45,7 @@ export function DebugNav({ links }: { links: DebugSectionLink[] }) {
           }`}
         >
           {label}
-        </button>
+        </Pressable>
       ))}
     </nav>
   );
@@ -83,7 +84,7 @@ export function Specimen({
 }) {
   return (
     <div
-      className={`flex flex-col rounded-2xl border border-white/[0.08] bg-white/[0.03] ${
+      className={`flex flex-col rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] ${
         wide ? "sm:col-span-2" : ""
       }`}
     >

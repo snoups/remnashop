@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { Pressable } from "@shared/ui/Pressable";
 
 const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
 
@@ -148,7 +149,7 @@ export function WindowInspector({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className="flex w-full flex-col gap-4 rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{label}</span>
@@ -158,7 +159,7 @@ export function WindowInspector({
             </span>
           )}
         </div>
-        <button
+        <Pressable
           type="button"
           onClick={() => {
             void copyToClipboard(window.key).then((copied) => {
@@ -168,7 +169,7 @@ export function WindowInspector({
           className="block max-w-full truncate text-left font-mono text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {window.key}
-        </button>
+        </Pressable>
       </div>
 
       {window.kind === "custom" && (
@@ -247,7 +248,7 @@ export function WindowInspector({
                 onChange={(event) => void handleFileChange(event)}
               />
               {canUpload && (
-                <button
+                <Pressable
                   type="button"
                   disabled={isBusy || !activeLocale}
                   onClick={() => fileInputRef.current?.click()}
@@ -255,20 +256,20 @@ export function WindowInspector({
                 >
                   <Upload className="size-3" />
                   {t(bannerUrl ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
-                </button>
+                </Pressable>
               )}
               {canDeleteBanner && bannerUrl && (
-                <button
+                <Pressable
                   type="button"
                   disabled={isBusy}
                   onClick={() => void handleBannerDelete()}
                   className="ml-auto flex size-6 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15 disabled:opacity-40"
                 >
                   <Trash2 className="size-3" />
-                </button>
+                </Pressable>
               )}
               {mode === "shared" && canRestoreDefault && (
-                <button
+                <Pressable
                   type="button"
                   disabled={isBusy}
                   onClick={() => void handleRestoreDefault()}
@@ -277,7 +278,7 @@ export function WindowInspector({
                   }`}
                 >
                   <RotateCcw className="size-3" />
-                </button>
+                </Pressable>
               )}
             </div>
           </div>

@@ -179,7 +179,6 @@ export function RunsCard({
                         <IconButton
                           size="8"
                           tone="danger"
-                          bounce={0.05}
                           onClick={() => setPendingDelete(run)}
                           disabled={isRunning}
                         >

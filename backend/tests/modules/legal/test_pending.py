@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
+import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,8 @@ from app.modules.legal.pending import pending_documents
 from app.modules.legal.repository import LegalRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+
+pytestmark = pytest.mark.usefixtures("shown_documents")
 
 AGREEMENT = LegalDocumentKind.USER_AGREEMENT
 POLICY = LegalDocumentKind.PRIVACY_POLICY
