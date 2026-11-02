@@ -113,7 +113,7 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
             if chain:
                 # held through the sleep: a tick or retry kick meanwhile is a no-op
                 await lock.reacquire()
-                # paces batches to bulk_rate_per_minute; the worker slot waits, not the queue
+                # paces batches to the server's rate_per_minute; the worker waits, not the queue
                 await asyncio.sleep(max(0.0, EMAIL_BATCH_WINDOW_S - (time.monotonic() - started)))
                 chain = await self._still_sending(data)
         finally:
@@ -144,7 +144,7 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
                 return True
             pending = await self._broadcast_repository.claim_pending_email(
                 data,
-                settings.bulk_rate_per_minute,
+                profile.rate_per_minute,
                 CLAIM_LEASE,
                 marketing=broadcast.category is BroadcastCategory.MARKETING,
             )

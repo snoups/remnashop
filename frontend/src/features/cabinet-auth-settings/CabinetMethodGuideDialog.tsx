@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideCopy, GuideDialog, GuideHeading } from "@shared/ui/glass/GuideDialog";
 
 export type GuideMethod =
   | "telegramMiniApp"
@@ -29,7 +28,7 @@ export function CabinetMethodGuideDialog({ method }: { method: GuideMethod }) {
     <GuideDialog title={t(`settings.cabinetAuth.guides.${method}.title`)}>
       {sections.map((section) => (
         <div key={section.title}>
-          <h3 className="text-sm font-bold text-foreground">{section.title}</h3>
+          <GuideHeading>{section.title}</GuideHeading>
           <p className="mt-2">{section.body}</p>
           {section.link && (
             <a
@@ -44,7 +43,7 @@ export function CabinetMethodGuideDialog({ method }: { method: GuideMethod }) {
           {section.values && (
             <div className="mt-3 flex flex-col gap-2">
               {section.values.map((item) => (
-                <CopyableValue key={item.label} label={item.label} value={item.value} />
+                <GuideCopy key={item.label} label={item.label} value={item.value} />
               ))}
             </div>
           )}

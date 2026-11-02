@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { withEmphasis } from "@shared/lib/text-emphasis";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideCopy, GuideDialog, GuideHeading } from "@shared/ui/glass/GuideDialog";
 
 export function GithubOAuthGuideDialog() {
   const { t } = useTranslation();
@@ -12,9 +11,9 @@ export function GithubOAuthGuideDialog() {
       title={t("settings.oauth.githubGuide.title")}
     >
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.githubGuide.createAppTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {t("settings.oauth.githubGuide.createAppIntro")}{" "}
           <a
@@ -32,7 +31,7 @@ export function GithubOAuthGuideDialog() {
         </p>
 
         <div className="mt-3">
-          <CopyableValue
+          <GuideCopy
             label={t("settings.oauth.githubGuide.callbackCommentLabel")}
             value={t("settings.oauth.githubGuide.callbackUrlValue")}
           />
@@ -44,9 +43,9 @@ export function GithubOAuthGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.githubGuide.settingsTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.githubGuide.settingsBody"), ["Client ID", "Client secret"])}
         </p>

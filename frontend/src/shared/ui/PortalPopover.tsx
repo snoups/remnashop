@@ -10,7 +10,7 @@ import {
   type PopoverAnchor,
   type RightPopoverAnchor,
 } from "@shared/lib/popover-anchor";
-import { POPOVER_CLASS } from "@shared/ui/classes";
+import { GLASS_POPOVER_CLASS, POPOVER_CLASS } from "@shared/ui/classes";
 
 interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "className"> {
   open: boolean;
@@ -27,6 +27,8 @@ interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "class
   className: string;
   /** no backdrop blur: for content that repaints every frame (animated emoji), which a blur re-renders */
   solid?: boolean;
+  /** the glass design's material (the header's capsule menus) */
+  glass?: boolean;
   /** false: no click-catching layer under the open popover, for one that stays open while its trigger is used (a search
    * field) or opens on hover (the layer would take the pointer off the trigger and close it) */
   modal?: boolean;
@@ -53,6 +55,7 @@ export function PortalPopover({
   extraGap = 0,
   className,
   solid = false,
+  glass = false,
   modal = true,
   style,
   children,
@@ -84,7 +87,7 @@ export function PortalPopover({
               ...style,
             }}
             // above Modal's z-50, so a popover opened inside a dialog draws over it
-            className={`${solid ? SOLID_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
+            className={`${solid ? SOLID_POPOVER_CLASS : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
           >
             {children}
           </motion.div>

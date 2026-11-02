@@ -158,7 +158,7 @@ function PromocodeDetailsDialogBody({
         badges={
           <>
             <IconButton size="6" onClick={handleCopy}>
-              {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+              {isCopied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
             </IconButton>
             <Badge tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
           </>

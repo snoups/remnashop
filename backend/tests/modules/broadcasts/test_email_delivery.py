@@ -599,7 +599,7 @@ async def test_lock_held_through_pacing_sleep(
     email_dispatch: RecordingDispatch,
     smtp: None,
 ) -> None:
-    await settings_repository.update_email_settings(UpdateEmailSettingsDto(bulk_rate_per_minute=1))
+    await settings_repository.update_email_settings(UpdateEmailSettingsDto(rate_per_minute=1))
     ids = await _users(session, user_repository, 220, 2)
     broadcast = await _email_broadcast(broadcast_repository, ids)
     intruder = FakeBatchSender()

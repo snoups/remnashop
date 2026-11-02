@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import {
@@ -28,6 +28,7 @@ import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
 import { Card } from "@shared/ui/Card";
+import { Section } from "@shared/ui/glass/Section";
 import { Pressable } from "@shared/ui/Pressable";
 
 /** Every other locale starts life as a copy of this one. */
@@ -200,33 +201,26 @@ export function TranslationsEditorForm() {
   };
 
   return (
-    <Card variant="bare" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] p-4">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
-          <Languages className="size-4" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-sm font-bold text-foreground">{t("dialogs.texts.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            {t("dialogs.texts.description")}
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
+    <Section
+      flush
+      className="min-h-0 flex-1"
+      icon={Languages}
+      title={t("dialogs.texts.title")}
+      description={t("dialogs.texts.description")}
+      aside={
+        <>
           {permissions.includes("TRANSLATIONS_EXPORT") && (
-            <Button variant="outline" onClick={() => void handleExport()}>
-              <Download className="size-3.5" />
+            <Button variant="glass" icon={Download} onClick={() => void handleExport()}>
               {t("dialogs.toolbar.export")}
             </Button>
           )}
           {permissions.includes("TRANSLATIONS_IMPORT") && (
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="size-3.5" />
+            <Button variant="glass" icon={Upload} onClick={() => fileInputRef.current?.click()}>
               {t("dialogs.toolbar.import")}
             </Button>
           )}
           {permissions.includes("TRANSLATIONS_RESET_ALL") && (
-            <Button variant="danger" onClick={() => setIsResetAllConfirmOpen(true)}>
-              <RotateCcw className="size-3.5" />
+            <Button variant="glassDanger" icon={RotateCcw} onClick={() => setIsResetAllConfirmOpen(true)}>
               {t("dialogs.inspector.resetAll")}
             </Button>
           )}
@@ -242,9 +236,9 @@ export function TranslationsEditorForm() {
               if (file) void handleFileChosen(file);
             }}
           />
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="flex min-h-0 flex-1 flex-col pt-4 lg:flex-row">
         <aside className="max-h-72 shrink-0 overflow-y-auto border-b border-white/[0.08] px-4 pb-4 lg:max-h-none lg:w-[27.7%] lg:overflow-y-visible lg:border-b-0 lg:pr-2">
           <div className="flex flex-col gap-1.5">
@@ -404,6 +398,6 @@ export function TranslationsEditorForm() {
           onCancel={() => setIsResetAllConfirmOpen(false)}
         />
       )}
-    </Card>
+    </Section>
   );
 }

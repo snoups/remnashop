@@ -44,6 +44,57 @@
   --radius-dialog: 24px;
 }
 
+/* Liquid glass over ShaderBackground. panel: a card, a translucent fill with a specular top rim;
+   control: a raised capsule (active tab, switch knob, primary button); well: a sunken field.
+   No backdrop-filter: the panel already blurs the shader, and inside main's mask a blur sees
+   nothing, so it would only cost GPU. Reduced transparency swaps the fill for an opaque one. */
+@utility glass-panel {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.025));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    inset 0 0 0 1px rgb(255 255 255 / 0.07),
+    0 30px 60px -30px rgb(0 0 0 / 0.65);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-surface);
+  }
+}
+
+@utility glass-control {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.06));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    0 6px 16px -8px rgb(0 0 0 / 0.5);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-popover);
+  }
+}
+
+/* A dialog over the lightly dimmed panel: a dense fill that still frosts the page behind it,
+   a dark outer edge and a deep shadow to lift it off. */
+@utility glass-dialog {
+  background: color-mix(in srgb, var(--color-popover) 90%, transparent);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    inset 0 0 0 1px rgb(255 255 255 / 0.12),
+    0 0 0 1px rgb(0 0 0 / 0.35),
+    0 40px 80px -24px rgb(0 0 0 / 0.7);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-popover);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@utility glass-well {
+  background: rgb(0 0 0 / 0.24);
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.35),
+    inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
 /* Fallback paint behind ShaderBackground's canvas: before it mounts, and when
    the canvas hides itself without WebGL2. */
 html {
@@ -180,16 +231,25 @@ textarea::-webkit-resizer {
   background-size: contain;
 }
 
-/* App-wide scrollbar styling. `scrollbar-color` covers Firefox; the
-   `::-webkit-scrollbar-*` pseudo-elements cover Chromium/Safari. */
-* {
-  scrollbar-color: var(--color-accent) transparent;
-  scrollbar-width: thin;
+/* App-wide scrollbar, 8px in every browser: --scrollbar-size is what paddings
+   and masks subtract for it. Chromium/Safari draw it from ::-webkit-scrollbar;
+   Firefox only knows `thin` (8px), so the standard properties stay behind a
+   Firefox-only check: Chromium 121+ drops the ::-webkit styles once
+   scrollbar-width/color are set and draws a wider thin bar of its own. */
+:root {
+  --scrollbar-size: 8px;
+}
+
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-color: var(--color-accent) transparent;
+    scrollbar-width: thin;
+  }
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
 }
 
 *::-webkit-scrollbar-track {
@@ -205,13 +265,23 @@ textarea::-webkit-resizer {
   background-color: var(--color-primary);
 }
 
+/* The track stops short of a rounded corner, so the thumb never runs into its
+   curve: a dialog's 24px corners (12px each end), the panel's 32px bottom corner. */
+[data-dialog] *::-webkit-scrollbar-track {
+  margin-block: 12px;
+}
+
+.page-scroll::-webkit-scrollbar-track {
+  margin-block-end: 18px;
+}
+
 
 /* Dialog bodies reserve the scrollbar's width up front, so content doesn't shift when
    the scrollbar appears, and give that width back out of their right padding (p-4/px-4),
    keeping the content area as wide as without a gutter. Nested lists keep their own layout. */
 [data-dialog] .min-h-0.flex-1.overflow-y-auto {
   scrollbar-gutter: stable;
-  padding-right: calc(1rem - 10px);
+  padding-right: calc(1rem - var(--scrollbar-size));
 }
 
 /* Nested-dialog morph (shared/ui/Modal.tsx): the parent panel resizes as an empty frame
@@ -230,58 +300,67 @@ textarea::-webkit-resizer {
 
 /* Fades scrolled content into the top edge of a container instead of a hard
    clip. Two mask layers: the fade gradient covers everything but the
-   rightmost 10px (the scrollbar width above), which gets an opaque layer so
+   rightmost --scrollbar-size (the scrollbar), which gets an opaque layer so
    the scrollbar, painted in the same box, doesn't fade too. */
 .scroll-fade-top {
   -webkit-mask-image:
     linear-gradient(to bottom, transparent, black 24px),
     linear-gradient(black, black);
   -webkit-mask-size:
-    calc(100% - 10px) 100%,
-    10px 100%;
+    calc(100% - var(--scrollbar-size)) 100%,
+    var(--scrollbar-size) 100%;
   -webkit-mask-position: left top, right top;
   -webkit-mask-repeat: no-repeat, no-repeat;
   mask-image:
     linear-gradient(to bottom, transparent, black 24px),
     linear-gradient(black, black);
   mask-size:
-    calc(100% - 10px) 100%,
-    10px 100%;
+    calc(100% - var(--scrollbar-size)) 100%,
+    var(--scrollbar-size) 100%;
   mask-position: left top, right top;
   mask-repeat: no-repeat, no-repeat;
 }
 
+/* A page with its own scroller (data-fills-main: settings) fades its content itself; main's fade
+   would dim the page's floating tab bar instead. */
+.scroll-fade-top:has([data-fills-main]) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
 /* Both edges of a dialog's scrolling body. The fades fit inside the body's
    own padding (--fade-top-size, 12px by default, on top; 16px+ at the
-   bottom), so at rest they cover only padding. The scrollbar keeps its
+   bottom), so at rest they cover only padding. --fade-top-start keeps the
+   top transparent that far first (content under a floating bar);
+   --fade-bottom-size 0px drops the bottom fade. The scrollbar keeps its
    opaque layer, as in .scroll-fade-top. */
 .scroll-fade-y {
   -webkit-mask-image:
     linear-gradient(
       to bottom,
-      transparent,
-      black var(--fade-top-size, 12px),
-      black calc(100% - 16px),
+      transparent var(--fade-top-start, 0px),
+      black calc(var(--fade-top-start, 0px) + var(--fade-top-size, 12px)),
+      black calc(100% - var(--fade-bottom-size, 16px)),
       transparent
     ),
     linear-gradient(black, black);
   -webkit-mask-size:
-    calc(100% - 10px) 100%,
-    10px 100%;
+    calc(100% - var(--scrollbar-size)) 100%,
+    var(--scrollbar-size) 100%;
   -webkit-mask-position: left top, right top;
   -webkit-mask-repeat: no-repeat, no-repeat;
   mask-image:
     linear-gradient(
       to bottom,
-      transparent,
-      black var(--fade-top-size, 12px),
-      black calc(100% - 16px),
+      transparent var(--fade-top-start, 0px),
+      black calc(var(--fade-top-start, 0px) + var(--fade-top-size, 12px)),
+      black calc(100% - var(--fade-bottom-size, 16px)),
       transparent
     ),
     linear-gradient(black, black);
   mask-size:
-    calc(100% - 10px) 100%,
-    10px 100%;
+    calc(100% - var(--scrollbar-size)) 100%,
+    var(--scrollbar-size) 100%;
   mask-position: left top, right top;
   mask-repeat: no-repeat, no-repeat;
 }

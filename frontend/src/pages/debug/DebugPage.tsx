@@ -8,11 +8,13 @@ import { useKit } from "@pages/debug/use-kit";
 import { ButtonsSection, IconButtonsSection } from "@pages/debug/sections/ButtonSections";
 import { CardsSection, FieldsSection, TablesSection } from "@pages/debug/sections/FormSections";
 import { DialogsSection, HintsSection, MenusSection, StatesSection } from "@pages/debug/sections/OverlaySections";
+import { GlassSection } from "@pages/debug/sections/GlassSections";
 import { BadgesSection, TabsSection } from "@pages/debug/sections/SelectionSections";
 import { TabBar } from "@shared/ui/TabBar";
 import type { TabBarItem } from "@shared/ui/TabBar";
 
 const SECTION_IDS = [
+  "glass",
   "buttons",
   "icons",
   "tabs",
@@ -63,6 +65,7 @@ export function DebugKitPage() {
 
       <DebugNav links={links} />
 
+      <GlassSection />
       <ButtonsSection />
       <IconButtonsSection />
       <TabsSection />

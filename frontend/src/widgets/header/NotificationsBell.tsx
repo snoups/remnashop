@@ -15,10 +15,11 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { pollWhileVisible } from "@shared/lib/poll-while-visible";
 import { onServiceWorkerMessage } from "@shared/lib/push";
 import { formatRelative } from "@shared/lib/relative-time";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { IconButton } from "@shared/ui/IconButton";
+import { Pressable } from "@shared/ui/Pressable";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { AnnouncementDialog } from "@widgets/announcements/AnnouncementDialog";
 import { AnnouncementsCarousel } from "@widgets/announcements/AnnouncementsCarousel";
@@ -49,9 +50,11 @@ interface NotificationsBellProps {
   popoverRef: RefObject<HTMLDivElement | null>;
   onToggle: () => void;
   onClose: () => void;
+  /** an item of the header's glass capsule: no glass of its own */
+  capsule?: boolean;
 }
 
-export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onClose }: NotificationsBellProps) {
+export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onClose, capsule = false }: NotificationsBellProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const permissions = usePermissions();
@@ -201,13 +204,8 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
 
   return (
     <>
-      <IconButton
-        size="9"
-        tone="glass"
-        className="relative"
-        onClick={onToggle}
-      >
-        <Bell className="size-[17px]" />
+      <IconButton size="9" tone={capsule ? "default" : "glass"} className="relative" onClick={onToggle}>
+        <Bell className="size-4" />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold leading-none text-white">
             {unread > MAX_BADGE ? `${MAX_BADGE}+` : unread}
@@ -222,14 +220,18 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
         align="right"
         maxHeight={POPOVER_MAX_HEIGHT}
         {...POPOVER_MOTION}
+        glass
+        extraGap={4}
         className="flex max-h-[min(420px,calc(100dvh-96px-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] flex-col p-1.5 max-md:top-[calc(84px+env(safe-area-inset-top))]! max-md:bottom-auto! max-md:left-2! max-md:right-2! md:max-h-[420px] md:w-80"
       >
         {(showTabs || activeCount > 0) && (
         <div className="flex shrink-0 items-center gap-1.5 pb-1.5">
           {showTabs ? (
             <div className="min-w-0 flex-1">
+              {/* 36px, as the clear button: the popover's 24px corner minus its 6px inset */}
               <SegmentedPills<Tab>
                 stretch
+                compact
                 value={activeTab}
                 onChange={setTab}
                 options={[
@@ -244,14 +246,13 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
             </span>
           )}
           {activeCount > 0 && (
-            <button
-              type="button"
+            <Pressable
               onClick={clearActive}
-              className="flex h-[38px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-4" />
               {t("header.clear")}
-            </button>
+            </Pressable>
           )}
         </div>
         )}
@@ -259,7 +260,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
           {loading ? (
             <Spinner size="card" />
           ) : failed ? (
-            <p className="px-2.5 py-8 text-center text-[12.5px] text-error">{t("header.notificationsLoadError")}</p>
+            <p className="px-2.5 py-8 text-center text-[12px] text-error">{t("header.notificationsLoadError")}</p>
           ) : activeCount === 0 ? (
             <EmptyState text={t("header.notificationsEmpty")} icon={Bell} />
           ) : activeTab === "events" ? (
@@ -275,7 +276,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                   <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] font-medium text-foreground/90">
+                  <span className="block truncate text-[13px] font-medium text-foreground">
                     {eventTitle(entry, t)}
                   </span>
                   <span className="block truncate text-[12px] text-muted-foreground">
@@ -301,7 +302,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                     <AnnouncementIcon icon={a.icon} className="size-3.5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-medium text-foreground/90">
+                    <span className="block truncate text-[13px] font-medium text-foreground">
                       {localized(a.title, i18n.language)}
                     </span>
                     {text && <span className="line-clamp-2 text-[12px] text-muted-foreground">{text}</span>}

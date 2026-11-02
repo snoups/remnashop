@@ -243,7 +243,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                     {JSON.stringify(otherPayload, null, 2)}
                   </pre>
                   {isCopied && (
-                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-success">
+                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-primary">
                       <Check className="size-3.5" />
                       {t("app.copied")}
                     </span>

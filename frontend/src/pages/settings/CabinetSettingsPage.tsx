@@ -9,7 +9,7 @@ export function CabinetSettingsPage() {
   // the cabinet card shows whether SMTP is set up, so a save below refreshes it
   const [emailVersion, setEmailVersion] = useState(0);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {permissions.includes("CABINET_AUTH_SETTINGS_VIEW") && <CabinetAuthSettingsForm emailVersion={emailVersion} />}
       {permissions.includes("EMAIL_SETTINGS_VIEW") && <EmailSettingsForm onSaved={() => setEmailVersion((version) => version + 1)} />}
     </div>

@@ -6,6 +6,9 @@ const GLASS_SURFACE_CLASS =
 /** Glass dropdown shell; padding is the caller's (p-1.5 for menus, p-3 for pickers). */
 export const POPOVER_CLASS = `rounded-popover ${GLASS_SURFACE_CLASS}`;
 
+/** The glass design's dropdown shell: the glass dialog's material (shared/ui/glass). */
+export const GLASS_POPOVER_CLASS = "rounded-popover glass-dialog";
+
 /** Glass panel of a dialog drawn without Modal (build info, donate). */
 export const GLASS_DIALOG_CLASS = `rounded-dialog ${GLASS_SURFACE_CLASS}`;
 

@@ -15,6 +15,8 @@ interface DialogCanvasProps {
   onSelect: (selection: Selection) => void;
   canEditButtons: boolean;
   onReorderButtons: (next: DialogButtonItem[]) => void;
+  /** 448px instead of 384px: the window list is folded away and the preview takes its room */
+  wide?: boolean;
 }
 
 export function DialogCanvas({
@@ -26,11 +28,12 @@ export function DialogCanvas({
   onSelect,
   canEditButtons,
   onReorderButtons,
+  wide = false,
 }: DialogCanvasProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="w-full max-w-sm rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-2.5">
+    <div className={`w-full ${wide ? "max-w-md" : "max-w-sm"} rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-2.5`}>
       <div className="flex flex-col gap-1.5">
         {/* Preview only; the banner is picked on the inspector's window tab.
             No fixed height and no object-cover: whatever was uploaded shows

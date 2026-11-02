@@ -259,9 +259,9 @@ export function HeaderSearch() {
   };
 
   return (
-    <div ref={rootRef} className="relative flex min-w-40 max-w-80 flex-1">
+    <div ref={rootRef} className="relative flex w-80 shrink">
       <motion.label
-        className="group relative flex w-full items-center gap-2 rounded-full border border-glass-border bg-white/[0.05] h-9 px-3.5 transition-colors not-focus-within:hover:bg-white/[0.07] focus-within:border-primary"
+        className="glass-well group relative flex h-9 w-full items-center gap-2 rounded-full px-3.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/50"
       >
         <Ripple />
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
@@ -278,10 +278,10 @@ export function HeaderSearch() {
           className="w-full min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
         />
         {query && (
-          // 26px in the 34px inner height: 4px inset (px-3.5 minus 10)
+          // 26px in the 36px well: 5px in on every side (px-3.5 minus 9)
           <SearchClearButton
             size="26px"
-            className="-mr-2.5"
+            className="-mr-[9px]"
             onClear={() => {
               setQuery("");
               setOpen(false);
@@ -302,18 +302,20 @@ export function HeaderSearch() {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: -4 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
+        glass
+        extraGap={4}
         className="w-80 p-1.5"
       >
         {/* scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded corners */}
         <div className="max-h-96 overflow-y-auto">
         {entries.length === 0 && (isFetching || query.trim() !== debounced) ? (
-          <p className="flex items-center gap-2 px-3 py-2 text-[12.5px] text-muted-foreground">
+          <p className="flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             {t("header.searching")}
           </p>
         ) : entries.length === 0 ? (
-          <p className="px-3 py-2 text-[12.5px] text-muted-foreground">{t("header.searchEmpty")}</p>
+          <p className="px-3 py-2 text-[12px] text-muted-foreground">{t("header.searchEmpty")}</p>
         ) : (
           entries.map((entry, index) => (
             <Pressable

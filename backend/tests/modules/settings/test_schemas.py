@@ -71,10 +71,31 @@ def test_bot_settings_is_configured_still_works_with_secretstr() -> None:
 
 def test_bot_requirements_channel_id_is_bounded_to_int64() -> None:
     UpdateBotRequirementsRequest(channel_id=-(2**63))
-    UpdateBotRequirementsRequest(channel_id=2**63 - 1)
-    for value in (2**63, -(2**63) - 1):
+    with pytest.raises(ValidationError):
+        UpdateBotRequirementsRequest(channel_id=-(2**63) - 1)
+
+
+def test_bot_requirements_bare_channel_id_gets_the_channel_prefix() -> None:
+    assert UpdateBotRequirementsRequest(channel_id=2344979239).channel_id == -1002344979239
+    from_json = UpdateBotRequirementsRequest.model_validate({"channel_id": "2344979239"})
+    assert from_json.channel_id == -1002344979239
+    assert UpdateBotRequirementsRequest(channel_id=-1002344979239).channel_id == -1002344979239
+    assert UpdateBotRequirementsRequest(channel_id=None).channel_id is None
+    # a prefixed id past int64 is still refused
+    with pytest.raises(ValidationError):
+        UpdateBotRequirementsRequest(channel_id=2**63 - 1)
+
+
+def test_bot_requirements_channel_url_takes_telegram_links_only() -> None:
+    def url(value: str) -> str:
+        return str(UpdateBotRequirementsRequest(channel_url=value).channel_url)  # type: ignore[arg-type]
+
+    assert url("t.me/+QKLgLpiCXhxmYTc6") == "https://t.me/+QKLgLpiCXhxmYTc6"
+    assert url("https://t.me/mychannel") == "https://t.me/mychannel"
+    assert url("https://telegram.me/mychannel") == "https://telegram.me/mychannel"
+    for value in ("https://example.com/channel", "tg://join?invite=abc"):
         with pytest.raises(ValidationError):
-            UpdateBotRequirementsRequest(channel_id=value)
+            UpdateBotRequirementsRequest(channel_url=value)  # type: ignore[arg-type]
 
 
 def test_update_shop_settings_request_tracks_sent_fields() -> None:

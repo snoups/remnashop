@@ -19,6 +19,7 @@ _PROFILE = SmtpProfileDto(
     password=None,
     from_address="news@example.com",
     from_name="Shop",
+    rate_per_minute=60,
     is_bulk=True,
 )
 

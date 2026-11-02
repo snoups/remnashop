@@ -568,6 +568,7 @@ def upgrade() -> None:
         sa.Column("password", app.core.db.encrypted_string.EncryptedString(), nullable=True),
         sa.Column("from_address", sa.String(length=255), nullable=True),
         sa.Column("from_name", sa.String(length=100), nullable=True),
+        sa.Column("rate_per_minute", sa.Integer(), server_default="60", nullable=False),
         sa.Column("bulk_host", sa.String(length=255), nullable=True),
         sa.Column("bulk_port", sa.Integer(), server_default="587", nullable=False),
         sa.Column(

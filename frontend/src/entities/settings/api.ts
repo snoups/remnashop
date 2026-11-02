@@ -132,6 +132,7 @@ export interface EmailSettings {
   is_password_set: boolean;
   from_address: string | null;
   from_name: string | null;
+  rate_per_minute: number;
   is_configured: boolean;
   bulk_host: string | null;
   bulk_port: number;
@@ -214,7 +215,8 @@ export interface ShopSettings {
   support_url: string | null;
 }
 
-export type UpdateShopSettingsPayload = ShopSettings;
+// a PATCH: only the fields sent change (the support card saves its two on their own)
+export type UpdateShopSettingsPayload = Partial<ShopSettings>;
 
 export function getShopSettings(signal?: AbortSignal): Promise<ShopSettings> {
   return apiGet<ShopSettings>("/settings/shop", signal);

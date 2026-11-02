@@ -1,5 +1,5 @@
-import { Bot, DoorOpen, Mail, MailCheck, ShieldCheck, Smartphone } from "lucide-react";
-import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { Bot, DoorOpen, Mail, ShieldCheck, Smartphone } from "lucide-react";
+import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -11,24 +11,25 @@ import {
   updateOAuthSettings,
   type CabinetAuthSettings,
   type CaptchaProvider,
-  type OAuthSettings,
   type UpdateCabinetAuthSettingsPayload,
   type UpdateOAuthSettingsPayload,
 } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { useFieldValidation } from "@shared/lib/use-field-validation";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GoogleIcon, TelegramIcon, YandexIcon } from "@shared/ui/BrandIcons";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Field } from "@shared/ui/Field";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { ProviderPanel } from "@features/oauth-settings/OAuthSettingsForm";
+import { ProviderRow } from "@features/oauth-settings/OAuthSettingsForm";
 
 import { AllowedDomainsDialog } from "./AllowedDomainsDialog";
 import { CabinetMethodGuideDialog, type GuideMethod } from "./CabinetMethodGuideDialog";
@@ -44,18 +45,46 @@ type MethodKey =
 type OAuthMethod = "telegram" | "google" | "yandex";
 
 const METHODS: { key: MethodKey; label: Exclude<GuideMethod, "captcha">; icon: ComponentType<{ className?: string }>; oauth?: OAuthMethod }[] = [
-  { key: "telegram_enabled", label: "telegramMiniApp", icon: Smartphone },
-  { key: "telegram_deeplink_enabled", label: "telegramDeeplink", icon: Bot },
-  { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
   { key: "google_enabled", label: "google", icon: GoogleIcon, oauth: "google" },
   { key: "yandex_enabled", label: "yandex", icon: YandexIcon, oauth: "yandex" },
+  { key: "telegram_oauth_enabled", label: "telegramOAuth", icon: TelegramIcon, oauth: "telegram" },
+  { key: "telegram_enabled", label: "telegramMiniApp", icon: Smartphone },
+  { key: "telegram_deeplink_enabled", label: "telegramDeeplink", icon: Bot },
   { key: "email_enabled", label: "email", icon: Mail },
 ];
 
+// what the card's Save writes to cabinet settings: every switch and the captcha choice
+type Draft = Pick<CabinetAuthSettings, MethodKey | "restrict_email_domains" | "captcha_enabled" | "captcha_provider">;
+const DRAFT_KEYS: (keyof Draft)[] = [
+  ...METHODS.map((method) => method.key),
+  "restrict_email_domains",
+  "captcha_enabled",
+  "captcha_provider",
+];
+
+function draftOf(settings: CabinetAuthSettings): Draft {
+  return Object.fromEntries(DRAFT_KEYS.map((key) => [key, settings[key]])) as Draft;
+}
+
+type Credentials = Record<OAuthMethod, { id: string; secret: string }>;
+const NO_CREDENTIALS: Credentials = {
+  telegram: { id: "", secret: "" },
+  google: { id: "", secret: "" },
+  yandex: { id: "", secret: "" },
+};
+
+const CAPTCHA_PROVIDERS: { value: CaptchaProvider; label: string }[] = [
+  { value: "TURNSTILE", label: "Cloudflare Turnstile" },
+  { value: "HCAPTCHA", label: "hCaptcha" },
+];
+
+/** Cabinet sign-in: the methods, email-domain limit and captcha, all saved by the card's one Save.
+ *  OAuth credentials live in OAuth settings under their own permission: Save sends them second. */
 export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number }) {
   const { t } = useTranslation();
   const permissions = usePermissions();
   const canManage = permissions.includes("CABINET_AUTH_SETTINGS_MANAGE");
+  const canManageOAuth = permissions.includes("OAUTH_SETTINGS_MANAGE");
   const canViewOAuth = permissions.includes("OAUTH_SETTINGS_VIEW");
   const canViewBot = permissions.includes("BOT_SETTINGS_VIEW");
   const canViewEmail = permissions.includes("EMAIL_SETTINGS_VIEW");
@@ -74,196 +103,77 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
     { deps: [emailVersion], keepData: true },
   );
   const isEmailConfigured = emailState.kind === "ready" ? emailState.data?.is_configured : undefined;
-  const [pendingKey, setPendingKey] = useState<MethodKey | "domains" | null>(null);
 
-  const handleToggle = async (key: MethodKey, next: boolean) => {
-    setPendingKey(key);
-    try {
-      setData(await updateCabinetAuthSettings({ [key]: next }));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    } finally {
-      setPendingKey(null);
-    }
-  };
-
-  const [isDomainsOpen, setIsDomainsOpen] = useState(false);
-
-  const saveDomains = async (patch: UpdateCabinetAuthSettingsPayload) => {
-    setPendingKey("domains");
-    try {
-      setData(await updateCabinetAuthSettings(patch));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    } finally {
-      setPendingKey(null);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader
-        icon={DoorOpen}
-        title={t("settings.cabinetAuth.title")}
-        description={t("settings.cabinetAuth.description")}
-      />
-
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-      {state.kind === "ready" && (
-        <div className="mt-4">
-          <div className="flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
-            {METHODS.map(({ key, label, icon: Icon, oauth }) => {
-              const isConfigured =
-                label === "telegramMiniApp" || label === "telegramDeeplink"
-                  ? isBotConfigured
-                  : label === "email"
-                    ? isEmailConfigured
-                    : undefined;
-              return oauth && oauthSettings ? (
-                <OAuthMethodPanel
-                  key={key}
-                  method={oauth}
-                  icon={Icon}
-                  label={t(`settings.cabinetAuth.methods.${label}`)}
-                  guide={<CabinetMethodGuideDialog method={label} />}
-                  oauthSettings={oauthSettings}
-                  onSaved={setOAuthData}
-                  isEnabled={state.data[key]}
-                  onToggle={async (next) => setData(await updateCabinetAuthSettings({ [key]: next }))}
-                  canToggle={canManage && pendingKey === null}
-                />
-              ) : (
-                <div key={key}>
-                  <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                      <Icon className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium text-foreground">
-                        {t(`settings.cabinetAuth.methods.${label}`)}
-                      </p>
-                      {isConfigured !== undefined ? (
-                        <p className="text-[12px]">
-                          {isConfigured ? (
-                            <span className="text-success">{t("settings.oauth.configured")}</span>
-                          ) : (
-                            <span className="text-warning">{t("settings.oauth.notConfigured")}</span>
-                          )}
-                        </p>
-                      ) : (
-                        <p className="text-[12px] text-muted-foreground">
-                          {oauth
-                            ? t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })
-                            : label === "telegramMiniApp"
-                              ? t("settings.cabinetAuth.telegramMiniAppHint")
-                              : label === "telegramDeeplink"
-                                ? t("settings.cabinetAuth.telegramDeeplinkHint")
-                                : t("settings.cabinetAuth.emailHint")}
-                        </p>
-                      )}
-                    </div>
-                    <CabinetMethodGuideDialog method={label} />
-                    <div className="mr-1 flex">
-                      <Switch
-                        checked={state.data[key]}
-                        onChange={(value) => void handleToggle(key, value)}
-                        // switching off stays possible after the bot token or SMTP is removed
-                        disabled={
-                          !canManage || pendingKey !== null || (isConfigured === false && !state.data[key])
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-2 border-t border-white/[0.08] pt-2">
-            <div className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                <MailCheck className="size-4" />
-              </div>
-              <p className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
-                {t("settings.cabinetAuth.restrictDomains")}
-              </p>
-              <Button variant="secondary" size="sm" type="button" onClick={() => setIsDomainsOpen(true)}>
-                {t("settings.cabinetAuth.domainsList")}
-              </Button>
-              <div className="mr-1 flex">
-                <Switch
-                  checked={state.data.restrict_email_domains}
-                  onChange={(value) => void saveDomains({ restrict_email_domains: value })}
-                  disabled={!canManage || pendingKey !== null}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="mt-2 border-t border-white/[0.08] pt-2">
-            <CaptchaPanel settings={state.data} canManage={canManage} onSaved={setData} />
-          </div>
-          {isDomainsOpen && (
-            <AllowedDomainsDialog
-              domains={state.data.allowed_email_domains}
-              canManage={canManage}
-              onSaved={setData}
-              onClose={() => setIsDomainsOpen(false)}
-            />
-          )}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-interface OAuthMethodPanelProps {
-  method: OAuthMethod;
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  guide: ReactNode;
-  oauthSettings: OAuthSettings;
-  onSaved: (settings: OAuthSettings) => void;
-  isEnabled: boolean;
-  onToggle: (next: boolean) => Promise<void>;
-  canToggle: boolean;
-}
-
-function OAuthMethodPanel({
-  method,
-  icon,
-  label,
-  guide,
-  oauthSettings,
-  onSaved,
-  isEnabled,
-  onToggle,
-  canToggle,
-}: OAuthMethodPanelProps) {
-  const { t } = useTranslation();
-  const canManageOAuth = usePermissions().includes("OAUTH_SETTINGS_MANAGE");
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [credentials, setCredentials] = useState<Credentials>(NO_CREDENTIALS);
+  const [captchaSiteKey, setCaptchaSiteKey] = useState("");
+  const [captchaSecretKey, setCaptchaSecretKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDomainsOpen, setIsDomainsOpen] = useState(false);
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+
+  // filled once loaded; afterwards only this card's Save resets it, so saving the domains
+  // dialog keeps unsaved switches here
+  useEffect(() => {
+    if (state.kind === "ready") setDraft((prev) => prev ?? draftOf(state.data));
+  }, [state]);
+
+  const saved = state.kind === "ready" ? draftOf(state.data) : null;
+  const changedFlags: UpdateCabinetAuthSettingsPayload =
+    draft && saved ? Object.fromEntries(DRAFT_KEYS.filter((key) => draft[key] !== saved[key]).map((key) => [key, draft[key]])) : {};
+  const cabinetPatch: UpdateCabinetAuthSettingsPayload = {
+    ...changedFlags,
+    ...(captchaSiteKey && { captcha_site_key: captchaSiteKey }),
+    ...(captchaSecretKey && { captcha_secret_key: captchaSecretKey }),
+  };
+  const oauthPatch: UpdateOAuthSettingsPayload = {
+    ...(credentials.telegram.id && { telegram_client_id: credentials.telegram.id }),
+    ...(credentials.telegram.secret && { telegram_client_secret: credentials.telegram.secret }),
+    ...(credentials.google.id && { google_client_id: credentials.google.id }),
+    ...(credentials.google.secret && { google_client_secret: credentials.google.secret }),
+    ...(credentials.yandex.id && { yandex_client_id: credentials.yandex.id }),
+    ...(credentials.yandex.secret && { yandex_client_secret: credentials.yandex.secret }),
+  };
+  const hasCabinetChanges = Object.keys(cabinetPatch).length > 0;
+  const hasOAuthChanges = Object.keys(oauthPatch).length > 0;
+  const dirty = hasCabinetChanges || hasOAuthChanges;
+
+  const setFlag = <K extends keyof Draft>(key: K, value: Draft[K]) =>
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+  const setCredential = (method: OAuthMethod, field: "id" | "secret", value: string) =>
+    setCredentials((prev) => ({ ...prev, [method]: { ...prev[method], [field]: value } }));
+
+  const validation = useFieldValidation<"siteKey" | "secretKey">();
+  // switched on with no keys stored: both have to come with this save
+  const needsCaptchaKeys = draft?.captcha_enabled === true && state.kind === "ready" && !state.data.is_captcha_configured;
+  const captchaErrors = {
+    siteKey: needsCaptchaKeys && !captchaSiteKey ? t("errors.validation.required") : null,
+    secretKey: needsCaptchaKeys && !captchaSecretKey ? t("errors.validation.required") : null,
+  };
+  const captchaShown = (name: keyof typeof captchaErrors) => validation.visible(name, captchaErrors[name]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!clientId && !clientSecret) {
-      toast.error(t("settings.oauth.errorEmptyFields"));
+    if (!dirty) return;
+    validation.submit();
+    if (captchaErrors.siteKey !== null || captchaErrors.secretKey !== null) {
       return;
     }
     setIsSubmitting(true);
     try {
-      const id = clientId || undefined;
-      const secret = clientSecret || undefined;
-      const payloads: Record<OAuthMethod, UpdateOAuthSettingsPayload> = {
-        telegram: { telegram_client_id: id, telegram_client_secret: secret },
-        google: { google_client_id: id, google_client_secret: secret },
-        yandex: { yandex_client_id: id, yandex_client_secret: secret },
-      };
-      onSaved(await updateOAuthSettings(payloads[method]));
-      setClientId("");
-      setClientSecret("");
+      if (hasCabinetChanges) {
+        const settings = await updateCabinetAuthSettings(cabinetPatch);
+        setData(settings);
+        setDraft(draftOf(settings));
+        setCaptchaSiteKey("");
+        setCaptchaSecretKey("");
+      }
+      // second: a failure here leaves the switches saved and the credentials in the fields
+      if (hasOAuthChanges && canManageOAuth) {
+        setOAuthData(await updateOAuthSettings(oauthPatch));
+        setCredentials(NO_CREDENTIALS);
+      }
+      validation.reset();
       toast.success(t("common.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
@@ -272,120 +182,173 @@ function OAuthMethodPanel({
     }
   };
 
-  return (
-    <ProviderPanel
-      icon={icon}
-      label={label}
-      guide={guide}
-      isConfigured={oauthSettings[`is_${method}_configured`]}
-      isEnabled={isEnabled}
-      onToggle={onToggle}
-      canToggle={canToggle}
-      fields={[
-        {
-          key: `${method}_client_id`,
-          label: t("settings.oauth.clientIdLabel"),
-          value: clientId,
-          onChange: setClientId,
-        },
-        {
-          key: `${method}_client_secret`,
-          label: t("settings.oauth.clientSecretLabel"),
-          value: clientSecret,
-          onChange: setClientSecret,
-        },
-      ]}
-      footer={
-        canManageOAuth && (
-          <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? t("common.saving") : t("common.save")}
-          </Button>
-        )
-      }
-      onSubmit={(event) => void handleSubmit(event)}
-    />
-  );
-}
-
-const CAPTCHA_PROVIDERS: { value: CaptchaProvider; label: string }[] = [
-  { value: "TURNSTILE", label: "Cloudflare Turnstile" },
-  { value: "HCAPTCHA", label: "hCaptcha" },
-];
-
-function CaptchaPanel({
-  settings,
-  canManage,
-  onSaved,
-}: {
-  settings: CabinetAuthSettings;
-  canManage: boolean;
-  onSaved: (settings: CabinetAuthSettings) => void;
-}) {
-  const { t } = useTranslation();
-  const [provider, setProvider] = useState(settings.captcha_provider);
-  const [siteKey, setSiteKey] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    try {
-      onSaved(
-        await updateCabinetAuthSettings({
-          captcha_provider: provider,
-          ...(siteKey && { captcha_site_key: siteKey }),
-          ...(secretKey && { captcha_secret_key: secretKey }),
-        }),
+  const renderMethod = ({ key, label, icon: Icon, oauth }: (typeof METHODS)[number], current: Draft) => {
+    if (oauth && oauthSettings) {
+      return (
+        <ProviderRow
+          key={key}
+          icon={Icon}
+          label={t(`settings.cabinetAuth.methods.${label}`)}
+          guide={<CabinetMethodGuideDialog method={label} />}
+          isConfigured={oauthSettings[`is_${oauth}_configured`]}
+          enabled={current[key]}
+          onEnabledChange={(next) => setFlag(key, next)}
+          canToggle={canManage}
+          canEdit={canManageOAuth}
+          fields={[
+            {
+              key: `${oauth}_client_id`,
+              label: t("settings.oauth.clientIdLabel"),
+              value: credentials[oauth].id,
+              onChange: (value) => setCredential(oauth, "id", value),
+            },
+            {
+              key: `${oauth}_client_secret`,
+              label: t("settings.oauth.clientSecretLabel"),
+              value: credentials[oauth].secret,
+              onChange: (value) => setCredential(oauth, "secret", value),
+            },
+          ]}
+        />
       );
-      setSiteKey("");
-      setSecretKey("");
-      toast.success(t("common.saved"));
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    } finally {
-      setIsSubmitting(false);
     }
+    const isConfigured =
+      label === "telegramMiniApp" || label === "telegramDeeplink"
+        ? isBotConfigured
+        : label === "email"
+          ? isEmailConfigured
+          : undefined;
+    const isEmail = label === "email";
+    return (
+      <Row
+        key={key}
+        icon={Icon}
+        label={t(`settings.cabinetAuth.methods.${label}`)}
+        // the email sign-in's domain limit folds out under it
+        expanded={isEmail ? isEmailOpen : undefined}
+        onClick={isEmail ? () => setIsEmailOpen((open) => !open) : undefined}
+        panel={
+          isEmail && (
+            // 2px past the panel's 14px: the switch under the row's own (16px in)
+            <div className="flex items-center gap-3 pr-0.5">
+              <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
+                {t("settings.cabinetAuth.restrictDomains")}
+              </span>
+              <Button variant="glass" size="sm" onClick={() => setIsDomainsOpen(true)}>
+                {t("settings.cabinetAuth.domainsList")}
+              </Button>
+              <Switch
+                checked={current.restrict_email_domains}
+                onChange={(value) => setFlag("restrict_email_domains", value)}
+                disabled={!canManage}
+              />
+            </div>
+          )
+        }
+        description={
+          isConfigured !== undefined ? (
+            <span className={`flex items-center gap-1.5 ${isConfigured ? "text-success" : "text-warning"}`}>
+              <span className="size-1.5 rounded-full bg-current" />
+              {t(isConfigured ? "settings.oauth.configured" : "settings.oauth.notConfigured")}
+            </span>
+          ) : oauth ? (
+            t("settings.oauth.redirectHint", { path: `/login/callback/${oauth}` })
+          ) : label === "telegramMiniApp" ? (
+            t("settings.cabinetAuth.telegramMiniAppHint")
+          ) : label === "telegramDeeplink" ? (
+            t("settings.cabinetAuth.telegramDeeplinkHint")
+          ) : (
+            t("settings.cabinetAuth.emailHint")
+          )
+        }
+      >
+        <CabinetMethodGuideDialog method={label} />
+        <Switch
+          checked={current[key]}
+          onChange={(value) => setFlag(key, value)}
+          // switching off stays possible after the bot token or SMTP is removed
+          disabled={!canManage || (isConfigured === false && !current[key])}
+        />
+      </Row>
+    );
   };
 
   return (
-    <ProviderPanel
-      icon={ShieldCheck}
-      label={t("settings.cabinetAuth.captcha.title")}
-      guide={<CabinetMethodGuideDialog method="captcha" />}
-      isConfigured={settings.is_captcha_configured}
-      isEnabled={settings.captcha_enabled}
-      onToggle={async (next) => onSaved(await updateCabinetAuthSettings({ captcha_enabled: next }))}
-      canToggle={canManage}
-      canEdit={canManage}
-      extra={
-        <Field label={t("settings.cabinetAuth.captcha.provider")}>
-          <SegmentedPills value={provider} onChange={setProvider} options={CAPTCHA_PROVIDERS} disabled={!canManage} stretch />
-        </Field>
-      }
-      fields={[
-        {
-          key: "captcha_site_key",
-          label: t("settings.cabinetAuth.captcha.siteKey"),
-          value: siteKey,
-          onChange: setSiteKey,
-        },
-        {
-          key: "captcha_secret_key",
-          label: t("settings.cabinetAuth.captcha.secretKey"),
-          value: secretKey,
-          onChange: setSecretKey,
-          secret: true,
-        },
-      ]}
-      footer={
-        canManage && (
-          <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? t("common.saving") : t("common.save")}
-          </Button>
-        )
-      }
-      onSubmit={(event) => void handleSubmit(event)}
-    />
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
+        icon={DoorOpen}
+        title={t("settings.cabinetAuth.title")}
+        description={t("settings.cabinetAuth.description")}
+        footer={
+          state.kind === "ready" &&
+          (canManage || canManageOAuth) && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />
+        }
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && draft && (
+          <>
+            <SectionRows>
+              {METHODS.filter((method) => method.label !== "email").map((method) => renderMethod(method, draft))}
+            </SectionRows>
+
+            {/* the email sign-in and what guards it: one group */}
+            <SectionRows divided>
+              {METHODS.filter((method) => method.label === "email").map((method) => renderMethod(method, draft))}
+              <ProviderRow
+                icon={ShieldCheck}
+                label={t("settings.cabinetAuth.captcha.title")}
+                guide={<CabinetMethodGuideDialog method="captcha" />}
+                isConfigured={state.data.is_captcha_configured}
+                enabled={draft.captcha_enabled}
+                onEnabledChange={(next) => setFlag("captcha_enabled", next)}
+                canToggle={canManage}
+                canEdit={canManage}
+                extra={
+                  <Field label={t("settings.cabinetAuth.captcha.provider")}>
+                    <SegmentedPills
+                      value={draft.captcha_provider}
+                      onChange={(value) => setFlag("captcha_provider", value)}
+                      options={CAPTCHA_PROVIDERS}
+                      disabled={!canManage}
+                      stretch
+                      compact
+                    />
+                  </Field>
+                }
+                fields={[
+                  {
+                    key: "captcha_site_key",
+                    label: t("settings.cabinetAuth.captcha.siteKey"),
+                    value: captchaSiteKey,
+                    onChange: setCaptchaSiteKey,
+                    error: captchaShown("siteKey"),
+                    onBlur: validation.touch("siteKey"),
+                  },
+                  {
+                    key: "captcha_secret_key",
+                    label: t("settings.cabinetAuth.captcha.secretKey"),
+                    value: captchaSecretKey,
+                    onChange: setCaptchaSecretKey,
+                    secret: true,
+                    error: captchaShown("secretKey"),
+                    onBlur: validation.touch("secretKey"),
+                  },
+                ]}
+              />
+            </SectionRows>
+
+            {isDomainsOpen && (
+              <AllowedDomainsDialog
+                domains={state.data.allowed_email_domains}
+                canManage={canManage}
+                onSaved={setData}
+                onClose={() => setIsDomainsOpen(false)}
+              />
+            )}
+          </>
+        )}
+      </Section>
+    </form>
   );
 }

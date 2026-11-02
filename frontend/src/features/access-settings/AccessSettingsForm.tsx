@@ -1,6 +1,7 @@
-import { CreditCard, DoorOpen, ShieldCheck, UserPlus } from "lucide-react";
+import { CreditCard, ShieldCheck, UserPlus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 import { publishAccessSettings } from "@entities/settings/access-sync";
 import {
@@ -14,16 +15,16 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { SaveFooter } from "@shared/ui/SaveFooter";
-import { SettingsRow } from "@shared/ui/SettingsRow";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { SETTINGS_ROWS_CLASS } from "@shared/ui/classes";
-import { Tag } from "@shared/ui/Tag";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { Tag } from "@shared/ui/glass/Tag";
+
+export const ACCESS_SECTION_ID = "access";
 
 const MODES = [
   { mode: "PUBLIC", key: "public" },
@@ -40,6 +41,15 @@ export function AccessSettingsForm() {
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [paymentsEnabled, setPaymentsEnabled] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // a link to #access (the header's maintenance capsule) lands here once the card has its height
+  const { hash } = useLocation();
+  const isReady = state.kind === "ready";
+  useEffect(() => {
+    if (isReady && hash === `#${ACCESS_SECTION_ID}`) {
+      document.getElementById(ACCESS_SECTION_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [isReady, hash]);
 
   useEffect(() => {
     if (state.kind !== "ready") return;
@@ -76,48 +86,41 @@ export function AccessSettingsForm() {
     (mode !== state.data.mode ||
       registrationEnabled !== state.data.registration_enabled ||
       paymentsEnabled !== state.data.payments_enabled);
-  const activeKey = MODES.find((m) => m.mode === mode)?.key ?? "public";
 
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
+        id={ACCESS_SECTION_ID}
         icon={ShieldCheck}
         title={t("settings.access.title")}
         description={t("settings.access.description")}
-      />
-
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-      {state.kind === "ready" && (
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
-          <fieldset disabled={!canManage} className="contents">
-            <div className={SETTINGS_ROWS_CLASS}>
-              <SettingsRow
-                icon={DoorOpen}
-                label={t("settings.access.modeLabel")}
-                description={t(`settings.access.modeHints.${activeKey}`)}
-              >
-                <PillTabs
-                  items={MODES.map((m) => ({ key: m.mode, label: t(`settings.access.modes.${m.key}`) }))}
-                  activeKey={mode}
-                  onSelect={setMode}
-                  disabled={!canManage}
-                />
-              </SettingsRow>
-              <SettingsRow icon={UserPlus} label={t("settings.access.registrationLabel")}>
-                <Switch checked={registrationEnabled} onChange={setRegistrationEnabled} />
-              </SettingsRow>
-              <SettingsRow icon={CreditCard} label={t("settings.access.paymentsLabel")}>
-                {!paymentsEnabled && permissions.includes("PAYMENT_WAITLIST_VIEW") && <WaitlistTag />}
-                <Switch checked={paymentsEnabled} onChange={setPaymentsEnabled} />
-              </SettingsRow>
-            </div>
-          </fieldset>
-
-          {canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
-        </form>
-      )}
-    </Card>
+        aside={
+          state.kind === "ready" && (
+            <PillTabs
+              items={MODES.map((m) => ({ key: m.mode, label: t(`settings.access.modes.${m.key}`) }))}
+              activeKey={mode}
+              onSelect={setMode}
+              disabled={!canManage}
+            />
+          )
+        }
+        footer={state.kind === "ready" && canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && (
+          <SectionRows>
+            <Row icon={UserPlus} label={t("settings.access.registrationLabel")}>
+              <Switch checked={registrationEnabled} onChange={setRegistrationEnabled} disabled={!canManage} />
+            </Row>
+            <Row icon={CreditCard} label={t("settings.access.paymentsLabel")}>
+              {!paymentsEnabled && permissions.includes("PAYMENT_WAITLIST_VIEW") && <WaitlistTag />}
+              <Switch checked={paymentsEnabled} onChange={setPaymentsEnabled} disabled={!canManage} />
+            </Row>
+          </SectionRows>
+        )}
+      </Section>
+    </form>
   );
 }
 

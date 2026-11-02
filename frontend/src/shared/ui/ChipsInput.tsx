@@ -4,6 +4,8 @@ import { useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEv
 import { IconButton } from "@shared/ui/IconButton";
 
 const SINGLE_ROW_HEIGHT = 38;
+// the glass well (shared/ui/glass) is 36px: 24px chips 6px in, concentric with its 18px corners
+const GLASS_SINGLE_ROW_HEIGHT = 36;
 
 interface ChipsInputProps {
   id?: string;
@@ -13,10 +15,12 @@ interface ChipsInputProps {
   normalize: (token: string) => string | null;
   placeholder?: string;
   inputMode?: "numeric" | "email" | "text";
+  /** the glass design's sunken well and type scale */
+  glass?: boolean;
 }
 
 /** Tokens split on Enter, comma, space or paste; a token that fails `normalize` stays in the input, marked. */
-export function ChipsInput({ id, values, onChange, normalize, placeholder, inputMode = "text" }: ChipsInputProps) {
+export function ChipsInput({ id, values, onChange, normalize, placeholder, inputMode = "text", glass = false }: ChipsInputProps) {
   const [draft, setDraft] = useState("");
   const [isInvalid, setIsInvalid] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -26,10 +30,11 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
   useLayoutEffect(() => {
     const box = boxRef.current;
     if (!box) return;
-    const observer = new ResizeObserver(() => setIsWrapped(box.offsetHeight > SINGLE_ROW_HEIGHT));
+    const rowHeight = glass ? GLASS_SINGLE_ROW_HEIGHT : SINGLE_ROW_HEIGHT;
+    const observer = new ResizeObserver(() => setIsWrapped(box.offsetHeight > rowHeight));
     observer.observe(box);
     return () => observer.disconnect();
-  }, []);
+  }, [glass]);
 
   const commit = (text: string) => {
     const accepted: string[] = [];
@@ -61,14 +66,22 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
   return (
     <div
       ref={boxRef}
-      className={`flex min-h-9.5 flex-wrap items-center gap-1.5 ${isWrapped ? "rounded-xl" : "rounded-[19px]"} border bg-input/60 p-1.5 ${
-        isInvalid ? "border-error" : "border-border focus-within:border-primary"
-      }`}
+      className={
+        glass
+          ? `glass-well flex min-h-9 flex-wrap items-center gap-1.5 rounded-[18px] p-1.5 transition-shadow ${
+              isInvalid ? "ring-2 ring-error/60" : "focus-within:ring-2 focus-within:ring-primary/50"
+            }`
+          : `flex min-h-9.5 flex-wrap items-center gap-1.5 ${isWrapped ? "rounded-xl" : "rounded-[19px]"} border bg-input/60 p-1.5 ${
+              isInvalid ? "border-error" : "border-border focus-within:border-primary"
+            }`
+      }
     >
       {values.map((value) => (
         <span
           key={value}
-          className="flex h-6 items-center gap-1 rounded-full bg-white/[0.06] pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
+          className={`flex h-6 items-center gap-1 rounded-full bg-white/[0.06] pl-2.5 pr-0.5 font-mono text-foreground ${
+            glass ? "text-[12px]" : "text-[12.5px]"
+          }`}
         >
           {value}
           <IconButton size="18px" onClick={() => onChange(values.filter((other) => other !== value))}>
@@ -89,7 +102,9 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
         onBlur={() => commit(draft)}
         placeholder={values.length === 0 ? placeholder : undefined}
         aria-invalid={isInvalid}
-        className="h-6 min-w-16 flex-1 bg-transparent px-1.5 font-mono text-sm text-foreground outline-none"
+        className={`h-6 min-w-16 flex-1 bg-transparent px-1.5 font-mono text-foreground outline-none ${
+          glass ? "text-[13px]" : "text-sm"
+        }`}
       />
     </div>
   );

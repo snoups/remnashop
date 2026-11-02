@@ -16,6 +16,7 @@ export function SegmentedPills<T extends string | number>({
   options,
   disabled = false,
   stretch = false,
+  compact = false,
 }: {
   value: T;
   onChange: (value: T) => void;
@@ -23,6 +24,8 @@ export function SegmentedPills<T extends string | number>({
   disabled?: boolean;
   /** fill the container, options share the width equally */
   stretch?: boolean;
+  /** 36px instead of 38px, 13px text: beside other 36px controls (the notifications header) */
+  compact?: boolean;
 }) {
   const pillId = useId();
 
@@ -48,7 +51,7 @@ export function SegmentedPills<T extends string | number>({
             />
           )}
           <span
-            className={`relative z-10 block px-3.5 py-1 text-sm font-medium ${
+            className={`relative z-10 block px-3.5 font-medium ${compact ? "py-[3px] text-[13px] leading-5" : "py-1 text-sm"} ${
               value === option.value ? "text-primary" : "text-foreground"
             }`}
           >

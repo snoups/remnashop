@@ -1,24 +1,43 @@
-import { ClipboardCheck } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { ClipboardCheck, Gift, Megaphone } from "lucide-react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getBotRequirements, updateBotRequirements } from "@entities/settings/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { useFieldValidation } from "@shared/lib/use-field-validation";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Field } from "@shared/ui/Field";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { TextInput } from "@shared/ui/TextInput";
 
 const CHANNEL_ID_PATTERN = /^-?\d+$/;
 
 const blankToNull = (value: string): string | null => (value.trim() === "" ? null : value.trim());
+
+// the channel button opens Telegram; the backend checks the same domains
+const TELEGRAM_LINK_HOSTS: ReadonlySet<string> = new Set(["t.me", "telegram.me", "telegram.dog"]);
+
+// "t.me/name" as copied from Telegram: the scheme is implied
+function withScheme(value: string): string {
+  const trimmed = value.trim();
+  return trimmed === "" || trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+}
+
+function isTelegramLink(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && TELEGRAM_LINK_HOSTS.has(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 export function BotRequirementsForm() {
   const { t } = useTranslation();
@@ -28,8 +47,8 @@ export function BotRequirementsForm() {
   const [channelId, setChannelId] = useState("");
   const [channelUrl, setChannelUrl] = useState("");
   const [trialChannelGuard, setTrialChannelGuard] = useState(false);
-  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const id = useId();
 
   useEffect(() => {
     if (state.kind !== "ready") return;
@@ -39,101 +58,129 @@ export function BotRequirementsForm() {
     setTrialChannelGuard(state.data.trial_channel_guard);
   }, [state]);
 
-  const channelIdValid = channelId.trim() === "" || CHANNEL_ID_PATTERN.test(channelId.trim());
+  const validation = useFieldValidation<"channelId" | "channelUrl">();
+  const normalizedUrl = withScheme(channelUrl);
+  // only a required channel needs its id and link
+  const channelIdError = !channelRequired
+    ? null
+    : channelId.trim() === ""
+      ? t("errors.validation.required")
+      : !CHANNEL_ID_PATTERN.test(channelId.trim())
+        ? t("settings.botRequirements.channelIdInvalid")
+        : null;
+  const channelUrlError = !channelRequired
+    ? null
+    : normalizedUrl === ""
+      ? t("errors.validation.required")
+      : !isTelegramLink(normalizedUrl)
+        ? t("settings.botRequirements.channelUrlInvalid")
+        : null;
+  const hasErrors = channelIdError !== null || channelUrlError !== null;
+  const channelIdShown = validation.visible("channelId", channelIdError);
+  const channelUrlShown = validation.visible("channelUrl", channelUrlError);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!channelIdValid) {
-      toast.error(t("common.errors.generic"));
-      return;
-    }
+    validation.submit();
+    if (hasErrors) return;
     const parsedChannelId = channelId.trim() === "" ? null : Number.parseInt(channelId, 10);
     setIsSubmitting(true);
-    setErrorCode(null);
     try {
       const requirements = await updateBotRequirements({
         channel_required: channelRequired,
         channel_id: parsedChannelId,
-        channel_url: blankToNull(channelUrl),
+        channel_url: blankToNull(normalizedUrl),
         trial_channel_guard: trialChannelGuard,
       });
       setData(requirements);
+      validation.reset();
       toast.success(t("common.saved"));
     } catch (err) {
-      if (err instanceof ApiError) setErrorCode(err.code);
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
+      // the bot can't see the channel: said under the id, where it's fixed
+      if (err instanceof ApiError && err.code === "CHANNEL_NOT_ACCESSIBLE") {
+        validation.setServerError("channelId", getErrorMessage(err, t("common.errors.generic")));
+      } else {
+        toast.error(getErrorMessage(err, t("common.errors.generic")));
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const incomplete = errorCode === "BOT_REQUIREMENTS_INCOMPLETE";
-  const channelInaccessible = errorCode === "CHANNEL_NOT_ACCESSIBLE";
+  const saved = state.kind === "ready" ? state.data : null;
+  const dirty =
+    saved !== null &&
+    (channelRequired !== saved.channel_required ||
+      channelId !== (saved.channel_id === null ? "" : String(saved.channel_id)) ||
+      channelUrl !== (saved.channel_url ?? "") ||
+      trialChannelGuard !== saved.trial_channel_guard);
 
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
         icon={ClipboardCheck}
         title={t("settings.botRequirements.title")}
         description={t("settings.botRequirements.description")}
-      />
-
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-      {state.kind === "ready" && (
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
-          <fieldset disabled={!canManage} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3 px-[12.5px]">
-                <p className="text-[13px] font-medium text-foreground">
-                  {t("settings.botRequirements.channelLabel")}
-                </p>
+        footer={
+          state.kind === "ready" &&
+          // stays enabled with errors: pressing it shows them all instead of sending
+          canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />
+        }
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && (
+          <fieldset disabled={!canManage} className="contents">
+            <SectionRows>
+              <Row
+                icon={Megaphone}
+                label={t("settings.botRequirements.channelLabel")}
+                description={t("settings.botRequirements.channelHint")}
+              >
                 <Switch checked={channelRequired} onChange={setChannelRequired} />
-              </div>
-              <Field label={t("settings.botRequirements.channelId")}>
-                <TextInput
+              </Row>
+              <Row
+                icon={Gift}
+                label={t("settings.botRequirements.trialChannelGuard")}
+                description={t("settings.botRequirements.trialChannelGuardHint")}
+              >
+                <Switch checked={trialChannelGuard} onChange={setTrialChannelGuard} disabled={!channelRequired} />
+              </Row>
+            </SectionRows>
+            <SectionFields divided>
+              <Field label={t("settings.botRequirements.channelId")} htmlFor={`${id}-channel-id`} error={channelIdShown}>
+                <Input
+                  id={`${id}-channel-id`}
                   type="text"
                   inputMode="numeric"
                   value={channelId}
-                  onChange={(event) => setChannelId(event.target.value)}
+                  onChange={(event) => {
+                    setChannelId(event.target.value);
+                    validation.changed("channelId");
+                  }}
+                  onBlur={validation.touch("channelId")}
                   disabled={!channelRequired}
-                  aria-invalid={(incomplete && channelRequired && channelId.trim() === "") || channelInaccessible || !channelIdValid}
+                  aria-invalid={channelIdShown !== undefined}
                 />
               </Field>
-              <Field label={t("settings.botRequirements.channelUrl")}>
-                <TextInput
-                  type="url"
+              <Field label={t("settings.botRequirements.channelUrl")} htmlFor={`${id}-channel-url`} error={channelUrlShown}>
+                {/* text, not url: the browser would refuse "t.me/name" without a scheme */}
+                <Input
+                  id={`${id}-channel-url`}
+                  type="text"
+                  inputMode="url"
+                  placeholder="https://t.me/channel"
                   value={channelUrl}
                   onChange={(event) => setChannelUrl(event.target.value)}
+                  onBlur={validation.touch("channelUrl")}
                   disabled={!channelRequired}
-                  aria-invalid={incomplete && channelRequired && channelUrl.trim() === ""}
+                  aria-invalid={channelUrlShown !== undefined}
                 />
               </Field>
-              <div className="flex items-center justify-between gap-3 px-[12.5px]">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-foreground">
-                    {t("settings.botRequirements.trialChannelGuard")}
-                  </p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {t("settings.botRequirements.trialChannelGuardHint")}
-                  </p>
-                </div>
-                <Switch
-                  checked={trialChannelGuard}
-                  onChange={setTrialChannelGuard}
-                  disabled={!channelRequired}
-                />
-              </div>
-            </div>
+            </SectionFields>
           </fieldset>
-
-          {canManage && (
-            <Button variant="accent" className="w-fit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          )}
-        </form>
-      )}
-    </Card>
+        )}
+      </Section>
+    </form>
   );
 }

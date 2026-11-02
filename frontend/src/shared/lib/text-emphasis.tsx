@@ -4,7 +4,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Wraps each occurrence of `terms` in `text` in an inline-code chip (GitHub-style). */
+/** Wraps each occurrence of `terms` in `text` in an inline-code chip (GitHub-style), kept on one line, sunken like a field. */
 export function withEmphasis(text: string, terms: string | string[]): ReactNode {
   const termList = Array.isArray(terms) ? terms : [terms];
   const pattern = new RegExp(`(${termList.map(escapeRegExp).join("|")})`, "g");
@@ -14,7 +14,7 @@ export function withEmphasis(text: string, terms: string | string[]): ReactNode 
       termList.includes(part) ? (
         <code
           key={index}
-          className="rounded-md bg-white/[0.1] px-1.5 py-0.5 font-mono text-[0.9em] text-foreground"
+          className="glass-well whitespace-nowrap rounded-md px-1.5 py-0.5 font-mono text-[0.9em] text-foreground"
         >
           {part}
         </code>

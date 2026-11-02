@@ -22,6 +22,7 @@ class EmailSettings(BaseSql, TimestampMixin):
     password: Mapped[Optional[str]] = mapped_column(EncryptedString())
     from_address: Mapped[Optional[str]] = mapped_column(String(255))
     from_name: Mapped[Optional[str]] = mapped_column(String(100))
+    rate_per_minute: Mapped[int] = mapped_column(default=60, server_default="60")
     bulk_host: Mapped[Optional[str]] = mapped_column(String(255))
     bulk_port: Mapped[int] = mapped_column(default=587, server_default="587")
     bulk_security: Mapped[SmtpSecurity] = mapped_column(

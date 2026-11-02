@@ -129,16 +129,18 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
         onAnimationComplete={() => isLeaving && onLeft()}
       >
         <Sidebar />
+        {/* a dialog's backdrop dims only the padding box, so the border dims along with it */}
         <motion.div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden md:my-3 md:mr-3 md:rounded-3xl md:border md:border-glass-border md:bg-surface/50 md:shadow-2xl md:backdrop-blur-[28px] md:backdrop-saturate-150"
+          data-dashboard-panel
+          className="flex min-h-0 flex-1 flex-col overflow-hidden md:my-3 md:mr-3 md:rounded-[32px] md:border md:border-glass-border md:transition-[border-color] md:duration-150 md:has-[[data-dialog]]:border-white/[0.04] md:bg-surface/50 md:shadow-2xl md:backdrop-blur-[28px] md:backdrop-saturate-150"
           initial={isIntro ? { opacity: 0, y: 14 } : false}
           animate={isLeaving ? { opacity: 0, y: 14 } : { opacity: 1, y: 0 }}
           transition={isLeaving ? { duration: 0.25, ease: "easeIn" } : { delay: 0.1, duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <Header onLogout={onLogout} />
-          {/* the stable gutter's 10px comes out of the right padding, like dialog bodies (app/styles.css) */}
+          {/* the stable gutter (--scrollbar-size) comes out of the right padding: 20px either side, the scrollbar inside it */}
           {/* a page with its own scroller (data-fills-main) takes the gutter for its scrollbar */}
-          <main className="scroll-fade-top page-scroll flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] has-[[data-fills-main]]:[scrollbar-gutter:auto] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden pb-[calc(1rem+env(safe-area-inset-bottom))] px-4 pt-[calc(88px+env(safe-area-inset-top))] md:pb-8 md:pl-8 md:pr-[calc(2rem-10px)] md:pt-4">
+          <main className="scroll-fade-top page-scroll flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable] has-[[data-fills-main]]:[scrollbar-gutter:auto] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden pb-[calc(1rem+env(safe-area-inset-bottom))] px-4 pt-[calc(88px+env(safe-area-inset-top))] md:pb-5 md:pl-5 md:pr-[calc(1.25rem-var(--scrollbar-size))] md:pt-0">
             <AnimatedOutlet />
           </main>
           {/* dialogs portal here, not into `main` (see DialogPortal) */}

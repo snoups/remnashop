@@ -7,17 +7,18 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { blockNonIntegerKeys, parseOptionalInt, parseRequiredInt } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
+import { useFieldValidation } from "@shared/lib/use-field-validation";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { Field } from "@shared/ui/Field";
-import { SuffixInput, TextInput } from "@shared/ui/TextInput";
-import { SETTINGS_ROWS_CLASS, SETTINGS_SECTION_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { TextWidth } from "@shared/ui/glass/TextWidth";
 import { SaveFooter } from "@shared/ui/SaveFooter";
-import { SettingsRow } from "@shared/ui/SettingsRow";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { Spinner } from "@shared/ui/Spinner";
+
+type FieldName = "max" | "deviceSingle" | "deviceAll" | "link" | "referral";
 
 export function ShopSettingsForm() {
   const { t } = useTranslation();
@@ -32,8 +33,6 @@ export function ShopSettingsForm() {
   const [linkResetCooldownHours, setLinkResetCooldownHours] = useState("0");
   const [referralResetEnabled, setReferralResetEnabled] = useState(true);
   const [referralResetCooldownHours, setReferralResetCooldownHours] = useState("0");
-  const [supportTelegram, setSupportTelegram] = useState("");
-  const [supportUrl, setSupportUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -49,12 +48,34 @@ export function ShopSettingsForm() {
     setLinkResetCooldownHours(String(state.data.link_reset_cooldown_hours));
     setReferralResetEnabled(state.data.referral_reset_enabled);
     setReferralResetCooldownHours(String(state.data.referral_reset_cooldown_hours));
-    setSupportTelegram(state.data.support_telegram ?? "");
-    setSupportUrl(state.data.support_url ?? "");
   }, [state]);
+
+  const validation = useFieldValidation<FieldName>();
+  const hoursError = (value: string) =>
+    value.trim() === ""
+      ? t("errors.validation.required")
+      : parseRequiredInt(value, 0) === undefined
+        ? t("errors.validation.min", { min: 0 })
+        : null;
+  const errors: Record<FieldName, string | null> = {
+    max:
+      parseOptionalInt(maxActiveSubscriptions, 1) === undefined ? t("errors.validation.min", { min: 1 }) : null,
+    deviceSingle: hoursError(deviceSingleResetCooldownHours),
+    deviceAll: hoursError(deviceAllResetCooldownHours),
+    link: hoursError(linkResetCooldownHours),
+    referral: hoursError(referralResetCooldownHours),
+  };
+  const shown = (name: FieldName) => validation.visible(name, errors[name]);
+  // what an input takes to report its value and its error state
+  const watch = (name: FieldName) => ({
+    onBlur: validation.touch(name),
+    "aria-invalid": shown(name) !== undefined,
+  });
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    validation.submit();
+    if (Object.values(errors).some((error) => error !== null)) return;
 
     const parsedMax = parseOptionalInt(maxActiveSubscriptions, 1);
     const parsedSingleCooldown = parseRequiredInt(deviceSingleResetCooldownHours, 0);
@@ -68,7 +89,6 @@ export function ShopSettingsForm() {
       parsedLinkCooldown === undefined ||
       parsedReferralCooldown === undefined
     ) {
-      toast.error(t("settings.shop.invalidInput"));
       return;
     }
 
@@ -84,11 +104,9 @@ export function ShopSettingsForm() {
         link_reset_cooldown_hours: parsedLinkCooldown,
         referral_reset_enabled: referralResetEnabled,
         referral_reset_cooldown_hours: parsedReferralCooldown,
-        // blank clears it; the backend takes "@name" and t.me links as well
-        support_telegram: supportTelegram.trim() || null,
-        support_url: supportUrl.trim() || null,
       });
       setData(settings);
+      validation.reset();
       toast.success(t("common.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
@@ -108,138 +126,139 @@ export function ShopSettingsForm() {
       linkResetEnabled !== saved.link_reset_enabled ||
       linkResetCooldownHours !== String(saved.link_reset_cooldown_hours) ||
       referralResetEnabled !== saved.referral_reset_enabled ||
-      referralResetCooldownHours !== String(saved.referral_reset_cooldown_hours) ||
-      supportTelegram !== (saved.support_telegram ?? "") ||
-      supportUrl !== (saved.support_url ?? ""));
+      referralResetCooldownHours !== String(saved.referral_reset_cooldown_hours));
 
+  const unlimited = t("settings.shop.unlimitedPlaceholder");
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
         icon={ShoppingBag}
         title={t("settings.shop.title")}
         description={t("settings.shop.description")}
-      />
-
-      {state.kind === "loading" && (
-        <Spinner size="card" />
-      )}
-      {state.kind === "error" && (
-        <ErrorState text={t("common.loadError")} />
-      )}
-      {state.kind === "ready" && (
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
+        footer={state.kind === "ready" && canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && (
           <fieldset disabled={!canManage} className="contents">
-          <div className={SETTINGS_ROWS_CLASS}>
-            <SettingsRow icon={Layers} label={t("settings.shop.maxActiveSubscriptionsLabel")}>
-              <TextInput
-                type="number"
-                onKeyDown={blockNonIntegerKeys}
-                step="1"
-                min="1"
-                placeholder={t("settings.shop.unlimitedPlaceholder")}
-                value={maxActiveSubscriptions}
-                onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
-                className="w-24 shrink-0"
+            <SectionRows>
+              <Row
+                icon={Layers}
+                label={t("settings.shop.maxActiveSubscriptionsLabel")}
+                description={shown("max") && <span className="text-error">{shown("max")}</span>}
+              >
+                {/* 2px: the reset rows end 16px in (switch), this one 14px */}
+                <TextWidth text={unlimited} className="mr-0.5">
+                  <Input
+                    size="sm"
+                    className="flex-1"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    step="1"
+                    min="1"
+                    placeholder={unlimited}
+                    value={maxActiveSubscriptions}
+                    onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
+                    {...watch("max")}
+                  />
+                </TextWidth>
+              </Row>
+              <ResetRow
+                icon={Smartphone}
+                label={t("settings.shop.deviceSingleResetLabel")}
+                width={unlimited}
+                error={shown("deviceSingle")}
+                inputProps={watch("deviceSingle")}
+                enabled={deviceSingleResetEnabled}
+                onEnabledChange={setDeviceSingleResetEnabled}
+                cooldownHours={deviceSingleResetCooldownHours}
+                onCooldownChange={setDeviceSingleResetCooldownHours}
               />
-              {/* switch-sized gap: this input lines up with the reset rows' hours */}
-              <span className="w-10 shrink-0" />
-            </SettingsRow>
-            <ResetRow
-              icon={Smartphone}
-              label={t("settings.shop.deviceSingleResetLabel")}
-              enabled={deviceSingleResetEnabled}
-              onEnabledChange={setDeviceSingleResetEnabled}
-              cooldownHours={deviceSingleResetCooldownHours}
-              onCooldownChange={setDeviceSingleResetCooldownHours}
-            />
-            <ResetRow
-              icon={MonitorSmartphone}
-              label={t("settings.shop.deviceAllResetLabel")}
-              enabled={deviceAllResetEnabled}
-              onEnabledChange={setDeviceAllResetEnabled}
-              cooldownHours={deviceAllResetCooldownHours}
-              onCooldownChange={setDeviceAllResetCooldownHours}
-            />
-            <ResetRow
-              icon={Link2}
-              label={t("settings.shop.linkResetLabel")}
-              enabled={linkResetEnabled}
-              onEnabledChange={setLinkResetEnabled}
-              cooldownHours={linkResetCooldownHours}
-              onCooldownChange={setLinkResetCooldownHours}
-            />
-            <ResetRow
-              icon={Share2}
-              label={t("settings.shop.referralResetLabel")}
-              enabled={referralResetEnabled}
-              onEnabledChange={setReferralResetEnabled}
-              cooldownHours={referralResetCooldownHours}
-              onCooldownChange={setReferralResetCooldownHours}
-            />
-          </div>
-
-          {/* where the cabinet's "Support" leads: either or both */}
-          <div className={SETTINGS_SECTION_CLASS}>
-            <div className="flex flex-col gap-3 px-[12.5px] pb-2 pt-1">
-              <Field bright label={t("settings.shop.supportTelegramLabel")}>
-                <TextInput
-                  placeholder={t("settings.shop.supportTelegramPlaceholder")}
-                  value={supportTelegram}
-                  onChange={(event) => setSupportTelegram(event.target.value)}
-                  autoComplete="off"
-                />
-              </Field>
-              <Field bright label={t("settings.shop.supportUrlLabel")}>
-                <TextInput
-                  placeholder={t("settings.shop.supportUrlPlaceholder")}
-                  value={supportUrl}
-                  onChange={(event) => setSupportUrl(event.target.value)}
-                  autoComplete="off"
-                />
-              </Field>
-            </div>
-          </div>
+              <ResetRow
+                icon={MonitorSmartphone}
+                label={t("settings.shop.deviceAllResetLabel")}
+                width={unlimited}
+                error={shown("deviceAll")}
+                inputProps={watch("deviceAll")}
+                enabled={deviceAllResetEnabled}
+                onEnabledChange={setDeviceAllResetEnabled}
+                cooldownHours={deviceAllResetCooldownHours}
+                onCooldownChange={setDeviceAllResetCooldownHours}
+              />
+              <ResetRow
+                icon={Link2}
+                label={t("settings.shop.linkResetLabel")}
+                width={unlimited}
+                error={shown("link")}
+                inputProps={watch("link")}
+                enabled={linkResetEnabled}
+                onEnabledChange={setLinkResetEnabled}
+                cooldownHours={linkResetCooldownHours}
+                onCooldownChange={setLinkResetCooldownHours}
+              />
+              <ResetRow
+                icon={Share2}
+                label={t("settings.shop.referralResetLabel")}
+                width={unlimited}
+                error={shown("referral")}
+                inputProps={watch("referral")}
+                enabled={referralResetEnabled}
+                onEnabledChange={setReferralResetEnabled}
+                cooldownHours={referralResetCooldownHours}
+                onCooldownChange={setReferralResetCooldownHours}
+              />
+            </SectionRows>
           </fieldset>
-
-          {canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
-        </form>
-      )}
-    </Card>
+        )}
+      </Section>
+    </form>
   );
 }
 
 interface ResetRowProps {
   icon: ComponentType<{ className?: string }>;
   label: string;
+  /** the text the limit field above is sized to: hours + switch take its width */
+  width: string;
   enabled: boolean;
   onEnabledChange: (value: boolean) => void;
   cooldownHours: string;
   onCooldownChange: (value: string) => void;
+  /** shown in red under the label */
+  error?: string;
+  inputProps: { onBlur: () => void; "aria-invalid": boolean };
 }
 
 function ResetRow({
   icon,
   label,
+  width,
   enabled,
   onEnabledChange,
   cooldownHours,
   onCooldownChange,
+  error,
+  inputProps,
 }: ResetRowProps) {
   const { t } = useTranslation();
   return (
-    <SettingsRow icon={icon} label={label}>
-      <SuffixInput
-        type="number"
-        onKeyDown={blockNonIntegerKeys}
-        step="1"
-        min="0"
-        suffix={t("settings.shop.hoursSuffix")}
-        value={cooldownHours}
-        onChange={(event) => onCooldownChange(event.target.value)}
-        disabled={!enabled}
-        className="w-24 shrink-0"
-      />
-      <Switch checked={enabled} onChange={onEnabledChange} />
-    </SettingsRow>
+    <Row icon={icon} label={label} description={error && <span className="text-error">{error}</span>}>
+      <TextWidth text={width}>
+        <Input
+          size="sm"
+          className="flex-1"
+          type="number"
+          onKeyDown={blockNonIntegerKeys}
+          step="1"
+          min="0"
+          suffix={t("settings.shop.hoursSuffix")}
+          value={cooldownHours}
+          onChange={(event) => onCooldownChange(event.target.value)}
+          {...inputProps}
+          disabled={!enabled}
+        />
+        <Switch checked={enabled} onChange={onEnabledChange} />
+      </TextWidth>
+    </Row>
   );
 }

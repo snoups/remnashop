@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   removeLegalText,
   setLegalText,
+  updateLegalDocument,
   type LegalChannel,
   type LegalDocument,
 } from "@entities/legal/api";
@@ -22,9 +23,11 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Modal } from "@shared/ui/Modal";
 import { DialogTabs } from "@shared/ui/DialogTabs";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
+import { Modal } from "@shared/ui/Modal";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 const CHANNELS = [null, "BOT", "CABINET"] as const;
@@ -34,6 +37,8 @@ type Tab = "common" | LegalChannel;
 interface Props {
   document: LegalDocument;
   locales: string[];
+  /** the show-in-bot / show-in-cabinet switches */
+  canUpdate: boolean;
   canSet: boolean;
   canRemove: boolean;
   /** after a save or a removal: the parent reloads the documents */
@@ -43,14 +48,17 @@ interface Props {
 
 export function LegalDocumentDialog({ onClose, ...props }: Props) {
   return (
-    <Modal onClose={onClose} size="xl" scrollable>
+    <Modal onClose={onClose} size="xl" scrollable material="glass">
       <LegalDocumentDialogBody {...props} />
     </Modal>
   );
 }
 
-function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChanged }: Omit<Props, "onClose">) {
+function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemove, onChanged }: Omit<Props, "onClose">) {
   const { t } = useTranslation();
+  const [visibility, setVisibility] = useState({ show_in_bot: document.show_in_bot, show_in_cabinet: document.show_in_cabinet });
+  const visibilityChanged =
+    visibility.show_in_bot !== document.show_in_bot || visibility.show_in_cabinet !== document.show_in_cabinet;
   const [tab, setTab] = useState<Tab>("common");
   const [locale, setLocale] = useState(locales[0]);
   // edits of every language and channel of this document, until saved
@@ -87,6 +95,7 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
   const save = async () => {
     setBusy(true);
     try {
+      if (visibilityChanged) await updateLegalDocument(document.kind, visibility);
       for (const { code, target, item, itemSlot } of pending) {
         await setLegalText(document.kind, code, target, {
           title: item.title,
@@ -120,10 +129,16 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
   return (
     <>
       <DialogHeader icon={KIND_ICONS[document.kind]} title={t(`settings.legal.kinds.${document.kind}`)} />
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-5">
         {/* eases like the other dialogs when the reaccept switch or the channel's own-text row comes and goes */}
-        <motion.div animate={{ height: contentHeight }} transition={{ duration: 0.2, ease: "easeOut" }} className="overflow-hidden">
-          <div ref={contentRef} className="flex flex-col gap-3">
+        {/* the height animation clips; 4px of room on every side (given back by the negative margin)
+            keeps the fields' 2px focus ring inside the clip */}
+        <motion.div
+          animate={{ height: contentHeight }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="-m-1 overflow-hidden px-1"
+        >
+          <div ref={contentRef} className="flex flex-col gap-4 py-1">
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <DialogTabs
@@ -137,7 +152,7 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
                 />
               </div>
               {locales.length > 1 && (
-                <div className="w-40 shrink-0">
+                <div className="w-32 shrink-0">
                   <SelectDropdown
                     value={locale}
                     onChange={setLocale}
@@ -154,6 +169,25 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
                 </div>
               )}
             </div>
+            <Field label={t("settings.legal.visibility")}>
+              <div className="flex gap-2">
+                <ToggleCapsule
+                  icon={Bot}
+                  label={t("settings.legal.tabs.BOT")}
+                  // a channel with no text of its own nor a common one has nothing to show
+                  checked={visibility.show_in_bot && hasTextFor(document, "BOT")}
+                  onChange={(show_in_bot) => setVisibility((prev) => ({ ...prev, show_in_bot }))}
+                  disabled={!canUpdate || busy || !hasTextFor(document, "BOT")}
+                />
+                <ToggleCapsule
+                  icon={Globe}
+                  label={t("settings.legal.tabs.CABINET")}
+                  checked={visibility.show_in_cabinet && hasTextFor(document, "CABINET")}
+                  onChange={(show_in_cabinet) => setVisibility((prev) => ({ ...prev, show_in_cabinet }))}
+                  disabled={!canUpdate || busy || !hasTextFor(document, "CABINET")}
+                />
+              </div>
+            </Field>
             <LegalTextEditor
               value={value}
               onChange={(next) => setDrafts((prev) => ({ ...prev, [key]: next }))}
@@ -165,10 +199,10 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
           </div>
         </motion.div>
       </div>
-      {(canSet || canRemove) && (
+      {(canSet || canRemove || canUpdate) && (
         <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
           <div className="min-w-0 flex-1">
-            {pending.length > 0 && (
+            {(pending.length > 0 || visibilityChanged) && (
               <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                 <span className="size-1.5 shrink-0 rounded-full bg-warning" />
                 {t("common.unsavedChanges")}
@@ -176,13 +210,13 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
             )}
           </div>
           {channel !== null && slot.hasOverride && canRemove && (
-            <Button variant="outline" disabled={busy} onClick={() => void removeOverride(channel)}>
+            <Button variant="glass" disabled={busy} onClick={() => void removeOverride(channel)}>
               {t("settings.legal.resetToCommon")}
             </Button>
           )}
           {canInsertTemplate && template && (
             <Button
-              variant="outline"
+              variant="glass"
               disabled={busy}
               onClick={() =>
                 setDrafts((prev) => ({
@@ -194,10 +228,10 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
               {t("settings.legal.insertTemplate")}
             </Button>
           )}
-          {canSet && (
+          {(canSet || canUpdate) && (
             <Button
-              variant="accent"
-              disabled={busy || pending.length === 0 || pending.some(({ item }) => !isValid(item))}
+              variant="glassAccent"
+              disabled={busy || (pending.length === 0 && !visibilityChanged) || pending.some(({ item }) => !isValid(item))}
               onClick={() => void save()}
             >
               {busy ? t("common.saving") : t("common.save")}
@@ -207,4 +241,9 @@ function LegalDocumentDialogBody({ document, locales, canSet, canRemove, onChang
       )}
     </>
   );
+}
+
+// shown only once some text exists for the channel, its own or the common one
+function hasTextFor(document: LegalDocument, channel: LegalChannel): boolean {
+  return document.texts.some((item) => item.channel === null || item.channel === channel);
 }

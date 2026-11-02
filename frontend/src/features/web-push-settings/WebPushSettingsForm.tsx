@@ -1,5 +1,5 @@
 import { BellRing } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -11,18 +11,17 @@ import {
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
+import { useFieldValidation } from "@shared/lib/use-field-validation";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Field } from "@shared/ui/Field";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { CopyInput, Input } from "@shared/ui/glass/Input";
+import { Section, SectionFields } from "@shared/ui/glass/Section";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
-import { StatusPill } from "@shared/ui/StatusPill";
-import { TextInput } from "@shared/ui/TextInput";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
 
 export function WebPushSettingsForm() {
   const { t } = useTranslation();
@@ -35,6 +34,7 @@ export function WebPushSettingsForm() {
   const [contact, setContact] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const id = useId();
 
   const configured = state.kind === "ready" && state.data.is_push_configured;
   const savedContact = state.kind === "ready" ? shownContact(state.data.vapid_contact) : "";
@@ -43,7 +43,15 @@ export function WebPushSettingsForm() {
   // the first save also creates the keys, so a fresh shop needs one button
   const generatesKeys = state.kind === "ready" && !configured && canGenerate;
 
+  const validation = useFieldValidation<"contact">();
+  // keys need a contact, and a set contact can't be cleared
+  const contactError =
+    contact.trim() === "" ? t("errors.validation.required") : !contactValid ? t("errors.validation.email") : null;
+  const contactShown = validation.visible("contact", canManage ? contactError : null);
+
   const save = async () => {
+    validation.submit();
+    if (canManage && contactError !== null) return;
     setIsSaving(true);
     try {
       if (contactChanged && canManage) {
@@ -52,6 +60,7 @@ export function WebPushSettingsForm() {
         setContact(shownContact(updated.vapid_contact));
       }
       if (generatesKeys) setData(await generateVapidKeys());
+      validation.reset();
       toast.success(t(generatesKeys ? "settings.webPush.generated" : "common.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
@@ -80,68 +89,64 @@ export function WebPushSettingsForm() {
   };
 
   return (
-    <Card>
-      <CardHeader
-        icon={BellRing}
-        title={t("settings.webPush.title")}
-        description={t("settings.webPush.description")}
-        aside={
-          state.kind === "ready" && (
-            <>
-              {configured && (
-                <Button variant="outline" onClick={() => void test()}>
-                  {t("settings.webPush.test")}
+    <Section
+      icon={BellRing}
+      title={t("settings.webPush.title")}
+      description={t("settings.webPush.description")}
+      aside={
+        state.kind === "ready" &&
+        (configured ? (
+          <Button variant="glass" onClick={() => void test()}>
+            {t("settings.webPush.test")}
+          </Button>
+        ) : (
+          <StatusPill tone="warning">{t("settings.webPush.notConfigured")}</StatusPill>
+        ))
+      }
+      footer={
+        state.kind === "ready" &&
+        (canManage || canGenerate) && (
+          <SaveFooter
+            variant="glassAccent"
+            dirty={contactChanged}
+            hasWork={generatesKeys}
+            saving={isSaving}
+            onSave={() => void save()}
+            beside={
+              configured &&
+              canGenerate && (
+                <Button variant="glassDanger" onClick={() => setIsConfirming(true)}>
+                  {t("settings.webPush.regenerate")}
                 </Button>
-              )}
-              <StatusPill tone={configured ? "success" : "warning"}>
-                {t(configured ? "settings.webPush.configured" : "settings.webPush.notConfigured")}
-              </StatusPill>
-            </>
-          )
-        }
-      />
-
+              )
+            }
+          />
+        )
+      }
+    >
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-      {state.kind === "ready" && (
-        <>
-          <div className="mt-4 flex flex-col gap-3 px-[12.5px]">
-            {canManage && (
-              <Field bright label={t("settings.webPush.contact")} required>
-                <TextInput
-                  type="email"
-                  aria-invalid={contact.trim() !== "" && !contactValid}
-                  value={contact}
-                  onChange={(event) => setContact(event.target.value)}
-                  placeholder={t("settings.webPush.contactPlaceholder")}
-                />
-              </Field>
-            )}
-            {state.data.vapid_public_key && (
-              <Field bright label={t("settings.webPush.publicKey")}>
-                <CopyableValue value={state.data.vapid_public_key} />
-              </Field>
-            )}
-          </div>
-          {(canManage || canGenerate) && (
-            <SaveFooter
-              dirty={contactChanged}
-              hasWork={generatesKeys}
-              saving={isSaving}
-              // keys need a contact, and a set contact can't be cleared
-              disabled={!contactValid}
-              onSave={() => void save()}
-              beside={
-                configured &&
-                canGenerate && (
-                  <Button variant="danger" onClick={() => setIsConfirming(true)}>
-                    {t("settings.webPush.regenerate")}
-                  </Button>
-                )
-              }
-            />
+      {state.kind === "ready" && (canManage || state.data.vapid_public_key) && (
+        <SectionFields>
+          {canManage && (
+            <Field label={t("settings.webPush.contact")} htmlFor={`${id}-contact`} required error={contactShown}>
+              <Input
+                id={`${id}-contact`}
+                type="email"
+                onBlur={validation.touch("contact")}
+                aria-invalid={contactShown !== undefined}
+                value={contact}
+                onChange={(event) => setContact(event.target.value)}
+                placeholder={t("settings.webPush.contactPlaceholder")}
+              />
+            </Field>
           )}
-        </>
+          {state.data.vapid_public_key && (
+            <Field label={t("settings.webPush.publicKey")} htmlFor={`${id}-key`}>
+              <CopyInput id={`${id}-key`} value={state.data.vapid_public_key} />
+            </Field>
+          )}
+        </SectionFields>
       )}
 
       {isConfirming && (
@@ -155,7 +160,7 @@ export function WebPushSettingsForm() {
           onCancel={() => setIsConfirming(false)}
         />
       )}
-    </Card>
+    </Section>
   );
 }
 

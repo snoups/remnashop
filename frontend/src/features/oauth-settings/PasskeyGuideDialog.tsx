@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { withEmphasis } from "@shared/lib/text-emphasis";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideDialog, GuideHeading } from "@shared/ui/glass/GuideDialog";
 
 export function PasskeyGuideDialog() {
   const { t } = useTranslation();
@@ -15,18 +15,18 @@ export function PasskeyGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.passkeyGuide.rpIdTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.passkeyGuide.rpIdBody"), "example.com")}
         </p>
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.passkeyGuide.originTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.passkeyGuide.originBody"), "https://example.com")}
         </p>

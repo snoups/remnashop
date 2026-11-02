@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideCopy, GuideDialog, GuideHeading } from "@shared/ui/glass/GuideDialog";
 
 export function PasswordLoginGuideDialog() {
   const { t } = useTranslation();
@@ -11,13 +10,13 @@ export function PasswordLoginGuideDialog() {
       title={t("settings.oauth.passwordLoginGuide.title")}
     >
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.passwordLoginGuide.rescueTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">{t("settings.oauth.passwordLoginGuide.rescueIntro")}</p>
 
         <div className="mt-3">
-          <CopyableValue
+          <GuideCopy
             label={t("settings.oauth.passwordLoginGuide.rescueCommandLabel")}
             value={t("settings.oauth.passwordLoginGuide.rescueCommandValue")}
           />

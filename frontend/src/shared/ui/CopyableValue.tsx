@@ -34,7 +34,7 @@ export function CopyableValue({ label, value }: CopyableValueProps) {
         <span className="min-w-0 truncate font-mono text-[13px] text-foreground">{value}</span>
         <IconButton size="7" tone="group"
         >
-          {isCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+          {isCopied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
         </IconButton>
       </div>
     </div>

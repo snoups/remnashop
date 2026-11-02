@@ -204,7 +204,7 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
                       onClick={handleCopyCommit}
                     >
                       {isCopied ? (
-                        <Check className="size-3.5 text-success" />
+                        <Check className="size-3.5 text-primary" />
                       ) : (
                         <Copy className="size-3.5" />
                       )}

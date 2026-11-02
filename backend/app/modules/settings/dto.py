@@ -273,6 +273,7 @@ class EmailSettingsDto(BaseDto, TimestampMixin):
     password: Optional[SecretStr] = None
     from_address: Optional[str] = None
     from_name: Optional[str] = None
+    rate_per_minute: int = 60
     bulk_host: Optional[str] = None
     bulk_port: int = 587
     bulk_security: SmtpSecurity = SmtpSecurity.STARTTLS
@@ -308,6 +309,7 @@ class EmailSettingsDto(BaseDto, TimestampMixin):
                 password=self.bulk_password,
                 from_address=self.bulk_from_address,
                 from_name=self.bulk_from_name,
+                rate_per_minute=self.bulk_rate_per_minute,
                 is_bulk=True,
             )
         return SmtpProfileDto(
@@ -318,6 +320,7 @@ class EmailSettingsDto(BaseDto, TimestampMixin):
             password=self.password,
             from_address=self.from_address,
             from_name=self.from_name,
+            rate_per_minute=self.rate_per_minute,
             is_bulk=False,
         )
 
@@ -331,6 +334,8 @@ class SmtpProfileDto:
     password: Optional[SecretStr]
     from_address: Optional[str]
     from_name: Optional[str]
+    # broadcast letters per minute through this server
+    rate_per_minute: int
     is_bulk: bool
 
     @property
@@ -347,6 +352,7 @@ class UpdateEmailSettingsDto:
     password: Optional[str] = None
     from_address: Optional[str] = None
     from_name: Optional[str] = None
+    rate_per_minute: Optional[int] = None
     bulk_host: Optional[str] = None
     bulk_port: Optional[int] = None
     bulk_security: Optional[SmtpSecurity] = None

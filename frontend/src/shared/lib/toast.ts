@@ -11,6 +11,8 @@ export interface ToastItem {
 const DISMISS_MS = 5000;
 // errors tend to be longer and matter more, so they stay up a bit longer
 const ERROR_DISMISS_MS = 8000;
+// left after the pointer leaves: a toast read to its last second doesn't vanish under the cursor's exit
+const AFTER_HOVER_MS = 2000;
 
 let toasts: ToastItem[] = [];
 let nextId = 0;
@@ -50,7 +52,7 @@ export function resumeToast(id: number) {
   const timer = timers.get(id);
   if (!timer || timer.timeout) return;
   timer.startedAt = Date.now();
-  timer.timeout = setTimeout(() => dismissToast(id), Math.max(timer.remaining, 0));
+  timer.timeout = setTimeout(() => dismissToast(id), Math.max(timer.remaining, AFTER_HOVER_MS));
 }
 
 export const toast = {

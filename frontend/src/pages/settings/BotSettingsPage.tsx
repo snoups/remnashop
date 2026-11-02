@@ -9,7 +9,7 @@ import { TranslationsEditorForm } from "@features/translations-editor/Translatio
 export function BotSettingsPage() {
   const permissions = usePermissions();
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {permissions.includes("BOT_SETTINGS_VIEW") && <BotSettingsForm />}
       {permissions.includes("BOT_REQUIREMENTS_VIEW") && <BotRequirementsForm />}
       {permissions.includes("DIALOGS_CATALOG_VIEW") && permissions.includes("DIALOGS_WINDOWS_VIEW") && (

@@ -13,6 +13,10 @@ _TELEGRAM_USERNAME: Final[re.Pattern[str]] = re.compile(
 )
 # no control characters (a line break above all): it lands in an email header
 _HEADER_TEXT: Final[str] = r"^[^\x00-\x1f\x7f]*$"
+# what the Bot API puts before a channel's own id
+_CHANNEL_ID_PREFIX: Final[str] = "-100"
+# the channel button opens Telegram: a public @name or a t.me/+ invite, on any of its link domains
+_TELEGRAM_LINK_HOSTS: Final[frozenset[str]] = frozenset({"t.me", "telegram.me", "telegram.dog"})
 
 
 class BotSettingsResponse(BaseModel):
@@ -201,6 +205,7 @@ class EmailSettingsResponse(BaseModel):
     is_password_set: bool
     from_address: Optional[str]
     from_name: Optional[str]
+    rate_per_minute: int
     is_configured: bool
     bulk_host: Optional[str]
     bulk_port: int
@@ -224,6 +229,7 @@ class UpdateEmailSettingsRequest(BaseModel):
     )
     # a line break in a header value makes every send raise
     from_name: Optional[str] = Field(None, max_length=100, pattern=_HEADER_TEXT)
+    rate_per_minute: Optional[int] = Field(None, ge=1, le=1000)
     bulk_host: Optional[str] = Field(None, min_length=1, max_length=255)
     bulk_port: Optional[int] = Field(None, ge=1, le=65535)
     bulk_security: Optional[SmtpSecurity] = None
@@ -287,6 +293,32 @@ class UpdateBotRequirementsRequest(BaseModel):
     channel_id: Optional[int] = Field(default=None, ge=-INT64_MAX - 1, le=INT64_MAX)
     channel_url: Optional[HttpUrl] = None
     trial_channel_guard: bool = False
+
+    @field_validator("channel_id", mode="before")
+    @classmethod
+    def _channel_id_with_prefix(cls, value: object) -> object:
+        # Bot API addresses a channel as -100<id>; many tools show the bare id, never a positive
+        # channel id, so a positive one gets the prefix
+        if isinstance(value, str) and value.strip().isdigit():
+            value = int(value)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return int(f"{_CHANNEL_ID_PREFIX}{value}")
+        return value
+
+    @field_validator("channel_url", mode="before")
+    @classmethod
+    def _channel_url_with_scheme(cls, value: object) -> object:
+        # "t.me/name" as copied from Telegram: the scheme is implied
+        if isinstance(value, str) and value.strip() and "://" not in value:
+            return f"https://{value.strip()}"
+        return value
+
+    @field_validator("channel_url")
+    @classmethod
+    def _channel_url_on_telegram(cls, value: Optional[HttpUrl]) -> Optional[HttpUrl]:
+        if value is not None and (value.host or "").lower() not in _TELEGRAM_LINK_HOSTS:
+            raise ValueError("channel_url must be a t.me, telegram.me or telegram.dog link")
+        return value
 
 
 class CabinetSettingsResponse(BaseModel):

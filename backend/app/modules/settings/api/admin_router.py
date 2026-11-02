@@ -236,6 +236,7 @@ async def update_email_settings(
             password=payload.password,
             from_address=payload.from_address,
             from_name=payload.from_name,
+            rate_per_minute=payload.rate_per_minute,
             bulk_host=payload.bulk_host,
             bulk_port=payload.bulk_port,
             bulk_security=payload.bulk_security,

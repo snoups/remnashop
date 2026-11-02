@@ -1,7 +1,5 @@
-import { FlaskConical } from "lucide-react";
-
 import { useKit } from "@pages/debug/use-kit";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { GlassSettingsMockup } from "@pages/debug/GlassSettingsMockup";
 
 // Live copies of markup that drifted apart across pages, side by side, until one is picked for shared/ui.
 export function DebugVariantsPage() {
@@ -14,7 +12,7 @@ export function DebugVariantsPage() {
         <p className="text-[12.5px] text-muted-foreground">{k("variants.caption")}</p>
       </div>
 
-      <EmptyState text={k("variants.empty")} icon={FlaskConical} size="page" />
+      <GlassSettingsMockup />
     </div>
   );
 }

@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { withEmphasis } from "@shared/lib/text-emphasis";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideCopy, GuideDialog, GuideHeading } from "@shared/ui/glass/GuideDialog";
 
 export function OidcOAuthGuideDialog() {
   const { t } = useTranslation();
@@ -16,13 +15,13 @@ export function OidcOAuthGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.oidcGuide.callbackTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">{t("settings.oauth.oidcGuide.callbackIntro")}</p>
 
         <div className="mt-3">
-          <CopyableValue
+          <GuideCopy
             label={t("settings.oauth.oidcGuide.callbackCommentLabel")}
             value={t("settings.oauth.oidcGuide.callbackUrlValue")}
           />
@@ -34,9 +33,9 @@ export function OidcOAuthGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.oidcGuide.settingsTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.oidcGuide.settingsBody"), [
             "Issuer URL",

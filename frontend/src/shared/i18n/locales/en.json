@@ -1108,18 +1108,14 @@
       "generateSecretToken": "Generate",
       "secretTokenCopied": "Copied",
       "placeholder": "Leave blank to keep the current value",
-      "errorEmptyFields": "Enter at least one field to update.",
       "errorInvalidToken": "Invalid bot token format.",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
       "applyChangesDescription": "Restarts the telegram process so it picks up the saved token, secret and proxy. Has no effect if the process isn’t currently running.",
       "restartBot": "Restart",
-      "restarting": "Restarting…",
-      "restartCooldown": "Restarting ({{seconds}}s)",
       "restartRequested": "Restart requested. The bot process will come back up with the saved settings shortly.",
       "showLogs": "View logs",
       "logsTitle": "Telegram bot logs",
-      "refreshLogs": "Refresh",
       "logsEmpty": "No logs. They appear once the telegram process starts.",
       "logsLoadError": "Failed to load logs.",
       "proxyLabel": "Telegram proxy",
@@ -1127,13 +1123,16 @@
       "proxyPlaceholder": "socks5://user:password@host:1080",
       "proxyConfiguredPlaceholder": "Proxy is set — leave empty to keep it",
       "removeProxy": "Remove",
-      "proxyRemoved": "Proxy removed."
+      "proxyRemoved": "Proxy removed.",
+      "copyLogs": "Copy",
+      "logsCopied": "Copied",
+      "secretTokenInvalid": "Latin letters, digits, _ and -, up to 256 characters."
     },
     "botCommands": {
       "title": "Commands",
       "description": "Available commands and their order",
-      "resetOrder": "Reset order",
-      "savedTelegramSyncFailed": "Saved, but Telegram wasn’t updated. Try saving again."
+      "savedTelegramSyncFailed": "Saved, but Telegram wasn’t updated. Try saving again.",
+      "reset": "Reset"
     },
     "banners": {
       "uploadError": "Failed to upload banner.",
@@ -1185,7 +1184,7 @@
       "oidcDisplayNameLabel": "Display name",
       "oidcIssuerUrlLabel": "Issuer URL",
       "passwordLoginLabel": "Password login",
-      "passwordLoginDescription": "Allow signing in with login and password. Make sure at least one OAuth provider works before disabling this.",
+      "passwordLoginDescription": "Make sure at least one OAuth provider works before disabling this",
       "passkeyTitle": "Passkeys",
       "passkeyRpIdLabel": "Domain",
       "passkeyOriginLabel": "Origin",
@@ -1259,11 +1258,12 @@
         "rescueCommandValue": "docker compose run --rm remnashop cli",
         "rescueNote": "After it starts, choose “Enable password authentication”."
       },
-      "redirectHint": "Redirect URI: your cabinet address followed by {{path}}"
+      "redirectHint": "Redirect URI: your cabinet address followed by {{path}}",
+      "issuerUrlInvalid": "The issuer URL must start with https://."
     },
     "shop": {
-      "title": "Shop",
-      "description": "Limits and rules",
+      "title": "Subscriptions and limits",
+      "description": "Subscription limit and reset cooldowns",
       "maxActiveSubscriptionsLabel": "Subscription limit per user",
       "unlimitedPlaceholder": "Unlimited",
       "deviceSingleResetLabel": "Single device reset",
@@ -1275,7 +1275,8 @@
       "supportTelegramPlaceholder": "@support or t.me/support",
       "supportUrlLabel": "Support in the browser",
       "supportUrlPlaceholder": "https://example.com/support",
-      "invalidInput": "Check the entered values."
+      "supportTelegramInvalid": "A @username or a t.me link.",
+      "supportUrlInvalid": "The link must start with https://."
     },
     "gateways": {
       "configured": "configured",
@@ -1392,12 +1393,6 @@
         "invited": "Invite only",
         "restricted": "Closed"
       },
-      "modeHints": {
-        "public": "Anyone can sign up",
-        "invited": "New users need a referral or an ad link",
-        "restricted": "Only staff can use the bot and the cabinet"
-      },
-      "modeLabel": "Access mode",
       "registrationLabel": "New user sign-ups",
       "paymentsLabel": "Accept payments",
       "waitlist_one": "{{count}} waiting to pay",
@@ -1410,10 +1405,17 @@
       "channelId": "Channel ID",
       "channelUrl": "Channel link",
       "trialChannelGuard": "Pause trials on unsubscribe",
-      "trialChannelGuardHint": "Leaving the channel pauses the customer’s trial, coming back resumes it"
+      "trialChannelGuardHint": "Leaving the channel pauses the customer’s trial, coming back resumes it",
+      "channelUrlInvalid": "A t.me, telegram.me or telegram.dog link.",
+      "channelIdInvalid": "Digits only, a minus in front allowed.",
+      "channelHint": "The bot serves customers only while they’re subscribed to the channel"
     },
     "email": {
-      "title": "SMTP",
+      "title": "Mail server",
+      "tabs": {
+        "main": "Main",
+        "bulk": "Broadcasts"
+      },
       "description": "Sign-in codes, notifications and broadcasts to customers",
       "hostLabel": "SMTP host",
       "portLabel": "Port",
@@ -1430,17 +1432,16 @@
       "fromAddressLabel": "From address",
       "fromNameLabel": "From name",
       "testButton": "Send test email",
-      "testSending": "Sending…",
-      "testSent": "Test email sent."
+      "testSent": "Test email sent.",
+      "portInvalid": "A port from 1 to {{max}}."
     },
     "emailBulk": {
       "testSent": "Test email sent through the broadcast server.",
-      "sectionTitle": "Broadcasts",
-      "rateLabel": "Emails per minute",
-      "rateHint": "From 1 to 1000, for either server",
+      "rateLabel": "Email sending limit",
+      "rateHint": "How many broadcast emails go out per minute, 1 to 1000",
       "rateInvalid": "Enter a whole number from 1 to 1000.",
       "toggleLabel": "Separate server for broadcasts",
-      "viaMain": "Broadcasts currently go through the main server",
+      "viaMain": "A separate server is recommended for bulk emails",
       "resetTitle": "Turn off the separate broadcast server?",
       "resetMessage": "The separate server’s settings are removed and broadcasts go through the main SMTP again. The rate limit is kept.",
       "resetConfirm": "Turn off",
@@ -1596,7 +1597,7 @@
             },
             {
               "title": "Data access and keys",
-              "body": "Under data access pick “Login, first and last name, gender” and “Email address”. After saving, copy the ClientID and Client secret from the app page into the fields below."
+              "body": "Under data access pick “Login, first and last name, gender” and “Email address”. After saving, copy the Client ID and Client secret from the app page into the fields below."
             }
           ]
         },
@@ -1609,7 +1610,7 @@
             },
             {
               "title": "Requirements",
-              "body": "SMTP configured in the “SMTP” card below; without it the method can’t be enabled."
+              "body": "SMTP configured in the “Mail server” card below; without it the method can’t be enabled."
             },
             {
               "title": "Domain restriction",
@@ -1637,10 +1638,6 @@
         "BOT": "Telegram bot",
         "CABINET": "Web cabinet"
       },
-      "chips": {
-        "BOT": "Bot",
-        "CABINET": "Cabinet"
-      },
       "insertTemplate": "Insert template",
       "resetToCommon": "Use the common text",
       "titleLabel": "Title",
@@ -1648,7 +1645,13 @@
       "bodyHint": "Markdown is supported. The title and text together are limited to {{limit}} characters.",
       "reaccept": "Ask customers to accept again",
       "reacceptHint": "Every customer will see the new version on their next bot action or cabinet visit.",
-      "lastReaccept": "Last acceptance request: {{date}}"
+      "lastReaccept": "Last acceptance request: {{date}}",
+      "hidden": "Hidden",
+      "visibility": "Visibility"
+    },
+    "support": {
+      "title": "Support",
+      "description": "Support contacts for customers"
     }
   },
   "apiTokens": {
@@ -2511,7 +2514,7 @@
       "linkInvalid": "Paste a t.me/addemoji/name link or just the pack name.",
       "adding": "Adding…",
       "imported": "Pack “{{title}}” added.",
-      "empty": "No emoji packs.",
+      "empty": "No emoji packs",
       "deleteTitle": "Remove pack?",
       "deleteConfirm": "Remove “{{title}}”? Buttons already using its emoji will fall back to the plain glyph.",
       "deleteConfirmButton": "Remove"
@@ -3389,6 +3392,7 @@
         "announcementsCarousel": "Developer shorts: story carousel over the dashboard",
         "primary": "Main actions, dialog and form footers. 14px.",
         "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
+        "glass": "PillTabs capsule fill, 13px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
         "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
         "disabled": "A disabled button — 50% opacity.",
         "loadMore": "“Show more” under lists.",
@@ -3401,7 +3405,6 @@
         "cardCorner": "In a p-4 card corner, −mr/−mt 1.5 — 10/10 inset.",
         "toast": "In a p-3.5 toast, −my/−mr 1 — 10 inset all round.",
         "dialogClose": "In a px-5 py-4 dialog header.",
-        "glass": "Glass controls in the page header.",
         "tabBar": "Page route tabs: settings, referrals, analytics.",
         "dialogTabs": "Dialog tabs: ad link, admin, event.",
         "segmented": "Page filters: plans, users, subscriptions.",
@@ -3462,7 +3465,17 @@
         "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards",
         "labeledDivider": "Rule with a label in the middle: “or” on sign-in, donation section.",
         "refetchSpinner": "Corner spinner over a loaded list while it refetches.",
-        "buttonLoading": "icon — leading icon; isLoading swaps it for a spinner (or adds one) and disables the button."
+        "buttonLoading": "icon — leading icon; isLoading swaps it for a spinner (or adds one) and disables the button.",
+        "glassSection": "A settings card: header, 60px rows with 32px ends on the pill curve, a field block, glassAccent save.",
+        "glassInput": "Sunken well: 36px in forms, 32px in a Row; a unit suffix, a machine value with controls at the end.",
+        "glassField": "13px label over the control, hint or error under it; the browser’s own checks land here too.",
+        "glassTextarea": "Multiline well with 18px corners and a badge in the corner (a counter).",
+        "glassSwitch": "48×28; off it is a well like the fields. The knob stretches while held.",
+        "glassToggle": "A field-like capsule with a switch: clicking anywhere toggles it. Pairs split a line.",
+        "glassTextWidth": "Controls as wide as a text in a field: lines a field+switch up with a field sized to its placeholder.",
+        "glassTabBar": "Route tabs in a 48px capsule; the glass dialog: dense frosted panel over a light dim.",
+        "glassGuide": "The ? in a Row opening a glass help dialog: 13px text, step titles, values to copy, an accent tip.",
+        "glassStatus": "A section header’s status, button height: the state’s colour as a tinted capsule with a dot."
       },
       "s": {
         "openCarousel": "Open carousel",
@@ -3545,7 +3558,8 @@
         "trendMonth": "last 30 days",
         "trendWeek": "vs. prior 7 days",
         "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit.",
-        "or": "or"
+        "or": "or",
+        "hours": "h"
       },
       "sections": {
         "buttons": {
@@ -3602,12 +3616,16 @@
           "nav": "States",
           "title": "States",
           "meta": "Spinner · EmptyState · ErrorState · Collapse · brand"
+        },
+        "glass": {
+          "nav": "Glass",
+          "title": "Glass",
+          "meta": "shared/ui/glass · Section · Row · Input · Field · Switch"
         }
       },
       "variants": {
         "title": "Variants to pick from",
-        "caption": "Live copies of markup that has drifted apart across pages. The chosen one becomes the shared component.",
-        "empty": "No open comparisons right now."
+        "caption": "Live copies of markup that has drifted apart across pages. The chosen one becomes the shared component."
       }
     },
     "tabs": {

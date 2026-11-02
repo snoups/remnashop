@@ -12,18 +12,19 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { EMOJI_PACKS_ANCHOR_ID } from "@shared/lib/emoji-packs-anchor";
 import { toast } from "@shared/lib/toast";
+import { useFieldValidation } from "@shared/lib/use-field-validation";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { EmojiPackDialog } from "@features/emoji-packs/EmojiPackDialog";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
-import { Tag } from "@shared/ui/Tag";
-import { TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { Pressable } from "@shared/ui/Pressable";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { Tag } from "@shared/ui/glass/Tag";
+import { IconButton } from "@shared/ui/IconButton";
 
 // mirrors backend emoji_packs/telegram_api.py's _SET_NAME_RE: a t.me/addemoji link or the bare set name
 const SET_LINK_RE = /^(?:https?:\/\/)?(?:t\.me\/addemoji\/)?[A-Za-z0-9_]{1,64}\/?(?:\?.*)?$/;
@@ -40,14 +41,19 @@ export function EmojiPacksManager() {
   const canImport = permissions.includes("EMOJI_PACKS_IMPORT");
   const canDelete = permissions.includes("EMOJI_PACKS_DELETE");
 
-  const isLinkInvalid = link.trim() !== "" && !SET_LINK_RE.test(link.trim());
+  const validation = useFieldValidation<"link">();
+  const linkError = link.trim() !== "" && !SET_LINK_RE.test(link.trim()) ? t("dialogs.emojiPacks.linkInvalid") : null;
+  const linkShown = validation.visible("link", linkError);
 
   const handleImport = async () => {
+    validation.submit();
+    if (linkError !== null) return;
     setIsImporting(true);
     try {
       const pack = await importEmojiPack(link.trim());
       reloadPacks();
       setLink("");
+      validation.reset();
       toast.success(t("dialogs.emojiPacks.imported", { title: pack.set_name }));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
@@ -67,85 +73,64 @@ export function EmojiPacksManager() {
   };
 
   return (
-    <Card id={EMOJI_PACKS_ANCHOR_ID}>
-      <CardHeader icon={Smile} title={t("dialogs.emojiPacks.title")} description={t("dialogs.emojiPacks.description")} />
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        {canImport && (
-          <div className="flex w-full min-w-0 flex-col gap-1">
-            <div className="flex w-full min-w-0 gap-2">
-              <TextInput
-                type="text"
+    <Section
+      id={EMOJI_PACKS_ANCHOR_ID}
+      icon={Smile}
+      title={t("dialogs.emojiPacks.title")}
+      description={t("dialogs.emojiPacks.description")}
+    >
+      {canImport && (
+        <SectionFields>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 gap-2">
+              <Input
+                className="flex-1"
                 value={link}
                 onChange={(event) => setLink(event.target.value)}
+                onBlur={validation.touch("link")}
                 placeholder={t("dialogs.emojiPacks.linkPlaceholder")}
-                aria-invalid={isLinkInvalid}
-                className="min-w-0 flex-1"
+                aria-invalid={linkShown !== undefined}
               />
               <Button
-                variant="accent"
-                size="field"
-                type="button"
+                variant="glassAccent"
                 icon={Plus}
                 isLoading={isImporting}
-                disabled={link.trim() === "" || isLinkInvalid}
+                disabled={link.trim() === ""}
                 onClick={() => void handleImport()}
               >
                 {isImporting ? t("dialogs.emojiPacks.adding") : t("common.add")}
               </Button>
             </div>
-            {isLinkInvalid && (
-              <p id="emoji-pack-link-error" className="text-[12px] text-error">
-                {t("dialogs.emojiPacks.linkInvalid")}
-              </p>
-            )}
+            {linkShown && <p className="text-[12px] text-error">{linkShown}</p>}
           </div>
-        )}
-      </div>
+        </SectionFields>
+      )}
 
-      <div className="-mx-2 mt-4 max-h-[72vh] overflow-y-auto">
-        {packsState.kind === "loading" && <Spinner size="card" />}
-        {packsState.kind === "error" && (
-          <ErrorState text={t("common.loadError")} />
-        )}
-        {packsState.kind === "ready" && packsState.data.length === 0 && (
-          <EmptyState text={t("dialogs.emojiPacks.empty")} />
-        )}
-        {packsState.kind === "ready" && packsState.data.length > 0 && (
-          <div className="flex flex-col divide-y divide-border/50 px-2">
+      {packsState.kind === "loading" && <Spinner size="card" />}
+      {packsState.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {packsState.kind === "ready" && packsState.data.length === 0 && <EmptyState text={t("dialogs.emojiPacks.empty")} />}
+      {packsState.kind === "ready" && packsState.data.length > 0 && (
+        // a long list scrolls inside the card
+        <div className="max-h-[72vh] overflow-y-auto">
+          <SectionRows>
             {packsState.data.map((pack) => (
-              <Pressable
-                as="div"
+              <Row
                 key={pack.set_name}
+                glyph={<PremiumEmoji item={pack.items[0]} size={18} />}
+                label={pack.set_name}
                 onClick={() => setOpenPack(pack)}
-                className="flex items-center gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
-                  <PremiumEmoji item={pack.items[0]} size={18} />
-                </div>
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <p className="truncate text-[13px] font-medium text-foreground">{pack.set_name}</p>
-                  <Tag>
-                    {pack.items.length}
-                  </Tag>
-                </div>
+                <Tag>{pack.items.length}</Tag>
                 {canDelete && (
-                  <Pressable
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setPendingDelete(pack);
-                    }}
-                    className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full bg-error/[0.08] text-error transition-colors hover:bg-error/15"
-                  >
+                  <IconButton size="8" tone="danger" onClick={() => setPendingDelete(pack)}>
                     <Trash2 className="size-3.5" />
-                  </Pressable>
+                  </IconButton>
                 )}
-              </Pressable>
+              </Row>
             ))}
-          </div>
-        )}
-      </div>
+          </SectionRows>
+        </div>
+      )}
 
       {openPack && <EmojiPackDialog pack={openPack} onClose={() => setOpenPack(null)} />}
 
@@ -160,6 +145,6 @@ export function EmojiPacksManager() {
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </Card>
+    </Section>
   );
 }

@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { withEmphasis, withLink } from "@shared/lib/text-emphasis";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { GuideDialog } from "@shared/ui/GuideDialog";
+import { GuideCopy, GuideDialog, GuideHeading, GuideTip } from "@shared/ui/glass/GuideDialog";
 
 // Step 5's second sentence (the fallback note) is italicized; the first sentence
 // still gets the "Switch to OpenID Connect Login" code emphasis.
@@ -38,9 +37,9 @@ export function TelegramOAuthGuideDialog() {
       <p>{t("settings.oauth.telegramGuide.intro")}</p>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.telegramGuide.botSetupTitle")}
-        </h3>
+        </GuideHeading>
         <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5">
           {botSetupSteps.map((step, index) => (
             <li key={index}>
@@ -53,11 +52,11 @@ export function TelegramOAuthGuideDialog() {
           ))}
         </ol>
         <div className="mt-3 flex flex-col gap-2">
-          <CopyableValue
+          <GuideCopy
             label={t("settings.oauth.telegramGuide.trustedOriginsLabel")}
             value={t("settings.oauth.telegramGuide.trustedOriginsValue")}
           />
-          <CopyableValue
+          <GuideCopy
             label={t("settings.oauth.telegramGuide.redirectUrisLabel")}
             value={t("settings.oauth.telegramGuide.redirectUrisValue")}
           />
@@ -65,9 +64,9 @@ export function TelegramOAuthGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.telegramGuide.accessSetupTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.telegramGuide.accessSetupIntro"), [
             "Client ID",
@@ -84,15 +83,15 @@ export function TelegramOAuthGuideDialog() {
       </div>
 
       <div>
-        <h3 className="text-sm font-bold text-foreground">
+        <GuideHeading>
           {t("settings.oauth.telegramGuide.knownIssuesTitle")}
-        </h3>
+        </GuideHeading>
         <p className="mt-2">
           {withEmphasis(t("settings.oauth.telegramGuide.knownIssuesIntro"), "Telegram OAuth2")}
         </p>
-        <p className="mt-2 rounded-xl border border-primary/40 bg-accent px-3 py-2 text-primary">
+        <GuideTip className="mt-2">
           {t("settings.oauth.telegramGuide.knownIssuesProxyTip")}
-        </p>
+        </GuideTip>
 
         <div className="mt-3 flex flex-col gap-3">
           <div>

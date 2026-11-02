@@ -16,12 +16,12 @@ import { type BotCommandItem, getBotCommands, updateBotCommands } from "@entitie
 import { usePermissions } from "@entities/user/use-current-user";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 
 type Row = BotCommandItem & { id: number };
 
@@ -43,28 +43,27 @@ function CommandRow({ row, onChange, readOnly }: CommandRowProps) {
   });
 
   return (
+    // a Row's geometry (60px pill, 32px ends 14px in, the switch 16px) with a drag handle for the icon
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-2 rounded-full border border-border bg-input/60 py-2 pl-2 pr-2.5 ${isDragging ? "relative z-10" : ""}`}
+      className={`flex min-h-15 items-center gap-3 rounded-full pl-3.5 pr-4 ${isDragging ? "glass-control relative z-10" : ""}`}
     >
-      {!readOnly && (
+      {readOnly ? (
+        <span className="size-8 shrink-0" />
+      ) : (
         <button
           ref={setActivatorNodeRef}
           type="button"
           {...attributes}
           {...listeners}
-          className="flex cursor-grab touch-none items-center justify-center rounded-full p-1.5 text-foreground/60 transition-colors hover:bg-white/[0.06] active:cursor-grabbing"
+          className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-full bg-white/[0.06] text-foreground/70 transition-colors hover:bg-white/[0.1] hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-4" />
         </button>
       )}
-      <span className="flex-1 truncate font-mono text-sm text-foreground/80">/{row.command}</span>
-      <Switch
-        checked={row.enabled}
-        onChange={(checked) => onChange("enabled", checked)}
-        disabled={readOnly}
-      />
+      <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">/{row.command}</span>
+      <Switch checked={row.enabled} onChange={(checked) => onChange("enabled", checked)} disabled={readOnly} />
     </div>
   );
 }
@@ -93,7 +92,17 @@ export function BotCommandsForm() {
     );
   };
 
-  const [state] = useAsyncResource(getBotCommands, { onSuccess: (items) => setRows(items.map(toRow)) });
+  // what the server holds, in order: Save lights up only when rows differ from it
+  const [saved, setSaved] = useState<BotCommandItem[]>([]);
+  const [state] = useAsyncResource(getBotCommands, {
+    onSuccess: (items) => {
+      setRows(items.map(toRow));
+      setSaved(items);
+    },
+  });
+  const dirty =
+    rows.length !== saved.length ||
+    rows.some((row, index) => row.command !== saved[index]?.command || row.enabled !== saved[index]?.enabled);
 
   const updateRow = (index: number, field: "enabled", value: boolean) => {
     setRows((current) =>
@@ -101,21 +110,17 @@ export function BotCommandsForm() {
     );
   };
 
-  const [isResettingOrder, setIsResettingOrder] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const handleResetOrder = async () => {
-    setIsResettingOrder(true);
+  // the default order and switches, as a draft: nothing changes until Save
+  const handleReset = async () => {
+    setIsResetting(true);
     try {
-      const defaults = await getBotCommands(undefined, true);
-      const rank = new Map(defaults.map((item, index) => [item.command, index]));
-      // only the order resets, unsaved toggles stay
-      setRows((current) =>
-        [...current].sort((a, b) => (rank.get(a.command) ?? 0) - (rank.get(b.command) ?? 0)),
-      );
+      setRows((await getBotCommands(undefined, true)).map(toRow));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
-      setIsResettingOrder(false);
+      setIsResetting(false);
     }
   };
 
@@ -125,6 +130,7 @@ export function BotCommandsForm() {
     try {
       const result = await updateBotCommands(rows.map(toBotCommandItem));
       setRows(result.commands.map(toRow));
+      setSaved(result.commands);
       if (result.telegram_sync_failed) {
         toast.warning(t("settings.botCommands.savedTelegramSyncFailed"));
       } else {
@@ -138,61 +144,45 @@ export function BotCommandsForm() {
   };
 
   return (
-    <Card>
-      <CardHeader
-        icon={Terminal}
-        title={t("settings.botCommands.title")}
-        description={t("settings.botCommands.description")}
-      />
-
-      <div className="mt-4 flex flex-col gap-4">
-        {state.kind === "loading" && (
-          <Spinner size="card" />
-        )}
-        {state.kind === "error" && (
-          <ErrorState text={t("common.loadError")} />
-        )}
-        {state.kind === "ready" && (
-          <>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
-                <div className="flex flex-col gap-2">
-                  {rows.map((row, index) => (
-                    <CommandRow
-                      key={row.id}
-                      row={row}
-                      onChange={(field, value) => updateRow(index, field, value)}
-                      readOnly={!canManage}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-
-            {canManage && (
-            <div className="flex gap-2">
-              <Button
-                variant="accent"
-                className="w-fit"
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? t("common.saving") : t("common.save")}
+    <Section
+      icon={Terminal}
+      title={t("settings.botCommands.title")}
+      description={t("settings.botCommands.description")}
+      footer={
+        state.kind === "ready" &&
+        canManage && (
+          <SaveFooter
+            variant="glassAccent"
+            dirty={dirty}
+            saving={isSubmitting}
+            onSave={() => void handleSave()}
+            beside={
+              <Button variant="glass" isLoading={isResetting} onClick={() => void handleReset()}>
+                {t("settings.botCommands.reset")}
               </Button>
-              <Button
-                variant="outline"
-                className="w-fit"
-                isLoading={isResettingOrder}
-                onClick={() => void handleResetOrder()}
-              >
-                {t("settings.botCommands.resetOrder")}
-              </Button>
-            </div>
-            )}
-          </>
-        )}
-      </div>
-    </Card>
+            }
+          />
+        )
+      }
+    >
+      {state.kind === "loading" && <Spinner size="card" />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "ready" && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
+            <SectionRows>
+              {rows.map((row, index) => (
+                <CommandRow
+                  key={row.id}
+                  row={row}
+                  onChange={(field, value) => updateRow(index, field, value)}
+                  readOnly={!canManage}
+                />
+              ))}
+            </SectionRows>
+          </SortableContext>
+        </DndContext>
+      )}
+    </Section>
   );
 }

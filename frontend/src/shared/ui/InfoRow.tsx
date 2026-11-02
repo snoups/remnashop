@@ -48,7 +48,7 @@ export function InfoRow({ icon: Icon, label, children, copyValue, mono = false }
         {left}
         {right}
         {isCopied && (
-          <span className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-full bg-black/35 text-[12.5px] font-medium text-success">
+          <span className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-full bg-black/35 text-[12.5px] font-medium text-primary">
             <Check className="size-3.5" />
             {t("app.copied")}
           </span>

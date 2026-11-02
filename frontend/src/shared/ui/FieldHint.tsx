@@ -1,8 +1,8 @@
 import { CircleHelp } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
+import { GLASS_HINT_BUBBLE_CLASS, HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 
 interface FieldHintProps {
   text: string;
@@ -11,30 +11,71 @@ interface FieldHintProps {
   side?: "top" | "bottom";
   /** "end" lines the bubble's right edge up with the icon instead of centering it */
   align?: "center" | "end";
+  /** the glass design's bubble (shared/ui/glass) */
+  glass?: boolean;
 }
 
 const GAP_PX = 8;
-const VIEWPORT_MARGIN_PX = 8;
+const EDGE_MARGIN_PX = 8;
+const CLOSE_DELAY_MS = 150;
+
+// the dashboard's panel (DashboardLayout) when it's on screen, else the viewport: a bubble stays inside it
+function boundsRect(): { left: number; top: number; right: number; bottom: number } {
+  const panel = document.querySelector("[data-dashboard-panel]")?.getBoundingClientRect();
+  if (panel && panel.width > 0) return panel;
+  return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+}
 
 // Portalled to the body, so no scroll container or overflow-hidden panel clips the bubble.
 // Focusable, so the bubble also opens on keyboard focus.
-export function FieldHint({ text, content, side = "top", align = "center" }: FieldHintProps) {
+export function FieldHint({ text, content, side = "top", align = "center", glass = false }: FieldHintProps) {
   const iconRef = useRef<HTMLSpanElement>(null);
   const bubbleRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
+  const closeTimer = useRef<number | undefined>(undefined);
+  // a tap toggles, a mouse hovers: the pointer that pressed decides what the click means
+  const lastPointer = useRef("mouse");
+
+  const show = () => {
+    window.clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  // a moment's grace to cross the gap onto the bubble and select its text
+  const hideSoon = () => {
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  // a tap outside the icon and the bubble closes a tapped-open hint
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (iconRef.current?.contains(target) || bubbleRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
 
   useLayoutEffect(() => {
     const icon = iconRef.current?.getBoundingClientRect();
     const bubble = bubbleRef.current?.getBoundingClientRect();
     // closing keeps the last position, so the bubble fades out in place
     if (!open || !icon || !bubble) return;
+    const bounds = boundsRect();
     const preferred = align === "end" ? icon.right - bubble.width : icon.left + icon.width / 2 - bubble.width / 2;
-    const maxLeft = window.innerWidth - bubble.width - VIEWPORT_MARGIN_PX;
-    setPosition({
-      left: Math.max(VIEWPORT_MARGIN_PX, Math.min(preferred, maxLeft)),
-      top: side === "top" ? icon.top - bubble.height - GAP_PX : icon.bottom + GAP_PX,
-    });
+    const minLeft = bounds.left + EDGE_MARGIN_PX;
+    const maxLeft = bounds.right - bubble.width - EDGE_MARGIN_PX;
+    const above = icon.top - bubble.height - GAP_PX;
+    const below = icon.bottom + GAP_PX;
+    // the preferred side, flipped when the bubble would cross the panel's edge there
+    const fitsAbove = above >= bounds.top + EDGE_MARGIN_PX;
+    const fitsBelow = below + bubble.height <= bounds.bottom - EDGE_MARGIN_PX;
+    const top = side === "top" ? (fitsAbove || !fitsBelow ? above : below) : fitsBelow || !fitsAbove ? below : above;
+    setPosition({ left: Math.max(minLeft, Math.min(preferred, maxLeft)), top });
   }, [open, side, align]);
 
   // the bubble is fixed in place, so it would drift off the icon on scroll
@@ -49,21 +90,37 @@ export function FieldHint({ text, content, side = "top", align = "center" }: Fie
     <span
       ref={iconRef}
       tabIndex={0}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onPointerDown={(event) => (lastPointer.current = event.pointerType)}
+      onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+      onPointerLeave={(event) => event.pointerType === "mouse" && hideSoon()}
+      onClick={(event) => {
+        // the hint sits in clickable rows and labels; the bubble's clicks reach here through the portal
+        event.stopPropagation();
+        event.preventDefault();
+        if (!iconRef.current?.contains(event.target as Node)) return;
+        if (lastPointer.current !== "mouse") setOpen((value) => !value);
+      }}
+      // keyboard focus only: a tap focuses too, and would reopen what the tap just toggled
+      onFocus={(event) => event.currentTarget.matches(":focus-visible") && show()}
+      onBlur={(event) => {
+        if (!bubbleRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
       className="relative inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
     >
-      <CircleHelp className="size-3.5 shrink-0 cursor-help text-muted-foreground" />
+      <CircleHelp
+        className={`size-3.5 shrink-0 cursor-help text-muted-foreground ${glass ? "transition-colors hover:text-foreground" : ""}`}
+      />
       {createPortal(
         // always mounted: a CSS opacity transition reverses smoothly when the pointer
         // flickers across the icon's edge, a mount/unmount animation restarts
         <span
           ref={bubbleRef}
-          // above Modal (z-50) and PortalPopover (z-60)
-          className={`${HINT_BUBBLE_CLASS} z-[70] whitespace-pre-line`}
-          style={{ position: "fixed", ...position, opacity: open ? 1 : 0 }}
+          // above everything: Modal (z-50), PortalPopover (z-60), toasts and the debug bar (z-50)
+          className={`${glass ? GLASS_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
+          // open, it takes the pointer: hovering it keeps it, its text can be selected
+          style={{ position: "fixed", ...position, opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
+          onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+          onPointerLeave={(event) => event.pointerType === "mouse" && hideSoon()}
         >
           {content ?? text}
         </span>,

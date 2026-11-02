@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import {
   Download,
   MessagesSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RotateCcw,
   Upload,
@@ -43,7 +45,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
@@ -55,7 +57,10 @@ import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
+import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { Button } from "@shared/ui/Button";
+import { IconButton } from "@shared/ui/IconButton";
+import { Section } from "@shared/ui/glass/Section";
 import { Badge } from "@shared/ui/Badge";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -70,8 +75,17 @@ function useSelectedWindow(
   return windows.find((window) => window.key === selectedKey) ?? null;
 }
 
+const TREE_FOLDED_KEY = "remnashop_dialogs_tree_folded";
+
 export function DialogCanvasEditor() {
   const { t, i18n } = useTranslation();
+  // the window list folded away (desktop): remembered per browser
+  const [isTreeFolded, setIsTreeFolded] = useState(() => readStorage(TREE_FOLDED_KEY) === "1");
+  const toggleTree = () =>
+    setIsTreeFolded((folded) => {
+      writeStorage(TREE_FOLDED_KEY, folded ? "0" : "1");
+      return !folded;
+    });
   const permissions = usePermissions();
   const [windowsState, reloadWindows, setWindowsData] =
     useAsyncResource(listWindows);
@@ -164,38 +178,25 @@ export function DialogCanvasEditor() {
     };
   }, [selectedWindow, previewLocale, bannerNonce]);
 
-  const heading = (
-    <>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
-        <MessagesSquare className="size-4" />
-      </div>
-      <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-          {t("dialogs.title")}
-          <Badge tone="warning" tabIndex={0} className="group relative outline-none">
-            {t("dialogs.beta")}
-            <Tooltip text={t("dialogs.betaHint")} side="bottom" />
-          </Badge>
-        </h2>
-        <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-          {t("dialogs.description")}
-        </p>
-      </div>
-    </>
-  );
+  const sectionProps = {
+    icon: MessagesSquare,
+    title: (
+      <>
+        {t("dialogs.title")}
+        <Badge tone="warning" tabIndex={0} className="group relative outline-none">
+          {t("dialogs.beta")}
+          <Tooltip text={t("dialogs.betaHint")} side="bottom" />
+        </Badge>
+      </>
+    ),
+    description: t("dialogs.description"),
+  };
 
   if (windowsState.kind !== "ready") {
     return (
-      <div className="rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03]">
-        <div className="flex items-center gap-2.5 border-b border-white/[0.08] p-4">
-          {heading}
-        </div>
-        {windowsState.kind === "error" ? (
-          <ErrorState text={t("common.loadError")} />
-        ) : (
-          <Spinner className="p-4" />
-        )}
-      </div>
+      <Section flush {...sectionProps}>
+        {windowsState.kind === "error" ? <ErrorState text={t("common.loadError")} /> : <Spinner className="p-4" />}
+      </Section>
     );
   }
 
@@ -479,48 +480,56 @@ export function DialogCanvasEditor() {
   ];
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03]">
-      {/* The three panes are zones inside the card rather than separate
-          floating blocks. */}
+    <Section
+      flush
+      {...sectionProps}
+      aside={
+        <>
+          {permissions.includes("DIALOGS_EXPORT") && (
+            <Button variant="glass" icon={Download} onClick={() => void handleExport()}>
+              {t("dialogs.toolbar.export")}
+            </Button>
+          )}
+          {permissions.includes("DIALOGS_IMPORT") && (
+            <Button variant="glass" icon={Upload} onClick={() => fileInputRef.current?.click()}>
+              {t("dialogs.toolbar.import")}
+            </Button>
+          )}
+          {canResetAll && (
+            <Button variant="glassDanger" icon={RotateCcw} onClick={() => setIsResetAllConfirmOpen(true)}>
+              {t("dialogs.inspector.resetAll")}
+            </Button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              // Clear it so picking the same file twice in a row still fires.
+              event.target.value = "";
+              if (file) void handleFileChosen(file);
+            }}
+          />
+        </>
+      }
+    >
+      {/* the three panes are zones inside the card rather than separate floating blocks */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] p-4">
-          {heading}
-          <div className="ml-auto flex items-center gap-2">
-            {permissions.includes("DIALOGS_EXPORT") && (
-              <Button variant="outline" onClick={() => void handleExport()}>
-                <Download className="size-3.5" />
-                {t("dialogs.toolbar.export")}
-              </Button>
-            )}
-            {permissions.includes("DIALOGS_IMPORT") && (
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="size-3.5" />
-                {t("dialogs.toolbar.import")}
-              </Button>
-            )}
-            {canResetAll && (
-              <Button variant="danger" onClick={() => setIsResetAllConfirmOpen(true)}>
-                <RotateCcw className="size-3.5" />
-                {t("dialogs.inspector.resetAll")}
-              </Button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                // Clear it so picking the same file twice in a row still fires.
-                event.target.value = "";
-                if (file) void handleFileChosen(file);
-              }}
-            />
-          </div>
-        </div>
-
         <div className="flex min-h-0 flex-1 flex-col pt-4 lg:flex-row">
-          <aside className="overflow-y-auto border-b border-white/[0.08] px-4 pb-4 lg:flex-1 lg:basis-0 lg:border-b-0 lg:pr-2">
+          <aside
+            className={`overflow-y-auto border-b border-white/[0.08] px-4 pb-4 lg:border-b-0 lg:pr-2 ${
+              isTreeFolded ? "lg:flex-none" : "lg:flex-1 lg:basis-0"
+            }`}
+          >
+            {/* desktop: the list folds to its toggle, the preview takes the room */}
+            <div className={`hidden lg:flex ${isTreeFolded ? "" : "mb-2 justify-end"}`}>
+              <IconButton size="8" tone="glass" onClick={toggleTree}>
+                {isTreeFolded ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
+              </IconButton>
+            </div>
+            <div className={isTreeFolded ? "lg:hidden" : ""}>
             <WindowSwitcher
               windows={windows}
               labelOf={windowLabel}
@@ -534,11 +543,12 @@ export function DialogCanvasEditor() {
               onCreate={handleCreateWindow}
               onDelete={(key) => void handleDeleteWindow(key)}
             />
+            </div>
           </aside>
 
           <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4 lg:flex-[1.6] lg:basis-0">
             {activeLocales.length > 1 && (
-              <div className="w-full max-w-sm">
+              <div className={`w-full ${isTreeFolded ? "lg:max-w-md" : ""} max-w-sm`}>
                 <PillTabs
                   items={activeLocales.map((locale) => ({
                     key: locale,
@@ -560,13 +570,14 @@ export function DialogCanvasEditor() {
                 onSelect={handleSelect}
                 canEditButtons={canEditButtons}
                 onReorderButtons={setPendingButtons}
+                wide={isTreeFolded}
               />
             ) : null}
             {canEditButtons && catalog && (
               <Pressable
                 type="button"
                 onClick={handleAddButton}
-                className="flex h-9 w-full max-w-sm cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+                className={`flex h-9 w-full max-w-sm cursor-pointer items-center ${isTreeFolded ? "lg:max-w-md" : ""} justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]`}
               >
                 <Plus className="size-3.5" />
                 {t("dialogs.inspector.buttonAdd")}
@@ -635,18 +646,11 @@ export function DialogCanvasEditor() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-fit"
-                    type="button"
-                    onClick={handleDiscardButtons}
-                  >
+                  <Button variant="glass" onClick={handleDiscardButtons}>
                     {t("dialogs.inspector.buttonsDiscard")}
                   </Button>
                   <Button
-                    variant="accent"
-                    className="w-fit"
-                    type="button"
+                    variant="glassAccent"
                     disabled={brokenUrlButton !== null || limitProblem !== null}
                     onClick={() => void handleSaveButtons()}
                   >
@@ -695,6 +699,6 @@ export function DialogCanvasEditor() {
           onCancel={() => setIsResetAllConfirmOpen(false)}
         />
       )}
-    </div>
+    </Section>
   );
 }

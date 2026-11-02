@@ -6,13 +6,26 @@ import { Pressable } from "@shared/ui/Pressable";
 
 // accent/solid/outline/danger: primary and destructive actions, dialog and form footers (14px).
 // secondary: card-header actions and buttons next to a field (12.5px semibold).
-export type ButtonVariant = "accent" | "solid" | "outline" | "secondary" | "danger";
+// glass: PillTabs' capsule fill, for actions beside one; glassAccent: its primary action, glassDanger:
+// its destructive one (13px medium).
+export type ButtonVariant =
+  | "accent"
+  | "solid"
+  | "outline"
+  | "secondary"
+  | "glass"
+  | "glassAccent"
+  | "glassDanger"
+  | "danger";
 
 const COLOR_CLASS: Record<ButtonVariant, string> = {
   accent: "border-transparent bg-accent text-primary hover:bg-primary/20",
   solid: "border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
   outline: "border-border text-foreground/80 hover:bg-white/[0.06]",
   secondary: "border-border text-foreground/90 hover:bg-white/[0.06]",
+  glass: "border-glass-border bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06]",
+  glassAccent: "border-primary/35 bg-primary/15 text-primary hover:bg-primary/20",
+  glassDanger: "border-glass-border bg-white/[0.03] text-error hover:bg-error/10",
   danger: "border-border text-error hover:bg-error/10",
 };
 
@@ -21,6 +34,9 @@ const TYPE_CLASS: Record<ButtonVariant, string> = {
   solid: "gap-1.5 px-4 text-sm font-semibold",
   outline: "gap-1.5 px-4 text-sm font-medium",
   secondary: "gap-1.5 px-3.5 text-[12.5px] font-semibold",
+  glass: "gap-1.5 px-3.5 text-[13px] font-medium",
+  glassAccent: "gap-1.5 px-3.5 text-[13px] font-medium",
+  glassDanger: "gap-1.5 px-3.5 text-[13px] font-medium",
   danger: "gap-1.5 px-4 text-sm font-medium",
 };
 
@@ -53,8 +69,12 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
+  // the glass pair keeps its 13px medium at every height
+  const isGlass = variant === "glass" || variant === "glassAccent" || variant === "glassDanger";
   const typography =
-    size === "sm" ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}` : TYPE_CLASS[variant];
+    size === "sm" && !isGlass
+      ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}`
+      : TYPE_CLASS[variant];
 
   return (
     <Pressable
@@ -63,7 +83,12 @@ export function Button({
       disabled={disabled || isLoading}
       {...props}
     >
-      {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : Icon && <Icon className="size-3.5" />}
+      {/* glass buttons (36px, 13px text) take 16px icons, about the text's line height */}
+      {isLoading ? (
+        <Loader2 className={`${isGlass ? "size-4" : "size-3.5"} animate-spin`} />
+      ) : (
+        Icon && <Icon className={isGlass ? "size-4" : "size-3.5"} />
+      )}
       {children}
     </Pressable>
   );

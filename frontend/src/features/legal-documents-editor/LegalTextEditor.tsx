@@ -1,11 +1,12 @@
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
 import { TEXT_LIMIT, TITLE_LIMIT, textLength, type TextDraft } from "@features/legal-documents-editor/legal-drafts";
 import { formatDate } from "@shared/lib/relative-time";
-import { Field } from "@shared/ui/Field";
 import { FieldHint } from "@shared/ui/FieldHint";
-import { Switch } from "@shared/ui/Switch";
-import { TextArea, TextInput } from "@shared/ui/TextInput";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, TextArea } from "@shared/ui/glass/Input";
+import { Switch } from "@shared/ui/glass/Switch";
 
 interface Props {
   value: TextDraft;
@@ -29,40 +30,44 @@ export function LegalTextEditor({
   const { title, body } = value;
   const length = textLength(value);
 
+  const id = useId();
+
   return (
-    <div className="flex flex-col gap-3">
-      <Field label={t("settings.legal.titleLabel")} bright required>
-        <TextInput
+    <div className="flex flex-col gap-4">
+      <Field label={t("settings.legal.titleLabel")} htmlFor={`${id}-title`} required>
+        <Input
+          id={`${id}-title`}
           value={title}
           maxLength={TITLE_LIMIT}
           disabled={!canSet}
           onChange={(event) => onChange({ ...value, title: event.target.value })}
         />
       </Field>
-      <Field label={t("settings.legal.bodyLabel")} bright required hint={t("settings.legal.bodyHint", { limit: TEXT_LIMIT })}>
-        <div className="relative">
-          <TextArea
-            rows={16}
-            className="w-full font-mono"
-            value={body}
-            disabled={!canSet}
-            onChange={(event) => onChange({ ...value, body: event.target.value })}
-          />
-          {/* over the corner, left of the scrollbar; the text scrolls under its backing */}
-          <span
-            className={`pointer-events-none absolute bottom-4 right-4 rounded-full bg-input px-1.5 py-0.5 text-[11px] tabular-nums ${
-              length > TEXT_LIMIT ? "text-error" : "text-muted-foreground"
-            }`}
-          >
-            {length} / {TEXT_LIMIT}
-          </span>
-        </div>
+      <Field
+        label={t("settings.legal.bodyLabel")}
+        htmlFor={`${id}-body`}
+        required
+        hint={t("settings.legal.bodyHint", { limit: TEXT_LIMIT })}
+      >
+        <TextArea
+          id={`${id}-body`}
+          rows={16}
+          mono
+          value={body}
+          disabled={!canSet}
+          onChange={(event) => onChange({ ...value, body: event.target.value })}
+          corner={
+            <span className={length > TEXT_LIMIT ? "text-error" : undefined}>
+              {length} / {TEXT_LIMIT}
+            </span>
+          }
+        />
       </Field>
       {canSet && canReaccept && (
         <div className="flex items-center gap-3">
-          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium text-foreground">
+          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-foreground">
             {t("settings.legal.reaccept")}
-            <FieldHint text={t("settings.legal.reacceptHint")} />
+            <FieldHint text={t("settings.legal.reacceptHint")} glass />
           </p>
           <Switch checked={value.reaccept} onChange={(reaccept) => onChange({ ...value, reaccept })} disabled={busy} />
         </div>
