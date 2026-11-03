@@ -1,4 +1,5 @@
 import { ExternalLink, Pause, Play, X } from "lucide-react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
@@ -7,9 +8,27 @@ import { useTranslation } from "react-i18next";
 import { localized } from "@entities/announcements/api";
 import type { Announcement } from "@entities/announcements/api";
 import { BrandLogo } from "@shared/ui/BrandLogo";
+import { GLASS_SOLID_LINK_BUTTON_CLASS } from "@shared/ui/classes";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { IconButton } from "@shared/ui/IconButton";
 
 const SLIDE_MS = 6000;
+const EASE_OUT: [number, number, number, number] = [0.2, 0.8, 0.2, 1];
+
+interface Move {
+  /** 1: forward, -1: back */
+  direction: number;
+  /** a whole story changes, not a slide inside one */
+  isStory: boolean;
+}
+
+// a slide inside a story nudges over and fades; a new story pushes the old one out of the card
+const offset = ({ direction, isStory }: Move) => direction * (isStory ? 100 : 8);
+const SLIDE_VARIANTS: Variants = {
+  enter: (move: Move) => ({ x: `${offset(move)}%`, opacity: move.isStory ? 1 : 0 }),
+  shown: { x: "0%", opacity: 1, transition: { duration: 0.35, ease: EASE_OUT } },
+  leave: (move: Move) => ({ x: `${-offset(move)}%`, opacity: 0, transition: { duration: 0.35, ease: EASE_OUT } }),
+};
 
 interface AnnouncementsCarouselProps {
   /** stories with at least one slide, newest first */
@@ -26,6 +45,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
   const [slideIndex, setSlideIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [move, setMove] = useState<Move>({ direction: 1, isStory: false });
   const rootRef = useRef<HTMLDivElement>(null);
 
   const story = stories[storyIndex];
@@ -35,16 +55,18 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
   const goToStory = useCallback(
     (index: number) => {
       if (index < 0 || index >= stories.length) return;
+      setMove({ direction: index > storyIndex ? 1 : -1, isStory: true });
       setStoryIndex(index);
       setSlideIndex(0);
       setElapsed(0);
     },
-    [stories.length],
+    [stories.length, storyIndex],
   );
 
   const next = useCallback(() => {
     if (!story) return;
     if (slideIndex < story.slides.length - 1) {
+      setMove({ direction: 1, isStory: false });
       setSlideIndex(slideIndex + 1);
       setElapsed(0);
     } else if (storyIndex < stories.length - 1) {
@@ -56,6 +78,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
 
   const prev = useCallback(() => {
     if (slideIndex > 0) {
+      setMove({ direction: -1, isStory: false });
       setSlideIndex(slideIndex - 1);
       setElapsed(0);
     } else {
@@ -111,18 +134,23 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
     const neighbour = stories[index];
     if (!neighbour) return <div className="hidden w-52 shrink-0 lg:block" />;
     return (
-      <button
+      <motion.button
+        key={neighbour.id}
         type="button"
         onClick={() => goToStory(index)}
-        className="relative hidden aspect-[9/16] w-52 shrink-0 overflow-hidden rounded-2xl bg-surface/40 text-left opacity-40 transition-opacity hover:opacity-70 lg:block"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.4 }}
+        whileHover={{ opacity: 0.7 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="glass-panel relative hidden aspect-[9/16] w-52 shrink-0 overflow-hidden rounded-3xl text-left lg:block"
       >
         {neighbour.slides[0]?.image_url && (
           <img src={neighbour.slides[0].image_url} alt="" className="absolute inset-0 size-full object-cover" />
         )}
-        <span className="absolute inset-x-3 bottom-3 text-[13px] font-semibold text-foreground">
+        <span className="absolute inset-x-4 bottom-4 text-[13px] font-medium text-foreground">
           {localized(neighbour.title, i18n.language)}
         </span>
-      </button>
+      </motion.button>
     );
   };
 
@@ -137,8 +165,8 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
         <div className="absolute left-6 top-5 hidden items-center gap-3 sm:flex">
           <BrandLogo className="size-9 text-primary" />
           <span className="flex flex-col">
-            <span className="text-[15px] font-bold text-foreground">{t("announcements.heading")}</span>
-            <span className="text-[12.5px] text-muted-foreground">
+            <span className="text-[15px] font-semibold tracking-tight text-foreground">{t("announcements.heading")}</span>
+            <span className="text-[12px] text-muted-foreground">
               {t("announcements.counter", { current: storyIndex + 1, total: stories.length })}
             </span>
           </span>
@@ -146,16 +174,47 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
 
         {side(storyIndex - 1)}
 
-        <div className="relative h-dvh w-full overflow-hidden bg-surface sm:aspect-[9/16] sm:h-[min(720px,90vh)] sm:w-auto sm:rounded-dialog sm:border sm:border-glass-border">
-          {slide.image_url ? (
-            <img src={slide.image_url} alt="" className="absolute inset-0 size-full object-cover" />
-          ) : (
-            <div className={`absolute inset-0 ${isCritical ? "bg-warning/15" : "bg-accent"}`} />
-          )}
-          <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 to-transparent" />
-
+        <div className="glass-dialog relative h-dvh w-full overflow-hidden sm:aspect-[9/16] sm:h-[min(720px,90vh)] sm:w-auto sm:rounded-3xl">
           <button type="button" onClick={prev} className="absolute inset-y-0 left-0 w-1/3" />
           <button type="button" onClick={next} className="absolute inset-y-0 right-0 w-2/3" />
+
+          {/* a sibling over the tap zones: clicks pass through to them, only the link catches its own */}
+          <AnimatePresence initial={false} custom={move}>
+            <motion.div
+              key={`${story.id}:${slideIndex}`}
+              custom={move}
+              variants={SLIDE_VARIANTS}
+              initial="enter"
+              animate="shown"
+              exit="leave"
+              className="pointer-events-none absolute inset-0"
+            >
+              {slide.image_url ? (
+                <img src={slide.image_url} alt="" className="absolute inset-0 size-full object-cover" />
+              ) : (
+                <div className={`absolute inset-0 ${isCritical ? "bg-warning/15" : "bg-primary/10"}`} />
+              )}
+              {/* keeps the text readable over a photo; a plain tint doesn't need it */}
+              {slide.image_url && <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 to-transparent" />}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 p-4">
+                <span className="text-[21px] font-bold leading-tight tracking-tight text-foreground">{title}</span>
+                <span className="whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
+                  {localized(slide.text, i18n.language)}
+                </span>
+                {slide.url && (
+                  <a
+                    href={slide.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`pointer-events-auto mt-2 ${GLASS_SOLID_LINK_BUTTON_CLASS}`}
+                  >
+                    {localized(slide.url_label, i18n.language) || t("announcements.openLink")}
+                    <ExternalLink className="size-4" />
+                  </a>
+                )}
+              </div>
+            </motion.div>
+          </AnimatePresence>
 
           <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-3">
             <div className="flex gap-1">
@@ -172,50 +231,31 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
             </div>
             <div className="flex items-center gap-2">
               {isCritical && (
-                <span className="rounded-full bg-warning/20 px-2.5 py-0.5 text-[12px] font-semibold text-warning">
-                  {t("announcements.critical")}
-                </span>
+                <StatusPill tone="warning">{t("announcements.critical")}</StatusPill>
               )}
               <span className="flex-1" />
               <IconButton
                 size="9"
-                tone="glass"
+                tone="panel"
                 className="pointer-events-auto"
                 onClick={() => setPaused(!paused)}
               >
-                {paused ? <Play className="size-4" /> : <Pause className="size-4" />}
+                {paused ? <Play className="size-4 text-white" /> : <Pause className="size-4 text-white" />}
               </IconButton>
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2.5 p-6">
-            <span className="text-[22px] font-bold leading-tight text-foreground">{title}</span>
-            <span className="whitespace-pre-line text-[14px] leading-relaxed text-foreground/80">
-              {localized(slide.text, i18n.language)}
-            </span>
-            {slide.url && (
-              <a
-                href={slide.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pointer-events-auto mt-2 flex h-11 items-center justify-center gap-2 rounded-full bg-primary text-[14px] font-semibold text-primary-foreground"
-              >
-                {localized(slide.url_label, i18n.language) || t("announcements.openLink")}
-                <ExternalLink className="size-4" />
-              </a>
-            )}
-          </div>
         </div>
 
         {side(storyIndex + 1)}
 
         <IconButton
-          size="9.5"
-          tone="glass"
+          size="9"
+          tone="panel"
           className="absolute right-4 top-4 z-10"
           onClick={onClose}
         >
-          <X className="size-5" />
+          <X className="size-4 text-white" />
         </IconButton>
       </div>,
     document.body,

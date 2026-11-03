@@ -12,15 +12,24 @@ export interface OpenUserLink {
 
 // Equal-width "go to user" buttons pinned under a dialog's body; `children`
 // adds the dialog's own actions to the same row.
-export function OpenUserFooter({ links, children }: { links: OpenUserLink[]; children?: ReactNode }) {
+export function OpenUserFooter({
+  links,
+  glass = false,
+  children,
+}: {
+  links: OpenUserLink[];
+  /** in a Modal material="glass": its footer inset and buttons */
+  glass?: boolean;
+  children?: ReactNode;
+}) {
   const canOpenUsers = useCanOpenUsers();
   const available = canOpenUsers ? links.filter((link) => isOpenableUser(link.user)) : [];
   if (available.length === 0 && !children) return null;
 
   return (
-    <div className="grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] px-5 py-3.5">
+    <div className={`grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] ${glass ? "p-4" : "px-5 py-3.5"}`}>
       {available.map((link) => (
-        <OpenUserButton key={link.label} {...link} />
+        <OpenUserButton key={link.label} {...link} glass={glass} />
       ))}
       {children}
     </div>

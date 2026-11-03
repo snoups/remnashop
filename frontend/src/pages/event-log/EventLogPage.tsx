@@ -39,12 +39,11 @@ import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { DatePickerField } from "@shared/ui/DatePickerField";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
-import { Card } from "@shared/ui/Card";
 import { EYEBROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
@@ -132,59 +131,65 @@ export function EventLogPage() {
   const [collapsedDays, toggleDay] = useCollapsedSet();
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <div className="flex flex-wrap items-end gap-3">
-          <SearchField
-            id="event-log-actor"
-            label={t("eventLog.filters.actor")}
-            placeholder={t("eventLog.filters.actorPlaceholder")}
-            value={searchInput}
-            onChange={setSearchInput}
+    // as settings: the filter bar floats over a scroller of its own, whose fade clears the bar.
+    // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <SearchField
+          id="event-log-actor"
+          label={t("eventLog.filters.actor")}
+          hideLabel
+          compact
+          placeholder={t("eventLog.filters.actorPlaceholder")}
+          value={searchInput}
+          onChange={setSearchInput}
+        />
+
+        <div className="w-44 min-w-0">
+          <SelectDropdown
+            id="event-log-category"
+            value={category}
+            onChange={setCategory}
+            icon={Filter}
+            size="compact"
+            glassPopover
+            placeholder={t("eventLog.filters.categoryAll")}
+            options={[
+              { value: "", label: t("eventLog.filters.categoryAll"), icon: Filter },
+              ...CATEGORIES.map((cat) => ({
+                value: cat,
+                label: t(CATEGORY_LABEL_KEYS[cat]),
+                icon: CATEGORY_ICONS[cat],
+              })),
+            ]}
           />
-
-          <div className="flex w-44 shrink-0 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("eventLog.filters.category")}</label>
-            <SelectDropdown
-              id="event-log-category"
-              value={category}
-              onChange={setCategory}
-              icon={Filter}
-              placeholder={t("eventLog.filters.categoryAll")}
-              options={[
-                { value: "", label: t("eventLog.filters.categoryAll"), icon: Filter },
-                ...CATEGORIES.map((cat) => ({
-                  value: cat,
-                  label: t(CATEGORY_LABEL_KEYS[cat]),
-                  icon: CATEGORY_ICONS[cat],
-                })),
-              ]}
-            />
-          </div>
-
-          <div className="flex w-44 shrink-0 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("eventLog.filters.dateFrom")}</label>
-            <DatePickerField
-              id="event-log-date-from"
-              value={dateFromInput}
-              onChange={setDateFromInput}
-              placeholder={t("eventLog.filters.dateFrom")}
-            />
-          </div>
-
-          <div className="flex w-44 shrink-0 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("eventLog.filters.dateTo")}</label>
-            <DatePickerField
-              id="event-log-date-to"
-              value={dateToInput}
-              onChange={setDateToInput}
-              placeholder={t("eventLog.filters.dateTo")}
-            />
-          </div>
         </div>
-      </Card>
 
-      <Card className="relative">
+        <div className="w-40 min-w-0">
+          <DatePickerField
+            id="event-log-date-from"
+            value={dateFromInput}
+            onChange={setDateFromInput}
+            placeholder={t("eventLog.filters.dateFrom")}
+            valuePrefix={t("eventLog.filters.dateFrom")}
+            compact
+          />
+        </div>
+
+        <div className="w-40 min-w-0">
+          <DatePickerField
+            id="event-log-date-to"
+            value={dateToInput}
+            onChange={setDateToInput}
+            placeholder={t("eventLog.filters.dateTo")}
+            valuePrefix={t("eventLog.filters.dateTo")}
+            compact
+          />
+        </div>
+      </div>
+
+      <div className="scroll-fade-y page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-top-size:12px] [--fade-top-start:56px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className="glass-panel relative rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
@@ -239,10 +244,10 @@ export function EventLogPage() {
                               <span className="-ml-3 text-[13px] tabular-nums text-foreground">
                                 {formatTime(entry.occurred_at, i18n.language)}
                               </span>
-                              <span className="truncate text-[12.5px] text-foreground">
+                              <span className="truncate text-[13px] text-foreground">
                                 {describeEntry(entry, t)}
                               </span>
-                              <span className="truncate font-mono text-[12.5px] text-foreground">
+                              <span className="truncate font-mono text-[12px] text-muted-foreground">
                                 {entry.ip_address ?? "—"}
                               </span>
                               <ChevronRight className="size-4 text-muted-foreground" />
@@ -268,7 +273,8 @@ export function EventLogPage() {
             )}
           </>
         )}
-      </Card>
+      </div>
+      </div>
 
       {selectedEntry && (
         <EventDetailDialog

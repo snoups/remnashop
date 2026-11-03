@@ -13,6 +13,7 @@ export interface DebugState {
   latency: LatencyMode;
   noPermissions: boolean;
   fakeUpdate: boolean;
+  fakeOfficialBuild: boolean;
   missingKeys: boolean;
 }
 
@@ -27,6 +28,7 @@ const DEFAULT_STATE: DebugState = {
   latency: 0,
   noPermissions: false,
   fakeUpdate: false,
+  fakeOfficialBuild: false,
   missingKeys: false,
 };
 

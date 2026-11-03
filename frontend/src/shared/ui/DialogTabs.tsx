@@ -52,7 +52,7 @@ export function DialogTabs<T extends string>({
               aria-selected={isActive}
               onClick={() => onSelect(item.key)}
               // flex-1 without min-w-0: equal widths while they fit, never narrower than the label
-              className="group relative isolate block flex-1 rounded-full text-sm font-medium"
+              className="group relative isolate block flex-1 rounded-full text-[13px] font-medium"
             >
               {isActive ? (
                 <ActivePill layoutId={pillId} />

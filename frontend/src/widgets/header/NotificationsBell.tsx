@@ -207,7 +207,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       <IconButton size="9" tone={capsule ? "default" : "glass"} className="relative" onClick={onToggle}>
         <Bell className="size-4" />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold leading-none text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
             {unread > MAX_BADGE ? `${MAX_BADGE}+` : unread}
           </span>
         )}
@@ -256,7 +256,12 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
           )}
         </div>
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          // no footer under it: the list runs to the popover's edge, its padding is the 6px inset
+          className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto pt-2 [--fade-top-size:8px] ${
+            canOpenLog && activeTab === "events" ? "pb-2 [--fade-bottom-size:8px]" : "-mb-1.5 pb-1.5 [--fade-bottom-size:6px]"
+          }`}
+        >
           {loading ? (
             <Spinner size="card" />
           ) : failed ? (

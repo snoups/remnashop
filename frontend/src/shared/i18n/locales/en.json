@@ -678,6 +678,7 @@
       "BlacklistSourceChangedEvent": "Blacklist source changed",
       "TranslationChangedEvent": "Translations changed",
       "GatewayTestPaymentCreatedEvent": "Test payment created",
+      "LegalDocumentChangedEvent": "Legal document changed",
       "LoyaltySettingsChangedEvent": "Loyalty settings changed",
       "UserLoyaltyExclusionChangedEvent": "Loyalty program exclusion changed",
       "AccessSettingsChangedEvent": "Access settings changed",
@@ -3388,7 +3389,7 @@
     "yookassaLabel": "YooKassa",
     "communityTitle": "Private chat",
     "communityDescription": "A paid subscription on Boosty that gives access to a private support chat.",
-    "communityButton": "Subscribe"
+    "communityButton": "Get access"
   },
   "debugBar": {
     "close": "Close debug bar",
@@ -3413,6 +3414,7 @@
     },
     "noPermissions": "Drop every permission (frontend only)",
     "fakeUpdate": "Pretend a newer release exists",
+    "fakeOfficialBuild": "Show the build info of a production image",
     "copySnapshot": "Copy an environment snapshot",
     "snapshotCopied": "Snapshot copied to the clipboard.",
     "snapshotFailed": "Failed to reach the clipboard.",

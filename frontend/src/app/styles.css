@@ -95,6 +95,13 @@
     inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
+/* Autofill paints its own light fill, unreadable in a dark well; the delay keeps it from ever showing. */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-foreground);
+  caret-color: var(--color-foreground);
+  transition: background-color 9999s;
+}
+
 /* Fallback paint behind ShaderBackground's canvas: before it mounts, and when
    the canvas hides itself without WebGL2. */
 html {
@@ -425,6 +432,11 @@ input[type="number"]::-webkit-outer-spin-button {
   from {
     opacity: 0;
     translate: 0 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .list-rows > * {
+    animation: none !important;
   }
 }
 .list-rows > * {

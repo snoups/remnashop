@@ -8,6 +8,7 @@ import {
   FlaskConical,
   KeyRound,
   Languages,
+  GitBranch,
   PackagePlus,
   ServerCrash,
   ShieldOff,
@@ -86,7 +87,7 @@ function DebugButton({
 export function DebugBar() {
   const { t, i18n } = useTranslation();
   const state = useDebugState();
-  const { barVisible, barCollapsed, apiFailure, latency, noPermissions, fakeUpdate, missingKeys } = state;
+  const { barVisible, barCollapsed, apiFailure, latency, noPermissions, fakeUpdate, fakeOfficialBuild, missingKeys } = state;
 
   if (!barVisible) return null;
 
@@ -154,6 +155,13 @@ export function DebugBar() {
       label: t("debugBar.fakeUpdate"),
       active: fakeUpdate,
       onClick: () => setDebugState({ fakeUpdate: !fakeUpdate }),
+    },
+    {
+      key: "fakeOfficialBuild",
+      icon: GitBranch,
+      label: t("debugBar.fakeOfficialBuild"),
+      active: fakeOfficialBuild,
+      onClick: () => setDebugState({ fakeOfficialBuild: !fakeOfficialBuild }),
     },
     {
       key: "missingKeys",

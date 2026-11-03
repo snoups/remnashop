@@ -57,7 +57,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
         {weekdayLabels.map((label, index) => (
           <span
             key={`${label}-${index}`}
-            className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+            className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
           >
             {label}
           </span>
@@ -74,7 +74,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
               key={iso}
               type="button"
               onClick={() => onPick(iso)}
-              className={`flex size-8 items-center justify-center rounded-full text-[12.5px] transition-colors ${
+              className={`flex size-8 items-center justify-center rounded-full text-[13px] transition-colors ${
                 isSelected
                   ? "bg-accent font-semibold text-primary"
                   : isInRange

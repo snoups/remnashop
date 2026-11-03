@@ -13,6 +13,7 @@ export function DialogHeader({
   actions,
   closable = true,
   danger = false,
+  warning = false,
 }: {
   icon?: ComponentType<{ className?: string }>;
   /** the circle's content instead of an icon: an emoji */
@@ -24,11 +25,13 @@ export function DialogHeader({
   closable?: boolean;
   /** the icon in the error tone */
   danger?: boolean;
+  /** the icon in the warning tone */
+  warning?: boolean;
 }) {
   const close = useModalClose();
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.08] p-4">
-      {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} header danger={danger} />}
+      {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} header danger={danger} warning={warning} />}
       <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       {/* 36px, the header icon's height: every control in a header is */}

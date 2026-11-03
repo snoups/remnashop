@@ -16,6 +16,8 @@ const SIZE_CLASS = {
 } as const;
 
 const TONE_CLASS = {
+  // floats on its own over a photo or a backdrop, with the glass of a card
+  panel: "glass-panel enabled:hover:bg-white/[0.06]",
   default: "enabled:hover:bg-white/[0.06] enabled:hover:text-foreground",
   danger: "enabled:hover:bg-error/10 enabled:hover:text-error",
   // lights up with the surrounding `group` (a copyable field), not only on its own hover

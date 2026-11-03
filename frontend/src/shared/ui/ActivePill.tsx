@@ -8,7 +8,9 @@ export function ActivePill({ layoutId }: { layoutId: string }) {
     <motion.span
       layoutId={layoutId}
       transition={{ type: "spring", stiffness: 420, damping: 36 }}
-      className="absolute inset-0 rounded-full bg-accent"
+      // in style, not a class: Motion keeps the corners round through the glide only then
+      style={{ borderRadius: 9999 }}
+      className="absolute inset-0 bg-accent"
     />
   );
 }

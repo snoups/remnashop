@@ -5,11 +5,15 @@ import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
-import { Card } from "@shared/ui/Card";
-import { useDialogFocus } from "@shared/ui/modal-hooks";
-import { GLASS_DIALOG_CLASS } from "@shared/ui/classes";
+import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
+import {
+  GLASS_DIALOG_CARD_CLASS,
+  GLASS_DIALOG_CLASS,
+  GLASS_LINK_BUTTON_CLASS,
+  GLASS_SOLID_LINK_BUTTON_CLASS,
+} from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
 export function DonateButton({ mobile = false }: { mobile?: boolean }) {
@@ -24,7 +28,7 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
         type="button"
         aria-label={t("donate.button")}
         onClick={() => setIsOpen(true)}
-        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-[12.5px] font-semibold text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
+        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-[13px] font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >
         {mobile ? <Crown className="size-5" /> : <Crown className="size-4 shrink-0" />}
         {!mobile && <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>}
@@ -47,44 +51,32 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
             />
 
             <DonatePanel onEscape={() => setIsOpen(false)}>
-              <DialogHeader icon={Crown} title={t("donate.title")} onClose={() => setIsOpen(false)} />
+              <DialogHeader icon={Crown} title={t("donate.title")} />
 
-              <div className="flex flex-col gap-3 px-5 pb-5 pt-4">
-                <p className="text-[12.5px] text-foreground">{t("donate.description")}</p>
-
-                <div className="flex gap-2">
-                  <Pressable as="a"
-                    href={BOOSTY_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
-                  >
-                    <PiggyBank className="size-4" />
-                    {t("donate.boostyLabel")}
-                  </Pressable>
-                  <Pressable as="a"
-                    href={YOOKASSA_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full border border-border h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-white/[0.06]"
-                  >
-                    <Wallet className="size-4" />
-                    {t("donate.yookassaLabel")}
-                  </Pressable>
+              <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
+                <div className={GLASS_DIALOG_CARD_CLASS}>
+                  <p className="text-[13px] text-foreground">{t("donate.description")}</p>
+                  <div className="flex gap-2">
+                    <Pressable as="a" href={BOOSTY_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
+                      <PiggyBank className="size-4" />
+                      {t("donate.boostyLabel")}
+                    </Pressable>
+                    <Pressable as="a" href={YOOKASSA_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
+                      <Wallet className="size-4" />
+                      {t("donate.yookassaLabel")}
+                    </Pressable>
+                  </div>
                 </div>
 
-                <Card>
-                  <div className="text-[13px] font-semibold text-foreground">{t("donate.communityTitle")}</div>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">{t("donate.communityDescription")}</p>
-                  <Pressable as="a"
-                    href={COMMUNITY_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 flex items-center justify-center gap-2 rounded-full border border-transparent bg-accent h-9 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-                  >
+                <div className={GLASS_DIALOG_CARD_CLASS}>
+                  <div>
+                    <div className="text-[13px] font-medium text-foreground">{t("donate.communityTitle")}</div>
+                    <p className="mt-0.5 text-[12px] text-muted-foreground">{t("donate.communityDescription")}</p>
+                  </div>
+                  <Pressable as="a" href={COMMUNITY_URL} target="_blank" rel="noreferrer" className={GLASS_SOLID_LINK_BUTTON_CLASS}>
                     {t("donate.communityButton")}
                   </Pressable>
-                </Card>
+                </div>
               </div>
             </DonatePanel>
           </motion.div>
@@ -111,7 +103,7 @@ function DonatePanel({ onEscape, children }: { onEscape: () => void; children: R
       transition={{ duration: 0.18, ease: "easeOut" }}
       className={`relative z-50 w-full max-w-sm outline-none ${GLASS_DIALOG_CLASS}`}
     >
-      {children}
+      <ModalCloseContext.Provider value={onEscape}>{children}</ModalCloseContext.Provider>
     </motion.div>
   );
 }

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
+import { GLASS_LINK_BUTTON_CLASS, GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
 import { DialogPortal } from "@shared/ui/DialogPortal";
 import { Button } from "@shared/ui/Button";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
@@ -15,15 +16,19 @@ interface WelcomeDonateDialogProps {
   onContinue: () => void;
 }
 
-const donatePillClassName =
-  "flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border h-9 px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-glass-border hover:bg-white/[0.06] hover:text-primary";
-
 const EASE_OUT: [number, number, number, number] = [0.2, 0.8, 0.2, 1];
 const EASE_POP: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 
 const CARD_VARIANTS: Variants = {
   hidden: { opacity: 0, scale: 0.96, filter: "blur(8px)" },
-  shown: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { duration: 0.45, ease: EASE_OUT } },
+  shown: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: { duration: 0.45, ease: EASE_OUT },
+    // a leftover filter keeps the card on its own layer and softens its text
+    transitionEnd: { filter: "none" },
+  },
   leave: { opacity: 0, transition: { duration: 0.25, ease: "easeIn" } },
 };
 
@@ -45,7 +50,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
     <DialogPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-glass-border bg-surface/40 p-8 text-center shadow-2xl backdrop-blur-xl"
+          className={`flex w-full max-w-md flex-col items-center gap-6 text-center ${GLASS_STANDALONE_CARD_CLASS}`}
           variants={CARD_VARIANTS}
           initial="hidden"
           animate={isLeaving ? "leave" : "shown"}
@@ -68,7 +73,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
               transition={{ delay: 0.7, duration: 1.1, ease: "easeOut" }}
             />
             <motion.div
-              className="absolute -bottom-1 -right-1 flex size-[22px] items-center justify-center rounded-full border-[3px] border-[#1c1e24] bg-success"
+              className="absolute -bottom-1 -right-1 flex size-[22px] items-center justify-center rounded-full border-[3px] border-canvas bg-success"
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.55, duration: 0.4, ease: EASE_POP }}
@@ -78,13 +83,13 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
           </div>
 
           <motion.div className="flex flex-col gap-2" {...riseIn(0.5)}>
-            <h1 className="text-xl font-bold text-foreground">{t("auth.welcome.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("auth.welcome.description")}</p>
+            <h1 className="text-[21px] font-bold tracking-tight text-foreground">{t("auth.welcome.title")}</h1>
+            <p className="text-[13px] text-muted-foreground">{t("auth.welcome.description")}</p>
           </motion.div>
 
           <motion.div className="w-full" {...riseIn(0.6)}>
             <Button
-              variant="solid"
+              variant="glassSolid"
               className="w-full"
               type="button"
               onClick={() => setIsLeaving(true)}
@@ -98,16 +103,16 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
             <LabeledDivider>{t("donate.title")}</LabeledDivider>
 
             <div className="flex w-full gap-2">
-              <Pressable as="a" href={BOOSTY_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
-                <PiggyBank className="size-[15px]" />
+              <Pressable as="a" href={BOOSTY_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
+                <PiggyBank className="size-4" />
                 {t("donate.boostyLabel")}
               </Pressable>
-              <Pressable as="a" href={YOOKASSA_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
-                <Wallet className="size-[15px]" />
+              <Pressable as="a" href={YOOKASSA_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
+                <Wallet className="size-4" />
                 {t("donate.yookassaLabel")}
               </Pressable>
-              <Pressable as="a" href={TELEGRAM_URL} target="_blank" rel="noreferrer" className={donatePillClassName}>
-                <TelegramIcon className="size-[15px]" />
+              <Pressable as="a" href={TELEGRAM_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
+                <TelegramIcon className="size-4" />
                 {t("buildInfo.telegramButton")}
               </Pressable>
             </div>

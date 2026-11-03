@@ -6,7 +6,7 @@ import { ActivePill } from "@shared/ui/ActivePill";
 export interface SegmentedPillsOption<T extends string | number> {
   value: T;
   label: string;
-  /** red unread dot in the corner, like the notifications bell's */
+  /** unread dot in the corner, like the notifications bell's */
   dot?: boolean;
 }
 
@@ -51,14 +51,14 @@ export function SegmentedPills<T extends string | number>({
             />
           )}
           <span
-            className={`relative z-10 block px-3.5 font-medium ${compact ? "py-[3px] text-[13px] leading-5" : "py-1 text-sm"} ${
+            className={`relative z-10 block px-3.5 font-medium ${compact ? "py-[3px] text-[13px] leading-5" : "py-1 text-[13px]"} ${
               value === option.value ? "text-primary" : "text-foreground"
             }`}
           >
             {option.label}
           </span>
           {option.dot && (
-            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-error" />
+            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-primary" />
           )}
         </motion.button>
       ))}

@@ -6,6 +6,16 @@ const GLASS_SURFACE_CLASS =
 /** Glass dropdown shell; padding is the caller's (p-1.5 for menus, p-3 for pickers). */
 export const POPOVER_CLASS = `rounded-popover ${GLASS_SURFACE_CLASS}`;
 
+/** An external link that reads as Button variant="glass"; grows in a row of links. */
+export const GLASS_LINK_BUTTON_CLASS =
+  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-3 text-[13px] font-medium text-foreground/90 transition-colors hover:bg-white/[0.06]";
+/** Same for variant="glassSolid". */
+export const GLASS_SOLID_LINK_BUTTON_CLASS =
+  "flex h-9 items-center justify-center gap-1.5 rounded-full border border-transparent bg-primary px-3 text-[13px] font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] transition-colors hover:bg-primary-hover";
+
+/** A settings card's glass straight over the shader, no panel under it to blur: sign-in and welcome. */
+export const GLASS_STANDALONE_CARD_CLASS = "glass-panel rounded-3xl p-6 backdrop-blur-[28px] backdrop-saturate-150";
+
 /** A card inside a Section (settings), its own 16px corners; layout and padding come from the caller. */
 export const GLASS_INNER_CARD_CLASS = "rounded-2xl border border-white/[0.08] bg-white/[0.03]";
 
@@ -21,7 +31,7 @@ export const POPOVER_SCROLL_CLASS =
 export const GLASS_POPOVER_CLASS = "rounded-popover glass-dialog";
 
 /** Glass panel of a dialog drawn without Modal (build info, donate). */
-export const GLASS_DIALOG_CLASS = `rounded-dialog ${GLASS_SURFACE_CLASS}`;
+export const GLASS_DIALOG_CLASS = "rounded-dialog glass-dialog";
 
 /** Section heading inside a details dialog card. */
 export const SECTION_TITLE_CLASS =

@@ -66,6 +66,9 @@ function highlight(text: string, tokens: string[]) {
   );
 }
 
+const COLLAPSED_WIDTH = 36;
+const EXPANDED_WIDTH = 320;
+
 export function HeaderSearch() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -75,6 +78,10 @@ export function HeaderSearch() {
 
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  // outlives isExpanded by the fold, so the field is what shrinks back into the icon
+  const [isFieldShown, setIsFieldShown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(0);
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [orders, setOrders] = useState<TransactionItem[]>([]);
@@ -247,10 +254,19 @@ export function HeaderSearch() {
     else if (entry.to) navigate(entry.to);
     setOpen(false);
     setQuery("");
+    setIsExpanded(false);
+  };
+
+  // something typed stays on screen; an empty field folds back into the icon
+  const onBlur = (event: React.FocusEvent) => {
+    if (query === "" && !rootRef.current?.contains(event.relatedTarget)) setIsExpanded(false);
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") setOpen(false);
+    if (event.key === "Escape") {
+      setOpen(false);
+      if (query === "") setIsExpanded(false);
+    }
     else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const step = event.key === "ArrowDown" ? 1 : -1;
@@ -259,36 +275,64 @@ export function HeaderSearch() {
   };
 
   return (
-    <div ref={rootRef} className="relative flex w-80 shrink">
+    <motion.div
+      ref={rootRef}
+      initial={false}
+      animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      onAnimationComplete={() => setIsFieldShown(isExpanded)}
+      className="relative flex min-w-9 shrink justify-end"
+    >
+      {!isFieldShown && (
+        <Pressable
+          type="button"
+          onClick={() => {
+            setIsExpanded(true);
+            setIsFieldShown(true);
+          }}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <Search className="size-4 shrink-0" />
+        </Pressable>
+      )}
+      {isFieldShown && (
       <motion.label
-        className="glass-well group relative flex h-9 w-full items-center gap-2 rounded-full px-3.5 ring-inset focus-within:ring-1 focus-within:ring-primary"
+        className={`group relative flex h-9 w-full items-center gap-2.5 rounded-full border px-3 transition-colors ${isExpanded ? "border-glass-border bg-white/[0.03] not-focus-within:hover:bg-white/[0.06] focus-within:border-primary" : "border-transparent"}`}
       >
         <Ripple />
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
         <input
+          ref={inputRef}
+          autoFocus
           type="search"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            setIsExpanded(true);
+          }}
+          onBlur={onBlur}
           onKeyDown={onKeyDown}
           placeholder={t("header.searchPlaceholder")}
-          className="w-full min-w-0 border-0 bg-transparent text-[13px] text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
+          className="w-full min-w-0 border-0 bg-transparent text-[13px] font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
         />
         {query && (
-          // 26px in the 36px well: 5px in on every side (px-3.5 minus 9)
+          // 24px in a 36px-tall field: 6px inset top, bottom and right (px-3 minus 6)
           <SearchClearButton
-            size="26px"
-            className="-mr-[9px]"
+            size="6"
+            className="-my-0.5 -mr-1.5"
             onClear={() => {
               setQuery("");
               setOpen(false);
+              inputRef.current?.focus();
             }}
           />
         )}
       </motion.label>
+      )}
 
       <PortalPopover
         open={open && query.trim() !== ""}
@@ -337,6 +381,6 @@ export function HeaderSearch() {
         )}
         </div>
       </PortalPopover>
-    </div>
+    </motion.div>
   );
 }

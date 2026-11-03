@@ -26,7 +26,6 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
   useCloseOnScroll(isOpen, popoverRef, () => setIsOpen(false));
 
   const currentLanguage = (i18n.resolvedLanguage ?? "en") as SupportedLanguage;
-  const currentLanguageLabel = currentLanguage.toUpperCase();
 
   const handleSelect = (language: SupportedLanguage) => {
     void i18n.changeLanguage(language);
@@ -42,13 +41,15 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
         className={
           capsule
             ? "flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-            : `flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] text-[12.5px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground ${iconOnly ? "size-11 justify-center" : "h-9 px-3"}`
+            : iconOnly
+              ? "flex size-11 shrink-0 items-center justify-center rounded-full bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+              : "glass-panel flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06]"
         }
       >
         <Languages className={`${iconOnly ? "size-5" : "size-4"} shrink-0`} />
-        {!iconOnly && !capsule && currentLanguageLabel}
+        {!iconOnly && !capsule && LANGUAGE_LABELS[currentLanguage]}
       </Pressable>
-      {!capsule && <span className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />}
+      {iconOnly && <span className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />}
 
       <PortalPopover
         open={isOpen}
@@ -62,7 +63,7 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        glass={capsule}
+        glass={!iconOnly}
         className="min-w-44 p-1.5"
       >
         {SUPPORTED_LANGUAGES.map((language) => (

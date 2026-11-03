@@ -63,7 +63,7 @@ export function OAuthLoginButtons({ oauthProviders, oidcDisplayName, compact = f
         return (
           <Button
             key={provider}
-            variant="outline"
+            variant="glass"
             onClick={() => void handleClick(provider)}
             disabled={pending !== null}
           >

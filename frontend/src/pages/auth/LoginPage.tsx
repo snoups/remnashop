@@ -15,6 +15,7 @@ import { BrandMark } from "@entities/appearance/BrandMark";
 import { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
+import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
 import { Spinner } from "@shared/ui/Spinner";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -62,18 +63,19 @@ export function LoginPage() {
         ) : (
           <motion.div
             key="card"
-            className="flex w-full max-w-sm flex-col items-center gap-8 rounded-2xl max-md:rounded-card border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
+            className="flex w-full max-w-sm flex-col items-center gap-6"
             initial="leave"
             animate={isLeaving ? "leave" : "rest"}
-            variants={CARD_VARIANTS}
             exit="leave"
             onAnimationComplete={(definition) => definition === "leave" && isLeaving && enterDashboard()}
           >
-            <div className="flex items-center gap-3">
+            {/* faded one by one: backdrop-filter sees nothing through a translucent parent */}
+            <motion.div variants={CARD_VARIANTS} className="flex items-center gap-3">
               <BrandMark className="size-9 shrink-0 text-primary" />
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">{brandName}</h1>
-            </div>
+              <h1 className="text-[21px] font-bold tracking-tight text-foreground">{brandName}</h1>
+            </motion.div>
 
+            <motion.div variants={CARD_VARIANTS} className={`flex w-full flex-col gap-6 ${GLASS_STANDALONE_CARD_CLASS}`}>
             {state.kind === "loading" && <Spinner />}
 
             {state.kind === "ready" && state.data.is_register_allowed && (
@@ -83,7 +85,7 @@ export function LoginPage() {
             {status?.is_password_login_enabled && <LoginForm onSuccess={goToDashboard} />}
 
             {status && altCount > 0 && (
-              <div className="flex w-full flex-col gap-4">
+              <div className="flex w-full flex-col gap-3">
                 {status.is_password_login_enabled && (
                   <LabeledDivider>{t("auth.oauth.or")}</LabeledDivider>
                 )}
@@ -100,6 +102,7 @@ export function LoginPage() {
                 </div>
               </div>
             )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

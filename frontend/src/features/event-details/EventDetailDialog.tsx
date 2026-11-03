@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState, type ComponentType } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { EventLogEntry } from "@entities/event-log/api";
@@ -40,8 +40,7 @@ import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal } from "@shared/ui/Modal";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Card } from "@shared/ui/Card";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
@@ -61,6 +60,29 @@ interface ParticipantSectionProps {
   ipAddress?: string | null;
 }
 
+// a Card's list form on the glass dialog's 12px corners
+function DialogCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title?: string;
+  icon?: ComponentType<{ className?: string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-1.5">
+      {title && (
+        <h3 className={SECTION_TITLE_CLASS}>
+          {Icon && <Icon className="size-3.5" />}
+          {title}
+        </h3>
+      )}
+      {children}
+    </div>
+  );
+}
+
 function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }: ParticipantSectionProps) {
   const { t } = useTranslation();
   const name = user?.name ?? missingLabel ?? "—";
@@ -77,7 +99,7 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
   const telegramId = user?.telegram_id && user.telegram_id > 0 ? String(user.telegram_id) : undefined;
 
   return (
-    <Card variant="list" title={title} icon={Icon}>
+    <DialogCard title={title} icon={Icon}>
       <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user?.name ?? undefined}>
         <span className="truncate">{name}</span>
       </InfoRow>
@@ -124,13 +146,13 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
           )}
         </div>
       )}
-    </Card>
+    </DialogCard>
   );
 }
 
 export function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
   return (
-    <Modal onClose={onClose} size="lg" scrollable>
+    <Modal onClose={onClose} size="lg" scrollable material="glass">
       <EventDetailDialogBody entry={entry} />
     </Modal>
   );
@@ -175,12 +197,12 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pt-4">
+        <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
+      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]`}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -189,7 +211,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
           <div ref={contentRef}>
             {tab === "details" && (
               <div className="flex flex-col gap-3">
-                <Card variant="list" title={t("eventLog.detail.sections.event")} icon={Activity}>
+                <DialogCard title={t("eventLog.detail.sections.event")} icon={Activity}>
                   <InfoRow icon={Hash} label={t("eventLog.detail.id")} copyValue={String(entry.id)} mono>
                     {entry.id}
                   </InfoRow>
@@ -204,7 +226,7 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                   <InfoRow icon={Tag} label={t("eventLog.detail.eventCode")} copyValue={entry.event_type} mono>
                     {entry.event_type}
                   </InfoRow>
-                </Card>
+                </DialogCard>
 
                 {!isSystemInitiated && (
                   <ParticipantSection
@@ -222,8 +244,8 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
             )}
 
             {tab === "payload" && (
-              <Card variant="list">
-                <div className="flex items-center justify-between py-1 pl-2.5 pr-1">
+              <DialogCard>
+                <div className="flex items-center justify-between">
                   <h3 className={SECTION_TITLE_CLASS}>
                     <Braces className="size-3.5" />
                     {t("eventLog.detail.json")}
@@ -234,28 +256,29 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                     <Copy className="size-3.5" />
                   </IconButton>
                 </div>
-                <div className="relative m-1">
+                <div className="relative mt-1">
                   <pre
-                    className={`overflow-x-auto rounded-xl bg-input/60 p-3 font-mono text-[12px] text-foreground/80 transition-opacity ${
+                    className={`glass-well overflow-x-auto rounded-md p-2.5 font-mono text-[12px] text-foreground/80 transition-opacity ${
                       isCopied ? "opacity-20" : ""
                     }`}
                   >
                     {JSON.stringify(otherPayload, null, 2)}
                   </pre>
                   {isCopied && (
-                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-primary">
+                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12px] font-medium text-primary">
                       <Check className="size-3.5" />
                       {t("app.copied")}
                     </span>
                   )}
                 </div>
-              </Card>
+              </DialogCard>
             )}
           </div>
         </motion.div>
       </div>
 
       <OpenUserFooter
+        glass
         links={[
           {
             label: t("eventLog.detail.openInitiator"),

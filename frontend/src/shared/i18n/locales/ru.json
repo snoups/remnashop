@@ -714,6 +714,7 @@
       "BlacklistSourceChangedEvent": "Источник чёрного списка изменён",
       "TranslationChangedEvent": "Переводы изменены",
       "GatewayTestPaymentCreatedEvent": "Создан тестовый платёж",
+      "LegalDocumentChangedEvent": "Изменён юридический документ",
       "LoyaltySettingsChangedEvent": "Настройки лояльности изменены",
       "UserLoyaltyExclusionChangedEvent": "Исключение из программы лояльности изменено",
       "AccessSettingsChangedEvent": "Настройки доступа изменены",
@@ -3460,7 +3461,7 @@
     "yookassaLabel": "ЮKassa",
     "communityTitle": "Закрытый чат",
     "communityDescription": "Платная подписка на Boosty, которая даёт доступ к закрытому чату поддержки.",
-    "communityButton": "Оформить подписку"
+    "communityButton": "Получить доступ"
   },
   "debugBar": {
     "close": "Закрыть панель отладки",
@@ -3485,6 +3486,7 @@
     },
     "noPermissions": "Отобрать все права (только фронтенд)",
     "fakeUpdate": "Показать, будто вышла новая версия",
+    "fakeOfficialBuild": "Показать, как сборка с данными git выглядит в проде",
     "copySnapshot": "Скопировать снимок окружения",
     "snapshotCopied": "Снимок скопирован в буфер.",
     "snapshotFailed": "Нет доступа к буферу обмена.",

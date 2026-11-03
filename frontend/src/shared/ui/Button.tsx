@@ -7,7 +7,7 @@ import { Pressable } from "@shared/ui/Pressable";
 // accent/solid/outline/danger: primary and destructive actions, dialog and form footers (14px).
 // secondary: card-header actions and buttons next to a field (12.5px semibold).
 // glass: PillTabs' capsule fill, for actions beside one; glassAccent: its primary action, glassDanger:
-// its destructive one (13px medium).
+// its destructive one (13px medium); glassSolid: full primary, the one action of a page like sign-in.
 export type ButtonVariant =
   | "accent"
   | "solid"
@@ -15,6 +15,7 @@ export type ButtonVariant =
   | "secondary"
   | "glass"
   | "glassAccent"
+  | "glassSolid"
   | "glassDanger"
   | "danger";
 
@@ -25,6 +26,8 @@ const COLOR_CLASS: Record<ButtonVariant, string> = {
   secondary: "border-border text-foreground/90 hover:bg-white/[0.06]",
   glass: "border-glass-border bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06]",
   glassAccent: "border-primary/35 bg-primary/15 text-primary hover:bg-primary/20",
+  glassSolid:
+    "border-transparent bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] hover:bg-primary-hover",
   glassDanger: "border-glass-border bg-white/[0.03] text-error hover:bg-error/10",
   danger: "border-border text-error hover:bg-error/10",
 };
@@ -36,6 +39,7 @@ const TYPE_CLASS: Record<ButtonVariant, string> = {
   secondary: "gap-1.5 px-3.5 text-[12.5px] font-semibold",
   glass: "gap-1.5 px-3.5 text-[13px] font-medium",
   glassAccent: "gap-1.5 px-3.5 text-[13px] font-medium",
+  glassSolid: "gap-1.5 px-3.5 text-[13px] font-semibold",
   glassDanger: "gap-1.5 px-3.5 text-[13px] font-medium",
   danger: "gap-1.5 px-4 text-sm font-medium",
 };
@@ -70,7 +74,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   // the glass pair keeps its 13px medium at every height
-  const isGlass = variant === "glass" || variant === "glassAccent" || variant === "glassDanger";
+  const isGlass = variant === "glass" || variant === "glassAccent" || variant === "glassSolid" || variant === "glassDanger";
   const typography =
     size === "sm" && !isGlass
       ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}`

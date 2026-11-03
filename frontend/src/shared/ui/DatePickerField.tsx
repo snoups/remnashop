@@ -21,9 +21,13 @@ interface DatePickerFieldProps {
   placeholder: string;
   // form: inside a form, the same dark surface as TextInput; glass is for filters
   variant?: "glass" | "form";
+  /** 36px, 13px text and a glass popover: the glass design's filter row */
+  compact?: boolean;
+  /** muted word before a picked date, where no label says what it is ("from", "to") */
+  valuePrefix?: string;
 }
 
-export function DatePickerField({ id, value, onChange, placeholder, variant = "glass" }: DatePickerFieldProps) {
+export function DatePickerField({ id, value, onChange, placeholder, variant = "glass", compact = false, valuePrefix }: DatePickerFieldProps) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -51,10 +55,11 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
             toggleOpen();
           }
         }}
-        className={`group flex w-full cursor-pointer items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} py-2 pl-9 pr-8 text-sm font-medium text-foreground outline-none focus:border-primary`}
+        className={`group flex w-full cursor-pointer items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} ${compact ? "h-9 text-[13px]" : "py-2 text-sm"} pl-9 pr-8 font-medium text-foreground outline-none focus:border-primary`}
       >
         <Calendar className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
         <span className={displayValue ? "text-foreground" : "text-muted-foreground"}>
+          {displayValue && valuePrefix && <span className="text-muted-foreground">{valuePrefix} </span>}
           {displayValue || placeholder}
         </span>
         {value && (
@@ -79,6 +84,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: -4 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
+        glass={compact}
         className="w-64 p-3"
 >
         <MonthCalendar

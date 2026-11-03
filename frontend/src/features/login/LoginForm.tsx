@@ -7,9 +7,8 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
-import { PasswordInput } from "@shared/ui/PasswordInput";
-import { TextInput } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, PasswordInput } from "@shared/ui/glass/Input";
 
 interface LoginFormProps {
   onSuccess: () => void;
@@ -37,9 +36,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-      <Field label={t("auth.login")} htmlFor="login" aside={<span className="text-error">*</span>}>
-        <TextInput
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
+      <Field label={t("auth.login")} htmlFor="login" required>
+        <Input
           id="login"
           value={loginValue}
           onChange={(event) => setLoginValue(event.target.value)}
@@ -48,7 +47,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         />
       </Field>
 
-      <Field label={t("auth.password")} htmlFor="password" aside={<span className="text-error">*</span>}>
+      <Field label={t("auth.password")} htmlFor="password" required>
         <PasswordInput
           id="password"
           value={password}
@@ -58,12 +57,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         />
       </Field>
 
-      <Button
-        variant="solid"
-        type="submit"
-        disabled={isSubmitting}
-      >
-        <LogIn size={16} />
+      <Button variant="glassSolid" type="submit" icon={LogIn} isLoading={isSubmitting} className="mt-1">
         {t("auth.signIn")}
       </Button>
     </form>

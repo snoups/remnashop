@@ -41,7 +41,7 @@ export function PasskeyLoginButton({ onSuccess, compact = false }: PasskeyLoginB
 
   return (
     <Button
-      variant="outline"
+      variant="glass"
       type="button"
       onClick={() => void handleClick()}
       disabled={isLoading}

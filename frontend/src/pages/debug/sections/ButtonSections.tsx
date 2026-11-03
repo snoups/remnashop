@@ -37,6 +37,7 @@ export function ButtonsSection() {
       <Specimen name="glass" usage={k("u.glass")}>
         <Button variant="glass">{k("s.edit")}</Button>
         <Button variant="glassAccent">{k("s.save")}</Button>
+        <Button variant="glassSolid">{k("s.save")}</Button>
         <Button variant="glassDanger">{k("s.delete")}</Button>
       </Specimen>
       <Specimen name='size="sm | md | field"' usage={k("u.sizes")}>

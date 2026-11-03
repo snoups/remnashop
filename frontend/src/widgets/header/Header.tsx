@@ -100,7 +100,7 @@ export function Header({ onLogout }: HeaderProps) {
       {/* desktop: one 48px glass capsule across the page, title in it, 36px items 6px in; mobile: the bar is the frame */}
       <div className={mobile ? "contents" : "glass-panel flex h-12 items-center justify-between gap-5 rounded-full p-1.5"}>
       <div className="flex min-w-0 items-center gap-2.5">
-        {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-5" /></IconButton>}
+        {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-4" /></IconButton>}
         {!mobile && <IconCircle icon={pageIcon} header />}
         <span className="truncate text-[21px] font-bold tracking-tight text-foreground max-md:text-[17px]">{pageTitle}</span>
         {!mobile && isOverviewPage && (

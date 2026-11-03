@@ -1,3 +1,4 @@
+import { MotionConfig } from "motion/react";
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { RouterProvider } from "react-router-dom";
 
@@ -34,6 +35,7 @@ export function App() {
   }, []);
 
   return (
+    <MotionConfig reducedMotion="user">
     <AppearanceProvider>
       <SilentBoundary>
         <Suspense fallback={null}>
@@ -48,5 +50,6 @@ export function App() {
       <ToastContainer />
       <DebugBar />
     </AppearanceProvider>
+    </MotionConfig>
   );
 }

@@ -11,9 +11,8 @@ import { randomString } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
-import { PasswordInput } from "@shared/ui/PasswordInput";
-import { TextInput } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, PasswordInput } from "@shared/ui/glass/Input";
 
 const PASSWORD_CHARSET =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -25,7 +24,7 @@ const FORM_VARIANTS: Variants = {
   leave: { transition: { staggerChildren: 0.04 } },
 };
 const FORM_ITEM_VARIANTS: Variants = {
-  rest: { opacity: 1, y: 0, filter: "blur(0px)" },
+  rest: { opacity: 1, y: 0, filter: "none" },
   leave: { opacity: 0, y: 10, filter: "blur(4px)", transition: { duration: 0.28, ease: "easeIn" } },
 };
 
@@ -100,7 +99,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
   return (
     <motion.form
       onSubmit={handleSubmit}
-      className="flex w-full max-w-sm flex-col gap-4"
+      className="flex w-full flex-col gap-3"
       variants={FORM_VARIANTS}
       initial={false}
       animate={isLeaving ? "leave" : "rest"}
@@ -110,10 +109,10 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
         <Field
           label={t("auth.login")}
           htmlFor="login"
-          aside={<span className="text-error">*</span>}
+          required
           error={isLoginInvalid ? t("auth.errors.loginInvalidChars") : undefined}
         >
-          <TextInput
+          <Input
             id="login"
             value={login}
             onChange={(event) => setLogin(event.target.value)}
@@ -125,7 +124,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
       </motion.div>
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
-        <Field label={t("auth.password")} htmlFor="password" info={t("auth.passwordHint")} aside={<span className="text-error">*</span>}>
+        <Field label={t("auth.password")} htmlFor="password" info={t("auth.passwordHint")} required>
           <PasswordInput
             id="password"
             value={password}
@@ -141,7 +140,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
       </motion.div>
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
-        <Field label={t("auth.confirmPassword")} htmlFor="confirm-password" aside={<span className="text-error">*</span>}>
+        <Field label={t("auth.confirmPassword")} htmlFor="confirm-password" required>
           <PasswordInput
             id="confirm-password"
             value={confirmPassword}
@@ -154,7 +153,7 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
         <Button
-          variant="outline"
+          variant="glass"
           type="button"
           onClick={handleGeneratePassword}
         >
@@ -164,9 +163,10 @@ export function BootstrapOwnerForm({ onSuccess }: BootstrapOwnerFormProps) {
 
       <motion.div variants={FORM_ITEM_VARIANTS} className="flex flex-col">
         <Button
-          variant="solid"
+          variant="glassSolid"
           type="submit"
-          disabled={isSubmitting || isLoginInvalid}
+          isLoading={isSubmitting}
+          disabled={isLoginInvalid}
         >
           {t("auth.createOwnerAccount")}
         </Button>
