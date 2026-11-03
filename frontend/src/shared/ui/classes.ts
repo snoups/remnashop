@@ -6,6 +6,17 @@ const GLASS_SURFACE_CLASS =
 /** Glass dropdown shell; padding is the caller's (p-1.5 for menus, p-3 for pickers). */
 export const POPOVER_CLASS = `rounded-popover ${GLASS_SURFACE_CLASS}`;
 
+/** A card inside a Section (settings), its own 16px corners; layout and padding come from the caller. */
+export const GLASS_INNER_CARD_CLASS = "rounded-2xl border border-white/[0.08] bg-white/[0.03]";
+
+/** A card inside a glass dialog: 12px off its edge (p-3) with 12px corners, concentric with its 24px ones. */
+export const GLASS_DIALOG_CARD_CLASS = "flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5";
+
+/** A popover's scrolling list: content fades out over 8px at both ends, py matching the fade so nothing is
+ *  faded at rest; the second gradient keeps the scrollbar column out of the fade. */
+export const POPOVER_SCROLL_CLASS =
+  "overflow-y-auto overflow-x-hidden py-2 [mask-composite:add] [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent),linear-gradient(to_right,transparent_calc(100%-14px),black_calc(100%-14px))]";
+
 /** The glass design's dropdown shell: the glass dialog's material (shared/ui/glass). */
 export const GLASS_POPOVER_CLASS = "rounded-popover glass-dialog";
 

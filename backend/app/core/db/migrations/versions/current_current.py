@@ -1371,7 +1371,9 @@ def upgrade() -> None:
         sa.Column("kind", sa.Enum("DATABASE", "ASSETS", name="backupkind"), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "RUNNING", "COMPLETED", "FAILED", name="backuprunstatus"),
+            sa.Enum(
+                "PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELED", name="backuprunstatus"
+            ),
             nullable=False,
         ),
         sa.Column("file_path", sa.String(length=1024), nullable=True),

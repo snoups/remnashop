@@ -135,3 +135,19 @@ def test_update_shop_settings_request_clears_support_with_a_blank() -> None:
     assert request.support_telegram is None
     assert request.support_url is None
     assert request.model_fields_set == {"support_telegram", "support_url"}
+
+
+def test_shop_limit_of_zero_means_unlimited() -> None:
+    request = UpdateShopSettingsRequest(max_active_subscriptions=0)
+
+    assert request.max_active_subscriptions is None
+    assert "max_active_subscriptions" in request.model_fields_set
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [{"max_active_subscriptions": 11}, {"link_reset_cooldown_hours": 10000}],
+)
+def test_shop_limits_are_capped(fields: dict[str, int]) -> None:
+    with pytest.raises(ValidationError):
+        UpdateShopSettingsRequest(**fields)

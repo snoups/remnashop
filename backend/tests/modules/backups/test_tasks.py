@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import tempfile
 import zipfile
@@ -6,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from redis.asyncio import Redis
 from sqlalchemy import select, update
 
 from app.core.actor import Actor
@@ -13,11 +15,18 @@ from app.core.db.models.backup_run import BackupRun
 from app.core.db.models.event_outbox import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
+from app.modules.backups.cancel_signal import cancel_signal_key
 from app.modules.backups.dto import CreateBackupRunDto, RunBackupDto, UpdateBackupSettingsDto
 from app.modules.backups.dump import create_assets_dump
 from app.modules.backups.repository import BackupRepository
-from app.modules.backups.usecases import RunBackupUseCase, RunScheduledBackupUseCase
+from app.modules.backups.usecases import (
+    CancelBackupRunUseCase,
+    RunBackupUseCase,
+    RunScheduledBackupUseCase,
+)
 
 
 async def test_run_backup_marks_failed_when_dump_raises(
@@ -27,6 +36,7 @@ async def test_run_backup_marks_failed_when_dump_raises(
     config,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     async with uow:
@@ -36,7 +46,7 @@ async def test_run_backup_marks_failed_when_dump_raises(
         "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=RuntimeError("pg_dump failed: boom")),
     ):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
@@ -58,13 +68,14 @@ async def test_run_backup_rejects_second_concurrent_run(
     uow: UnitOfWork,
     config,
     event_publisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         first = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
         await backup_repository.mark_running(first.id)
         second = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
         RunBackupDto(kind=BackupKind.DATABASE, run_id=second.id)
     )
 
@@ -80,6 +91,7 @@ async def test_run_backup_runs_one_of_two_queued_runs(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
 
@@ -91,7 +103,7 @@ async def test_run_backup_runs_one_of_two_queued_runs(
         await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=first.id)
         )
 
@@ -105,6 +117,7 @@ async def test_run_backup_completes_and_signs_database_dump(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     dump_bytes = b"fake pg_dump bytes"
@@ -116,7 +129,7 @@ async def test_run_backup_completes_and_signs_database_dump(
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
@@ -143,6 +156,7 @@ async def test_run_backup_completes_assets_dump(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     (tmp_path / "logo.png").write_bytes(b"img")
@@ -150,7 +164,7 @@ async def test_run_backup_completes_assets_dump(
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.ASSETS))
 
-    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
         RunBackupDto(kind=BackupKind.ASSETS, run_id=run.id)
     )
 
@@ -168,6 +182,7 @@ async def test_run_backup_removes_partial_file_on_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
 
@@ -179,7 +194,7 @@ async def test_run_backup_removes_partial_file_on_failure(
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
     with patch("app.modules.backups.dump.create_database_dump", _fake_dump):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
@@ -194,6 +209,7 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     async with uow:
@@ -208,7 +224,7 @@ async def test_run_backup_rotates_old_files_beyond_max_files(
                 run = await backup_repository.create_run(
                     CreateBackupRunDto(kind=BackupKind.DATABASE)
                 )
-            await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+            await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
                 RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
             )
 
@@ -378,6 +394,7 @@ async def test_run_backup_fails_a_run_stranded_by_a_killed_worker(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     stranded = await _running_since(backup_repository, uow, timedelta(hours=3))
@@ -388,7 +405,7 @@ async def test_run_backup_fails_a_run_stranded_by_a_killed_worker(
         "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
     ):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
@@ -402,12 +419,13 @@ async def test_run_backup_still_waits_for_a_long_running_backup(
     uow: UnitOfWork,
     config,
     event_publisher,
+    redis: Redis,
 ) -> None:
     running = await _running_since(backup_repository, uow, timedelta(minutes=90))
     async with uow:
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
         RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
     )
 
@@ -423,6 +441,7 @@ async def test_run_backup_does_not_fail_itself_after_a_long_queue(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     async with uow:
@@ -436,7 +455,7 @@ async def test_run_backup_does_not_fail_itself_after_a_long_queue(
         "app.modules.backups.dump.create_database_dump",
         AsyncMock(side_effect=lambda config, dest: dest.write_bytes(b"dump")),
     ):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
@@ -450,6 +469,7 @@ async def test_run_backup_keeps_a_run_that_started_late_after_queueing(
     uow: UnitOfWork,
     config,
     event_publisher,
+    redis: Redis,
 ) -> None:
     async with uow:
         queued = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
@@ -461,7 +481,7 @@ async def test_run_backup_keeps_a_run_that_started_late_after_queueing(
         await backup_repository.mark_running(queued.id)
         run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
 
-    await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+    await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
         RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
     )
 
@@ -476,6 +496,7 @@ async def test_run_backup_ignores_a_run_that_already_finished(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     event_publisher,
+    redis: Redis,
 ) -> None:
     monkeypatch.setattr(config, "media_dir", tmp_path)
     dump = AsyncMock()
@@ -489,9 +510,84 @@ async def test_run_backup_ignores_a_run_that_already_finished(
         await backup_repository.mark_running(sibling.id)
 
     with patch("app.modules.backups.dump.create_database_dump", dump):
-        await RunBackupUseCase(backup_repository, uow, config, event_publisher).system(
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
             RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
         )
 
     dump.assert_not_called()
     assert (await backup_repository.get_run(run.id)).status == BackupRunStatus.COMPLETED
+
+
+async def test_cancel_takes_a_queued_run_out_of_the_queue(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    tmp_path: Path,
+    config,
+    monkeypatch,
+    event_publisher,
+    redis: Redis,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    canceled = await CancelBackupRunUseCase(backup_repository, uow, event_publisher, redis).system(
+        run.id
+    )
+    assert canceled.status is BackupRunStatus.CANCELED
+
+    dump = AsyncMock()
+    with patch("app.modules.backups.dump.create_database_dump", dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+        )
+    dump.assert_not_awaited()
+    assert (await backup_repository.get_run(run.id)).status is BackupRunStatus.CANCELED
+
+
+async def test_cancel_stops_a_running_backup_and_removes_its_file(
+    backup_repository: BackupRepository,
+    uow: UnitOfWork,
+    tmp_path: Path,
+    config,
+    monkeypatch,
+    event_publisher,
+    redis: Redis,
+) -> None:
+    monkeypatch.setattr(config, "media_dir", tmp_path)
+    monkeypatch.setattr("app.modules.backups.usecases.run_backup._CANCEL_POLL_S", 0.01)
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+
+    async def endless_dump(_config, dest: Path) -> None:
+        dest.write_bytes(b"partial")
+        await redis.set(cancel_signal_key(run.id), "1")
+        await asyncio.sleep(60)
+
+    with patch("app.modules.backups.dump.create_database_dump", endless_dump):
+        await RunBackupUseCase(backup_repository, uow, config, event_publisher, redis).system(
+            RunBackupDto(kind=BackupKind.DATABASE, run_id=run.id)
+        )
+
+    assert (await backup_repository.get_run(run.id)).status is BackupRunStatus.CANCELED
+    assert list((tmp_path / "backups").iterdir()) == []
+    assert not await redis.exists(cancel_signal_key(run.id))
+
+
+async def test_cancel_signals_a_running_backup_and_refuses_a_finished_one(
+    backup_repository: BackupRepository, uow: UnitOfWork, event_publisher, redis: Redis
+) -> None:
+    async with uow:
+        run = await backup_repository.create_run(CreateBackupRunDto(kind=BackupKind.DATABASE))
+        await backup_repository.mark_running(run.id)
+    use_case = CancelBackupRunUseCase(backup_repository, uow, event_publisher, redis)
+
+    result = await use_case.system(run.id)
+    assert result.status is BackupRunStatus.RUNNING
+    assert await redis.exists(cancel_signal_key(run.id))
+
+    async with uow:
+        await backup_repository.mark_failed(run.id, error="boom")
+    with pytest.raises(ValidationError) as caught:
+        await use_case.system(run.id)
+    assert caught.value.code is ErrorCode.BACKUP_RUN_NOT_CANCELABLE

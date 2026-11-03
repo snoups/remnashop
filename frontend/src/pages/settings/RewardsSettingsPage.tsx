@@ -5,7 +5,7 @@ import { ReferralSettingsPage } from "@pages/settings/ReferralSettingsPage";
 export function RewardsSettingsPage() {
   const permissions = usePermissions();
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {permissions.includes("LOYALTY_SETTINGS_VIEW") && <LoyaltySettingsPage />}
       {permissions.includes("REFERRALS_SETTINGS_VIEW") && <ReferralSettingsPage />}
     </div>

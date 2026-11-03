@@ -1,9 +1,14 @@
+import asyncio
+import contextlib
 import hashlib
 import os
+from collections.abc import Awaitable
+from datetime import datetime
 from pathlib import Path
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 from loguru import logger
+from redis.asyncio import Redis
 
 from app.core.actor import Actor
 from app.core.config import AppConfig
@@ -13,6 +18,7 @@ from app.core.enums import BackupKind, BackupRunStatus
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.backups.cancel_signal import cancel_signal_key
 from app.modules.backups.dto import STALE_RUN_AFTER, RunBackupDto
 from app.modules.backups.dump import (
     BACKUP_FILE_MODE,
@@ -23,6 +29,7 @@ from app.modules.backups.events import BackupCompletedEvent, BackupFailedEvent
 from app.modules.backups.repository import BackupRepository
 
 _STALE_RUN_ERROR: Final[str] = "Interrupted: the worker stopped before the backup finished"
+_CANCEL_POLL_S: Final[float] = 1.0
 _EXTENSION_BY_KIND: Final[dict[BackupKind, str]] = {
     BackupKind.DATABASE: "dump",
     BackupKind.ASSETS: "zip",
@@ -38,15 +45,33 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
         uow: UnitOfWork,
         config: AppConfig,
         event_publisher: EventPublisher,
+        redis: Redis,
     ) -> None:
         self._backup_repository = backup_repository
         self._uow = uow
         self._config = config
         self._event_publisher = event_publisher
+        self._redis = redis
 
-    async def _execute(self, actor: Actor, data: RunBackupDto) -> None:
-        kind, run_id = data.kind, data.run_id
-        started_after = datetime_now() - STALE_RUN_AFTER
+    async def _is_canceled_while(self, run_id: int, work: Awaitable[Any]) -> bool:
+        task = asyncio.ensure_future(work)
+        key = cancel_signal_key(run_id)
+        try:
+            while True:
+                done, _ = await asyncio.wait({task}, timeout=_CANCEL_POLL_S)
+                if done:
+                    await task
+                    return False
+                if await self._redis.exists(key):
+                    task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await task
+                    await self._redis.delete(key)
+                    return True
+        finally:
+            task.cancel()
+
+    async def _fail_stranded(self, kind: BackupKind, run_id: int, started_after: datetime) -> None:
         async with self._uow:
             stale = await self._backup_repository.fail_stale(
                 kind, before=started_after, error=_STALE_RUN_ERROR, exclude_run_id=run_id
@@ -57,6 +82,11 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
                 )
         for stale_id in stale:
             logger.warning(f"Backup run '{stale_id}' ('{kind.value}') was stranded, failed it")
+
+    async def _execute(self, actor: Actor, data: RunBackupDto) -> None:
+        kind, run_id = data.kind, data.run_id
+        started_after = datetime_now() - STALE_RUN_AFTER
+        await self._fail_stranded(kind, run_id, started_after)
 
         async with self._uow:
             await self._backup_repository.lock_kind(kind)
@@ -93,9 +123,19 @@ class RunBackupUseCase(UseCase[RunBackupDto, None]):
         try:
             if kind is BackupKind.DATABASE:
                 dest = backup_dir / f"{stem}.{_EXTENSION_BY_KIND[kind]}"
-                await create_signed_database_dump(self._config, dest)
+                work: Awaitable[Any] = create_signed_database_dump(self._config, dest)
             else:
-                dest = await create_assets_dump(self._config, backup_dir / stem)
+                dest = backup_dir / f"{stem}.{_EXTENSION_BY_KIND[kind]}"
+                work = create_assets_dump(self._config, backup_dir / stem)
+
+            if await self._is_canceled_while(run_id, work):
+                dest.unlink(missing_ok=True)
+                async with self._uow:
+                    await self._backup_repository.mark_canceled(run_id)
+                logger.info(f"Backup run '{run_id}' ('{kind.value}') canceled")
+                return
+
+            if kind is BackupKind.ASSETS:
                 os.chmod(dest, BACKUP_FILE_MODE)
 
             with dest.open("rb") as f:

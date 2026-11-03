@@ -1,3 +1,4 @@
+from app.modules.backups.usecases.cancel_backup_run import CancelBackupRunUseCase
 from app.modules.backups.usecases.create_backup_run import CreateBackupRunUseCase
 from app.modules.backups.usecases.delete_backup_run import DeleteBackupRunUseCase
 from app.modules.backups.usecases.download_backup_run import DownloadBackupRunUseCase
@@ -11,6 +12,7 @@ from app.modules.backups.usecases.run_scheduled_backup import RunScheduledBackup
 from app.modules.backups.usecases.update_backup_settings import UpdateBackupSettingsUseCase
 
 __all__ = [
+    "CancelBackupRunUseCase",
     "CreateBackupRunUseCase",
     "DeleteBackupRunUseCase",
     "DownloadBackupRunUseCase",

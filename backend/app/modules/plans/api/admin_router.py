@@ -24,6 +24,7 @@ from app.modules.plans.api.schemas import (
     ReorderPlansRequest,
     SetAddOnBasePriceRequest,
     SetAddOnPriceOverrideRequest,
+    SetMatrixPricesRequest,
     SetPlanDurationBasePriceRequest,
     SetPlanDurationsRequest,
     SetPlanPriceOverrideRequest,
@@ -44,6 +45,7 @@ from app.modules.plans.dto import (
     ReorderPlansDto,
     SetAddOnBasePriceDto,
     SetAddOnPriceOverrideDto,
+    SetMatrixPricesDto,
     SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
@@ -71,6 +73,7 @@ from app.modules.plans.usecases import (
     ReorderPlansUseCase,
     SetAddOnBasePriceUseCase,
     SetAddOnPriceOverrideUseCase,
+    SetMatrixPricesUseCase,
     SetPlanDurationBasePriceUseCase,
     SetPlanDurationsUseCase,
     SetPlanPriceOverrideUseCase,
@@ -570,6 +573,45 @@ async def preview_pricing_change(
         actor, PricingChangePreviewDto(rate=rate, anchor=payload.anchor, adjust=adjust)
     )
     return PricingDiffResponse.model_validate(diff, from_attributes=True)
+
+
+@pricing_router.post(
+    "/bulk/set-prices", response_model=PriceBookResponse, responses=error_responses(400, 404)
+)
+@inject
+async def set_matrix_prices(
+    payload: SetMatrixPricesRequest,
+    use_case: FromDishka[SetMatrixPricesUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PriceBookResponse:
+    book = await use_case(
+        actor,
+        SetMatrixPricesDto(
+            plan_base_prices=[
+                SetPlanDurationBasePriceDto(
+                    plan_id=item.plan_id, days=item.days, base_price=item.base_price
+                )
+                for item in payload.plan_base_prices
+            ],
+            plan_overrides=[
+                SetPlanPriceOverrideDto(
+                    plan_id=item.plan_id, days=item.days, currency=item.currency, price=item.price
+                )
+                for item in payload.plan_overrides
+            ],
+            addon_base_prices=[
+                SetAddOnBasePriceDto(addon_id=item.addon_id, base_price=item.base_price)
+                for item in payload.addon_base_prices
+            ],
+            addon_overrides=[
+                SetAddOnPriceOverrideDto(
+                    addon_id=item.addon_id, currency=item.currency, price=item.price
+                )
+                for item in payload.addon_overrides
+            ],
+        ),
+    )
+    return PriceBookResponse.model_validate(book, from_attributes=True)
 
 
 @pricing_router.post("/actions/adjust-base-prices", response_model=PriceBookResponse)

@@ -1,7 +1,9 @@
+import { useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { matchPath, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { usePermissions } from "@entities/user/use-current-user";
+import { LoadGate } from "@shared/lib/load-gate";
 import { TabBar } from "@shared/ui/glass/TabBar";
 import { SETTINGS_TABS, type SettingsTab } from "@widgets/sidebar/nav-items";
 
@@ -9,7 +11,15 @@ const SETTINGS_ROOT = "/dashboard/settings";
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // the scroller outlives the tabs; below md it doesn't scroll and main does
+  useLayoutEffect(() => {
+    if (hash) return;
+    scrollerRef.current?.scrollTo(0, 0);
+    scrollerRef.current?.closest("main")?.scrollTo(0, 0);
+  }, [pathname, hash]);
   const permissions = usePermissions();
 
   const tabs = SETTINGS_TABS.filter((tab) => tab.anyOf.some((permission) => permissions.includes(permission)));
@@ -17,12 +27,14 @@ export function SettingsPage() {
     matchPath({ path: `${SETTINGS_ROOT}/${tab.to}`, end: tab.to === "" }, pathname) !== null;
 
 
-  // a hidden tab is off limits by URL too; the bare /settings lands on the first one allowed.
+  // a hidden tab is off limits by URL too, it leads to the overview; the bare /settings, which
+  // the sidebar links to, lands on the first tab allowed.
   // Only while the URL is still under settings: leaving, this page stays mounted through the
   // outlet's fade-out with the next page's URL already in place.
   const isUnderSettings = matchPath({ path: SETTINGS_ROOT, end: false }, pathname) !== null;
   if (isUnderSettings && !tabs.some(isActive)) {
-    return <Navigate to={tabs.length > 0 ? `${SETTINGS_ROOT}/${tabs[0].to}` : "/dashboard"} replace />;
+    const isRoot = matchPath({ path: SETTINGS_ROOT, end: true }, pathname) !== null;
+    return <Navigate to={isRoot && tabs.length > 0 ? `${SETTINGS_ROOT}/${tabs[0].to}` : "/dashboard"} replace />;
   }
 
   return (
@@ -45,9 +57,12 @@ export function SettingsPage() {
         />
       </div>
       <div
+        ref={scrollerRef}
         className="scroll-fade-y page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-top-size:12px] [--fade-top-start:56px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
       >
-        <Outlet />
+        <LoadGate key={pathname}>
+          <Outlet />
+        </LoadGate>
       </div>
     </div>
   );

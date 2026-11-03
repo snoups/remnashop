@@ -2,7 +2,7 @@ import { ApiTokensForm } from "@features/api-tokens/ApiTokensForm";
 
 export function ApiTokensPage() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <ApiTokensForm />
     </div>
   );

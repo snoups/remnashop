@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createApiToken, type CreatedApiToken } from "@entities/api-tokens/api";
-import { toTokenScopes } from "@entities/api-tokens/scopes";
+import { LANDING_PERMISSIONS, toTokenScopes } from "@entities/api-tokens/scopes";
 import { usePermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { isIpOrNetwork, parseEntries } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
@@ -11,13 +11,15 @@ import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
-import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import type { Permission } from "@shared/types/rbac";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { TextArea, TextInput } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, TextArea } from "@shared/ui/glass/Input";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
+
+const NAME_MAX_LENGTH = 32;
 
 interface CreateApiTokenDialogProps {
   onCreated: (created: CreatedApiToken) => void;
@@ -39,13 +41,9 @@ const EXPIRY_OPTIONS = [
   { value: "365", labelKey: "apiTokens.expiresIn365Days" },
 ] as const;
 
-// what an external marketing page needs to render plans and prices
-const LANDING_PERMISSIONS: readonly Permission[] = ["PLANS_VIEW", "ADDONS_VIEW", "PRICING_VIEW"];
-
-const labelClassName = "text-sm font-medium text-foreground/80";
 export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDialogProps) {
   return (
-    <Modal onClose={onCancel} size="lg" scrollable>
+    <Modal onClose={onCancel} size="lg" scrollable material="glass">
       <CreateApiTokenDialogBody onCreated={onCreated} />
     </Modal>
   );
@@ -123,65 +121,72 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
       <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+          <div className="flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
             <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
           </div>
 
-          <Card variant="form">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <div className="flex gap-2">
-              <Field label={t("apiTokens.nameLabel")} htmlFor="api-token-name" required className="flex-1">
-                <TextInput
-                  id="api-token-name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder={t("apiTokens.namePlaceholder")}
-                  className="mt-1 w-full"
-                />
-              </Field>
-
-              <Field label={t("apiTokens.lifetimeLabel")} htmlFor="api-token-expiry" className="w-44 shrink-0">
-                <div className="mt-1">
+              <div className="min-w-0 flex-1">
+                <Field label={t("apiTokens.nameLabel")} htmlFor="api-token-name" required>
+                  <Input
+                    id="api-token-name"
+                    maxLength={NAME_MAX_LENGTH}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder={t("apiTokens.namePlaceholder")}
+                  />
+                </Field>
+              </div>
+              <div className="w-44 shrink-0">
+                <Field label={t("apiTokens.lifetimeLabel")} htmlFor="api-token-expiry">
                   <SelectDropdown
-                    variant="form"
                     id="api-token-expiry"
+                    variant="well"
+                    size="compact"
                     value={expiresInDays}
                     onChange={setExpiresInDays}
                     icon={Clock}
                     placeholder={t("apiTokens.expiresIn30Days")}
                     options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
                   />
-                </div>
-              </Field>
+                </Field>
+              </div>
             </div>
-          </Card>
-
-          <Card variant="form">
-            <div className="flex items-center justify-between gap-2 pb-1.5">
-              <span className={labelClassName}>{t("apiTokens.permissionsLabel")}</span>
-              <div className="flex gap-1.5">
-                <Button variant="secondary" size="sm" onClick={applyLanding}>
-                  <Megaphone className="size-3.5" />
+            <Field label={t("apiTokens.presets")}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="glass" icon={Megaphone} className="flex-auto" onClick={applyLanding}>
                   {t("apiTokens.landing")}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={applyReadOnly}>
-                  <Eye className="size-3.5" />
+                <Button variant="glass" icon={Eye} className="flex-auto" onClick={applyReadOnly}>
                   {t("apiTokens.readOnly")}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={applyFullAccess}>
-                  <Globe className="size-3.5" />
+                <Button variant="glass" icon={Globe} className="flex-auto" onClick={applyFullAccess}>
                   {t("apiTokens.fullAccess")}
                 </Button>
               </div>
-            </div>
-            <PermissionPicker selected={permissions} onToggle={togglePermission} tokenGrantableOnly />
-          </Card>
+            </Field>
+          </div>
 
-          <Card variant="form">
-            <Field label={t("apiTokens.ipAllowlist")} htmlFor="api-token-ips" hint={t("apiTokens.ipAllowlistHint")}>
+          <div className={GLASS_DIALOG_CARD_CLASS}>
+            <Field label={t("apiTokens.permissionsLabel")}>
+              <PermissionPicker selected={permissions} onToggle={togglePermission} tokenGrantableOnly />
+            </Field>
+          </div>
+
+          <div className={GLASS_DIALOG_CARD_CLASS}>
+            <Field
+              label={t("apiTokens.ipAllowlist")}
+              htmlFor="api-token-ips"
+              hint={t("apiTokens.ipAllowlistHint")}
+              error={
+                invalidIps.length > 0
+                  ? t("profile.accountSecurity.invalidEntries", { entries: invalidIps.join(", ") })
+                  : undefined
+              }
+            >
               <TextArea
                 id="api-token-ips"
                 value={ipText}
@@ -189,30 +194,22 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
                 placeholder={t("profile.accountSecurity.placeholder")}
                 spellCheck={false}
                 rows={3}
-                className="mt-1 w-full"
+                mono
                 aria-invalid={invalidIps.length > 0}
               />
             </Field>
-            {invalidIps.length > 0 && (
-              <p className="mt-1.5 text-[12px] text-error">
-                {t("profile.accountSecurity.invalidEntries", { entries: invalidIps.join(", ") })}
-              </p>
-            )}
-          </Card>
+          </div>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={close}
-          >
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" onClick={close}>
             {t("common.cancel")}
           </Button>
           <Button
-            variant="accent"
+            variant="glassAccent"
             type="submit"
-            disabled={isSubmitting || name.trim().length === 0 || permissions.size === 0 || invalidIps.length > 0}
+            isLoading={isSubmitting}
+            disabled={name.trim().length === 0 || permissions.size === 0 || invalidIps.length > 0}
           >
             {t("common.create")}
           </Button>

@@ -53,7 +53,7 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.14),
     inset 0 0 0 1px rgb(255 255 255 / 0.07),
-    0 30px 60px -30px rgb(0 0 0 / 0.65);
+    0 8px 16px -8px rgb(0 0 0 / 0.4);
   @media (prefers-reduced-transparency: reduce) {
     background: var(--color-surface);
   }
@@ -277,11 +277,25 @@ textarea::-webkit-resizer {
 
 
 /* Dialog bodies reserve the scrollbar's width up front, so content doesn't shift when
-   the scrollbar appears, and give that width back out of their right padding (p-4/px-4),
-   keeping the content area as wide as without a gutter. Nested lists keep their own layout. */
+   the scrollbar appears, and give that width back out of their right padding, so both sides
+   read the same. This rule outranks the padding utility: a body padded other than 1rem says
+   so in --dialog-pad. Nested lists keep their own layout. */
 [data-dialog] .min-h-0.flex-1.overflow-y-auto {
   scrollbar-gutter: stable;
-  padding-right: calc(1rem - var(--scrollbar-size));
+  padding-right: calc(var(--dialog-pad, 1rem) - var(--scrollbar-size));
+}
+
+/* A body that ends the dialog (no footer) stops 12px short of its bottom edge, so the scrollbar
+   clears the 24px corner in every browser; Firefox has no track margin to do it. The 16px left
+   under the content stay about the same: 12px margin, 4px padding, which is also the fade. */
+[data-dialog] > .min-h-0.flex-1.overflow-y-auto:last-child {
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  --fade-bottom-size: 4px;
+}
+
+[data-dialog] > .min-h-0.flex-1.overflow-y-auto:last-child::-webkit-scrollbar-track {
+  margin-block-end: 0;
 }
 
 /* Nested-dialog morph (shared/ui/Modal.tsx): the parent panel resizes as an empty frame

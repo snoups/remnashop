@@ -1,5 +1,5 @@
-import { Play } from "lucide-react";
-import { useState } from "react";
+import { Archive, HardDrive, Play, TriangleAlert } from "lucide-react";
+import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type BackupKind, type BackupRun, type BackupStats, createBackupRun } from "@entities/backups/api";
@@ -9,11 +9,35 @@ import { getErrorMessage } from "@shared/api/http";
 import { formatBytes } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Section } from "@shared/ui/glass/Section";
 import { Pressable } from "@shared/ui/Pressable";
+
+const INNER_CARD_CLASS = `gap-3 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
+
+function StatCard({
+  icon,
+  label,
+  value,
+  isAlert = false,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  isAlert?: boolean;
+}) {
+  return (
+    <div className={`flex min-w-0 flex-col justify-between ${INNER_CARD_CLASS}`}>
+      <IconCircle icon={icon} />
+      <div className="min-w-0">
+        <div className={`truncate text-[15px] font-semibold ${isAlert ? "text-error" : "text-foreground"}`}>{value}</div>
+        <div className="truncate text-[12px] text-muted-foreground">{label}</div>
+      </div>
+    </div>
+  );
+}
 
 export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | null; onRunStarted: (run: BackupRun) => void }) {
   const { t, i18n } = useTranslation();
@@ -38,96 +62,56 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
   };
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader
-        icon={Play}
-        title={t("backups.manual.title")}
-        description={t("backups.manual.description")}
-      />
-
-      <div className="mt-4 flex flex-1 flex-col gap-3.5">
+    <Section stretched className="h-full" icon={Play} title={t("backups.manual.title")} description={t("backups.manual.description")}>
+      <div className="mt-4 flex flex-1 flex-col gap-3">
         {canCreateRun && (
-          <>
-            <span className={EYEBROW_CLASS}>{t("backups.manual.kindLabel")}</span>
-            <div
-              className="grid gap-2.5 sm:grid-cols-2"
-            >
+          <div className={`flex flex-1 flex-col ${INNER_CARD_CLASS}`}>
+            <div className="grid gap-2 sm:grid-cols-2">
               {BACKUP_KINDS.map((kind) => {
-                const Icon = KIND_ICON[kind];
                 const isActive = runKind === kind;
                 return (
                   <Pressable
                     key={kind}
                     type="button"
                     onClick={() => setRunKind(kind)}
-                    className={`flex items-start gap-3 rounded-[14px] border p-3.5 text-left transition-colors ${
+                    className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
                       isActive
                         ? "border-primary/45 bg-primary/[0.07]"
-                        : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
+                        : "border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]"
                     }`}
                   >
-                    <div
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-colors ${
-                        isActive ? "bg-primary/15 text-primary" : "bg-white/[0.06] text-foreground"
-                      }`}
-                    >
-                      <Icon className="size-[18px]" />
-                    </div>
+                    <IconCircle icon={KIND_ICON[kind]} />
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-foreground">{t(`backups.kind.${kind}`)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {t(`backups.kindDescription.${kind}`)}
-                      </span>
+                      <span className="text-[13px] font-medium text-foreground">{t(`backups.kind.${kind}`)}</span>
+                      <span className="text-[12px] text-muted-foreground">{t(`backups.kindDescription.${kind}`)}</span>
                     </div>
                   </Pressable>
                 );
               })}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="accent"
-                className="w-fit"
-                type="button"
-                onClick={() => void handleRunNow()}
-                icon={Play}
-                isLoading={isStartingRun}
-              >
+            <div className="mt-auto flex items-center gap-2">
+              <Button variant="glassAccent" onClick={() => void handleRunNow()} icon={Play} isLoading={isStartingRun}>
                 {t("backups.manual.runNow")}
               </Button>
-              <FieldHint text={t("backups.manual.runHint")} />
-            </div>
-          </>
-        )}
-
-        {canViewStats && stats !== null && (
-          <div
-            className={`mt-auto flex flex-col gap-2.5 ${canCreateRun ? "border-t border-white/[0.08] pt-4" : ""}`}
-          >
-            <span className={EYEBROW_CLASS}>{t("backups.manual.storageLabel")}</span>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-white/[0.03] px-3 py-2.5">
-                <div className="text-xs text-muted-foreground">{t("backups.manual.statCompleted")}</div>
-                <div className="mt-0.5 text-lg font-bold text-foreground">{stats.completed_count}</div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] px-3 py-2.5">
-                <div className="text-xs text-muted-foreground">{t("backups.manual.statSize")}</div>
-                <div className="mt-0.5 text-lg font-bold text-foreground">
-                  {formatBytes(stats.total_size_bytes, i18n.language)}
-                </div>
-              </div>
-              <div className="rounded-xl bg-white/[0.03] px-3 py-2.5">
-                <div className="text-xs text-muted-foreground">{t("backups.manual.statFailed")}</div>
-                <div
-                  className={`mt-0.5 text-lg font-bold ${stats.failed_count > 0 ? "text-error" : "text-foreground"}`}
-                >
-                  {stats.failed_count}
-                </div>
-              </div>
+              <FieldHint text={t("backups.manual.runHint")} glass />
             </div>
           </div>
         )}
+
+        {canViewStats && stats !== null && (
+          // 138px = the schedule card's 86px timeline + its 52px footer, so the cards above match in height
+          <div className="mt-auto grid grid-cols-3 gap-3 lg:h-[138px]">
+            <StatCard icon={Archive} label={t("backups.manual.statCompleted")} value={String(stats.completed_count)} />
+            <StatCard icon={HardDrive} label={t("backups.manual.statSize")} value={formatBytes(stats.total_size_bytes, i18n.language)} />
+            <StatCard
+              icon={TriangleAlert}
+              label={t("backups.manual.statFailed")}
+              value={String(stats.failed_count)}
+              isAlert={stats.failed_count > 0}
+            />
+          </div>
+        )}
       </div>
-    </Card>
+    </Section>
   );
 }

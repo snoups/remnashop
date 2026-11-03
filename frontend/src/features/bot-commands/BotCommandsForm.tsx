@@ -157,7 +157,7 @@ export function BotCommandsForm() {
             saving={isSubmitting}
             onSave={() => void handleSave()}
             beside={
-              <Button variant="glass" isLoading={isResetting} onClick={() => void handleReset()}>
+              <Button variant="glassDanger" isLoading={isResetting} onClick={() => void handleReset()}>
                 {t("settings.botCommands.reset")}
               </Button>
             }

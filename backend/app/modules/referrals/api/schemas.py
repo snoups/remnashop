@@ -10,10 +10,11 @@ from app.core.enums import (
     ReferralRewardStrategy,
     ReferralRewardType,
 )
-from app.modules.referrals.dto import MAX_BONUS_DAYS
+from app.modules.referrals.dto import MAX_BONUS_DAYS, MAX_REFERRAL_LEVEL
 
 # the points columns are Numeric(12, 0)
 _WholeDecimal: TypeAlias = Annotated[Decimal, Field(max_digits=12, decimal_places=0)]
+_RewardLevel: TypeAlias = Annotated[int, Field(ge=1, le=MAX_REFERRAL_LEVEL)]
 
 
 class ReferralSettingsResponse(BaseModel):
@@ -31,11 +32,11 @@ class ReferralSettingsResponse(BaseModel):
 
 class UpdateReferralSettingsRequest(BaseModel):
     enabled: Optional[bool] = None
-    max_level: Optional[int] = Field(default=None, ge=1, le=3)
+    max_level: Optional[int] = Field(default=None, ge=1, le=MAX_REFERRAL_LEVEL)
     accrual_strategy: Optional[ReferralAccrualStrategy] = None
     reward_type: Optional[ReferralRewardType] = None
     reward_strategy: Optional[ReferralRewardStrategy] = None
-    reward_amounts: Optional[dict[int, _WholeDecimal]] = None
+    reward_amounts: Optional[dict[_RewardLevel, _WholeDecimal]] = None
     days_require_paid_subscription: Optional[bool] = None
     invitee_reward_type: Optional[ReferralRewardType] = None
     invitee_reward_amount: Optional[int] = Field(default=None, ge=0, le=MAX_BONUS_DAYS)

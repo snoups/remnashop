@@ -1,8 +1,8 @@
-import { AlertCircle, Download, History, Loader2, Trash2 } from "lucide-react";
+import { History, Loader2, Square, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type BackupRun, deleteBackupRun, fetchBackupRunFile } from "@entities/backups/api";
+import { type BackupRun, cancelBackupRun, deleteBackupRun, fetchBackupRunFile } from "@entities/backups/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { BACKUP_KINDS, KIND_ICON } from "@pages/backups/kinds";
 import type { RunsFilter, useBackupRuns } from "@pages/backups/use-backup-runs";
@@ -12,11 +12,11 @@ import { formatDateTime } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { FieldHint } from "@shared/ui/FieldHint";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { IconButton } from "@shared/ui/IconButton";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { PillTabs } from "@shared/ui/PillTabs";
@@ -29,6 +29,7 @@ const STATUS_BADGE_TONE: Record<BackupRun["status"], BadgeTone> = {
   RUNNING: "warning",
   PENDING: "neutral",
   FAILED: "error",
+  CANCELED: "neutral",
 };
 
 export function RunsCard({
@@ -41,11 +42,13 @@ export function RunsCard({
   const { t, i18n } = useTranslation();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<BackupRun | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<BackupRun | null>(null);
   const { state: runsState, filter, setFilter, isLoadingMore, hasMore, loadMore: handleLoadMore } = runs;
 
   const permissions = usePermissions();
   const canDownload = permissions.includes("BACKUPS_RUN_DOWNLOAD");
   const canDeleteRun = permissions.includes("BACKUPS_RUN_DELETE");
+  const canCancelRun = permissions.includes("BACKUPS_RUN_CANCEL");
 
   const handleDownload = async (run: BackupRun) => {
     setDownloadingId(run.id);
@@ -76,6 +79,15 @@ export function RunsCard({
     }
   };
 
+  const handleCancel = async (run: BackupRun) => {
+    try {
+      runs.replace(await cancelBackupRun(run.id));
+      onStatsChanged();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("backups.runs.cancelError")));
+    }
+  };
+
   const formatDuration = (run: BackupRun): string | null => {
     if (run.finished_at === null) return null;
     const total = Math.max(
@@ -90,108 +102,101 @@ export function RunsCard({
 
   return (
     <>
-      <Card className="flex flex-col">
-        <CardHeader
-          icon={History}
-          title={t("backups.runs.title")}
-          description={t("backups.runs.description")}
-          aside={
-            <div className="shrink-0">
-              <PillTabs
-                items={RUNS_FILTERS.map((value) => ({
-                  key: value,
-                  label: value === "ALL" ? t("backups.runs.filterAll") : t(`backups.kind.${value}`),
-                }))}
-                activeKey={filter}
-                onSelect={setFilter}
-              />
-            </div>
-          }
-        />
-
-        {runsState.kind === "loading" && <Spinner size="page" />}
-        {runsState.kind === "error" && (
-          <ErrorState text={t("common.loadError")} size="page" />
-        )}
-        {runsState.kind === "ready" && runsState.items.length === 0 && (
-          <EmptyState text={t("backups.empty")} size="page" />
-        )}
+      <Section
+        icon={History}
+        title={t("backups.runs.title")}
+        description={t("backups.runs.description")}
+        aside={
+          <PillTabs
+            items={RUNS_FILTERS.map((value) => ({
+              key: value,
+              label: value === "ALL" ? t("backups.runs.filterAll") : t(`backups.kind.${value}`),
+            }))}
+            activeKey={filter}
+            onSelect={setFilter}
+          />
+        }
+      >
+        {runsState.kind === "loading" && <Spinner size="card" />}
+        {runsState.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {runsState.kind === "ready" && runsState.items.length === 0 && <EmptyState text={t("backups.empty")} />}
         {runsState.kind === "ready" && runsState.items.length > 0 && (
           <>
-            <div className={`mt-4 ${LIST_BODY_CLASS}`}>
+            <SectionRows>
               {runsState.items.map((run) => {
-                const Icon = KIND_ICON[run.kind];
                 const isRunning = run.status === "RUNNING" || run.status === "PENDING";
                 const canDownloadThis = canDownload && run.status === "COMPLETED";
                 const duration = formatDuration(run);
                 const meta = [
                   formatDateTime(run.created_at, i18n.language),
-                  run.size_bytes === null ? "—" : formatBytes(run.size_bytes, i18n.language),
+                  ...(run.size_bytes === null ? [] : [formatBytes(run.size_bytes, i18n.language)]),
                   ...(duration === null ? [] : [duration]),
                 ].join(" · ");
                 return (
-                  <div
+                  <Row
                     key={run.id}
-                    className="flex items-center justify-between gap-3 rounded-full px-[15px] py-2.5 transition-colors hover:bg-white/[0.04]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                        <Icon className="size-4" />
-                      </div>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground">
-                            {t(`backups.kind.${run.kind}`)}
-                          </span>
-                          <Badge tone={STATUS_BADGE_TONE[run.status]}>
+                    icon={KIND_ICON[run.kind]}
+                    label={
+                      <>
+                        {t(`backups.kind.${run.kind}`)}
+                        {run.status === "FAILED" && run.error ? (
+                          <FieldHint
+                            text={run.error}
+                            side="bottom"
+                            error
+                            trigger={
+                              <Badge borderless tone="error" className="cursor-help">
+                                {t(`backups.status.${run.status}`)}
+                              </Badge>
+                            }
+                          />
+                        ) : (
+                          <Badge borderless tone={STATUS_BADGE_TONE[run.status]}>
                             {isRunning && <Loader2 className="size-3 animate-spin" />}
                             {t(`backups.status.${run.status}`)}
                           </Badge>
-                          <Badge>
-                            {run.triggered_by === null
-                              ? t("backups.runs.triggerSchedule")
-                              : t("backups.runs.triggerManual")}
-                          </Badge>
-                        </div>
-                        <p className="truncate font-mono text-[12px] text-muted-foreground">{meta}</p>
-                        {run.status === "FAILED" && run.error && (
-                          <p className="flex min-w-0 items-center gap-1.5 text-xs text-error">
-                            <AlertCircle className="size-3 shrink-0" />
-                            <span className="truncate">{run.error}</span>
-                          </p>
                         )}
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      {canDownloadThis && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void handleDownload(run)}
-                          icon={Download}
-                          isLoading={downloadingId === run.id}
-                        >
-                          <span className="hidden sm:inline">{t("backups.runs.downloadButton")}</span>
-                        </Button>
-                      )}
-                      {canDeleteRun && (
-                        <IconButton
-                          size="8"
-                          tone="danger"
-                          onClick={() => setPendingDelete(run)}
-                          disabled={isRunning}
-                        >
-                          <Trash2 className="size-4" />
-                        </IconButton>
-                      )}
-                    </div>
-                  </div>
+                        <Badge borderless>
+                          {run.triggered_by === null
+                            ? t("backups.runs.triggerSchedule")
+                            : t("backups.runs.triggerManual")}
+                        </Badge>
+                      </>
+                    }
+                    description={<p className="truncate">{meta}</p>}
+                  >
+                    {canDownloadThis && (
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        onClick={() => void handleDownload(run)}
+                        isLoading={downloadingId === run.id}
+                      >
+                        {t("backups.runs.downloadButton")}
+                      </Button>
+                    )}
+                    {isRunning
+                      ? canCancelRun && (
+                          <Button
+                            variant="glassDanger"
+                            size="sm"
+                            icon={run.status === "PENDING" ? X : Square}
+                            onClick={() => setPendingCancel(run)}
+                          >
+                            {t(run.status === "PENDING" ? "backups.runs.dequeueButton" : "backups.runs.stopButton")}
+                          </Button>
+                        )
+                      : canDeleteRun && (
+                          <IconButton size="8" tone="danger" onClick={() => setPendingDelete(run)}>
+                            <Trash2 className="size-4" />
+                          </IconButton>
+                        )}
+                  </Row>
                 );
               })}
-            </div>
+            </SectionRows>
 
-            {runsState.kind === "ready" && hasMore && (
+            {hasMore && (
               <div className="mt-4">
                 <LoadMoreButton
                   onClick={() => void handleLoadMore()}
@@ -203,7 +208,22 @@ export function RunsCard({
             )}
           </>
         )}
-      </Card>
+      </Section>
+
+      {pendingCancel && (
+        <ConfirmDialog
+          title={t(pendingCancel.status === "PENDING" ? "backups.runs.dequeueConfirmTitle" : "backups.runs.stopConfirmTitle")}
+          message={t(pendingCancel.status === "PENDING" ? "backups.runs.dequeueConfirm" : "backups.runs.stopConfirm")}
+          confirmLabel={t(pendingCancel.status === "PENDING" ? "backups.runs.dequeueButton" : "backups.runs.stopButton")}
+          cancelLabel={t("common.cancel")}
+          danger
+          onConfirm={() => {
+            void handleCancel(pendingCancel);
+            setPendingCancel(null);
+          }}
+          onCancel={() => setPendingCancel(null)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

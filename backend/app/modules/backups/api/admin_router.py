@@ -20,6 +20,7 @@ from app.modules.backups.api.schemas import (
 )
 from app.modules.backups.dto import ListBackupRunsDto, StartBackupRunDto, UpdateBackupSettingsDto
 from app.modules.backups.usecases import (
+    CancelBackupRunUseCase,
     CreateBackupRunUseCase,
     DeleteBackupRunUseCase,
     DownloadBackupRunUseCase,
@@ -137,6 +138,21 @@ async def download_backup_run(
 ) -> FileResponse:
     path = await use_case(actor, run_id)
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
+@router.post(
+    "/runs/{run_id:int}/actions/cancel",
+    response_model=BackupRunResponse,
+    responses=error_responses(400, 404),
+)
+@inject
+async def cancel_backup_run(
+    run_id: int,
+    use_case: FromDishka[CancelBackupRunUseCase],
+    actor: Actor = Depends(require_admin),
+) -> BackupRunResponse:
+    run = await use_case(actor, run_id)
+    return BackupRunResponse.model_validate(run, from_attributes=True)
 
 
 @router.delete(

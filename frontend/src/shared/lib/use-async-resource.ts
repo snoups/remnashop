@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NetworkError } from "@shared/api/http";
+import { useLoadGateHold } from "@shared/lib/load-gate";
 
 export type AsyncState<T> =
   | { kind: "loading" }
@@ -22,6 +23,7 @@ export function useAsyncResource<T>(
   const [state, setState] = useState<AsyncState<T>>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
   const lastReloadTokenRef = useRef(reloadToken);
+  useLoadGateHold(state.kind === "loading");
 
   useEffect(() => {
     const controller = new AbortController();

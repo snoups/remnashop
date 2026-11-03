@@ -42,8 +42,10 @@ export function AnalyticsPage() {
   }));
 
   const activeTab = TABS.find(isActive);
-  if (activeTab && !allowed(activeTab) && items.length > 0) {
-    return <Navigate to={items[0].to ? `${BASE_PATH}/${items[0].to}` : BASE_PATH} replace />;
+  if (activeTab && !allowed(activeTab)) {
+    // the bare /analytics, which the sidebar links to, lands on the first tab allowed
+    const firstAllowed = activeTab.to === "" ? items[0] : undefined;
+    return <Navigate to={firstAllowed ? `${BASE_PATH}/${firstAllowed.to}` : "/dashboard"} replace />;
   }
 
   return (

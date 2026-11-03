@@ -45,6 +45,12 @@ _APPEARANCE_ROW_IDS: Final[dict[AppearanceTarget, int]] = {
     AppearanceTarget.CABINET: 2,
 }
 _APPEARANCE_UPDATE_SKIP: Final[frozenset[str]] = frozenset({"target"})
+_CLEARABLE_EMAIL_FIELDS: Final[tuple[str, ...]] = (
+    "username",
+    "from_name",
+    "bulk_username",
+    "bulk_from_name",
+)
 
 _SingletonRow = TypeVar(
     "_SingletonRow",
@@ -160,7 +166,24 @@ class SettingsRepository:
     async def update_email_settings(self, data: UpdateEmailSettingsDto) -> EmailSettingsDto:
         row = await self._get_or_create_singleton(EmailSettings)
         apply_partial_update(row, data)
+        # None means "not sent" in an update, so a cleared field arrives as ""
+        for name in _CLEARABLE_EMAIL_FIELDS:
+            if getattr(row, name) == "":
+                setattr(row, name, None)
 
+        await self.session.flush()
+        await self.session.refresh(row)
+        return self._to_email_dto(row)
+
+    async def reset_email_settings(self) -> EmailSettingsDto:
+        row = await self._get_or_create_singleton(EmailSettings)
+        row.host = None
+        row.port = 587
+        row.security = SmtpSecurity.STARTTLS
+        row.username = None
+        row.password = None
+        row.from_address = None
+        row.from_name = None
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_email_dto(row)

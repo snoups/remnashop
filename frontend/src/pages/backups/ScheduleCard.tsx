@@ -1,4 +1,4 @@
-import { Clock, Database, ShieldCheck } from "lucide-react";
+import { Clock, Database, Power, ShieldCheck } from "lucide-react";
 import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,18 +16,22 @@ import { formatDateTime, formatRelative } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Field } from "@shared/ui/Field";
-import { FieldHint } from "@shared/ui/FieldHint";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { Switch } from "@shared/ui/glass/Switch";
+import { PillTabs } from "@shared/ui/PillTabs";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { TextInput } from "@shared/ui/TextInput";
 
+const MAX_INTERVAL_HOURS = 8760;
+const MAX_FILES = 365;
+const INNER_CARD_CLASS = `gap-3 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
 const INTERVAL_PRESETS = [6, 12, 24, 48];
 const MAX_FILES_PRESETS = [3, 7, 14, 30];
 
@@ -50,9 +54,9 @@ function TimelineItem({
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
-        <div className={EYEBROW_CLASS}>{label}</div>
-        <div className="truncate text-[13px] font-semibold text-foreground">{value}</div>
-        {detail && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
+        <div className="truncate text-[12px] text-muted-foreground">{label}</div>
+        <div className="truncate text-[13px] font-medium text-foreground">{value}</div>
+        {detail && <div className="truncate text-[12px] text-muted-foreground">{detail}</div>}
       </div>
     </div>
   );
@@ -72,22 +76,12 @@ function PresetButtons({
   disabled: boolean;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-1.5">
-      {values.map((value) => {
-        const isActive = current === String(value);
-        return (
-          <ChoiceChip
-            key={value}
-            onClick={() => onPick(String(value))}
-            disabled={disabled}
-            active={isActive}
-            size="sm"
-          >
-            {format(value)}
-          </ChoiceChip>
-        );
-      })}
-    </div>
+    <PillTabs
+      items={values.map((value) => ({ key: String(value), label: format(value) }))}
+      activeKey={current}
+      onSelect={onPick}
+      disabled={disabled}
+    />
   );
 }
 
@@ -97,7 +91,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
   const [enabled, setEnabled] = useState(false);
   const [intervalHours, setIntervalHours] = useState("24");
   const [maxFiles, setMaxFiles] = useState("14");
-  const [savedEnabled, setSavedEnabled] = useState(false);
+  const [saved, setSaved] = useState<BackupSettings | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isResettingSettings, setIsResettingSettings] = useState(false);
 
@@ -110,7 +104,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
     setEnabled(settings.enabled);
     setIntervalHours(String(settings.interval_hours));
     setMaxFiles(String(settings.max_files));
-    setSavedEnabled(settings.enabled);
+    setSaved(settings);
   };
   const [settingsState] = useAsyncResource(getBackupSettings, { onSuccess: applySettings });
 
@@ -154,155 +148,151 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
   const lastBackup = stats?.last_database_backup ?? null;
   const lastBackupAt = lastBackup === null ? null : (lastBackup.finished_at ?? lastBackup.created_at);
   const dimmed = enabled ? "" : "opacity-40";
+  const isIntervalTooHigh = Number(intervalHours) > MAX_INTERVAL_HOURS;
+  const isMaxFilesTooHigh = Number(maxFiles) > MAX_FILES;
+  const dirty =
+    saved !== null &&
+    (enabled !== saved.enabled ||
+      intervalHours !== String(saved.interval_hours) ||
+      maxFiles !== String(saved.max_files));
+  const resetButton = canResetSettings && (
+    <Button variant="glassDanger" isLoading={isResettingSettings} onClick={() => setIsResetConfirmOpen(true)}>
+      {t("common.reset")}
+    </Button>
+  );
 
   return (
     <>
-      <Card className="flex flex-col">
-        <CardHeader
+      <form onSubmit={(event) => void handleSaveSettings(event)} className="flex">
+        <Section
+          stretched
+          className="flex-1"
           icon={Database}
           title={t("backups.schedule.title")}
           description={t("backups.schedule.description")}
           aside={
-            settingsState.kind === "ready" && (
-              <span
-                className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold ${
-                  savedEnabled
-                    ? "bg-success/10 text-success"
-                    : "bg-white/[0.05] text-muted-foreground"
-                }`}
-              >
-                {savedEnabled ? t("backups.schedule.badgeOn") : t("backups.schedule.badgeOff")}
-              </span>
+            saved !== null && (
+              <StatusPill tone={saved.enabled ? "success" : "warning"}>
+                {saved.enabled ? t("backups.schedule.badgeOn") : t("backups.schedule.badgeOff")}
+              </StatusPill>
             )
           }
-        />
+          footer={
+            settingsState.kind === "ready" &&
+            (canManageSettings ? (
+              <SaveFooter variant="glassAccent" dirty={dirty} saving={isSavingSettings} disabled={isIntervalTooHigh || isMaxFilesTooHigh} beside={resetButton} />
+            ) : (
+              resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
+            ))
+          }
+        >
+          {settingsState.kind === "loading" && <Spinner size="card" />}
+          {settingsState.kind === "error" && <ErrorState text={t("common.loadError")} />}
+          {settingsState.kind === "ready" && (
+            <>
+              <SectionRows>
+                <Row icon={Power} label={t("backups.schedule.enabledLabel")} hint={t("backups.schedule.enabledHint")}>
+                  <Switch checked={enabled} onChange={setEnabled} disabled={!canManageSettings} />
+                </Row>
+              </SectionRows>
 
-        {settingsState.kind === "loading" && <Spinner size="card" />}
-        {settingsState.kind === "error" && (
-          <ErrorState text={t("common.loadError")} />
-        )}
-        {settingsState.kind === "ready" && (
-          <form
-            onSubmit={(event) => void handleSaveSettings(event)}
-            className="mt-4 flex flex-1 flex-col gap-3.5"
-          >
-            <div className="flex items-center justify-between gap-3 py-1">
-              <span className="flex items-center gap-1.5 text-sm text-foreground/80">
-                {t("backups.schedule.enabledLabel")}
-                <FieldHint text={t("backups.schedule.enabledHint")} />
-              </span>
-              <Switch
-                checked={enabled}
-                onChange={setEnabled}
-                disabled={!canManageSettings}
-              />
-            </div>
+              <div className="mt-2 flex flex-1 flex-col gap-3">
+                <div className={`flex flex-1 flex-col ${INNER_CARD_CLASS}`}>
+                  <div className={`flex flex-wrap gap-3 transition-opacity ${dimmed}`}>
+                    <div className="min-w-40 flex-1">
+                      <Field
+                        label={t("backups.schedule.intervalLabel")}
+                        htmlFor="backups-interval"
+                        info={t("backups.schedule.intervalHint")}
+                        error={isIntervalTooHigh ? t("errors.validation.max", { max: MAX_INTERVAL_HOURS }) : null}
+                      >
+                        <div className="flex flex-col gap-1.5">
+                          <Input
+                            id="backups-interval"
+                            type="number"
+                            onKeyDown={blockNonIntegerKeys}
+                            min={1}
+                            step="1"
+                            max={MAX_INTERVAL_HOURS}
+                            aria-invalid={isIntervalTooHigh}
+                            value={intervalHours}
+                            onChange={(event) => setIntervalHours(event.target.value)}
+                            disabled={!canManageSettings || !enabled}
+                          />
+                          {canManageSettings && (
+                            <PresetButtons
+                              values={INTERVAL_PRESETS}
+                              current={intervalHours}
+                              onPick={setIntervalHours}
+                              format={String}
+                              disabled={!enabled}
+                            />
+                          )}
+                        </div>
+                      </Field>
+                    </div>
+                    <div className="min-w-40 flex-1">
+                      <Field
+                        label={t("backups.schedule.maxFilesLabel")}
+                        htmlFor="backups-max-files"
+                        info={t("backups.schedule.maxFilesHint")}
+                        error={isMaxFilesTooHigh ? t("errors.validation.max", { max: MAX_FILES }) : null}
+                      >
+                        <div className="flex flex-col gap-1.5">
+                          <Input
+                            id="backups-max-files"
+                            type="number"
+                            onKeyDown={blockNonIntegerKeys}
+                            min={1}
+                            step="1"
+                            max={MAX_FILES}
+                            aria-invalid={isMaxFilesTooHigh}
+                            value={maxFiles}
+                            onChange={(event) => setMaxFiles(event.target.value)}
+                            disabled={!canManageSettings || !enabled}
+                          />
+                          {canManageSettings && (
+                            <PresetButtons
+                              values={MAX_FILES_PRESETS}
+                              current={maxFiles}
+                              onPick={setMaxFiles}
+                              format={String}
+                              disabled={!enabled}
+                            />
+                          )}
+                        </div>
+                      </Field>
+                    </div>
+                  </div>
 
-            <div className="flex flex-wrap gap-4">
-              <Field label={t("backups.schedule.intervalLabel")} htmlFor="backups-interval" info={t("backups.schedule.intervalHint")} className="min-w-40 flex-1">
-                <div className={`flex flex-col gap-1.5 transition-opacity ${dimmed}`}>
-                  <div className="relative">
-                    <TextInput
-                      id="backups-interval"
-                      type="number"
-                      onKeyDown={blockNonIntegerKeys}
-                      min={1}
-                      step="1"
-                      value={intervalHours}
-                      onChange={(event) => setIntervalHours(event.target.value)}
-                      disabled={!canManageSettings || !enabled}
-                      className="w-full"
+                </div>
+
+                {canViewStats && stats !== null && (
+                  <div className={`flex flex-wrap items-center lg:h-[86px] ${INNER_CARD_CLASS}`}>
+                    <TimelineItem
+                      icon={Clock}
+                      tone="bg-accent text-primary"
+                      label={t("backups.schedule.nextRun")}
+                      value={stats.next_run_at === null ? "—" : formatDateTime(stats.next_run_at, i18n.language)}
+                      detail={
+                        stats.next_run_at === null ? undefined : formatRelative(stats.next_run_at, i18n.language)
+                      }
+                    />
+                    <div className="hidden w-px self-stretch bg-white/[0.08] sm:block" />
+                    <TimelineItem
+                      icon={ShieldCheck}
+                      tone="bg-success/10 text-success"
+                      label={t("backups.schedule.lastBackup")}
+                      value={lastBackupAt === null ? "—" : formatDateTime(lastBackupAt, i18n.language)}
+                      detail={lastBackupAt === null ? undefined : formatRelative(lastBackupAt, i18n.language)}
                     />
                   </div>
-                  {canManageSettings && (
-                    <PresetButtons
-                      values={INTERVAL_PRESETS}
-                      current={intervalHours}
-                      onPick={setIntervalHours}
-                      format={(hours) => t("backups.schedule.preset", { hours })}
-                      disabled={!enabled}
-                    />
-                  )}
-                </div>
-              </Field>
-              <Field label={t("backups.schedule.maxFilesLabel")} htmlFor="backups-max-files" info={t("backups.schedule.maxFilesHint")} className="min-w-40 flex-1">
-                <div className={`flex flex-col gap-1.5 transition-opacity ${dimmed}`}>
-                  <div className="relative">
-                    <TextInput
-                      id="backups-max-files"
-                      type="number"
-                      onKeyDown={blockNonIntegerKeys}
-                      min={1}
-                      step="1"
-                      value={maxFiles}
-                      onChange={(event) => setMaxFiles(event.target.value)}
-                      disabled={!canManageSettings || !enabled}
-                      className="w-full"
-                    />
-                  </div>
-                  {canManageSettings && (
-                    <PresetButtons
-                      values={MAX_FILES_PRESETS}
-                      current={maxFiles}
-                      onPick={setMaxFiles}
-                      format={String}
-                      disabled={!enabled}
-                    />
-                  )}
-                </div>
-              </Field>
-            </div>
-
-            {canViewStats && stats !== null && (
-              <div className="flex flex-wrap items-center gap-3.5 rounded-xl bg-white/[0.03] p-3">
-                <TimelineItem
-                  icon={Clock}
-                  tone="bg-accent text-primary"
-                  label={t("backups.schedule.nextRun")}
-                  value={stats.next_run_at === null ? "—" : formatDateTime(stats.next_run_at, i18n.language)}
-                  detail={
-                    stats.next_run_at === null ? undefined : formatRelative(stats.next_run_at, i18n.language)
-                  }
-                />
-                <div className="hidden w-px self-stretch bg-white/[0.07] sm:block" />
-                <TimelineItem
-                  icon={ShieldCheck}
-                  tone="bg-success/10 text-success"
-                  label={t("backups.schedule.lastBackup")}
-                  value={lastBackupAt === null ? "—" : formatDateTime(lastBackupAt, i18n.language)}
-                  detail={lastBackupAt === null ? undefined : formatRelative(lastBackupAt, i18n.language)}
-                />
-              </div>
-            )}
-
-            {(canManageSettings || canResetSettings) && (
-              <div className="mt-auto flex items-center gap-2">
-                {canManageSettings && (
-                  <Button
-                    variant="accent"
-                    className="w-fit"
-                    type="submit"
-                    disabled={isSavingSettings}
-                  >
-                    {isSavingSettings ? t("common.saving") : t("common.save")}
-                  </Button>
-                )}
-                {canResetSettings && (
-                  <Button
-                    variant="outline"
-                    className="w-fit"
-                    type="button"
-                    onClick={() => setIsResetConfirmOpen(true)}
-                    disabled={isResettingSettings}
-                  >
-                    {t("common.reset")}
-                  </Button>
                 )}
               </div>
-            )}
-          </form>
-        )}
-      </Card>
+            </>
+          )}
+        </Section>
+      </form>
 
       {isResetConfirmOpen && (
         <ConfirmDialog

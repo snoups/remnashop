@@ -15,13 +15,15 @@ interface SaveFooterProps {
   /** buttons right after Save */
   beside?: ReactNode;
   variant?: ButtonVariant;
+  /** no margin of its own: in a Row's fold-out, whose gap spaces it */
+  flush?: boolean;
 }
 
 /** A settings card's one Save button, with the unsaved-changes mark beside it. */
-export function SaveFooter({ dirty, saving, disabled = false, hasWork = false, onSave, beside, variant = "accent" }: SaveFooterProps) {
+export function SaveFooter({ dirty, saving, disabled = false, hasWork = false, onSave, beside, variant = "accent", flush = false }: SaveFooterProps) {
   const { t } = useTranslation();
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
+    <div className={`${flush ? "" : "mt-4"} flex flex-wrap items-center gap-3`}>
       <Button
         variant={variant}
         className="w-fit"

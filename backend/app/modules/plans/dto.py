@@ -214,6 +214,14 @@ class SetAddOnPriceOverrideDto:
     price: Optional[Decimal]
 
 
+@dataclass(frozen=True, kw_only=True)
+class SetMatrixPricesDto:
+    plan_base_prices: list[SetPlanDurationBasePriceDto]
+    plan_overrides: list[SetPlanPriceOverrideDto]
+    addon_base_prices: list[SetAddOnBasePriceDto]
+    addon_overrides: list[SetAddOnPriceOverrideDto]
+
+
 class PriceBookCell(BaseDto):
     currency: Currency
     amount: Decimal

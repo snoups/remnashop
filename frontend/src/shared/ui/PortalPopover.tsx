@@ -34,6 +34,9 @@ interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "class
   modal?: boolean;
 }
 
+// glass-dialog's edge and shadow on an opaque fill, no blur
+const SOLID_GLASS_POPOVER_CLASS =
+  "rounded-popover bg-popover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),inset_0_0_0_1px_rgb(255_255_255/0.12),0_0_0_1px_rgb(0_0_0/0.35),0_40px_80px_-24px_rgb(0_0_0/0.7)]";
 const SOLID_POPOVER_CLASS =
   "rounded-popover border border-white/[0.14] bg-popover shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]";
 
@@ -87,7 +90,7 @@ export function PortalPopover({
               ...style,
             }}
             // above Modal's z-50, so a popover opened inside a dialog draws over it
-            className={`${solid ? SOLID_POPOVER_CLASS : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
+            className={`${solid ? (glass ? SOLID_GLASS_POPOVER_CLASS : SOLID_POPOVER_CLASS) : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
           >
             {children}
           </motion.div>

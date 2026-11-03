@@ -129,7 +129,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
   return (
     <>
       <DialogHeader icon={KIND_ICONS[document.kind]} title={t(`settings.legal.kinds.${document.kind}`)} />
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-5">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-4">
         {/* eases like the other dialogs when the reaccept switch or the channel's own-text row comes and goes */}
         {/* the height animation clips; 4px of room on every side (given back by the negative margin)
             keeps the fields' 2px focus ring inside the clip */}
@@ -157,6 +157,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
                     value={locale}
                     onChange={setLocale}
                     icon={Languages}
+                    glassPopover
                     size="lg"
                     placeholder=""
                     // ✓ marks a language the open channel already has a text in
@@ -200,7 +201,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
         </motion.div>
       </div>
       {(canSet || canRemove || canUpdate) && (
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
           <div className="min-w-0 flex-1">
             {(pending.length > 0 || visibilityChanged) && (
               <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">

@@ -19,7 +19,6 @@ import {
   Share2,
   ShieldCheck,
   SlidersHorizontal,
-  Smartphone,
   Ticket,
   Users,
 } from "lucide-react";
@@ -76,8 +75,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
     icon: Bot,
     anyOf: ["BOT_SETTINGS_VIEW", "BOT_REQUIREMENTS_VIEW", "BOT_COMMANDS_VIEW", "DIALOGS_CATALOG_VIEW", "TRANSLATIONS_VIEW", "EMOJI_PACKS_VIEW"],
   },
-  { key: "cabinet", to: "cabinet", icon: Globe, anyOf: ["CABINET_AUTH_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW"] },
-  { key: "connect", to: "connect", icon: Smartphone, anyOf: ["CONNECT_GUIDE_VIEW"] },
+  { key: "cabinet", to: "cabinet", icon: Globe, anyOf: ["CABINET_AUTH_SETTINGS_VIEW", "EMAIL_SETTINGS_VIEW", "CONNECT_GUIDE_VIEW"] },
   { key: "apiTokens", to: "api-tokens", icon: KeyRound, anyOf: ["API_TOKENS_MANAGE"] },
   {
     key: "appearance",
@@ -85,6 +83,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
     icon: Palette,
     anyOf: [
       "APPEARANCE_SETTINGS_MANAGE",
+      "APPEARANCE_SETTINGS_RESET",
       "APPEARANCE_LOGO_UPLOAD",
       "APPEARANCE_LOGO_DELETE",
       "APPEARANCE_FAVICON_UPLOAD",
@@ -95,7 +94,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
     key: "gateways",
     to: "gateways",
     icon: CreditCard,
-    anyOf: ["GATEWAYS_VIEW", "GATEWAYS_UPDATE", "GATEWAYS_ACTIVE_SET", "GATEWAYS_REORDER", "GATEWAYS_TEST"],
+    anyOf: ["GATEWAYS_VIEW"],
   },
   { key: "backups", to: "backups", icon: Database, anyOf: ["BACKUPS_VIEW"] },
   { key: "blacklist", to: "blacklist", icon: Ban, anyOf: ["BLACKLIST_VIEW"] },

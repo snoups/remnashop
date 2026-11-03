@@ -68,8 +68,8 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
       ref={boxRef}
       className={
         glass
-          ? `glass-well flex min-h-9 flex-wrap items-center gap-1.5 rounded-[18px] p-1.5 transition-shadow ${
-              isInvalid ? "ring-2 ring-error/60" : "focus-within:ring-2 focus-within:ring-primary/50"
+          ? `glass-well flex min-h-9 flex-wrap items-center gap-1.5 rounded-[18px] p-1.5 ring-inset ${
+              isInvalid ? "ring-1 ring-error" : "focus-within:ring-1 focus-within:ring-primary"
             }`
           : `flex min-h-9.5 flex-wrap items-center gap-1.5 ${isWrapped ? "rounded-xl" : "rounded-[19px]"} border bg-input/60 p-1.5 ${
               isInvalid ? "border-error" : "border-border focus-within:border-primary"

@@ -27,7 +27,7 @@ import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { Switch } from "@shared/ui/glass/Switch";
 import { SaveFooter } from "@shared/ui/SaveFooter";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
 import { ProviderRow } from "@features/oauth-settings/OAuthSettingsForm";
 
@@ -73,9 +73,9 @@ const NO_CREDENTIALS: Credentials = {
   yandex: { id: "", secret: "" },
 };
 
-const CAPTCHA_PROVIDERS: { value: CaptchaProvider; label: string }[] = [
-  { value: "TURNSTILE", label: "Cloudflare Turnstile" },
-  { value: "HCAPTCHA", label: "hCaptcha" },
+const CAPTCHA_PROVIDERS: { key: CaptchaProvider; label: string }[] = [
+  { key: "TURNSTILE", label: "Cloudflare Turnstile" },
+  { key: "HCAPTCHA", label: "hCaptcha" },
 ];
 
 /** Cabinet sign-in: the methods, email-domain limit and captcha, all saved by the card's one Save.
@@ -306,13 +306,11 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
                 canEdit={canManage}
                 extra={
                   <Field label={t("settings.cabinetAuth.captcha.provider")}>
-                    <SegmentedPills
-                      value={draft.captcha_provider}
-                      onChange={(value) => setFlag("captcha_provider", value)}
-                      options={CAPTCHA_PROVIDERS}
+                    <PillTabs
+                      items={CAPTCHA_PROVIDERS}
+                      activeKey={draft.captcha_provider}
+                      onSelect={(value) => setFlag("captcha_provider", value)}
                       disabled={!canManage}
-                      stretch
-                      compact
                     />
                   </Field>
                 }

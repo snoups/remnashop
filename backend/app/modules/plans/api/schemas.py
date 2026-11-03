@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Final, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -16,6 +16,8 @@ from app.core.enums import (
     PriceAdjustScope,
     RoundingMode,
 )
+
+MATRIX_MAX_EDITS: Final[int] = 2000
 
 
 class PlanPriceRequest(BaseModel):
@@ -242,6 +244,45 @@ class UpdatePricingSettingsRequest(BaseModel):
 
 class SwitchAnchorRequest(BaseModel):
     new_anchor: Currency
+
+
+class MatrixPlanBasePriceRequest(BaseModel):
+    plan_id: int
+    days: int
+    base_price: Decimal = Field(gt=0)
+
+
+class MatrixPlanOverrideRequest(BaseModel):
+    plan_id: int
+    days: int
+    currency: Currency
+    price: Optional[Decimal] = Field(default=None, gt=0)
+
+
+class MatrixAddOnBasePriceRequest(BaseModel):
+    addon_id: int
+    base_price: Decimal = Field(gt=0)
+
+
+class MatrixAddOnOverrideRequest(BaseModel):
+    addon_id: int
+    currency: Currency
+    price: Optional[Decimal] = Field(default=None, gt=0)
+
+
+class SetMatrixPricesRequest(BaseModel):
+    plan_base_prices: list[MatrixPlanBasePriceRequest] = Field(
+        default_factory=list, max_length=MATRIX_MAX_EDITS
+    )
+    plan_overrides: list[MatrixPlanOverrideRequest] = Field(
+        default_factory=list, max_length=MATRIX_MAX_EDITS
+    )
+    addon_base_prices: list[MatrixAddOnBasePriceRequest] = Field(
+        default_factory=list, max_length=MATRIX_MAX_EDITS
+    )
+    addon_overrides: list[MatrixAddOnOverrideRequest] = Field(
+        default_factory=list, max_length=MATRIX_MAX_EDITS
+    )
 
 
 class AdjustBasePricesRequest(BaseModel):

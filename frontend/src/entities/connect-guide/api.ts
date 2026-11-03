@@ -13,7 +13,7 @@ export type LocalizedText = Record<string, string>;
 
 export type ConnectButton =
   | { kind: "external"; label: LocalizedText; url: string }
-  | { kind: "deep_link"; label: LocalizedText; template: string; encode: "raw" | "component" }
+  | { kind: "deep_link"; label: LocalizedText; template: string; encode?: "raw" | "component"}
   | { kind: "copy_link"; label: LocalizedText };
 
 export interface ConnectStep {

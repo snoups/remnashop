@@ -20,7 +20,7 @@ class ApiTokenResponse(BaseModel):
 
 
 class CreateApiTokenRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=32)
     scopes: list[str] = Field(min_length=1)
     expires_in_days: int = Field(ge=1, le=3650)
     ip_allowlist: list[str] = Field(default=[], max_length=MAX_TOKEN_IP_ALLOWLIST)

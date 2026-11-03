@@ -19,6 +19,7 @@ from app.modules.settings.usecases.remove_bot_proxy import RemoveBotProxyUseCase
 from app.modules.settings.usecases.report_bot_status import ReportBotStatusUseCase
 from app.modules.settings.usecases.reset_appearance_settings import ResetAppearanceSettingsUseCase
 from app.modules.settings.usecases.reset_bulk_email_settings import ResetBulkEmailSettingsUseCase
+from app.modules.settings.usecases.reset_email_settings import ResetEmailSettingsUseCase
 from app.modules.settings.usecases.restart_bot import RestartBotUseCase
 from app.modules.settings.usecases.set_bot_proxy import SetBotProxyUseCase
 from app.modules.settings.usecases.update_access_settings import UpdateAccessSettingsUseCase
@@ -55,6 +56,7 @@ __all__ = [
     "ReportBotStatusUseCase",
     "ResetAppearanceSettingsUseCase",
     "ResetBulkEmailSettingsUseCase",
+    "ResetEmailSettingsUseCase",
     "RestartBotUseCase",
     "SetBotProxyUseCase",
     "UpdateAccessSettingsUseCase",

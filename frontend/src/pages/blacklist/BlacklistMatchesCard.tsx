@@ -15,12 +15,16 @@ import {
 import { PillTabs } from "@shared/ui/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
+import { useLoadGateHold } from "@shared/lib/load-gate";
 import { toast } from "@shared/lib/toast";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { initials } from "@shared/lib/initials";
+import { Badge } from "@shared/ui/Badge";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { SectionFields } from "@shared/ui/glass/Section";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { Spinner } from "@shared/ui/Spinner";
 import { SearchField } from "@shared/ui/SearchField";
 import { IconButton } from "@shared/ui/IconButton";
@@ -28,7 +32,6 @@ import { Button } from "@shared/ui/Button";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 import { BlacklistCard, KindBadge } from "./BlacklistCard";
-import { Pressable } from "@shared/ui/Pressable";
 
 const PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 200;
@@ -54,6 +57,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
   const { t } = useTranslation();
   const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false);
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  useLoadGateHold(state.kind === "loading");
   const [search, setSearch] = useState("");
   const [origin, setOrigin] = useState<Origin>(undefined);
   const [page, setPage] = useState(1);
@@ -107,20 +111,14 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
       action={
         data !== null &&
         data.all_total > 0 && (
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="flex h-9 items-center rounded-full border border-transparent bg-error/10 px-4 text-[12.5px] font-semibold text-error">
-              {t("blacklist.matches.count", { count: data.all_total })}
-            </span>
+          <>
+            <StatusPill tone="error">{t("blacklist.matches.count", { count: data.all_total })}</StatusPill>
             {canUnblockAll && (
-              <Button
-                variant="secondary"
-                onClick={() => setIsUnblockConfirmOpen(true)}
-              >
-                <Unlock className="size-3.5" />
+              <Button variant="glass" icon={Unlock} onClick={() => setIsUnblockConfirmOpen(true)}>
                 {t("blacklist.matches.unblockAll.button")}
               </Button>
             )}
-          </div>
+          </>
         )
       }
     >
@@ -132,33 +130,35 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
 
       {data !== null && data.all_total > 0 && (
         <>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <SearchField
-              id="blacklist-matches-search"
-              label={t("blacklist.matches.searchPlaceholder")}
-              hideLabel
-              placeholder={t("blacklist.matches.searchPlaceholder")}
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                setPage(1);
-              }}
-            />
-            <div className="w-full sm:w-64">
-              <PillTabs
-                items={(
-                  [
-                    ["ALL", t("blacklist.matches.allOrigins")],
-                    ["manual", t("blacklist.matches.manualOrigin")],
-                    ["lists", t("blacklist.matches.listsOrigin")],
-                  ] as const
-                ).map(([key, label]) => ({ key, label }))}
-                activeKey={origin ?? "ALL"}
-                onSelect={(key) => changeOrigin(key === "ALL" ? undefined : key)}
-                size="field"
+          <SectionFields>
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchField
+                id="blacklist-matches-search"
+                label={t("blacklist.matches.searchPlaceholder")}
+                hideLabel
+                compact
+                placeholder={t("blacklist.matches.searchPlaceholder")}
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  setPage(1);
+                }}
               />
+              <div className="w-full sm:w-64">
+                <PillTabs
+                  items={(
+                    [
+                      ["ALL", t("blacklist.matches.allOrigins")],
+                      ["manual", t("blacklist.matches.manualOrigin")],
+                      ["lists", t("blacklist.matches.listsOrigin")],
+                    ] as const
+                  ).map(([key, label]) => ({ key, label }))}
+                  activeKey={origin ?? "ALL"}
+                  onSelect={(key) => changeOrigin(key === "ALL" ? undefined : key)}
+                />
+              </div>
             </div>
-          </div>
+          </SectionFields>
 
           <div className="-mx-2 mt-2 -mb-1 overflow-x-auto px-2 py-1">
             <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
@@ -168,9 +168,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnHit")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnOrigin")}</th>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnStatus")}</th>
-                  <th scope="col" className="w-10 px-3 py-2">
-                    <span className="sr-only">{t("blacklist.matches.openUser")}</span>
-                  </th>
+                  <th scope="col" className="w-10 px-3 py-2" />
                 </tr>
                 <tr className="h-1" />
               </thead>
@@ -181,9 +179,9 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                     onClick={() => setDetailsUser(match.user)}
                     className="cursor-pointer [&>td]:transition-colors hover:[&>td]:bg-white/[0.04] [&>td:first-child]:rounded-l-full [&>td:last-child]:rounded-r-full"
                   >
-                    <td className="px-3 py-2">
+                    <td className="h-15 px-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-semibold text-foreground">
                           {initials(match.user.name)}
                         </div>
                         <div className="min-w-0">
@@ -194,7 +192,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="h-15 px-3">
                       <div className="flex flex-col gap-1">
                         {match.hits.map((hit) => (
                           <div key={hit.kind} className="flex items-center gap-2">
@@ -206,27 +204,27 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                                   : t("blacklist.manual.kindEmail")
                               }
                             />
-                            <span className="truncate font-mono text-[12.5px] text-foreground">{hit.value}</span>
+                            <span className="truncate font-mono text-[12px] text-foreground">{hit.value}</span>
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-foreground/80">
+                    <td className="h-15 px-3 text-foreground/80">
                       {matchOrigins(match).map(originLabel).join(", ")}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="h-15 px-3">
                       {match.user.is_blocked ? (
-                        <span className="inline-flex rounded-full bg-error/10 px-2.5 py-0.5 text-[12px] font-semibold text-error">
+                        <Badge borderless tone="error">
                           {t("blacklist.matches.blocked")}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-0.5 text-[12px] font-semibold text-warning">
+                        <Badge borderless tone="warning">
                           {t("blacklist.matches.pending")}
-                          <FieldHint text={t("blacklist.matches.pendingHint")} />
-                        </span>
+                          <FieldHint text={t("blacklist.matches.pendingHint")} glass />
+                        </Badge>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="h-15 px-3 text-right">
                       <IconButton size="8"
                         onClick={() => setDetailsUser(match.user)}
                       >
@@ -244,7 +242,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
 
           {pageCount > 1 && (
             <div className="mt-3 flex items-center justify-between gap-3 px-3">
-              <span className="text-[12.5px] tabular-nums text-muted-foreground">
+              <span className="text-[12px] tabular-nums text-muted-foreground">
                 {t("blacklist.matches.range", {
                   from: (page - 1) * PAGE_SIZE + 1,
                   to: (page - 1) * PAGE_SIZE + data.items.length,
@@ -252,22 +250,12 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                 })}
               </span>
               <div className="flex gap-1.5">
-                <Pressable
-                  type="button"
-                  onClick={() => setPage(page - 1)}
-                  disabled={page <= 1}
-                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <IconButton size="8" tone="glass" onClick={() => setPage(page - 1)} disabled={page <= 1}>
                   <ChevronLeft className="size-4" />
-                </Pressable>
-                <Pressable
-                  type="button"
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= pageCount}
-                  className="flex size-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                </IconButton>
+                <IconButton size="8" tone="glass" onClick={() => setPage(page + 1)} disabled={page >= pageCount}>
                   <ChevronRight className="size-4" />
-                </Pressable>
+                </IconButton>
               </div>
             </div>
           )}

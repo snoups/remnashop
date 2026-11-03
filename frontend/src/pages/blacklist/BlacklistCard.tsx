@@ -2,8 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { BlacklistKind } from "@entities/blacklist/api";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { Section } from "@shared/ui/glass/Section";
 
 export function BlacklistCard({
   icon,
@@ -19,18 +18,16 @@ export function BlacklistCard({
   children: ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader icon={icon} title={title} description={description} aside={action} />
+    <Section icon={icon} title={title} description={description} aside={action}>
       {children}
-    </Card>
+    </Section>
   );
 }
 
 export function KindBadge({ kind, label }: { kind: BlacklistKind; label: string }) {
   return (
-    <Badge tone={kind === "TELEGRAM_ID" ? "accent" : "neutral"} className="w-[84px] justify-center">
+    <Badge borderless tone={kind === "TELEGRAM_ID" ? "accent" : "neutral"} className="w-[84px] justify-center">
       {label}
     </Badge>
   );
 }
-

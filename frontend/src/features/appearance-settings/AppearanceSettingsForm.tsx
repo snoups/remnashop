@@ -15,7 +15,7 @@ import {
   uploadAppearanceImage,
 } from "@entities/appearance/api";
 import { getErrorMessage } from "@shared/api/http";
-import { useAppearancePreview, useReloadAppearance } from "@entities/appearance/use-appearance";
+import { useAppearancePreview, useBrandName, useReloadAppearance } from "@entities/appearance/use-appearance";
 import { DEFAULT_ACCENT_COLOR, DEFAULT_SHADER_PALETTE_HEX, hexToHueDegrees, hueRotateHex } from "@shared/lib/color";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -23,16 +23,17 @@ import { toast } from "@shared/lib/toast";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Section } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
-import { TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { Field } from "@shared/ui/Field";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
+import { IconButton } from "@shared/ui/IconButton";
 import { Pressable } from "@shared/ui/Pressable";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 
 const SVG_MIME_TYPE = "image/svg+xml";
 const ACCEPTED_FILE_TYPES = `image/jpeg,image/png,image/webp,${SVG_MIME_TYPE}`;
@@ -69,11 +70,10 @@ interface ImageSlotProps {
   hint: string;
   canUpload: boolean;
   canDelete: boolean;
-  className?: string;
   onChanged: (hasImage: boolean) => void;
 }
 
-function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, className = "", onChanged }: ImageSlotProps) {
+function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, onChanged }: ImageSlotProps) {
   const { t } = useTranslation();
   const [isBusy, setIsBusy] = useState(false);
 
@@ -130,11 +130,11 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
   };
 
   return (
-    <Field label={label} className={className}>
+    <Field label={label} hint={hint}>
       <div
-        // 27px = 1px border + 8px inset + 18px (half the h-9 upload pill): the pill's ends sit concentric in the corners
-        className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[27px] bg-input/60 ${
-          hasImage ? "border border-border" : "border border-dashed border-white/[0.18]"
+        // 26px = 8px inset + 18px (half the h-9 upload pill): the pill's ends sit concentric in the corners
+        className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[26px] ${
+          hasImage ? "glass-well" : "border border-dashed border-white/[0.18] bg-black/[0.12]"
         }`}
       >
         {hasImage ? (
@@ -160,7 +160,7 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
         {canUpload && (
           <motion.label
             data-disabled={isBusy || undefined}
-            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/[0.08] text-sm font-medium text-foreground/60 transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
+            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
           >
             <input
               type="file"
@@ -169,18 +169,17 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
               disabled={isBusy}
               onChange={(event) => void handleFileChange(event)}
             />
-            <Upload className="size-3.5" />
+            <Upload className="size-4" />
             {hasImage ? t("settings.appearance.replace") : t("settings.appearance.upload")}
           </motion.label>
         )}
       </div>
-      <span className="text-[12px] text-muted-foreground">{hint}</span>
     </Field>
   );
 }
 
-function Section({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">{children}</div>;
+function InnerCard({ children }: { children: ReactNode }) {
+  return <div className={`flex flex-col gap-3 p-3.5 ${GLASS_INNER_CARD_CLASS}`}>{children}</div>;
 }
 
 // The cabinet's card has no live preview: it would repaint the dashboard, not the cabinet.
@@ -190,7 +189,9 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
   const reloadAppearance = useReloadAppearance();
   const { setPreviewColor, setPreviewPalette, setPreviewShaderEnabled } = useAppearancePreview();
   const permissions = usePermissions();
-  const [brandName, setBrandName] = useState("");
+  // null: nothing stored, the name in use applies (the default, for the cabinet the dashboard's)
+  const [brandName, setBrandName] = useState<string | null>(null);
+  const fallbackBrandName = useBrandName();
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT_COLOR);
   // last non-preset pick, kept as an extra swatch after a preset replaces it
   const [previousColor, setPreviousColor] = useState<string | null>(null);
@@ -206,7 +207,7 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
   // seeded per section, on load or that section's reset only; a save or image
   // change would wipe the other section's unsaved edits
   const seedBranding = (data: AppearanceSettings) => {
-    setBrandName(data.brand_name ?? "");
+    setBrandName(data.brand_name);
   };
 
   const seedColors = (data: AppearanceSettings) => {
@@ -283,16 +284,24 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
     if (HEX_COLOR_PATTERN.test(value)) setAccent(value.toLowerCase());
   };
 
+  const shownBrandName = brandName ?? fallbackBrandName;
+  const trimmedBrandName = shownBrandName.trim();
+  const isBrandNameEmpty = trimmedBrandName === "";
+  const isBrandNameChanged =
+    state.kind === "ready" && trimmedBrandName !== (state.data.brand_name ?? fallbackBrandName);
+
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     setIsSaving(true);
     try {
-      await updateAppearance(target, {
-        brand_name: brandName.trim() || undefined,
+      const saved = await updateAppearance(target, {
+        brand_name: isBrandNameChanged ? trimmedBrandName : undefined,
         primary_color: colorTouched ? accentColor : undefined,
         shader_palette: paletteTouched ? shaderPalette : undefined,
         shader_enabled: shaderEnabled,
       });
+      seedBranding(saved);
+      setData(saved);
       reloadAppearance();
       setColorTouched(false);
       setPaletteTouched(false);
@@ -339,201 +348,197 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
   const canFavicon =
     permissions.includes("APPEARANCE_FAVICON_UPLOAD") || permissions.includes("APPEARANCE_FAVICON_DELETE");
 
+  const dirty =
+    state.kind === "ready" &&
+    (isBrandNameChanged ||
+      colorTouched ||
+      paletteTouched ||
+      shaderEnabled !== state.data.shader_enabled);
+
+  const resetButton = canReset && (
+    <Button variant="glassDanger" isLoading={isResetting} onClick={() => setIsResetConfirmOpen(true)}>
+      {t("common.reset")}
+    </Button>
+  );
+
   const swatchClass = (active: boolean) =>
     `size-8 rounded-full ${active ? "outline-2 outline-offset-2 outline-muted-foreground" : "ring-1 ring-white/10"}`;
 
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSave(event)}>
+      <Section
         icon={isDashboard ? Palette : Globe}
         title={t(isDashboard ? "settings.appearance.dashboardTitle" : "settings.appearance.cabinetTitle")}
-        description={t(
-          isDashboard ? "settings.appearance.dashboardDescription" : "settings.appearance.cabinetDescription",
-        )}
-      />
+        description={t(isDashboard ? "settings.appearance.dashboardDescription" : "settings.appearance.cabinetDescription")}
+        footer={
+          state.kind === "ready" &&
+          (canManage ? (
+            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={isBrandNameEmpty} beside={resetButton} />
+          ) : (
+            resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
+          ))
+        }
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
 
-      {state.kind === "loading" && <Spinner size="card" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {(canManage || canLogo || canFavicon) && (
+                <InnerCard>
+                  {canManage && (
+                    <Field
+                      label={t("settings.appearance.brandNameLabel")}
+                      htmlFor={`appearance-${target}-brand-name`}
+                      error={isBrandNameEmpty ? t("errors.validation.required") : null}
+                    >
+                      <Input
+                        id={`appearance-${target}-brand-name`}
+                        value={shownBrandName}
+                        onChange={(event) => setBrandName(event.target.value)}
+                        aria-invalid={isBrandNameEmpty}
+                        maxLength={64}
+                      />
+                    </Field>
+                  )}
+                  {(canLogo || canFavicon) && (
+                    <div className="flex flex-wrap gap-4">
+                      {canLogo && (
+                        <div className="min-w-0 flex-1">
+                        <ImageSlot
+                          target={target}
+                          kind="logo"
+                          hasImage={state.data.has_logo}
+                          label={t("settings.appearance.logoLabel")}
+                          hint={t("settings.appearance.logoHint")}
+                          canUpload={permissions.includes("APPEARANCE_LOGO_UPLOAD")}
+                          canDelete={permissions.includes("APPEARANCE_LOGO_DELETE")}
+                          onChanged={(hasImage) => handleImageChanged("logo", hasImage)}
+                        />
+                        </div>
+                      )}
+                      {canFavicon && (
+                        <div className="min-w-0 flex-1">
+                        <ImageSlot
+                          target={target}
+                          kind="favicon"
+                          hasImage={state.data.has_favicon}
+                          label={t("settings.appearance.faviconLabel")}
+                          hint={t("settings.appearance.faviconHint")}
+                          canUpload={permissions.includes("APPEARANCE_FAVICON_UPLOAD")}
+                          canDelete={permissions.includes("APPEARANCE_FAVICON_DELETE")}
+                          onChanged={(hasImage) => handleImageChanged("favicon", hasImage)}
+                        />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </InnerCard>
+              )}
 
-      {state.kind === "ready" && (
-        <form onSubmit={(event) => void handleSave(event)} className="mt-4 flex flex-col gap-4">
-          <div className="grid gap-3 lg:grid-cols-2">
-            {(canManage || canLogo || canFavicon) && (
-              <Section>
-                {canManage && (
-                  <Field label={t("settings.appearance.brandNameLabel")} htmlFor={`appearance-${target}-brand-name`}>
-                    <TextInput
-                      id={`appearance-${target}-brand-name`}
-                      type="text"
-                      value={brandName}
-                      onChange={(event) => setBrandName(event.target.value)}
-                      placeholder={t("settings.appearance.brandNamePlaceholder")}
-                      maxLength={64}
-                      className="w-full"
-                    />
+              {canManage && (
+                <InnerCard>
+                  <Field label={t("settings.appearance.accentColorLabel")} htmlFor={`appearance-${target}-accent-hex`}>
+                    <div className="flex items-center gap-3.5 rounded-xl bg-white/[0.03] p-3">
+                      <div className="flex items-center gap-2">
+                        <ColorPickerField
+                          value={accentColor}
+                          onChange={setAccent}
+                        />
+                        <Input
+                          id={`appearance-${target}-accent-hex`}
+                          value={hexInput}
+                          onChange={handleHexInputChange}
+                          maxLength={7}
+                          spellCheck={false}
+                          mono
+                          className="w-28"
+                        />
+                      </div>
+                      {previousColor && (
+                        <Pressable
+                          type="button"
+                          onClick={() => setAccent(previousColor)}
+                          style={{ backgroundColor: previousColor }}
+                          className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`} />
+                      )}
+                    </div>
                   </Field>
-                )}
-                {(canLogo || canFavicon) && (
-                  <div className="flex flex-wrap gap-4">
-                    {canLogo && (
-                      <ImageSlot
-                        target={target}
-                        kind="logo"
-                        hasImage={state.data.has_logo}
-                        label={t("settings.appearance.logoLabel")}
-                        hint={t("settings.appearance.logoHint")}
-                        canUpload={permissions.includes("APPEARANCE_LOGO_UPLOAD")}
-                        canDelete={permissions.includes("APPEARANCE_LOGO_DELETE")}
-                        className="min-w-0 flex-1"
-                        onChanged={(hasImage) => handleImageChanged("logo", hasImage)}
-                      />
-                    )}
-                    {canFavicon && (
-                      <ImageSlot
-                        target={target}
-                        kind="favicon"
-                        hasImage={state.data.has_favicon}
-                        label={t("settings.appearance.faviconLabel")}
-                        hint={t("settings.appearance.faviconHint")}
-                        canUpload={permissions.includes("APPEARANCE_FAVICON_UPLOAD")}
-                        canDelete={permissions.includes("APPEARANCE_FAVICON_DELETE")}
-                        className="min-w-0 flex-1"
-                        onChanged={(hasImage) => handleImageChanged("favicon", hasImage)}
-                      />
-                    )}
-                  </div>
-                )}
-              </Section>
-            )}
 
-            {canManage && (
-              <Section>
-                <Field label={t("settings.appearance.accentColorLabel")} htmlFor={`appearance-${target}-accent-hex`}>
-                  <div className="flex items-center gap-3.5 rounded-xl bg-white/[0.03] p-3">
-                    <div className="flex items-center gap-2">
-                      <ColorPickerField
-                        value={accentColor}
-                        onChange={setAccent}
-                      />
-                      <TextInput
-                        id={`appearance-${target}-accent-hex`}
-                        type="text"
-                        value={hexInput}
-                        onChange={handleHexInputChange}
-                        maxLength={7}
-                        spellCheck={false}
-                        className="w-28 font-mono"
+                  <Field label={t("settings.appearance.presetsLabel")}>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {ACCENT_COLOR_PRESETS.map((preset) => (
+                        <Pressable
+                          key={preset}
+                          type="button"
+                          onClick={() => setAccent(preset)}
+                          style={{ backgroundColor: preset }}
+                          className={swatchClass(accentColor.toLowerCase() === preset)} />
+                      ))}
+                    </div>
+                  </Field>
+
+                  <div className="flex flex-col gap-2.5 border-t border-white/[0.08] pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[13px] font-medium text-foreground">{t("settings.appearance.shaderEnabledLabel")}</span>
+                      <Switch
+                        checked={shaderEnabled}
+                        onChange={setShaderEnabled}
                       />
                     </div>
-                    {previousColor && (
-                      <Pressable
-                        type="button"
-                        onClick={() => setAccent(previousColor)}
-                        style={{ backgroundColor: previousColor }}
-                        className={`ml-auto ${swatchClass(accentColor.toLowerCase() === previousColor.toLowerCase())}`} />
-                    )}
-                  </div>
-                </Field>
-
-                <div className="flex flex-col gap-2.5">
-                  <span className={EYEBROW_CLASS}>{t("settings.appearance.presetsLabel")}</span>
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    {ACCENT_COLOR_PRESETS.map((preset) => (
-                      <Pressable
-                        key={preset}
-                        type="button"
-                        onClick={() => setAccent(preset)}
-                        style={{ backgroundColor: preset }}
-                        className={swatchClass(accentColor.toLowerCase() === preset)} />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2.5 border-t border-white/[0.08] pt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className={EYEBROW_CLASS}>{t("settings.appearance.shaderEnabledLabel")}</span>
-                    <Switch
-                      checked={shaderEnabled}
-                      onChange={setShaderEnabled}
-                    />
-                  </div>
-                  <div
-                    className={`grid grid-cols-2 gap-2 transition-opacity ${shaderEnabled ? "" : "opacity-40"}`}
-                  >
-                    {SHADER_PALETTE_KEYS.map((key, index) => {
-                      const rawColor = shaderPalette[index] ?? DEFAULT_SHADER_PALETTE_HEX[index];
-                      const shownColor = hueRotateHex(rawColor, shaderHueRadians);
-                      const defaultColor = DEFAULT_SHADER_PALETTE_HEX[index];
-                      return (
-                        <div key={key} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-2.5 py-2">
-                          <ColorPickerField
-                            value={rawColor}
-                            onChange={(value) => setPaletteColor(index, value)}
-                            displayValue={shownColor}
-                          />
-                          <div className="flex min-w-0 flex-col">
-                            <span className="truncate text-[12.5px] font-medium text-foreground">
-                              {t(`settings.appearance.shaderPalette.${key}`)}
-                            </span>
-                            <span className="font-mono text-[11px] text-muted-foreground">{shownColor}</span>
+                    <div
+                      className={`grid grid-cols-2 gap-2 transition-opacity ${shaderEnabled ? "" : "opacity-40"}`}
+                    >
+                      {SHADER_PALETTE_KEYS.map((key, index) => {
+                        const rawColor = shaderPalette[index] ?? DEFAULT_SHADER_PALETTE_HEX[index];
+                        const shownColor = hueRotateHex(rawColor, shaderHueRadians);
+                        const defaultColor = DEFAULT_SHADER_PALETTE_HEX[index];
+                        return (
+                          <div key={key} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-2.5 py-2">
+                            <ColorPickerField
+                              value={rawColor}
+                              onChange={(value) => setPaletteColor(index, value)}
+                              displayValue={shownColor}
+                            />
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate text-[12px] font-medium text-foreground">
+                                {t(`settings.appearance.shaderPalette.${key}`)}
+                              </span>
+                              <span className="font-mono text-[11px] text-muted-foreground">{shownColor}</span>
+                            </div>
+                            <IconButton
+                              size="7"
+                              className="ml-auto"
+                              onClick={() => setPaletteColor(index, defaultColor)}
+                              disabled={rawColor.toLowerCase() === defaultColor}
+                            >
+                              <RotateCcw className="size-3.5" />
+                            </IconButton>
                           </div>
-                          <Pressable
-                            type="button"
-                            onClick={() => setPaletteColor(index, defaultColor)}
-                            disabled={rawColor.toLowerCase() === defaultColor}
-                            className="ml-auto flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-foreground/70"
-                          >
-                            <RotateCcw className="size-3.5" />
-                          </Pressable>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              </Section>
-            )}
-          </div>
-          {(canManage || canReset) && (
-            <div className="flex items-center gap-2">
-              {canManage && (
-                <Button
-                  variant="accent"
-                  type="submit"
-                  disabled={isSaving}
-                >
-                  {t("common.save")}
-                </Button>
-              )}
-              {canReset && (
-                <Button
-                  variant="outline"
-                  className="whitespace-nowrap"
-                  type="button"
-                  onClick={() => setIsResetConfirmOpen(true)}
-                  disabled={isResetting}
-                >
-                  {t("common.reset")}
-                </Button>
+                </InnerCard>
               )}
             </div>
-          )}
-        </form>
-      )}
+        )}
 
-      {isResetConfirmOpen && (
-        <ConfirmDialog
-          title={t("settings.appearance.resetConfirmTitle")}
-          message={t("settings.appearance.resetConfirmMessage")}
-          confirmLabel={t("common.reset")}
-          cancelLabel={t("common.cancel")}
-          danger
-          onConfirm={() => {
-            setIsResetConfirmOpen(false);
-            void handleReset();
-          }}
-          onCancel={() => setIsResetConfirmOpen(false)}
-        />
-      )}
-    </Card>
+        {isResetConfirmOpen && (
+          <ConfirmDialog
+            title={t("settings.appearance.resetConfirmTitle")}
+            message={t("settings.appearance.resetConfirmMessage")}
+            confirmLabel={t("common.reset")}
+            cancelLabel={t("common.cancel")}
+            danger
+            onConfirm={() => {
+              setIsResetConfirmOpen(false);
+              void handleReset();
+            }}
+            onCancel={() => setIsResetConfirmOpen(false)}
+          />
+        )}
+      </Section>
+    </form>
   );
 }

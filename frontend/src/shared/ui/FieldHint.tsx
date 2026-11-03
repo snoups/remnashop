@@ -2,7 +2,7 @@ import { CircleHelp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { GLASS_HINT_BUBBLE_CLASS, HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
+import { GLASS_ERROR_HINT_BUBBLE_CLASS, GLASS_HINT_BUBBLE_CLASS, HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 
 interface FieldHintProps {
   text: string;
@@ -13,6 +13,12 @@ interface FieldHintProps {
   align?: "center" | "end";
   /** the glass design's bubble (shared/ui/glass) */
   glass?: boolean;
+  /** an error's text: the glass bubble, red */
+  error?: boolean;
+  /** what the bubble hangs off, in place of the ? icon (a status badge) */
+  trigger?: ReactNode;
+  /** layout of the trigger wrapper */
+  className?: string;
 }
 
 const GAP_PX = 8;
@@ -28,7 +34,7 @@ function boundsRect(): { left: number; top: number; right: number; bottom: numbe
 
 // Portalled to the body, so no scroll container or overflow-hidden panel clips the bubble.
 // Focusable, so the bubble also opens on keyboard focus.
-export function FieldHint({ text, content, side = "top", align = "center", glass = false }: FieldHintProps) {
+export function FieldHint({ text, content, side = "top", align = "center", glass = false, error = false, trigger, className = "" }: FieldHintProps) {
   const iconRef = useRef<HTMLSpanElement>(null);
   const bubbleRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -105,18 +111,20 @@ export function FieldHint({ text, content, side = "top", align = "center", glass
       onBlur={(event) => {
         if (!bubbleRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
       }}
-      className="relative inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      className={`relative inline-flex rounded-full outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary ${className}`}
     >
-      <CircleHelp
-        className={`size-3.5 shrink-0 cursor-help text-muted-foreground ${glass ? "transition-colors hover:text-foreground" : ""}`}
-      />
+      {trigger ?? (
+        <CircleHelp
+          className={`size-3.5 shrink-0 cursor-help text-muted-foreground ${glass ? "transition-colors hover:text-foreground" : ""}`}
+        />
+      )}
       {createPortal(
         // always mounted: a CSS opacity transition reverses smoothly when the pointer
         // flickers across the icon's edge, a mount/unmount animation restarts
         <span
           ref={bubbleRef}
           // above everything: Modal (z-50), PortalPopover (z-60), toasts and the debug bar (z-50)
-          className={`${glass ? GLASS_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
+          className={`${error ? GLASS_ERROR_HINT_BUBBLE_CLASS : glass ? GLASS_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
           // open, it takes the pointer: hovering it keeps it, its text can be selected
           style={{ position: "fixed", ...position, opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
           onPointerEnter={(event) => event.pointerType === "mouse" && show()}

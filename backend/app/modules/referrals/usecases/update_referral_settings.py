@@ -1,10 +1,11 @@
+from dataclasses import replace
 from decimal import Decimal
 from typing import Final
 
 from loguru import logger
 
 from app.core.actor import Actor
-from app.core.constants import MAX_POINTS_BALANCE, ZERO_AMOUNT
+from app.core.constants import MAX_POINTS_BALANCE
 from app.core.db.uow import UnitOfWork
 from app.core.enums import ReferralRewardStrategy, ReferralRewardType
 from app.core.error_codes import ErrorCode
@@ -36,33 +37,30 @@ def _check_amounts(
     *,
     strategy: ReferralRewardStrategy,
     reward_type: ReferralRewardType,
-    enabled: bool,
     max_level: int,
 ) -> None:
     if any(amount < 0 for amount in amounts.values()):
         raise ValidationError("A reward can't be negative", code=ErrorCode.REFERRAL_REWARD_NEGATIVE)
+    for level, amount in amounts.items():
+        if amount < _MIN_REWARD:
+            raise ValidationError(
+                f"Level {level} reward must be at least 1", code=ErrorCode.REFERRAL_REWARD_TOO_LOW
+            )
+    # a level past max_level pays nothing, so its amount may outlive a strategy change
+    active = [amount for level, amount in amounts.items() if level <= max_level]
     if strategy is ReferralRewardStrategy.PERCENT and any(
-        amount > _MAX_PERCENT for amount in amounts.values()
+        amount > _MAX_PERCENT for amount in active
     ):
         raise ValidationError(
             "A percent reward can't exceed 100", code=ErrorCode.REFERRAL_REWARD_PERCENT_TOO_HIGH
         )
     if strategy is ReferralRewardStrategy.AMOUNT and any(
-        amount > _MAX_AMOUNT_REWARD[reward_type] for amount in amounts.values()
+        amount > _MAX_AMOUNT_REWARD[reward_type] for amount in active
     ):
         raise ValidationError(
             f"An amount reward can't exceed {_MAX_AMOUNT_REWARD[reward_type]}",
             code=ErrorCode.REFERRAL_REWARD_TOO_HIGH,
         )
-    # a level that shouldn't earn is switched off via max_level, not a zero;
-    # a disabled program may keep blanks, e.g. right after a reset
-    if not enabled:
-        return
-    for level in range(1, max_level + 1):
-        if amounts.get(level, ZERO_AMOUNT) < _MIN_REWARD:
-            raise ValidationError(
-                f"Level {level} reward must be at least 1", code=ErrorCode.REFERRAL_REWARD_TOO_LOW
-            )
 
 
 class UpdateReferralSettingsUseCase(UseCase[UpdateReferralSettingsDto, ReferralSettingsDto]):
@@ -84,19 +82,16 @@ class UpdateReferralSettingsUseCase(UseCase[UpdateReferralSettingsDto, ReferralS
         async with self._uow:
             current = await self._referral_repository.get_settings()
             strategy = data.reward_strategy or current.reward_strategy
-            amounts = (
-                data.reward_amounts if data.reward_amounts is not None else current.reward_amounts
-            )
-            enabled = data.enabled if data.enabled is not None else current.enabled
-            max_level = data.max_level or current.max_level
+            amounts = {**current.reward_amounts, **(data.reward_amounts or {})}
             _check_amounts(
                 amounts,
                 strategy=strategy,
                 reward_type=data.reward_type or current.reward_type,
-                enabled=enabled,
-                max_level=max_level,
+                max_level=data.max_level or current.max_level,
             )
-            updated = await self._referral_repository.update_settings(data)
+            updated = await self._referral_repository.update_settings(
+                replace(data, reward_amounts=amounts)
+            )
             await self._event_publisher.publish(
                 ReferralSettingsChangedEvent(
                     actor=actor,

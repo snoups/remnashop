@@ -9,6 +9,11 @@ import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 import { Ripple } from "@shared/ui/Ripple";
 
 const POPOVER_MAX_HEIGHT = 288;
+const SURFACE_CLASS = {
+  glass: "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]",
+  form: FIELD_SURFACE_CLASS,
+  well: "glass-well ring-inset focus:ring-1 focus:ring-primary",
+} as const;
 
 export interface SelectOption {
   value: string;
@@ -26,8 +31,10 @@ interface SelectDropdownProps {
   disabled?: boolean;
   // compact: the dialog editor's panels, 36px like its PillTabs; lg: 40px, next to DialogTabs
   size?: "default" | "compact" | "lg";
-  // form: inside a form, the same dark surface as TextInput; glass is for filters
-  variant?: "glass" | "form";
+  // form: inside a form, the same dark surface as TextInput; well: glass Input's sunken field; glass is for filters
+  variant?: "glass" | "form" | "well";
+  /** the open list in the glass design's material; variant "well" always has it */
+  glassPopover?: boolean;
 }
 
 export function SelectDropdown({
@@ -40,6 +47,7 @@ export function SelectDropdown({
   disabled = false,
   size = "default",
   variant = "glass",
+  glassPopover = false,
 }: SelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -124,7 +132,7 @@ export function SelectDropdown({
         onClick={toggleOpen}
         onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
-        className={`relative group flex w-full items-center rounded-full ${variant === "form" ? FIELD_SURFACE_CLASS : "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]"} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} font-medium text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`relative group flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <Ripple />
         <TriggerIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
@@ -138,6 +146,7 @@ export function SelectDropdown({
         open={isOpen}
         triggerRef={triggerRef}
         popoverRef={popoverRef}
+        glass={glassPopover || variant === "well"}
         align="stretch"
         maxHeight={POPOVER_MAX_HEIGHT}
         initial={{ opacity: 0, scale: 0.96, y: -4 }}
@@ -146,7 +155,7 @@ export function SelectDropdown({
         transition={{ duration: 0.15, ease: "easeOut" }}
         id={`${baseId}-listbox`}
         onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
-        className="min-w-40 p-1.5"
+        className="min-w-32 p-1.5"
 >
         {/* the scroll lives inside the padding: on the popover itself
             the scrollbar column paints over the rounded corners */}

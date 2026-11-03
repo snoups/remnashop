@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Final, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,16 @@ from app.core.db.singleton import SINGLETON_ID, get_or_create_singleton
 from app.modules.loyalty.dto import LoyaltySettingsDto, LoyaltyTierDto, UpdateLoyaltySettingsDto
 from app.modules.plans import ScaledAmountDto
 
+# what a shop starts from, switched off: thresholds in the anchor currency
+DEFAULT_TIERS: Final[tuple[LoyaltyTierDto, ...]] = (
+    LoyaltyTierDto(threshold=Decimal("10"), percent=3),
+    LoyaltyTierDto(threshold=Decimal("30"), percent=5),
+    LoyaltyTierDto(threshold=Decimal("50"), percent=7),
+    LoyaltyTierDto(threshold=Decimal("100"), percent=10),
+    LoyaltyTierDto(threshold=Decimal("200"), percent=12),
+    LoyaltyTierDto(threshold=Decimal("500"), percent=15),
+)
+
 
 class LoyaltyRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -16,7 +26,7 @@ class LoyaltyRepository:
 
     def _to_dto(self, row: Optional[LoyaltySettings]) -> LoyaltySettingsDto:
         if row is None:
-            return LoyaltySettingsDto()
+            return LoyaltySettingsDto(tiers=list(DEFAULT_TIERS))
         return LoyaltySettingsDto(
             enabled=row.enabled,
             window_months=row.window_months,

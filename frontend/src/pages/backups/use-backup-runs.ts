@@ -67,6 +67,13 @@ export function useBackupRuns(enabled: boolean, onRunsSettled: () => void) {
         : prev,
     );
 
+  const replace = (run: BackupRun) =>
+    setState((prev) =>
+      prev.kind === "ready"
+        ? { ...prev, items: prev.items.map((item) => (item.id === run.id ? run : item)) }
+        : prev,
+    );
+
   const remove = (run: BackupRun) =>
     setState((prev) =>
       prev.kind === "ready"
@@ -74,5 +81,5 @@ export function useBackupRuns(enabled: boolean, onRunsSettled: () => void) {
         : prev,
     );
 
-  return { state, filter, setFilter, isLoadingMore, hasMore, loadMore, prepend, remove };
+  return { state, filter, setFilter, isLoadingMore, hasMore, loadMore, prepend, replace, remove };
 }

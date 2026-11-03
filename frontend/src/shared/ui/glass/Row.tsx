@@ -21,6 +21,8 @@ interface RowProps {
   onClick?: () => void;
   /** set: a chevron after the text, turned while `panel` is open */
   expanded?: boolean;
+  /** false: no chevron, the row still folds */
+  chevron?: boolean;
   /** folds out under the row while expanded: Fields, one per line */
   panel?: ReactNode;
   /** the row is its own form (a panel with its own Save): Enter in a field submits it */
@@ -29,10 +31,10 @@ interface RowProps {
 
 /** A 60px settings row in SectionRows: icon, label, controls. Every end item sits as far from the
  *  side as from top and bottom, on the pill's 30px curve: 32px items 14px in, the 28px switch 16px. */
-export function Row({ icon, glyph, label, description, hint, children, onClick, expanded, panel, onSubmit }: RowProps) {
+export function Row({ icon, glyph, label, description, hint, children, onClick, expanded, chevron = true, panel, onSubmit }: RowProps) {
   const head = (
     <>
-      <IconCircle icon={icon} glyph={glyph} />
+      {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} />}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-[13px] font-medium leading-5 text-foreground">
@@ -41,7 +43,7 @@ export function Row({ icon, glyph, label, description, hint, children, onClick, 
           </p>
           {description && <div className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{description}</div>}
         </div>
-        {expanded !== undefined && (
+        {expanded !== undefined && chevron && (
           // 32px like the row's other small controls (the ? guide), a 14px chevron
           <span className="flex size-8 shrink-0 items-center justify-center">
             <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />

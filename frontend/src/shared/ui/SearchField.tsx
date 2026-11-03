@@ -11,6 +11,8 @@ interface SearchFieldProps {
   label: string;
   /** no visible label above the field */
   hideLabel?: boolean;
+  /** 36px instead of 38px, 13px text: the glass design's control height */
+  compact?: boolean;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
@@ -35,14 +37,14 @@ export function SearchClearButton({
 }
 
 // glass: filters and search, not form fields (those use TextInput)
-export function SearchField({ id, label, hideLabel = false, placeholder, value, onChange }: SearchFieldProps) {
+export function SearchField({ id, label, hideLabel = false, compact = false, placeholder, value, onChange }: SearchFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex min-w-40 flex-1 flex-col gap-1.5">
       {!hideLabel && <span className={EYEBROW_CLASS}>{label}</span>}
       <motion.label
-        className="group relative flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 py-2 backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary"
+        className={`group relative flex w-full items-center gap-2.5 rounded-full border border-glass-border bg-white/[0.03] px-3 ${compact ? "h-9" : "py-2"} backdrop-blur-md transition-colors not-focus-within:hover:bg-white/[0.06] focus-within:border-primary`}
       >
         <Ripple />
         <Search className="size-3.5 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />
@@ -53,7 +55,7 @@ export function SearchField({ id, label, hideLabel = false, placeholder, value, 
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="w-full min-w-0 border-0 bg-transparent text-sm font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground"
+          className={`w-full min-w-0 border-0 bg-transparent ${compact ? "text-[13px]" : "text-sm"} font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground`}
         />
         {value && (
           // 24px in a 36px-tall field: 6px inset top, bottom and right (px-3 minus 6)

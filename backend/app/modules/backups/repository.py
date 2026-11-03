@@ -145,6 +145,24 @@ class BackupRepository:
         await self.session.refresh(row)
         return self._to_run_dto(row)
 
+    async def cancel_if_pending(self, run_id: int) -> bool:
+        return await self._cancel(run_id, BackupRunStatus.PENDING)
+
+    async def mark_canceled(self, run_id: int) -> bool:
+        return await self._cancel(run_id, BackupRunStatus.RUNNING)
+
+    async def _cancel(self, run_id: int, expected: BackupRunStatus) -> bool:
+        canceled = await self.session.scalar(
+            update(BackupRun)
+            .where(BackupRun.id == run_id, BackupRun.status == expected)
+            .values(status=BackupRunStatus.CANCELED, finished_at=datetime_now())
+            .returning(BackupRun.id)
+            .execution_options(synchronize_session=False)
+        )
+        await self.session.flush()
+        self.session.expire_all()
+        return canceled is not None
+
     async def mark_failed(self, run_id: int, *, error: str) -> BackupRunDto:
         row = await self._get_row(run_id)
         row.status = BackupRunStatus.FAILED

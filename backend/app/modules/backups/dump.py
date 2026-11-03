@@ -1,6 +1,7 @@
 import asyncio
 import os
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 from typing import Final
@@ -30,7 +31,13 @@ async def create_database_dump(config: AppConfig, dest: Path) -> None:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    _, stderr = await proc.communicate()
+    try:
+        _, stderr = await proc.communicate()
+    except asyncio.CancelledError:
+        # canceling the wait leaves the process running on its own
+        proc.terminate()
+        await proc.wait()
+        raise
     if proc.returncode != 0:
         raise RuntimeError(f"pg_dump failed: {stderr.decode()}")
 
@@ -41,7 +48,7 @@ async def create_signed_database_dump(config: AppConfig, dest: Path) -> None:
     sign_backup_file(dest, config.crypt_key.get_secret_value())
 
 
-def _build_assets_zip(media_dir: Path, final_path: Path) -> None:
+def _build_assets_zip(media_dir: Path, final_path: Path, stop: threading.Event) -> None:
     backups_dir = media_dir / "backups"
     prefix_root = media_dir.parent
     # media/ is its own volume, and os.replace() (rename(2)) raises EXDEV
@@ -59,6 +66,9 @@ def _build_assets_zip(media_dir: Path, final_path: Path) -> None:
                     dirs[:] = []
                     continue
                 for name in files:
+                    # a thread can't be canceled from outside: it checks between files
+                    if stop.is_set():
+                        return
                     file_path = root_path / name
                     zf.write(file_path, file_path.relative_to(prefix_root))
         os.replace(tmp_path, final_path)
@@ -68,7 +78,16 @@ def _build_assets_zip(media_dir: Path, final_path: Path) -> None:
 
 async def create_assets_dump(config: AppConfig, dest_without_ext: Path) -> Path:
     final_path = dest_without_ext.with_suffix(".zip")
-    await asyncio.to_thread(_build_assets_zip, config.media_dir, final_path)
+    stop = threading.Event()
+    build = asyncio.ensure_future(
+        asyncio.to_thread(_build_assets_zip, config.media_dir, final_path, stop)
+    )
+    try:
+        await asyncio.shield(build)
+    except asyncio.CancelledError:
+        stop.set()
+        await build
+        raise
     return final_path
 
 

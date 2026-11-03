@@ -62,6 +62,7 @@ from app.modules.settings.usecases import (
     RemoveBotProxyUseCase,
     ResetAppearanceSettingsUseCase,
     ResetBulkEmailSettingsUseCase,
+    ResetEmailSettingsUseCase,
     RestartBotUseCase,
     SetBotProxyUseCase,
     UpdateAccessSettingsUseCase,
@@ -247,6 +248,18 @@ async def update_email_settings(
             bulk_rate_per_minute=payload.bulk_rate_per_minute,
         ),
     )
+    return EmailSettingsResponse.model_validate(settings, from_attributes=True)
+
+
+@router.post(
+    "/email/actions/reset", response_model=EmailSettingsResponse, responses=error_responses(400)
+)
+@inject
+async def reset_email_settings(
+    use_case: FromDishka[ResetEmailSettingsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> EmailSettingsResponse:
+    settings = await use_case(actor)
     return EmailSettingsResponse.model_validate(settings, from_attributes=True)
 
 

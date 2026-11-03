@@ -273,6 +273,8 @@ async def test_own_stats_carry_the_program(
     assert {"reward_type", "reward_strategy", "reward_amounts"} <= program.keys()
     assert {"invitee_reward_type", "invitee_reward_amount"} <= program.keys()
     assert {"accrual_strategy", "max_level"} <= program.keys()
+    # max_level is 1 here: the levels that pay nothing stay out of a customer's view
+    assert program["reward_amounts"] == {"1": "1"}
 
 
 async def test_redeem_targets_list_the_actors_subscriptions_days_can_extend(

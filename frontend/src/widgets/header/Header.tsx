@@ -1,11 +1,11 @@
-import { ChevronDown, Menu, LogOut, RefreshCw, User as UserIcon } from "lucide-react";
+import { ChevronDown, Menu, LogOut, RefreshCw, User as UserIcon, Wrench } from "lucide-react";
 import { createPortal } from "react-dom";
 import { MobileMenu } from "@widgets/sidebar/MobileMenu";
 
 import { AnimatePresence } from "motion/react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { matchPath, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { useOnAccessSettingsSaved } from "@entities/settings/access-sync";
@@ -21,9 +21,11 @@ import { ACCESS_SECTION_ID } from "@features/access-settings/AccessSettingsForm"
 import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { IconButton } from "@shared/ui/IconButton";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Pressable } from "@shared/ui/Pressable";
+import { NAV_ITEMS } from "@widgets/sidebar/nav-items";
 
 // Popover grows out of its own top-right corner, toward the trigger.
 const POPOVER_MOTION = {
@@ -54,6 +56,10 @@ export function Header({ onLogout }: HeaderProps) {
   const pageTitle = usePageTitle(brandName);
   const location = useLocation();
   const isOverviewPage = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
+  // the profile and the debug page have no sidebar link
+  const pageIcon =
+    NAV_ITEMS.find((item) => matchPath({ path: item.to, end: item.end ?? false }, location.pathname))?.icon ??
+    (location.pathname.startsWith("/dashboard/profile") ? UserIcon : Wrench);
   const { refresh } = useRefreshSignal();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = useCallback(() => {
@@ -90,10 +96,13 @@ export function Header({ onLogout }: HeaderProps) {
   const header = (
     <header className={mobile
       ? "fixed inset-x-2 top-[calc(8px+env(safe-area-inset-top))] z-30 flex h-16 items-center justify-between gap-3 rounded-card border border-glass-border bg-surface/50 px-3 text-foreground shadow-2xl backdrop-blur-[28px] backdrop-saturate-150"
-      : "flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:gap-5 md:px-5 md:py-5"}>
-      <div className="flex items-center gap-2.5 max-md:min-w-0">
+      : "px-4 py-3 md:px-5 md:py-5"}>
+      {/* desktop: one 48px glass capsule across the page, title in it, 36px items 6px in; mobile: the bar is the frame */}
+      <div className={mobile ? "contents" : "glass-panel flex h-12 items-center justify-between gap-5 rounded-full p-1.5"}>
+      <div className="flex min-w-0 items-center gap-2.5">
         {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-5" /></IconButton>}
-        <span className="text-[21px] font-bold tracking-tight text-foreground max-md:truncate max-md:text-[17px]">{pageTitle}</span>
+        {!mobile && <IconCircle icon={pageIcon} header />}
+        <span className="truncate text-[21px] font-bold tracking-tight text-foreground max-md:text-[17px]">{pageTitle}</span>
         {!mobile && isOverviewPage && (
           <IconButton
             size="9"
@@ -106,9 +115,9 @@ export function Header({ onLogout }: HeaderProps) {
         )}
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-3 max-md:flex-none max-md:shrink-0 max-md:gap-2">
-        {/* desktop: one 48px glass capsule, 36px items 6px in; mobile keeps its bare bell and avatar */}
-        <div className={mobile ? "contents" : "glass-panel flex h-12 min-w-0 items-center gap-1 rounded-full p-1.5"}>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3 max-md:flex-none max-md:shrink-0 max-md:gap-2">
+        {/* mobile keeps its bare bell and avatar */}
+        <div className={mobile ? "contents" : "flex min-w-0 items-center gap-1"}>
         {!mobile && permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
         {!mobile && <HeaderSearch />}
@@ -180,6 +189,7 @@ export function Header({ onLogout }: HeaderProps) {
           </PortalPopover>
         </div>
         </div>
+      </div>
       </div>
     </header>
   );

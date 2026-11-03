@@ -57,12 +57,12 @@ function AllowedDomainsForm({ domains, canManage, onSaved }: Omit<AllowedDomains
       <DialogHeader icon={MailCheck} title={t("settings.cabinetAuth.allowedDomains")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-1.5 p-5">
+        <div className="flex flex-col gap-1.5 p-4">
           <ChipsInput glass values={values} onChange={setValues} normalize={normalizeDomain} placeholder="example.com" />
           <span className="text-[12px] text-muted-foreground">{t("settings.cabinetAuth.allowedDomainsHint")}</span>
         </div>
         {canManage && (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] px-5 py-3.5">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
             <Button variant="glass" onClick={close}>
               {t("common.cancel")}
             </Button>

@@ -156,7 +156,7 @@ async def test_get_settings_returns_defaults_when_no_row(
     settings = await referral_repository.get_settings()
     assert settings.enabled is False
     assert settings.max_level == 1
-    assert settings.reward_amounts == {}
+    assert settings.reward_amounts == {1: Decimal(1), 2: Decimal(1), 3: Decimal(1)}
 
 
 async def test_update_settings_creates_row_and_persists_reward_amounts(

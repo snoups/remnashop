@@ -30,6 +30,6 @@ async def build_user_loyalty(
         discount=user.loyalty_discount,
         excluded=user.loyalty_excluded,
         spent=spent,
-        next_tier=next_tier(spent, settings.tiers),
+        next_tier=next_tier(spent, settings.tiers) if settings.enabled else None,
         currency=pricing.anchor_currency,
     )

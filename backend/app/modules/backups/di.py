@@ -6,6 +6,7 @@ from app.modules.backups.dispatch import RunBackupDispatch
 from app.modules.backups.repository import BackupRepository
 from app.modules.backups.tasks import run_backup_task
 from app.modules.backups.usecases import (
+    CancelBackupRunUseCase,
     CreateBackupRunUseCase,
     DeleteBackupRunUseCase,
     DownloadBackupRunUseCase,
@@ -33,6 +34,7 @@ class BackupsProvider(Provider):
         ListBackupRunsUseCase,
         GetBackupRunUseCase,
         DownloadBackupRunUseCase,
+        CancelBackupRunUseCase,
         DeleteBackupRunUseCase,
         RunBackupUseCase,
         RunScheduledBackupUseCase,

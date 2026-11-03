@@ -35,7 +35,7 @@ export function AnnouncementDialog({ announcement, onClose }: AnnouncementDialog
       />
 
       {text && (
-        <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-5 py-4 [--dialog-pad:1.25rem]">
           <p className="whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">{text}</p>
         </div>
       )}

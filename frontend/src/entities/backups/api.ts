@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiGetRaw, apiPatch, apiPost } from "@shared/api/http";
 
 export type BackupKind = "DATABASE" | "ASSETS";
-export type BackupRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+export type BackupRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELED";
 
 export interface BackupSettings {
   enabled: boolean;
@@ -77,6 +77,10 @@ export interface BackupStats {
 
 export function getBackupStats(signal?: AbortSignal): Promise<BackupStats> {
   return apiGet<BackupStats>("/backups/summary", signal);
+}
+
+export function cancelBackupRun(runId: number): Promise<BackupRun> {
+  return apiPost<BackupRun, Record<string, never>>(`/backups/runs/${runId}/actions/cancel`, {});
 }
 
 export function createBackupRun(kind: BackupKind): Promise<BackupRun> {

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { VariableOption } from "@entities/dialogs/api";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
 import { Pressable } from "@shared/ui/Pressable";
@@ -66,6 +67,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
       </Pressable>
 
       <PortalPopover
+        glass
         open={isOpen}
         triggerRef={triggerRef}
         popoverRef={popoverRef}
@@ -78,7 +80,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
         className="w-60 p-1.5"
 >
         {variables.length > SEARCH_THRESHOLD && (
-          <label className="mb-1.5 flex h-8 items-center gap-2 rounded-full border border-glass-border bg-white/[0.03] px-3">
+          <label className="glass-well mb-1.5 flex h-8 items-center gap-2 rounded-full px-3">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
               autoFocus
@@ -86,15 +88,15 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t("dialogs.inspector.variableSearch")}
-              className="w-full min-w-0 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
+              className="w-full min-w-0 bg-transparent text-[12px] text-foreground outline-none placeholder:text-muted-foreground"
             />
             {/* 20px in the 30px inner height: 5px inset (px-3 minus 7) */}
             {query && <SearchClearButton size="5" className="-mr-[7px]" onClear={() => setQuery("")} />}
           </label>
         )}
-        <div className="max-h-72 overflow-y-auto">
+        <div className={`max-h-72 ${POPOVER_SCROLL_CLASS}`}>
           {groups.length === 0 && (
-            <p className="px-2.5 py-2 text-[12.5px] text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
+            <p className="px-2.5 py-2 text-[12px] text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
           )}
           {groups.map(({ category, items }) => (
             <div key={category} className="mb-1 last:mb-0">

@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, Globe, Loader2, Plus, RefreshCw, SearchX, Trash2, X } from "lucide-react";
+import { Ban, Globe, Loader2, Mail, Plus, RefreshCw, SearchX, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,21 +21,24 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
+import { Badge } from "@shared/ui/Badge";
+import { TelegramIcon } from "@shared/ui/BrandIcons";
+import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { FieldHint } from "@shared/ui/FieldHint";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
 import { IconButton } from "@shared/ui/IconButton";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
-import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { Button } from "@shared/ui/Button";
-import { Tag } from "@shared/ui/Tag";
-import { TextInput } from "@shared/ui/TextInput";
 import { SearchField } from "@shared/ui/SearchField";
-import { Field } from "@shared/ui/Field";
-import { LIST_BODY_CLASS } from "@shared/ui/classes";
+import { Spinner } from "@shared/ui/Spinner";
 import { formatDateTime } from "@shared/lib/relative-time";
 
-import { BlacklistCard, KindBadge } from "./BlacklistCard";
+import { BlacklistCard } from "./BlacklistCard";
 import { BlacklistMatchesCard } from "./BlacklistMatchesCard";
 
 // Sync is fire-and-forget on the backend; refetching after a short delay
@@ -93,7 +96,7 @@ function BlacklistContent({ permissions }: { permissions: Permission[] }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {canViewSources && (
         <BlacklistSourcesCard
           state={sourcesState}
@@ -167,6 +170,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
   };
 
   const [removingKey, setRemovingKey] = useState<string | null>(null);
+  const canAdd = permissions.includes("BLACKLIST_ENTRY_ADD");
 
   const handleRemoveEntry = async (row: BlacklistEntryRow) => {
     setRemovingKey(`${row.kind}:${row.value}`);
@@ -181,39 +185,36 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
 
   return (
     <BlacklistCard icon={Ban} title={t("blacklist.manual.title")} description={t("blacklist.manual.description")}>
-      {permissions.includes("BLACKLIST_ENTRY_ADD") && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleAddEntry();
-          }}
-          className="mt-4 flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
-        >
-          <div className="flex gap-2">
-            <TextInput
-              type="text"
-              value={entryValue}
-              onChange={(event) => setEntryValue(event.target.value)}
-              placeholder={t("blacklist.manual.valuePlaceholder")}
-              aria-invalid={isEntryInvalid}
-              className="min-w-0 flex-1"
-            />
-            <Button
-              variant="accent"
-              size="field"
-              type="submit"
-              disabled={isAddingEntry || !trimmedEntry || isEntryInvalid}
-            >
-              <Plus className="size-3.5" />
-              {t("common.add")}
-            </Button>
-          </div>
-          {isEntryInvalid && (
-            <p id="blacklist-entry-error" className="-mt-1 text-[12px] text-error">
-              {t("blacklist.manual.valueInvalid")}
-            </p>
-          )}
-        </form>
+      {canAdd && (
+        <SectionFields>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleAddEntry();
+            }}
+            className="flex flex-col gap-1.5"
+          >
+            <div className="flex min-w-0 gap-2">
+              <Input
+                className="flex-1"
+                value={entryValue}
+                onChange={(event) => setEntryValue(event.target.value)}
+                placeholder={t("blacklist.manual.valuePlaceholder")}
+                aria-invalid={isEntryInvalid}
+              />
+              <Button
+                variant="glassAccent"
+                type="submit"
+                icon={Plus}
+                isLoading={isAddingEntry}
+                disabled={!trimmedEntry || isEntryInvalid}
+              >
+                {t("common.add")}
+              </Button>
+            </div>
+            {isEntryInvalid && <p className="text-[12px] text-error">{t("blacklist.manual.valueInvalid")}</p>}
+          </form>
+        </SectionFields>
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
@@ -224,36 +225,38 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
 
       {rows.length > 0 && (
         <>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <SearchField
-              id="blacklist-search"
-              label={t("blacklist.manual.searchPlaceholder")}
-              hideLabel
-              placeholder={t("blacklist.manual.searchPlaceholder")}
-              value={search}
-              onChange={setSearch}
-            />
-            <div className="w-full sm:w-64">
-              <PillTabs
-                items={(["ALL", "TELEGRAM_ID", "EMAIL"] as const).map((kind) => ({
-                  key: kind,
-                  label: kind === "ALL" ? t("blacklist.manual.filterAll") : kindLabel(kind),
-                }))}
-                activeKey={filter}
-                onSelect={setFilter}
-                size="field"
+          <SectionFields divided={canAdd}>
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchField
+                id="blacklist-search"
+                label={t("blacklist.manual.searchPlaceholder")}
+                hideLabel
+                compact
+                placeholder={t("blacklist.manual.searchPlaceholder")}
+                value={search}
+                onChange={setSearch}
               />
+              <div className="w-full sm:w-64">
+                <PillTabs
+                  items={(["ALL", "TELEGRAM_ID", "EMAIL"] as const).map((kind) => ({
+                    key: kind,
+                    label: kind === "ALL" ? t("blacklist.manual.filterAll") : kindLabel(kind),
+                  }))}
+                  activeKey={filter}
+                  onSelect={setFilter}
+                />
+              </div>
             </div>
-          </div>
+          </SectionFields>
 
-          <ul className={`mt-2 ${LIST_BODY_CLASS}`}>
+          <SectionRows flush>
             {visible.map((row) => (
-              <li
+              <Row
                 key={`${row.kind}:${row.value}`}
-                className="flex items-center gap-2.5 rounded-full py-1.5 pl-3 pr-1.5 transition-colors hover:bg-white/[0.04]"
+                icon={row.kind === "TELEGRAM_ID" ? TelegramIcon : Mail}
+                label={<span className="min-w-0 truncate font-mono">{row.value}</span>}
+                description={kindLabel(row.kind)}
               >
-                <KindBadge kind={row.kind} label={kindLabel(row.kind)} />
-                <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">{row.value}</span>
                 {permissions.includes("BLACKLIST_ENTRY_REMOVE") && (
                   <IconButton
                     size="8"
@@ -268,9 +271,9 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
                     )}
                   </IconButton>
                 )}
-              </li>
+              </Row>
             ))}
-          </ul>
+          </SectionRows>
           {filtered.length === 0 && (
             <EmptyState icon={SearchX} text={t("blacklist.manual.noResults")} />
           )}
@@ -305,6 +308,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
   const [pendingRemoveSource, setPendingRemoveSource] = useState<BlacklistSource | null>(null);
 
   const sources = state.kind === "ready" ? state.data : [];
+  const canAddSource = permissions.includes("BLACKLIST_SOURCE_ADD");
 
   const handleAddSource = async () => {
     const url = sourceUrl.trim();
@@ -362,57 +366,53 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
       description={t("blacklist.sources.description")}
       action={
         permissions.includes("BLACKLIST_SYNC") && (
-          <Button
-            variant="secondary"
-            onClick={() => void handleSync()}
-            disabled={isSyncing}
-          >
-            <RefreshCw className={`size-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+          <Button variant="glass" icon={RefreshCw} onClick={() => void handleSync()} isLoading={isSyncing}>
             {t("blacklist.sources.syncNow")}
           </Button>
         )
       }
     >
-      {permissions.includes("BLACKLIST_SOURCE_ADD") && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleAddSource();
-          }}
-          className="mt-4 flex flex-col gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3"
-        >
-          <Field label={t("blacklist.sources.urlLabel")} htmlFor="blacklist-source-url" aside={<span className="text-error">*</span>}>
-            <TextInput
-              id="blacklist-source-url"
-              type="url"
-              value={sourceUrl}
-              onChange={(event) => setSourceUrl(event.target.value)}
-              placeholder={t("blacklist.sources.urlPlaceholder")}
-              className="min-w-0"
-            />
-          </Field>
-          <div className="flex items-end gap-2">
-            <Field label={t("blacklist.sources.nameLabel")} htmlFor="blacklist-source-name" className="min-w-0 flex-1">
-              <TextInput
-                id="blacklist-source-name"
-                type="text"
-                value={sourceName}
-                onChange={(event) => setSourceName(event.target.value)}
-                placeholder={t("blacklist.sources.namePlaceholder")}
-                className="min-w-0"
+      {canAddSource && (
+        <SectionFields>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleAddSource();
+            }}
+            className="flex flex-col gap-3"
+          >
+            <Field label={t("blacklist.sources.urlLabel")} htmlFor="blacklist-source-url" required>
+              <Input
+                id="blacklist-source-url"
+                type="url"
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                placeholder={t("blacklist.sources.urlPlaceholder")}
               />
             </Field>
-            <Button
-              variant="accent"
-              size="field"
-              type="submit"
-              disabled={isAddingSource || !sourceUrl.trim()}
-            >
-              <Plus className="size-3.5" />
-              {t("blacklist.sources.add")}
-            </Button>
-          </div>
-        </form>
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Field label={t("blacklist.sources.nameLabel")} htmlFor="blacklist-source-name">
+                  <Input
+                    id="blacklist-source-name"
+                    value={sourceName}
+                    onChange={(event) => setSourceName(event.target.value)}
+                    placeholder={t("blacklist.sources.namePlaceholder")}
+                  />
+                </Field>
+              </div>
+              <Button
+                variant="glassAccent"
+                type="submit"
+                icon={Plus}
+                isLoading={isAddingSource}
+                disabled={!sourceUrl.trim()}
+              >
+                {t("common.add")}
+              </Button>
+            </div>
+          </form>
+        </SectionFields>
       )}
 
       {state.kind === "loading" && <Spinner size="card" />}
@@ -422,62 +422,59 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
       )}
 
       {sources.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-2">
+        <SectionRows divided={canAddSource}>
           {sources.map((source) => (
-            <li
-              key={source.id}
-              className={`rounded-xl bg-white/[0.03] p-3 transition-opacity ${source.enabled ? "" : "opacity-60"}`}
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                    !source.enabled ? "bg-muted-foreground" : source.last_error ? "bg-warning" : "bg-success"
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-foreground">{source.name ?? source.url}</p>
-                  {source.name && (
-                    <p className="truncate font-mono text-[12px] text-muted-foreground">{source.url}</p>
-                  )}
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <Tag>
-                      {t("blacklist.sources.entriesCount", { count: source.entries_count })}
-                    </Tag>
-                    <Tag>
-                      {source.last_synced_at
-                        ? t("blacklist.sources.lastSynced", {
-                            date: formatDateTime(source.last_synced_at, i18n.language),
-                          })
-                        : t("blacklist.sources.neverSynced")}
-                    </Tag>
-                  </div>
-                </div>
-                {permissions.includes("BLACKLIST_SOURCE_UPDATE") && (
-                  <Switch
-                    checked={source.enabled}
-                    onChange={(checked) => void handleToggleSource(source, checked)}
-                  />
-                )}
+            <div key={source.id} className={`transition-opacity ${source.enabled ? "" : "opacity-60"}`}>
+              <Row
+                icon={Globe}
+                label={
+                  <>
+                    <FieldHint
+                      text={source.url}
+                      content={<span className="break-all">{source.url}</span>}
+                      side="bottom"
+                      glass
+                      className="min-w-0"
+                      trigger={<span className="min-w-0 cursor-help truncate">{source.name ?? source.url}</span>}
+                    />
+                    {source.last_error && (
+                      <FieldHint
+                        text={source.last_error}
+                        side="bottom"
+                        error
+                        trigger={
+                          <Badge borderless tone="error" className="cursor-help">
+                            {t("blacklist.sources.errorBadge")}
+                          </Badge>
+                        }
+                      />
+                    )}
+                  </>
+                }
+                description={
+                  <p className="truncate">
+                    {t("blacklist.sources.entriesCount", { count: source.entries_count })}
+                    {" · "}
+                    {source.last_synced_at
+                      ? t("blacklist.sources.lastSynced", {
+                          date: formatDateTime(source.last_synced_at, i18n.language),
+                        })
+                      : t("blacklist.sources.neverSynced")}
+                  </p>
+                }
+              >
                 {permissions.includes("BLACKLIST_SOURCE_REMOVE") && (
-                  <IconButton
-                    size="8"
-                    tone="danger"
-                    onClick={() => setPendingRemoveSource(source)}
-                    className="-mt-1"
-                  >
+                  <IconButton size="8" tone="danger" onClick={() => setPendingRemoveSource(source)}>
                     <Trash2 className="size-4" />
                   </IconButton>
                 )}
-              </div>
-              {source.last_error && (
-                <div className="mt-2.5 flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1.5 text-[12px] text-warning">
-                  <AlertTriangle className="size-3.5 shrink-0" />
-                  <span className="truncate">{source.last_error}</span>
-                </div>
-              )}
-            </li>
+                {permissions.includes("BLACKLIST_SOURCE_UPDATE") && (
+                  <Switch checked={source.enabled} onChange={(checked) => void handleToggleSource(source, checked)} />
+                )}
+              </Row>
+            </div>
           ))}
-        </ul>
+        </SectionRows>
       )}
 
       {pendingRemoveSource && (

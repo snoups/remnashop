@@ -261,7 +261,7 @@ export function HeaderSearch() {
   return (
     <div ref={rootRef} className="relative flex w-80 shrink">
       <motion.label
-        className="glass-well group relative flex h-9 w-full items-center gap-2 rounded-full px-3.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/50"
+        className="glass-well group relative flex h-9 w-full items-center gap-2 rounded-full px-3.5 ring-inset focus-within:ring-1 focus-within:ring-primary"
       >
         <Ripple />
         <Search className="size-4 shrink-0 text-muted-foreground transition-colors group-not-focus-within:group-hover:text-foreground group-focus-within:text-primary" />

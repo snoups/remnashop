@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from pydantic import ValidationError
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.ports import EventPublisher
-from app.modules.connect_guide.catalog import ConnectCatalog
+from app.modules.connect_guide.catalog import ConnectCatalog, DeepLinkButton
 from app.modules.connect_guide.defaults import DEFAULT_CATALOG
 from app.modules.connect_guide.dto import ResetConnectGuideDto, UpdateConnectGuideDto
 from app.modules.connect_guide.repository import ConnectGuideRepository
@@ -122,3 +122,20 @@ async def test_round_trip_reset_and_public_view(
     )
     assert (reset.enabled, reset.is_default) == (True, True)
     assert await public.execute() == DEFAULT_CATALOG
+
+
+@pytest.mark.parametrize(
+    ("template", "sent", "expected"),
+    [
+        ("happ://add/{{SUBSCRIPTION_LINK}}", "component", "raw"),
+        ("clash://install-config?url={{SUBSCRIPTION_LINK}}", "raw", "component"),
+        ("x://y?a=1&url={{SUBSCRIPTION_LINK}}", None, "component"),
+    ],
+)
+def test_deep_link_encoding_comes_from_the_template(
+    template: str, sent: Optional[str], expected: str
+) -> None:
+    payload = {"kind": "deep_link", "label": {"en": "Add"}, "template": template}
+    if sent is not None:
+        payload["encode"] = sent
+    assert DeepLinkButton.model_validate(payload).encode == expected

@@ -9,6 +9,7 @@ import { localeLabel } from "@shared/i18n/locale-label";
 import { toast } from "@shared/lib/toast";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -109,6 +110,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
       </Pressable>
 
       <PortalPopover
+        glass
         open={isOpen}
         triggerRef={triggerRef}
         popoverRef={popoverRef}
@@ -123,7 +125,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
 >
         {/* the scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded right corners */}
-        <div className="max-h-72 overflow-y-auto">
+        <div className={`max-h-72 ${POPOVER_SCROLL_CLASS}`}>
           {active.map((locale) => row(locale, true))}
           {active.length > 0 && available.length > 0 && (
             <div className="my-1 h-px bg-white/[0.08]" />

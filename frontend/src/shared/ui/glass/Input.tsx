@@ -7,7 +7,7 @@ import { IconButton } from "@shared/ui/IconButton";
 // sunken well; focus, an invalid value (aria-invalid or the browser's own check) and disabled
 // are read off the control inside, so the ring sits on the well
 const WELL_CLASS =
-  "glass-well transition-shadow focus-within:ring-2 focus-within:ring-primary/50 has-[[aria-invalid=true]]:ring-2 has-[[aria-invalid=true]]:ring-error/60 has-[[data-invalid-native]]:ring-2 has-[[data-invalid-native]]:ring-error/60 has-disabled:cursor-not-allowed has-disabled:opacity-40";
+  "glass-well ring-inset focus-within:ring-1 focus-within:ring-primary has-[[aria-invalid=true]]:ring-1 has-[[aria-invalid=true]]:ring-error has-[[data-invalid-native]]:ring-1 has-[[data-invalid-native]]:ring-error has-disabled:cursor-not-allowed has-disabled:opacity-40";
 // number inputs drop the browser's spinner: the well has no room for it, and arrow keys still step
 const CONTROL_CLASS =
   "min-w-0 bg-transparent outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";

@@ -309,6 +309,7 @@ class BackupRunStatus(UpperStrEnum):
     RUNNING = auto()
     COMPLETED = auto()
     FAILED = auto()
+    CANCELED = auto()
 
 
 class BlacklistKind(UpperStrEnum):

@@ -16,6 +16,7 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
+    model_validator,
 )
 
 from app.core.enums import Locale
@@ -72,9 +73,18 @@ class ExternalButton(_Value):
 class DeepLinkButton(_Value):
     kind: Literal["deep_link"]
     label: LocalizedLine
-    # {{SUBSCRIPTION_LINK}} becomes the customer's link, as is (`raw`) or percent-encoded
+    # {{SUBSCRIPTION_LINK}} becomes the customer's link: percent-encoded in a query, where its own
+    # ?, &, = and # would cut it short, as is in a path. Derived from the template, never sent.
     template: _Address
-    encode: Literal["raw", "component"]
+    encode: Literal["raw", "component"] = "raw"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_encode(cls, data: object) -> object:
+        if not isinstance(data, dict) or not isinstance(data.get("template"), str):
+            return data
+        before_token = data["template"].partition(SUBSCRIPTION_LINK_TOKEN)[0]
+        return {**data, "encode": "component" if "?" in before_token else "raw"}
 
     @field_validator("template")
     @classmethod

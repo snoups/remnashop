@@ -68,6 +68,10 @@ function toLocalInput(iso: string): string {
 
 export function BroadcastEditorPage() {
   const { id } = useParams();
+  const permissions = usePermissions();
+  if (!permissions.includes(id ? "BROADCASTS_DETAIL_VIEW" : "BROADCASTS_CREATE")) {
+    return <Navigate to="/dashboard" replace />;
+  }
   // a new broadcast moves to /:id/edit on its first save; a fresh mount picks up the saved one
   return <BroadcastEditorLoader key={id ?? "new"} id={id ? Number(id) : null} />;
 }

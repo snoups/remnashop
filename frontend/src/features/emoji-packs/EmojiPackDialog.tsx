@@ -5,8 +5,8 @@ import type { EmojiPack } from "@entities/emoji-packs/api";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { Modal } from "@shared/ui/Modal";
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Tag } from "@shared/ui/Tag";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Tag } from "@shared/ui/glass/Tag";
 import { Pressable } from "@shared/ui/Pressable";
 
 const COPIED_MS = 1200;
@@ -18,7 +18,7 @@ interface EmojiPackDialogProps {
 
 export function EmojiPackDialog({ pack, onClose }: EmojiPackDialogProps) {
   return (
-    <Modal onClose={onClose} size="lg" scrollable>
+    <Modal onClose={onClose} size="lg" scrollable material="glass">
       <EmojiPackDialogBody pack={pack} />
     </Modal>
   );
@@ -44,21 +44,17 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
       <DialogHeader
         glyph={<PremiumEmoji item={pack.items[0]} size={18} />}
         title={pack.set_name}
-        badges={
-          <Tag>
-            {pack.items.length}
-          </Tag>
-        }
+        actions={<Tag subtle size="md">{pack.items.length}</Tag>}
       />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <div className="grid grid-cols-8 gap-2">
           {pack.items.map((item) => (
             <Pressable
               key={item.custom_emoji_id}
               type="button"
               onClick={() => handleCopy(item.custom_emoji_id)}
-              className="flex aspect-square cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]"
+              className="flex aspect-square cursor-pointer items-center justify-center rounded-xl transition-colors hover:bg-white/[0.06]"
             >
               {copiedId === item.custom_emoji_id ? (
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-primary">

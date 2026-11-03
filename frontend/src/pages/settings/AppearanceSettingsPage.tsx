@@ -2,7 +2,7 @@ import { AppearanceSettingsForm } from "@features/appearance-settings/Appearance
 
 export function AppearanceSettingsPage() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <AppearanceSettingsForm target="dashboard" />
       <AppearanceSettingsForm target="cabinet" />
     </div>

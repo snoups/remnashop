@@ -43,6 +43,10 @@ class UpdateBotSettingsRequest(BaseModel):
     drop_pending_updates: Optional[bool] = None
 
 
+MAX_ACTIVE_SUBSCRIPTIONS_LIMIT: Final[int] = 10
+MAX_RESET_COOLDOWN_HOURS: Final[int] = 9999
+
+
 class ShopSettingsResponse(BaseModel):
     max_active_subscriptions: Optional[int]
     device_single_reset_enabled: bool
@@ -58,18 +62,33 @@ class ShopSettingsResponse(BaseModel):
 
 
 class UpdateShopSettingsRequest(BaseModel):
-    max_active_subscriptions: Optional[int] = Field(default=None, ge=1)
+    max_active_subscriptions: Optional[int] = Field(
+        default=None, ge=1, le=MAX_ACTIVE_SUBSCRIPTIONS_LIMIT
+    )
     device_single_reset_enabled: Optional[bool] = None
-    device_single_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    device_single_reset_cooldown_hours: Optional[int] = Field(
+        default=None, ge=0, le=MAX_RESET_COOLDOWN_HOURS
+    )
     device_all_reset_enabled: Optional[bool] = None
-    device_all_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    device_all_reset_cooldown_hours: Optional[int] = Field(
+        default=None, ge=0, le=MAX_RESET_COOLDOWN_HOURS
+    )
     link_reset_enabled: Optional[bool] = None
-    link_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    link_reset_cooldown_hours: Optional[int] = Field(
+        default=None, ge=0, le=MAX_RESET_COOLDOWN_HOURS
+    )
     referral_reset_enabled: Optional[bool] = None
-    referral_reset_cooldown_hours: Optional[int] = Field(default=None, ge=0)
+    referral_reset_cooldown_hours: Optional[int] = Field(
+        default=None, ge=0, le=MAX_RESET_COOLDOWN_HOURS
+    )
     # null or "" clears either
     support_telegram: Optional[str] = None
     support_url: Optional[str] = Field(default=None, pattern=r"^https://.+", max_length=512)
+
+    @field_validator("max_active_subscriptions", mode="before")
+    @classmethod
+    def zero_is_unlimited(cls, value: object) -> object:
+        return None if value == 0 else value
 
     @field_validator("support_telegram", "support_url", mode="before")
     @classmethod
@@ -240,6 +259,21 @@ class UpdateEmailSettingsRequest(BaseModel):
     )
     bulk_from_name: Optional[str] = Field(None, max_length=100, pattern=_HEADER_TEXT)
     bulk_rate_per_minute: Optional[int] = Field(None, ge=1, le=1000)
+
+    @field_validator(
+        "host",
+        "username",
+        "from_address",
+        "from_name",
+        "bulk_host",
+        "bulk_username",
+        "bulk_from_address",
+        "bulk_from_name",
+        mode="before",
+    )
+    @classmethod
+    def _strip(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class CabinetAuthSettingsResponse(BaseModel):

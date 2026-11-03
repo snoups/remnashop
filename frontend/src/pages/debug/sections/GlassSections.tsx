@@ -1,4 +1,4 @@
-import { Bot, Copy, Globe, Hash, Layers, Settings, User } from "lucide-react";
+import { Bot, Copy, Globe, Hash, Layers, RefreshCw, Settings, User } from "lucide-react";
 import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
@@ -31,12 +31,53 @@ export function GlassSection() {
 
   return (
     <DebugSection id="glass">
+      <Specimen name="Row / SectionRows" usage={k("u.glassRowVsRows")} wide stage="stretch">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] text-muted-foreground">{k("s.rowOnly")}</p>
+            <div className="rounded-[30px] outline-1 outline-dashed outline-primary">
+              <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
+                <Switch checked={on} onChange={setOn} />
+              </Row>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] text-muted-foreground">{k("s.rowsOnly")}</p>
+            <div className="rounded-2xl outline-1 outline-dashed outline-warning">
+              <SectionRows flush>
+                <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">1</div>
+                <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">2</div>
+                <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">3</div>
+              </SectionRows>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] text-muted-foreground">{k("s.rowsTogether")}</p>
+            <div className="rounded-2xl outline-1 outline-dashed outline-warning">
+              <SectionRows flush>
+                <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
+                  <Switch checked={on} onChange={setOn} />
+                </Row>
+                <Row icon={Hash} label={k("s.code")} description={k("s.nameHint")}>
+                  <Tag>12</Tag>
+                </Row>
+                <Row icon={Globe} label={k("s.name")} description={k("s.nameHint")}>
+                  <Button variant="glass" size="sm">
+                    {k("s.edit")}
+                  </Button>
+                </Row>
+              </SectionRows>
+            </div>
+          </div>
+        </div>
+      </Specimen>
+
       <Specimen name="Section · SectionRows · Row · SectionFields" usage={k("u.glassSection")} wide stage="stretch">
         <Section
           icon={Settings}
           title={k("s.sectionTitle")}
           description={k("s.body")}
-          aside={<Button variant="glass">{k("s.refresh")}</Button>}
+          aside={<Button variant="glass" icon={RefreshCw}>{k("s.refresh")}</Button>}
           footer={<SaveFooter variant="glassAccent" dirty saving={false} onSave={() => {}} />}
         >
           <SectionRows>
@@ -133,7 +174,7 @@ export function GlassSection() {
         {dialog && (
           <Modal onClose={() => setDialog(false)} material="glass">
             <DialogHeader icon={Layers} title={k("s.dialogTitle")} />
-            <p className="p-5 text-[13px] text-muted-foreground">{k("s.modalText")}</p>
+            <p className="p-4 text-[13px] text-muted-foreground">{k("s.modalText")}</p>
           </Modal>
         )}
       </Specimen>

@@ -20,7 +20,7 @@ export function LoadMoreButton({ onClick, shown, total, isLoading = false, class
       type="button"
       onClick={onClick}
       disabled={isLoading}
-      className={`relative flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-border px-4 text-sm font-medium text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed ${className}`}
+      className={`relative flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-4 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed ${className}`}
     >
       <Ripple />
       {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <ChevronDown className="size-3.5" />}

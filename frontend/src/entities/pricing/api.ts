@@ -118,34 +118,16 @@ export function adjustBasePrices(body: AdjustBasePricesBody): Promise<PriceBook>
   return apiPost<PriceBook, AdjustBasePricesBody>("/pricing/actions/adjust-base-prices", body);
 }
 
-export function setPlanDurationOverride(
-  planId: number,
-  days: number,
-  currency: Currency,
-  price: string | null,
-): Promise<void> {
-  return apiPut<unknown, { price: string | null }>(
-    `/plans/${planId}/durations/${days}/override/${currency}`,
-    { price },
-  ).then(() => undefined);
+export interface SetMatrixPricesBody {
+  plan_base_prices: { plan_id: number; days: number; base_price: string }[];
+  plan_overrides: { plan_id: number; days: number; currency: Currency; price: string | null }[];
+  addon_base_prices: { addon_id: number; base_price: string }[];
+  addon_overrides: { addon_id: number; currency: Currency; price: string | null }[];
 }
 
-export function setPlanDurationBasePrice(planId: number, days: number, basePrice: string): Promise<void> {
-  return apiPut<unknown, { base_price: string }>(`/plans/${planId}/durations/${days}/base-price`, {
-    base_price: basePrice,
-  }).then(() => undefined);
-}
-
-export function setAddonOverride(addonId: number, currency: Currency, price: string | null): Promise<void> {
-  return apiPut<unknown, { price: string | null }>(`/addons/${addonId}/override/${currency}`, {
-    price,
-  }).then(() => undefined);
-}
-
-export function setAddonBasePrice(addonId: number, basePrice: string): Promise<void> {
-  return apiPut<unknown, { base_price: string }>(`/addons/${addonId}/base-price`, {
-    base_price: basePrice,
-  }).then(() => undefined);
+/** Every edit of the matrix in one transaction: all of them land, or none. */
+export function setMatrixPrices(body: SetMatrixPricesBody): Promise<PriceBook> {
+  return apiPost<PriceBook, SetMatrixPricesBody>("/pricing/bulk/set-prices", body);
 }
 
 /** "Стандарт · 30 дн." for a plan duration, just the name for an add-on. */

@@ -20,13 +20,15 @@ const SHAPE_CLASS = {
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
   shape?: keyof typeof SHAPE_CLASS;
+  /** no edge: the tone's tint alone */
+  borderless?: boolean;
 }
 
 /** Status pill: uppercase, bordered, colored by tone; shape="count" for a number. */
-export function Badge({ tone = "neutral", shape = "pill", className = "", ...props }: BadgeProps) {
+export function Badge({ tone = "neutral", shape = "pill", borderless = false, className = "", ...props }: BadgeProps) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-semibold ${SHAPE_CLASS[shape]} ${TONE_CLASS[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full ${borderless ? "" : "border"} font-semibold ${SHAPE_CLASS[shape]} ${TONE_CLASS[tone]} ${className}`}
       {...props}
     />
   );

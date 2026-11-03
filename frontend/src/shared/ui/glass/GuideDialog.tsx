@@ -9,18 +9,28 @@ import { Modal } from "@shared/ui/Modal";
 
 /** A ? button (32px with a 14px icon, a Row's) opening a glass help dialog; body text 13px, step groups
  *  divided by lines. */
-export function GuideDialog({ title, children }: { title: string; children: ReactNode }) {
+export function GuideDialog({
+  title,
+  header = false,
+  children,
+}: {
+  title: string;
+  /** in a Section's header, among its 36px glass buttons */
+  header?: boolean;
+  children: ReactNode;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>
       <IconButton
-        size="8"
+        size={header ? "9" : "8"}
+        tone={header ? "glass" : "default"}
         onClick={(event) => {
           event.stopPropagation();
           setIsOpen(true);
         }}
       >
-        <CircleHelp className="size-3.5" />
+        <CircleHelp className={header ? "size-4 text-foreground/90" : "size-3.5"} />
       </IconButton>
 
       {isOpen && (
@@ -29,7 +39,7 @@ export function GuideDialog({ title, children }: { title: string; children: Reac
           <Modal onClose={() => setIsOpen(false)} size="lg" scrollable material="glass">
             <DialogHeader icon={CircleHelp} title={title} />
             {/* each step group under a line, 20px apart; body 13px at 1.6 so long instructions don't run together */}
-            <div className="scroll-fade-y flex min-h-0 flex-col gap-5 overflow-y-auto p-5 text-[13px] leading-[1.6] text-foreground/85 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
+            <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-[13px] leading-[1.6] text-foreground/85 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
               {children}
             </div>
           </Modal>
@@ -54,7 +64,8 @@ export function GuideCopy({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** An accent note in a guide: a tip the admin shouldn't miss. className: layout only. */
+/** An accent note in a guide: a tip the admin shouldn't miss. Out of the body's 16px padding to 12px off
+ *  the dialog's edge, 12px corners concentric with its 24px. className: layout only. */
 export function GuideTip({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <p className={`rounded-2xl border border-primary/35 bg-primary/15 px-3.5 py-2.5 text-primary ${className}`}>{children}</p>;
+  return <p className={`-mx-1 rounded-xl border border-primary/35 bg-primary/15 px-3 py-2.5 text-primary ${className}`}>{children}</p>;
 }

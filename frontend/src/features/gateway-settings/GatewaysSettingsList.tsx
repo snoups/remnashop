@@ -8,10 +8,9 @@ import {
   type GatewayCatalogEntry,
 } from "@entities/gateways/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { Spinner } from "@shared/ui/Spinner";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
 
 import { GatewaySettingsCard } from "./GatewaySettingsCard";
 
@@ -30,19 +29,13 @@ export function GatewaysSettingsList() {
   const [state, , setData] = useAsyncResource(loadGatewaysData);
 
   return (
-    <Card>
-      <CardHeader
-        icon={CreditCard}
-        title={t("settings.gateways.title")}
-        description={t("settings.gateways.description")}
-      />
-
+    <Section icon={CreditCard} title={t("settings.gateways.title")} description={t("settings.gateways.description")}>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && (
         <ErrorState text={t("common.loadError")} />
       )}
       {state.kind === "ready" && (
-        <div className="mt-4 flex flex-col [&>:not(:last-child)>:first-child]:border-b [&>:not(:last-child)>:first-child]:border-border/50">
+        <SectionRows>
           {state.data.gateways.map((gateway) => {
             const entry = state.data.catalog.find((candidate) => candidate.type === gateway.type);
             return (
@@ -62,8 +55,8 @@ export function GatewaysSettingsList() {
               />
             );
           })}
-        </div>
+        </SectionRows>
       )}
-    </Card>
+    </Section>
   );
 }

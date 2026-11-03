@@ -1,5 +1,6 @@
 import { useKit } from "@pages/debug/use-kit";
 import { GlassSettingsMockup } from "@pages/debug/GlassSettingsMockup";
+import { OldPricingPreview } from "@pages/debug/old-pricing/OldPricingPreview";
 
 // Live copies of markup that drifted apart across pages, side by side, until one is picked for shared/ui.
 export function DebugVariantsPage() {
@@ -11,6 +12,8 @@ export function DebugVariantsPage() {
         <h1 className="text-[21px] font-bold tracking-tight text-foreground">{k("variants.title")}</h1>
         <p className="text-[12.5px] text-muted-foreground">{k("variants.caption")}</p>
       </div>
+
+      <OldPricingPreview />
 
       <GlassSettingsMockup />
     </div>

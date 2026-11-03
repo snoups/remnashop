@@ -2,7 +2,7 @@ import { Calendar, ChevronLeft, Image, Languages, Tag, Ticket, User, Users } fro
 import type { ParseKeys } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import {
   cancelBroadcast,
@@ -67,7 +67,12 @@ function isPolling(b: Broadcast | null, now: number): boolean {
 
 export function BroadcastDetailsPage() {
   const { id } = useParams();
-  return <BroadcastDetails key={id} id={Number(id)} />;
+  const permissions = usePermissions();
+  return permissions.includes("BROADCASTS_DETAIL_VIEW") ? (
+    <BroadcastDetails key={id} id={Number(id)} />
+  ) : (
+    <Navigate to="/dashboard" replace />
+  );
 }
 
 function BroadcastDetails({ id }: { id: number }) {

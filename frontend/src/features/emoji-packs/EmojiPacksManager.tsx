@@ -112,7 +112,7 @@ export function EmojiPacksManager() {
       {packsState.kind === "ready" && packsState.data.length > 0 && (
         // a long list scrolls inside the card
         <div className="max-h-[72vh] overflow-y-auto">
-          <SectionRows>
+          <SectionRows divided={canImport}>
             {packsState.data.map((pack) => (
               <Row
                 key={pack.set_name}
@@ -120,10 +120,10 @@ export function EmojiPacksManager() {
                 label={pack.set_name}
                 onClick={() => setOpenPack(pack)}
               >
-                <Tag>{pack.items.length}</Tag>
+                <Tag subtle>{pack.items.length}</Tag>
                 {canDelete && (
                   <IconButton size="8" tone="danger" onClick={() => setPendingDelete(pack)}>
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-4" />
                   </IconButton>
                 )}
               </Row>

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
@@ -27,7 +28,6 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { localeLabel } from "@shared/i18n/locale-label";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Spinner } from "@shared/ui/Spinner";
-import { Card } from "@shared/ui/Card";
 import { Section } from "@shared/ui/glass/Section";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -322,7 +322,7 @@ export function TranslationsEditorForm() {
             </div>
           )}
           {selectedKey !== null && activeLocale !== null && (
-            <Card className="w-full max-w-sm">
+            <div className={`w-full max-w-sm p-4 ${GLASS_INNER_CARD_CLASS}`}>
               <TextEditorPanel
                 // Remounts on key or locale change so the draft never carries
                 // one string's text over to another.
@@ -339,7 +339,7 @@ export function TranslationsEditorForm() {
                 save={updateTranslation}
                 onSaved={handleEntrySaved}
               />
-            </Card>
+            </div>
           )}
         </div>
 
@@ -356,8 +356,8 @@ export function TranslationsEditorForm() {
             </div>
           )}
           {localeStats.length > 0 && (
-            <Card variant="bare">
-              <ul className="flex flex-col divide-y divide-white/[0.06]">
+            <div className={GLASS_INNER_CARD_CLASS}>
+              <ul className="flex flex-col divide-y divide-border/50">
                 {localeStats.map(({ locale, total, translated }) => (
                   <li key={locale} className="flex flex-wrap items-baseline gap-x-2 px-3.5 py-2.5">
                     <span className="truncate text-[13px] font-medium text-foreground">
@@ -371,7 +371,7 @@ export function TranslationsEditorForm() {
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
           )}
         </aside>
       </div>

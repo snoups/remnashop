@@ -13,6 +13,7 @@ import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scrol
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
+import { POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -130,6 +131,7 @@ export function EmojiPicker({
       </button>
 
       <PortalPopover
+        glass
         open={isOpen}
         triggerRef={triggerRef}
         popoverRef={popoverRef}
@@ -147,7 +149,7 @@ export function EmojiPicker({
         {/* TabBar's capsule, scaled down for the popover: the scroller is
             inset by the capsule's own p-1, so its clip box lines up with
             the outer radius instead of cutting into a pill. */}
-        <nav className="mb-2 flex max-w-full rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md">
+        <nav className="glass-well mb-2 flex max-w-full rounded-full p-1">
           <div
             ref={tabsRef}
             className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-full"
@@ -181,7 +183,7 @@ export function EmojiPicker({
             as wide as the popover. */}
         {/* py matches the fade: at either end of the scroll the gradient
             sits over padding, never over a row of emoji. */}
-        <div className="max-h-56 overflow-y-auto overflow-x-hidden py-2 [mask-composite:add] [mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-8px),transparent),linear-gradient(to_right,transparent_calc(100%-14px),black_calc(100%-14px))]">
+        <div className={`max-h-56 ${POPOVER_SCROLL_CLASS}`}>
           {activePack ? (
             <div className="grid grid-cols-8 gap-1">
               {activePack.items.map((item) => (

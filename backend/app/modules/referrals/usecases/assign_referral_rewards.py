@@ -15,14 +15,17 @@ from app.core.enums import (
 from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
-from app.modules.referrals.dto import AssignReferralRewardsDto, ReferralSettingsDto
+from app.modules.referrals.dto import (
+    MAX_REFERRAL_LEVEL,
+    AssignReferralRewardsDto,
+    ReferralSettingsDto,
+)
 from app.modules.referrals.events import ReferralRewardIssuedEvent
 from app.modules.referrals.repository import ReferralRepository
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.transactions import TransactionDto, TransactionRepository
 from app.modules.users import UserDto, UserRepository
 
-_MAX_LEVEL: Final[int] = 3
 _HUNDRED: Final[Decimal] = Decimal(100)
 _MIN_PERCENT_REWARD: Final[Decimal] = Decimal(1)
 
@@ -127,7 +130,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         chain: list[_Hop] = []
         seen: set[int] = {buyer_id}
         current_id = buyer_id
-        for level in range(1, min(max_level, _MAX_LEVEL) + 1):
+        for level in range(1, min(max_level, MAX_REFERRAL_LEVEL) + 1):
             edge = await self._referral_repository.find_by_referred_id(current_id)
             if edge is None or edge.referrer_id is None or edge.referrer_id in seen:
                 break

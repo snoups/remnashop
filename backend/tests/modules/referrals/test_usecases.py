@@ -616,17 +616,46 @@ async def test_update_referral_settings_requires_a_reward_on_every_active_level(
     with pytest.raises(ValidationError):
         await use_case(owner, UpdateReferralSettingsDto(reward_amounts={1: Decimal("-1")}))
 
-    # disabled: blanks are fine, levels past max_level are ignored
-    await use_case(
-        owner, UpdateReferralSettingsDto(enabled=False, reward_amounts={1: Decimal("0")})
+    # a switched-off program and a level past max_level are held to it too
+    with pytest.raises(ValidationError):
+        await use_case(
+            owner, UpdateReferralSettingsDto(enabled=False, reward_amounts={1: Decimal("0")})
+        )
+    with pytest.raises(ValidationError):
+        await use_case(
+            owner,
+            UpdateReferralSettingsDto(
+                enabled=True, max_level=1, reward_amounts={1: Decimal("5"), 2: Decimal("0")}
+            ),
+        )
+
+
+async def test_update_referral_settings_keeps_amounts_of_levels_not_sent(
+    referral_repository: ReferralRepository, uow, event_publisher
+) -> None:
+    use_case = UpdateReferralSettingsUseCase(
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
     )
+
+    await use_case(OWNER, UpdateReferralSettingsDto(reward_amounts={2: Decimal("7")}))
+    result = await use_case(OWNER, UpdateReferralSettingsDto(reward_amounts={1: Decimal("5")}))
+
+    assert result.reward_amounts == {1: Decimal("5"), 2: Decimal("7"), 3: Decimal(1)}
+
+
+async def test_update_referral_settings_percent_ignores_levels_past_max_level(
+    referral_repository: ReferralRepository, uow, event_publisher
+) -> None:
+    use_case = UpdateReferralSettingsUseCase(
+        referral_repository, PricingRepository(referral_repository.session), event_publisher, uow
+    )
+    await use_case(OWNER, UpdateReferralSettingsDto(reward_amounts={3: Decimal("500")}))
+
     result = await use_case(
-        owner,
-        UpdateReferralSettingsDto(
-            enabled=True, max_level=1, reward_amounts={1: Decimal("5"), 2: Decimal("0")}
-        ),
+        OWNER, UpdateReferralSettingsDto(reward_strategy=ReferralRewardStrategy.PERCENT)
     )
-    assert result.enabled is True
+
+    assert result.reward_amounts[3] == Decimal("500")
 
 
 @pytest.mark.parametrize(

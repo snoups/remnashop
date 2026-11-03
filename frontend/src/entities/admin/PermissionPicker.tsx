@@ -6,7 +6,6 @@ import {
   BellRing,
   Bot,
   Check,
-  ChevronRight,
   Coins,
   CreditCard,
   Database,
@@ -38,18 +37,18 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissionCatalog, groupCatalogByResource, resourceCategoryKey } from "@entities/admin/use-permission-catalog";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Button } from "@shared/ui/Button";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Row } from "@shared/ui/glass/Row";
+import { SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import type { LucideIcon } from "lucide-react";
 import type { Permission } from "@shared/types/rbac";
-import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { Pressable } from "@shared/ui/Pressable";
 
 interface PermissionPickerProps {
   selected: Set<Permission>;
@@ -149,80 +148,46 @@ export function PermissionPicker(props: PermissionPickerProps) {
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <SectionRows flush>
       {groups.map((group) => {
         const allKeys = [...group.read, ...group.write];
         const selectedCount = allKeys.filter((key) => active.has(key)).length;
-        const isExpanded = expanded.has(group.resource);
-        const ResourceIcon = getResourceIcon(group.resource);
         const readState = getKindState(group.read, active);
         const writeState = getKindState(group.write, active);
-        const categoryKey = resourceCategoryKey(group.resource);
 
         return (
-          <div key={group.resource} className="flex flex-col">
-            <div className="-mx-2 flex h-11 items-center gap-2 rounded-full px-2 transition-colors hover:bg-white/[0.04]">
-              <Pressable
-                type="button"
-                onClick={() => toggleExpand(group.resource)}
-                className="flex min-w-0 flex-1 items-center gap-2"
-              >
-                <ChevronRight
-                  className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                />
-                <ResourceIcon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t(`permissionCategories.${categoryKey}` as ParseKeys)}
-                </span>
-                <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">
-                  {selectedCount}/{allKeys.length}
-                </span>
-              </Pressable>
-
-              <div className="flex shrink-0 items-center gap-1.5">
-                {group.read.length > 0 && (
-                  <KindPill
-                    label={t("permissionPicker.read")}
-                    state={readState}
-                    disabled={props.disabled}
-                    onClick={() => toggleKind(props, group.read, readState)}
-                  />
-                )}
-                {group.write.length > 0 && (
-                  <KindPill
-                    label={t("permissionPicker.write")}
-                    state={writeState}
-                    disabled={props.disabled}
-                    onClick={() => toggleKind(props, group.write, writeState)}
-                  />
-                )}
-              </div>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {isExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-col divide-y divide-border/50 pl-6">
-                    {group.read.map((permission) => (
-                      <PermissionRow key={permission} permission={permission} {...props} />
-                    ))}
-                    {group.write.map((permission) => (
-                      <PermissionRow key={permission} permission={permission} {...props} />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <Row
+            key={group.resource}
+            icon={getResourceIcon(group.resource)}
+            label={t(`permissionCategories.${resourceCategoryKey(group.resource)}` as ParseKeys)}
+            description={`${selectedCount}/${allKeys.length}`}
+            expanded={expanded.has(group.resource)}
+            chevron={false}
+            onClick={() => toggleExpand(group.resource)}
+            panel={[...group.read, ...group.write].map((permission) => (
+              <PermissionRow key={permission} permission={permission} {...props} />
+            ))}
+          >
+            {group.read.length > 0 && (
+              <KindPill
+                label={t("permissionPicker.read")}
+                state={readState}
+                disabled={props.disabled}
+                onClick={() => toggleKind(props, group.read, readState)}
+              />
+            )}
+            {group.write.length > 0 && (
+              <KindPill
+                label={t("permissionPicker.write")}
+                state={writeState}
+                disabled={props.disabled}
+                onClick={() => toggleKind(props, group.write, writeState)}
+              />
+            )}
+          </Row>
         );
       })}
-    </div>
+    </SectionRows>
   );
 }
 
@@ -234,23 +199,12 @@ interface KindPillProps {
 }
 
 function KindPill({ label, state, disabled, onClick }: KindPillProps) {
-  const isActive = state === "on" || state === "partial";
   return (
-    <ChoiceChip
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      disabled={disabled}
-      active={isActive}
-      size="sm"
-      // 28px: row is h-11 with px-2, so an 8px inset all round keeps the corners concentric
-      className="h-7"
-    >
+    <Button variant={state === "off" ? "glass" : "glassAccent"} size="sm" disabled={disabled} onClick={onClick}>
       {state === "on" && <Check className="size-3.5" />}
       {state === "partial" && <Minus className="size-3.5" />}
       {label}
-    </ChoiceChip>
+    </Button>
   );
 }
 
@@ -260,7 +214,7 @@ function PermissionRow({ permission, ...props }: { permission: Permission } & Pe
   const isChanged = props.baseline !== undefined && props.baseline.has(permission) !== props.selected.has(permission);
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
+    <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-2 text-[13px] text-foreground/90">
         {props.baseline !== undefined && (
           // slot kept on every row so labels stay aligned

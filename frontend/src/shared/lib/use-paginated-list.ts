@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
+import { useLoadGateHold } from "@shared/lib/load-gate";
+
 export type PaginatedState<T> =
   | { kind: "loading" }
   | { kind: "error" }
@@ -35,6 +37,7 @@ export function usePaginatedList<T, F>(
   filters: F,
 ): PaginatedList<T> {
   const [state, setState] = useState<PaginatedState<T>>({ kind: "loading" });
+  useLoadGateHold(state.kind === "loading");
   const [isFetching, setIsFetching] = useState(false);
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

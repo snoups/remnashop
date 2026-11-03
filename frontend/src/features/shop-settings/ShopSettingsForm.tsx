@@ -18,6 +18,9 @@ import { TextWidth } from "@shared/ui/glass/TextWidth";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
 
+const MAX_SUBSCRIPTIONS = 10;
+const MAX_COOLDOWN_HOURS = 9999;
+
 type FieldName = "max" | "deviceSingle" | "deviceAll" | "link" | "referral";
 
 export function ShopSettingsForm() {
@@ -56,10 +59,16 @@ export function ShopSettingsForm() {
       ? t("errors.validation.required")
       : parseRequiredInt(value, 0) === undefined
         ? t("errors.validation.min", { min: 0 })
-        : null;
+        : Number(value) > MAX_COOLDOWN_HOURS
+          ? t("errors.validation.max", { max: MAX_COOLDOWN_HOURS })
+          : null;
   const errors: Record<FieldName, string | null> = {
     max:
-      parseOptionalInt(maxActiveSubscriptions, 1) === undefined ? t("errors.validation.min", { min: 1 }) : null,
+      parseOptionalInt(maxActiveSubscriptions, 0) === undefined
+        ? t("errors.validation.min", { min: 0 })
+        : Number(maxActiveSubscriptions) > MAX_SUBSCRIPTIONS
+          ? t("errors.validation.max", { max: MAX_SUBSCRIPTIONS })
+          : null,
     deviceSingle: hoursError(deviceSingleResetCooldownHours),
     deviceAll: hoursError(deviceAllResetCooldownHours),
     link: hoursError(linkResetCooldownHours),
@@ -77,7 +86,7 @@ export function ShopSettingsForm() {
     validation.submit();
     if (Object.values(errors).some((error) => error !== null)) return;
 
-    const parsedMax = parseOptionalInt(maxActiveSubscriptions, 1);
+    const parsedMax = parseOptionalInt(maxActiveSubscriptions, 0);
     const parsedSingleCooldown = parseRequiredInt(deviceSingleResetCooldownHours, 0);
     const parsedAllCooldown = parseRequiredInt(deviceAllResetCooldownHours, 0);
     const parsedLinkCooldown = parseRequiredInt(linkResetCooldownHours, 0);
@@ -155,7 +164,8 @@ export function ShopSettingsForm() {
                     type="number"
                     onKeyDown={blockNonIntegerKeys}
                     step="1"
-                    min="1"
+                    min="0"
+                    max={MAX_SUBSCRIPTIONS}
                     placeholder={unlimited}
                     value={maxActiveSubscriptions}
                     onChange={(event) => setMaxActiveSubscriptions(event.target.value)}
@@ -251,6 +261,7 @@ function ResetRow({
           onKeyDown={blockNonIntegerKeys}
           step="1"
           min="0"
+          max={MAX_COOLDOWN_HOURS}
           suffix={t("settings.shop.hoursSuffix")}
           value={cooldownHours}
           onChange={(event) => onCooldownChange(event.target.value)}

@@ -15,6 +15,7 @@ import {
   MonitorSmartphone,
   RectangleEllipsis,
   Scale,
+  Send,
   Share2,
   ShieldCheck,
   ShoppingBag,
@@ -284,7 +285,7 @@ function PushSection() {
       icon={BellRing}
       title={t("settings.webPush.title")}
       description={t("settings.webPush.description")}
-      aside={<Button variant="glass">{t("settings.webPush.test")}</Button>}
+      aside={<Button variant="glass" icon={Send}>{t("settings.webPush.test")}</Button>}
       footer={<SaveBar dirty={false} beside={<Button variant="glassDanger">{t("settings.webPush.regenerate")}</Button>} />}
     >
       <SectionFields>
@@ -392,7 +393,7 @@ function LegalDialog({
   return (
     <Modal onClose={onClose} size="xl" scrollable material="glass">
       <DialogHeader icon={KIND_ICONS[kind]} title={initialTitle} />
-      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
+      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <DialogTabs
@@ -461,7 +462,7 @@ function LegalDialog({
           <Switch checked={reaccept} onChange={setReaccept} />
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
+      <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
         <div className="min-w-0 flex-1">
           {dirty && (
             <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">

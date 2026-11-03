@@ -9,7 +9,8 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 export function BackupsPage() {
   const permissions = usePermissions();
   const canCreateRun = permissions.includes("BACKUPS_RUN_CREATE");
-  const canViewRuns = permissions.includes("BACKUPS_RUN_VIEW");
+  const canViewRuns = permissions.includes("BACKUPS_VIEW");
+  const canViewSettings = permissions.includes("BACKUPS_SETTINGS_VIEW");
   const canViewStats = permissions.includes("BACKUPS_STATS_VIEW");
 
   // stats are decorative; the rest of the page stays usable without them
@@ -21,9 +22,9 @@ export function BackupsPage() {
   const runs = useBackupRuns(canViewRuns, loadStats);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ScheduleCard stats={stats} onStatsChanged={loadStats} />
+    <div className="flex flex-col gap-5">
+      <div className="grid gap-5 lg:grid-cols-2">
+        {canViewSettings && <ScheduleCard stats={stats} onStatsChanged={loadStats} />}
         {(canCreateRun || canViewStats) && <ManualRunCard stats={stats} onRunStarted={runs.prepend} />}
       </div>
       {canViewRuns && <RunsCard runs={runs} onStatsChanged={loadStats} />}

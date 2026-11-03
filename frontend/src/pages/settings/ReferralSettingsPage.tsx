@@ -8,6 +8,7 @@ import {
   Info,
   Layers,
   Percent,
+  Power,
   Repeat,
   Users,
 } from "lucide-react";
@@ -18,6 +19,8 @@ import {
   getReferralSettings,
   resetReferralSettings,
   type ReferralAccrualStrategy,
+  type ReferralLevel,
+  type ReferralRewardAmounts,
   type ReferralRewardStrategy,
   type ReferralRewardType,
   type ReferralSettings,
@@ -29,26 +32,31 @@ import { currencySymbol } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { Spinner } from "@shared/ui/Spinner";
-import { FieldHint } from "@shared/ui/FieldHint";
-import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { SuffixInput } from "@shared/ui/TextInput";
+import { FieldHint } from "@shared/ui/FieldHint";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { Switch } from "@shared/ui/glass/Switch";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Pressable } from "@shared/ui/Pressable";
+import { SaveFooter } from "@shared/ui/SaveFooter";
+import { Spinner } from "@shared/ui/Spinner";
+
+const INNER_CARD_CLASS = `flex flex-col gap-3 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
+const SWITCH_LABEL_CLASS = "flex items-center gap-1.5 text-[13px] font-medium text-foreground";
 
 type IconType = ComponentType<{ className?: string }>;
 
-const LEVELS = [1, 2, 3] as const;
+const LEVELS: ReferralLevel[] = [1, 2, 3];
 const MAX_PERCENT = 100;
 const MAX_INVITEE_REWARD = 3650;
-// a level without a stored reward starts at the smallest allowed one
-const MIN_REWARD = "1";
 // the worked example under PERCENT starts from: a payment in the base currency, a term in days
 const DEFAULT_EXAMPLE_BASE: Record<ReferralRewardType, string> = { POINTS: "100", EXTRA_DAYS: "30" };
 
@@ -82,41 +90,31 @@ function OptionGroup<T extends string>({
   describe: (value: T) => string;
   name: (value: T) => string;
 }) {
-  return (
-    <div className="flex flex-col gap-2">
-      {label && <span className={EYEBROW_CLASS}>{label}</span>}
-      <div className="grid gap-2 sm:grid-cols-2">
-        {options.map(({ value: option, icon: Icon }) => {
-          const isActive = option === value;
-          return (
-            <Pressable
-              key={option}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(option)}
-              className={`flex items-start gap-2.5 rounded-[14px] border p-3 text-left transition-colors disabled:cursor-not-allowed ${
-                isActive
-                  ? "border-primary/45 bg-primary/[0.07]"
-                  : "border-white/[0.08] bg-white/[0.02] enabled:hover:bg-white/[0.04]"
-              }`}
-            >
-              <div
-                className={`flex size-[30px] shrink-0 items-center justify-center rounded-full transition-colors ${
-                  isActive ? "bg-primary/15 text-primary" : "bg-white/[0.06] text-foreground"
-                }`}
-              >
-                <Icon className="size-[15px]" />
-              </div>
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-[13px] font-semibold text-foreground">{name(option)}</span>
-                <span className="text-xs leading-snug text-muted-foreground">{describe(option)}</span>
-              </div>
-            </Pressable>
-          );
-        })}
-      </div>
+  const grid = (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {options.map(({ value: option, icon }) => {
+        const isActive = option === value;
+        return (
+          <Pressable
+            key={option}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(option)}
+            className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed ${
+              isActive ? "border-primary/45 bg-primary/[0.07]" : "border-white/[0.08] bg-white/[0.03] enabled:hover:bg-white/[0.06]"
+            }`}
+          >
+            <IconCircle icon={icon} />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[13px] font-medium text-foreground">{name(option)}</span>
+              <span className="text-[12px] leading-snug text-muted-foreground">{describe(option)}</span>
+            </div>
+          </Pressable>
+        );
+      })}
     </div>
   );
+  return label ? <Field label={label}>{grid}</Field> : grid;
 }
 
 export function ReferralSettingsPage() {
@@ -126,13 +124,13 @@ export function ReferralSettingsPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   const [enabled, setEnabled] = useState(false);
-  // the badge shows what's stored, not the unsaved toggle
-  const [savedEnabled, setSavedEnabled] = useState(false);
+  // the status and the unsaved mark compare with what's stored
+  const [saved, setSaved] = useState<ReferralSettings | null>(null);
   const [maxLevel, setMaxLevel] = useState(1);
   const [accrualStrategy, setAccrualStrategy] = useState<ReferralAccrualStrategy>("FIRST_PAYMENT");
   const [rewardType, setRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
   const [rewardStrategy, setRewardStrategy] = useState<ReferralRewardStrategy>("AMOUNT");
-  const [rewardAmounts, setRewardAmounts] = useState<Record<string, string>>({});
+  const [rewardAmounts, setRewardAmounts] = useState<ReferralRewardAmounts>({ 1: "", 2: "", 3: "" });
   const [daysRequirePaid, setDaysRequirePaid] = useState(true);
   const [inviteeRewardType, setInviteeRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
   const [inviteeRewardAmount, setInviteeRewardAmount] = useState("0");
@@ -149,7 +147,7 @@ export function ReferralSettingsPage() {
 
   const applySettings = (settings: ReferralSettings) => {
     setEnabled(settings.enabled);
-    setSavedEnabled(settings.enabled);
+    setSaved(settings);
     setMaxLevel(settings.max_level);
     setAccrualStrategy(settings.accrual_strategy);
     setRewardType(settings.reward_type);
@@ -168,17 +166,13 @@ export function ReferralSettingsPage() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      const amounts: Record<string, string> = {};
-      for (let level = 1; level <= maxLevel; level++) {
-        amounts[String(level)] = rewardAmounts[String(level)] ?? MIN_REWARD;
-      }
       const updated = await updateReferralSettings({
         enabled,
         max_level: maxLevel,
         accrual_strategy: accrualStrategy,
         reward_type: rewardType,
         reward_strategy: rewardStrategy,
-        reward_amounts: amounts,
+        reward_amounts: amountsToSave(),
         days_require_paid_subscription: daysRequirePaid,
         invitee_reward_type: inviteeRewardType,
         invitee_reward_amount: inviteeEnabled ? Number(inviteeRewardAmount) || 0 : 0,
@@ -208,296 +202,313 @@ export function ReferralSettingsPage() {
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
     return (
-      <Card>
-        <CardHeader
-          icon={Users}
-          title={t("referrals.settings.programTitle")}
-          description={t("referrals.settings.programDescription")}
-        />
+      <Section
+        icon={Users}
+        title={t("referrals.settings.programTitle")}
+        description={t("referrals.settings.programDescription")}
+      >
         <ErrorState text={t("common.loadError")} />
-      </Card>
+      </Section>
     );
   }
 
   const isPercent = rewardStrategy === "PERCENT";
-  const amountOf = (level: number) => rewardAmounts[String(level)] ?? MIN_REWARD;
   const rewardUnit = (amount: number) => t(`referrals.units.${rewardType}`, { count: amount });
   // mirrors the backend: percent of the example base, rounded down, at least 1
-  const rewardFor = (level: number): number => {
-    const value = Number(amountOf(level)) || 0;
+  const rewardFor = (level: ReferralLevel): number => {
+    const value = Number(rewardAmounts[level]) || 0;
     if (!isPercent || value <= 0) return value;
     return Math.max(1, Math.floor(((Number(exampleBase[rewardType]) || 0) * value) / 100));
   };
   const activeLevels = LEVELS.filter((level) => level <= maxLevel);
-  // mirrors the backend: an enabled program needs a reward of at least 1 on every active level
-  const isLevelInvalid = (level: number) => {
-    if (!enabled) return false;
-    const value = Number(amountOf(level));
-    return !(value >= 1) || (isPercent && value > MAX_PERCENT);
+  const isAmountInvalid = (level: ReferralLevel) => {
+    const value = Number(rewardAmounts[level]);
+    return !Number.isInteger(value) || value < 1 || (isPercent && value > MAX_PERCENT);
   };
+  const isLevelInvalid = (level: ReferralLevel) => enabled && isAmountInvalid(level);
   const hasInvalidLevel = activeLevels.some(isLevelInvalid);
+  // a field locked or hidden by now can't be fixed, so it goes back to what's stored
+  const amountsToSave = () => {
+    const amounts = { ...rewardAmounts };
+    for (const level of LEVELS) {
+      if (saved !== null && isAmountInvalid(level)) amounts[level] = saved.reward_amounts[level];
+    }
+    return amounts;
+  };
   // mirrors the backend: a whole number of 1..MAX_INVITEE_REWARD, 0 when switched off
   const isInviteeInvalid =
     inviteeEnabled &&
     (!/^\d+$/.test(inviteeRewardAmount) || Number(inviteeRewardAmount) < 1 || Number(inviteeRewardAmount) > MAX_INVITEE_REWARD);
   const dimmed = enabled ? "" : "opacity-45";
+  const savedInviteeAmount = saved?.invitee_reward_amount ?? 0;
+  const dirty =
+    saved !== null &&
+    (enabled !== saved.enabled ||
+      maxLevel !== saved.max_level ||
+      accrualStrategy !== saved.accrual_strategy ||
+      rewardType !== saved.reward_type ||
+      rewardStrategy !== saved.reward_strategy ||
+      activeLevels.some((level) => rewardAmounts[level] !== saved.reward_amounts[level]) ||
+      daysRequirePaid !== saved.days_require_paid_subscription ||
+      inviteeEnabled !== savedInviteeAmount > 0 ||
+      (inviteeEnabled &&
+        (inviteeRewardType !== saved.invitee_reward_type || inviteeRewardAmount !== String(savedInviteeAmount))));
+  const resetButton = canReset && (
+    <Button variant="glassDanger" isLoading={isResetting} onClick={() => setIsResetConfirmOpen(true)}>
+      {t("common.reset")}
+    </Button>
+  );
 
   return (
-    <form
-      onSubmit={(event) => void handleSubmit(event)}
-      className="grid items-stretch gap-4 lg:grid-cols-2"
-    >
-      <Card className="flex flex-col">
-        <CardHeader
-          icon={Users}
-          title={t("referrals.settings.programTitle")}
-          description={t("referrals.settings.programDescription")}
-          aside={
-            <span
-              className={`flex h-9 shrink-0 items-center rounded-full px-4 text-[13px] font-semibold ${
-                savedEnabled ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
-              }`}
-            >
-              {savedEnabled ? t("referrals.settings.status.enabled") : t("referrals.settings.status.disabled")}
-            </span>
-          }
-        />
+    <form onSubmit={(event) => void handleSubmit(event)} className="grid items-stretch gap-5 lg:grid-cols-2">
+      <Section
+        stretched
+        icon={Users}
+        title={t("referrals.settings.programTitle")}
+        description={t("referrals.settings.programDescription")}
+        aside={
+          saved !== null && (
+            <StatusPill tone={saved.enabled ? "success" : "warning"}>
+              {saved.enabled ? t("referrals.settings.status.enabled") : t("referrals.settings.status.disabled")}
+            </StatusPill>
+          )
+        }
+        footer={
+          canManage ? (
+            <SaveFooter
+              variant="glassAccent"
+              dirty={dirty}
+              saving={isSaving}
+              disabled={hasInvalidLevel || isInviteeInvalid}
+              beside={resetButton}
+            />
+          ) : (
+            resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
+          )
+        }
+      >
+        <SectionRows>
+          <Row icon={Power} label={t("referrals.settings.enabledLabel")} hint={t("referrals.settings.enabledHint")}>
+            <Switch checked={enabled} onChange={setEnabled} disabled={isLocked} />
+          </Row>
+        </SectionRows>
 
-        <div className="mt-4 flex items-center justify-between gap-3 py-1">
-          <span className="flex items-center gap-1.5 text-sm text-foreground/80">
-            {t("referrals.settings.enabledLabel")}
-            <FieldHint text={t("referrals.settings.enabledHint")} />
-          </span>
-          <Switch
-            checked={enabled}
-            onChange={setEnabled}
-            disabled={isLocked}
-          />
-        </div>
-
-        <div className={`mt-3.5 flex flex-1 flex-col gap-4 transition-opacity ${dimmed}`}>
-          <OptionGroup
-            label={t("referrals.settings.accrualLabel")}
-            value={accrualStrategy}
-            options={ACCRUAL_OPTIONS}
-            onChange={setAccrualStrategy}
-            disabled={areSettingsLocked}
-            name={(value) => t(`referrals.settings.accrual.${value}`)}
-            describe={(value) => t(`referrals.settings.accrualDescription.${value}`)}
-          />
-          <OptionGroup
-            label={t("referrals.settings.rewardTypeLabel")}
-            value={rewardType}
-            options={REWARD_TYPE_OPTIONS}
-            onChange={setRewardType}
-            disabled={areSettingsLocked}
-            name={(value) => t(`referrals.settings.rewardType.${value}`)}
-            describe={(value) => t(`referrals.settings.rewardTypeDescription.${value}`)}
-          />
-          {rewardType === "EXTRA_DAYS" && (
-            <div className="flex items-center justify-between gap-3 py-1">
-              <span className="flex items-center gap-1.5 text-sm text-foreground/80">
-                {t("referrals.settings.daysRequirePaidLabel")}
-                <FieldHint text={t("referrals.settings.daysRequirePaidHint")} />
-              </span>
-              <Switch checked={daysRequirePaid} onChange={setDaysRequirePaid} disabled={areSettingsLocked} />
+        <div className="mt-2 flex flex-1 flex-col gap-3">
+          <div className={`flex flex-1 flex-col gap-3 transition-opacity ${dimmed}`}>
+            <div className={INNER_CARD_CLASS}>
+              <OptionGroup
+                label={t("referrals.settings.accrualLabel")}
+                value={accrualStrategy}
+                options={ACCRUAL_OPTIONS}
+                onChange={setAccrualStrategy}
+                disabled={areSettingsLocked}
+                name={(value) => t(`referrals.settings.accrual.${value}`)}
+                describe={(value) => t(`referrals.settings.accrualDescription.${value}`)}
+              />
             </div>
-          )}
-          <OptionGroup
-            label={t("referrals.settings.rewardStrategyLabel")}
-            value={rewardStrategy}
-            options={REWARD_STRATEGY_OPTIONS}
-            onChange={setRewardStrategy}
-            disabled={areSettingsLocked}
-            name={(value) => t(`referrals.settings.rewardStrategy.${value}`)}
-            describe={(value) =>
-              value === "PERCENT"
-                ? t(`referrals.settings.rewardStrategyDescription.PERCENT.${rewardType}`)
-                : t("referrals.settings.rewardStrategyDescription.AMOUNT")
-            }
-          />
-        </div>
-
-        {(canManage || canReset) && (
-          <div className="mt-auto flex items-center gap-2 pt-4">
-            {canManage && (
-              <Button variant="accent" className="w-fit" type="submit" disabled={isSaving || hasInvalidLevel || isInviteeInvalid}>
-                {isSaving ? t("common.saving") : t("common.save")}
-              </Button>
-            )}
-            {canReset && (
-              <Button
-                variant="outline"
-                className="w-fit"
-                type="button"
-                onClick={() => setIsResetConfirmOpen(true)}
-                disabled={isResetting}
-              >
-                {t("common.reset")}
-              </Button>
-            )}
+            <div className={INNER_CARD_CLASS}>
+              <OptionGroup
+                label={t("referrals.settings.rewardTypeLabel")}
+                value={rewardType}
+                options={REWARD_TYPE_OPTIONS}
+                onChange={setRewardType}
+                disabled={areSettingsLocked}
+                name={(value) => t(`referrals.settings.rewardType.${value}`)}
+                describe={(value) => t(`referrals.settings.rewardTypeDescription.${value}`)}
+              />
+              {rewardType === "EXTRA_DAYS" && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className={SWITCH_LABEL_CLASS}>
+                    {t("referrals.settings.daysRequirePaidLabel")}
+                    <FieldHint text={t("referrals.settings.daysRequirePaidHint")} glass />
+                  </span>
+                  <Switch checked={daysRequirePaid} onChange={setDaysRequirePaid} disabled={areSettingsLocked} />
+                </div>
+              )}
+            </div>
+            <div className={INNER_CARD_CLASS}>
+              <OptionGroup
+                label={t("referrals.settings.rewardStrategyLabel")}
+                value={rewardStrategy}
+                options={REWARD_STRATEGY_OPTIONS}
+                onChange={setRewardStrategy}
+                disabled={areSettingsLocked}
+                name={(value) => t(`referrals.settings.rewardStrategy.${value}`)}
+                describe={(value) =>
+                  value === "PERCENT"
+                    ? t(`referrals.settings.rewardStrategyDescription.PERCENT.${rewardType}`)
+                    : t("referrals.settings.rewardStrategyDescription.AMOUNT")
+                }
+              />
+            </div>
           </div>
-        )}
-      </Card>
-
-      <Card className={`flex flex-col transition-opacity ${dimmed}`}>
-        <CardHeader
-          icon={Layers}
-          title={t("referrals.settings.levelsTitle")}
-          description={t("referrals.settings.levelsDescription")}
-        />
-
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span className="text-sm text-foreground/80">{t("referrals.settings.maxLevelLabel")}</span>
-          <SegmentedPills
-            value={maxLevel}
-            onChange={setMaxLevel}
-            disabled={areSettingsLocked}
-            options={LEVELS.map((level) => ({ value: level, label: String(level) }))}
-          />
         </div>
+      </Section>
 
-        <div className="mt-4 flex flex-col">
-          <div className="flex items-center gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.07] p-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <CreditCard className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-foreground">{t("referrals.settings.preview.trigger")}</p>
-              <p className="text-[12px] text-accent-foreground">
-                {t(
-                  `referrals.settings.preview.triggerText.${accrualStrategy}.${isPercent ? (`PERCENT_${rewardType}` as const) : "AMOUNT"}`,
-                )}
-              </p>
-            </div>
-            {isPercent && (
-              <div className="flex shrink-0 flex-col gap-1">
-                <label htmlFor="referrals-example" className="text-center text-[12px] text-muted-foreground">
-                  {t("referrals.settings.exampleLabel")}
-                </label>
-                <SuffixInput
-                  className="w-28 shrink-0"
-                  id="referrals-example"
-                  type="number"
-                  onKeyDown={blockNonIntegerKeys}
-                  min={0}
-                  step="1"
-                  value={exampleBase[rewardType]}
-                  disabled={!enabled}
-                  onChange={(event) => setExampleBase((prev) => ({ ...prev, [rewardType]: event.target.value }))}
-                  suffix={
-                    rewardType === "POINTS"
-                      ? anchorCurrency && currencySymbol(anchorCurrency)
-                      : t("referrals.units.EXTRA_DAYS", { count: Number(exampleBase.EXTRA_DAYS) || 0 })
-                  }
+      <Section
+        stretched
+        className={`transition-opacity ${dimmed}`}
+        icon={Layers}
+        title={t("referrals.settings.levelsTitle")}
+        description={t("referrals.settings.levelsDescription")}
+      >
+        <div className="mt-4 flex flex-col gap-3">
+          <div className={INNER_CARD_CLASS}>
+            <div className="flex items-center justify-between gap-3">
+              <span className={SWITCH_LABEL_CLASS}>{t("referrals.settings.maxLevelLabel")}</span>
+              <div className="w-32 shrink-0">
+                <PillTabs
+                  items={LEVELS.map((level) => ({ key: String(level), label: String(level) }))}
+                  activeKey={String(maxLevel)}
+                  onSelect={(key) => setMaxLevel(Number(key))}
+                  disabled={areSettingsLocked}
                 />
               </div>
-            )}
+            </div>
           </div>
 
-          {activeLevels.map((level) => {
-            const reward = rewardFor(level);
-            return (
-              <div key={level} className="flex flex-col">
-                <div className="ml-[27px] h-3.5 w-0.5 bg-white/[0.12]" />
-                <div className="flex items-center gap-3 rounded-[14px] bg-white/[0.03] px-3 py-2.5">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-accent text-[13px] font-bold text-primary">
-                    {level}
-                  </div>
-                  <label htmlFor={`referrals-reward-${level}`} className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-foreground">
-                      {t(`referrals.settings.preview.who.${level}`)}
-                    </span>
-                    <span className="block text-[12px] text-muted-foreground">
-                      {t("referrals.settings.levelGets")}{" "}
-                      <span className="font-semibold text-primary">
-                        +{reward} {rewardUnit(reward)}
-                      </span>
-                    </span>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.07] p-3.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <CreditCard className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-foreground">{t("referrals.settings.preview.trigger")}</p>
+                <p className="text-[12px] text-accent-foreground">
+                  {t(
+                    `referrals.settings.preview.triggerText.${accrualStrategy}.${isPercent ? (`PERCENT_${rewardType}` as const) : "AMOUNT"}`,
+                  )}
+                </p>
+              </div>
+              {isPercent && (
+                <div className="flex shrink-0 flex-col gap-1">
+                  <label htmlFor="referrals-example" className="text-center text-[12px] text-muted-foreground">
+                    {t("referrals.settings.exampleLabel")}
                   </label>
-                  <SuffixInput
+                  <Input
                     className="w-28 shrink-0"
-                    id={`referrals-reward-${level}`}
+                    id="referrals-example"
                     type="number"
                     onKeyDown={blockNonIntegerKeys}
-                    min={1}
-                    max={isPercent ? MAX_PERCENT : undefined}
+                    min={0}
                     step="1"
-                    value={amountOf(level)}
-                    disabled={areSettingsLocked}
-                    onChange={(event) =>
-                      setRewardAmounts((prev) => ({ ...prev, [String(level)]: event.target.value }))
+                    value={exampleBase[rewardType]}
+                    disabled={!enabled}
+                    onChange={(event) => setExampleBase((prev) => ({ ...prev, [rewardType]: event.target.value }))}
+                    suffix={
+                      rewardType === "POINTS"
+                        ? anchorCurrency && currencySymbol(anchorCurrency)
+                        : t("referrals.units.EXTRA_DAYS", { count: Number(exampleBase.EXTRA_DAYS) || 0 })
                     }
-                    aria-invalid={isLevelInvalid(level)}
-                    suffix={isPercent ? t("referrals.settings.percentUnit") : rewardUnit(Number(amountOf(level)) || 0)}
                   />
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+
+            {activeLevels.map((level) => {
+              const reward = rewardFor(level);
+              return (
+                <div key={level} className="flex flex-col">
+                  <div className="ml-[29px] h-3.5 w-0.5 bg-white/[0.12]" />
+                  <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-accent text-[13px] font-semibold text-primary">
+                      {level}
+                    </div>
+                    <label htmlFor={`referrals-reward-${level}`} className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium text-foreground">
+                        {t(`referrals.settings.preview.who.${level}`)}
+                      </span>
+                      <span className="block text-[12px] text-muted-foreground">
+                        {t("referrals.settings.levelGets")}{" "}
+                        <span className="font-medium text-primary">
+                          +{reward} {rewardUnit(reward)}
+                        </span>
+                      </span>
+                    </label>
+                    <Input
+                      className="w-28 shrink-0"
+                      id={`referrals-reward-${level}`}
+                      type="number"
+                      onKeyDown={blockNonIntegerKeys}
+                      min={1}
+                      max={isPercent ? MAX_PERCENT : undefined}
+                      step="1"
+                      value={rewardAmounts[level]}
+                      disabled={areSettingsLocked}
+                      onChange={(event) =>
+                        setRewardAmounts((prev) => ({ ...prev, [level]: event.target.value }))
+                      }
+                      aria-invalid={isLevelInvalid(level)}
+                      suffix={isPercent ? t("referrals.settings.percentUnit") : rewardUnit(Number(rewardAmounts[level]) || 0)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {maxLevel < LEVELS.length && (
-            <div className="mt-4 flex gap-2.5 rounded-xl border border-dashed border-white/[0.12] p-3">
+            <div className="flex gap-2.5 rounded-2xl border border-dashed border-white/[0.12] p-3.5">
               <Info className="mt-px size-4 shrink-0 text-muted-foreground" />
               <p className="text-[12px] leading-relaxed text-muted-foreground">
                 {t("referrals.settings.levelsUnusedNote", { count: maxLevel })}
               </p>
             </div>
           )}
-        </div>
 
-        <div className="mt-4 flex flex-col gap-3 rounded-[14px] border border-primary/20 bg-primary/[0.05] p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-              <Gift className="size-4 text-primary" />
-              {t("referrals.settings.invitee.title")}
-            </span>
-            <Switch
-              checked={inviteeEnabled}
-              onChange={(next) => {
-                setInviteeEnabled(next);
-                if (next && Number(inviteeRewardAmount) <= 0) setInviteeRewardAmount("1");
-              }}
-              disabled={areSettingsLocked}
-            />
-          </div>
-          {inviteeEnabled && (
-            <>
-              <OptionGroup
-                value={inviteeRewardType}
-                options={REWARD_TYPE_OPTIONS}
-                onChange={setInviteeRewardType}
+          <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/[0.05] p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+                <Gift className="size-4 text-primary" />
+                {t("referrals.settings.invitee.title")}
+              </span>
+              <Switch
+                checked={inviteeEnabled}
+                onChange={(next) => {
+                  setInviteeEnabled(next);
+                  if (next && Number(inviteeRewardAmount) <= 0) setInviteeRewardAmount("1");
+                }}
                 disabled={areSettingsLocked}
-                name={(value) => t(`referrals.settings.rewardType.${value}`)}
-                describe={(value) => t(`referrals.settings.invitee.description.${value}`)}
               />
-              <div className="flex items-center justify-between gap-3">
-                <label htmlFor="referrals-invitee" className="flex items-center gap-1.5 text-sm text-foreground/80">
-                  {t("referrals.settings.invitee.amountLabel")}
-                  <FieldHint text={t("referrals.settings.invitee.hint")} />
-                </label>
-                <SuffixInput
-                  className="w-28 shrink-0"
-                  id="referrals-invitee"
-                  type="number"
-                  onKeyDown={blockNonIntegerKeys}
-                  min={1}
-                  max={MAX_INVITEE_REWARD}
-                  step="1"
-                  value={inviteeRewardAmount}
+            </div>
+            {inviteeEnabled && (
+              <>
+                <OptionGroup
+                  value={inviteeRewardType}
+                  options={REWARD_TYPE_OPTIONS}
+                  onChange={setInviteeRewardType}
                   disabled={areSettingsLocked}
-                  onChange={(event) => setInviteeRewardAmount(event.target.value)}
-                  aria-invalid={isInviteeInvalid}
-                  suffix={t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
+                  name={(value) => t(`referrals.settings.rewardType.${value}`)}
+                  describe={(value) => t(`referrals.settings.invitee.description.${value}`)}
                 />
-              </div>
-              {inviteeRewardType === "POINTS" && (
-                <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
-              )}
-            </>
-          )}
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="referrals-invitee" className={SWITCH_LABEL_CLASS}>
+                    {t("referrals.settings.invitee.amountLabel")}
+                    <FieldHint text={t("referrals.settings.invitee.hint")} glass />
+                  </label>
+                  <Input
+                    className="w-28 shrink-0"
+                    id="referrals-invitee"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    max={MAX_INVITEE_REWARD}
+                    step="1"
+                    value={inviteeRewardAmount}
+                    disabled={areSettingsLocked}
+                    onChange={(event) => setInviteeRewardAmount(event.target.value)}
+                    aria-invalid={isInviteeInvalid}
+                    suffix={t(`referrals.units.${inviteeRewardType}`, { count: Number(inviteeRewardAmount) || 0 })}
+                  />
+                </div>
+                {inviteeRewardType === "POINTS" && (
+                  <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </Card>
+      </Section>
 
       {isResetConfirmOpen && (
         <ConfirmDialog

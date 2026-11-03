@@ -13,6 +13,7 @@ from app.modules.plans.usecases.preview_pricing_change import PreviewPricingChan
 from app.modules.plans.usecases.reorder_plans import ReorderPlansUseCase
 from app.modules.plans.usecases.set_addon_base_price import SetAddOnBasePriceUseCase
 from app.modules.plans.usecases.set_addon_price_override import SetAddOnPriceOverrideUseCase
+from app.modules.plans.usecases.set_matrix_prices import SetMatrixPricesUseCase
 from app.modules.plans.usecases.set_plan_duration_base_price import SetPlanDurationBasePriceUseCase
 from app.modules.plans.usecases.set_plan_durations import SetPlanDurationsUseCase
 from app.modules.plans.usecases.set_plan_price_override import SetPlanPriceOverrideUseCase
@@ -39,6 +40,7 @@ __all__ = [
     "ReorderPlansUseCase",
     "SetAddOnBasePriceUseCase",
     "SetAddOnPriceOverrideUseCase",
+    "SetMatrixPricesUseCase",
     "SetPlanDurationBasePriceUseCase",
     "SetPlanDurationsUseCase",
     "SetPlanPriceOverrideUseCase",

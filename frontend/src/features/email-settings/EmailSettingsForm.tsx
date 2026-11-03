@@ -1,4 +1,4 @@
-import { Gauge, Mail, MailPlus } from "lucide-react";
+import { Gauge, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -6,6 +6,7 @@ import type { TFunction } from "i18next";
 import {
   getEmailSettings,
   resetBulkEmailSettings,
+  resetEmailSettings,
   sendTestEmail,
   updateEmailSettings,
   type EmailSettings,
@@ -24,7 +25,7 @@ import { Field } from "@shared/ui/glass/Field";
 import { Input, PasswordInput } from "@shared/ui/glass/Input";
 import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
-import { Switch } from "@shared/ui/glass/Switch";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
@@ -33,6 +34,7 @@ const MIN_RATE = 1;
 const MAX_RATE = 1000;
 const SECURITY_OPTIONS: SmtpSecurity[] = ["STARTTLS", "TLS", "NONE"];
 const MAX_PORT = 65535;
+type LabelField = "host" | "port" | "security" | "username" | "password" | "fromAddress" | "fromName";
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PROFILES = ["main", "bulk"] as const;
 
@@ -197,36 +199,36 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
   const { t } = useTranslation();
   const permissions = usePermissions();
   const canManage = permissions.includes("EMAIL_SETTINGS_MANAGE");
-  const canReset = permissions.includes("EMAIL_SETTINGS_BULK_RESET");
+  const canResetBulk = permissions.includes("EMAIL_SETTINGS_BULK_RESET");
+  const canResetMain = permissions.includes("EMAIL_SETTINGS_RESET");
   const canTest = permissions.includes("EMAIL_SETTINGS_TEST");
   const main = readProfile(settings, "main");
   const bulk = readProfile(settings, "bulk");
   const [tab, setTab] = useState<Profile>("main");
   const [mainDraft, setMainDraft] = useState(() => toDraft(main));
   const [bulkDraft, setBulkDraft] = useState(() => toDraft(bulk));
-  // on without a saved server: the fields are open, nothing is stored until Save
-  const [isDraftOpen, setIsDraftOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const mainValidation = useFieldValidation<ValidatedField>();
   const bulkValidation = useFieldValidation<ValidatedField>();
-  const isBulkOn = settings.is_bulk_configured || isDraftOpen;
 
   const mainChanges = changesOf(mainDraft, main);
-  const bulkChanges = isBulkOn ? changesOf(bulkDraft, bulk) : {};
+  const bulkChanges = changesOf(bulkDraft, bulk);
   const hasMainChanges = Object.keys(mainChanges).length > 0;
   const hasBulkChanges = Object.keys(bulkChanges).length > 0;
   const mainErrors = errorsOf(mainDraft, t);
   const bulkErrors = errorsOf(bulkDraft, t);
-  // a server left untouched isn't checked
-  const mainInvalid = hasMainChanges && hasErrors(mainErrors);
-  const bulkInvalid = hasBulkChanges && hasErrors(bulkErrors);
+  // a server left untouched isn't checked, a rate change alone checks only the rate
+  const isMainEdited = Object.keys(mainChanges).some((key) => key !== "rate");
+  const isBulkEdited = Object.keys(bulkChanges).some((key) => key !== "rate");
+  const mainInvalid = isMainEdited ? hasErrors(mainErrors) : "rate" in mainChanges && mainErrors.rate !== null;
+  const bulkInvalid = isBulkEdited ? hasErrors(bulkErrors) : "rate" in bulkChanges && bulkErrors.rate !== null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (hasMainChanges) mainValidation.submit();
-    if (hasBulkChanges) bulkValidation.submit();
+    if (isMainEdited) mainValidation.submit();
+    if (isBulkEdited) bulkValidation.submit();
     if (mainInvalid || bulkInvalid) {
       setTab(mainInvalid ? "main" : "bulk");
       return;
@@ -247,26 +249,22 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
     }
   };
 
-  const handleToggle = (next: boolean) => {
-    if (next) setIsDraftOpen(true);
-    else if (settings.is_bulk_configured) setIsResetOpen(true);
-    else {
-      setIsDraftOpen(false);
-      setBulkDraft(toDraft(bulk));
-      bulkValidation.reset();
-    }
-  };
+  const showsBulk = tab === "bulk";
 
   const handleReset = async () => {
     setIsResetOpen(false);
     setIsResetting(true);
     try {
-      const saved = await resetBulkEmailSettings();
+      const saved = showsBulk ? await resetBulkEmailSettings() : await resetEmailSettings();
       onSaved(saved);
-      setBulkDraft(toDraft(readProfile(saved, "bulk")));
-      bulkValidation.reset();
-      setIsDraftOpen(false);
-      toast.success(t("settings.emailBulk.resetDone"));
+      if (showsBulk) {
+        setBulkDraft(toDraft(readProfile(saved, "bulk")));
+        bulkValidation.reset();
+      } else {
+        setMainDraft(toDraft(readProfile(saved, "main")));
+        mainValidation.reset();
+      }
+      toast.success(t(showsBulk ? "settings.emailBulk.resetDone" : "settings.email.resetDone"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
@@ -274,8 +272,6 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
     }
   };
 
-  const showsBulk = tab === "bulk";
-  const showsFields = !showsBulk || isBulkOn;
 
   return (
     <>
@@ -285,11 +281,16 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
           title={t("settings.email.title")}
           description={t("settings.email.description")}
           aside={
-            <PillTabs
-              items={PROFILES.map((profile) => ({ key: profile, label: t(`settings.email.tabs.${profile}`) }))}
-              activeKey={tab}
-              onSelect={setTab}
-            />
+            <>
+              <PillTabs
+                items={PROFILES.map((profile) => ({ key: profile, label: t(`settings.email.tabs.${profile}`) }))}
+                activeKey={tab}
+                onSelect={setTab}
+              />
+              <StatusPill tone={(showsBulk ? bulk : main).isConfigured ? "success" : "warning"}>
+                {t((showsBulk ? bulk : main).isConfigured ? "settings.email.configured" : "settings.email.notConfigured")}
+              </StatusPill>
+            </>
           }
           footer={
             (canManage || canTest) && (
@@ -298,69 +299,55 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
                 dirty={canManage && (hasMainChanges || hasBulkChanges)}
                 saving={isSaving}
                 beside={
-                  canTest &&
-                  showsFields && <TestButton profile={tab} disabled={!(showsBulk ? bulk : main).isConfigured} />
+                  <>
+                    {canTest && <TestButton profile={tab} disabled={!(showsBulk ? bulk : main).isConfigured} />}
+                    {/* until set up, broadcasts go through the main server; turning off brings that back */}
+                    {!showsBulk && canResetMain && (
+                      <Button
+                        variant="glassDanger"
+                        onClick={() => setIsResetOpen(true)}
+                        isLoading={isResetting}
+                        disabled={!main.isConfigured}
+                      >
+                        {t("common.reset")}
+                      </Button>
+                    )}
+                    {showsBulk && settings.is_bulk_configured && canResetBulk && (
+                      <Button variant="glassDanger" onClick={() => setIsResetOpen(true)} isLoading={isResetting}>
+                        {t("settings.emailBulk.resetButton")}
+                      </Button>
+                    )}
+                  </>
                 }
               />
             )
           }
         >
           <SectionRows>
-            {showsBulk && (
-              <Row
-                icon={MailPlus}
-                label={t("settings.emailBulk.toggleLabel")}
-                description={
-                  settings.is_bulk_configured ? (
-                    <span className="flex items-center gap-1.5 text-success">
-                      <span className="size-1.5 rounded-full bg-current" />
-                      {t("settings.oauth.configured")}
-                    </span>
-                  ) : isDraftOpen ? (
-                    <span className="flex items-center gap-1.5 text-warning">
-                      <span className="size-1.5 rounded-full bg-current" />
-                      {t("settings.oauth.notConfigured")}
-                    </span>
-                  ) : (
-                    t("settings.emailBulk.viaMain")
-                  )
-                }
-              >
-                <Switch
-                  checked={isBulkOn}
-                  onChange={handleToggle}
-                  disabled={isResetting || (isBulkOn && settings.is_bulk_configured ? !canReset : !canManage)}
-                />
-              </Row>
-            )}
-            {showsFields && (
-              <RateRow
-                profile={tab}
-                value={(showsBulk ? bulkDraft : mainDraft).rate}
-                error={(showsBulk ? bulkErrors : mainErrors).rate}
-                onChange={(rate) => (showsBulk ? setBulkDraft : setMainDraft)((draft) => ({ ...draft, rate }))}
-              />
-            )}
-          </SectionRows>
-          {showsFields && (
-            <SmtpFields
-              key={tab}
+            <RateRow
               profile={tab}
-              draft={showsBulk ? bulkDraft : mainDraft}
-              current={showsBulk ? bulk : main}
-              errors={showsBulk ? bulkErrors : mainErrors}
-              validation={showsBulk ? bulkValidation : mainValidation}
-              onChange={(patch) => (showsBulk ? setBulkDraft : setMainDraft)((draft) => ({ ...draft, ...patch }))}
+              value={(showsBulk ? bulkDraft : mainDraft).rate}
+              error={(showsBulk ? bulkErrors : mainErrors).rate}
+              onChange={(rate) => (showsBulk ? setBulkDraft : setMainDraft)((draft) => ({ ...draft, rate }))}
             />
-          )}
+          </SectionRows>
+          <SmtpFields
+            key={tab}
+            profile={tab}
+            draft={showsBulk ? bulkDraft : mainDraft}
+            current={showsBulk ? bulk : main}
+            errors={showsBulk ? bulkErrors : mainErrors}
+            validation={showsBulk ? bulkValidation : mainValidation}
+            onChange={(patch) => (showsBulk ? setBulkDraft : setMainDraft)((draft) => ({ ...draft, ...patch }))}
+          />
         </Section>
       </form>
 
       {isResetOpen && (
         <ConfirmDialog
-          title={t("settings.emailBulk.resetTitle")}
-          message={t("settings.emailBulk.resetMessage")}
-          confirmLabel={t("settings.emailBulk.resetConfirm")}
+          title={t(showsBulk ? "settings.emailBulk.resetTitle" : "settings.email.resetTitle")}
+          message={t(showsBulk ? "settings.emailBulk.resetMessage" : "settings.email.resetMessage")}
+          confirmLabel={showsBulk ? t("settings.emailBulk.resetConfirm") : t("common.reset")}
           cancelLabel={t("common.cancel")}
           danger
           onConfirm={() => void handleReset()}
@@ -385,7 +372,13 @@ function RateRow({ profile, value, error, onChange }: RateRowProps) {
     <Row
       icon={Gauge}
       label={t("settings.emailBulk.rateLabel")}
-      description={error ? <span className="text-error">{error}</span> : t("settings.emailBulk.rateHint")}
+      description={
+        error ? (
+          <span className="text-error">{error}</span>
+        ) : (
+          t(profile === "bulk" ? "settings.emailBulk.rateHint" : "settings.email.rateHint")
+        )
+      }
     >
       <Input
         id={`${profile}-email-rate`}
@@ -448,11 +441,15 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
     "aria-invalid": shown(name) !== undefined,
   });
   const id = (name: string) => `${profile}-email-${name}`;
+  const label = (field: LabelField) => {
+    const name = t(`settings.email.${field}Label`);
+    return profile === "bulk" ? t("settings.emailBulk.fieldLabel", { label: name }) : name;
+  };
 
   return (
     <SectionFields divided>
       <fieldset disabled={!canManage} className="contents">
-        <Field label={t("settings.email.hostLabel")} htmlFor={id("host")} error={shown("host")}>
+        <Field label={label("host")} htmlFor={id("host")} error={shown("host")}>
           <Input
             id={id("host")}
             value={draft.host}
@@ -461,7 +458,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             {...watch("host")}
           />
         </Field>
-        <Field label={t("settings.email.portLabel")} htmlFor={id("port")} error={shown("port")}>
+        <Field label={label("port")} htmlFor={id("port")} error={shown("port")}>
           <Input
             id={id("port")}
             type="number"
@@ -472,7 +469,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             {...watch("port")}
           />
         </Field>
-        <Field label={t("settings.email.securityLabel")}>
+        <Field label={label("security")}>
           <PillTabs
             items={SECURITY_OPTIONS.map((option) => ({ key: option, label: t(`settings.email.security.${option}`) }))}
             activeKey={draft.security}
@@ -480,7 +477,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             disabled={!canManage}
           />
         </Field>
-        <Field label={t("settings.email.usernameLabel")} htmlFor={id("username")}>
+        <Field label={label("username")} htmlFor={id("username")}>
           <Input
             id={id("username")}
             value={draft.username}
@@ -488,7 +485,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             autoComplete="off"
           />
         </Field>
-        <Field label={t("settings.email.passwordLabel")} htmlFor={id("password")}>
+        <Field label={label("password")} htmlFor={id("password")}>
           <PasswordInput
             id={id("password")}
             value={draft.password}
@@ -498,7 +495,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             autoComplete="new-password"
           />
         </Field>
-        <Field label={t("settings.email.fromAddressLabel")} htmlFor={id("from-address")} error={shown("fromAddress")}>
+        <Field label={label("fromAddress")} htmlFor={id("from-address")} error={shown("fromAddress")}>
           <Input
             id={id("from-address")}
             type="email"
@@ -508,7 +505,7 @@ function SmtpFields({ profile, draft, current, errors, validation, onChange }: S
             {...watch("fromAddress")}
           />
         </Field>
-        <Field label={t("settings.email.fromNameLabel")} htmlFor={id("from-name")}>
+        <Field label={label("fromName")} htmlFor={id("from-name")}>
           <Input
             id={id("from-name")}
             value={draft.fromName}

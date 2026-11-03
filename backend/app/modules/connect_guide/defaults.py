@@ -4,7 +4,7 @@ Built through the same models as a dashboard write: a broken default fails at im
 cabinet.
 """
 
-from typing import Final, Literal
+from typing import Final
 
 from app.core.enums import Locale
 from app.modules.connect_guide.catalog import (
@@ -20,6 +20,7 @@ from app.modules.connect_guide.catalog import (
 )
 
 _HAPP_APPLE: Final[str] = "https://apps.apple.com/app/happ-proxy-utility/id6504287215"
+_HAPP_APPLE_TV: Final[str] = "https://apps.apple.com/app/happ-proxy-utility-for-tv/id6748297274"
 _HAPP_GOOGLE: Final[str] = "https://play.google.com/store/apps/details?id=com.happproxy"
 _HAPP_DESKTOP: Final[str] = "https://github.com/Happ-proxy/happ-desktop/releases/latest"
 _V2RAYTUN_APPLE: Final[str] = "https://apps.apple.com/app/v2raytun/id6476628951"
@@ -27,7 +28,6 @@ _V2RAYTUN_GOOGLE: Final[str] = "https://play.google.com/store/apps/details?id=co
 _HIDDIFY_APPLE: Final[str] = "https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532"
 _HIDDIFY_GOOGLE: Final[str] = "https://play.google.com/store/apps/details?id=app.hiddify.com"
 _HIDDIFY_DESKTOP: Final[str] = "https://github.com/hiddify/hiddify-app/releases/latest"
-_STREISAND_APPLE: Final[str] = "https://apps.apple.com/app/streisand/id6450534064"
 _FLCLASHX_DESKTOP: Final[str] = "https://github.com/pluralplay/FlClashX/releases/latest"
 
 
@@ -40,7 +40,6 @@ def _app(
     name: str,
     store: str,
     deep_link: str,
-    encode: Literal["raw", "component"] = "raw",
     featured: bool = False,
 ) -> ConnectApp:
     return ConnectApp(
@@ -73,7 +72,6 @@ def _app(
                         kind="deep_link",
                         label=_text("Добавить", "Add"),
                         template=deep_link,
-                        encode=encode,
                     ),
                     CopyLinkButton(
                         kind="copy_link", label=_text("Скопировать ссылку", "Copy link")
@@ -109,7 +107,6 @@ DEFAULT_CATALOG: Final[ConnectCatalog] = ConnectCatalog(
             "ios",
             _happ(_HAPP_APPLE),
             _app("v2raytun", "v2RayTun", _V2RAYTUN_APPLE, f"v2raytun://import/{_LINK}"),
-            _app("streisand", "Streisand", _STREISAND_APPLE, f"streisand://import/{_LINK}"),
         ),
         _platform(
             "android",
@@ -126,14 +123,12 @@ DEFAULT_CATALOG: Final[ConnectCatalog] = ConnectCatalog(
                 "FlClashX",
                 _FLCLASHX_DESKTOP,
                 f"flclashx://install-config?url={_LINK}",
-                encode="component",
             ),
         ),
         _platform(
             "macos",
             _happ(_HAPP_APPLE),
             _app("hiddify", "Hiddify", _HIDDIFY_APPLE, f"hiddify://import/{_LINK}"),
-            _app("streisand", "Streisand", _STREISAND_APPLE, f"streisand://import/{_LINK}"),
         ),
         _platform(
             "linux",
@@ -145,10 +140,9 @@ DEFAULT_CATALOG: Final[ConnectCatalog] = ConnectCatalog(
                 "FlClashX",
                 _FLCLASHX_DESKTOP,
                 f"flclashx://install-config?url={_LINK}",
-                encode="component",
             ),
         ),
         _platform("androidtv", _happ(_HAPP_GOOGLE)),
-        _platform("appletv", _happ(_HAPP_APPLE)),
+        _platform("appletv", _happ(_HAPP_APPLE_TV)),
     ]
 )

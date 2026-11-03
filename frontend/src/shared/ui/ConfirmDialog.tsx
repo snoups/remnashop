@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 
 interface ConfirmDialogProps {
   title: string;
@@ -38,7 +38,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal onClose={onCancel} size={size} portal={portal}>
+    <Modal onClose={onCancel} size={size} portal={portal} material="glass">
       <ConfirmDialogBody
         title={title}
         message={message}
@@ -68,28 +68,20 @@ function ConfirmDialogBody({
 
   return (
     <>
-      <DialogHeader
-        icon={danger ? AlertTriangle : Icon}
-        tone={danger ? "danger" : "glass"}
-        title={title}
-      />
+      <DialogHeader icon={danger ? AlertTriangle : Icon} danger={danger} title={title} />
 
-      {message && (
-        <p className="whitespace-pre-line px-5 pt-4 text-[13px] text-foreground/80">{message}</p>
+      {(message || children) && (
+        <div className="flex flex-col gap-3 p-4">
+          {message && <p className="whitespace-pre-line text-[13px] text-foreground/80">{message}</p>}
+          {children}
+        </div>
       )}
 
-      {children && <div className="px-5 pt-3">{children}</div>}
-
-      <div className="flex gap-2 px-5 pb-5 pt-4">
-        <Button
-          variant="outline"
-          className="flex-1"
-          type="button"
-          onClick={close}
-        >
+      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <Button variant="glass" onClick={close}>
           {cancelLabel}
         </Button>
-        <Button variant={danger ? "danger" : "accent"} className="flex-1" onClick={onConfirm}>
+        <Button variant={danger ? "glassDanger" : "glassAccent"} onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </div>

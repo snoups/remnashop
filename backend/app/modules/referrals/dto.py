@@ -8,6 +8,7 @@ from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
     ReferralAccrualStrategy,
+    ReferralLevel,
     ReferralRewardStrategy,
     ReferralRewardType,
 )
@@ -15,6 +16,11 @@ from app.modules.users import UserDto
 
 # ten years; keeps a typo out of the int32 column
 MAX_BONUS_DAYS: Final[int] = 3650
+MAX_REFERRAL_LEVEL: Final[int] = max(ReferralLevel)
+# every level always has an amount; max_level decides which of them pay
+DEFAULT_REWARD_AMOUNTS: Final[dict[int, Decimal]] = {
+    level: Decimal(1) for level in range(1, MAX_REFERRAL_LEVEL + 1)
+}
 
 
 class ReferralDto(BaseDto, TimestampMixin):
@@ -39,7 +45,7 @@ class ReferralSettingsDto(BaseDto, TimestampMixin):
     accrual_strategy: ReferralAccrualStrategy = ReferralAccrualStrategy.FIRST_PAYMENT
     reward_type: ReferralRewardType = ReferralRewardType.EXTRA_DAYS
     reward_strategy: ReferralRewardStrategy = ReferralRewardStrategy.AMOUNT
-    reward_amounts: dict[int, Decimal] = field(default_factory=dict)
+    reward_amounts: dict[int, Decimal] = field(default_factory=lambda: dict(DEFAULT_REWARD_AMOUNTS))
     # EXTRA_DAYS only: no days for someone who never paid for a subscription
     days_require_paid_subscription: bool = True
     # what a user registering through a link gets; 0 = nothing

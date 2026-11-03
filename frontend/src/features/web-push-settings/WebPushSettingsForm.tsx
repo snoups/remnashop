@@ -1,4 +1,4 @@
-import { BellRing } from "lucide-react";
+import { BellRing, Send } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -96,7 +96,7 @@ export function WebPushSettingsForm() {
       aside={
         state.kind === "ready" &&
         (configured ? (
-          <Button variant="glass" onClick={() => void test()}>
+          <Button variant="glass" icon={Send} onClick={() => void test()}>
             {t("settings.webPush.test")}
           </Button>
         ) : (

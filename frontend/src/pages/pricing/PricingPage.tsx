@@ -5,21 +5,19 @@ import { getPriceBook } from "@entities/pricing/api";
 import { CurrencyRatesPanel } from "@features/currency-rates-panel/CurrencyRatesPanel";
 import { PricingMatrix } from "@features/pricing-matrix/PricingMatrix";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
 import { Spinner } from "@shared/ui/Spinner";
 
 export function PricingPage() {
   const { t } = useTranslation();
-  const [state, reload] = useAsyncResource(getPriceBook);
+  const [state, reload, setBook] = useAsyncResource(getPriceBook);
 
   if (state.kind === "error") {
     return (
-      <Card>
-        <CardHeader icon={Coins} title={t("pricing.rates.title")} description={t("pricing.rates.description")} />
+      <Section icon={Coins} title={t("pricing.rates.title")} description={t("pricing.rates.description")}>
         <ErrorState text={t("common.loadError")} />
-      </Card>
+      </Section>
     );
   }
 
@@ -28,9 +26,9 @@ export function PricingPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-5">
       <CurrencyRatesPanel book={state.data} onChanged={reload} />
-      <PricingMatrix book={state.data} onChanged={reload} />
+      <PricingMatrix book={state.data} onChanged={reload} onSaved={setBook} />
     </div>
   );
 }

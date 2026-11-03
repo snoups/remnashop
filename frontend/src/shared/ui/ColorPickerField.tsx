@@ -30,10 +30,11 @@ export function ColorPickerField({ value, onChange, displayValue }: ColorPickerF
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         style={{ backgroundColor: displayValue ?? value }}
-        className="size-9.5 shrink-0 rounded-full border-2 border-glass-border shadow-inner"
+        className="size-9 shrink-0 rounded-full border-2 border-glass-border shadow-inner"
       />
 
       <PortalPopover
+        glass
         open={isOpen}
         triggerRef={ref}
         popoverRef={popoverRef}

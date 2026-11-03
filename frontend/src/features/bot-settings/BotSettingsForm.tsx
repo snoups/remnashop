@@ -131,10 +131,10 @@ function BotLogsDialogBody() {
           </>
         }
       />
-      <div className="flex h-[70vh] flex-col p-5">
+      <div className="flex h-[70vh] flex-col p-3">
         {/* the well and its corners on a clipping wrapper: a scrollbar ignores its own element's
             rounded corners, not an ancestor's clip */}
-        <div className="glass-well flex min-h-0 flex-1 overflow-hidden rounded-[18px]">
+        <div className="glass-well flex min-h-0 flex-1 overflow-hidden rounded-xl">
           <pre
             ref={logRef}
             onScroll={(event) => {
@@ -319,7 +319,7 @@ export function BotSettingsForm() {
         aside={
           <>
             {permissions.includes("BOT_LOGS_VIEW") && (
-              <Button variant="glass" onClick={() => setIsLogsOpen(true)}>
+              <Button variant="glass" icon={ScrollText} onClick={() => setIsLogsOpen(true)}>
                 {t("settings.bot.showLogs")}
               </Button>
             )}

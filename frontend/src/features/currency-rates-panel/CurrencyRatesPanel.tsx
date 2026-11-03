@@ -1,4 +1,4 @@
-import { Anchor, Coins, Filter, Gauge, Info } from "lucide-react";
+import { Anchor, Coins, Filter, Gauge } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,18 +21,19 @@ import { blockNonDecimalKeys, blockNonIntegerKeys, parseOptionalInt, toTwoDecima
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { SuffixInput, TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { Field } from "@shared/ui/Field";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { Pressable } from "@shared/ui/Pressable";
+import { Field } from "@shared/ui/glass/Field";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { PillTabs } from "@shared/ui/PillTabs";
+import { SaveFooter } from "@shared/ui/SaveFooter";
+import { Tooltip } from "@shared/ui/Tooltip";
 
 const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
-
 
 interface CurrencyRatesPanelProps {
   book: PriceBook;
@@ -48,41 +49,35 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
   return (
     <>
       {(canManageRates || canSwitchAnchor) && (
-      <Card>
-        <CardHeader
+        <Section
           icon={Coins}
           title={t("pricing.rates.title")}
           description={t("pricing.rates.description")}
-        />
-
-        {canSwitchAnchor && (
-          <div className="mt-4 grid items-center gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground xl:col-span-2">
-              <Info className="size-3.5 shrink-0" />
-              {t("pricing.anchor.description")}
-            </p>
-            <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
-          </div>
-        )}
-
-        {canManageRates && (
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {CURRENCIES.map((currency) => {
-              const rate = book.rate_table.find((row) => row.currency === currency);
-              if (!rate) return null;
-              return (
-                <RateRow
-                  key={currency}
-                  rate={rate}
-                  isAnchor={currency === book.settings.anchor_currency}
-                  onChanged={onChanged}
-                />
-              );
-            })}
-          </div>
-        )}
-
-      </Card>
+        >
+          {canSwitchAnchor && (
+            <SectionRows>
+              <Row icon={Anchor} label={t("pricing.anchor.title")} description={t("pricing.anchor.description")}>
+                <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
+              </Row>
+            </SectionRows>
+          )}
+          {canManageRates && (
+            <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-3">
+              {CURRENCIES.map((currency) => {
+                const rate = book.rate_table.find((row) => row.currency === currency);
+                if (!rate) return null;
+                return (
+                  <RateRow
+                    key={currency}
+                    rate={rate}
+                    isAnchor={currency === book.settings.anchor_currency}
+                    onChanged={onChanged}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Section>
       )}
 
       <GlobalSettings
@@ -181,30 +176,27 @@ function RateRow({
 
   return (
     <div
-      className={`flex flex-col gap-3.5 rounded-xl border p-3.5 transition-colors ${
-        isDirty ? "border-primary/35 bg-primary/[0.04]" : "border-border bg-white/[0.02]"
+      className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-3.5 transition-colors ${
+        isDirty ? "border-primary/35 bg-primary/[0.04]" : "border-white/[0.08] bg-white/[0.03]"
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-sm font-bold text-foreground">
-          {currencySymbol(rate.currency)}
-        </span>
-        <span className="text-[15px] font-bold tracking-wide text-foreground">{rate.currency}</span>
+        <IconCircle glyph={currencySymbol(rate.currency)} />
+        <span className="text-[13px] font-semibold text-foreground">{rate.currency}</span>
         {isAnchor && (
-          <Badge tone="accent" className="ml-auto">
+          <Badge borderless tone="accent" className="ml-auto">
             <Anchor className="size-2.5" />
             {t("pricing.anchor.badge")}
           </Badge>
         )}
       </div>
-      <form onSubmit={(event) => void handleSubmit(event)} className="grid grid-cols-2 gap-3">
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-1 flex-col gap-3">
         <Field
           label={t("pricing.rates.rateLabel")}
           htmlFor={`${idPrefix}-rate`}
           error={isRateInvalid ? t("pricing.rates.rateInvalid") : undefined}
-          className="col-span-2"
         >
-          <TextInput
+          <Input
             id={`${idPrefix}-rate`}
             type="number"
             onKeyDown={blockNonDecimalKeys}
@@ -217,8 +209,8 @@ function RateRow({
             onChange={(event) => setForm((prev) => ({ ...prev, rate: event.target.value }))}
           />
         </Field>
-        <Field label={t("pricing.rates.charmEndingLabel")} htmlFor={`${idPrefix}-charm`} info={t("pricing.rates.charmEndingHint")} className="col-span-2">
-          <TextInput
+        <Field label={t("pricing.rates.charmEndingLabel")} htmlFor={`${idPrefix}-charm`} info={t("pricing.rates.charmEndingHint")}>
+          <Input
             id={`${idPrefix}-charm`}
             type="number"
             onKeyDown={blockNonIntegerKeys}
@@ -230,9 +222,10 @@ function RateRow({
             onChange={(event) => setForm((prev) => ({ ...prev, charm_ending: event.target.value }))}
           />
         </Field>
-        <Field label={t("pricing.rates.roundingModeLabel")} htmlFor={`${idPrefix}-rounding`} className="col-span-2">
+        <Field label={t("pricing.rates.roundingModeLabel")} htmlFor={`${idPrefix}-rounding`}>
           <SelectDropdown
-            variant="form"
+            variant="well"
+            size="compact"
             id={`${idPrefix}-rounding`}
             value={form.rounding_mode}
             onChange={(value) => setForm((prev) => ({ ...prev, rounding_mode: value as RoundingMode }))}
@@ -244,16 +237,8 @@ function RateRow({
             }))}
           />
         </Field>
-        <div className="col-span-2 flex items-center gap-2.5">
-          <Button
-            variant="accent"
-            className="w-fit"
-            type="submit"
-            disabled={isSubmitting || !isDirty || isRateInvalid}
-          >
-            {isSubmitting ? t("common.saving") : t("common.save")}
-          </Button>
-          {isDirty && <span className="text-xs text-warning">{t("pricing.rates.unsaved")}</span>}
+        <div className="mt-auto">
+          <SaveFooter variant="glassAccent" dirty={isDirty} saving={isSubmitting} disabled={isRateInvalid} flush />
         </div>
       </form>
 
@@ -261,6 +246,7 @@ function RateRow({
         <ConfirmDialog
           title={t("pricing.rates.confirmTitle")}
           icon={Coins}
+          size="md"
           message={t("pricing.rates.confirmMessage", { currency: t(`pricing.currencyIn.${rate.currency}`) })}
           confirmLabel={t("pricing.rates.confirmButton")}
           cancelLabel={t("common.cancel")}
@@ -309,28 +295,20 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
   };
 
   return (
-    <div className="flex w-full items-center gap-1 rounded-full border border-glass-border bg-white/[0.03] p-0.5 backdrop-blur-md">
-      <span className="flex items-center gap-1.5 pl-3 pr-2 text-xs text-foreground">
-        <Anchor className="size-3.5" />
-        {t("pricing.anchor.title")}
-      </span>
-      {ANCHOR_CURRENCIES.map((currency) => (
-        <Pressable
-          key={currency}
-          type="button"
+    <>
+      <div className="w-36">
+        <PillTabs
+          items={ANCHOR_CURRENCIES.map((currency) => ({ key: currency, label: currency }))}
+          activeKey={anchorCurrency}
           disabled={isLoading}
-          onClick={() => currency !== anchorCurrency && void handlePreview(currency)}
-          className={`flex h-[30px] flex-1 items-center justify-center rounded-full px-3 text-[12.5px] transition-colors disabled:cursor-not-allowed ${
-            currency === anchorCurrency ? "bg-accent text-primary" : "text-foreground/70 hover:bg-white/[0.06]"
-          }`}
-        >
-          {currency}
-        </Pressable>
-      ))}
+          onSelect={(currency) => currency !== anchorCurrency && void handlePreview(currency)}
+        />
+      </div>
 
       {diff && (
         <ConfirmDialog
           title={t("pricing.anchor.confirmTitle")}
+          size="md"
           message={t("pricing.anchor.confirmMessage", { currency: t(`pricing.currencyTo.${selected}`) })}
           confirmLabel={t("pricing.anchor.confirmButton")}
           cancelLabel={t("common.cancel")}
@@ -344,7 +322,7 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
           <PricingDiffList diff={diff} />
         </ConfirmDialog>
       )}
-    </div>
+    </>
   );
 }
 
@@ -364,6 +342,8 @@ function GlobalSettings({
   const [perDay, setPerDay] = useState(toTwoDecimals(pricePerDay ?? ""));
   const [perGb, setPerGb] = useState(toTwoDecimals(pricePerGb ?? ""));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const dirty = perDay !== toTwoDecimals(pricePerDay ?? "") || perGb !== toTwoDecimals(pricePerGb ?? "");
 
   useEffect(() => {
     setPerDay(toTwoDecimals(pricePerDay ?? ""));
@@ -388,51 +368,50 @@ function GlobalSettings({
   };
 
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
         icon={Gauge}
-        title={t("pricing.settings.title")}
+        title={
+          <>
+            {t("pricing.settings.title")}
+            <Badge tone="warning" borderless tabIndex={0} className="group relative outline-none">
+              {t("dialogs.beta")}
+              <Tooltip text={t("pricing.settings.betaHint")} side="bottom" />
+            </Badge>
+          </>
+        }
         description={t("pricing.settings.description")}
-      />
-
-      <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 flex flex-col gap-4">
-        <fieldset disabled={!canManage} className="grid gap-3 sm:grid-cols-2">
-          <Field label={t("pricing.settings.pricePerDayLabel")} htmlFor="pricing-per-day">
-            <SuffixInput
-              id="pricing-per-day"
-              type="number"
-              onKeyDown={blockNonDecimalKeys}
-              step="any"
-              min="0"
-              value={perDay}
-              onChange={(event) => setPerDay(event.target.value)}
-              suffix={anchorCurrency}
-            />
-          </Field>
-          <Field label={t("pricing.settings.pricePerGbLabel")} htmlFor="pricing-per-gb">
-            <SuffixInput
-              id="pricing-per-gb"
-              type="number"
-              onKeyDown={blockNonDecimalKeys}
-              step="any"
-              min="0"
-              value={perGb}
-              onChange={(event) => setPerGb(event.target.value)}
-              suffix={anchorCurrency}
-            />
-          </Field>
-        </fieldset>
-        {canManage && (
-          <Button
-            variant="accent"
-            className="w-fit"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("common.saving") : t("common.save")}
-          </Button>
-        )}
-      </form>
-    </Card>
+        footer={canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+      >
+        <SectionFields>
+          <fieldset disabled={!canManage} className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <Field label={t("pricing.settings.pricePerDayLabel")} htmlFor="pricing-per-day">
+              <Input
+                id="pricing-per-day"
+                type="number"
+                onKeyDown={blockNonDecimalKeys}
+                step="any"
+                min="0"
+                value={perDay}
+                onChange={(event) => setPerDay(event.target.value)}
+                suffix={anchorCurrency}
+              />
+            </Field>
+            <Field label={t("pricing.settings.pricePerGbLabel")} htmlFor="pricing-per-gb">
+              <Input
+                id="pricing-per-gb"
+                type="number"
+                onKeyDown={blockNonDecimalKeys}
+                step="any"
+                min="0"
+                value={perGb}
+                onChange={(event) => setPerGb(event.target.value)}
+                suffix={anchorCurrency}
+              />
+            </Field>
+          </fieldset>
+        </SectionFields>
+      </Section>
+    </form>
   );
 }

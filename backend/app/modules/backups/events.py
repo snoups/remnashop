@@ -16,7 +16,7 @@ class BackupFailedEvent(SystemEvent):
 @dataclass(frozen=True, kw_only=True)
 class BackupChangedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.SETTINGS
-    action: Literal["delete", "run", "settings", "settings_reset"]
+    action: Literal["cancel", "delete", "run", "settings", "settings_reset"]
     run_id: Optional[int] = None
     kind: Optional[BackupKind] = None
 

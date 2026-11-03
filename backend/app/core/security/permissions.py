@@ -46,6 +46,7 @@ class Permission(UpperStrEnum):
     EMAIL_SETTINGS_MANAGE = auto()
     EMAIL_SETTINGS_TEST = auto()
     EMAIL_SETTINGS_BULK_RESET = auto()
+    EMAIL_SETTINGS_RESET = auto()
     CABINET_AUTH_SETTINGS_VIEW = auto()
     CABINET_AUTH_SETTINGS_MANAGE = auto()
     CONNECT_GUIDE_VIEW = auto()
@@ -134,6 +135,7 @@ class Permission(UpperStrEnum):
     PRICING_ANCHOR_MANAGE = auto()
     PRICING_SETTINGS_MANAGE = auto()
     PRICING_BASE_ADJUST_MANAGE = auto()
+    PRICING_MATRIX_MANAGE = auto()
     SUBSCRIPTIONS_VIEW = auto()
     SUBSCRIPTIONS_DETAIL_VIEW = auto()
     SUBSCRIPTIONS_UPDATE = auto()
@@ -218,6 +220,7 @@ class Permission(UpperStrEnum):
     BACKUPS_RUN_CREATE = auto()
     BACKUPS_RUN_DOWNLOAD = auto()
     BACKUPS_RUN_DELETE = auto()
+    BACKUPS_RUN_CANCEL = auto()
     BACKUPS_STATS_VIEW = auto()
     BLACKLIST_VIEW = auto()
     BLACKLIST_SOURCES_VIEW = auto()
@@ -277,6 +280,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.EMAIL_SETTINGS_VIEW: PermissionMeta(resource="email_settings", kind="read"),
     Permission.EMAIL_SETTINGS_MANAGE: PermissionMeta(resource="email_settings", kind="write"),
     Permission.EMAIL_SETTINGS_TEST: PermissionMeta(resource="email_settings", kind="write"),
+    Permission.EMAIL_SETTINGS_RESET: PermissionMeta(resource="email_settings", kind="write"),
     Permission.EMAIL_SETTINGS_BULK_RESET: PermissionMeta(resource="email_settings", kind="write"),
     Permission.CABINET_AUTH_SETTINGS_VIEW: PermissionMeta(
         resource="cabinet_auth_settings", kind="read"
@@ -368,6 +372,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PRICING_PREVIEW_VIEW: PermissionMeta(resource="pricing", kind="read"),
     Permission.PRICING_SETTINGS_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.PRICING_BASE_ADJUST_MANAGE: PermissionMeta(resource="pricing", kind="write"),
+    Permission.PRICING_MATRIX_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.SUBSCRIPTIONS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_DETAIL_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
@@ -458,6 +463,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BACKUPS_SETTINGS_RESET: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BACKUPS_RUN_CREATE: PermissionMeta(resource="backups", kind="write"),
+    Permission.BACKUPS_RUN_CANCEL: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_RUN_DELETE: PermissionMeta(resource="backups", kind="write"),
     Permission.BACKUPS_STATS_VIEW: PermissionMeta(resource="backups", kind="read"),
     Permission.BLACKLIST_VIEW: PermissionMeta(resource="blacklist", kind="read"),
@@ -511,6 +517,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.OAUTH_SETTINGS_MANAGE,
         # SMTP credentials and the server login codes are mailed through
         Permission.EMAIL_SETTINGS_MANAGE,
+        Permission.EMAIL_SETTINGS_RESET,
+        Permission.EMAIL_SETTINGS_BULK_RESET,
         # bot token and the proxy every Telegram call (token in its URL) goes through
         Permission.BOT_SETTINGS_MANAGE,
         Permission.BOT_PROXY_SET,
@@ -530,6 +538,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         # reset shrinks retention and a run rotates old backups away
         Permission.BACKUPS_SETTINGS_RESET,
         Permission.BACKUPS_RUN_CREATE,
+        # a stopped run leaves no backup behind
+        Permission.BACKUPS_RUN_CANCEL,
         Permission.BLACKLIST_SOURCE_ADD,
         Permission.BLACKLIST_SYNC,
         Permission.USERS_DELETE,
@@ -631,6 +641,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.EMAIL_SETTINGS_VIEW,
             Permission.EMAIL_SETTINGS_TEST,
             Permission.EMAIL_SETTINGS_BULK_RESET,
+            Permission.EMAIL_SETTINGS_RESET,
             Permission.CABINET_AUTH_SETTINGS_VIEW,
             Permission.CABINET_AUTH_SETTINGS_MANAGE,
             Permission.CONNECT_GUIDE_VIEW,
@@ -675,6 +686,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.PRICING_PREVIEW_VIEW,
             Permission.PRICING_SETTINGS_MANAGE,
             Permission.PRICING_BASE_ADJUST_MANAGE,
+            Permission.PRICING_MATRIX_MANAGE,
             Permission.SUBSCRIPTIONS_VIEW,
             Permission.SUBSCRIPTIONS_DETAIL_VIEW,
             Permission.SUBSCRIPTIONS_UPDATE,

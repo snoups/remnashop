@@ -31,7 +31,7 @@
     },
     "lessThanMinuteAgo": "less than a minute ago",
     "inLessThanMinute": "in less than a minute",
-    "loadError": "Failed to load."
+    "loadError": "Failed to load"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -356,7 +356,7 @@
     "currencyNote": "Amounts in other currencies are converted to {{currency}} at the rate set in pricing at the time of payment.",
     "was": "was {{value}}",
     "pp": "{{value}} pp",
-    "empty": "No data yet.",
+    "empty": "No data yet",
     "emptyPeriod": "No data for this period.",
     "totalPaid": "Paid in total",
     "metrics": {
@@ -520,8 +520,8 @@
   },
   "eventLog": {
     "title": "Event log",
-    "empty": "No events.",
-    "noMatches": "Nothing found.",
+    "empty": "No events",
+    "noMatches": "Nothing found",
     "filters": {
       "category": "Type",
       "categoryAll": "All categories",
@@ -788,7 +788,7 @@
         "telegram": "Telegram"
       },
       "blocked": "Blocked",
-      "eventsEmpty": "No events."
+      "eventsEmpty": "No events"
     },
     "promote": {
       "button": "Promote to admin",
@@ -804,8 +804,8 @@
   "users": {
     "openUser": "To user",
     "title": "Users",
-    "empty": "No users.",
-    "noMatches": "Nothing found.",
+    "empty": "No users",
+    "noMatches": "Nothing found",
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Name, @username, ID or email",
@@ -908,13 +908,13 @@
           "gaps_one": "{{count}} gap",
           "gaps_other": "{{count}} gaps",
           "gap": "gap {{count}}d",
-          "empty": "No purchases."
+          "empty": "No purchases"
         }
       },
       "empty": {
-        "transactions": "No transactions.",
-        "subscriptions": "No subscriptions.",
-        "promocodes": "No promocodes used."
+        "transactions": "No transactions",
+        "subscriptions": "No subscriptions",
+        "promocodes": "No promocodes used"
       },
       "adSource": "Ad link",
       "balance": {
@@ -1058,7 +1058,7 @@
     "profile": "Profile",
     "logout": "Log out",
     "searchPlaceholder": "Search",
-    "searchEmpty": "Nothing found.",
+    "searchEmpty": "Nothing found",
     "shaderOn": "Turn the background shader on",
     "shaderOff": "Turn the background shader off",
     "searchEvents": "Search event log",
@@ -1070,7 +1070,7 @@
     "tabNews": "News",
     "tabEvents": "Events",
     "clear": "Clear",
-    "notificationsEmpty": "No notifications.",
+    "notificationsEmpty": "No notifications",
     "openEventLog": "Open the event log",
     "searching": "Searching…",
     "notificationsLoadError": "Failed to load notifications.",
@@ -1083,7 +1083,6 @@
       "general": "General",
       "bot": "Telegram bot",
       "cabinet": "Web cabinet",
-      "connect": "Connect guide",
       "apiTokens": "API tokens",
       "appearance": "Appearance",
       "gateways": "Payment gateways",
@@ -1142,9 +1141,8 @@
       "dashboardTitle": "Dashboard",
       "dashboardDescription": "Branding and colors of the dashboard",
       "cabinetTitle": "Web cabinet",
-      "cabinetDescription": "Branding and colors of the web cabinet; what’s left empty comes from the dashboard",
+      "cabinetDescription": "Branding and colors of the web cabinet",
       "brandNameLabel": "Brand name",
-      "brandNamePlaceholder": "Remnashop",
       "accentColorLabel": "Accent color",
       "presetsLabel": "Presets",
       "shaderEnabledLabel": "Background shader",
@@ -1282,7 +1280,6 @@
       "configured": "configured",
       "notConfigured": "not configured",
       "placeholder": "Leave blank to keep the current value",
-      "errorEmptyFields": "Enter at least one field to update.",
       "webhookLabel": "Webhook URL",
       "toggleError": "Failed to update gateway status.",
       "testPayment": "Test payment",
@@ -1310,7 +1307,7 @@
       },
       "flagHints": {
         "require_paid_purchase": "Customers see this payment method only after paying another way at least once.",
-        "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) on the web server; turn off only if that isn’t possible."
+        "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) in the reverse proxy; turn off only if that isn’t possible."
       },
       "title": "Payment gateways",
       "description": "Configure payment gateways and their availability to customers",
@@ -1382,7 +1379,7 @@
       "regenerate": "Regenerate keys",
       "confirmAction": "Regenerate",
       "confirmTitle": "Regenerate keys?",
-      "confirm": "Every device will have to turn push on again.",
+      "confirm": "Push subscriptions will be deleted for everyone, both admins and customers. This can’t be undone. Until someone turns push back on on their device, they won’t get push notifications there. Emails and Telegram messages keep arriving as usual.",
       "generated": "Keys generated."
     },
     "access": {
@@ -1412,6 +1409,12 @@
     },
     "email": {
       "title": "Mail server",
+      "resetTitle": "Reset the main server?",
+      "resetMessage": "The connection settings are removed and emails stop: customer notifications, and broadcasts if there’s no separate server. The rate limit is kept.",
+      "resetDone": "Main server reset.",
+      "configured": "Configured",
+      "notConfigured": "Not configured",
+      "rateHint": "Applies to broadcasts while no separate server is set up, 1 to 1000",
       "tabs": {
         "main": "Main",
         "bulk": "Broadcasts"
@@ -1438,14 +1441,14 @@
     "emailBulk": {
       "testSent": "Test email sent through the broadcast server.",
       "rateLabel": "Email sending limit",
-      "rateHint": "How many broadcast emails go out per minute, 1 to 1000",
+      "rateHint": "How many emails go out per minute, 1 to 1000",
       "rateInvalid": "Enter a whole number from 1 to 1000.",
-      "toggleLabel": "Separate server for broadcasts",
-      "viaMain": "A separate server is recommended for bulk emails",
       "resetTitle": "Turn off the separate broadcast server?",
       "resetMessage": "The separate server’s settings are removed and broadcasts go through the main SMTP again. The rate limit is kept.",
+      "resetButton": "Turn off",
       "resetConfirm": "Turn off",
-      "resetDone": "Separate broadcast server turned off."
+      "resetDone": "Separate broadcast server turned off.",
+      "fieldLabel": "{{label}} (broadcast server)"
     },
     "cabinetAuth": {
       "title": "Cabinet sign-in",
@@ -1660,7 +1663,6 @@
     "ipAllowlistHint": "Optional. One IP address or CIDR range per line; leave empty to allow any address.",
     "title": "API tokens",
     "description": "Tokens for programmatic access to the dashboard API",
-    "empty": "No API tokens.",
     "emptyHint": "A token gives a script or integration API access with the permissions you pick. The secret is shown once, right after creation.",
     "createFirst": "Create token",
     "createTitle": "Create API token",
@@ -1668,6 +1670,7 @@
     "nameLabel": "Name",
     "namePlaceholder": "e.g. ci-deploy",
     "permissionsLabel": "Permissions",
+    "presets": "Presets",
     "fullAccess": "Full access",
     "landing": "Landing",
     "readOnly": "Read only",
@@ -1678,12 +1681,10 @@
     "expiresIn365Days": "365 days",
     "neverExpires": "Never expires",
     "expired": "Expired",
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left",
     "createError": "Failed to create token.",
-    "secretTitle": "Token created",
-    "columnToken": "Token",
-    "columnLastUsed": "Last used",
-    "columnExpiry": "Expires",
-    "collapse": "Show less",
+    "secretTitle": "API token created",
     "neverUsed": "Never used",
     "revoke": "Revoke",
     "revokeTitle": "Revoke API token?",
@@ -1723,7 +1724,7 @@
     },
     "passkeys": {
       "title": "Passkeys",
-      "empty": "No passkeys.",
+      "empty": "No passkeys",
       "addButton": "Add a passkey",
       "adding": "Waiting for your device…",
       "manage": "Manage",
@@ -1818,7 +1819,7 @@
   "sessions": {
     "title": "Active sessions",
     "description": "Devices currently signed in to this account",
-    "empty": "No active sessions.",
+    "empty": "No active sessions",
     "revoke": "Revoke",
     "revokeTitle": "Revoke session?",
     "revokeConfirm": "The device will be signed out.",
@@ -1850,6 +1851,7 @@
     "EMAIL_SETTINGS_MANAGE": "Manage email settings",
     "EMAIL_SETTINGS_TEST": "Send a test email",
     "EMAIL_SETTINGS_BULK_RESET": "Reset the broadcast SMTP profile",
+    "EMAIL_SETTINGS_RESET": "Reset the main SMTP server",
     "CABINET_AUTH_SETTINGS_VIEW": "View cabinet sign-in methods",
     "CABINET_AUTH_SETTINGS_MANAGE": "Manage cabinet sign-in methods",
     "CONNECT_GUIDE_VIEW": "View the connect guide",
@@ -1917,6 +1919,7 @@
     "PRICING_ANCHOR_MANAGE": "Change anchor currency",
     "PRICING_SETTINGS_MANAGE": "Manage pricing settings",
     "PRICING_BASE_ADJUST_MANAGE": "Bulk-adjust base prices",
+    "PRICING_MATRIX_MANAGE": "Save the price matrix",
     "SUBSCRIPTIONS_VIEW": "View subscriptions",
     "SUBSCRIPTIONS_DETAIL_VIEW": "View subscription details",
     "SUBSCRIPTIONS_UPDATE": "Edit subscriptions",
@@ -1998,6 +2001,7 @@
     "BACKUPS_RUN_CREATE": "Run backups",
     "BACKUPS_RUN_DOWNLOAD": "Download backups",
     "BACKUPS_RUN_DELETE": "Delete backup runs",
+    "BACKUPS_RUN_CANCEL": "Stop backup runs",
     "BACKUPS_STATS_VIEW": "View backup statistics",
     "BLACKLIST_VIEW": "View blacklist",
     "BLACKLIST_SOURCES_VIEW": "View blacklist sources",
@@ -2163,6 +2167,7 @@
       "saveError": "Failed to switch the anchor currency."
     },
     "settings": {
+      "betaHint": "Not in use yet: customers can’t buy add-ons on their own.",
       "title": "Usage-based price",
       "description": "Optional price per day and per GB",
       "pricePerDayLabel": "Price per day",
@@ -2173,15 +2178,41 @@
     "matrix": {
       "title": "Price matrix",
       "titleHint": "The base price is the number you set; every currency is calculated from it. The anchor currency column shows the final price a customer pays after the rounding and price ending from Currency rates. Other currencies follow their rate; to fix a price in a currency, type your own value or click the pin — a pinned price doesn’t change when the rate does.",
-      "description": "Base prices and per-currency overrides for plans and add-ons",
+      "leave": {
+        "title": "Leave without saving?",
+        "message": "Unsaved price edits will be lost.",
+        "confirm": "Leave"
+      },
+      "guide": {
+        "title": "How pricing works",
+        "intro": "You set prices once in the anchor currency and the rest are calculated automatically. Where the calculation doesn’t suit you, pin the price in that currency by hand.",
+        "saveTip": "Changes in the table take effect when you press “Save”.",
+        "calculationTitle": "How a price is calculated",
+        "calculationBody": "The base price is multiplied by the currency’s rate, the result is rounded and then raised to the price ending. If that’s below the minimum amount, the minimum is used. Each currency’s settings are in “Currency rates”.",
+        "calculationExample": "Example: base 4.99 USD, RUB rate 85, rounding to a whole number, ending 99. 4.99 × 85 = 424.15, rounded to 424, raised to the ending: 499 ₽.",
+        "anchorColumnTitle": "The anchor currency column",
+        "anchorColumnBody": "The base price is the number you enter. The anchor currency column shows the final price for the customer, with rounding and the ending already applied. This column can’t be edited or pinned; to change it, change the base price.",
+        "anchorColumnExample": "Example: base 4.20 USD, with ending 99 and rounding to 2 decimals for USD. The customer sees 4.99 $.",
+        "pinTitle": "Pinned prices",
+        "pinBody": "To set your own price in a currency, type a value into its column or press the pin, which pins the current price. A pinned price doesn’t change with the rate or the base price, and rounding and the ending don’t apply to it. The minimum amount still does. Pressing the pin again removes it and the price follows the rate again.",
+        "pinExample": "Example: you want exactly 399 ₽ a month. Type 399 into the RUB column. If the rate goes from 85 to 95, the price stays 399 ₽ while unpinned prices are recalculated.",
+        "bulkTitle": "Bulk adjust",
+        "bulkBody": "Multiplies the base prices of all plans or all add-ons by the given number. Pinned prices don’t change. You see the list of changes before applying.",
+        "bulkExample": "Example: a factor of 1.10 raises base prices by 10%, 0.90 lowers them by 10%. A base of 4.99 becomes 5.49.",
+        "anchorSwitchTitle": "Changing the anchor currency",
+        "anchorSwitchBody": "Base prices and rates are recalculated for the new currency, and its rate becomes 1. Final prices may shift slightly because of rounding, so you see the list of changes before applying.",
+        "anchorSwitchExample": "Example: the anchor changes from USD to RUB at a rate of 85. A base price of 4.99 becomes 424.15 and the RUB rate becomes 1."
+      },
+      "description": "Base prices and per-currency overrides",
       "item": "Item",
       "basePrice": "Base price",
+      "pin": "Pin price",
+      "unpin": "Unpin price",
       "plansSection": "Plans",
       "addonsSection": "Add-ons",
-      "empty": "No plans or add-ons.",
+      "empty": "No plans or add-ons",
       "saved": "Price updated.",
       "saveError": "Failed to update the price.",
-      "planNotFound": "Failed to resolve the plan for this row.",
       "bulkAdjust": "Bulk adjust",
       "bulkAdjustTitle": "Bulk price change",
       "scopeLabel": "Scope",
@@ -2217,16 +2248,17 @@
       "description": "Telegram IDs and emails blocked by hand",
       "kindTelegramId": "Telegram",
       "kindEmail": "Email",
-      "empty": "No entries.",
+      "empty": "No entries",
       "addError": "Failed to add the entry.",
       "removeError": "Failed to remove the entry.",
       "searchPlaceholder": "Search entries",
       "filterAll": "All",
-      "noResults": "Nothing found.",
+      "noResults": "Nothing found",
       "valuePlaceholder": "243323533 or name@example.com",
       "valueInvalid": "Enter a Telegram ID (a number) or an email."
     },
     "sources": {
+      "errorBadge": "Error",
       "title": "Sources",
       "description": "External lists synced automatically",
       "urlPlaceholder": "https://example.com/list.txt",
@@ -2239,7 +2271,7 @@
       "neverSynced": "Never synced",
       "syncNow": "Sync now",
       "syncStarted": "Sync started — the list will update shortly.",
-      "empty": "No sources.",
+      "empty": "No sources",
       "addError": "Failed to add the source.",
       "removeError": "Failed to remove the source.",
       "toggleError": "Failed to update the source.",
@@ -2252,7 +2284,7 @@
       "title": "Matched users",
       "description": "Registered users found on the blacklist",
       "count": "Matches: {{count}}",
-      "empty": "No matches among users.",
+      "empty": "No matches among users",
       "searchPlaceholder": "Name, @username, ID or email",
       "allOrigins": "All",
       "manualOrigin": "Manual",
@@ -2261,10 +2293,9 @@
       "columnHit": "Match",
       "columnOrigin": "List",
       "columnStatus": "Status",
-      "openUser": "Open user",
-      "pending": "pending block",
+      "pending": "pending",
       "pendingHint": "Will be blocked when the blacklist is next applied to users. This happens hourly and after every change to the list.",
-      "noResults": "Nothing found.",
+      "noResults": "Nothing found",
       "range": "{{from}}–{{to}} of {{total}}",
       "blocked": "blocked",
       "unblockAll": {
@@ -2278,7 +2309,7 @@
     }
   },
   "backups": {
-    "empty": "No backups.",
+    "empty": "No backups",
     "kind": {
       "DATABASE": "Database",
       "ASSETS": "Files"
@@ -2291,6 +2322,7 @@
       "PENDING": "Queued",
       "RUNNING": "Running",
       "COMPLETED": "Completed",
+      "CANCELED": "Canceled",
       "FAILED": "Failed"
     },
     "schedule": {
@@ -2338,6 +2370,13 @@
       "durationMinutes": "{{minutes}}m {{seconds}}s",
       "downloadButton": "Download",
       "downloadError": "Failed to download the backup.",
+      "dequeueButton": "Remove from queue",
+      "stopButton": "Stop",
+      "dequeueConfirmTitle": "Remove the backup from the queue?",
+      "stopConfirmTitle": "Stop the backup?",
+      "dequeueConfirm": "The backup won’t be created.",
+      "stopConfirm": "It stops within a couple of seconds and the unfinished file is removed.",
+      "cancelError": "Failed to cancel the backup.",
       "deleteConfirmTitle": "Delete backup?",
       "deleteConfirm": "Permanently delete this backup? This cannot be undone.",
       "deleteError": "Failed to delete the backup."
@@ -2345,7 +2384,7 @@
   },
   "advertising": {
     "title": "Advertising links",
-    "empty": "No advertising links.",
+    "empty": "No advertising links",
     "filters": {
       "statusAll": "All",
       "statusActive": "Active",
@@ -2393,7 +2432,7 @@
       "cost": "Cost",
       "cpa": "CPA",
       "roi": "ROI",
-      "usersEmpty": "No attributed users.",
+      "usersEmpty": "No attributed users",
       "hasPaid": "Purchased",
       "notPaid": "No purchase",
       "daily": "Sign-ups per day",
@@ -2524,7 +2563,7 @@
       "addWindowTitlePlaceholder": "e.g. Weekly deal",
       "addWindowTitle": "New window",
       "addWindowNameLabel": "Window name",
-      "addWindowNameHint": "Shown only in the editor, bot users never see it",
+      "addWindowNameHint": "Shown only in the editor, users never see it",
       "deleteWindowTitle": "Delete window?",
       "deleteWindowConfirm": "Delete “{{key}}”? This cannot be undone.",
       "deleted": "Window deleted.",
@@ -2618,7 +2657,7 @@
       "bannerUpload": "Upload",
       "bannerReplace": "Replace",
       "variableSearch": "Search variables",
-      "variableEmpty": "Nothing found.",
+      "variableEmpty": "Nothing found",
       "emojiClear": "Remove the emoji",
       "emojiGroup": {
         "smileys": "Smileys",
@@ -2671,7 +2710,7 @@
         "EXTRA_DAYS": "The customer adds them to a subscription",
         "POINTS": "The customer withdraws them on request"
       },
-      "daysRequirePaidLabel": "Only for paying users",
+      "daysRequirePaidLabel": "Award days only after the first payment",
       "daysRequirePaidHint": "Days aren’t credited to someone who has never paid for a subscription.",
       "invitee": {
         "title": "Invited user reward",
@@ -2744,7 +2783,7 @@
       "program": "Referral program",
       "levelAll": "All",
       "via": "via {{name}}",
-      "invitedEmpty": "No invited users."
+      "invitedEmpty": "No invited users"
     },
     "stats": {
       "referralCodeLabel": "Referral code",
@@ -2756,7 +2795,7 @@
       "referrerLabel": "Referred by",
       "toReferrer": "To referrer",
       "toUser": "To user",
-      "rewardsEmpty": "No rewards."
+      "rewardsEmpty": "No rewards"
     },
     "list": {
       "levelAll": "All levels",
@@ -2782,7 +2821,7 @@
       "rewardCount_one": "{{count}} payout",
       "rewardCount_other": "{{count}} payouts",
       "noRewards": "no rewards",
-      "empty": "No referrals.",
+      "empty": "No referrals",
       "noPermission": "You don’t have permission to view the referral list."
     },
     "summary": {
@@ -2804,7 +2843,7 @@
   },
   "promocodes": {
     "title": "Promocodes",
-    "empty": "No promocodes.",
+    "empty": "No promocodes",
     "noExpiry": "No expiry",
     "rewardType": {
       "DURATION": "Extra days",
@@ -2830,10 +2869,10 @@
       "rewardPercentLabel": "Discount (%)",
       "rewardAddonLabel": "Add-on",
       "rewardAddonPlaceholder": "Select an add-on",
-      "rewardAddonEmpty": "No add-ons of this type.",
+      "rewardAddonEmpty": "No add-ons of this type",
       "rewardPlanLabel": "Plan",
       "rewardPlanPlaceholder": "Select a plan",
-      "rewardPlanEmpty": "No plans.",
+      "rewardPlanEmpty": "No plans",
       "rewardDurationDaysLabel": "Duration (days)",
       "saving": "Creating…",
       "saved": "Promocode created.",
@@ -2850,7 +2889,7 @@
       "error": "Failed to delete the promocode.",
       "title": "Delete promocode?"
     },
-    "noMatches": "Nothing found.",
+    "noMatches": "Nothing found",
     "status": {
       "ACTIVE": "Active",
       "INACTIVE": "Disabled",
@@ -2915,19 +2954,19 @@
       "used": "Used",
       "ofMax": "of {{max}}",
       "reusable": "Reusable",
-      "usersEmpty": "No activations."
+      "usersEmpty": "No activations"
     },
     "pause": "Disable",
     "resume": "Enable"
   },
   "plans": {
     "title": "Plans",
-    "empty": "No plans.",
+    "empty": "No plans",
     "unlimited": "Unlimited",
     "reorderError": "Failed to reorder plans.",
     "description": "Plans are shown to customers in this order. Drag a card by its handle to reorder.",
     "activeCount": "{{count}} active",
-    "noMatches": "Nothing found.",
+    "noMatches": "Nothing found",
     "filters": {
       "all": "All",
       "active": "Active",
@@ -3073,8 +3112,8 @@
       "totalTrend": "last 30 days",
       "periodTrend": "vs. prior {{days}} days"
     },
-    "empty": "No transactions.",
-    "noMatches": "Nothing found.",
+    "empty": "No transactions",
+    "noMatches": "Nothing found",
     "orderLabel": "Transaction #{{id}}",
     "fulfill": {
       "action": "Issue subscription",
@@ -3179,8 +3218,8 @@
   },
   "subscriptions": {
     "title": "Subscriptions",
-    "empty": "No subscriptions.",
-    "noMatches": "Nothing found.",
+    "empty": "No subscriptions",
+    "noMatches": "Nothing found",
     "description": "User subscriptions synced with Remnawave",
     "trial": "Trial",
     "unlimited": "Unlimited",
@@ -3467,6 +3506,7 @@
         "refetchSpinner": "Corner spinner over a loaded list while it refetches.",
         "buttonLoading": "icon — leading icon; isLoading swaps it for a spinner (or adds one) and disables the button.",
         "glassSection": "A settings card: header, 60px rows with 32px ends on the pill curve, a field block, glassAccent save.",
+        "glassRowVsRows": "Row is the row itself: icon, label, description, controls on the right, a fold-out panel. SectionRows is the container: it adds the margin and the lines between rows, with no look of its own.",
         "glassInput": "Sunken well: 36px in forms, 32px in a Row; a unit suffix, a machine value with controls at the end.",
         "glassField": "13px label over the control, hint or error under it; the browser’s own checks land here too.",
         "glassTextarea": "Multiline well with 18px corners and a badge in the corner (a counter).",
@@ -3517,6 +3557,9 @@
         "confirmTitle": "Delete this plan?",
         "confirmText": "This can’t be undone.",
         "modalText": "Empty Modal: shell, backdrop and entrance animation.",
+        "rowOnly": "Row: one row, no lines",
+        "rowsOnly": "SectionRows: only the lines between what’s inside",
+        "rowsTogether": "Together: as in settings cards",
         "close": "Close",
         "show": "Show",
         "hide": "Hide",
@@ -3662,6 +3705,7 @@
     "BACKUP_ALREADY_RUNNING": "A backup of this kind is already running.",
     "BACKUP_FILE_MISSING": "The backup file is missing.",
     "BACKUP_NOT_READY": "The backup isn’t ready yet.",
+    "BACKUP_RUN_NOT_CANCELABLE": "The backup has already finished and can’t be stopped.",
     "BACKUP_RUN_NOT_FOUND": "Backup not found.",
     "BROADCAST_NOT_FOUND": "Broadcast not found.",
     "BROADCAST_INVALID_STATUS": "This action isn’t available for the broadcast in its current status.",
@@ -3753,6 +3797,7 @@
     "DEEPLINK_OTHER_BROWSER": "Open the sign-in link in the browser where you pressed “Sign in”.",
     "EMAIL_CODE_INVALID": "Wrong code.",
     "EMAIL_NOT_CONFIGURED": "Set up SMTP first.",
+    "EMAIL_SIGN_IN_ENABLED": "Turn off email code sign-in in the cabinet settings first.",
     "EMAIL_DOMAIN_NOT_ALLOWED": "This email provider isn’t supported. Use another address.",
     "EMAIL_SEND_FAILED": "Failed to send the email. Check the SMTP settings.",
     "EMAIL_TAKEN": "This email is already in use.",
@@ -3797,6 +3842,7 @@
     "LOCALE_NOT_ENABLED": "This language isn’t enabled.",
     "LOGIN_TAKEN": "This login is already taken.",
     "LOYALTY_TIERS_INVALID": "Tier thresholds and percents must both increase.",
+    "LOYALTY_TIERS_REQUIRED": "Add at least one tier or switch the loyalty program off.",
     "MERGE_ACCOUNT_BLOCKED": "This account is blocked and can’t be merged.",
     "MERGE_ACCOUNT_PRIVILEGED": "Staff accounts can’t be merged into a customer account.",
     "MERGE_BOTH_PRIVILEGED": "Two staff accounts can’t be merged.",
@@ -3940,16 +3986,39 @@
   "loyalty": {
     "settings": {
       "title": "Loyalty program",
-      "description": "A discount that grows with the customer’s total purchases",
-      "enabledHint": "A customer’s discount is recalculated after their purchase, renewal, plan change or refund. Everyone’s is recalculated after the settings are saved or reset, and daily at 03:00 UTC.\nTurned off, every customer’s loyalty discount drops to zero on the next recalculation.",
-      "windowLabel": "Only purchases within the chosen period count",
+      "description": "Automatic discount for the purchase total",
+      "enabledLabel": "Enable the loyalty program",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "guide": {
+        "title": "How the loyalty program works",
+        "intro": "A customer automatically gets a discount for the total of their purchases: the more they’ve paid, the higher the tier. While the program is off, nobody gets this discount.",
+        "tiersTitle": "Discount tiers",
+        "tiersBody": "Each tier is a purchase total threshold and a discount percent. The customer gets the highest tier whose threshold they’ve reached. Thresholds and percents must grow from tier to tier. Amounts are in the anchor currency; when it changes, thresholds are recalculated at the rate.",
+        "tiersExample": "Example: tiers 10 $ — 3%, 30 $ — 5%, 50 $ — 7%. A customer paid 35 $, so the discount is 5%. Exactly 50 $ already gives 7%.",
+        "windowTitle": "Purchase counting period",
+        "windowBody": "Sets how far back purchases count. “All time” counts everything the customer ever paid. With a limited period, old purchases stop counting and the discount can go down. The total includes paid purchases, renewals, plan changes and add-ons, at the price after all discounts. Refunds don’t count.",
+        "windowExample": "Example: a 12-month period. A customer paid 60 $ two years ago and 20 $ this month. Only 20 $ counts, so the discount is 3%.",
+        "combineTitle": "With other discounts",
+        "combineBody": "The loyalty discount doesn’t add up with the personal discount or a promocode’s purchase discount: the largest one applies. A plan’s sale applies separately, one after the other with this discount.",
+        "combineExample": "Example: loyalty 5% and personal 10%, so 10% applies. If the plan also has a 20% sale, a 100 $ price becomes 72 $: minus 20%, then minus 10%.",
+        "recalculationTitle": "When the discount is recalculated",
+        "recalculationBody": "A customer’s discount updates after their purchase, renewal, plan change or refund. For all customers at once it updates after settings are saved or reset, and every day at 03:00 UTC. The nightly run accounts for purchases leaving the period.",
+        "recalculationExample": "Example: you switch the program off and save. After the recalculation the loyalty discount is zero for all customers.",
+        "excludeTitle": "Excluding a customer",
+        "excludeBody": "A single customer can be excluded from the program on their card. Their loyalty discount becomes 0%; the personal discount and promocodes keep working.",
+        "excludeExample": "Example: an employee with a 50% personal discount shouldn’t be in the program: exclude them and the 50% stays."
+      },
+      "windowLabel": "Purchase counting period",
       "windowUnit_one": "month",
       "windowUnit_other": "months",
       "windowAllTime": "All time",
       "thresholdColumn": "Total purchases",
       "percentColumn": "Discount",
       "addTier": "Add tier",
-      "tiersEmpty": "No levels yet — an example is shown above.",
+      "tiersRequired": "Add at least one tier or switch the loyalty program off.",
       "saved": "Loyalty settings saved.",
       "error": "Failed to save the loyalty settings.",
       "resetConfirmTitle": "Reset loyalty settings?",
@@ -4017,7 +4086,7 @@
     "promoBadge": "Promo",
     "search": "Search by text",
     "empty": "No broadcasts yet.",
-    "noMatches": "Nothing found.",
+    "noMatches": "Nothing found",
     "kpi": {
       "sending": "Sending now",
       "scheduled": "Scheduled",
@@ -4337,9 +4406,15 @@
   },
   "connectGuide": {
     "title": "Connect guide",
-    "description": "The cabinet's “Connect” screen: apps for each platform and steps with buttons",
+    "description": "Apps and connection steps for each platform",
+    "importConfirm": "Replace the apps and steps with this file’s contents? The change applies when you press “Save”.",
+    "importInvalid": "Failed to parse the file.",
+    "enabledLabel": "Show the guide in the cabinet",
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
     "enabledHint": "Off: the cabinet shows only the QR code and the subscription link",
-    "defaultNote": "The default catalog is in use. It follows the releases until you save your own",
     "platforms": {
       "ios": "iOS",
       "android": "Android",
@@ -4382,11 +4457,6 @@
       "copy_link": "Copy link"
     },
     "buttonLabel": "Label",
-    "encode": "Substitution",
-    "encodes": {
-      "raw": "Link as is",
-      "component": "Link encoded"
-    },
     "templateHint": "{{token}} becomes the customer's subscription link",
     "saved": "Guide saved",
     "error": "Couldn't save the guide",

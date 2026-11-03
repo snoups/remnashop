@@ -164,6 +164,10 @@ export function sendTestEmail(bulk = false): Promise<null> {
   return apiPost<null, { bulk: boolean }>("/settings/email/actions/test", { bulk });
 }
 
+export function resetEmailSettings(): Promise<EmailSettings> {
+  return apiPost<EmailSettings, Record<string, never>>("/settings/email/actions/reset", {});
+}
+
 export function resetBulkEmailSettings(): Promise<EmailSettings> {
   return apiPost<EmailSettings, Record<string, never>>("/settings/email/bulk/actions/reset", {});
 }

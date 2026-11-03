@@ -58,10 +58,7 @@ export function AdminPermissionsEditor({ admin, onSaved, onSubmittingChange }: A
 
   return (
     <form id={ADMIN_PERMISSIONS_FORM_ID} onSubmit={(event) => void handleSubmit(event)}>
-      {/* -mt-2: the first h-11 row already insets its content 8px, so the card's top padding reads as its bottom one */}
-      <div className="-mx-2 -mt-2 px-2">
-        <PermissionPicker selected={selected} onToggle={toggle} baseline={roleDefaults} />
-      </div>
+      <PermissionPicker selected={selected} onToggle={toggle} baseline={roleDefaults} />
     </form>
   );
 }

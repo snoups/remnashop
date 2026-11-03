@@ -37,6 +37,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.utils.time import datetime_now
 from app.modules.referrals.dto import (
+    DEFAULT_REWARD_AMOUNTS,
     DownlineEntryDto,
     ReferralDto,
     ReferralRewardDto,
@@ -92,7 +93,10 @@ class ReferralRepository:
             accrual_strategy=row.accrual_strategy,
             reward_type=row.reward_type,
             reward_strategy=row.reward_strategy,
-            reward_amounts={int(k): Decimal(str(v)) for k, v in row.reward_amounts.items()},
+            reward_amounts={
+                **DEFAULT_REWARD_AMOUNTS,
+                **{int(k): Decimal(str(v)) for k, v in row.reward_amounts.items()},
+            },
             days_require_paid_subscription=row.days_require_paid_subscription,
             invitee_reward_type=row.invitee_reward_type,
             invitee_reward_amount=row.invitee_reward_amount,

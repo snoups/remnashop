@@ -23,6 +23,16 @@ window.addEventListener("vite:preloadError", (event) => {
   window.location.reload();
 });
 
+// Overlay scrollbars (Firefox and macOS defaults) take no room and scrollbar-gutter does nothing for
+// them, so paddings and masks that give the scrollbar's width back must subtract zero.
+const scrollbarProbe = document.createElement("div");
+scrollbarProbe.style.cssText = "position:absolute;visibility:hidden;width:100px;height:100px;overflow:scroll";
+document.body.append(scrollbarProbe);
+if (scrollbarProbe.offsetWidth === scrollbarProbe.clientWidth) {
+  document.documentElement.style.setProperty("--scrollbar-size", "0px");
+}
+scrollbarProbe.remove();
+
 installFormValidationMessages();
 registerServiceWorker();
 

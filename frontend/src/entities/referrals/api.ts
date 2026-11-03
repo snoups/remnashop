@@ -4,15 +4,17 @@ export type ReferralAccrualStrategy = "FIRST_PAYMENT" | "EVERY_PAYMENT";
 export type ReferralRewardType = "EXTRA_DAYS" | "POINTS";
 export type ReferralRewardStrategy = "AMOUNT" | "PERCENT";
 
+export type ReferralLevel = 1 | 2 | 3;
+/** Every level always has an amount; max_level decides which of them pay. */
+export type ReferralRewardAmounts = Record<ReferralLevel, string>;
+
 export interface ReferralSettings {
   enabled: boolean;
   max_level: number;
   accrual_strategy: ReferralAccrualStrategy;
   reward_type: ReferralRewardType;
   reward_strategy: ReferralRewardStrategy;
-  // Level (1..max_level) -> reward amount. JSON object keys are always
-  // strings on the wire even though the backend's dict is keyed by int.
-  reward_amounts: Record<string, string>;
+  reward_amounts: ReferralRewardAmounts;
   days_require_paid_subscription: boolean;
   invitee_reward_type: ReferralRewardType;
   invitee_reward_amount: number;
@@ -30,7 +32,7 @@ export interface UpdateReferralSettingsRequest {
   accrual_strategy?: ReferralAccrualStrategy;
   reward_type?: ReferralRewardType;
   reward_strategy?: ReferralRewardStrategy;
-  reward_amounts?: Record<string, string>;
+  reward_amounts?: ReferralRewardAmounts;
   days_require_paid_subscription?: boolean;
   invitee_reward_type?: ReferralRewardType;
   invitee_reward_amount?: number;

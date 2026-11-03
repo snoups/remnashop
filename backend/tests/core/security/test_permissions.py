@@ -185,6 +185,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.EMAIL_SETTINGS_VIEW,
         Permission.EMAIL_SETTINGS_TEST,
         Permission.EMAIL_SETTINGS_BULK_RESET,
+        Permission.EMAIL_SETTINGS_RESET,
         Permission.CABINET_AUTH_SETTINGS_VIEW,
         Permission.CABINET_AUTH_SETTINGS_MANAGE,
         Permission.CONNECT_GUIDE_VIEW,
@@ -229,6 +230,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PRICING_PREVIEW_VIEW,
         Permission.PRICING_SETTINGS_MANAGE,
         Permission.PRICING_BASE_ADJUST_MANAGE,
+        Permission.PRICING_MATRIX_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
         Permission.SUBSCRIPTIONS_DETAIL_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
@@ -461,6 +463,7 @@ def test_backups_permissions_are_grantable_but_not_default_admin() -> None:
         Permission.BACKUPS_RUN_VIEW,
         Permission.BACKUPS_RUN_CREATE,
         Permission.BACKUPS_RUN_DELETE,
+        Permission.BACKUPS_RUN_CANCEL,
         Permission.BACKUPS_STATS_VIEW,
     )
     admin_default = ROLE_PERMISSIONS[Role.ADMIN]

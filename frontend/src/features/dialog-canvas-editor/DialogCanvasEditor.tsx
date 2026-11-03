@@ -183,7 +183,7 @@ export function DialogCanvasEditor() {
     title: (
       <>
         {t("dialogs.title")}
-        <Badge tone="warning" tabIndex={0} className="group relative outline-none">
+        <Badge tone="warning" borderless tabIndex={0} className="group relative outline-none">
           {t("dialogs.beta")}
           <Tooltip text={t("dialogs.betaHint")} side="bottom" />
         </Badge>

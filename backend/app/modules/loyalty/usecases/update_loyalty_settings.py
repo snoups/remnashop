@@ -5,6 +5,8 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -35,6 +37,11 @@ class UpdateLoyaltySettingsUseCase(UseCase[UpdateLoyaltySettingsDto, LoyaltySett
 
     async def _execute(self, actor: Actor, data: UpdateLoyaltySettingsDto) -> LoyaltySettingsDto:
         validate_tiers(data.tiers, data.window_months)
+        if data.enabled and not data.tiers:
+            raise ValidationError(
+                "An enabled program needs at least one tier",
+                code=ErrorCode.LOYALTY_TIERS_REQUIRED,
+            )
         async with self._uow:
             saved = await self._loyalty_repository.save_settings(data)
             await self._event_publisher.publish(

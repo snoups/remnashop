@@ -5,16 +5,21 @@ from uuid import uuid4
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PlanAvailability, PlanType, PromocodeRewardType, Role
+from app.core.enums import Currency, Locale, PlanAvailability, PlanType, PromocodeRewardType, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
+from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
+from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     ReorderPlansDto,
+    SetMatrixPricesDto,
+    SetPlanDurationBasePriceDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
+    SetPlanPriceOverrideDto,
     UpdatePlanAccessDto,
     UpdatePlanDiscountDto,
     UpdatePlanDto,
@@ -26,12 +31,14 @@ from app.modules.plans.usecases import (
     DeletePlanUseCase,
     ListPlansUseCase,
     ReorderPlansUseCase,
+    SetMatrixPricesUseCase,
     SetPlanDurationsUseCase,
     UpdatePlanAccessUseCase,
     UpdatePlanDiscountUseCase,
     UpdatePlanSquadsUseCase,
     UpdatePlanUseCase,
 )
+from app.modules.pricing import PricingRepository
 from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.users.dto import UserDto
@@ -501,5 +508,132 @@ async def test_regular_user_cannot_set_plan_discount(
                 discount_percent=10,
                 discount_starts_at=None,
                 discount_ends_at=None,
+            ),
+        )
+
+
+def _matrix_use_case(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> SetMatrixPricesUseCase:
+    return SetMatrixPricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+
+
+async def _matrix_plan(plan_repository: PlanRepository) -> int:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="m", name="M", type=PlanType.BOTH, traffic_limit=1, device_limit=1
+        )
+    )
+    await _add_minimal_duration(plan_repository, created.id)
+    return created.id
+
+
+async def test_set_matrix_prices_applies_every_edit(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    plan_id = await _matrix_plan(plan_repository)
+    use_case = _matrix_use_case(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+
+    book = await use_case(
+        OWNER,
+        SetMatrixPricesDto(
+            plan_base_prices=[
+                SetPlanDurationBasePriceDto(plan_id=plan_id, days=30, base_price=Decimal("5.00"))
+            ],
+            plan_overrides=[
+                SetPlanPriceOverrideDto(
+                    plan_id=plan_id, days=30, currency=Currency.RUB, price=Decimal("399")
+                )
+            ],
+            addon_base_prices=[],
+            addon_overrides=[],
+        ),
+    )
+
+    row = next(row for row in book.plans if row.plan_id == plan_id)
+    cell = next(cell for cell in row.cells if cell.currency is Currency.RUB)
+    assert row.base_price == Decimal("5.00")
+    assert cell.is_pinned and cell.amount == Decimal("399")
+
+
+async def test_set_matrix_prices_rejects_an_anchor_override(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    plan_id = await _matrix_plan(plan_repository)
+    use_case = _matrix_use_case(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+    anchor = (await pricing_repository.get_settings()).anchor_currency
+
+    with pytest.raises(ValidationError):
+        await use_case(
+            OWNER,
+            SetMatrixPricesDto(
+                plan_base_prices=[],
+                plan_overrides=[
+                    SetPlanPriceOverrideDto(
+                        plan_id=plan_id, days=30, currency=anchor, price=Decimal("1")
+                    )
+                ],
+                addon_base_prices=[],
+                addon_overrides=[],
+            ),
+        )
+
+
+async def test_set_matrix_prices_requires_the_permission_of_each_edit(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    plan_id = await _matrix_plan(plan_repository)
+    use_case = _matrix_use_case(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+    admin = UserDto(
+        id=3,
+        name="Ann",
+        role=Role.ADMIN,
+        language=Locale.EN,
+        permission_revokes=[Permission.PLANS_PRICE_OVERRIDE_MANAGE],
+    )
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(
+            admin,
+            SetMatrixPricesDto(
+                plan_base_prices=[],
+                plan_overrides=[
+                    SetPlanPriceOverrideDto(
+                        plan_id=plan_id, days=30, currency=Currency.RUB, price=Decimal("1")
+                    )
+                ],
+                addon_base_prices=[],
+                addon_overrides=[],
+            ),
+        )
+    with pytest.raises(PermissionDeniedError):
+        await use_case(
+            REGULAR_USER,
+            SetMatrixPricesDto(
+                plan_base_prices=[], plan_overrides=[], addon_base_prices=[], addon_overrides=[]
             ),
         )

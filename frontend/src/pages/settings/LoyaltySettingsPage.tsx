@@ -1,4 +1,4 @@
-import { BadgePercent, Plus, Trash2 } from "lucide-react";
+import { BadgePercent, CalendarDays, Plus, Power, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,40 +9,38 @@ import {
   type LoyaltySettings,
 } from "@entities/loyalty/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { LoyaltyGuideDialog } from "@pages/settings/LoyaltyGuideDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { FieldHint } from "@shared/ui/FieldHint";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { Switch } from "@shared/ui/glass/Switch";
 import { IconButton } from "@shared/ui/IconButton";
+import { PillTabs } from "@shared/ui/PillTabs";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Slider } from "@shared/ui/Slider";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { SuffixInput } from "@shared/ui/TextInput";
-import { ListRow } from "@shared/ui/ListRow";
 
 const MAX_PERCENT = 100;
 const MAX_TIERS = 20;
+// Numeric(10, 2) on the backend
+const THRESHOLD_FORMAT = /^\d{1,8}(\.\d{1,2})?$/;
 // 0 stands for all time (window_months: null)
 const WINDOW_MONTHS = [0, 1, 3, 6, 12];
 const SCALE_TICKS = [0, 25, 50, 75, 100];
-const TIER_ROW_CLASS = "grid grid-cols-[1.75rem_minmax(8rem,12rem)_minmax(0,1fr)_6rem_2rem] items-center gap-3";
-const DEFAULT_TIERS = [
-  { threshold: "10", percent: "3" },
-  { threshold: "30", percent: "5" },
-  { threshold: "50", percent: "7" },
-  { threshold: "100", percent: "10" },
-  { threshold: "200", percent: "12" },
-  { threshold: "500", percent: "15" },
-];
+const TIER_ROW_CLASS = "grid grid-cols-[2rem_minmax(8rem,12rem)_minmax(0,1fr)_6rem_2rem] items-center gap-3";
+// the first level added by hand to an emptied list
+const FIRST_TIER = { threshold: "10", percent: "3" };
 
 interface TierDraft {
   threshold: string;
@@ -57,7 +55,7 @@ function invalidTiers(tiers: TierDraft[]): Set<number> {
     const percent = Number(tier.percent);
     const previous = tiers[index - 1];
     const isOwnInvalid =
-      !(threshold > 0) || !Number.isInteger(percent) || percent < 1 || percent > MAX_PERCENT;
+      !THRESHOLD_FORMAT.test(tier.threshold) || !(threshold > 0) || !Number.isInteger(percent) || percent < 1 || percent > MAX_PERCENT;
     const isOrderInvalid =
       previous !== undefined &&
       (threshold <= Number(previous.threshold) || percent <= Number(previous.percent));
@@ -75,6 +73,9 @@ export function LoyaltySettingsPage() {
   const [windowMonths, setWindowMonths] = useState(0);
   const [tiers, setTiers] = useState<TierDraft[]>([]);
   const [currency, setCurrency] = useState<string | null>(null);
+  const [saved, setSaved] = useState<LoyaltySettings | null>(null);
+  // shown once a save was tried, gone as soon as a level is added or the program switched off
+  const [showTiersError, setShowTiersError] = useState(false);
 
   const permissions = usePermissions();
   const canManage = permissions.includes("LOYALTY_SETTINGS_MANAGE");
@@ -83,13 +84,10 @@ export function LoyaltySettingsPage() {
   const areSettingsLocked = isLocked || !enabled;
 
   const applySettings = (settings: LoyaltySettings) => {
+    setSaved(settings);
     setEnabled(settings.enabled);
     setWindowMonths(settings.window_months ?? 0);
-    setTiers(
-      settings.tiers.length > 0
-        ? settings.tiers.map((tier) => ({ threshold: tier.threshold, percent: String(tier.percent) }))
-        : DEFAULT_TIERS,
-    );
+    setTiers(settings.tiers.map((tier) => ({ threshold: tier.threshold, percent: String(tier.percent) })));
     setCurrency(settings.currency);
   };
 
@@ -97,6 +95,7 @@ export function LoyaltySettingsPage() {
 
   const invalid = invalidTiers(tiers);
   const hasInvalid = invalid.size > 0;
+  const needsTier = enabled && tiers.length === 0;
   // a stored window outside the presets stays selectable
   const windowOptions = [...new Set([...WINDOW_MONTHS, windowMonths])]
     .sort((a, b) => a - b)
@@ -108,6 +107,15 @@ export function LoyaltySettingsPage() {
           : `${months} ${t("loyalty.settings.windowUnit", { count: months })}`,
     }));
   const unit = currency ? currencySymbol(currency) : "";
+  const dirty =
+    saved !== null &&
+    (enabled !== saved.enabled ||
+      windowMonths !== (saved.window_months ?? 0) ||
+      tiers.length !== saved.tiers.length ||
+      tiers.some(
+        (tier, index) =>
+          tier.threshold !== saved.tiers[index]?.threshold || tier.percent !== String(saved.tiers[index]?.percent),
+      ));
 
   const updateTier = (index: number, patch: Partial<TierDraft>) =>
     setTiers((prev) => prev.map((tier, i) => (i === index ? { ...tier, ...patch } : tier)));
@@ -115,7 +123,7 @@ export function LoyaltySettingsPage() {
   const addTier = () =>
     setTiers((prev) => {
       const last = prev[prev.length - 1];
-      if (!last) return DEFAULT_TIERS.slice(0, 1);
+      if (!last) return [FIRST_TIER];
       return [
         ...prev,
         {
@@ -134,6 +142,10 @@ export function LoyaltySettingsPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (needsTier) {
+      setShowTiersError(true);
+      return;
+    }
     setIsSaving(true);
     try {
       applySettings(
@@ -167,146 +179,136 @@ export function LoyaltySettingsPage() {
   if (state.kind === "loading") return <Spinner size="page" />;
   if (state.kind === "error") {
     return (
-      <Card>
-        <CardHeader icon={BadgePercent} title={t("loyalty.settings.title")} description={t("loyalty.settings.description")} />
+      <Section icon={BadgePercent} title={t("loyalty.settings.title")} description={t("loyalty.settings.description")}>
         <ErrorState text={t("common.loadError")} />
-      </Card>
+      </Section>
     );
   }
 
+  const resetButton = canReset && (
+    <Button variant="glassDanger" isLoading={isResetting} onClick={() => setIsResetConfirmOpen(true)}>
+      {t("common.reset")}
+    </Button>
+  );
+
   return (
     <form onSubmit={(event) => void handleSubmit(event)}>
-      <Card className="flex flex-col">
-        <CardHeader
-          icon={BadgePercent}
-          title={t("loyalty.settings.title")}
-          description={t("loyalty.settings.description")}
-          aside={
-            <>
-              <FieldHint text={t("loyalty.settings.enabledHint")} side="bottom" align="end" />
-              <Switch checked={enabled} onChange={setEnabled} disabled={isLocked} />
-            </>
-          }
-        />
-
-        <div className={`mt-4 flex flex-col gap-4 transition-opacity ${enabled ? "" : "opacity-45"}`}>
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-            <span className="mr-auto text-sm text-foreground/80">{t("loyalty.settings.windowLabel")}</span>
-            <SegmentedPills
-              value={windowMonths}
-              onChange={setWindowMonths}
-              disabled={areSettingsLocked}
-              options={windowOptions}
-            />
+      <Section
+        icon={BadgePercent}
+        title={t("loyalty.settings.title")}
+        description={t("loyalty.settings.description")}
+        aside={
+          <>
+            <LoyaltyGuideDialog />
+            {saved !== null && (
+              <StatusPill tone={saved.enabled ? "success" : "warning"}>
+                {saved.enabled ? t("loyalty.settings.status.enabled") : t("loyalty.settings.status.disabled")}
+              </StatusPill>
+            )}
+          </>
+        }
+        footer={
+          canManage ? (
+            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={hasInvalid} beside={resetButton} />
+          ) : (
+            resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
+          )
+        }
+      >
+        <SectionRows>
+          <Row icon={Power} label={t("loyalty.settings.enabledLabel")}>
+            <Switch checked={enabled} onChange={setEnabled} disabled={isLocked} />
+          </Row>
+          <div className={`transition-opacity ${enabled ? "" : "opacity-45"}`}>
+            <Row icon={CalendarDays} label={t("loyalty.settings.windowLabel")}>
+              <PillTabs
+                items={windowOptions.map((option) => ({ key: String(option.value), label: option.label }))}
+                activeKey={String(windowMonths)}
+                onSelect={(key) => setWindowMonths(Number(key))}
+                disabled={areSettingsLocked}
+              />
+            </Row>
           </div>
+        </SectionRows>
 
-          <div className="flex flex-col gap-2">
-            <div className="overflow-x-auto">
-              <div className="min-w-[40rem]">
-                <div className={`${TIER_ROW_CLASS} border-b border-border px-3 pb-2.5`}>
-                  <span />
-                  <span className={EYEBROW_CLASS}>{t("loyalty.settings.thresholdColumn")}</span>
-                  <span className={`flex justify-between ${EYEBROW_CLASS}`}>
-                    {SCALE_TICKS.map((tick) => (
-                      <span key={tick}>{tick}%</span>
-                    ))}
-                  </span>
-                  <span className={EYEBROW_CLASS}>{t("loyalty.settings.percentColumn")}</span>
-                  <span />
-                </div>
-                <div className={LIST_BODY_CLASS}>
-                  {(tiers.length > 0 ? tiers : DEFAULT_TIERS).map((tier, index) => {
-                    const isExample = tiers.length === 0;
-                    const isDisabled = areSettingsLocked || isExample;
-                    return (
-                      <div
-                        key={index}
-                        className={`${TIER_ROW_CLASS} ${LIST_ROW_CLASS} ${isExample ? "opacity-30" : ""} ${isDisabled ? "" : "hover:bg-white/[0.04]"}`}
-                      >
-                        <span className="flex size-7 items-center justify-center rounded-full bg-white/[0.05] text-[12.5px] font-semibold text-foreground">
-                          {index + 1}
-                        </span>
-                        <SuffixInput
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          suffix={unit}
-                          value={tier.threshold}
-                          disabled={isDisabled}
-                          aria-invalid={invalid.has(index)}
-                          onChange={(event) => updateTier(index, { threshold: event.target.value })}
-                        />
-                        <Slider
-                          max={MAX_PERCENT}
-                          value={Number(tier.percent) || 0}
-                          disabled={isDisabled}
-                          onChange={(percent) => slidePercent(index, percent)}
-                          className="w-full"
-                        />
-                        <SuffixInput
-                          type="number"
-                          min={1}
-                          max={MAX_PERCENT}
-                          step="1"
-                          onKeyDown={blockNonIntegerKeys}
-                          suffix="%"
-                          value={tier.percent}
-                          disabled={isDisabled}
-                          aria-invalid={invalid.has(index)}
-                          onChange={(event) => updateTier(index, { percent: event.target.value })}
-                        />
-                        {isExample ? (
-                          <span />
-                        ) : (
-                          <IconButton
-                            size="8"
-                            tone="danger"
-                            disabled={areSettingsLocked}
-                            onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
-                          >
-                            <Trash2 className="size-4" />
-                          </IconButton>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {canManage && tiers.length < MAX_TIERS && (
-                    <ListRow
-                      type="button"
-                      onClick={addTier}
-                      disabled={areSettingsLocked}
-                      className={`${TIER_ROW_CLASS} text-[13px] font-medium text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
-                    >
-                      <span className="flex size-7 items-center justify-center rounded-full border border-dashed border-white/[0.18]">
-                        <Plus className="size-3.5" />
-                      </span>
-                      <span className="col-span-4">{t("loyalty.settings.addTier")}</span>
-                    </ListRow>
-                  )}
-                </div>
+        <div className={`transition-opacity ${enabled ? "" : "opacity-45"}`}>
+          <div className="mt-2 overflow-x-auto pt-3">
+            <div className="min-w-[40rem]">
+              <div className={`${TIER_ROW_CLASS} mb-1 border-b border-border px-3.5 pb-2.5`}>
+                <span />
+                <span className={EYEBROW_CLASS}>{t("loyalty.settings.thresholdColumn")}</span>
+                <span className={`flex justify-between ${EYEBROW_CLASS}`}>
+                  {SCALE_TICKS.map((tick) => (
+                    <span key={tick}>{tick}%</span>
+                  ))}
+                </span>
+                <span className={EYEBROW_CLASS}>{t("loyalty.settings.percentColumn")}</span>
+                <span />
               </div>
+              <SectionRows flush>
+                {tiers.map((tier, index) => {
+                  const isDisabled = areSettingsLocked;
+                  return (
+                    <div
+                      key={index}
+                      className={`${TIER_ROW_CLASS} min-h-15 rounded-full px-3.5 transition-colors ${isDisabled ? "" : "hover:bg-white/[0.04]"}`}
+                    >
+                      <IconCircle glyph={<span className="text-[13px] font-semibold">{index + 1}</span>} />
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        suffix={unit}
+                        value={tier.threshold}
+                        disabled={isDisabled}
+                        aria-invalid={invalid.has(index)}
+                        onChange={(event) => updateTier(index, { threshold: event.target.value })}
+                      />
+                      <Slider
+                        max={MAX_PERCENT}
+                        value={Number(tier.percent) || 0}
+                        disabled={isDisabled}
+                        onChange={(percent) => slidePercent(index, percent)}
+                        className="w-full"
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={MAX_PERCENT}
+                        step="1"
+                        onKeyDown={blockNonIntegerKeys}
+                        suffix="%"
+                        value={tier.percent}
+                        disabled={isDisabled}
+                        aria-invalid={invalid.has(index)}
+                        onChange={(event) => updateTier(index, { percent: event.target.value })}
+                      />
+                      <IconButton
+                        size="8"
+                        tone="danger"
+                        disabled={areSettingsLocked}
+                        onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="size-4" />
+                      </IconButton>
+                    </div>
+                  );
+                })}
+                {canManage && tiers.length < MAX_TIERS && (
+                  <Row
+                    icon={Plus}
+                    label={t("loyalty.settings.addTier")}
+                    onClick={areSettingsLocked ? undefined : addTier}
+                  />
+                )}
+              </SectionRows>
             </div>
-            {tiers.length === 0 && (
-              <span className="text-[12px] text-muted-foreground">{t("loyalty.settings.tiersEmpty")}</span>
-            )}
           </div>
+          {showTiersError && needsTier && (
+            <p className="mt-2 px-3.5 text-[12px] text-error">{t("loyalty.settings.tiersRequired")}</p>
+          )}
         </div>
-
-        {(canManage || canReset) && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {canManage && (
-              <Button variant="accent" type="submit" disabled={isSaving || hasInvalid}>
-                {isSaving ? t("common.saving") : t("common.save")}
-              </Button>
-            )}
-            {canReset && (
-              <Button variant="outline" type="button" onClick={() => setIsResetConfirmOpen(true)} disabled={isResetting}>
-                {t("common.reset")}
-              </Button>
-            )}
-          </div>
-        )}
-      </Card>
+      </Section>
 
       {isResetConfirmOpen && (
         <ConfirmDialog
