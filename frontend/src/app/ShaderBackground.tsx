@@ -164,6 +164,7 @@ function compileProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
 export function ShaderBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const uniformsRef = useRef<ShaderUniforms | null>(null);
+  const loopRef = useRef<{ resume: () => void; stop: () => void } | null>(null);
   // read by the render loop: skips drawing without recreating the WebGL context
   const enabledRef = useRef(true);
   const accentColor = useEffectiveAccentColor();
@@ -252,6 +253,7 @@ export function ShaderBackground() {
     window.addEventListener("scroll", onScroll, { passive: true });
 
     let frame = 0;
+    let timer = 0;
 
     let contextLosses = 0;
 
@@ -279,7 +281,6 @@ export function ShaderBackground() {
     // so pauses (blur, idle) and the idle ease both keep uTime continuous.
     let elapsed = 0;
     let lastTick = performance.now();
-    let lastDraw = 0;
     let lastActivity = lastTick;
     // 0..1 multiplier on animation speed, eased toward 0 while idle
     let motion = 1;
@@ -287,13 +288,14 @@ export function ShaderBackground() {
 
     function render() {
       const now = performance.now();
+      // A plain rAF chain would wake the renderer at display refresh (120Hz on
+      // ProMotion) only to skip most frames; the motion is slow enough that 30fps
+      // looks the same. rAF still aligns the draw to vsync and pauses in hidden tabs.
       if (running) {
-        frame = requestAnimationFrame(render);
+        timer = window.setTimeout(() => {
+          frame = requestAnimationFrame(render);
+        }, MIN_FRAME_INTERVAL_MS);
       }
-      // rAF runs at display refresh (120Hz on ProMotion), but the motion is
-      // slow enough that 30fps looks the same
-      if (now - lastDraw < MIN_FRAME_INTERVAL_MS) return;
-      lastDraw = now;
       const dt = now - lastTick;
       lastTick = now;
 
@@ -311,7 +313,7 @@ export function ShaderBackground() {
     }
 
     function start() {
-      if (running || context.isContextLost()) return;
+      if (running || !enabledRef.current || context.isContextLost()) return;
       running = true;
       lastTick = performance.now();
       render();
@@ -319,6 +321,7 @@ export function ShaderBackground() {
 
     function stop() {
       running = false;
+      clearTimeout(timer);
       cancelAnimationFrame(frame);
     }
 
@@ -338,8 +341,17 @@ export function ShaderBackground() {
       for (const event of ACTIVITY_EVENTS) window.addEventListener(event, onActivity, { passive: true });
     }
 
+    loopRef.current = {
+      resume() {
+        renderFrame();
+        if (!reduceMotion) onActivity();
+      },
+      stop,
+    };
+
     return () => {
       uniformsRef.current = null;
+      loopRef.current = null;
       stop();
       window.removeEventListener("blur", stop);
       window.removeEventListener("focus", onActivity);
@@ -374,6 +386,8 @@ export function ShaderBackground() {
 
   useEffect(() => {
     enabledRef.current = shaderEnabled;
+    if (shaderEnabled) loopRef.current?.resume();
+    else loopRef.current?.stop();
   }, [shaderEnabled]);
 
   return (
