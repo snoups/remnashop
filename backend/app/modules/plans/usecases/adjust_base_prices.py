@@ -2,6 +2,7 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.enums import PriceAdjustMode
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -35,17 +36,28 @@ class AdjustBasePricesUseCase(UseCase[AdjustBasePricesDto, PriceBookDto]):
 
     async def _execute(self, actor: Actor, data: AdjustBasePricesDto) -> PriceBookDto:
         async with self._uow:
-            plan_prices, addon_prices = adjusted_base_prices(
+            adjustment = adjusted_base_prices(
                 data,
                 await self._plan_repository.list_all(),
                 await self._addon_repository.list_all(),
+                await self._pricing_repository.get_rate_table(),
             )
-            if plan_prices:
-                await self._plan_repository.set_duration_base_prices(plan_prices)
-            if addon_prices:
-                await self._addon_repository.set_base_prices(addon_prices)
+            if adjustment.plan_prices:
+                await self._plan_repository.set_duration_base_prices(adjustment.plan_prices)
+            if adjustment.plan_overrides:
+                await self._plan_repository.replace_duration_overrides(adjustment.plan_overrides)
+            if adjustment.addon_prices:
+                await self._addon_repository.set_base_prices(adjustment.addon_prices)
+            if adjustment.addon_overrides:
+                await self._addon_repository.replace_overrides(adjustment.addon_overrides)
             await self._event_publisher.publish(
-                BasePricesAdjustedEvent(actor=actor, scope=data.scope, factor=str(data.factor))
+                BasePricesAdjustedEvent(
+                    actor=actor,
+                    scope=data.scope,
+                    mode=data.mode,
+                    value=str(data.factor if data.mode is PriceAdjustMode.MULTIPLY else data.price),
+                    pinned=data.pinned,
+                )
             )
 
         logger.info(f"{actor.log} Adjusted base prices for scope '{data.scope}'")

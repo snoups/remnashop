@@ -5,7 +5,7 @@ from app.modules.plans.dto import ScaledAmountDto
 
 
 class PlanReferenceCleaner(Protocol):
-    async def forget_plan(self, plan_id: int) -> None: ...
+    async def forget_plan(self, plan_id: int) -> list[int]: ...
 
 
 class AnchorAmountRescaler(Protocol):

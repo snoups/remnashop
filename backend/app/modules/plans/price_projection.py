@@ -1,44 +1,104 @@
 from decimal import Decimal
-from typing import Final, Optional
+from typing import Final, Optional, Sequence, Union
 
-from app.core.enums import Currency, PriceAdjustScope
-from app.modules.plans.dto import AddOnDto, AdjustBasePricesDto, AnchorSwitchDto, PlanDto
+from app.core.enums import Currency, PinnedPriceAction, PriceAdjustMode, PriceAdjustScope
+from app.modules.plans.dto import (
+    AddOnDto,
+    AddOnPriceOverrideDto,
+    AdjustBasePricesDto,
+    AnchorSwitchDto,
+    BasePriceAdjustmentDto,
+    PlanDto,
+    PlanPriceOverrideDto,
+)
 from app.modules.pricing import (
     BASE_PRICE_PRECISION,
+    MIN_BASE_PRICE,
     RATE_PRECISION,
     CurrencyRateTable,
+    round_amount,
     scale_base_price,
 )
 
 _ANCHOR_RATE: Final[Decimal] = Decimal("1.000000")
+_HUNDRED: Final[Decimal] = Decimal(100)
 
 
 def adjusted_base_prices(
-    adjust: AdjustBasePricesDto, plans: list[PlanDto], addons: list[AddOnDto]
-) -> tuple[dict[int, Decimal], dict[int, Decimal]]:
-    """New base prices by plan duration id and by add-on id."""
-    plan_prices: dict[int, Decimal] = {}
-    addon_prices: dict[int, Decimal] = {}
+    adjust: AdjustBasePricesDto,
+    plans: list[PlanDto],
+    addons: list[AddOnDto],
+    table: CurrencyRateTable,
+) -> BasePriceAdjustmentDto:
+    """New base prices by plan duration id and by add-on id, and the pins that change with them."""
     selected = adjust.scope is PriceAdjustScope.SELECTED
+    result = BasePriceAdjustmentDto()
 
     if adjust.scope in (PriceAdjustScope.ALL_PLANS, PriceAdjustScope.SELECTED):
         duration_ids = set(adjust.plan_duration_ids)
-        plan_prices = {
-            duration.id: scale_base_price(duration.base_price, adjust.factor)
-            for plan in plans
-            for duration in plan.durations
-            if not selected or duration.id in duration_ids
-        }
+        for plan in plans:
+            for duration in plan.durations:
+                if selected and duration.id not in duration_ids:
+                    continue
+                new = _new_base_price(adjust, duration.base_price, duration.days)
+                result.plan_prices[duration.id] = new
+                pins = _new_pins(adjust, duration.base_price, new, duration.overrides, table)
+                if pins is not None:
+                    result.plan_overrides[duration.id] = pins
 
-    if adjust.scope in (PriceAdjustScope.ALL_ADDONS, PriceAdjustScope.SELECTED):
+    # a ladder is priced by days, which an add-on doesn't have
+    if adjust.mode is not PriceAdjustMode.LADDER and adjust.scope in (
+        PriceAdjustScope.ALL_ADDONS,
+        PriceAdjustScope.SELECTED,
+    ):
         addon_ids = set(adjust.addon_ids)
-        addon_prices = {
-            addon.id: scale_base_price(addon.base_price, adjust.factor)
-            for addon in addons
-            if not selected or addon.id in addon_ids
-        }
+        for addon in addons:
+            if selected and addon.id not in addon_ids:
+                continue
+            new = _new_base_price(adjust, addon.base_price, None)
+            result.addon_prices[addon.id] = new
+            pins = _new_pins(adjust, addon.base_price, new, addon.overrides, table)
+            if pins is not None:
+                result.addon_overrides[addon.id] = pins
 
-    return plan_prices, addon_prices
+    return result
+
+
+def _new_base_price(adjust: AdjustBasePricesDto, price: Decimal, days: Optional[int]) -> Decimal:
+    if adjust.mode is PriceAdjustMode.MULTIPLY:
+        return scale_base_price(price, _required(adjust.factor))
+    target = _required(adjust.price)
+    if adjust.mode is PriceAdjustMode.LADDER and days is not None:
+        discount = adjust.ladder_discounts.get(days, Decimal(0))
+        target = target * days / adjust.ladder_base_days * (_HUNDRED - discount) / _HUNDRED
+    return max(target.quantize(BASE_PRICE_PRECISION), MIN_BASE_PRICE)
+
+
+def _new_pins(
+    adjust: AdjustBasePricesDto,
+    old_base: Decimal,
+    new_base: Decimal,
+    overrides: Sequence[Union[PlanPriceOverrideDto, AddOnPriceOverrideDto]],
+    table: CurrencyRateTable,
+) -> Optional[dict[Currency, Decimal]]:
+    if not overrides or adjust.pinned is PinnedPriceAction.KEEP:
+        return None
+    if adjust.pinned is PinnedPriceAction.RESET:
+        return {}
+    if old_base == 0:
+        return None
+    ratio = new_base / old_base
+    return {
+        o.currency: round_amount(o.price * ratio, table.for_currency(o.currency), charm=False)
+        for o in overrides
+    }
+
+
+def _required(value: Optional[Decimal]) -> Decimal:
+    # the request schema pairs each mode with its value
+    if value is None:
+        raise ValueError("The adjust mode's value is missing")
+    return value
 
 
 def anchor_switch(

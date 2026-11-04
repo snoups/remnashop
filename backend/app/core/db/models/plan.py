@@ -27,6 +27,10 @@ class Plan(BaseSql, TimestampMixin):
     tag: Mapped[Optional[str]]
     badge: Mapped[Optional[PlanBadge]]
 
+    # shown before the name: a Telegram custom emoji and the glyph it falls back to
+    icon_emoji_id: Mapped[Optional[str]]
+    icon_emoji_fallback: Mapped[Optional[str]]
+
     type: Mapped[PlanType]
     availability: Mapped[PlanAvailability]
     traffic_limit_strategy: Mapped[TrafficLimitStrategy]

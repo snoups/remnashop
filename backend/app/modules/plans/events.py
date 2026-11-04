@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Literal, Optional
 
 from app.core.events import ActorEvent, EventCategory
@@ -20,6 +20,7 @@ class PlanChangedEvent(ActorEvent):
         "update",
     ]
     plan_id: Optional[int] = None
+    disabled_promocode_ids: list[int] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)

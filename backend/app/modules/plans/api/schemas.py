@@ -1,28 +1,32 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Final, Literal, Optional
+from typing import Annotated, Final, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.constants import PANEL_TAG_MAX_LENGTH, PANEL_TAG_PATTERN
 from app.core.enums import (
     AddOnType,
     Currency,
+    PinnedPriceAction,
     PlanAvailability,
     PlanBadge,
     PlanType,
+    PriceAdjustMode,
     PriceAdjustScope,
     RoundingMode,
 )
 
 MATRIX_MAX_EDITS: Final[int] = 2000
-
-
-class PlanPriceRequest(BaseModel):
-    currency: Currency
-    price: Decimal = Field(gt=0)
+LADDER_MAX_MARKUP: Final[int] = 1000
+PLAN_ICON_EMOJI_ID_PATTERN: Final[str] = r"^[0-9]+$"
+PLAN_ICON_EMOJI_ID_MAX_LENGTH: Final[int] = 32
+# a glyph can be a long ZWJ sequence
+PLAN_ICON_EMOJI_FALLBACK_MAX_LENGTH: Final[int] = 32
+PLAN_NAME_MAX_LENGTH: Final[int] = 32
+PLAN_DESCRIPTION_MAX_LENGTH: Final[int] = 1024
 
 
 class PlanPriceResponse(BaseModel):
@@ -35,7 +39,6 @@ class PlanDurationRequest(BaseModel):
     order_index: int = 0
     # 0 only on a trial plan, checked by SetPlanDurationsUseCase
     base_price: Decimal = Field(ge=0)
-    overrides: list[PlanPriceRequest] = Field(default_factory=list)
 
 
 class PlanDurationResponse(BaseModel):
@@ -57,6 +60,8 @@ class PlanResponse(BaseModel):
     description: Optional[str] = None
     tag: Optional[str] = None
     badge: Optional[PlanBadge] = None
+    icon_emoji_id: Optional[str] = None
+    icon_emoji_fallback: Optional[str] = None
     type: PlanType
     availability: PlanAvailability
     traffic_limit_strategy: TrafficLimitStrategy
@@ -77,9 +82,24 @@ class PlanResponse(BaseModel):
     durations: list[PlanDurationResponse]
 
 
-class CreatePlanRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    description: Optional[str] = Field(default=None, max_length=500)
+class PlanIconRequest(BaseModel):
+    icon_emoji_id: Optional[str] = Field(
+        default=None, max_length=PLAN_ICON_EMOJI_ID_MAX_LENGTH, pattern=PLAN_ICON_EMOJI_ID_PATTERN
+    )
+    icon_emoji_fallback: Optional[str] = Field(
+        default=None, min_length=1, max_length=PLAN_ICON_EMOJI_FALLBACK_MAX_LENGTH
+    )
+
+    @model_validator(mode="after")
+    def _emoji_with_fallback(self) -> "PlanIconRequest":
+        if (self.icon_emoji_id is None) != (self.icon_emoji_fallback is None):
+            raise ValueError("A custom emoji needs its fallback glyph")
+        return self
+
+
+class CreatePlanRequest(PlanIconRequest):
+    name: str = Field(min_length=1, max_length=PLAN_NAME_MAX_LENGTH)
+    description: Optional[str] = Field(default=None, max_length=PLAN_DESCRIPTION_MAX_LENGTH)
     tag: Optional[str] = Field(
         default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN
     )
@@ -94,9 +114,9 @@ class CreatePlanRequest(BaseModel):
     allow_promocodes: bool = True
 
 
-class UpdatePlanRequest(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    description: Optional[str] = Field(default=None, max_length=500)
+class UpdatePlanRequest(PlanIconRequest):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=PLAN_NAME_MAX_LENGTH)
+    description: Optional[str] = Field(default=None, max_length=PLAN_DESCRIPTION_MAX_LENGTH)
     tag: Optional[str] = Field(
         default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN
     )
@@ -287,9 +307,27 @@ class SetMatrixPricesRequest(BaseModel):
 
 class AdjustBasePricesRequest(BaseModel):
     scope: PriceAdjustScope
-    factor: Decimal = Field(gt=0)
+    mode: PriceAdjustMode = PriceAdjustMode.MULTIPLY
+    factor: Optional[Decimal] = Field(default=None, gt=0)
+    price: Optional[Decimal] = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    ladder_base_days: int = Field(default=30, ge=1)
+    # a negative discount is a markup
+    ladder_discounts: dict[
+        int, Annotated[Decimal, Field(ge=-LADDER_MAX_MARKUP, lt=100, decimal_places=2)]
+    ] = Field(default_factory=dict, max_length=MATRIX_MAX_EDITS)
+    pinned: PinnedPriceAction = PinnedPriceAction.KEEP
     plan_duration_ids: list[int] = Field(default_factory=list)
     addon_ids: list[int] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _value_for_mode(self) -> "AdjustBasePricesRequest":
+        if self.mode is PriceAdjustMode.MULTIPLY and self.factor is None:
+            raise ValueError("MULTIPLY takes a factor")
+        if self.mode is not PriceAdjustMode.MULTIPLY and self.price is None:
+            raise ValueError(f"{self.mode} takes a price")
+        if self.mode is PriceAdjustMode.LADDER and self.scope is PriceAdjustScope.ALL_ADDONS:
+            raise ValueError("LADDER prices plan durations, not add-ons")
+        return self
 
 
 class PreviewRateChangeRequest(BaseModel):

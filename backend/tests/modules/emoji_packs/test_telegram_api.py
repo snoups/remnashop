@@ -34,14 +34,20 @@ def test_parse_set_name_rejects_anything_else(link: str) -> None:
         parse_set_name(link)
 
 
-def _sticker(emoji_id: Optional[str], file_id: str, thumb_id: Optional[str] = None) -> Sticker:
+def _sticker(
+    emoji_id: Optional[str],
+    file_id: str,
+    thumb_id: Optional[str] = None,
+    *,
+    is_animated: bool = True,
+) -> Sticker:
     return Sticker(
         file_id=file_id,
         file_unique_id=f"u{file_id}",
         type="custom_emoji" if emoji_id else "regular",
         width=100,
         height=100,
-        is_animated=True,
+        is_animated=is_animated,
         is_video=False,
         emoji="\U0001f604",
         custom_emoji_id=emoji_id,
@@ -108,6 +114,23 @@ async def test_fetch_keeps_artwork_and_survives_a_failed_file(
         "lottie",
     )
     assert (second.thumbnail, second.animation, second.animation_kind) == (b"webp2", None, None)
+
+
+async def test_a_static_emoji_is_stored_as_its_own_thumbnail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sticker_set = _set("custom_emoji", [_sticker("1", "static1", "thumb1", is_animated=False)])
+    use_fake_bot(
+        monkeypatch,
+        FakeBotSession(
+            {"GetStickerSet": sticker_set, "GetFile": _file},
+            files={"files/static1": b"webp-full", "files/thumb1": b"webp-small"},
+        ),
+    )
+
+    (item,) = (await fetch_emoji_pack("123:abc", None, "MemeEmoji")).items
+
+    assert (item.thumbnail, item.animation, item.animation_kind) == (b"webp-full", None, None)
 
 
 async def test_an_unreachable_telegram_is_a_value_error(monkeypatch: pytest.MonkeyPatch) -> None:

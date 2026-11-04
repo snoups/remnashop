@@ -27,9 +27,14 @@ class DeletePlanUseCase(UseCase[int, None]):
 
     async def _execute(self, actor: Actor, data: int) -> None:
         async with self._uow:
-            await self._plan_reference_cleaner.forget_plan(data)
+            disabled_promocode_ids = await self._plan_reference_cleaner.forget_plan(data)
             await self._plan_repository.delete(data)
             await self._event_publisher.publish(
-                PlanChangedEvent(actor=actor, action="delete", plan_id=data)
+                PlanChangedEvent(
+                    actor=actor,
+                    action="delete",
+                    plan_id=data,
+                    disabled_promocode_ids=disabled_promocode_ids,
+                )
             )
         logger.info(f"{actor.log} Deleted plan '{data}'")

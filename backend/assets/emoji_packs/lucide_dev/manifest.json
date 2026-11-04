@@ -1,0 +1,802 @@
+{
+ "set_name": "lucide_dev",
+ "title": "Lucide (Remnashop)",
+ "items": [
+  {
+   "custom_emoji_id": "5429503991232900799",
+   "fallback_emoji": "🌊"
+  },
+  {
+   "custom_emoji_id": "5429495006161315221",
+   "fallback_emoji": "🌊"
+  },
+  {
+   "custom_emoji_id": "5429625611821818378",
+   "fallback_emoji": "⚡"
+  },
+  {
+   "custom_emoji_id": "5427144469344467289",
+   "fallback_emoji": "💨"
+  },
+  {
+   "custom_emoji_id": "5427306050309109977",
+   "fallback_emoji": "📶"
+  },
+  {
+   "custom_emoji_id": "5427230222661497334",
+   "fallback_emoji": "🔗"
+  },
+  {
+   "custom_emoji_id": "5427299436059472248",
+   "fallback_emoji": "⌚"
+  },
+  {
+   "custom_emoji_id": "5427354909857066785",
+   "fallback_emoji": "🪄"
+  },
+  {
+   "custom_emoji_id": "5426909307000109813",
+   "fallback_emoji": "👛"
+  },
+  {
+   "custom_emoji_id": "5426876493449966142",
+   "fallback_emoji": "🎭"
+  },
+  {
+   "custom_emoji_id": "5427129286635073352",
+   "fallback_emoji": "🏦"
+  },
+  {
+   "custom_emoji_id": "5426906060004831094",
+   "fallback_emoji": "👥"
+  },
+  {
+   "custom_emoji_id": "5427330510147857430",
+   "fallback_emoji": "👤"
+  },
+  {
+   "custom_emoji_id": "5427053295778705550",
+   "fallback_emoji": "☂️"
+  },
+  {
+   "custom_emoji_id": "5426916874732482944",
+   "fallback_emoji": "📺"
+  },
+  {
+   "custom_emoji_id": "5427111733103732773",
+   "fallback_emoji": "📺"
+  },
+  {
+   "custom_emoji_id": "5427238022322105807",
+   "fallback_emoji": "🐢"
+  },
+  {
+   "custom_emoji_id": "5426979400866381066",
+   "fallback_emoji": "🏆"
+  },
+  {
+   "custom_emoji_id": "5427267356948736138",
+   "fallback_emoji": "📈"
+  },
+  {
+   "custom_emoji_id": "5426930652987567649",
+   "fallback_emoji": "🌲"
+  },
+  {
+   "custom_emoji_id": "5429163271477307611",
+   "fallback_emoji": "🎄"
+  },
+  {
+   "custom_emoji_id": "5427243335196652545",
+   "fallback_emoji": "🌴"
+  },
+  {
+   "custom_emoji_id": "5426861542668805589",
+   "fallback_emoji": "🚆"
+  },
+  {
+   "custom_emoji_id": "5427341810206814643",
+   "fallback_emoji": "🌪"
+  },
+  {
+   "custom_emoji_id": "5427025245347295687",
+   "fallback_emoji": "⏱️"
+  },
+  {
+   "custom_emoji_id": "5429404571329930388",
+   "fallback_emoji": "🎟"
+  },
+  {
+   "custom_emoji_id": "5427059244308409179",
+   "fallback_emoji": "👍"
+  },
+  {
+   "custom_emoji_id": "5429334352909608959",
+   "fallback_emoji": "⛺"
+  },
+  {
+   "custom_emoji_id": "5427081466469201154",
+   "fallback_emoji": "🔭"
+  },
+  {
+   "custom_emoji_id": "5427041725136808907",
+   "fallback_emoji": "🎯"
+  },
+  {
+   "custom_emoji_id": "5429187417783447407",
+   "fallback_emoji": "🏷"
+  },
+  {
+   "custom_emoji_id": "5427208722055213110",
+   "fallback_emoji": "📱"
+  },
+  {
+   "custom_emoji_id": "5426860735214955425",
+   "fallback_emoji": "⚔️"
+  },
+  {
+   "custom_emoji_id": "5427241179123067627",
+   "fallback_emoji": "🗡"
+  },
+  {
+   "custom_emoji_id": "5429457627060939636",
+   "fallback_emoji": "🌅"
+  },
+  {
+   "custom_emoji_id": "5427282470938655603",
+   "fallback_emoji": "☀️"
+  },
+  {
+   "custom_emoji_id": "5429524735924938736",
+   "fallback_emoji": "🏪"
+  },
+  {
+   "custom_emoji_id": "5427270616828915870",
+   "fallback_emoji": "⭐"
+  },
+  {
+   "custom_emoji_id": "5426857595593868471",
+   "fallback_emoji": "🐿"
+  },
+  {
+   "custom_emoji_id": "5427393169425740707",
+   "fallback_emoji": "🌱"
+  },
+  {
+   "custom_emoji_id": "5427163740862720380",
+   "fallback_emoji": "🔊"
+  },
+  {
+   "custom_emoji_id": "5427223342123885962",
+   "fallback_emoji": "✨"
+  },
+  {
+   "custom_emoji_id": "5429163271477307612",
+   "fallback_emoji": "💫"
+  },
+  {
+   "custom_emoji_id": "5429222486191418174",
+   "fallback_emoji": "❄️"
+  },
+  {
+   "custom_emoji_id": "5427169337205107054",
+   "fallback_emoji": "🐌"
+  },
+  {
+   "custom_emoji_id": "5429359448403520963",
+   "fallback_emoji": "😊"
+  },
+  {
+   "custom_emoji_id": "5429543453392412951",
+   "fallback_emoji": "📱"
+  },
+  {
+   "custom_emoji_id": "5427369581465346839",
+   "fallback_emoji": "💀"
+  },
+  {
+   "custom_emoji_id": "5429168713200873148",
+   "fallback_emoji": "🚨"
+  },
+  {
+   "custom_emoji_id": "5427225446657864844",
+   "fallback_emoji": "📶"
+  },
+  {
+   "custom_emoji_id": "5429186262437243454",
+   "fallback_emoji": "🛡"
+  },
+  {
+   "custom_emoji_id": "5427271213829370339",
+   "fallback_emoji": "🛡"
+  },
+  {
+   "custom_emoji_id": "5429489989639514032",
+   "fallback_emoji": "🛡"
+  },
+  {
+   "custom_emoji_id": "5427349493903306555",
+   "fallback_emoji": "🛡"
+  },
+  {
+   "custom_emoji_id": "5427186658808213568",
+   "fallback_emoji": "🛡"
+  },
+  {
+   "custom_emoji_id": "5426883498541625485",
+   "fallback_emoji": "🖥"
+  },
+  {
+   "custom_emoji_id": "5427013155014359257",
+   "fallback_emoji": "🏫"
+  },
+  {
+   "custom_emoji_id": "5427245886407222851",
+   "fallback_emoji": "🙂"
+  },
+  {
+   "custom_emoji_id": "5427021315452227939",
+   "fallback_emoji": "📡"
+  },
+  {
+   "custom_emoji_id": "5427189875738718640",
+   "fallback_emoji": "🛰"
+  },
+  {
+   "custom_emoji_id": "5427210105034684618",
+   "fallback_emoji": "⛵"
+  },
+  {
+   "custom_emoji_id": "5429096858398006441",
+   "fallback_emoji": "📡"
+  },
+  {
+   "custom_emoji_id": "5427012622438411245",
+   "fallback_emoji": "🛣"
+  },
+  {
+   "custom_emoji_id": "5429114931620391013",
+   "fallback_emoji": "🚀"
+  },
+  {
+   "custom_emoji_id": "5427043619217387827",
+   "fallback_emoji": "🎗"
+  },
+  {
+   "custom_emoji_id": "5427092040678682466",
+   "fallback_emoji": "🌈"
+  },
+  {
+   "custom_emoji_id": "5427333267516863696",
+   "fallback_emoji": "📻"
+  },
+  {
+   "custom_emoji_id": "5429108244356313527",
+   "fallback_emoji": "📡"
+  },
+  {
+   "custom_emoji_id": "5427174778928673059",
+   "fallback_emoji": "🐰"
+  },
+  {
+   "custom_emoji_id": "5427149232463196693",
+   "fallback_emoji": "🧩"
+  },
+  {
+   "custom_emoji_id": "5429350806929321285",
+   "fallback_emoji": "🍿"
+  },
+  {
+   "custom_emoji_id": "5429311018352290117",
+   "fallback_emoji": "🔌"
+  },
+  {
+   "custom_emoji_id": "5427029377105832306",
+   "fallback_emoji": "▶️"
+  },
+  {
+   "custom_emoji_id": "5426960962571775706",
+   "fallback_emoji": "✈️"
+  },
+  {
+   "custom_emoji_id": "5427238752466547406",
+   "fallback_emoji": "🍕"
+  },
+  {
+   "custom_emoji_id": "5427217775846276636",
+   "fallback_emoji": "🐷"
+  },
+  {
+   "custom_emoji_id": "5426924794652180438",
+   "fallback_emoji": "💯"
+  },
+  {
+   "custom_emoji_id": "5427087440768712027",
+   "fallback_emoji": "🐾"
+  },
+  {
+   "custom_emoji_id": "5426872739648549657",
+   "fallback_emoji": "🎉"
+  },
+  {
+   "custom_emoji_id": "5427318608793481762",
+   "fallback_emoji": "🐼"
+  },
+  {
+   "custom_emoji_id": "5427302717414486947",
+   "fallback_emoji": "🎨"
+  },
+  {
+   "custom_emoji_id": "5429325432262533182",
+   "fallback_emoji": "🪐"
+  },
+  {
+   "custom_emoji_id": "5427364423209629343",
+   "fallback_emoji": "🕸"
+  },
+  {
+   "custom_emoji_id": "5427346483131235596",
+   "fallback_emoji": "🧭"
+  },
+  {
+   "custom_emoji_id": "5426968775117286964",
+   "fallback_emoji": "🎵"
+  },
+  {
+   "custom_emoji_id": "5426869965099674444",
+   "fallback_emoji": "🏔"
+  },
+  {
+   "custom_emoji_id": "5427155571834922974",
+   "fallback_emoji": "🏔"
+  },
+  {
+   "custom_emoji_id": "5427069496395347293",
+   "fallback_emoji": "🌙"
+  },
+  {
+   "custom_emoji_id": "5429552889435566892",
+   "fallback_emoji": "🌙"
+  },
+  {
+   "custom_emoji_id": "5429195277573596452",
+   "fallback_emoji": "🖥"
+  },
+  {
+   "custom_emoji_id": "5429123590274458111",
+   "fallback_emoji": "🖥"
+  },
+  {
+   "custom_emoji_id": "5427019863753274536",
+   "fallback_emoji": "🎤"
+  },
+  {
+   "custom_emoji_id": "5429568716390050405",
+   "fallback_emoji": "📣"
+  },
+  {
+   "custom_emoji_id": "5427120627981006562",
+   "fallback_emoji": "🏅"
+  },
+  {
+   "custom_emoji_id": "5429166080385917523",
+   "fallback_emoji": "🗺"
+  },
+  {
+   "custom_emoji_id": "5427167254145970325",
+   "fallback_emoji": "📍"
+  },
+  {
+   "custom_emoji_id": "5426935776883553068",
+   "fallback_emoji": "🧲"
+  },
+  {
+   "custom_emoji_id": "5427305762546299283",
+   "fallback_emoji": "🔐"
+  },
+  {
+   "custom_emoji_id": "5429522309268415239",
+   "fallback_emoji": "🔒"
+  },
+  {
+   "custom_emoji_id": "5427288475302935016",
+   "fallback_emoji": "🔗"
+  },
+  {
+   "custom_emoji_id": "5427399345588710760",
+   "fallback_emoji": "💡"
+  },
+  {
+   "custom_emoji_id": "5429212938479120447",
+   "fallback_emoji": "🍃"
+  },
+  {
+   "custom_emoji_id": "5426923119614929874",
+   "fallback_emoji": "📚"
+  },
+  {
+   "custom_emoji_id": "5426930738886912128",
+   "fallback_emoji": "😄"
+  },
+  {
+   "custom_emoji_id": "5426973173163799031",
+   "fallback_emoji": "💻"
+  },
+  {
+   "custom_emoji_id": "5427267472912857044",
+   "fallback_emoji": "🏛"
+  },
+  {
+   "custom_emoji_id": "5427383291000957137",
+   "fallback_emoji": "🔑"
+  },
+  {
+   "custom_emoji_id": "5427028608306688211",
+   "fallback_emoji": "🗝"
+  },
+  {
+   "custom_emoji_id": "5427239074589090875",
+   "fallback_emoji": "🕹"
+  },
+  {
+   "custom_emoji_id": "5426979860427880896",
+   "fallback_emoji": "♾️"
+  },
+  {
+   "custom_emoji_id": "5429409016621083511",
+   "fallback_emoji": "🍦"
+  },
+  {
+   "custom_emoji_id": "5427213472289044660",
+   "fallback_emoji": "🏠"
+  },
+  {
+   "custom_emoji_id": "5427139560196846177",
+   "fallback_emoji": "🏠"
+  },
+  {
+   "custom_emoji_id": "5429366822862367095",
+   "fallback_emoji": "⏳"
+  },
+  {
+   "custom_emoji_id": "5429395362920048576",
+   "fallback_emoji": "🔶"
+  },
+  {
+   "custom_emoji_id": "5429092524776009676",
+   "fallback_emoji": "❤️"
+  },
+  {
+   "custom_emoji_id": "5427019322587392476",
+   "fallback_emoji": "🎧"
+  },
+  {
+   "custom_emoji_id": "5427320047607527145",
+   "fallback_emoji": "🎧"
+  },
+  {
+   "custom_emoji_id": "5429362506420236613",
+   "fallback_emoji": "🕵"
+  },
+  {
+   "custom_emoji_id": "5427005729015902093",
+   "fallback_emoji": "🤝"
+  },
+  {
+   "custom_emoji_id": "5429228713894000854",
+   "fallback_emoji": "🫶"
+  },
+  {
+   "custom_emoji_id": "5427313377523312903",
+   "fallback_emoji": "💰"
+  },
+  {
+   "custom_emoji_id": "5429409162649970470",
+   "fallback_emoji": "🎸"
+  },
+  {
+   "custom_emoji_id": "5427330780730799211",
+   "fallback_emoji": "🎓"
+  },
+  {
+   "custom_emoji_id": "5426971584025899019",
+   "fallback_emoji": "🌐"
+  },
+  {
+   "custom_emoji_id": "5427112884154970174",
+   "fallback_emoji": "👓"
+  },
+  {
+   "custom_emoji_id": "5427310517075095408",
+   "fallback_emoji": "🎁"
+  },
+  {
+   "custom_emoji_id": "5429504502334007067",
+   "fallback_emoji": "👻"
+  },
+  {
+   "custom_emoji_id": "5429100182702697295",
+   "fallback_emoji": "💎"
+  },
+  {
+   "custom_emoji_id": "5429622489380598385",
+   "fallback_emoji": "🏎"
+  },
+  {
+   "custom_emoji_id": "5427314777682654555",
+   "fallback_emoji": "🎮"
+  },
+  {
+   "custom_emoji_id": "5429644329289295706",
+   "fallback_emoji": "🎮"
+  },
+  {
+   "custom_emoji_id": "5427327602455001304",
+   "fallback_emoji": "🌸"
+  },
+  {
+   "custom_emoji_id": "5427072073375730003",
+   "fallback_emoji": "🧪"
+  },
+  {
+   "custom_emoji_id": "5426976759461490930",
+   "fallback_emoji": "🔥"
+  },
+  {
+   "custom_emoji_id": "5427367575715623550",
+   "fallback_emoji": "🚩"
+  },
+  {
+   "custom_emoji_id": "5429521896951555871",
+   "fallback_emoji": "🐟"
+  },
+  {
+   "custom_emoji_id": "5427379928041566836",
+   "fallback_emoji": "👆"
+  },
+  {
+   "custom_emoji_id": "5427022831575674071",
+   "fallback_emoji": "🎞"
+  },
+  {
+   "custom_emoji_id": "5429442899618083085",
+   "fallback_emoji": "🪶"
+  },
+  {
+   "custom_emoji_id": "5429409493362453794",
+   "fallback_emoji": "⏩"
+  },
+  {
+   "custom_emoji_id": "5427361601416114063",
+   "fallback_emoji": "🏭"
+  },
+  {
+   "custom_emoji_id": "5427024708476384537",
+   "fallback_emoji": "👁"
+  },
+  {
+   "custom_emoji_id": "5427110792505894946",
+   "fallback_emoji": "🌍"
+  },
+  {
+   "custom_emoji_id": "5429496140032684958",
+   "fallback_emoji": "🏋️"
+  },
+  {
+   "custom_emoji_id": "5427286624172029108",
+   "fallback_emoji": "💧"
+  },
+  {
+   "custom_emoji_id": "5427025017714028504",
+   "fallback_emoji": "🎭"
+  },
+  {
+   "custom_emoji_id": "5429577417993791156",
+   "fallback_emoji": "🍩"
+  },
+  {
+   "custom_emoji_id": "5427261103476353784",
+   "fallback_emoji": "🐶"
+  },
+  {
+   "custom_emoji_id": "5429454650648601410",
+   "fallback_emoji": "🎲"
+  },
+  {
+   "custom_emoji_id": "5429146658543811113",
+   "fallback_emoji": "🔷"
+  },
+  {
+   "custom_emoji_id": "5429168979488847418",
+   "fallback_emoji": "🗄"
+  },
+  {
+   "custom_emoji_id": "5427203379115898456",
+   "fallback_emoji": "👑"
+  },
+  {
+   "custom_emoji_id": "5427003426913434816",
+   "fallback_emoji": "💳"
+  },
+  {
+   "custom_emoji_id": "5426845711419356326",
+   "fallback_emoji": "💻"
+  },
+  {
+   "custom_emoji_id": "5426924390925250067",
+   "fallback_emoji": "🍪"
+  },
+  {
+   "custom_emoji_id": "5427054777542420300",
+   "fallback_emoji": "🧭"
+  },
+  {
+   "custom_emoji_id": "5429556419898681353",
+   "fallback_emoji": "🪙"
+  },
+  {
+   "custom_emoji_id": "5429256669836128431",
+   "fallback_emoji": "☕"
+  },
+  {
+   "custom_emoji_id": "5429409076750624425",
+   "fallback_emoji": "🍀"
+  },
+  {
+   "custom_emoji_id": "5429163559240119519",
+   "fallback_emoji": "☁️"
+  },
+  {
+   "custom_emoji_id": "5426946797769637128",
+   "fallback_emoji": "🌩"
+  },
+  {
+   "custom_emoji_id": "5427359385212991030",
+   "fallback_emoji": "🕐"
+  },
+  {
+   "custom_emoji_id": "5429368927396340824",
+   "fallback_emoji": "🎬"
+  },
+  {
+   "custom_emoji_id": "5426913705046616327",
+   "fallback_emoji": "🍋"
+  },
+  {
+   "custom_emoji_id": "5427126185668685948",
+   "fallback_emoji": "🌟"
+  },
+  {
+   "custom_emoji_id": "5429544299500971063",
+   "fallback_emoji": "⏫"
+  },
+  {
+   "custom_emoji_id": "5427043756656341643",
+   "fallback_emoji": "🍒"
+  },
+  {
+   "custom_emoji_id": "5427201931711920035",
+   "fallback_emoji": "🐱"
+  },
+  {
+   "custom_emoji_id": "5427157556109818504",
+   "fallback_emoji": "🏰"
+  },
+  {
+   "custom_emoji_id": "5426895498680250633",
+   "fallback_emoji": "🚗"
+  },
+  {
+   "custom_emoji_id": "5426960000499101379",
+   "fallback_emoji": "🍬"
+  },
+  {
+   "custom_emoji_id": "5426843499511198018",
+   "fallback_emoji": "📷"
+  },
+  {
+   "custom_emoji_id": "5427140298931221794",
+   "fallback_emoji": "📅"
+  },
+  {
+   "custom_emoji_id": "5427096275516434682",
+   "fallback_emoji": "🎂"
+  },
+  {
+   "custom_emoji_id": "5427195295987445702",
+   "fallback_emoji": "🏢"
+  },
+  {
+   "custom_emoji_id": "5427071124187950436",
+   "fallback_emoji": "🐛"
+  },
+  {
+   "custom_emoji_id": "5427268112862980707",
+   "fallback_emoji": "💼"
+  },
+  {
+   "custom_emoji_id": "5426976166756005552",
+   "fallback_emoji": "🧠"
+  },
+  {
+   "custom_emoji_id": "5429613693287578957",
+   "fallback_emoji": "📦"
+  },
+  {
+   "custom_emoji_id": "5427125060387256330",
+   "fallback_emoji": "🤖"
+  },
+  {
+   "custom_emoji_id": "5427012695452855816",
+   "fallback_emoji": "🔖"
+  },
+  {
+   "custom_emoji_id": "5427393817965803901",
+   "fallback_emoji": "📖"
+  },
+  {
+   "custom_emoji_id": "5427310100463270846",
+   "fallback_emoji": "🐦"
+  },
+  {
+   "custom_emoji_id": "5429136668449875091",
+   "fallback_emoji": "🚲"
+  },
+  {
+   "custom_emoji_id": "5429616721239517278",
+   "fallback_emoji": "🔔"
+  },
+  {
+   "custom_emoji_id": "5427175444648605284",
+   "fallback_emoji": "🍺"
+  },
+  {
+   "custom_emoji_id": "5427062482713751701",
+   "fallback_emoji": "🔋"
+  },
+  {
+   "custom_emoji_id": "5427003495632907568",
+   "fallback_emoji": "🔋"
+  },
+  {
+   "custom_emoji_id": "5427034956268351880",
+   "fallback_emoji": "💵"
+  },
+  {
+   "custom_emoji_id": "5429434627511069895",
+   "fallback_emoji": "✅"
+  },
+  {
+   "custom_emoji_id": "5427141394147881609",
+   "fallback_emoji": "👶"
+  },
+  {
+   "custom_emoji_id": "5427311479147767301",
+   "fallback_emoji": "🎖"
+  },
+  {
+   "custom_emoji_id": "5426954103509004313",
+   "fallback_emoji": "🌊"
+  },
+  {
+   "custom_emoji_id": "5427033818102018331",
+   "fallback_emoji": "⚛️"
+  },
+  {
+   "custom_emoji_id": "5427015023325129490",
+   "fallback_emoji": "🍎"
+  },
+  {
+   "custom_emoji_id": "5429341525504996215",
+   "fallback_emoji": "📡"
+  },
+  {
+   "custom_emoji_id": "5427157989901512237",
+   "fallback_emoji": "⚓"
+  },
+  {
+   "custom_emoji_id": "5427193462036410385",
+   "fallback_emoji": "💓"
+  }
+ ]
+}

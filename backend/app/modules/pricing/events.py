@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from app.core.enums import Currency, PriceAdjustScope
+from app.core.enums import Currency, PinnedPriceAction, PriceAdjustMode, PriceAdjustScope
 from app.core.events import ActorEvent, EventCategory
 
 
@@ -24,7 +24,10 @@ class AnchorSwitchedEvent(ActorEvent):
 class BasePricesAdjustedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PRICING
     scope: PriceAdjustScope
-    factor: str
+    mode: PriceAdjustMode
+    # the factor for MULTIPLY, the price for SET and LADDER
+    value: str
+    pinned: PinnedPriceAction
 
 
 @dataclass(frozen=True, kw_only=True)

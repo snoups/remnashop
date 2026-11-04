@@ -8,6 +8,7 @@ from app.core.db.errors import constraint_name
 from app.core.db.models.addon import AddOn
 from app.core.db.models.addon_price_override import AddOnPriceOverride
 from app.core.db.partial_update import apply_partial_update
+from app.core.enums import Currency
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError
 from app.modules.plans.dto import (
@@ -167,6 +168,17 @@ class AddOnRepository:
         await self.session.flush()
         overrides_by_addon = await self._load_overrides([row.id])
         return self._to_dto(row, overrides_by_addon.get(row.id, []))
+
+    async def replace_overrides(self, values: dict[int, dict[Currency, Decimal]]) -> None:
+        for addon_id, prices in values.items():
+            await self.session.execute(
+                delete(AddOnPriceOverride).where(AddOnPriceOverride.addon_id == addon_id)
+            )
+            self.session.add_all(
+                AddOnPriceOverride(addon_id=addon_id, currency=currency, price=price)
+                for currency, price in prices.items()
+            )
+        await self.session.flush()
 
     async def set_base_prices(self, values: dict[int, Decimal]) -> None:
         for addon_id, base_price in values.items():

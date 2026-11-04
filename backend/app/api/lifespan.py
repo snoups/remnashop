@@ -19,6 +19,7 @@ from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.modules.banners import BannerRepository, ensure_default_banner_seeded
 from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_seeded
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
+from app.modules.emoji_packs import EmojiPackRepository, ensure_builtin_emoji_packs_seeded
 from app.modules.translations import TranslationRepository, ensure_translations_seeded
 from app.modules.users import UserRepository
 
@@ -48,6 +49,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 if not await user_repository.exists_with_role(Role.OWNER):
                     blacklist_repository = await startup_container.get(BlacklistRepository)
                     await ensure_blacklist_sources_seeded(blacklist_repository)
+                    emoji_pack_repository = await startup_container.get(EmojiPackRepository)
+                    await ensure_builtin_emoji_packs_seeded(
+                        emoji_pack_repository, config.assets_dir
+                    )
 
                 banner_repository = await startup_container.get(BannerRepository)
                 await ensure_default_banner_seeded(

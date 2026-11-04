@@ -397,7 +397,7 @@ async def test_regular_user_cannot_reorder_plans(
         await use_case(REGULAR_USER, ReorderPlansDto(plan_ids=[created.id]))
 
 
-async def test_deleting_a_plan_drops_it_from_promocode_plan_lists(
+async def test_deleting_a_plan_drops_it_from_promocode_plan_lists_and_disables_emptied_ones(
     plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     kept = await plan_repository.create(
@@ -430,8 +430,12 @@ async def test_deleting_a_plan_drops_it_from_promocode_plan_lists(
 
     await DeletePlanUseCase(plan_repository, promocodes, uow, event_publisher)(OWNER, gone.id)
 
-    assert (await promocodes.get_by_id(both.id)).allowed_plan_ids == [kept.id]
-    assert (await promocodes.get_by_id(only.id)).allowed_plan_ids == []
+    both_after = await promocodes.get_by_id(both.id)
+    only_after = await promocodes.get_by_id(only.id)
+    assert both_after.allowed_plan_ids == [kept.id]
+    assert both_after.is_active
+    assert only_after.allowed_plan_ids == []
+    assert not only_after.is_active
 
 
 async def test_owner_can_set_and_clear_plan_discount(

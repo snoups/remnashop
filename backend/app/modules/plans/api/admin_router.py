@@ -92,7 +92,9 @@ from app.modules.pricing import (
 )
 
 # optional texts an admin can empty by sending null
-_CLEARABLE_FIELDS: Final[frozenset[str]] = frozenset({"description", "tag", "badge"})
+_CLEARABLE_FIELDS: Final[frozenset[str]] = frozenset(
+    {"description", "tag", "badge", "icon_emoji_id", "icon_emoji_fallback"}
+)
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 addons_router = APIRouter(prefix="/addons", tags=["addons"])
@@ -114,7 +116,7 @@ async def list_plans(
     "",
     response_model=PlanResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(409),
+    responses=error_responses(400, 409),
 )
 @inject
 async def create_plan(
@@ -129,6 +131,8 @@ async def create_plan(
             description=payload.description,
             tag=payload.tag,
             badge=payload.badge,
+            icon_emoji_id=payload.icon_emoji_id,
+            icon_emoji_fallback=payload.icon_emoji_fallback,
             type=payload.type,
             traffic_limit_strategy=payload.traffic_limit_strategy,
             traffic_limit=payload.traffic_limit,
@@ -153,7 +157,9 @@ async def reorder_plans(
     return PlanListResponse(items=items, total=len(items))
 
 
-@router.patch("/{plan_id:int}", response_model=PlanResponse, responses=error_responses(404, 409))
+@router.patch(
+    "/{plan_id:int}", response_model=PlanResponse, responses=error_responses(400, 404, 409)
+)
 @inject
 async def update_plan(
     plan_id: int,
@@ -169,6 +175,8 @@ async def update_plan(
             description=payload.description,
             tag=payload.tag,
             badge=payload.badge,
+            icon_emoji_id=payload.icon_emoji_id,
+            icon_emoji_fallback=payload.icon_emoji_fallback,
             type=payload.type,
             traffic_limit_strategy=payload.traffic_limit_strategy,
             traffic_limit=payload.traffic_limit,
@@ -565,7 +573,12 @@ async def preview_pricing_change(
     if payload.adjust is not None:
         adjust = AdjustBasePricesDto(
             scope=payload.adjust.scope,
+            mode=payload.adjust.mode,
             factor=payload.adjust.factor,
+            price=payload.adjust.price,
+            ladder_base_days=payload.adjust.ladder_base_days,
+            ladder_discounts=payload.adjust.ladder_discounts,
+            pinned=payload.adjust.pinned,
             plan_duration_ids=payload.adjust.plan_duration_ids,
             addon_ids=payload.adjust.addon_ids,
         )
@@ -625,7 +638,12 @@ async def adjust_base_prices(
         actor,
         AdjustBasePricesDto(
             scope=payload.scope,
+            mode=payload.mode,
             factor=payload.factor,
+            price=payload.price,
+            ladder_base_days=payload.ladder_base_days,
+            ladder_discounts=payload.ladder_discounts,
+            pinned=payload.pinned,
             plan_duration_ids=payload.plan_duration_ids,
             addon_ids=payload.addon_ids,
         ),

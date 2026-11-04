@@ -1,11 +1,15 @@
+from dataclasses import replace
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import Currency, PlanAvailability, PlanType
+from app.core.enums import Currency, PlanAvailability, PlanBadge, PlanType
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.modules.plans.api.schemas import PlanIconRequest
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -235,6 +239,67 @@ async def test_update_on_an_already_devices_plan_keeps_traffic_limit_zeroed(
     assert updated.name == "Renamed"
 
 
+@pytest.mark.parametrize(
+    ("plan_type", "traffic_limit", "device_limit"),
+    [(PlanType.TRAFFIC, 0, 0), (PlanType.DEVICES, 0, 0), (PlanType.BOTH, 100, 0)],
+)
+async def test_create_rejects_a_zero_limit_the_type_applies(
+    plan_repository: PlanRepository, plan_type: PlanType, traffic_limit: int, device_limit: int
+) -> None:
+    with pytest.raises(ValidationError) as error:
+        await plan_repository.create(
+            CreatePlanDto(
+                public_code="zero",
+                name="Zero",
+                type=plan_type,
+                traffic_limit=traffic_limit,
+                device_limit=device_limit,
+            )
+        )
+
+    assert error.value.code == ErrorCode.PLAN_LIMIT_REQUIRED
+
+
+async def test_update_to_a_limited_type_needs_its_limit(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="unlimited",
+            name="Unlimited",
+            type=PlanType.UNLIMITED,
+            traffic_limit=0,
+            device_limit=0,
+        )
+    )
+
+    with pytest.raises(ValidationError):
+        await plan_repository.update(UpdatePlanDto(plan_id=created.id, type=PlanType.TRAFFIC))
+
+    updated = await plan_repository.update(
+        UpdatePlanDto(plan_id=created.id, type=PlanType.TRAFFIC, traffic_limit=50)
+    )
+    assert (updated.traffic_limit, updated.device_limit) == (50, 0)
+
+
+async def test_clearing_the_icon_drops_its_fallback(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="icon",
+            name="Icon",
+            type=PlanType.UNLIMITED,
+            traffic_limit=0,
+            device_limit=0,
+            icon_emoji_id="123",
+            icon_emoji_fallback="🚀",
+        )
+    )
+
+    cleared = await plan_repository.update(
+        UpdatePlanDto(plan_id=created.id, cleared=frozenset({"icon_emoji_id"}))
+    )
+
+    assert (cleared.icon_emoji_id, cleared.icon_emoji_fallback) == (None, None)
+
+
 async def test_delete_removes_plan(plan_repository: PlanRepository) -> None:
     created = await plan_repository.create(_create_dto())
 
@@ -331,6 +396,68 @@ async def test_update_access_rejects_allowed_with_empty_allowlists(
                 allowed_emails=[],
             )
         )
+
+
+async def test_update_access_rejects_existing_for_a_trial_plan(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(replace(_create_dto(), is_trial=True))
+
+    with pytest.raises(ValidationError) as error:
+        await plan_repository.update_access(
+            UpdatePlanAccessDto(
+                plan_id=created.id,
+                availability=PlanAvailability.EXISTING,
+                allowed_telegram_ids=[],
+                allowed_emails=[],
+            )
+        )
+    assert error.value.code == ErrorCode.PLAN_TRIAL_EXISTING_ACCESS
+
+
+async def test_update_rejects_turning_an_existing_only_plan_into_a_trial(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(_create_dto())
+    await plan_repository.update_access(
+        UpdatePlanAccessDto(
+            plan_id=created.id,
+            availability=PlanAvailability.EXISTING,
+            allowed_telegram_ids=[],
+            allowed_emails=[],
+        )
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_trial=True))
+    assert error.value.code == ErrorCode.PLAN_TRIAL_EXISTING_ACCESS
+
+
+async def test_create_rejects_a_trial_plan_with_a_badge(plan_repository: PlanRepository) -> None:
+    with pytest.raises(ValidationError) as error:
+        await plan_repository.create(replace(_create_dto(), is_trial=True, badge=PlanBadge.POPULAR))
+    assert error.value.code == ErrorCode.PLAN_TRIAL_BADGE
+
+
+async def test_update_rejects_a_badge_on_a_trial_plan(plan_repository: PlanRepository) -> None:
+    created = await plan_repository.create(replace(_create_dto(), badge=PlanBadge.POPULAR))
+
+    with pytest.raises(ValidationError) as error:
+        await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_trial=True))
+    assert error.value.code == ErrorCode.PLAN_TRIAL_BADGE
+
+
+async def test_update_turns_a_plan_into_a_trial_when_the_badge_is_cleared(
+    plan_repository: PlanRepository,
+) -> None:
+    created = await plan_repository.create(replace(_create_dto(), badge=PlanBadge.POPULAR))
+
+    updated = await plan_repository.update(
+        UpdatePlanDto(plan_id=created.id, is_trial=True, cleared=frozenset({"badge"}))
+    )
+
+    assert updated.is_trial is True
+    assert updated.badge is None
 
 
 async def test_update_squads_persists_squad_assignment(plan_repository: PlanRepository) -> None:
@@ -465,3 +592,56 @@ async def test_set_duration_base_price_unknown_duration_raises_not_found(
         await plan_repository.set_duration_base_price(
             SetPlanDurationBasePriceDto(plan_id=plan.id, days=30, base_price=Decimal("5"))
         )
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"icon_emoji_id": "1"},
+        {"icon_emoji_fallback": "⭐"},
+        {"icon_emoji_id": "not-digits", "icon_emoji_fallback": "⭐"},
+    ],
+)
+def test_request_rejects_an_inconsistent_icon(fields: dict[str, str]) -> None:
+    with pytest.raises(PydanticValidationError):
+        PlanIconRequest(**fields)
+
+
+async def test_set_durations_keeps_pinned_prices_of_kept_durations(
+    plan_repository: PlanRepository, session: AsyncSession
+) -> None:
+    plan = await _make_plan(plan_repository)
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("3.99")),
+                SetPlanDurationDto(days=60, order_index=1, base_price=Decimal("6.99")),
+            ],
+        )
+    )
+    await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id, days=30, currency=Currency.RUB, price=Decimal("299")
+        )
+    )
+
+    # 60 dropped, 90 added, 30 moved down
+    result = await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(days=90, order_index=0, base_price=Decimal("9.99")),
+                SetPlanDurationDto(days=30, order_index=1, base_price=Decimal("4.99")),
+            ],
+        )
+    )
+
+    by_days = {duration.days: duration for duration in result.durations}
+    assert set(by_days) == {30, 90}
+    assert by_days[30].order_index == 1
+    assert by_days[30].base_price == Decimal("4.99")
+    assert [(o.currency, o.price) for o in by_days[30].overrides] == [
+        (Currency.RUB, Decimal("299"))
+    ]
+    assert by_days[90].overrides == []

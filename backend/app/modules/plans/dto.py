@@ -11,9 +11,11 @@ from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     AddOnType,
     Currency,
+    PinnedPriceAction,
     PlanAvailability,
     PlanBadge,
     PlanType,
+    PriceAdjustMode,
     PriceAdjustScope,
 )
 from app.modules.pricing import CurrencyRateDto, PricingSettingsDto, UpdateCurrencyRateDto
@@ -38,6 +40,8 @@ class PlanDto(BaseDto, TimestampMixin):
     description: Optional[str] = None
     tag: Optional[str] = None
     badge: Optional[PlanBadge] = None
+    icon_emoji_id: Optional[str] = None
+    icon_emoji_fallback: Optional[str] = None
     type: PlanType
     availability: PlanAvailability = PlanAvailability.ALL
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
@@ -86,6 +90,8 @@ class CreatePlanDto:
     description: Optional[str] = None
     tag: Optional[str] = None
     badge: Optional[PlanBadge] = None
+    icon_emoji_id: Optional[str] = None
+    icon_emoji_fallback: Optional[str] = None
     traffic_limit_strategy: TrafficLimitStrategy = TrafficLimitStrategy.NO_RESET
     is_trial: bool = False
     allow_bonus_days: bool = True
@@ -101,6 +107,8 @@ class UpdatePlanDto:
     description: Optional[str] = None
     tag: Optional[str] = None
     badge: Optional[PlanBadge] = None
+    icon_emoji_id: Optional[str] = None
+    icon_emoji_fallback: Optional[str] = None
     type: Optional[PlanType] = None
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
     traffic_limit: Optional[int] = None
@@ -254,9 +262,25 @@ class SwitchAnchorCurrencyDto:
 @dataclass(frozen=True, kw_only=True)
 class AdjustBasePricesDto:
     scope: PriceAdjustScope
-    factor: Decimal
+    mode: PriceAdjustMode = PriceAdjustMode.MULTIPLY
+    # MULTIPLY takes the factor; SET the new price, LADDER the base duration's price
+    factor: Optional[Decimal] = None
+    price: Optional[Decimal] = None
+    ladder_base_days: int = 30
+    # LADDER: percent off by duration in days (negative is a markup), none for one not listed
+    ladder_discounts: dict[int, Decimal] = field(default_factory=dict)
+    pinned: PinnedPriceAction = PinnedPriceAction.KEEP
     plan_duration_ids: list[int] = field(default_factory=list)
     addon_ids: list[int] = field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class BasePriceAdjustmentDto:
+    plan_prices: dict[int, Decimal] = field(default_factory=dict)
+    addon_prices: dict[int, Decimal] = field(default_factory=dict)
+    # every pinned price an affected entry ends up with, only for entries whose pins change
+    plan_overrides: dict[int, dict[Currency, Decimal]] = field(default_factory=dict)
+    addon_overrides: dict[int, dict[Currency, Decimal]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)

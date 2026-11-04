@@ -19,7 +19,6 @@ _SET_NAME_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:https?://)?(?:t\.me/addemoji/)?([A-Za-z0-9_]{1,64})/?(?:\?.*)?$"
 )
 _DOWNLOAD_CONCURRENCY: Final[int] = 8
-_GZIP_MAGIC: Final[bytes] = b"\x1f\x8b"
 LOTTIE_KIND: Final[str] = "lottie"
 VIDEO_KIND: Final[str] = "video"
 
@@ -59,12 +58,16 @@ def custom_emoji_stickers(sticker_set: StickerSet, set_name: str) -> list[tuple[
 async def _with_artwork(
     bot: Bot, semaphore: asyncio.Semaphore, sticker: Sticker, custom_emoji_id: str
 ) -> EmojiPackItemDto:
-    # Two files per emoji: the static .webp thumbnail any browser draws, and
-    # the animation (gzipped lottie .tgs or .webm), which the dashboard plays
-    # and an <img> can't.
+    # Two files per animated emoji: the static .webp thumbnail any browser
+    # draws, and the animation (gzipped lottie .tgs or .webm), which the
+    # dashboard plays and an <img> can't. A static emoji is a .webp itself.
+    kind = _animation_kind(sticker)
     thumbnail_id = sticker.thumbnail.file_id if sticker.thumbnail else None
+    animation_id: Optional[str] = sticker.file_id
+    if kind is None:
+        thumbnail_id, animation_id = sticker.file_id, None
     thumbnail, animation = await asyncio.gather(
-        _download(bot, semaphore, thumbnail_id), _download(bot, semaphore, sticker.file_id)
+        _download(bot, semaphore, thumbnail_id), _download(bot, semaphore, animation_id)
     )
     return EmojiPackItemDto(
         custom_emoji_id=custom_emoji_id,
@@ -73,7 +76,7 @@ async def _with_artwork(
         fallback_emoji=sticker.emoji or "",
         thumbnail=thumbnail,
         animation=animation,
-        animation_kind=_animation_kind(animation),
+        animation_kind=kind if animation is not None else None,
     )
 
 
@@ -91,9 +94,7 @@ async def _download(
     return content.read() if content is not None else None
 
 
-def _animation_kind(animation: Optional[bytes]) -> Optional[str]:
-    if animation is None:
-        return None
-    # A .tgs is gzipped lottie JSON, served as-is under Content-Encoding: gzip;
-    # anything else Telegram hands back here is a .webm.
-    return LOTTIE_KIND if animation.startswith(_GZIP_MAGIC) else VIDEO_KIND
+def _animation_kind(sticker: Sticker) -> Optional[str]:
+    if sticker.is_animated:
+        return LOTTIE_KIND
+    return VIDEO_KIND if sticker.is_video else None

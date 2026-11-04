@@ -88,6 +88,21 @@ class PriceAdjustScope(UpperStrEnum):
     SELECTED = auto()
 
 
+class PriceAdjustMode(UpperStrEnum):
+    MULTIPLY = auto()
+    SET = auto()
+    # plan durations only: the base duration's price per day times the days, less a
+    # per-duration discount
+    LADDER = auto()
+
+
+class PinnedPriceAction(UpperStrEnum):
+    KEEP = auto()
+    # by the same ratio as the base price
+    SCALE = auto()
+    RESET = auto()
+
+
 class DiscountSource(UpperStrEnum):
     NONE = auto()
     PERSONAL = auto()
@@ -127,6 +142,8 @@ class PromocodeStatus(UpperStrEnum):
     ACTIVE = auto()
     EXPIRED = auto()
     INACTIVE = auto()
+    # live, but its activation limit is used up
+    EXHAUSTED = auto()
 
 
 class PromocodeAvailability(UpperStrEnum):

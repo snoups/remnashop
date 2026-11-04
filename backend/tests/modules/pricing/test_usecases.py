@@ -15,7 +15,9 @@ from app.core.enums import (
     Currency,
     DiscountSource,
     PaymentGatewayType,
+    PinnedPriceAction,
     PlanType,
+    PriceAdjustMode,
     PriceAdjustScope,
     PurchaseChannel,
     PurchaseType,
@@ -36,6 +38,7 @@ from app.modules.plans.dto import (
     CreateAddOnDto,
     CreatePlanDto,
     PlanDto,
+    PriceBookDto,
     PricingChangePreviewDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
@@ -426,6 +429,171 @@ async def test_adjust_base_prices_multiplies_scope_and_leaves_overrides_untouche
     rub_cell = next(c for c in plan_row.cells if c.currency is Currency.RUB)
     assert rub_cell.amount == Decimal("250")
     assert rub_cell.is_pinned is True
+
+
+async def test_adjust_base_prices_selected_touches_only_the_listed_durations(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    plan, addon = await _seed_catalog(plan_repository, addon_repository)
+    other = await plan_repository.create(
+        CreatePlanDto(
+            public_code="other",
+            name="Other",
+            type=PlanType.UNLIMITED,
+            traffic_limit=0,
+            device_limit=0,
+        )
+    )
+    other = await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=other.id,
+            durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("5.00"))],
+        )
+    )
+
+    book = await AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.SELECTED,
+            factor=Decimal("2"),
+            plan_duration_ids=[duration.id for duration in plan.durations],
+        ),
+    )
+
+    prices = {row.ref_id: row.base_price for row in book.plans}
+    assert prices[plan.durations[0].id] == Decimal("4.00")
+    assert prices[other.durations[0].id] == Decimal("5.00")
+    assert next(row for row in book.addons if row.ref_id == addon.id).base_price == Decimal("1.00")
+
+
+async def _seed_ladder_plan(plan_repository: PlanRepository) -> PlanDto:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="ladder",
+            name="Ladder",
+            type=PlanType.UNLIMITED,
+            traffic_limit=0,
+            device_limit=0,
+        )
+    )
+    return await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[
+                SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("1.00")),
+                SetPlanDurationDto(days=90, order_index=1, base_price=Decimal("1.00")),
+            ],
+        )
+    )
+
+
+async def test_adjust_ladder_prices_durations_from_the_30_day_price(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    plan = await _seed_ladder_plan(plan_repository)
+
+    book = await AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.SELECTED,
+            mode=PriceAdjustMode.LADDER,
+            price=Decimal("3.00"),
+            ladder_discounts={90: Decimal("10")},
+            plan_duration_ids=[duration.id for duration in plan.durations],
+        ),
+    )
+
+    prices = {row.days: row.base_price for row in book.plans if row.plan_id == plan.id}
+    assert prices == {30: Decimal("3.00"), 90: Decimal("8.10")}  # 3 * 3 months - 10%
+
+
+async def test_adjust_set_price_scales_or_resets_pins(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    plan, addon = await _seed_catalog(plan_repository, addon_repository)
+    await plan_repository.set_price_override(
+        SetPlanPriceOverrideDto(
+            plan_id=plan.id, days=30, currency=Currency.RUB, price=Decimal("250")
+        )
+    )
+    use_case = AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+
+    def _rub(book: PriceBookDto) -> Decimal:
+        row = next(row for row in book.plans if row.ref_id == plan.durations[0].id)
+        assert row.base_price == Decimal("4.00")
+        return next(cell for cell in row.cells if cell.currency is Currency.RUB).amount
+
+    scaled = await use_case(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.ALL_PLANS,
+            mode=PriceAdjustMode.SET,
+            price=Decimal("4.00"),
+            pinned=PinnedPriceAction.SCALE,
+        ),
+    )
+    assert _rub(scaled) == Decimal("500")  # base 2.00 -> 4.00 doubles the pin
+
+    reset = await use_case(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.ALL_PLANS,
+            mode=PriceAdjustMode.SET,
+            price=Decimal("4.00"),
+            pinned=PinnedPriceAction.RESET,
+        ),
+    )
+    row = next(row for row in reset.plans if row.ref_id == plan.durations[0].id)
+    assert not any(cell.is_pinned for cell in row.cells)
+
+
+async def test_adjust_ladder_from_a_long_base_marks_up_a_shorter_duration(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    plan = await _seed_ladder_plan(plan_repository)
+
+    book = await AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.SELECTED,
+            mode=PriceAdjustMode.LADDER,
+            price=Decimal("9.00"),
+            ladder_base_days=90,
+            ladder_discounts={30: Decimal("-50")},
+            plan_duration_ids=[duration.id for duration in plan.durations],
+        ),
+    )
+
+    prices = {row.days: row.base_price for row in book.plans if row.plan_id == plan.id}
+    assert prices == {30: Decimal("4.50"), 90: Decimal("9.00")}  # a third of 9.00, +50%
 
 
 async def test_update_pricing_settings_persists(

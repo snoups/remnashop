@@ -69,7 +69,7 @@ class _FakeFactory(PaymentGatewayFactory):
     def __init__(self) -> None:
         self._gateway = _FakeGateway()
 
-    def build(self, gateway_type, settings, return_url=None):  # type: ignore[no-untyped-def]
+    def build(self, gateway_type, settings, return_url=None, customer=None):  # type: ignore[no-untyped-def]
         return self._gateway  # type: ignore[return-value]
 
 

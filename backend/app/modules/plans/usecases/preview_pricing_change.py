@@ -11,6 +11,7 @@ from app.core.usecase import UseCase
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
     AddOnDto,
+    BasePriceAdjustmentDto,
     PlanDto,
     PricingChangePreviewDto,
     PricingDiffDto,
@@ -69,9 +70,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
             plans = await self._plan_repository.list_all()
             addons = await self._addon_repository.list_all()
 
-            projected_table, plan_base_prices, addon_base_prices = self._project(
-                table, plans, addons, data
-            )
+            projected_table, adjustment = self._project(table, plans, addons, data)
 
             changes: list[PricingDiffRow] = []
             for plan in plans:
@@ -80,8 +79,9 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                         name=plan.name,
                         days=duration.days,
                         old_base=duration.base_price,
-                        new_base=plan_base_prices.get(duration.id, duration.base_price),
-                        overrides_by_currency={o.currency: o.price for o in duration.overrides},
+                        new_base=adjustment.plan_prices.get(duration.id, duration.base_price),
+                        old_overrides={o.currency: o.price for o in duration.overrides},
+                        new_overrides=adjustment.plan_overrides.get(duration.id),
                         old_table=table,
                         new_table=projected_table,
                     )
@@ -89,8 +89,9 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                 changes += self._diff_row(
                     name=addon.name,
                     old_base=addon.base_price,
-                    new_base=addon_base_prices.get(addon.id, addon.base_price),
-                    overrides_by_currency={o.currency: o.price for o in addon.overrides},
+                    new_base=adjustment.addon_prices.get(addon.id, addon.base_price),
+                    old_overrides={o.currency: o.price for o in addon.overrides},
+                    new_overrides=adjustment.addon_overrides.get(addon.id),
                     old_table=table,
                     new_table=projected_table,
                 )
@@ -128,15 +129,17 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
         days: Optional[int] = None,
         old_base: Decimal,
         new_base: Decimal,
-        overrides_by_currency: dict[Currency, Decimal],
+        old_overrides: dict[Currency, Decimal],
+        # None = the pins stay as they are
+        new_overrides: Optional[dict[Currency, Decimal]],
         old_table: CurrencyRateTable,
         new_table: CurrencyRateTable,
     ) -> list[PricingDiffRow]:
+        pins = old_overrides if new_overrides is None else new_overrides
         rows = []
         for currency in Currency:
-            override = overrides_by_currency.get(currency)
-            old_amount = resolve_price(old_base, currency, override, old_table)
-            new_amount = resolve_price(new_base, currency, override, new_table)
+            old_amount = resolve_price(old_base, currency, old_overrides.get(currency), old_table)
+            new_amount = resolve_price(new_base, currency, pins.get(currency), new_table)
             if old_amount != new_amount:
                 rows.append(
                     PricingDiffRow(
@@ -151,7 +154,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
         plans: list[PlanDto],
         addons: list[AddOnDto],
         data: PricingChangePreviewDto,
-    ) -> tuple[CurrencyRateTable, dict[int, Decimal], dict[int, Decimal]]:
+    ) -> tuple[CurrencyRateTable, BasePriceAdjustmentDto]:
         if data.rate is not None:
             rows = dict(table.rows)
             rows[data.rate.currency] = rows[data.rate.currency].model_copy(
@@ -162,7 +165,7 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                     "min_amount": data.rate.min_amount,
                 }
             )
-            return CurrencyRateTable(anchor=table.anchor, rows=rows), {}, {}
+            return CurrencyRateTable(anchor=table.anchor, rows=rows), BasePriceAdjustmentDto()
 
         if data.anchor is not None:
             switch = anchor_switch(table, data.anchor, plans, addons)
@@ -170,11 +173,9 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                 currency: row.model_copy(update={"rate": switch.rates[currency]})
                 for currency, row in table.rows.items()
             }
-            return (
-                CurrencyRateTable(anchor=data.anchor, rows=rows),
-                switch.plan_base_prices,
-                switch.addon_base_prices,
+            return CurrencyRateTable(anchor=data.anchor, rows=rows), BasePriceAdjustmentDto(
+                plan_prices=switch.plan_base_prices, addon_prices=switch.addon_base_prices
             )
 
         assert data.adjust is not None
-        return table, *adjusted_base_prices(data.adjust, plans, addons)
+        return table, adjusted_base_prices(data.adjust, plans, addons, table)
