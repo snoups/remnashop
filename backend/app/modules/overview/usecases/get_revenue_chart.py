@@ -37,18 +37,18 @@ class GetRevenueChartUseCase(UseCase[GetOverviewChartDto, RevenueChartDto]):
             period = await resolve_period(self._user_stats, data.days)
             rate_table = await self._pricing_repository.get_rate_table()
             report_currency = rate_table.anchor
-            daily = await self._transaction_repository.daily_paid_anchor_revenue(period.since)
-            daily_converted: list[tuple[date, Decimal]] = sorted(daily.items())
+            daily = sorted(
+                (await self._transaction_repository.daily_paid_anchor_revenue(period.since)).items()
+            )
+            amounts: list[tuple[date, Decimal]] = [(day, paid.amount) for day, paid in daily]
+            counts = dict(period.bucketize([(day, paid.count) for day, paid in daily], 0))
             return RevenueChartDto(
                 days=data.days,
                 granularity=period.granularity,
                 paid_orders_count=await self._transaction_repository.count_paid_since(period.since),
-                revenue_by_currency=await self._transaction_repository.sum_paid_final_price_since(
-                    period.since
-                ),
                 report_currency=report_currency,
                 daily=[
-                    DailyAmountDto(day=day, amount=amount)
-                    for day, amount in period.bucketize(daily_converted, ZERO_AMOUNT)
+                    DailyAmountDto(day=day, amount=amount, count=counts[day])
+                    for day, amount in period.bucketize(amounts, ZERO_AMOUNT)
                 ],
             )

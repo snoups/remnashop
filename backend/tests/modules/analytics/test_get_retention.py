@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PurchaseType, Role, TransactionStatus
+from app.core.enums import Locale, PurchaseType, Role, SubscriptionStatus, TransactionStatus
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.coverage import is_covered
@@ -18,6 +18,7 @@ from app.modules.analytics.usecases.get_retention import (
     _monthly_churn,
 )
 from app.modules.pricing.repository import PricingRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.transactions.repository import TransactionRepository
@@ -26,7 +27,7 @@ from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.analytics_cache import PassThroughAnalyticsCache
 from tests.modules.analytics.test_get_analytics import _paid_order_dto
-from tests.modules.subscriptions.factories import create_subscription
+from tests.modules.subscriptions.factories import create_subscription, make_plan_snapshot
 
 OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 NOW = datetime(2026, 6, 15, 12, tzinfo=UTC)
@@ -155,6 +156,19 @@ async def test_retention_expiring_blocks(
         is_trial=True,
         expire_at=now + timedelta(days=5),
     )
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=soon.user_id,
+            remnawave_user_id=870_004,
+            status=SubscriptionStatus.ACTIVE,
+            is_trial=False,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=now + timedelta(days=10, hours=1),
+            url="https://example.com/sub/870004",
+            plan_snapshot=make_plan_snapshot(name="Extra"),
+        )
+    )
     for user_id, tag, renew in ((soon.user_id, "a", 2), (later.user_id, "b", 0)):
         await _pay(
             transaction_repository, session, uow, user_id, plan_id, f"r-{tag}0",
@@ -168,10 +182,12 @@ async def test_retention_expiring_blocks(
 
     result = await _use_case(session, pricing_repository, uow)(OWNER)
 
-    assert result.expiring_paid == 2 and result.expiring_trials == 1
+    assert result.expiring_paid == 3 and result.expiring_trials == 1
     weeks = {w.key: w.count for w in result.expiring_weeks}
-    assert weeks == {"1_7": 1, "8_14": 0, "15_21": 1, "22_30": 0}
+    assert weeks == {"1_7": 1, "8_14": 1, "15_21": 1, "22_30": 0}
     assert [c.user_id for c in result.expiring_top] == [soon.user_id, later.user_id]
+    assert result.expiring_top[0].plan_names == [soon.plan_snapshot.name, "Extra"]
+    assert result.expiring_top[0].expire_at == soon.expire_at
     assert result.expiring_top[0].renewals == 2 and result.expiring_top[1].renewals == 0
     assert result.expiring_top[0].spent > result.expiring_top[1].spent
     assert result.active_by_plan[0].plan_name == "Basic" and result.active_by_plan[0].active >= 2

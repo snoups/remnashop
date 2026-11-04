@@ -14,7 +14,7 @@ from app.modules.analytics.dto import LtvBucketDto, LtvDistributionDto
 from app.modules.pricing import PricingRepository
 from app.modules.transactions import TransactionRepository
 
-_QUANTILE_COUNT: Final[int] = 5
+_QUANTILE_COUNT: Final[int] = 8
 _NICE_STEPS: Final[tuple[Decimal, ...]] = tuple(
     Decimal(step) for step in ("1", "1.5", "2", "3", "5", "7")
 )

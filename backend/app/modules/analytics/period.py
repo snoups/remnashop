@@ -24,6 +24,11 @@ class AnalyticsPeriod:
     def previous(self) -> "AnalyticsPeriod":
         return AnalyticsPeriod(start=self.start - (self.end - self.start), end=self.start)
 
+    def previous_now(self, now: datetime) -> datetime:
+        """The moment the previous window's cohort is as old as this one's at `now`: payments
+        after it would give the earlier cohort more time to pay."""
+        return now - (self.end - self.start)
+
     @property
     def days(self) -> int:
         return max(1, round((self.end - self.start) / timedelta(days=1)))

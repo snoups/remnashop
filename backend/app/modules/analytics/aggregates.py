@@ -7,12 +7,20 @@ from app.core.constants import ZERO_AMOUNT
 from app.core.enums import Currency
 from app.modules.analytics.period import AnalyticsPeriod
 from app.modules.pricing import CurrencyRateTable, convert_for_report
+from app.modules.subscriptions import LiveSubscriptionDto
 
 Granularity = Literal["day", "week", "month"]
 
 
 def report_amount(amount: Decimal, currency: Currency, rates: CurrencyRateTable) -> Decimal:
     return convert_for_report(amount, currency, rates.anchor, rates)
+
+
+def monthly_value(row: LiveSubscriptionDto, rates: CurrencyRateTable) -> Decimal:
+    """A subscription's price spread over 30 days, in the report currency: its share of MRR."""
+    if row.duration_days <= 0:
+        return ZERO_AMOUNT
+    return report_amount(row.price_paid / row.duration_days * 30, row.currency, rates)
 
 
 def median(values: list[Decimal]) -> Decimal:

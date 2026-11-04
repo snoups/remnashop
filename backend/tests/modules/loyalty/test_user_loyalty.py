@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,6 +57,37 @@ async def test_get_user_loyalty_reports_spend_and_next_tier(
 
     assert loyalty.spent == Decimal("150")
     assert loyalty.next_tier == LoyaltyTierDto(threshold=Decimal("500"), percent=10)
+
+
+@pytest.mark.parametrize(
+    ("settings", "is_active"),
+    [
+        ({"enabled": True}, True),
+        ({"enabled": False}, False),
+        ({"enabled": True, "tiers": []}, False),
+    ],
+)
+async def test_get_user_loyalty_tells_an_inactive_program_from_the_top_tier(
+    session: AsyncSession,
+    uow: UnitOfWork,
+    user_repository: UserRepository,
+    settings: dict[str, Any],
+    is_active: bool,
+) -> None:
+    await save_settings(session, **settings)
+    buyer = await make_user(user_repository, 990_003)
+    await paid_order(session, buyer, "5000")
+
+    loyalty = await GetUserLoyaltyUseCase(
+        LoyaltyRepository(session),
+        TransactionRepository(session),
+        user_repository,
+        PricingRepository(session),
+        uow,
+    )(ADMIN, buyer)
+
+    assert loyalty.next_tier is None
+    assert loyalty.is_program_active is is_active
 
 
 async def test_exclusion_dispatches_a_per_user_recalculation(

@@ -132,6 +132,8 @@ async def test_revenue_by_purchase_type_plan_and_gateway(
     )
     await seed("r-fail", 2.5, "100", TransactionStatus.FAILED, gateway=PaymentGatewayType.CRYPTOMUS)
     await seed("r-prev", -3.5, "400", paid)
+    await seed("r-prev-refund", -5.5, "80", TransactionStatus.REFUNDED)
+    await seed("r-prev-refund-2", -6.5, "90", TransactionStatus.REFUNDED)
 
     revenue = await _use_case(session, pricing_repository, uow)(
         OWNER,
@@ -142,6 +144,7 @@ async def test_revenue_by_purchase_type_plan_and_gateway(
     assert revenue.totals.payments == 3
     assert revenue.totals.median_check == Decimal("300")
     assert revenue.totals.refunds == 1 and revenue.totals.refunded == Decimal("150")
+    assert revenue.totals.previous_refunds == 2
     assert revenue.totals.previous_revenue == Decimal("400")
     assert [b.new for b in revenue.series] == [Decimal("500"), Decimal(0)]
     assert revenue.series[1].renew == Decimal("300") and revenue.series[1].change == Decimal("200")

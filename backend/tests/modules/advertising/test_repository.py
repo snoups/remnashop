@@ -59,6 +59,19 @@ async def test_update_leaves_unset_fields_unchanged(
     assert updated.cost == Decimal("10")
 
 
+async def test_update_clears_note_on_empty_string(
+    ad_link_repository: AdLinkRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        created = await ad_link_repository.create(
+            CreateAdLinkDto(name="Noted", code="clear-note", note="Spring campaign")
+        )
+
+    updated = await ad_link_repository.update(UpdateAdLinkDto(ad_link_id=created.id, note=""))
+
+    assert updated.note is None
+
+
 async def test_delete_removes_the_row(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork
 ) -> None:

@@ -132,7 +132,6 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
             RecentPaymentDto(
                 user_id=row.user_id,
                 name=payer.name if (payer := shown.get(row.user_id)) else "",
-                username=payer.username if payer else None,
                 plan_name=row.plan_name,
                 gateway_type=row.gateway_type,
                 purchase_type=row.purchase_type,

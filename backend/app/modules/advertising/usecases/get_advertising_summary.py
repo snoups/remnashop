@@ -48,7 +48,7 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
             )
             rate_table = await self._pricing_repository.get_rate_table()
 
-        report_currency = data.report_currency or rate_table.anchor
+        report_currency = rate_table.anchor
         revenue_by_user = {
             user_id: convert_for_report(amount, rate_table.anchor, report_currency, rate_table)
             for user_id, amount in paid_by_user.items()

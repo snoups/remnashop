@@ -9,7 +9,7 @@ from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
-from app.core.enums import AdLinkChannel, Currency
+from app.core.enums import AdLinkChannel
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.advertising.api.schemas import (
     AdLinkPageResponse,
@@ -125,7 +125,7 @@ async def update_ad_link(
 @router.delete(
     "/links/{ad_link_id:int}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(400, 404),
+    responses=error_responses(404, 409),
 )
 @inject
 async def delete_ad_link(
@@ -155,7 +155,6 @@ async def get_ad_link_stats(
     ad_link_id: int,
     use_case: FromDishka[GetAdLinkStatsUseCase],
     actor: Actor = Depends(require_admin),
-    report_currency: Optional[Currency] = Query(None),
     created_from: Optional[datetime] = Query(None),
     created_to: Optional[datetime] = Query(None),
 ) -> AdLinkStatsResponse:
@@ -163,7 +162,6 @@ async def get_ad_link_stats(
         actor,
         GetAdLinkStatsDto(
             ad_link_id=ad_link_id,
-            report_currency=report_currency,
             created_from=range_start_utc(created_from),
             created_to=range_end_utc(created_to),
         ),
@@ -204,7 +202,6 @@ async def get_advertising_summary(
     use_case: FromDishka[GetAdvertisingSummaryUseCase],
     actor: Actor = Depends(require_admin),
     is_active: Optional[bool] = Query(None),
-    report_currency: Optional[Currency] = Query(None),
     created_from: Optional[datetime] = Query(None),
     created_to: Optional[datetime] = Query(None),
 ) -> AdvertisingSummaryResponse:
@@ -212,7 +209,6 @@ async def get_advertising_summary(
         actor,
         GetAdvertisingSummaryDto(
             is_active=is_active,
-            report_currency=report_currency,
             created_from=range_start_utc(created_from),
             created_to=range_end_utc(created_to),
         ),

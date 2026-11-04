@@ -26,6 +26,7 @@ class DailyCountDto:
 class DailyAmountDto:
     day: date
     amount: Decimal
+    count: int
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -58,7 +59,6 @@ class RevenueTodayDto:
 class RecentPaymentDto:
     user_id: int
     name: str
-    username: Optional[str] = None
     plan_name: str
     gateway_type: PaymentGatewayType
     purchase_type: PurchaseType
@@ -110,7 +110,6 @@ class RevenueChartDto:
     days: int
     granularity: Granularity
     paid_orders_count: int
-    revenue_by_currency: dict[Currency, Decimal]
     report_currency: Currency
     daily: list[DailyAmountDto]
 
@@ -152,6 +151,23 @@ class CountryCardDto:
     nodes: int
     connected: int
     users_online: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class RecapDto:
+    report_currency: Currency
+    revenue_total: Decimal
+    customers: int
+    payers: int
+    active_subscriptions: int
+    transactions: int
+    month_revenue: Decimal
+    new_customers: int
+    new_payers: int
+    # None: the panel didn't answer
+    nodes: Optional[int]
+    countries: Optional[int]
+    since: date
 
 
 @dataclass(frozen=True, kw_only=True)

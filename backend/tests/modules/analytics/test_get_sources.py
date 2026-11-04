@@ -203,6 +203,7 @@ async def test_sources_on_an_empty_period_are_zero(
     )
 
     assert [row.registrations for row in sources.channels] == [0, 0, 0]
+    assert all(row.revenue == 0 for row in sources.previous_channels)
     assert all(row.conversion_rate == 0 and row.revenue == 0 for row in sources.channels)
     assert sources.ad_links == [] and sources.top_referrers == []
     assert sources.referral.referrers == 0 and sources.referral.deep_levels_revenue_share == 0
@@ -266,6 +267,39 @@ async def test_cohort_payer_after_period_end_counts_as_payer(
     organic = next(row for row in sources.channels if row.source == SourceKind.ORGANIC)
     assert organic.registrations == 1 and organic.payers == 1
     assert organic.revenue == Decimal("100")
+
+
+async def test_previous_channel_revenue_counts_only_payments_within_the_same_age(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    now = datetime_now()
+    user = await user_repository.create(CreateUserDto(name="Earlier", telegram_id=892_101))
+    await session.execute(
+        update(User).where(User.id == user.id).values(created_at=now - timedelta(days=40))
+    )
+    for key, days_ago, price in (("prev-1", 39, "100"), ("prev-2", 1, "500")):
+        await _pay(
+            transaction_repository,
+            session,
+            uow,
+            user_id=user.id,
+            plan_id=plan_id,
+            plan_name="Basic",
+            price=price,
+            key=key,
+            at=now - timedelta(days=days_ago),
+        )
+
+    sources = await _use_case(session, pricing_repository, uow)(OWNER, AnalyticsPeriodQueryDto())
+
+    previous = {row.source: row.revenue for row in sources.previous_channels}
+    # the 500 came 39 days later, beyond what the current cohort has had
+    assert previous[SourceKind.ORGANIC] == Decimal("100")
 
 
 async def test_referral_payback_counts_all_referred_users_paying_in_period(

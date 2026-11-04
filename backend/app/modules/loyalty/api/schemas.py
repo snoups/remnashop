@@ -34,6 +34,7 @@ class UserLoyaltyRequest(BaseModel):
 class UserLoyaltyResponse(BaseModel):
     discount: int
     excluded: bool
+    is_program_active: bool
     spent: Decimal
     next_tier: Optional[LoyaltyTierResponse]
     currency: str

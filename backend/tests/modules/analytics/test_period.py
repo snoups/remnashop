@@ -28,6 +28,11 @@ def test_bare_dates_cover_whole_days() -> None:
     )
 
 
+def test_previous_now_gives_the_earlier_cohort_the_same_age() -> None:
+    period = resolve_period(None, None, earliest=None, now=NOW)
+    assert period.previous_now(NOW) == NOW - timedelta(days=30)
+
+
 def test_only_period_to_means_all_time_from_first_registration() -> None:
     period = resolve_period(None, datetime(2026, 10, 4), earliest=date(2026, 3, 15), now=NOW)
     assert period.start == datetime(2026, 3, 15, tzinfo=TIMEZONE)

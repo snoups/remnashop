@@ -19,7 +19,7 @@ from app.core.enums import (
     RoundingMode,
     TransactionStatus,
 )
-from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.advertising.dto import (
     CreateAdLinkDto,
@@ -110,7 +110,7 @@ async def test_delete_ad_link_without_attributions_succeeds(
         await ad_link_repository.get_by_id(ad_link.id)
 
 
-async def test_delete_ad_link_with_attributions_raises_validation_error(
+async def test_delete_ad_link_with_attributions_raises_conflict(
     ad_link_repository: AdLinkRepository, uow: UnitOfWork, user_repository: UserRepository
 ) -> None:
     create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
@@ -121,7 +121,7 @@ async def test_delete_ad_link_with_attributions_raises_validation_error(
         ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ConflictError):
         await delete(OWNER, ad_link.id)
 
 
@@ -252,9 +252,7 @@ async def test_get_ad_link_stats_computes_conversion_and_revenue(
     use_case = GetAdLinkStatsUseCase(
         ad_link_repository, transaction_repository, pricing_repository, uow
     )
-    stats = await use_case(
-        OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.RUB)
-    )
+    stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
 
     assert stats.attributions_count == 2
     assert stats.paid_count == 1
@@ -329,17 +327,11 @@ async def test_get_ad_link_stats_converts_revenue_with_a_non_unit_rate(
     use_case = GetAdLinkStatsUseCase(
         ad_link_repository, transaction_repository, pricing_repository, uow
     )
-    stats = await use_case(
-        OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id, report_currency=Currency.USD)
-    )
+    stats = await use_case(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
 
-    # RUB 900 / 90 -> 10 USD, plus the 5 USD order.
+    # RUB 900 / 90 -> 10 USD, plus the 5 USD order, in the USD anchor.
     assert stats.report_currency == Currency.USD
     assert stats.revenue == Decimal("15")
-    assert stats.revenue_by_currency == {
-        Currency.RUB: Decimal("900"),
-        Currency.USD: Decimal("5"),
-    }
 
 
 async def test_get_ad_link_stats_unknown_id_raises_not_found(
@@ -470,7 +462,7 @@ async def test_get_advertising_summary_aggregates_links(
     use_case = GetAdvertisingSummaryUseCase(
         ad_link_repository, transaction_repository, pricing_repository, uow
     )
-    summary = await use_case(OWNER, GetAdvertisingSummaryDto(report_currency=Currency.RUB))
+    summary = await use_case(OWNER, GetAdvertisingSummaryDto())
 
     assert summary.attributions_count == 3
     assert summary.attributions_by_channel == {
@@ -541,11 +533,9 @@ async def test_get_advertising_summary_created_to_is_a_snapshot(
 
     snapshot = await use_case(
         OWNER,
-        GetAdvertisingSummaryDto(
-            report_currency=Currency.RUB, created_to=datetime_now() - timedelta(days=1)
-        ),
+        GetAdvertisingSummaryDto(created_to=datetime_now() - timedelta(days=1)),
     )
-    live = await use_case(OWNER, GetAdvertisingSummaryDto(report_currency=Currency.RUB))
+    live = await use_case(OWNER, GetAdvertisingSummaryDto())
 
     assert snapshot.attributions_count == 1
     assert snapshot.paid_count == 0

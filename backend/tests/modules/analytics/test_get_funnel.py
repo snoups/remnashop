@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.subscription import Subscription
+from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
@@ -179,6 +180,36 @@ async def test_funnel_steps_are_nested(
     assert [step.count for step in funnel.steps] == [5, 4, 3, 1]
     assert funnel.steps[2].pct_of_prev == pytest.approx(3 / 4)
     assert funnel.paid_via_trial == 1
+
+
+async def test_previous_conversion_gives_the_earlier_cohort_the_same_time_to_pay(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    now = datetime_now()
+    quick = await user_repository.create(CreateUserDto(name="Quick", telegram_id=828_301))
+    slow = await user_repository.create(CreateUserDto(name="Slow", telegram_id=828_302))
+    for user in (quick, slow):
+        await session.execute(
+            update(User).where(User.id == user.id).values(created_at=now - timedelta(days=40))
+        )
+    await _pay(transaction_repository, uow, quick.id, plan_id, "funnel-p1")
+    await session.execute(
+        update(Transaction)
+        .where(Transaction.user_id == quick.id)
+        .values(updated_at=now - timedelta(days=39))
+    )
+    # paid today, 40 days in: the current cohort can't be that old yet
+    await _pay(transaction_repository, uow, slow.id, plan_id, "funnel-p2")
+
+    use_case = _use_case(user_repository, subscription_repository, transaction_repository, uow)
+    funnel = await use_case(OWNER, AnalyticsPeriodQueryDto())
+
+    assert funnel.previous_conversion == pytest.approx(0.5)
 
 
 async def test_funnel_by_source_splits_the_cohort(

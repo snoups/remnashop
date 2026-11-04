@@ -11,7 +11,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
-from app.modules.analytics.aggregates import report_amount
+from app.modules.analytics.aggregates import monthly_value
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.coverage import shift_months
 from app.modules.analytics.dto import (
@@ -89,12 +89,6 @@ def _week_key(expire_at: datetime, now: datetime) -> str:
     return _WEEK_KEYS[3]
 
 
-def _monthly_value(row: LiveSubscriptionDto, rates: CurrencyRateTable) -> Decimal:
-    if row.duration_days <= 0:
-        return ZERO_AMOUNT
-    return report_amount(row.price_paid / row.duration_days * 30, row.currency, rates)
-
-
 def _expiring_weeks(
     rows: list[LiveSubscriptionDto], now: datetime, rates: CurrencyRateTable
 ) -> list[ExpiringWeekDto]:
@@ -103,7 +97,7 @@ def _expiring_weeks(
     for row in rows:
         key = _week_key(row.expire_at, now)
         counts[key] += 1
-        at_risk[key] += _monthly_value(row, rates)
+        at_risk[key] += monthly_value(row, rates)
     return [
         ExpiringWeekDto(key=key, count=counts[key], mrr_at_risk=round_cents(at_risk[key]))
         for key in _WEEK_KEYS
@@ -173,8 +167,10 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         spent = {s.user_id: s.spent for s in summaries}
         renewals = {s.user_id: s.renewals for s in summaries}
         nearest: dict[int, LiveSubscriptionDto] = {}
+        plan_names: dict[int, list[str]] = {}
         for row in sorted(expiring, key=lambda r: r.expire_at):
             nearest.setdefault(row.user_id, row)
+            plan_names.setdefault(row.user_id, []).append(row.plan_name)
         top = sorted(
             nearest.values(), key=lambda r: spent.get(r.user_id, ZERO_AMOUNT), reverse=True
         )
@@ -185,7 +181,7 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
                 user_id=row.user_id,
                 name=users[row.user_id].name if row.user_id in users else "",
                 username=users[row.user_id].username if row.user_id in users else None,
-                plan_name=row.plan_name,
+                plan_names=plan_names[row.user_id],
                 expire_at=row.expire_at,
                 spent=round_cents(spent.get(row.user_id, ZERO_AMOUNT)),
                 renewals=renewals.get(row.user_id, 0),

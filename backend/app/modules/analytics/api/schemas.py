@@ -34,6 +34,15 @@ class SnapshotKpiResponse(BaseModel):
     paid_subscriptions: int
     limited_subscriptions: int
     active_trials: int
+    paying_customers: int
+    never_connected: int
+    expiring_soon_days: int
+    expiring_soon: int
+    expiring_soon_mrr: Decimal
+    trials_ending_days: int
+    trials_ending_soon: int
+    points_owed: Decimal
+    bonus_days_owed: int
 
 
 class AnalyticsResponse(BaseModel):
@@ -67,6 +76,7 @@ class FunnelResponse(BaseModel):
     period: AnalyticsPeriodInfoResponse
     steps: list[FunnelStepResponse]
     paid_via_trial: int
+    previous_conversion: Optional[float]
     by_source: list[FunnelSourceRowResponse]
 
 
@@ -107,7 +117,7 @@ class TopPayerResponse(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
-    current_plan: Optional[str]
+    current_plans: list[str]
     payments: int
     spent: Decimal
     last_paid_at: datetime
@@ -129,6 +139,7 @@ class RevenueTotalsResponse(BaseModel):
     refunded: Decimal
     previous_revenue: Decimal
     previous_payments: int
+    previous_refunds: int
 
 
 class RevenueBucketResponse(BaseModel):
@@ -183,8 +194,10 @@ class TrialResponse(BaseModel):
     trials: int
     converted: int
     conversion_rate: float
-    previous_conversion_rate: float
+    previous_conversion_rate: Optional[float]
+    previous_trials: int
     revenue_from_converted: Decimal
+    previous_revenue_from_converted: Decimal
     median_days_to_pay: int
     trial_days: int
     by_trial_day: list[TrialDayBucketResponse]
@@ -208,7 +221,7 @@ class ExpiringCustomerResponse(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
-    plan_name: str
+    plan_names: list[str]
     expire_at: datetime
     spent: Decimal
     renewals: int
@@ -267,10 +280,16 @@ class TopReferrerResponse(BaseModel):
     reward_days: int
 
 
+class ChannelRevenueResponse(BaseModel):
+    source: SourceKind
+    revenue: Decimal
+
+
 class SourcesResponse(BaseModel):
     period: AnalyticsPeriodInfoResponse
     report_currency: Currency
     channels: list[SourceRowResponse]
+    previous_channels: list[ChannelRevenueResponse]
     ad_links: list[SourceRowResponse]
     referral: ReferralPaybackResponse
     top_referrers: list[TopReferrerResponse]
@@ -303,6 +322,11 @@ class PromocodeStatsResponse(BaseModel):
     discount_given: Decimal
     revenue_with_discount: Decimal
     revenue_share: float
+    free_rewards: int
     free_reward_conversion: float
+    previous_activations: int
+    previous_discount_given: Decimal
+    previous_revenue_with_discount: Decimal
+    previous_free_reward_conversion: Optional[float]
     by_reward_type: list[RewardTypeCountResponse]
     codes: list[PromocodeRowResponse]

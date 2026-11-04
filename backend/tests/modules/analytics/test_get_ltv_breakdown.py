@@ -198,10 +198,10 @@ async def test_breakdown_groups_by_first_plan_and_source_and_ranks_top_payers(
         ("organic", SourceKind.ORGANIC, 1, Decimal("400.00")),
         ("referral", SourceKind.REFERRAL, 1, Decimal("200.00")),
     ]
-    assert [(p.user_id, p.spent, p.payments, p.current_plan) for p in result.top_payers] == [
-        (linked.id, Decimal("600.00"), 1, "Newest"),
-        (organic.id, Decimal("400.00"), 2, None),
-        (referred.id, Decimal("200.00"), 1, None),
+    assert [(p.user_id, p.spent, p.payments, p.current_plans) for p in result.top_payers] == [
+        (linked.id, Decimal("600.00"), 1, ["Newest", "Old"]),
+        (organic.id, Decimal("400.00"), 2, []),
+        (referred.id, Decimal("200.00"), 1, []),
     ]
     assert result.top_payers[1].username == "org"
     assert result.top_payers[0].last_paid_at is not None

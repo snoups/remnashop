@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from functools import partial
+from typing import Final
 
 from app.core.actor import Actor
 from app.core.constants import TIMEZONE, ZERO_AMOUNT
@@ -9,7 +10,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.core.utils.money import round_cents
 from app.core.utils.time import datetime_now
-from app.modules.analytics.aggregates import report_amount
+from app.modules.analytics.aggregates import monthly_value, report_amount
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsDto,
@@ -23,6 +24,10 @@ from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import PaidTotalsDto, TransactionStatsRepository
 from app.modules.users import UserStatsRepository
+
+# "soon" on the metrics page: a week for paid renewals, a few days to remind a trial to buy
+_EXPIRING_SOON_DAYS: Final[int] = 7
+_TRIALS_ENDING_DAYS: Final[int] = 3
 
 
 def _end_point(period: AnalyticsPeriod, now: datetime) -> datetime:
@@ -146,6 +151,22 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                 )
             )
 
+            live = await self._subscription_stats.list_live()
+            paid = [row for row in live if not row.is_trial]
+            expiring = [
+                row
+                for row in paid
+                if now <= row.expire_at < now + timedelta(days=_EXPIRING_SOON_DAYS)
+            ]
+            trials_ending = [
+                row
+                for row in live
+                if row.is_trial
+                and row.status == SubscriptionStatus.ACTIVE
+                and now <= row.expire_at < now + timedelta(days=_TRIALS_ENDING_DAYS)
+            ]
+            points_owed, bonus_days_owed = await self._user_stats.balance_totals()
+
             return AnalyticsDto(
                 period=AnalyticsPeriodInfoDto(
                     start=period.start,
@@ -165,5 +186,16 @@ class GetAnalyticsUseCase(UseCase[AnalyticsPeriodQueryDto, AnalyticsDto]):
                         status=SubscriptionStatus.LIMITED
                     ),
                     active_trials=await self._subscription_stats.count_active_trials(),
+                    paying_customers=len({row.user_id for row in paid}),
+                    never_connected=await self._subscription_stats.count_paying_never_connected(),
+                    expiring_soon_days=_EXPIRING_SOON_DAYS,
+                    expiring_soon=len(expiring),
+                    expiring_soon_mrr=round_cents(
+                        sum((monthly_value(row, rates) for row in expiring), start=ZERO_AMOUNT)
+                    ),
+                    trials_ending_days=_TRIALS_ENDING_DAYS,
+                    trials_ending_soon=len(trials_ending),
+                    points_owed=points_owed,
+                    bonus_days_owed=bonus_days_owed,
                 ),
             )

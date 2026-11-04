@@ -140,7 +140,6 @@ async def test_owner_sees_all_sections_with_correct_counts(
     assert overview.subscriptions.expiring_soon == 1
     assert overview.subscriptions.disabled == 0
     assert revenue.paid_orders_count >= 1
-    assert revenue.revenue_by_currency.get(Currency.RUB, Decimal(0)) >= Decimal("500")
     assert online.current == 0
     assert online.daily_peak == []
 
@@ -200,7 +199,33 @@ async def test_days_window_excludes_orders_paid_before_the_cutoff(
     revenue = await use_case(OWNER, GetOverviewChartDto(days=7))
 
     assert revenue.paid_orders_count == 0
-    assert revenue.revenue_by_currency == {}
+
+
+async def test_revenue_chart_counts_payments_per_day(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    payer = await user_repository.create(CreateUserDto(name="DailyPayer", telegram_id=830_111))
+    for key in ("overview-daily-1", "overview-daily-2"):
+        async with uow:
+            order = await transaction_repository.create(
+                _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key=key)
+            )
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+
+    chart = await GetRevenueChartUseCase(
+        UserStatsRepository(user_repository.session),
+        transaction_repository,
+        pricing_repository,
+        uow,
+    )(OWNER, GetOverviewChartDto(days=7))
+
+    today = next(entry for entry in chart.daily if entry.day == datetime_now().date())
+    assert today.count == 2
+    assert sum(entry.count for entry in chart.daily) == chart.paid_orders_count
 
 
 async def test_since_is_calendar_aligned_not_a_rolling_cutoff(
@@ -480,7 +505,6 @@ async def test_revenue_today_compares_with_yesterday_same_time(
     newest = overview.recent_payments[0]
     assert newest.amount == Decimal("500")
     assert newest.name == "Rev Payer"
-    assert newest.username == "revpayer"
     assert newest.currency == Currency.RUB
 
 
@@ -517,7 +541,7 @@ async def test_a_hidden_staff_payer_stays_nameless_in_recent_payments(
 
     assert overview.recent_payments is not None
     [payment] = [p for p in overview.recent_payments if p.user_id == staff.id]
-    assert (payment.name, payment.username) == ("", None)
+    assert payment.name == ""
 
 
 async def test_revenue_sections_hidden_without_transactions_view(
@@ -570,7 +594,7 @@ async def test_change_is_none_when_yesterday_had_no_revenue(
     assert overview.revenue_today.change is None
 
 
-async def test_subscriptions_split_paid_active_and_trials(
+async def test_subscriptions_rows_add_up_to_total(
     user_repository: UserRepository,
     subscription_repository: SubscriptionRepository,
     pricing_repository: PricingRepository,
@@ -578,8 +602,11 @@ async def test_subscriptions_split_paid_active_and_trials(
     redis: Redis,
     uow: UnitOfWork,
 ) -> None:
-    before = await subscription_stats_repository.count_paying(status=SubscriptionStatus.ACTIVE)
-    trials_before = await subscription_stats_repository.count_active_trials()
+    use_case = _overview_use_case(
+        user_repository, subscription_stats_repository, pricing_repository, redis, uow
+    )
+    before = (await use_case(OWNER)).subscriptions
+    assert before is not None
     await create_subscription(
         subscription_repository,
         user_repository,
@@ -593,11 +620,20 @@ async def test_subscriptions_split_paid_active_and_trials(
         remnawave_user_id=830_204,
         is_trial=True,
     )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=830_205,
+        remnawave_user_id=830_205,
+        status=SubscriptionStatus.LIMITED,
+        is_trial=True,
+    )
 
-    overview = await _overview_use_case(
-        user_repository, subscription_stats_repository, pricing_repository, redis, uow
-    )(OWNER)
+    after = (await use_case(OWNER)).subscriptions
 
-    assert overview.subscriptions is not None
-    assert overview.subscriptions.paid_active == before + 1
-    assert overview.subscriptions.trials == trials_before + 1
+    assert after is not None
+    assert after.paid_active == before.paid_active + 1
+    # a trial over its traffic limit counts once, as limited
+    assert after.trials == before.trials + 1
+    assert after.limited == before.limited + 1
+    assert after.paid_active + after.trials + after.limited + after.expired == after.total

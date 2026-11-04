@@ -14,7 +14,7 @@ from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import AnalyticsPeriodQueryDto
 from app.modules.analytics.usecases import GetTrialUseCase
-from app.modules.analytics.usecases.get_trial import _time_to_pay_key, _trial_day_key
+from app.modules.analytics.usecases.get_trial import _day_ranges, _time_to_pay_key, _trial_day_key
 from app.modules.pricing.repository import PricingRepository
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
@@ -178,6 +178,8 @@ async def test_trial_on_an_empty_period_is_zero(
     )
 
     assert trial.trials == 0 and trial.converted == 0 and trial.conversion_rate == 0
+    # nobody took a trial before it either: nothing to compare with, not a 0% rate
+    assert trial.previous_conversion_rate is None
     assert trial.median_days_to_pay == 0 and trial.trial_days == 7
     assert len(trial.by_trial_day) == 7 + 4
     assert all(x.count == 0 for x in trial.by_trial_day)
@@ -210,13 +212,18 @@ async def test_by_trial_day_extends_to_the_longest_trial(
 
     assert trial.trial_days == 7
     assert [x.key for x in trial.by_trial_day] == [
-        *(str(day) for day in range(1, 15)),
+        "1",
+        "2",
+        "3",
+        "4_6",
+        "7",
+        "8_14",
         "after_1_3",
         "after_4_7",
         "after_8_30",
         "after_later",
     ]
-    assert {x.key: x.count for x in trial.by_trial_day}["10"] == 1
+    assert {x.key: x.count for x in trial.by_trial_day}["8_14"] == 1
 
 
 async def test_previous_rate_median_time_to_pay_and_earliest_trial(
@@ -237,6 +244,11 @@ async def test_previous_rate_median_time_to_pay_and_earliest_trial(
         subscription_repository, user_repository, session, 862_001, now - timedelta(days=45)
     )
     await pay(previous, "p-1", now - timedelta(days=44))
+    # paid 40 days into a 30-day-old comparison: later than the current cohort could have
+    slow = await _trial(
+        subscription_repository, user_repository, session, 862_006, now - timedelta(days=45)
+    )
+    await pay(slow, "p-5", now - timedelta(days=5))
     e1 = await _trial(
         subscription_repository, user_repository, session, 862_002, now - timedelta(days=20)
     )
@@ -270,7 +282,27 @@ async def test_previous_rate_median_time_to_pay_and_earliest_trial(
     trial = await _use_case(session, pricing_repository, uow)(OWNER, AnalyticsPeriodQueryDto())
 
     assert trial.trials == 2 and trial.converted == 2
-    assert trial.previous_conversion_rate == pytest.approx(1.0)
+    assert trial.previous_trials == 2
+    assert trial.previous_conversion_rate == pytest.approx(0.5)
+    assert trial.previous_revenue_from_converted > 0
+    assert trial.previous_revenue_from_converted < trial.revenue_from_converted
     assert trial.median_days_to_pay == 3
     split = {x.key: (x.via_trial, x.direct) for x in trial.time_to_first_payment}
     assert split["2_3"] == (1, 0) and split["4_7"] == (1, 0) and split["same_day"] == (0, 1)
+
+
+@pytest.mark.parametrize(
+    ("longest", "trial_days", "expected"),
+    [
+        (7, 7, [(day, day) for day in range(1, 8)]),
+        (3, 3, [(1, 1), (2, 2), (3, 3)]),
+        (14, 7, [(1, 1), (2, 2), (3, 3), (4, 6), (7, 7), (8, 14)]),
+        (10, 10, [(1, 1), (2, 2), (3, 3), (4, 7), (8, 9), (10, 10)]),
+        (60, 30, [(1, 1), (2, 2), (3, 3), (4, 7), (8, 14), (15, 29), (30, 30), (31, 60)]),
+        (30, 4, [(1, 1), (2, 2), (3, 3), (4, 4), (5, 7), (8, 14), (15, 30)]),
+    ],
+)
+def test_day_ranges_group_a_long_trial_and_keep_its_last_day(
+    longest: int, trial_days: int, expected: list[tuple[int, int]]
+) -> None:
+    assert _day_ranges(longest, trial_days) == expected

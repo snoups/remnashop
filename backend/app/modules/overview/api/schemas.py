@@ -17,6 +17,7 @@ class DailyCountResponse(BaseModel):
 class DailyAmountResponse(BaseModel):
     day: date
     amount: Decimal
+    count: int
 
 
 class OverviewUsersResponse(BaseModel):
@@ -45,7 +46,6 @@ class RevenueTodayResponse(BaseModel):
 class RecentPaymentResponse(BaseModel):
     user_id: int
     name: str
-    username: Optional[str] = None
     plan_name: str
     gateway_type: PaymentGatewayType
     purchase_type: PurchaseType
@@ -88,11 +88,25 @@ class OverviewResponse(BaseModel):
     recent_payments: Optional[list[RecentPaymentResponse]] = None
 
 
+class RecapResponse(BaseModel):
+    report_currency: Currency
+    revenue_total: Decimal
+    customers: int
+    payers: int
+    active_subscriptions: int
+    transactions: int
+    month_revenue: Decimal
+    new_customers: int
+    new_payers: int
+    nodes: Optional[int] = None
+    countries: Optional[int] = None
+    since: date
+
+
 class RevenueChartResponse(BaseModel):
     days: int
     granularity: Literal["day", "month"]
     paid_orders_count: int
-    revenue_by_currency: dict[Currency, Decimal]
     report_currency: Currency
     daily: list[DailyAmountResponse]
 

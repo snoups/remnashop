@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.promocode import PromocodeActivation
 from app.core.db.models.transaction import Transaction
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -182,15 +183,38 @@ async def test_promocode_stats_discount_and_free_reward_conversion(
         at=now - timedelta(seconds=10),
     )
 
+    earlier = await user_repository.create(CreateUserDto(name="E", telegram_id=893_004))
+    # registered long ago: the default window isn't trimmed to today
+    await session.execute(
+        update(User).where(User.id == earlier.id).values(created_at=now - timedelta(days=60))
+    )
+    await _activate(promocode_repository, session, free.id, earlier.id, now - timedelta(days=40))
+    await _pay(
+        transaction_repository,
+        session,
+        uow,
+        user_id=earlier.id,
+        plan_id=plan_id,
+        base="200",
+        final="150",
+        discount_percent=25,
+        key="pc-3",
+        at=now - timedelta(days=39),
+    )
+
     stats = await _use_case(session, promocode_repository, pricing_repository, uow)(
         OWNER, AnalyticsPeriodQueryDto()
     )
 
+    assert stats.previous_activations == 1
+    assert stats.previous_discount_given == Decimal("50")
+    assert stats.previous_revenue_with_discount == Decimal("150")
+    assert stats.previous_free_reward_conversion == 1.0
     assert stats.activations == 3 and stats.codes_used == 2
     assert stats.discount_given == Decimal("250")
     assert stats.revenue_with_discount == Decimal("750")
     assert stats.revenue_share == 750 / 1150
-    assert stats.free_reward_conversion == 0.5
+    assert stats.free_rewards == 2 and stats.free_reward_conversion == 0.5
     assert len(stats.by_reward_type) == 6
     counts = {row.reward_type: row.activations for row in stats.by_reward_type}
     assert counts[PromocodeRewardType.DURATION] == 2
@@ -200,7 +224,7 @@ async def test_promocode_stats_discount_and_free_reward_conversion(
     free_row, discount_row = stats.codes
     assert free_row.conversion_rate == 0.5
     assert free_row.revenue_after == Decimal("400")
-    assert free_row.total_activations == 2 and free_row.status == PromocodeStatus.ACTIVE
+    assert free_row.total_activations == 3 and free_row.status == PromocodeStatus.ACTIVE
     assert discount_row.conversion_rate is None
     assert discount_row.revenue_after == Decimal("750")
 
@@ -218,5 +242,6 @@ async def test_promocode_stats_on_an_empty_period_are_zero(
 
     assert stats.activations == 0 and stats.codes_used == 0 and stats.codes == []
     assert stats.discount_given == 0 and stats.revenue_share == 0
-    assert stats.free_reward_conversion == 0
+    assert stats.free_rewards == 0 and stats.free_reward_conversion == 0
+    assert stats.previous_activations == 0 and stats.previous_free_reward_conversion is None
     assert len(stats.by_reward_type) == 6

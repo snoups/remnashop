@@ -13,6 +13,7 @@ from app.modules.overview.api.schemas import (
     OnlineChartResponse,
     OverviewPeriodDays,
     OverviewResponse,
+    RecapResponse,
     RevenueChartResponse,
 )
 from app.modules.overview.dto import GetOverviewChartDto, OverviewDays
@@ -23,6 +24,7 @@ from app.modules.overview.usecases import (
     GetNodesOverviewUseCase,
     GetOnlineChartUseCase,
     GetOverviewUseCase,
+    GetRecapUseCase,
     GetRevenueChartUseCase,
 )
 from app.modules.users import UserDto
@@ -42,6 +44,16 @@ async def get_overview(
 ) -> OverviewResponse:
     overview = await use_case(actor)
     return OverviewResponse.model_validate(overview, from_attributes=True)
+
+
+@router.get("/recap", response_model=RecapResponse)
+@inject
+async def get_overview_recap(
+    use_case: FromDishka[GetRecapUseCase],
+    actor: UserDto = Depends(require_admin_user),
+) -> RecapResponse:
+    recap = await use_case(actor)
+    return RecapResponse.model_validate(recap, from_attributes=True)
 
 
 @router.get("/revenue", response_model=RevenueChartResponse)

@@ -59,11 +59,12 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
 
     async def _compute(self, data: AnalyticsPeriodQueryDto) -> FunnelDto:
         async with self._uow:
+            now = datetime_now()
             period = resolve_period(
                 data.period_from,
                 data.period_to,
                 earliest=await self._user_stats.earliest_registration(Role.USER),
-                now=datetime_now(),
+                now=now,
             )
             previous = period.previous
             registered = [
@@ -93,6 +94,16 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
                 )
                 for i in range(len(_STEP_KEYS))
             ]
+
+            previous_registered = [
+                user_id
+                for user_id, _ in await self._user_stats.list_registrations(
+                    previous.start, previous.end, Role.USER
+                )
+            ]
+            previous_paid = await self._transaction_repository.list_user_ids_with_paid_order(
+                previous_registered, paid_before=period.previous_now(now)
+            )
 
             sources = await resolve_sources(
                 registered, ad_links=self._ad_links, referrals=self._referrals
@@ -128,5 +139,8 @@ class GetFunnelUseCase(UseCase[AnalyticsPeriodQueryDto, FunnelDto]):
                 ),
                 steps=steps,
                 paid_via_trial=len(paid_via_trial),
+                previous_conversion=(
+                    len(previous_paid) / len(previous_registered) if previous_registered else None
+                ),
                 by_source=by_source,
             )

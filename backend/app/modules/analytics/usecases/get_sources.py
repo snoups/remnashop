@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 from functools import partial
 from typing import Final, Optional
@@ -16,6 +17,7 @@ from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.dto import (
     AnalyticsPeriodInfoDto,
     AnalyticsPeriodQueryDto,
+    ChannelRevenueDto,
     ReferralPaybackDto,
     SourceRowDto,
     SourcesDto,
@@ -125,6 +127,22 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
             for referrer in top
         ]
 
+    async def _cohort_channels(
+        self, start: datetime, end: datetime, paid_before: datetime
+    ) -> tuple[list[int], list[SourceRowDto], list[SourceRowDto]]:
+        cohort = [
+            user_id
+            for user_id, _ in await self._user_stats.list_registrations(start, end, Role.USER)
+        ]
+        totals: dict[int, Decimal] = {}
+        for row in await self._transaction_stats.list_paid_by_users(cohort, paid_before):
+            totals[row.user_id] = totals.get(row.user_id, ZERO_AMOUNT) + row.anchor_final_price
+        sources = await resolve_sources(
+            cohort, ad_links=self._ad_link_repository, referrals=self._referral_repository
+        )
+        channels, ad_links = _channels(sources, totals)
+        return cohort, channels, ad_links
+
     async def _execute(self, actor: Actor, data: AnalyticsPeriodQueryDto) -> SourcesDto:
         return await self._cache.get_or_compute(
             "get_sources", data, SourcesDto, partial(self._compute, data)
@@ -140,19 +158,10 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
                 now=now,
             )
             rates = await self._pricing_repository.get_rate_table()
-            cohort = [
-                user_id
-                for user_id, _ in await self._user_stats.list_registrations(
-                    period.start, period.end, Role.USER
-                )
-            ]
-            totals: dict[int, Decimal] = {}
-            for row in await self._transaction_stats.list_paid_by_users(cohort, now):
-                totals[row.user_id] = totals.get(row.user_id, ZERO_AMOUNT) + row.anchor_final_price
-            sources = await resolve_sources(
-                cohort, ad_links=self._ad_link_repository, referrals=self._referral_repository
+            cohort, channels, ad_links = await self._cohort_channels(period.start, period.end, now)
+            _, previous_channels, _ = await self._cohort_channels(
+                period.previous.start, period.previous.end, period.previous_now(now)
             )
-            channels, ad_links = _channels(sources, totals)
 
             reward_days: dict[int, int] = defaultdict(int)
             total_days = total_points = 0
@@ -190,6 +199,10 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
                 ),
                 report_currency=rates.anchor,
                 channels=channels,
+                previous_channels=[
+                    ChannelRevenueDto(source=row.source, revenue=row.revenue)
+                    for row in previous_channels
+                ],
                 ad_links=ad_links,
                 referral=ReferralPaybackDto(
                     referred_revenue=round_cents(referred_revenue),

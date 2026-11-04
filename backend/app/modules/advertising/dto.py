@@ -53,7 +53,6 @@ class AdLinkStatsDto(BaseDto):
     attributions_by_channel: dict[AdLinkChannel, int] = Field(default_factory=dict)
     paid_count: int
     revenue: Decimal
-    revenue_by_currency: dict[Currency, Decimal] = Field(default_factory=dict)
     cost: Decimal
     report_currency: Currency
     cpa: Optional[Decimal] = None
@@ -105,6 +104,7 @@ class UpdateAdLinkDto:
     is_active: Optional[bool] = None
     allow_bot: Optional[bool] = None
     allow_webcabinet: Optional[bool] = None
+    # "" clears the note
     note: Optional[str] = None
 
 
@@ -118,7 +118,6 @@ class ListAdLinksDto:
 @dataclass(frozen=True, kw_only=True)
 class GetAdLinkStatsDto:
     ad_link_id: int
-    report_currency: Optional[Currency] = None
     # Counts only attributions made at or after this moment; None = all time.
     created_from: Optional[datetime] = None
     created_to: Optional[datetime] = None
@@ -127,7 +126,6 @@ class GetAdLinkStatsDto:
 @dataclass(frozen=True, kw_only=True)
 class GetAdvertisingSummaryDto:
     is_active: Optional[bool] = None
-    report_currency: Optional[Currency] = None
     created_from: Optional[datetime] = None
     # snapshot as of this moment: later attributions and payments are left out
     created_to: Optional[datetime] = None

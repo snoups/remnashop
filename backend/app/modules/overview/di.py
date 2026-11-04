@@ -7,6 +7,7 @@ from app.modules.overview.usecases import (
     GetNodesOverviewUseCase,
     GetOnlineChartUseCase,
     GetOverviewUseCase,
+    GetRecapUseCase,
     GetRevenueChartUseCase,
     SampleRemnawaveOnlineUseCase,
 )
@@ -17,6 +18,7 @@ class OverviewProvider(Provider):
 
     use_cases = provide_all(
         GetOverviewUseCase,
+        GetRecapUseCase,
         GetAttentionUseCase,
         GetNodesOverviewUseCase,
         GetClientAppsUseCase,

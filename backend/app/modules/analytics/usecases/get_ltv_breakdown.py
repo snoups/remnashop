@@ -49,14 +49,12 @@ def _groups(totals: dict[int, Decimal], group_of: Mapping[int, _GroupId]) -> lis
     ]
 
 
-def _current_plans(live: list[LiveSubscriptionDto]) -> dict[int, str]:
-    latest: dict[int, LiveSubscriptionDto] = {}
-    for row in live:
-        if not row.is_trial and (
-            row.user_id not in latest or row.expire_at > latest[row.user_id].expire_at
-        ):
-            latest[row.user_id] = row
-    return {user_id: row.plan_name for user_id, row in latest.items()}
+def _current_plans(live: list[LiveSubscriptionDto]) -> dict[int, list[str]]:
+    plans: dict[int, list[str]] = {}
+    for row in sorted(live, key=lambda row: row.expire_at, reverse=True):
+        if not row.is_trial:
+            plans.setdefault(row.user_id, []).append(row.plan_name)
+    return plans
 
 
 class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
@@ -93,7 +91,7 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
                 user_id=user_id,
                 name=users[user_id].name if user_id in users else "",
                 username=users[user_id].username if user_id in users else None,
-                current_plan=plans.get(user_id),
+                current_plans=plans.get(user_id, []),
                 payments=payers[user_id].payments,
                 spent=round_cents(totals[user_id]),
                 last_paid_at=payers[user_id].last_paid_at,

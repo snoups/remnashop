@@ -88,6 +88,7 @@ def _build_revenue(
     granularity: Granularity,
     paid: list[PaidTransactionDto],
     attempts: list[PaymentAttemptDto],
+    previous_attempts: list[PaymentAttemptDto],
     rates: CurrencyRateTable,
 ) -> RevenueDto:
     previous = period.previous
@@ -148,6 +149,9 @@ def _build_revenue(
             refunded=round_cents(refunded),
             previous_revenue=round_cents(previous_revenue),
             previous_payments=len(before),
+            previous_refunds=sum(
+                1 for attempt in previous_attempts if attempt.status is TransactionStatus.REFUNDED
+            ),
         ),
         series=[
             RevenueBucketDto(
@@ -213,10 +217,14 @@ class GetRevenueUseCase(UseCase[GetRevenueDto, RevenueDto]):
             rates = await self._pricing_repository.get_rate_table()
             paid = await self._transaction_stats.list_paid(period.previous.start, period.end)
             attempts = await self._transaction_stats.list_attempts(period.start, period.end)
+            previous_attempts = await self._transaction_stats.list_attempts(
+                period.previous.start, period.previous.end
+            )
             return _build_revenue(
                 period=period,
                 granularity=data.granularity,
                 paid=paid,
                 attempts=attempts,
+                previous_attempts=previous_attempts,
                 rates=rates,
             )

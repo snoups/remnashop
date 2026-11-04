@@ -36,6 +36,15 @@ class SnapshotKpiDto(BaseModel):
     paid_subscriptions: int
     limited_subscriptions: int
     active_trials: int
+    paying_customers: int
+    never_connected: int
+    expiring_soon_days: int
+    expiring_soon: int
+    expiring_soon_mrr: Decimal
+    trials_ending_days: int
+    trials_ending_soon: int
+    points_owed: Decimal
+    bonus_days_owed: int
 
 
 class AnalyticsDto(BaseModel):
@@ -69,6 +78,8 @@ class FunnelDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     steps: list[FunnelStepDto]
     paid_via_trial: int
+    # None: nobody registered in the previous period
+    previous_conversion: Optional[float]
     by_source: list[FunnelSourceRowDto]
 
 
@@ -108,7 +119,8 @@ class TopPayerDto(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
-    current_plan: Optional[str]
+    # live paid subscriptions' plans, the one expiring last first
+    current_plans: list[str]
     payments: int
     spent: Decimal
     last_paid_at: datetime
@@ -149,10 +161,16 @@ class TopReferrerDto(BaseModel):
     reward_days: int
 
 
+class ChannelRevenueDto(BaseModel):
+    source: SourceKind
+    revenue: Decimal
+
+
 class SourcesDto(BaseModel):
     period: AnalyticsPeriodInfoDto
     report_currency: Currency
     channels: list[SourceRowDto]
+    previous_channels: list[ChannelRevenueDto]
     ad_links: list[SourceRowDto]
     referral: ReferralPaybackDto
     top_referrers: list[TopReferrerDto]
@@ -167,6 +185,7 @@ class RevenueTotalsDto(BaseModel):
     refunded: Decimal
     previous_revenue: Decimal
     previous_payments: int
+    previous_refunds: int
 
 
 class RevenueBucketDto(BaseModel):
@@ -221,8 +240,11 @@ class TrialDto(BaseModel):
     trials: int
     converted: int
     conversion_rate: float
-    previous_conversion_rate: float
+    # None: nobody took a trial in the previous period, nothing to compare with
+    previous_conversion_rate: Optional[float]
+    previous_trials: int
     revenue_from_converted: Decimal
+    previous_revenue_from_converted: Decimal
     median_days_to_pay: int
     trial_days: int
     by_trial_day: list[TrialDayBucketDto]
@@ -246,7 +268,8 @@ class ExpiringCustomerDto(BaseModel):
     user_id: int
     name: str
     username: Optional[str]
-    plan_name: str
+    # plans of the customer's subscriptions expiring in the window, the nearest first
+    plan_names: list[str]
     expire_at: datetime
     spent: Decimal
     renewals: int
@@ -315,6 +338,12 @@ class PromocodeStatsDto(BaseModel):
     discount_given: Decimal
     revenue_with_discount: Decimal
     revenue_share: float
+    free_rewards: int
     free_reward_conversion: float
+    previous_activations: int
+    previous_discount_given: Decimal
+    previous_revenue_with_discount: Decimal
+    # None: no free reward was activated in the previous period
+    previous_free_reward_conversion: Optional[float]
     by_reward_type: list[RewardTypeCountDto]
     codes: list[PromocodeRowDto]

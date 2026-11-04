@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.subscription import Subscription
 from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
@@ -24,6 +25,7 @@ from app.core.utils.time import datetime_now
 from app.modules.analytics.dto import AnalyticsPeriodQueryDto
 from app.modules.analytics.usecases import GetAnalyticsUseCase
 from app.modules.pricing.repository import PricingRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.transactions.dto import CreateTransactionDto
@@ -230,6 +232,70 @@ async def test_kpi_compares_with_the_previous_period(
     assert analytics.period.previous_end == analytics.period.start
 
 
+async def test_snapshot_counts_customers_risks_and_balances(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    now = datetime_now()
+    soon = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=840_601,
+        remnawave_user_id=840_601,
+        expire_at=now + timedelta(days=3),
+        price_paid=Decimal("300"),
+        currency=Currency.RUB,
+        duration_days=30,
+    )
+    await session.execute(
+        update(Subscription).where(Subscription.id == soon.id).values(first_connected_at=now)
+    )
+    # the same customer's second subscription, never connected
+    await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=soon.user_id,
+            remnawave_user_id=840_602,
+            status=SubscriptionStatus.ACTIVE,
+            is_trial=False,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=now + timedelta(days=60),
+            url="https://example.com/sub/840602",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=840_603,
+        remnawave_user_id=840_603,
+        expire_at=now + timedelta(days=20),
+    )
+    for telegram_id, days in ((840_604, 2), (840_605, 10)):
+        await create_subscription(
+            subscription_repository,
+            user_repository,
+            telegram_id=telegram_id,
+            remnawave_user_id=telegram_id,
+            is_trial=True,
+            expire_at=now + timedelta(days=days),
+        )
+    await session.execute(
+        update(User).where(User.id == soon.user_id).values(points=50, bonus_days=4)
+    )
+
+    snapshot = (await _use_case(session, pricing_repository, uow)(OWNER, _last_week())).snapshot
+
+    assert snapshot.paid_subscriptions == 3 and snapshot.paying_customers == 2
+    assert snapshot.never_connected == 2
+    assert snapshot.expiring_soon == 1 and snapshot.expiring_soon_mrr == Decimal("300")
+    assert snapshot.trials_ending_soon == 1
+    assert snapshot.points_owed == Decimal(50) and snapshot.bonus_days_owed == 4
+
+
 async def test_empty_period_returns_zeros(
     pricing_repository: PricingRepository, session: AsyncSession, uow: UnitOfWork
 ) -> None:
@@ -328,6 +394,18 @@ async def test_mrr_counts_limited_and_skips_trials(
         telegram_id=840_503,
         remnawave_user_id=840_503,
         status=SubscriptionStatus.ACTIVE,
+        is_trial=True,
+        price_paid=Decimal("999"),
+        currency=Currency.RUB,
+        duration_days=30,
+    )
+    # over its traffic limit: no longer an active trial
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=840_504,
+        remnawave_user_id=840_504,
+        status=SubscriptionStatus.LIMITED,
         is_trial=True,
         price_paid=Decimal("999"),
         currency=Currency.RUB,

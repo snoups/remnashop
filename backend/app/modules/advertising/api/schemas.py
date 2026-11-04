@@ -69,7 +69,6 @@ class AdLinkStatsResponse(BaseModel):
     paid_count: int
     conversion_rate: Decimal
     revenue: Decimal
-    revenue_by_currency: dict[Currency, Decimal]
     cost: Decimal
     report_currency: Currency
     cpa: Optional[Decimal] = None

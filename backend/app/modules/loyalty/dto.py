@@ -39,6 +39,7 @@ class UserLoyaltyDto:
     user_id: int
     discount: int
     excluded: bool
+    is_program_active: bool
     spent: Decimal
     next_tier: Optional[LoyaltyTierDto]
     currency: Currency

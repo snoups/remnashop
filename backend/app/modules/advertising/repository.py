@@ -109,7 +109,10 @@ class AdLinkRepository:
 
     async def update(self, data: UpdateAdLinkDto) -> AdLinkDto:
         row = await self._get_or_raise(data.ad_link_id)
-        apply_partial_update(row, data, skip=frozenset({"ad_link_id"}))
+        apply_partial_update(row, data, skip=frozenset({"ad_link_id", "note"}))
+        if data.note is not None:
+            # "" clears it: None already means "leave unchanged"
+            row.note = data.note or None
         _ensure_some_channel(row)
         await self.session.flush()
         await self.session.refresh(row)
@@ -133,7 +136,7 @@ class AdLinkRepository:
             ) from error
 
         if await self.count_attributions(ad_link_id) > 0:
-            raise ValidationError(
+            raise ConflictError(
                 f"AdLink '{ad_link_id}' has attributions and cannot be deleted -- "
                 "deactivate it instead",
                 code=ErrorCode.AD_LINK_HAS_ATTRIBUTIONS,
