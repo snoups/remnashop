@@ -8,15 +8,17 @@ interface GroupToggleProps {
   count: number;
   /** before the label (a status dot) */
   leading?: ReactNode;
+  /** over glass ListRows: 14px in, the chevron over their circles */
+  glass?: boolean;
 }
 
 /** Header of a collapsible list group (a day, a status); the caller wraps it in <h3> where it heads a section. */
-export function GroupToggle({ open, onToggle, label, count, leading }: GroupToggleProps) {
+export function GroupToggle({ open, onToggle, label, count, leading, glass = false }: GroupToggleProps) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="group flex w-full items-center gap-2.5 rounded-full px-3 py-1.5 text-left"
+      className={`group flex w-full items-center gap-2.5 rounded-full py-1.5 text-left ${glass ? "px-3.5" : "px-3"}`}
     >
       <ChevronDown
         className={`size-3.5 text-muted-foreground transition-transform group-hover:text-foreground ${

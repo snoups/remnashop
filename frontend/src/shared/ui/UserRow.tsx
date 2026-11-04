@@ -15,7 +15,8 @@ interface UserRowProps {
   onClick?: () => void;
 }
 
-/** A user in a Card variant="list": initials, name, subtitle; opens their card on click. */
+/** A user in a Card variant="list": initials, name, subtitle; opens their card on click.
+ *  48px pill: the 32px circle 8px in on every side, a 20px badge on the right 14px in, as on its curve. */
 export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
   const { t } = useTranslation();
   return (
@@ -23,10 +24,10 @@ export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
       type="button"
       disabled={!onClick}
       onClick={onClick}
-      className="relative flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
+      className="relative flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
     >
       <Ripple />
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-bold text-foreground">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
         {initials(name)}
       </span>
       <div className="min-w-0 flex-1">

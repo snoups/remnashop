@@ -38,7 +38,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal onClose={onCancel} size={size} portal={portal} material="glass">
+    <Modal onClose={onCancel} size={size} portal={portal}>
       <ConfirmDialogBody
         title={title}
         message={message}

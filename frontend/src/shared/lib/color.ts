@@ -14,7 +14,7 @@ export function hexToRgbNormalized(hex: string): [number, number, number] {
 }
 
 // The shader's default cosine-gradient palette (base/amplitude/frequency/phase).
-// Here, not in app/shaderState.ts, so the settings form can read it (FSD).
+// Here, not in app/shader-state.ts, so the settings form can read it (FSD).
 export const DEFAULT_SHADER_PALETTE_HEX: readonly [string, string, string, string] = [
   "#0f1629",
   "#050d0d",

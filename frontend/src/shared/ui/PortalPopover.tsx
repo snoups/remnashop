@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, type HTMLMotionProps } from "motion/react";
-import { useLayoutEffect, useState, type RefObject } from "react";
+import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -11,8 +11,10 @@ import {
   type RightPopoverAnchor,
 } from "@shared/lib/popover-anchor";
 import { GLASS_POPOVER_CLASS, POPOVER_CLASS } from "@shared/ui/classes";
+import { FieldRequiredContext } from "@shared/ui/field-context";
 
-interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "className"> {
+interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "className" | "children"> {
+  children?: ReactNode;
   open: boolean;
   triggerRef: RefObject<HTMLElement | null>;
   /** pass it to useClickOutside / useCloseOnScroll next to the trigger's ref */
@@ -92,7 +94,8 @@ export function PortalPopover({
             // above Modal's z-50, so a popover opened inside a dialog draws over it
             className={`${solid ? (glass ? SOLID_GLASS_POPOVER_CLASS : SOLID_POPOVER_CLASS) : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
           >
-            {children}
+            {/* a popover opened from a required Field has fields of its own */}
+            <FieldRequiredContext.Provider value={false}>{children}</FieldRequiredContext.Provider>
           </motion.div>
         )}
       </AnimatePresence>

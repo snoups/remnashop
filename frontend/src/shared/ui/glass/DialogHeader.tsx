@@ -5,11 +5,12 @@ import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { IconButton } from "@shared/ui/IconButton";
 import { useModalClose } from "@shared/ui/modal-hooks";
 
-/** Header of a Modal material="glass": icon, 15px title, actions, close (through the modal's exit). */
+/** Header of a Modal: icon, 15px title, actions, close (through the modal's exit). */
 export function DialogHeader({
   icon,
   glyph,
   title,
+  subtitle,
   actions,
   closable = true,
   danger = false,
@@ -19,6 +20,8 @@ export function DialogHeader({
   /** the circle's content instead of an icon: an emoji */
   glyph?: ReactNode;
   title: string;
+  /** 12px muted line under the title */
+  subtitle?: ReactNode;
   /** before the close button: a refresh, a spinner; 36px tall like the header icon */
   actions?: ReactNode;
   /** false: no close button, for a dialog only its own action may close */
@@ -32,7 +35,10 @@ export function DialogHeader({
   return (
     <div className="flex shrink-0 items-center gap-3 border-b border-white/[0.08] p-4">
       {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} header danger={danger} warning={warning} />}
-      <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
+        {subtitle && <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{subtitle}</p>}
+      </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       {/* 36px, the header icon's height: every control in a header is */}
       {closable && (

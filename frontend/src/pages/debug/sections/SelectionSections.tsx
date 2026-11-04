@@ -1,20 +1,22 @@
-import { BarChart3, Pencil, ShieldCheck, Smile, Star, Users } from "lucide-react";
+import { ArrowDownUp, BarChart3, Bot, Globe, Pencil, ShieldCheck, Smartphone, Smile, Star, Users } from "lucide-react";
 import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 
-import { PillTabs } from "@shared/ui/PillTabs";
+import { PackTab } from "@entities/emoji-packs/EmojiPicker";
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
+import { CardPill } from "@shared/ui/CardPill";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DialogTabs } from "@shared/ui/DialogTabs";
-import { PackTab } from "@entities/emoji-packs/EmojiPicker";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { TabBar } from "@shared/ui/glass/TabBar";
+import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
+import { GroupToggle } from "@shared/ui/GroupToggle";
 import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { TabBar } from "@shared/ui/TabBar";
 import { Tag } from "@shared/ui/Tag";
-import { StatusPill } from "@shared/ui/StatusPill";
 
 type DemoTab = "overview" | "users" | "settings";
 const DEMO_TABS: DemoTab[] = ["overview", "users", "settings"];
@@ -28,26 +30,26 @@ const TONES: BadgeTone[] = ["success", "warning", "error", "neutral", "accent", 
 export function TabsSection() {
   const k = useKit();
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const routeTab = (searchParams.get("tab") as DemoTab | null) ?? "overview";
   const [dialogTab, setDialogTab] = useState<DemoTab>("overview");
   const [segment, setSegment] = useState<DemoTab>("overview");
   const [pillTab, setPillTab] = useState<DemoTab>("overview");
   const [packTab, setPackTab] = useState<DemoTab>("overview");
   const [period, setPeriod] = useState<PeriodDays>(30);
   const [chip, setChip] = useState(30);
+  const [bot, setBot] = useState(true);
+  const [cabinet, setCabinet] = useState(false);
   const label = (tab: DemoTab) => k(`s.${tab}`);
 
   return (
     <DebugSection id="tabs">
-      <Specimen name="TabBar" usage={k("u.tabBar")}>
+      <Specimen name="TabBar" usage={k("u.glassTabBar")}>
         <TabBar
-          items={DEMO_TABS.map((tab) => ({
+          items={DEMO_TABS.slice(0, 2).map((tab, index) => ({
             key: tab,
-            to: `?tab=${tab}`,
+            to: "",
             icon: DEMO_ICONS[tab],
             label: label(tab),
-            isActive: routeTab === tab,
+            isActive: index === 0,
           }))}
         />
       </Specimen>
@@ -70,6 +72,14 @@ export function TabsSection() {
           value={segment}
           onChange={setSegment}
           stretch
+          options={DEMO_TABS.map((tab) => ({ value: tab, label: label(tab) }))}
+        />
+      </Specimen>
+      <Specimen name="SegmentedPills panel" usage={k("u.segmentedPanel")}>
+        <SegmentedPills
+          value={segment}
+          onChange={setSegment}
+          panel
           options={DEMO_TABS.map((tab) => ({ value: tab, label: label(tab) }))}
         />
       </Specimen>
@@ -125,7 +135,35 @@ export function TabsSection() {
           ))}
         </div>
       </Specimen>
+      <Specimen name="ToggleCapsule" usage={k("u.glassToggle")} stage="stretch">
+        <div className="flex gap-2">
+          <ToggleCapsule icon={Bot} label="Telegram" checked={bot} onChange={setBot} />
+          <ToggleCapsule icon={Globe} label="Web" checked={cabinet} onChange={setCabinet} />
+        </div>
+      </Specimen>
+      <Specimen name="GroupToggle · leading" usage={k("u.groupToggle")} stage="stretch">
+        <GroupToggleDemo />
+      </Specimen>
     </DebugSection>
+  );
+}
+
+function GroupToggleDemo() {
+  const k = useKit();
+  const [open, setOpen] = useState([true, false]);
+  const flip = (index: number) => setOpen((prev) => prev.map((value, i) => (i === index ? !value : value)));
+
+  return (
+    <div className="flex flex-col">
+      <GroupToggle open={open[0]} onToggle={() => flip(0)} label={k("s.today")} count={3} />
+      <GroupToggle
+        open={open[1]}
+        onToggle={() => flip(1)}
+        leading={<span className="-ml-1 size-1.5 rounded-full bg-success" />}
+        label={k("s.active")}
+        count={12}
+      />
+    </div>
   );
 }
 
@@ -161,10 +199,16 @@ export function BadgesSection() {
           {k("s.status")}
         </Badge>
       </Specimen>
-      <Specimen name='StatusPill tone="success | warning | error"' usage={k("u.statusPill")}>
+      <Specimen name='StatusPill tone="success | warning | error"' usage={k("u.glassStatus")}>
         <StatusPill tone="success">{k("s.status")}</StatusPill>
         <StatusPill tone="warning">{k("s.status")}</StatusPill>
         <StatusPill tone="error">{k("s.status")}</StatusPill>
+      </Specimen>
+      <Specimen name="CardPill" usage={k("u.cardPill")} stage="stretch">
+        <div className="flex gap-2">
+          <CardPill icon={ArrowDownUp} label={k("s.month")} value="100 GB" />
+          <CardPill icon={Smartphone} value="∞" />
+        </div>
       </Specimen>
     </DebugSection>
   );

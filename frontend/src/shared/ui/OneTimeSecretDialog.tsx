@@ -17,7 +17,7 @@ interface OneTimeSecretDialogProps {
 /** A secret the backend returns once (API token, generated password). Only "Done" closes it, so it isn't lost by a stray click. */
 export function OneTimeSecretDialog({ title, value, onDone }: OneTimeSecretDialogProps) {
   return (
-    <Modal onClose={onDone} size="sm" dismissable={false} material="glass">
+    <Modal onClose={onDone} size="sm" dismissable={false}>
       <OneTimeSecretDialogBody title={title} value={value} />
     </Modal>
   );

@@ -1,9 +1,9 @@
 import { DEFAULT_SHADER_PALETTE_HEX, hexToRgbNormalized, hueRotationCoefficients } from "@shared/lib/color";
+import { SHADER_GRADIENT_OPACITY } from "@shared/lib/shader-gradient";
 
-// Opaque canvas (alpha: false), so opacity is a brightness multiplier, not a blend.
 // colours: flat rgb triplets, the layout gl.uniform3fv expects for a vec3[4].
 export const PALETTE = {
-  opacity: 0.5,
+  opacity: SHADER_GRADIENT_OPACITY,
   colours: DEFAULT_SHADER_PALETTE_HEX.flatMap((hex) => hexToRgbNormalized(hex)),
 };
 

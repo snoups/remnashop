@@ -25,16 +25,23 @@ interface PaginatedList<T> {
   reload: () => void;
 }
 
+function defaultKey(item: unknown): unknown {
+  return typeof item === "object" && item !== null && "id" in item ? item.id : undefined;
+}
+
 // most refetches resolve well under this, so typing in a filter doesn't flash the list dim on every pause
 const FETCH_INDICATOR_DELAY_MS = 150;
 
 /**
  * A "load more" list: refetches page 1 whenever `filters` changes (memoize it), appends later pages.
- * offset pagination drifts a row at a page boundary after local deletes; keyset if it bites.
+ * offset pagination drifts a row at a page boundary after local deletes; a keyset fetcher reads
+ * its cursor from `loaded` (the rows on screen) and answers `total` as `loaded.length` + what's left.
  */
 export function usePaginatedList<T, F>(
-  fetchPage: (filters: F, page: number, signal?: AbortSignal) => Promise<Page<T>>,
+  fetchPage: (filters: F, page: number, signal?: AbortSignal, loaded?: T[]) => Promise<Page<T>>,
   filters: F,
+  /** what makes a row unique, to drop repeats; a row without one is always kept */
+  keyOf: (item: T) => unknown = defaultKey,
 ): PaginatedList<T> {
   const [state, setState] = useState<PaginatedState<T>>({ kind: "loading" });
   useLoadGateHold(state.kind === "loading");
@@ -56,7 +63,7 @@ export function usePaginatedList<T, F>(
     loadGenRef.current += 1;
     setPage(1);
     fetchPageRef
-      .current(filters, 1, controller.signal)
+      .current(filters, 1, controller.signal, [])
       .then((result) => {
         if (!controller.signal.aborted) setState({ kind: "ready", items: result.items, total: result.total });
       })
@@ -79,11 +86,18 @@ export function usePaginatedList<T, F>(
     const nextPage = page + 1;
     setIsLoadingMore(true);
     try {
-      const result = await fetchPageRef.current(filters, nextPage);
+      const result = await fetchPageRef.current(filters, nextPage, undefined, state.kind === "ready" ? state.items : []);
       if (gen !== loadGenRef.current) return;
-      setState((prev) =>
-        prev.kind === "ready" ? { kind: "ready", items: [...prev.items, ...result.items], total: result.total } : prev,
-      );
+      setState((prev) => {
+        if (prev.kind !== "ready") return prev;
+        // rows added since page 1 shift offsets, so a later page can repeat one already shown
+        const shown = new Set(prev.items.map(keyOf));
+        const fresh = result.items.filter((item) => {
+          const key = keyOf(item);
+          return key === undefined || key === null || !shown.has(key);
+        });
+        return { kind: "ready", items: [...prev.items, ...fresh], total: result.total };
+      });
       setPage(nextPage);
     } catch {
       // keep current items; the button stays available to retry

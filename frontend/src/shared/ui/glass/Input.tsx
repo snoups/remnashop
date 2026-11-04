@@ -1,7 +1,8 @@
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useContext, useState, type ComponentProps, type ReactNode } from "react";
 
 import { copyToClipboard } from "@shared/lib/clipboard";
+import { FieldRequiredContext, useRequiredInputProps } from "@shared/ui/field-context";
 import { IconButton } from "@shared/ui/IconButton";
 
 // sunken well; focus, an invalid value (aria-invalid or the browser's own check) and disabled
@@ -30,10 +31,11 @@ type InputProps = Omit<ComponentProps<"input">, "size"> & {
 };
 
 export function Input({ size = "md", suffix, end, mono = false, className = "", ...props }: InputProps) {
+  const requiredProps = useRequiredInputProps();
   return (
     <label className={`flex cursor-text items-center rounded-full ${HEIGHT[size]} ${WELL_CLASS} ${end ? "pr-1" : ""} ${className}`}>
       {/* size 1: the default 20-character width would hold the well wider than its layout */}
-      <input size={1} className={`flex-1 px-3.5 ${CONTROL_CLASS} ${mono ? MONO_CLASS : TEXT_CLASS}`} {...props} />
+      <input size={1} {...requiredProps} className={`flex-1 px-3.5 ${CONTROL_CLASS} ${mono ? MONO_CLASS : TEXT_CLASS}`} {...props} />
       {suffix != null && <span className="shrink-0 pr-3.5 text-[13px] text-muted-foreground">{suffix}</span>}
       {end}
     </label>
@@ -89,9 +91,11 @@ export function TextArea({
   className = "",
   ...props
 }: ComponentProps<"textarea"> & { corner?: ReactNode; mono?: boolean }) {
+  const required = useContext(FieldRequiredContext);
   return (
     <label className={`relative flex cursor-text overflow-hidden rounded-[18px] ${WELL_CLASS} ${className}`}>
       <textarea
+        required={required}
         className={`w-full resize-none px-3.5 py-3 leading-5 ${CONTROL_CLASS} ${mono ? "font-mono text-[12px] text-foreground" : TEXT_CLASS}`}
         {...props}
       />

@@ -4,13 +4,11 @@ import { useState } from "react";
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { Button } from "@shared/ui/Button";
-import { CopyableValue } from "@shared/ui/CopyableValue";
 import { DatePickerField } from "@shared/ui/DatePickerField";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { CopyInput } from "@shared/ui/glass/Input";
 import { IconButton } from "@shared/ui/IconButton";
-import { POPOVER_CLASS } from "@shared/ui/classes";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
-import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { TextInput } from "@shared/ui/TextInput";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -72,6 +70,17 @@ export function ButtonsSection() {
       <Specimen name="LoadMoreButton" usage={k("u.loadMore")} stage="stretch">
         <LoadMoreButton shown={20} total={134} onClick={() => undefined} />
       </Specimen>
+      <Specimen name='Pressable as="button | link | a | div"' usage={k("u.pressable")} stage="stretch">
+        <div className="flex flex-wrap gap-2">
+          {(["button", "link", "a", "div"] as const).map((kind) => {
+            const look = "flex h-9 items-center rounded-full border border-glass-border bg-white/[0.05] px-4 text-[13px] font-medium text-foreground";
+            if (kind === "link") return <Pressable key={kind} as="link" to="/dashboard/debug" className={look}>link</Pressable>;
+            if (kind === "a") return <Pressable key={kind} as="a" href="#buttons" className={look}>a</Pressable>;
+            if (kind === "div") return <Pressable key={kind} as="div" onClick={() => undefined} className={look}>div</Pressable>;
+            return <Pressable key={kind} className={look}>button</Pressable>;
+          })}
+        </div>
+      </Specimen>
       <Specimen name="dashed" usage={k("u.dashed")}>
         <Pressable
           type="button"
@@ -85,24 +94,17 @@ export function ButtonsSection() {
   );
 }
 
-// CopyableValue/DatePickerField are the real components; the rest mirrors the markup where each size is used
+// CopyInput/DatePickerField/DialogHeader are the real components; the rest mirrors the markup where each size is used
 export function IconButtonsSection() {
   const k = useKit();
   const [date, setDate] = useState("2026-09-29");
-  const [range, setRange] = useState({ start: "2026-09-10", end: "2026-09-18" });
-
-  const pickRangeDay = (iso: string) =>
-    setRange(({ start, end }) => {
-      if (start === "" || end !== "") return { start: iso, end: "" };
-      return iso < start ? { start: iso, end: start } : { start, end: iso };
-    });
 
   return (
     <DebugSection id="icons">
-      <Specimen name='size="7" tone="group"' usage={k("u.copy")} stage="stretch">
-        <CopyableValue label="start" value="?start=ad_summer" />
+      <Specimen name='size="7" · CopyInput' usage={k("u.copy")} stage="stretch">
+        <CopyInput value="?start=ad_summer" />
       </Specimen>
-      <Specimen name='size="5"' usage={k("u.clear")} stage="stretch">
+      <Specimen name='size="5" · DatePickerField' usage={k("u.clear")} stage="stretch">
         <DatePickerField value={date} onChange={setDate} placeholder="—" />
       </Specimen>
       <Specimen name='size="18px"' usage={k("u.chip")} stage="stretch">
@@ -128,14 +130,6 @@ export function IconButtonsSection() {
           </IconButton>
         </div>
       </Specimen>
-      <Specimen name="MonthCalendar" usage={k("u.monthCalendar")}>
-        <div className={`${POPOVER_CLASS} w-64 p-3`}>
-          <MonthCalendar value={date} onPick={setDate} />
-        </div>
-        <div className={`${POPOVER_CLASS} w-64 p-3`}>
-          <MonthCalendar value={range.start} rangeEnd={range.end} onPick={pickRangeDay} />
-        </div>
-      </Specimen>
       <Specimen name='size="8"' usage={k("u.cardCorner")} stage="stretch">
         <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-4">
           <span className="text-sm font-bold text-foreground">{k("s.month")}</span>
@@ -154,9 +148,9 @@ export function IconButtonsSection() {
           </IconButton>
         </div>
       </Specimen>
-      <Specimen name="DialogHeader · close" usage={k("u.dialogClose")} stage="stretch">
-        <div className="overflow-hidden rounded-dialog border border-white/[0.14] bg-popover/60">
-          <DialogHeader title={k("s.dialogTitle")} onClose={() => undefined} />
+      <Specimen name='size="9" · DialogHeader' usage={k("u.dialogClose")} stage="stretch">
+        <div className="glass-dialog overflow-hidden rounded-dialog">
+          <DialogHeader title={k("s.dialogTitle")} />
         </div>
       </Specimen>
       <Specimen name='tone="glass"' usage={k("u.glass")}>

@@ -9,7 +9,7 @@ interface SectionProps {
   icon: ComponentType<{ className?: string }>;
   /** a badge may follow the text (Beta) */
   title: ReactNode;
-  description: string;
+  description?: string;
   /** actions on the right of the header, 36px tall like its icon: a Button with an icon, PillTabs, StatusPill */
   aside?: ReactNode;
   /** under the content: SaveFooter variant="glassAccent"; omit when there's nothing to save */
@@ -32,7 +32,7 @@ export function Section({ id, icon, title, description, aside, footer, flush = f
         <IconCircle icon={icon} header />
         <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{description}</p>
+          {description && <p className="mt-0.5 text-[12px] text-muted-foreground">{description}</p>}
         </div>
         {/* shrink-0: a w-full control (PillTabs) would otherwise share the line with the title */}
         {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}

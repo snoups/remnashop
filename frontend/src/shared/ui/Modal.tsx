@@ -20,16 +20,6 @@ const SIZE_CLASS = {
   xl: "max-w-3xl",
 } as const;
 
-const MATERIAL = {
-  popover: {
-    panel:
-      "border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150",
-    backdrop: "bg-black/55 backdrop-blur-3xl",
-  },
-  // frosts the page itself, so its backdrop only dims
-  glass: { panel: "glass-dialog", backdrop: "bg-black/30" },
-} as const;
-
 const INSTANT = { duration: 0 };
 const MORPH_OPTIONS: KeyframeAnimationOptions = { duration: 200, easing: "ease-out", fill: "forwards" };
 const PANEL_CLIP_RADIUS = "round var(--radius-dialog)";
@@ -77,7 +67,6 @@ interface ModalProps {
   /** false: render in place, for a caller that wants the backdrop bounded by its own
    * container (see DialogPortal). */
   portal?: boolean;
-  material?: keyof typeof MATERIAL;
   children: ReactNode;
 }
 
@@ -87,7 +76,6 @@ export function Modal({
   scrollable = false,
   dismissable = true,
   portal = true,
-  material = "popover",
   children,
 }: ModalProps) {
   const [open, setOpen] = useState(true);
@@ -136,7 +124,8 @@ export function Modal({
             className={
               isNested
                 ? "absolute inset-0 z-50 flex items-center justify-center p-4"
-                : `fixed inset-0 z-40 flex items-center justify-center p-4 ${MATERIAL[material].backdrop}`
+                : // the glass panel frosts the page itself, so the backdrop only dims
+                  "fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
             }
           >
             {dismissable && (
@@ -156,7 +145,7 @@ export function Modal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 8 }}
               transition={isNested ? INSTANT : { duration: 0.18, ease: "easeOut" }}
-              className={`relative z-50 w-full ${SIZE_CLASS[size]} rounded-dialog outline-none ${MATERIAL[material].panel} ${
+              className={`relative z-50 w-full ${SIZE_CLASS[size]} rounded-dialog glass-dialog outline-none ${
                 scrollable ? "flex max-h-[85vh] flex-col" : ""
               }`}
             >

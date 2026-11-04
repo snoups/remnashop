@@ -11,7 +11,8 @@ export const NATIVE_INVALID_ATTR = "data-invalid-native";
 export function validationMessage(el: Validatable): string {
   const v = el.validity;
   const input = el instanceof HTMLInputElement ? el : null;
-  if (v.valueMissing) return i18n.t("errors.validation.required");
+  // the pattern of a required Field's input: nothing but spaces
+  if (v.valueMissing || (v.patternMismatch && el.value.trim() === "")) return i18n.t("errors.validation.required");
   if (v.typeMismatch) return i18n.t(input?.type === "email" ? "errors.validation.email" : "errors.validation.url");
   if (v.rangeUnderflow) return i18n.t("errors.validation.min", { min: input?.min });
   if (v.rangeOverflow) return i18n.t("errors.validation.max", { max: input?.max });

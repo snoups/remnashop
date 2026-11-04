@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { FieldHint } from "@shared/ui/FieldHint";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 
 export interface KpiTrend {
   /** signed change over the period, shown as +N / −N / 0 */
@@ -12,11 +13,16 @@ export interface KpiTrend {
   text?: string;
   /** the period, after the change */
   hint: string;
+  /** a rise is bad news (refunds): the colours swap, the sign and the arrow stay true */
+  lowerIsBetter?: boolean;
 }
 
-function trendTone(delta: number): { Icon: ComponentType<{ className?: string }>; badge: string; text: string } {
-  if (delta > 0) return { Icon: TrendingUp, badge: "bg-success/10 text-success", text: "text-success" };
-  if (delta < 0) return { Icon: TrendingDown, badge: "bg-error/10 text-error", text: "text-error" };
+function trendTone({ delta, lowerIsBetter = false }: KpiTrend): { Icon: ComponentType<{ className?: string }>; badge: string; text: string } {
+  const good = lowerIsBetter ? delta < 0 : delta > 0;
+  const success = { badge: "bg-success/10 text-success", text: "text-success" };
+  const error = { badge: "bg-error/10 text-error", text: "text-error" };
+  if (delta > 0) return { Icon: TrendingUp, ...(good ? success : error) };
+  if (delta < 0) return { Icon: TrendingDown, ...(good ? success : error) };
   return { Icon: Minus, badge: "bg-white/[0.06] text-muted-foreground", text: "text-muted-foreground" };
 }
 
@@ -89,6 +95,8 @@ export function KpiTile({
   highlighted = false,
   valueClassName = "text-foreground",
   valueSuffix,
+  glass = false,
+  panel = false,
 }: {
   label: string;
   value: string;
@@ -104,22 +112,34 @@ export function KpiTile({
   valueClassName?: string;
   /** muted text right after the value, e.g. "of 5" or a struck-out old price */
   valueSuffix?: ReactNode;
+  /** inside a glass dialog's 12px-padded body: 12px corners, 14px in, as tall as its grid row */
+  glass?: boolean;
+  /** a glass page's own panel, standing alone in a grid: 24px corners, 16px in */
+  panel?: boolean;
 }) {
-  const tone = trend && trendTone(trend.delta);
+  const tone = trend && trendTone(trend);
   return (
     <div
-      className={`flex min-w-0 flex-col gap-1.5 rounded-2xl max-md:rounded-card border px-[18px] py-4 ${
-        highlighted ? "border-primary/25 bg-accent/60" : "border-white/[0.08] bg-white/[0.03]"
+      className={`flex min-w-0 flex-col gap-1.5 ${
+        panel
+          ? "glass-panel h-full rounded-3xl p-4"
+          : `border ${glass ? "h-full rounded-xl p-3.5" : "rounded-2xl max-md:rounded-card px-[18px] py-4"} ${
+              highlighted ? "border-primary/25 bg-accent/60" : "border-white/[0.08] bg-white/[0.03]"
+            }`
       }`}
     >
       <div className="flex items-center gap-2.5">
-        {Icon && (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Icon className="size-5" />
-          </div>
-        )}
+        {Icon &&
+          (glass || panel ? (
+            <IconCircle icon={Icon} />
+          ) : (
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Icon className="size-5" />
+            </div>
+          ))}
         <span
-          className={`whitespace-pre-line text-[11px] font-semibold uppercase tracking-wide ${
+          // two lines at most: a longer label is cut, not a third line
+          className={`line-clamp-2 whitespace-pre-line text-[11px] font-semibold uppercase tracking-wide ${
             highlighted ? "text-accent-foreground" : "text-muted-foreground"
           }`}
         >

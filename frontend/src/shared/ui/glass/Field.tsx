@@ -1,12 +1,14 @@
 import { useRef, type ReactNode } from "react";
 
 import { useNativeFieldError } from "@shared/lib/use-native-field-error";
+import { FieldRequiredContext } from "@shared/ui/field-context";
 import { FieldHint } from "@shared/ui/FieldHint";
 
 interface FieldProps {
   label: ReactNode;
   /** the control's id: a click on the label focuses it */
   htmlFor?: string;
+  /** red asterisk after the label; the control inside becomes required */
   required?: boolean;
   /** FieldHint next to the label */
   info?: string;
@@ -32,7 +34,7 @@ export function Field({ label, htmlFor, required = false, info, aside, hint, err
         {info && <FieldHint text={info} glass />}
         {aside}
       </label>
-      {children}
+      <FieldRequiredContext.Provider value={required}>{children}</FieldRequiredContext.Provider>
       {shownError ? (
         <span className="text-[12px] text-error">{shownError}</span>
       ) : (

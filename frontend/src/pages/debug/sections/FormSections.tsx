@@ -1,38 +1,33 @@
-import { Database, Globe, Hash, Layers, Receipt, TrendingUp, User } from "lucide-react";
+import { Copy, Globe, Hash, Layers, Receipt, RefreshCw, Settings, TrendingUp, User } from "lucide-react";
 import { useState } from "react";
 
 import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
-import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
 import { normalizeEmail } from "@shared/lib/chip-normalizers";
+import { Button } from "@shared/ui/Button";
 import { ChipsInput } from "@shared/ui/ChipsInput";
-import {
-  EYEBROW_CLASS,
-  LIST_BODY_CLASS,
-  LIST_HEAD_CLASS,
-  LIST_ROW_CLASS,
-  SETTINGS_ROWS_CLASS,
-  SETTINGS_SECTION_CLASS,
-} from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, GLASS_POPOVER_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
-import { Field } from "@shared/ui/Field";
-import { GroupToggle } from "@shared/ui/GroupToggle";
+import { DatePickerField } from "@shared/ui/DatePickerField";
+import { DateTimePickerField } from "@shared/ui/DateTimePickerField";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, PasswordInput, TextArea } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
+import { TextWidth } from "@shared/ui/glass/TextWidth";
+import { IconButton } from "@shared/ui/IconButton";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { ListRow } from "@shared/ui/ListRow";
-import { PasswordInput } from "@shared/ui/PasswordInput";
-import { PillTabs } from "@shared/ui/PillTabs";
-import { Pressable } from "@shared/ui/Pressable";
+import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { SettingsRow } from "@shared/ui/SettingsRow";
 import { Slider } from "@shared/ui/Slider";
-import { Switch } from "@shared/ui/Switch";
 import { Tag } from "@shared/ui/Tag";
-import { SuffixInput, TextArea, TextInput } from "@shared/ui/TextInput";
+import { TextInput } from "@shared/ui/TextInput";
 import { UserRow } from "@shared/ui/UserRow";
 
 const ROWS = [
@@ -41,6 +36,9 @@ const ROWS = [
   { days: 365, rub: "1 990", usd: "24.9", share: "15%" },
 ];
 const GRID = "grid grid-cols-[minmax(0,1fr)_80px_80px_60px] items-center gap-3";
+// a page list panel and a block inside a glass dialog, as the pages and dialogs draw them
+const PANEL = "glass-panel rounded-3xl p-4";
+const DIALOG_BLOCK = "overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]";
 const TABLE_BODY = "[&>tr:not(:last-child)>td]:border-b [&>tr:not(:last-child)>td]:border-border/50";
 
 export function FieldsSection() {
@@ -51,61 +49,58 @@ export function FieldsSection() {
   const [slider, setSlider] = useState(30);
   const [color, setColor] = useState("#22d3ee");
   const [chips, setChips] = useState(["user@example.com"]);
+  const [date, setDate] = useState("2026-09-29");
+  const [dateTime, setDateTime] = useState("2026-09-29T18:30");
+  const [range, setRange] = useState({ start: "2026-09-10", end: "2026-09-18" });
   const options = [
     { value: "ru", label: "Русский", icon: Globe },
     { value: "en", label: "English", icon: Globe },
   ];
 
+  const pickRangeDay = (iso: string) =>
+    setRange(({ start, end }) => {
+      if (start === "" || end !== "") return { start: iso, end: "" };
+      return iso < start ? { start: iso, end: start } : { start, end: iso };
+    });
+
   return (
     <DebugSection id="fields">
-      <Specimen name="Field + TextInput · hint" usage={k("u.field")} stage="stretch">
-        <Field label={k("s.name")} htmlFor="kit-name" hint={k("s.nameHint")}>
-          <TextInput id="kit-name" placeholder={k("s.namePlaceholder")} />
+      <Specimen name="Field info · PasswordInput · error" usage={k("u.glassField")} stage="stretch">
+        <Field label={k("s.password")} htmlFor="kit-password" required info={k("s.mrrInfo")} hint={k("s.nameHint")}>
+          <PasswordInput id="kit-password" />
         </Field>
-      </Specimen>
-      <Specimen name="Field · info · aside" usage={k("u.fieldInfo")} stage="stretch">
-        <Field
-          label={k("s.login")}
-          htmlFor="kit-login"
-          info={k("s.hintShort")}
-          aside={<span className="text-error">*</span>}
-        >
-          <TextInput id="kit-login" placeholder="admin" />
-        </Field>
-      </Specimen>
-      <Specimen name="Field · error" usage={k("u.fieldError")} stage="stretch">
         <Field label={k("s.code")} htmlFor="kit-code" error={k("s.codeError")}>
-          <div className="flex gap-2">
-            <TextInput
-              id="kit-code"
-              aria-invalid
-              defaultValue="bad code!"
-              className="min-w-0 flex-1 font-mono"
-            />
-            <Button variant="secondary" size="field">
-              {k("s.generate")}
-            </Button>
-          </div>
+          <Input id="kit-code" aria-invalid defaultValue="код!" />
         </Field>
       </Specimen>
-      <Specimen name="Field · TextArea · aside Tag" usage={k("u.textarea")} stage="stretch">
-        <Field label={k("s.ids")} htmlFor="kit-ids" aside={<Tag>2</Tag>} hint={k("s.idsHint")}>
-          <TextArea id="kit-ids" rows={2} defaultValue={"123456789\n987654321"} className="font-mono" />
-        </Field>
+      <Specimen name='Input size="md | sm" · suffix · mono end' usage={k("u.glassInput")} stage="stretch">
+        <Input placeholder={k("s.namePlaceholder")} />
+        <Input size="sm" suffix={k("s.hours")} defaultValue="24" />
+        <Input
+          mono
+          readOnly
+          value="BMx7pQ2vR8nK1sT4wY6zA3cF5hJ9lN0oP2qS4uV6xZ8b"
+          end={
+            <IconButton size="7">
+              <Copy className="size-3.5" />
+            </IconButton>
+          }
+        />
       </Specimen>
-      <Specimen name="TextInput · disabled" usage={k("u.textInput")} stage="stretch">
-        <TextInput disabled defaultValue="42" />
+      <Specimen name="TextArea corner mono" usage={k("u.glassTextarea")} stage="stretch">
+        <TextArea rows={4} mono corner="42 / 32763" defaultValue={k("s.body")} />
       </Specimen>
-      <Specimen name="PasswordInput" usage={k("u.passwordInput")} stage="stretch">
-        <PasswordInput defaultValue="secret-pass" />
+      <Specimen name="TextWidth" usage={k("u.glassTextWidth")}>
+        <TextWidth text={k("s.namePlaceholder")}>
+          <Input size="sm" className="flex-1" placeholder={k("s.namePlaceholder")} />
+        </TextWidth>
+        <TextWidth text={k("s.namePlaceholder")}>
+          <Input size="sm" className="flex-1" defaultValue="24" />
+          <Switch checked={isOn} onChange={setIsOn} />
+        </TextWidth>
       </Specimen>
       <Specimen name="ChipsInput" usage={k("u.chipsInput")} stage="stretch">
         <ChipsInput values={chips} onChange={setChips} normalize={normalizeEmail} inputMode="email" />
-      </Specimen>
-      <Specimen name="SuffixInput · aria-invalid · disabled" usage={k("u.suffixInput")} stage="stretch">
-        <SuffixInput type="number" defaultValue="30" suffix={k("s.days")} />
-        <SuffixInput type="number" defaultValue="199" aria-invalid suffix="₽" />
-        <SuffixInput type="number" defaultValue="5" disabled suffix="USDT" />
       </Specimen>
       <Specimen name="SearchField" usage={k("u.search")} stage="stretch">
         <SearchField
@@ -116,7 +111,8 @@ export function FieldsSection() {
           onChange={setSearch}
         />
       </Specimen>
-      <Specimen name='SelectDropdown · size="default | compact | lg"' usage={k("u.select")} stage="stretch">
+      <Specimen name='SelectDropdown variant="well" · size="default | compact | lg"' usage={k("u.select")} stage="stretch">
+        <SelectDropdown value={select} options={options} placeholder="—" onChange={setSelect} icon={Globe} variant="well" />
         <SelectDropdown value={select} options={options} placeholder="—" onChange={setSelect} icon={Globe} />
         <SelectDropdown
           value={select}
@@ -128,21 +124,36 @@ export function FieldsSection() {
         />
         <SelectDropdown value={select} options={options} placeholder="—" onChange={setSelect} icon={Globe} size="lg" />
       </Specimen>
-      <Specimen name="Switch · ColorPickerField" usage={`${k("u.switch")} ${k("u.color")}`}>
+      <Specimen name='DatePickerField variant="well" · DateTimePickerField' usage={k("u.dateTime")} stage="stretch">
+        <DatePickerField value={date} onChange={setDate} placeholder="—" variant="well" />
+        <DatePickerField value={date} onChange={setDate} placeholder="—" />
+        <DateTimePickerField value={dateTime} onChange={setDateTime} placeholder="—" />
+      </Specimen>
+      <Specimen name="MonthCalendar" usage={k("u.monthCalendar")}>
+        <div className={`${GLASS_POPOVER_CLASS} w-64 p-3`}>
+          <MonthCalendar value={date} onPick={setDate} />
+        </div>
+        <div className={`${GLASS_POPOVER_CLASS} w-64 p-3`}>
+          <MonthCalendar value={range.start} rangeEnd={range.end} onPick={pickRangeDay} />
+        </div>
+      </Specimen>
+      <Specimen name="Switch" usage={k("u.glassSwitch")}>
         <Switch checked={isOn} onChange={setIsOn} />
         <Switch checked={!isOn} onChange={(value) => setIsOn(!value)} />
-        <Switch checked onChange={() => undefined} disabled />
-        <span className="mx-2 h-6 w-px bg-border" />
-        <ColorPickerField value={color} onChange={setColor} />
+        <Switch checked disabled onChange={() => undefined} />
       </Specimen>
-      <Specimen name="Slider" usage={k("u.slider")}>
+      <Specimen name="Slider · ColorPickerField" usage={`${k("u.slider")} ${k("u.color")}`}>
         <Slider max={100} value={slider} onChange={setSlider} className="w-56" />
         <Slider max={100} value={60} onChange={() => undefined} disabled className="w-56" />
+        <ColorPickerField value={color} onChange={setColor} />
       </Specimen>
-      <Specimen name="label · EYEBROW_CLASS" usage={k("u.labels")} wide>
+      <Specimen name="label · EYEBROW_CLASS" usage={k("u.labels")}>
         <span className="text-sm font-medium text-foreground/80">{k("s.name")}</span>
         <span className="mx-3 h-4 w-px bg-border" />
         <span className={EYEBROW_CLASS}>{k("s.filterLabel")}</span>
+      </Specimen>
+      <Specimen name="TextInput" usage={k("u.editorFields")} stage="stretch">
+        <TextInput defaultValue="42" />
       </Specimen>
     </DebugSection>
   );
@@ -163,50 +174,30 @@ export function CardsSection() {
 
   return (
     <DebugSection id="cards">
-      <Specimen name='Card variant="page"' usage={k("u.cardPage")} stage="stretch">
-        <Card>
-          <h3 className="text-sm font-bold text-foreground">{k("s.sectionTitle")}</h3>
-          <p className="mt-2 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
-        </Card>
+      <Specimen name="Section · SectionRows · Row · SectionFields" usage={k("u.glassSection")} wide stage="stretch">
+        <SectionDemo />
       </Specimen>
-      <Specimen name="Card · CardHeader aside" usage={k("u.cardHeader")} stage="stretch">
-        <Card>
-          <CardHeader
-            icon={Database}
-            title={k("s.sectionTitle")}
-            description={k("s.cardHeaderDescription")}
-            aside={<Button variant="outline">{k("s.botLogs")}</Button>}
-          />
-          <p className="mt-4 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
-        </Card>
+      <Specimen name="Row / SectionRows" usage={k("u.glassRowVsRows")} wide stage="stretch">
+        <RowsDemo />
       </Specimen>
-      <Specimen name="Card · SettingsRow · SaveFooter" usage={k("u.settingsRow")} stage="stretch">
-        <SettingsCardDemo />
-      </Specimen>
-      <Specimen name='Card variant="form" title' usage={k("u.cardForm")} stage="stretch">
-        <Card variant="form" title={k("s.sectionTitle")}>
-          <Field label={k("s.name")} htmlFor="kit-card-name">
-            <TextInput id="kit-card-name" placeholder={k("s.namePlaceholder")} />
-          </Field>
-        </Card>
-      </Specimen>
-      <Specimen name='Card variant="list" title icon · InfoRow' usage={k("u.cardList")} stage="stretch">
-        <Card variant="list" title={k("s.sectionTitle")} icon={Layers}>
+      <Specimen name='DialogCard variant="list" title icon · InfoRow' usage={k("u.cardList")} stage="stretch">
+        <DialogCard title={k("s.sectionTitle")} icon={Layers}>
           {rows}
-        </Card>
+        </DialogCard>
       </Specimen>
-      <Specimen name='Card variant="list" · UserRow' usage={k("u.userRow")} stage="stretch">
-        <Card variant="list">
+      <Specimen name='DialogCard variant="form" title' usage={k("u.cardForm")} stage="stretch">
+        <DialogCard variant="form" title={k("s.sectionTitle")}>
+          <Field label={k("s.name")} htmlFor="kit-card-name">
+            <Input id="kit-card-name" placeholder={k("s.namePlaceholder")} />
+          </Field>
+        </DialogCard>
+      </Specimen>
+      <Specimen name='DialogCard · UserRow' usage={k("u.userRow")} stage="stretch">
+        <DialogCard>
           <UserRow name={k("s.person")} subtitle="@anna · 03.10.2026" aside={<Tag>#1042</Tag>} onClick={() => {}} />
           <UserRow name="" subtitle="03.10.2026" onClick={() => {}} />
           <UserRow name={null} subtitle="03.10.2026" />
-        </Card>
-      </Specimen>
-      <Specimen name='Card variant="bare"' usage={k("u.cardBare")} stage="stretch">
-        <Card variant="bare" className="divide-y divide-white/[0.06]">
-          <p className="px-4 py-2.5 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
-          <p className="px-4 py-2.5 text-[12.5px] text-muted-foreground">{k("s.body")}</p>
-        </Card>
+        </DialogCard>
       </Specimen>
       <Specimen name="KpiTile · highlighted" usage={k("u.kpi")} stage="stretch">
         <div className="grid grid-cols-2 gap-2">
@@ -214,7 +205,7 @@ export function CardsSection() {
           <KpiTile label={k("s.users")} value="3 214" />
         </div>
       </Specimen>
-      <Specimen name="KpiTile · trend" usage={k("u.kpiTrend")} stage="stretch">
+      <Specimen name="KpiTile · trend · lowerIsBetter" usage={k("u.kpiTrend")} stage="stretch">
         <div className="grid grid-cols-3 gap-2">
           <KpiTile label={k("s.users")} value="1 222" trend={{ delta: 240, hint: k("s.trendMonth") }} />
           <KpiTile label={k("s.users")} value="66" trend={{ delta: -12, hint: k("s.trendWeek") }} />
@@ -222,6 +213,8 @@ export function CardsSection() {
           <KpiTile label={k("s.revenue")} value="₽ 128 400" trend={{ delta: 0.124, text: "12,4 %", hint: k("s.trendWeek") }} />
           <KpiTile label={k("s.revenue")} value="₽ 12 345 678" hint="+12%" trend={{ delta: -0.083, text: "8,3 %", hint: k("s.trendWeek") }} />
           <KpiTile label={k("s.users")} value="78" hint="+12%" />
+          <KpiTile label={k("s.refunds")} value="5" trend={{ delta: 2, hint: k("s.trendWeek"), lowerIsBetter: true }} />
+          <KpiTile label={k("s.refunds")} value="1" trend={{ delta: -2, hint: k("s.trendWeek"), lowerIsBetter: true }} />
         </div>
       </Specimen>
       <Specimen name="KpiTile · icon · info" usage={k("u.kpiIcon")} stage="stretch">
@@ -241,9 +234,9 @@ export function TablesSection() {
 
   return (
     <DebugSection id="tables">
-      <Specimen name="LIST_HEAD_CLASS · LIST_BODY_CLASS · LIST_ROW_CLASS" usage={k("u.list")} stage="stretch" wide>
-        <Card>
-          <div className={`${GRID} ${LIST_HEAD_CLASS}`}>
+      <Specimen name="GLASS_LIST_HEAD_CLASS · LIST_BODY_CLASS · GLASS_LIST_ROW_CLASS" usage={k("u.list")} stage="stretch" wide>
+        <div className={PANEL}>
+          <div className={`${GRID} ${GLASS_LIST_HEAD_CLASS}`}>
             {head.map((cell, index) => (
               <span key={cell} className={index > 0 ? "text-right" : ""}>
                 {cell}
@@ -252,7 +245,7 @@ export function TablesSection() {
           </div>
           <div className={`${LIST_BODY_CLASS} text-[13px]`}>
             {ROWS.map((row) => (
-              <div key={row.days} className={`${GRID} ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}>
+              <div key={row.days} className={`${GRID} ${GLASS_LIST_ROW_CLASS} hover:bg-white/[0.04]`}>
                 <span className="text-foreground">{days(row.days)}</span>
                 <span className="text-right tabular-nums text-foreground/90">{row.rub}</span>
                 <span className="text-right tabular-nums text-foreground/90">{row.usd}</span>
@@ -260,10 +253,10 @@ export function TablesSection() {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       </Specimen>
       <Specimen name="ListRow · disabled" usage={k("u.listRow")} stage="stretch" wide>
-        <Card>
+        <div className={PANEL}>
           <div className={`${LIST_BODY_CLASS} text-[13px]`}>
             {ROWS.map((row, index) => (
               <ListRow key={row.days} className={GRID} disabled={index === 2}>
@@ -274,27 +267,10 @@ export function TablesSection() {
               </ListRow>
             ))}
           </div>
-        </Card>
-      </Specimen>
-      <Specimen name="SettingsRow onClick · expanded · glyph" usage={k("u.settingsRowPress")} stage="stretch">
-        <PressableRowDemo />
-      </Specimen>
-      <Specimen name='Pressable as="button | link | a | div"' usage={k("u.pressable")} stage="stretch">
-        <div className="flex flex-wrap gap-2">
-          {(["button", "link", "a", "div"] as const).map((kind) => {
-            const look = "flex h-9 items-center rounded-full border border-glass-border bg-white/[0.05] px-4 text-[13px] font-medium text-foreground";
-            if (kind === "link") return <Pressable key={kind} as="link" to="/dashboard/debug" className={look}>link</Pressable>;
-            if (kind === "a") return <Pressable key={kind} as="a" href="#tables" className={look}>a</Pressable>;
-            if (kind === "div") return <Pressable key={kind} as="div" onClick={() => undefined} className={look}>div</Pressable>;
-            return <Pressable key={kind} className={look}>button</Pressable>;
-          })}
         </div>
       </Specimen>
-      <Specimen name="GroupToggle · leading" usage={k("u.groupToggle")} stage="stretch">
-        <GroupToggleDemo />
-      </Specimen>
       <Specimen name="table · page" usage={k("u.table")} stage="stretch">
-        <Card>
+        <div className={PANEL}>
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr className={`text-left ${EYEBROW_CLASS}`}>
@@ -318,10 +294,10 @@ export function TablesSection() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       </Specimen>
       <Specimen name="table · compact" usage={k("u.compact")} stage="stretch">
-        <Card variant="bare" className="overflow-hidden">
+        <div className={DIALOG_BLOCK}>
           <table className="w-full border-separate border-spacing-0 text-[12px]">
             <thead>
               <tr className="text-left">
@@ -345,81 +321,97 @@ export function TablesSection() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </div>
       </Specimen>
     </DebugSection>
   );
 }
 
-function GroupToggleDemo() {
+function SectionDemo() {
   const k = useKit();
-  const [open, setOpen] = useState([true, false]);
-  const flip = (index: number) => setOpen((prev) => prev.map((value, i) => (i === index ? !value : value)));
-
-  return (
-    <div className="flex flex-col">
-      <GroupToggle open={open[0]} onToggle={() => flip(0)} label={k("s.today")} count={3} />
-      <GroupToggle
-        open={open[1]}
-        onToggle={() => flip(1)}
-        leading={<span className="-ml-1 size-1.5 rounded-full bg-success" />}
-        label={k("s.active")}
-        count={12}
-      />
-    </div>
-  );
-}
-
-function SettingsCardDemo() {
-  const k = useKit();
-  const [mode, setMode] = useState<"a" | "b">("a");
   const [isOn, setIsOn] = useState(true);
-  const [hours, setHours] = useState("24");
-  const dirty = mode !== "a" || !isOn || hours !== "24";
-  return (
-    <Card>
-      <CardHeader icon={Layers} title={k("s.sectionTitle")} description={k("s.cardHeaderDescription")} />
-      <div className={`mt-4 ${SETTINGS_ROWS_CLASS}`}>
-        <SettingsRow icon={Globe} label={k("s.sectionTitle")} description={k("s.body")}>
-          <PillTabs
-            items={[
-              { key: "a", label: "A" },
-              { key: "b", label: "B" },
-            ]}
-            activeKey={mode}
-            onSelect={setMode}
-          />
-        </SettingsRow>
-        <SettingsRow icon={TrendingUp} label={k("s.sectionTitle")} hint={k("s.body")}>
-          <SuffixInput suffix="h" value={hours} onChange={(event) => setHours(event.target.value)} className="w-24 shrink-0" />
-          <Switch checked={isOn} onChange={setIsOn} />
-        </SettingsRow>
-      </div>
-      <div className={SETTINGS_SECTION_CLASS}>
-        <SettingsRow icon={Receipt} label={k("s.sectionTitle")}>
-          <Switch checked={isOn} onChange={setIsOn} />
-        </SettingsRow>
-      </div>
-      <SaveFooter dirty={dirty} saving={false} onSave={() => {}} />
-    </Card>
-  );
-}
-
-function PressableRowDemo() {
-  const k = useKit();
   const [open, setOpen] = useState(false);
-  const [isOn, setIsOn] = useState(true);
+
   return (
-    <Card>
-      <SettingsRow
-        glyph={<span className="text-[13px] font-bold">Y</span>}
-        label={k("s.sectionTitle")}
-        description={<span className="text-success">{k("s.status")}</span>}
-        onClick={() => setOpen((value) => !value)}
-        expanded={open}
-      >
-        <Switch checked={isOn} onChange={setIsOn} />
-      </SettingsRow>
-    </Card>
+    <Section
+      icon={Settings}
+      title={k("s.sectionTitle")}
+      description={k("s.body")}
+      aside={<Button variant="glass" icon={RefreshCw}>{k("s.refresh")}</Button>}
+      footer={<SaveFooter variant="glassAccent" dirty saving={false} onSave={() => {}} />}
+    >
+      <SectionRows>
+        <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
+          <Switch checked={isOn} onChange={setIsOn} />
+        </Row>
+        <Row
+          icon={Hash}
+          label={k("s.code")}
+          expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          panel={
+            <Field label={k("s.name")} htmlFor="kit-row-name">
+              <Input id="kit-row-name" placeholder={k("s.namePlaceholder")} />
+            </Field>
+          }
+        >
+          <Tag>12</Tag>
+          <Button variant="glass" size="sm">
+            {k("s.edit")}
+          </Button>
+        </Row>
+      </SectionRows>
+      <SectionFields divided>
+        <Field label={k("s.login")} htmlFor="kit-login">
+          <Input id="kit-login" />
+        </Field>
+      </SectionFields>
+    </Section>
+  );
+}
+
+function RowsDemo() {
+  const k = useKit();
+  const [isOn, setIsOn] = useState(true);
+
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] text-muted-foreground">{k("s.rowOnly")}</p>
+        <div className="rounded-[30px] outline-1 outline-dashed outline-primary">
+          <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
+            <Switch checked={isOn} onChange={setIsOn} />
+          </Row>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] text-muted-foreground">{k("s.rowsOnly")}</p>
+        <div className="rounded-2xl outline-1 outline-dashed outline-warning">
+          <SectionRows flush>
+            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">1</div>
+            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">2</div>
+            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">3</div>
+          </SectionRows>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] text-muted-foreground">{k("s.rowsTogether")}</p>
+        <div className="rounded-2xl outline-1 outline-dashed outline-warning">
+          <SectionRows flush>
+            <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
+              <Switch checked={isOn} onChange={setIsOn} />
+            </Row>
+            <Row icon={Hash} label={k("s.code")} description={k("s.nameHint")}>
+              <Tag>12</Tag>
+            </Row>
+            <Row icon={Globe} label={k("s.name")} description={k("s.nameHint")}>
+              <Button variant="glass" size="sm">
+                {k("s.edit")}
+              </Button>
+            </Row>
+          </SectionRows>
+        </div>
+      </div>
+    </div>
   );
 }

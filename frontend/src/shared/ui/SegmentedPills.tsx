@@ -17,6 +17,7 @@ export function SegmentedPills<T extends string | number>({
   disabled = false,
   stretch = false,
   compact = false,
+  panel = false,
 }: {
   value: T;
   onChange: (value: T) => void;
@@ -26,13 +27,17 @@ export function SegmentedPills<T extends string | number>({
   stretch?: boolean;
   /** 36px instead of 38px, 13px text: beside other 36px controls (the notifications header) */
   compact?: boolean;
+  /** the glass TabBar's 48px glass-panel capsule, 36px options: beside it in a page's floating bar */
+  panel?: boolean;
 }) {
   const pillId = useId();
 
   return (
     <motion.div
       layoutScroll
-      className={`no-scrollbar flex max-w-full shrink-0 gap-1 overflow-x-auto rounded-full border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md ${stretch ? "w-full" : ""}`}
+      className={`no-scrollbar flex max-w-full shrink-0 gap-1 overflow-x-auto rounded-full ${
+        panel ? "glass-panel h-12 p-1.5" : "border border-glass-border bg-white/[0.03] p-1 backdrop-blur-md"
+      } ${stretch ? "w-full" : ""}`}
     >
       {options.map((option) => (
         <motion.button
@@ -51,7 +56,9 @@ export function SegmentedPills<T extends string | number>({
             />
           )}
           <span
-            className={`relative z-10 block px-3.5 font-medium ${compact ? "py-[3px] text-[13px] leading-5" : "py-1 text-[13px]"} ${
+            className={`relative z-10 block font-medium ${
+              panel ? "flex h-9 items-center px-4 text-[13px]" : compact ? "px-3.5 py-[3px] text-[13px] leading-5" : "px-3.5 py-1 text-[13px]"
+            } ${
               value === option.value ? "text-primary" : "text-foreground"
             }`}
           >

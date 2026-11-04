@@ -5,13 +5,11 @@ import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from 
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
-import { FIELD_SURFACE_CLASS } from "@shared/ui/TextInput";
 import { Ripple } from "@shared/ui/Ripple";
 
 const POPOVER_MAX_HEIGHT = 288;
 const SURFACE_CLASS = {
   glass: "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]",
-  form: FIELD_SURFACE_CLASS,
   well: "glass-well ring-inset focus:ring-1 focus:ring-primary",
 } as const;
 
@@ -31,8 +29,8 @@ interface SelectDropdownProps {
   disabled?: boolean;
   // compact: the dialog editor's panels, 36px like its PillTabs; lg: 40px, next to DialogTabs
   size?: "default" | "compact" | "lg";
-  // form: inside a form, the same dark surface as TextInput; well: glass Input's sunken field; glass is for filters
-  variant?: "glass" | "form" | "well";
+  // well: glass Input's sunken field; glass is for filters
+  variant?: "glass" | "well";
   /** the open list in the glass design's material; variant "well" always has it */
   glassPopover?: boolean;
 }

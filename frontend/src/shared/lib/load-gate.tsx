@@ -12,6 +12,8 @@ interface LoadGateValue {
 }
 
 const LoadGateContext = createContext<LoadGateValue | null>(null);
+// outside a LoadGate there's nothing to wait for
+const LoadGateOpenContext = createContext(true);
 
 const NEVER_SETTLING = () => false;
 
@@ -20,12 +22,24 @@ export function useLoadGateSettling(): () => boolean {
   return useContext(LoadGateContext)?.isSettling ?? NEVER_SETTLING;
 }
 
+/** Whether the surrounding LoadGate has faded its content in; true outside one. For an entrance
+ *  animation that would otherwise play out unseen. */
+export function useLoadGateOpen(): boolean {
+  return useContext(LoadGateOpenContext);
+}
+
 /** Keeps the surrounding LoadGate closed while `isLoading`; does nothing outside one. */
 export function useLoadGateHold(isLoading: boolean): void {
   const hold = useContext(LoadGateContext)?.hold;
   useLayoutEffect(() => {
     if (isLoading && hold) return hold();
   }, [isLoading, hold]);
+}
+
+/** useLoadGateHold for a page whose loads run above its own LoadGate: rendered inside, holds it. */
+export function LoadGateHold({ isLoading }: { isLoading: boolean }) {
+  useLoadGateHold(isLoading);
+  return null;
 }
 
 /** Lays its content out unseen until every first load inside has settled, then fades it in,
@@ -67,9 +81,11 @@ export function LoadGate({ children }: { children: ReactNode }) {
 
   return (
     <LoadGateContext.Provider value={valueRef.current}>
-      <div className={`transition-opacity duration-200 ease-out ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}>
-        {children}
-      </div>
+      <LoadGateOpenContext.Provider value={isOpen}>
+        <div className={`transition-opacity duration-200 ease-out ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+          {children}
+        </div>
+      </LoadGateOpenContext.Provider>
     </LoadGateContext.Provider>
   );
 }

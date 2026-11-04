@@ -12,7 +12,8 @@ export function ToggleCapsule({
   disabled = false,
 }: {
   icon: ComponentType<{ className?: string }>;
-  label: string;
+  /** omitted where the capsule is too narrow for words: the icon alone names it */
+  label?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;

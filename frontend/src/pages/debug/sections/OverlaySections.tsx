@@ -1,4 +1,4 @@
-import { Coins, Copy, Download, Forward, Hash, Layers, Pencil, SearchX, Settings, Trash2 } from "lucide-react";
+import { Coins, Copy, Download, Forward, Hash, Layers, Pencil, RefreshCw, SearchX, Settings, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,17 +11,18 @@ import { Badge } from "@shared/ui/Badge";
 import { GithubIcon, GoogleIcon, TelegramIcon, YandexIcon } from "@shared/ui/BrandIcons";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { Button } from "@shared/ui/Button";
+import { ChartTooltip } from "@shared/ui/chart";
 import { POPOVER_CLASS } from "@shared/ui/classes";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { GuideCopy, GuideDialog, GuideHeading, GuideTip } from "@shared/ui/glass/GuideDialog";
 import { FieldHint } from "@shared/ui/FieldHint";
-import { GuideDialog } from "@shared/ui/GuideDialog";
 import { IconButton } from "@shared/ui/IconButton";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
+import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
@@ -76,8 +77,8 @@ function DemoModalBody() {
   return (
     <>
       <DialogHeader icon={Layers} title="Modal" />
-      <div className="flex flex-col gap-4 p-5">
-        <p className="text-[12.5px] text-muted-foreground">{k("s.modalText")}</p>
+      <div className="flex flex-col gap-4 p-4">
+        <p className="text-[13px] text-muted-foreground">{k("s.modalText")}</p>
         <Button variant="outline" onClick={close}>
           {k("s.close")}
         </Button>
@@ -88,44 +89,45 @@ function DemoModalBody() {
 
 export function DialogsSection() {
   const k = useKit();
-  const { t } = useTranslation();
   const [modalSize, setModalSize] = useState<"sm" | "lg" | null>(null);
   const [confirm, setConfirm] = useState<"accent" | "danger" | null>(null);
   const [carouselOpen, setCarouselOpen] = useState(false);
-  const frame = "overflow-hidden rounded-dialog border border-white/[0.14] bg-popover/60";
+  const [secret, setSecret] = useState(false);
+  const frame = "glass-dialog overflow-hidden rounded-dialog";
 
   return (
     <DebugSection id="dialogs">
-      <Specimen name="DialogHeader" usage={k("u.dialogHeader")} stage="stretch" wide>
+      <Specimen name="DialogHeader · glyph · subtitle · danger · warning · actions · closable" usage={k("u.dialogHeader")} stage="stretch" wide>
         <div className="grid gap-3 lg:grid-cols-2">
           <div className={frame}>
-            <DialogHeader icon={Pencil} title={k("s.editProfile")} onClose={noop} />
+            <DialogHeader icon={Pencil} title={k("s.editProfile")} />
           </div>
           <div className={frame}>
             <DialogHeader
               glyph={<span className="text-[11px] font-bold">{initials(k("s.person"))}</span>}
               title={k("s.person")}
-              badges={<Badge tone="accent">{t("roles.OWNER")}</Badge>}
               subtitle={<span className="font-mono">anna</span>}
-              onClose={noop}
             />
           </div>
           <div className={frame}>
-            <DialogHeader icon={Layers} tone="primary" title={k("s.subscription")} subtitle="#1042" onClose={noop} />
+            <DialogHeader icon={Trash2} danger title={k("s.confirmTitle")} />
           </div>
           <div className={frame}>
-            <DialogHeader icon={Trash2} tone="danger" title={k("s.confirmTitle")} onClose={noop} />
+            <DialogHeader icon={Layers} warning title={k("s.subscription")} subtitle="#1042" />
           </div>
           <div className={frame}>
             <DialogHeader
               icon={Hash}
               title={k("s.botLogs")}
-              actions={<Button variant="outline" size="sm">{k("s.refresh")}</Button>}
-              onClose={noop}
+              actions={
+                <IconButton size="9" tone="glass">
+                  <RefreshCw className="size-4" />
+                </IconButton>
+              }
             />
           </div>
           <div className={frame}>
-            <DialogHeader icon={Coins} title={k("s.noClose")} onClose={null} />
+            <DialogHeader icon={Coins} title={k("s.noClose")} closable={false} />
           </div>
         </div>
       </Specimen>
@@ -146,12 +148,28 @@ export function DialogsSection() {
           {k("s.delete")}
         </Button>
       </Specimen>
+      <Specimen name="GuideDialog · GuideHeading · GuideCopy · GuideTip" usage={k("u.glassGuide")}>
+        <GuideDialog title={k("s.dialogTitle")}>
+          <p>{k("s.modalText")}</p>
+          <div className="flex flex-col gap-2">
+            <GuideHeading>{k("s.sectionTitle")}</GuideHeading>
+            <GuideCopy label={k("s.code")} value="https://example.com/api/v1/auth/callback" />
+          </div>
+          <GuideTip>{k("s.body")}</GuideTip>
+        </GuideDialog>
+      </Specimen>
+      <Specimen name="OneTimeSecretDialog" usage={k("u.glassSecret")}>
+        <Button variant="glass" onClick={() => setSecret(true)}>
+          {k("s.dialogTitle")}
+        </Button>
+      </Specimen>
       <Specimen name="AnnouncementsCarousel" usage={k("u.announcementsCarousel")}>
         <Button variant="outline" onClick={() => setCarouselOpen(true)}>
           {k("s.openCarousel")}
         </Button>
       </Specimen>
 
+      {secret && <OneTimeSecretDialog title={k("s.dialogTitle")} value="rs_live_8f3a91c2d4e5b6a7" onDone={() => setSecret(false)} />}
       {carouselOpen && (
         <AnnouncementsCarousel stories={SAMPLE_STORIES} startIndex={0} onClose={() => setCarouselOpen(false)} />
       )}
@@ -201,24 +219,6 @@ export function HintsSection() {
           <FieldHint text={long} side="bottom" align="end" />
         </div>
       </Specimen>
-      <Specimen name="GuideDialog" usage={k("u.guide")} stage="stretch">
-        <div className="flex items-center justify-between rounded-full bg-white/[0.04] px-3 py-2">
-          <span className="text-sm text-foreground/80">{k("s.guideRow")}</span>
-          <GuideDialog title={k("s.guideTitle")}>
-            <div>
-              <h3 className="text-sm font-bold text-foreground">{k("s.guideStep")}</h3>
-              <p className="mt-2">{k("s.guideStepText")}</p>
-              <div className="mt-3">
-                <CopyableValue
-                  label={k("s.guideValue")}
-                  value="https://shop.example.com/oauth2/callback/github"
-                />
-              </div>
-              <p className="mt-2 text-[12px] text-muted-foreground">{k("s.guideNote")}</p>
-            </div>
-          </GuideDialog>
-        </div>
-      </Specimen>
       <Specimen name='Tooltip side="…"' usage={k("u.tooltip")} wide>
         <div className="flex flex-wrap items-center justify-center gap-6 px-24 py-8">
           {TOOLTIP_SIDES.map((side) => (
@@ -239,6 +239,16 @@ export function HintsSection() {
             <Tooltip text={k("s.tooltipBadge")} side="bottom" />
           </Badge>
         </div>
+      </Specimen>
+      <Specimen name="ChartTooltip" usage={k("u.chartTooltip")}>
+        <ChartTooltip title="03.10.2026" color="var(--color-primary)" rows={[{ label: k("s.revenue"), value: "₽ 12 400" }]} />
+        <ChartTooltip
+          title="03.10.2026"
+          rows={[
+            { label: k("s.users"), value: "1 222" },
+            { label: k("s.revenue"), value: "₽ 12 400" },
+          ]}
+        />
       </Specimen>
     </DebugSection>
   );

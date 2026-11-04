@@ -12,10 +12,11 @@ const BROWSER_PATTERNS: [RegExp, string][] = [
 ];
 
 const OS_PATTERNS: [RegExp, string][] = [
+  // phones before desktops: iOS says "like Mac OS X", Android says "Linux"
+  [/iphone|ipad|ipod/i, "iOS"],
+  [/android/i, "Android"],
   [/windows/i, "Windows"],
   [/mac os x|macintosh/i, "macOS"],
-  [/android/i, "Android"],
-  [/iphone|ipad|ipod/i, "iOS"],
   [/linux/i, "Linux"],
 ];
 

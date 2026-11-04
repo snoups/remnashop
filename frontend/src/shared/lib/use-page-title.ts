@@ -4,6 +4,13 @@ import { useLocation } from "react-router-dom";
 
 import { useDocumentTitle } from "@shared/lib/use-document-title";
 
+// A page inside a section, matched before the sections; its first group is passed as {{id}}.
+const PAGE_TITLE_BY_PATTERN: { pattern: RegExp; key: ParseKeys }[] = [
+  { pattern: /^\/dashboard\/broadcasts\/new\/?$/, key: "broadcasts.pageTitle.new" },
+  { pattern: /^\/dashboard\/broadcasts\/(\d+)\/edit\/?$/, key: "broadcasts.pageTitle.edit" },
+  { pattern: /^\/dashboard\/broadcasts\/(\d+)\/?$/, key: "broadcasts.pageTitle.details" },
+];
+
 // Longest-prefix match against location.pathname, most specific first.
 const PAGE_TITLE_BY_PATH: { prefix: string; key: ParseKeys }[] = [
   { prefix: "/dashboard/settings", key: "settings.title" },
@@ -27,8 +34,11 @@ const PAGE_TITLE_BY_PATH: { prefix: string; key: ParseKeys }[] = [
 export function usePageTitle(brandName: string): string {
   const { t } = useTranslation();
   const location = useLocation();
+  const page = PAGE_TITLE_BY_PATTERN.map(({ pattern, key }) => ({ key, match: pattern.exec(location.pathname) })).find(
+    ({ match }) => match,
+  );
   const key = PAGE_TITLE_BY_PATH.find(({ prefix }) => location.pathname.startsWith(prefix))?.key ?? "sidebar.overview";
-  const title = t(key);
+  const title = page ? t(page.key, { id: page.match?.[1] }) : t(key);
 
   useDocumentTitle(brandName, title);
 

@@ -95,6 +95,22 @@
     inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
+/* glass-well for a progress bar: the ring sits above the fill, so filled and empty parts match */
+@utility glass-track {
+  position: relative;
+  background: rgb(0 0 0 / 0.24);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 1px 2px rgb(0 0 0 / 0.35),
+      inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  }
+}
+
 /* Autofill paints its own light fill, unreadable in a dark well; the delay keeps it from ever showing. */
 input:-webkit-autofill {
   -webkit-text-fill-color: var(--color-foreground);
@@ -384,6 +400,22 @@ textarea::-webkit-resizer {
     var(--scrollbar-size) 100%;
   mask-position: left top, right top;
   mask-repeat: no-repeat, no-repeat;
+}
+
+/* A page with no floating bar under the header (data-under-header: admins) takes the header's 20px
+   bottom padding as its own top padding, for scroll-fade-gap to sit in. */
+@media (width >= 48rem) {
+  [data-dashboard-panel]:has([data-under-header]) > header {
+    padding-bottom: 0;
+  }
+}
+
+/* A page's top fade under the header or a floating bar: in the 20px gap above the first card
+   (--fade-rest-start is where that gap begins), 8px clear then 12px fade, so the card is untouched
+   at rest. */
+.scroll-fade-gap {
+  --fade-top-start: calc(var(--fade-rest-start, 0px) + 8px);
+  --fade-top-size: 12px;
 }
 
 /* Page masks are desktop-only. Keep this outside Tailwind layers, like

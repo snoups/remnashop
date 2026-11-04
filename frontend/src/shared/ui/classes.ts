@@ -40,19 +40,17 @@ export const SECTION_TITLE_CLASS =
 /** 11px uppercase label over a filter, column or stat. */
 export const EYEBROW_CLASS = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
-/** Row-list table (admins, transactions, event log...): header row, body, row. Rows add their own hover (enabled: on disableable buttons). */
-export const LIST_HEAD_CLASS = `mb-1 border-b border-border px-3 pb-2.5 ${EYEBROW_CLASS}`;
+/** Row-list table (transactions, event log...): header row, body, row. Rows add their own hover (enabled: on disableable buttons).
+ *  The header is 14px in, as a settings Row, so the columns start over its rows' 32px circles. */
+export const GLASS_LIST_HEAD_CLASS = `mb-1 border-b border-border px-3.5 pb-2.5 ${EYEBROW_CLASS}`;
 // The divider between rows is an inset shadow, not divide-y: a border would add 1px to every row
-// but the last, a shadow takes no height. For containers that aren't LIST_BODY_CLASS (the admins grid).
-export const LIST_DIVIDER_CLASS =
+// but the last, a shadow takes no height.
+const LIST_DIVIDER_CLASS =
   "[&>*:not(:last-child)]:shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--color-border)_50%,transparent)]";
 // list-rows: rows fade in on mount (app/styles.css)
 export const LIST_BODY_CLASS = `list-rows flex flex-col ${LIST_DIVIDER_CLASS}`;
 // 36px icon + 12px inset on every side = concentric pill; taller content overflows instead of growing the row.
-export const LIST_ROW_CLASS = "h-15 rounded-full px-3 [transition-property:background-color] duration-150";
-
-/** Settings card: rows of one section, a thin line between them (SettingsRow, OAuth providers). */
-export const SETTINGS_ROWS_CLASS =
-  "flex flex-col [&>*:not(:last-child)]:border-b [&>*:not(:last-child)]:border-border/50";
-/** Settings card: the line that starts the next section. */
-export const SETTINGS_SECTION_CLASS = "mt-2 border-t border-white/[0.08] pt-2";
+const LIST_ROW_SHAPE = "h-15 rounded-full [transition-property:background-color] duration-150";
+export const LIST_ROW_CLASS = `${LIST_ROW_SHAPE} px-3`;
+// a glass page's row, as a settings Row: a 32px circle 14px in on the 60px pill's curve
+export const GLASS_LIST_ROW_CLASS = `${LIST_ROW_SHAPE} px-3.5`;
