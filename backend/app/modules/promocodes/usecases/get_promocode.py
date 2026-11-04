@@ -15,4 +15,6 @@ class GetPromocodeUseCase(UseCase[int, PromocodeDto]):
 
     async def _execute(self, actor: Actor, data: int) -> PromocodeDto:
         async with self._uow:
-            return await self._promocode_repository.get_by_id(data)
+            promo = await self._promocode_repository.get_by_id(data)
+            (promo,) = await self._promocode_repository.with_activations_count([promo])
+            return promo

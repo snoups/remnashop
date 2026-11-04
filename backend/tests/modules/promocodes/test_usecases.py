@@ -44,10 +44,12 @@ from app.modules.pricing.repository import PricingRepository
 from app.modules.promocodes.dto import (
     ActivatePromocodeDto,
     CreatePromocodeDto,
+    DeletePromocodeDto,
     ListPromocodeActivatedUsersDto,
     ListPromocodesDto,
     UpdatePromocodeDto,
 )
+from app.modules.promocodes.events import PromocodeChangedEvent
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.targets import PromocodeTargets
 from app.modules.promocodes.usecases import (
@@ -74,6 +76,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import (
     make_eligibility,
     make_plan_snapshot,
@@ -281,6 +284,46 @@ async def test_update_promocode_deactivates(
     assert updated.is_active is False
 
 
+async def test_promocode_audit_events_carry_the_ip_code_and_changed_fields(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow
+) -> None:
+    events = RecordingEventPublisher()
+    plans = PlanRepository(promocode_repository.session)
+    created = await CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        plans,
+        uow,
+        events,
+    )(
+        OWNER,
+        CreatePromocodeDto(
+            code="AUDITME",
+            reward_type=PromocodeRewardType.DURATION,
+            reward=5,
+            client_ip="10.0.0.1",
+        ),
+    )
+    await UpdatePromocodeUseCase(promocode_repository, plans, uow, events)(
+        OWNER,
+        UpdatePromocodeDto(
+            promocode_id=created.id, is_active=False, is_reusable=False, client_ip="10.0.0.2"
+        ),
+    )
+    await DeletePromocodeUseCase(promocode_repository, user_repository, uow, events)(
+        OWNER, DeletePromocodeDto(promocode_id=created.id, client_ip="10.0.0.3")
+    )
+
+    published = [e for e in events.events if isinstance(e, PromocodeChangedEvent)]
+    assert [(e.action, e.code, e.ip_address) for e in published] == [
+        ("create", "AUDITME", "10.0.0.1"),
+        ("update", "AUDITME", "10.0.0.2"),
+        ("delete", "AUDITME", "10.0.0.3"),
+    ]
+    # is_reusable was sent unchanged, so only is_active is recorded
+    assert published[1].changed_fields == ["is_active"]
+
+
 async def test_update_promocode_rejects_emptying_an_allowed_promocodes_allowlist(
     promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:
@@ -339,7 +382,7 @@ async def test_delete_promocode(
         promocode_repository, user_repository, uow, event_publisher
     )
 
-    await delete_use_case(OWNER, created.id)
+    await delete_use_case(OWNER, DeletePromocodeDto(promocode_id=created.id, client_ip="10.0.0.1"))
 
     assert await promocode_repository.find_by_code("DELME") is None
 
@@ -1136,6 +1179,9 @@ async def test_promocode_summary_counts_statuses_and_activations(
             expires_at=datetime_now() - timedelta(days=1),
         )
     )
+    await promocode_repository.create(
+        CreatePromocodeDto(code="OPEN", reward_type=PromocodeRewardType.DURATION, reward=5)
+    )
     user = await user_repository.create(
         CreateUserDto(name="buyer", telegram_id=uuid4().int % 10**9)
     )
@@ -1143,11 +1189,11 @@ async def test_promocode_summary_counts_statuses_and_activations(
 
     summary = await _summary_use_case(promocode_repository, uow)(OWNER)
 
-    assert summary.total_count == 2
+    assert summary.total_count == 3
+    # CAPPED is used up, OLD has expired: only OPEN can still be redeemed
     assert summary.active_count == 1
     assert summary.activations_count == 1
     assert summary.activated_users_count == 1
-    assert summary.activations_by_promocode == {capped.id: 1}
 
 
 async def test_promocode_summary_requires_permission(
@@ -1482,7 +1528,7 @@ async def test_deleting_a_promocode_ends_the_discounts_it_gave(
         await user_repository.update_fields(bystander.id, UpdateUserDto(personal_discount=15))
 
     await DeletePromocodeUseCase(promocode_repository, user_repository, uow, event_publisher)(
-        OWNER, promo.id
+        OWNER, DeletePromocodeDto(promocode_id=promo.id, client_ip="10.0.0.1")
     )
 
     after = await user_repository.find_by_id(holder.id)

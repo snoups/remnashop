@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.errors import constraint_name
+from app.core.db.filters import in_ids
 from app.core.db.models.promocode import Promocode, PromocodeActivation
 from app.core.db.partial_update import apply_partial_update
 from app.core.enums import PromocodeRewardType, PromocodeStatus
@@ -22,6 +23,18 @@ from app.modules.promocodes.dto import (
     UserPromocodeActivationDto,
 )
 from app.modules.promocodes.rules import assert_usable
+
+
+def _exhausted() -> ColumnElement[bool]:
+    # the activation cap is used up; a cap lowered below the count counts too
+    used = (
+        select(func.count())
+        .select_from(PromocodeActivation)
+        .where(PromocodeActivation.promocode_id == Promocode.id)
+        .correlate(Promocode)
+        .scalar_subquery()
+    )
+    return and_(Promocode.max_activations.is_not(None), used >= Promocode.max_activations)
 
 
 class PromocodeRepository:
@@ -71,8 +84,10 @@ class PromocodeRepository:
         return [self._to_dto(row) for row in result.scalars()]
 
     async def count_total_and_active(self, now: datetime) -> tuple[int, int]:
-        active = Promocode.is_active.is_(True) & or_(
-            Promocode.expires_at.is_(None), Promocode.expires_at > now
+        active = and_(
+            Promocode.is_active.is_(True),
+            or_(Promocode.expires_at.is_(None), Promocode.expires_at > now),
+            not_(_exhausted()),
         )
         total, active_count = (
             await self.session.execute(select(func.count(), func.count().filter(active)))
@@ -94,9 +109,12 @@ class PromocodeRepository:
     async def list_paginated(self, data: ListPromocodesDto) -> tuple[list[PromocodeDto], int]:
         expired = and_(Promocode.expires_at.is_not(None), Promocode.expires_at < datetime_now())
         live = and_(not_(expired), Promocode.is_active)
+        redeemable = and_(live, not_(_exhausted()))
         conditions: list[ColumnElement[bool]] = []
         if data.status is PromocodeStatus.ACTIVE:
-            conditions.append(live)
+            conditions.append(redeemable)
+        elif data.status is PromocodeStatus.EXHAUSTED:
+            conditions.append(and_(live, _exhausted()))
         elif data.status is PromocodeStatus.EXPIRED:
             conditions.append(expired)
         elif data.status is PromocodeStatus.INACTIVE:
@@ -112,7 +130,9 @@ class PromocodeRepository:
         rows = await self.session.scalars(
             select(Promocode)
             .where(*conditions)
-            .order_by(case((live, 0), else_=1), Promocode.created_at.desc(), Promocode.id.desc())
+            .order_by(
+                case((redeemable, 0), else_=1), Promocode.created_at.desc(), Promocode.id.desc()
+            )
             .offset((data.page - 1) * data.page_size)
             .limit(data.page_size)
         )
@@ -153,20 +173,34 @@ class PromocodeRepository:
     async def update(self, data: UpdatePromocodeDto) -> PromocodeDto:
         row = await self._get_or_raise(data.promocode_id)
 
-        apply_partial_update(row, data, skip=frozenset({"promocode_id"}))
+        apply_partial_update(row, data, skip=frozenset({"promocode_id", "cleared", "client_ip"}))
+        for name in data.cleared:
+            setattr(row, name, None)
 
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_dto(row)
 
-    async def forget_plan(self, plan_id: int) -> None:
-        # a plan list left with only this plan opens the promocode to every plan
+    async def forget_plan(self, plan_id: int) -> list[int]:
+        # a list left empty would open the promocode to every plan, so it is switched off instead
+        disabled = await self.session.scalars(
+            update(Promocode)
+            .where(
+                Promocode.allowed_plan_ids.contained_by([plan_id]),
+                Promocode.allowed_plan_ids != [],
+                Promocode.is_active.is_(True),
+            )
+            .values(is_active=False)
+            .returning(Promocode.id)
+        )
+        disabled_ids = sorted(disabled.all())
         await self.session.execute(
             update(Promocode)
             .where(Promocode.allowed_plan_ids.contains([plan_id]))
             .values(allowed_plan_ids=func.array_remove(Promocode.allowed_plan_ids, plan_id))
         )
         await self.session.flush()
+        return disabled_ids
 
     async def is_live(self, promocode_id: int) -> bool:
         # a discount it granted lives exactly as long as the promocode does
@@ -255,11 +289,19 @@ class PromocodeRepository:
         )
         return result.scalar_one()
 
-    async def count_activations_by_promocode(self) -> dict[int, int]:
+    async def count_activations_by_promocode(
+        self, promocode_ids: Optional[list[int]] = None
+    ) -> dict[int, int]:
         stmt = select(PromocodeActivation.promocode_id, func.count()).group_by(
             PromocodeActivation.promocode_id
         )
+        if promocode_ids is not None:
+            stmt = stmt.where(in_ids(PromocodeActivation.promocode_id, promocode_ids))
         return dict((await self.session.execute(stmt)).tuples().all())
+
+    async def with_activations_count(self, promocodes: list[PromocodeDto]) -> list[PromocodeDto]:
+        counts = await self.count_activations_by_promocode([p.id for p in promocodes])
+        return [p.model_copy(update={"activations_count": counts.get(p.id, 0)}) for p in promocodes]
 
     async def count_activations(self) -> tuple[int, int]:
         # (activations, distinct users)

@@ -23,6 +23,7 @@ class PromocodeResponse(BaseModel):
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: bool
+    activations_count: int
     created_at: Optional[datetime] = None
 
 
@@ -102,7 +103,6 @@ class PromocodeSummaryResponse(BaseModel):
     active_count: int
     activations_count: int
     activated_users_count: int
-    activations_by_promocode: dict[int, int]
     granted_days: int
     granted_subscriptions_count: int
     report_currency: Currency

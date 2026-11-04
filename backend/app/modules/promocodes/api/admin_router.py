@@ -1,15 +1,17 @@
-from typing import Optional
+from typing import Final, Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
 from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import PromocodeRewardType, PromocodeStatus
+from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.utils.http import resolve_client_ip
 from app.modules.promocodes.api.schemas import (
     CreatePromocodeRequest,
     GeneratedPromocodeCodeResponse,
@@ -24,6 +26,7 @@ from app.modules.promocodes.api.schemas import (
 )
 from app.modules.promocodes.dto import (
     CreatePromocodeDto,
+    DeletePromocodeDto,
     ListPromocodeActivatedUsersDto,
     ListPromocodesDto,
     UpdatePromocodeDto,
@@ -39,6 +42,9 @@ from app.modules.promocodes.usecases import (
     ListUserPromocodeActivationsUseCase,
     UpdatePromocodeUseCase,
 )
+
+# limits an admin can lift by sending null: no expiry, no activation cap
+_CLEARABLE_FIELDS: Final[frozenset[str]] = frozenset({"expires_at", "max_activations"})
 
 router = APIRouter(prefix="/promocodes", tags=["promocodes"])
 user_router = APIRouter(prefix="/users", tags=["promocodes"])
@@ -136,6 +142,7 @@ async def list_promocode_activated_users(
 @inject
 async def create_promocode(
     payload: CreatePromocodeRequest,
+    request: Request,
     use_case: FromDishka[CreatePromocodeUseCase],
     actor: Actor = Depends(require_admin),
 ) -> PromocodeResponse:
@@ -155,6 +162,7 @@ async def create_promocode(
                 expires_at=payload.expires_at,
                 max_activations=payload.max_activations,
                 is_reusable=payload.is_reusable,
+                client_ip=resolve_client_ip(request),
             ),
         )
     except NotFoundError as error:
@@ -170,22 +178,35 @@ async def create_promocode(
 async def update_promocode(
     promocode_id: int,
     payload: UpdatePromocodeRequest,
+    request: Request,
     use_case: FromDishka[UpdatePromocodeUseCase],
     actor: Actor = Depends(require_admin),
 ) -> PromocodeResponse:
-    promo = await use_case(
-        actor,
-        UpdatePromocodeDto(
-            promocode_id=promocode_id,
-            is_active=payload.is_active,
-            availability=payload.availability,
-            allowed_user_ids=payload.allowed_user_ids,
-            allowed_plan_ids=payload.allowed_plan_ids,
-            expires_at=payload.expires_at,
-            max_activations=payload.max_activations,
-            is_reusable=payload.is_reusable,
-        ),
-    )
+    try:
+        promo = await use_case(
+            actor,
+            UpdatePromocodeDto(
+                promocode_id=promocode_id,
+                is_active=payload.is_active,
+                availability=payload.availability,
+                allowed_user_ids=payload.allowed_user_ids,
+                allowed_plan_ids=payload.allowed_plan_ids,
+                expires_at=payload.expires_at,
+                max_activations=payload.max_activations,
+                is_reusable=payload.is_reusable,
+                cleared=frozenset(
+                    name
+                    for name in _CLEARABLE_FIELDS & payload.model_fields_set
+                    if getattr(payload, name) is None
+                ),
+                client_ip=resolve_client_ip(request),
+            ),
+        )
+    except NotFoundError as error:
+        # an unknown plan in allowed_plan_ids is a bad body; an unknown promocode stays a 404
+        if error.code is not ErrorCode.PLAN_NOT_FOUND:
+            raise
+        raise ValidationError(str(error), code=error.code) from error
     return PromocodeResponse.model_validate(promo, from_attributes=True)
 
 
@@ -195,10 +216,13 @@ async def update_promocode(
 @inject
 async def delete_promocode(
     promocode_id: int,
+    request: Request,
     use_case: FromDishka[DeletePromocodeUseCase],
     actor: Actor = Depends(require_admin),
 ) -> None:
-    await use_case(actor, promocode_id)
+    await use_case(
+        actor, DeletePromocodeDto(promocode_id=promocode_id, client_ip=resolve_client_ip(request))
+    )
 
 
 @router.post("/actions/generate-code", response_model=GeneratedPromocodeCodeResponse)

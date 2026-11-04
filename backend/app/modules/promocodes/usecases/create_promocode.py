@@ -46,7 +46,13 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
             )
             promo = await self._promocode_repository.create(data)
             await self._event_publisher.publish(
-                PromocodeChangedEvent(actor=actor, action="create", promocode_id=promo.id)
+                PromocodeChangedEvent(
+                    actor=actor,
+                    action="create",
+                    promocode_id=promo.id,
+                    code=promo.code,
+                    ip_address=data.client_ip,
+                )
             )
         logger.info(f"{actor.log} Created promocode '{promo.code}'")
         return promo

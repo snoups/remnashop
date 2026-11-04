@@ -24,6 +24,8 @@ class PromocodeDto(BaseDto, TimestampMixin):
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: bool = False
+    # filled by PromocodeRepository.with_activations_count, 0 elsewhere
+    activations_count: int = 0
 
 
 class PromocodeActivationDto(BaseDto):
@@ -47,6 +49,14 @@ class CreatePromocodeDto:
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: bool = False
+    # the admin request's IP for the audit event; the repository ignores it
+    client_ip: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
+class DeletePromocodeDto:
+    promocode_id: int
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -59,6 +69,9 @@ class UpdatePromocodeDto:
     expires_at: Optional[datetime] = None
     max_activations: Optional[int] = None
     is_reusable: Optional[bool] = None
+    # fields sent as null: written back as None, which PATCH semantics otherwise skip
+    cleared: frozenset[str] = frozenset()
+    client_ip: str = ""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -89,7 +102,6 @@ class PromocodeSummaryDto:
     active_count: int
     activations_count: int
     activated_users_count: int
-    activations_by_promocode: dict[int, int]
     granted_days: int
     granted_subscriptions_count: int
     report_currency: Currency

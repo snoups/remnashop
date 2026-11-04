@@ -59,6 +59,29 @@ async def test_create_duplicate_code_raises_conflict(
         await promocode_repository.create(_create_dto("DUP"))
 
 
+async def test_a_used_up_promocode_is_exhausted_not_active(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository
+) -> None:
+    full = await promocode_repository.create(_create_dto("EXH-FULL", max_activations=1))
+    await promocode_repository.create(_create_dto("EXH-OPEN", max_activations=2))
+    await promocode_repository.claim_activation(
+        full.id, await _create_user(user_repository, 1201), None
+    )
+
+    async def codes(status: PromocodeStatus) -> list[str]:
+        items, _ = await promocode_repository.list_paginated(
+            ListPromocodesDto(search="exh-", status=status)
+        )
+        return [item.code for item in items]
+
+    assert await codes(PromocodeStatus.EXHAUSTED) == ["EXH-FULL"]
+    assert await codes(PromocodeStatus.ACTIVE) == ["EXH-OPEN"]
+
+    items, _ = await promocode_repository.list_paginated(ListPromocodesDto(search="exh-"))
+    counted = await promocode_repository.with_activations_count(items)
+    assert {p.code: p.activations_count for p in counted} == {"EXH-FULL": 1, "EXH-OPEN": 0}
+
+
 async def test_get_by_id_unknown_raises_not_found(
     promocode_repository: PromocodeRepository,
 ) -> None:

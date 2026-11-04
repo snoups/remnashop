@@ -17,4 +17,5 @@ class ListPromocodesUseCase(UseCase[ListPromocodesDto, tuple[list[PromocodeDto],
         self, actor: Actor, data: ListPromocodesDto
     ) -> tuple[list[PromocodeDto], int]:
         async with self._uow:
-            return await self._promocode_repository.list_paginated(data)
+            promocodes, total = await self._promocode_repository.list_paginated(data)
+            return await self._promocode_repository.with_activations_count(promocodes), total

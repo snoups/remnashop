@@ -1,4 +1,5 @@
 from dataclasses import replace
+from typing import Final
 
 from loguru import logger
 
@@ -6,6 +7,7 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PromocodeAvailability
 from app.core.error_codes import ErrorCode
+from app.core.events import changed_fields
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -15,6 +17,16 @@ from app.modules.promocodes.dto import PromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.events import PromocodeChangedEvent
 from app.modules.promocodes.plan_limits import check_allowed_plans
 from app.modules.promocodes.repository import PromocodeRepository
+
+_EDITABLE_FIELDS: Final[tuple[str, ...]] = (
+    "is_active",
+    "availability",
+    "allowed_user_ids",
+    "allowed_plan_ids",
+    "expires_at",
+    "max_activations",
+    "is_reusable",
+)
 
 
 class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
@@ -62,8 +74,16 @@ class UpdatePromocodeUseCase(UseCase[UpdatePromocodeDto, PromocodeDto]):
                 )
 
             promo = await self._promocode_repository.update(data)
+            (promo,) = await self._promocode_repository.with_activations_count([promo])
             await self._event_publisher.publish(
-                PromocodeChangedEvent(actor=actor, action="update", promocode_id=data.promocode_id)
+                PromocodeChangedEvent(
+                    actor=actor,
+                    action="update",
+                    promocode_id=data.promocode_id,
+                    code=promo.code,
+                    changed_fields=changed_fields(current, promo, _EDITABLE_FIELDS),
+                    ip_address=data.client_ip,
+                )
             )
         logger.info(f"{actor.log} Updated promocode '{data.promocode_id}'")
         return promo

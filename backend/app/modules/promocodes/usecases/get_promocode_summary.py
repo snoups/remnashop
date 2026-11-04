@@ -29,7 +29,6 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
         now = datetime_now()
         async with self._uow:
             total_count, active_count = await self._promocode_repository.count_total_and_active(now)
-            by_promocode = await self._promocode_repository.count_activations_by_promocode()
             activations, users = await self._promocode_repository.count_activations()
             # the reward is fixed at creation, so summing it over activations is exact
             totals = await self._promocode_repository.reward_totals_by_type()
@@ -48,7 +47,6 @@ class GetPromocodeSummaryUseCase(UseCase[None, PromocodeSummaryDto]):
             active_count=active_count,
             activations_count=activations,
             activated_users_count=users,
-            activations_by_promocode=by_promocode,
             granted_days=(duration.reward_sum if duration else 0)
             + (subscription.duration_days_sum if subscription else 0),
             granted_subscriptions_count=subscription.count if subscription else 0,
