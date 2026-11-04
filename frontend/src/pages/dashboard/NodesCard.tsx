@@ -4,10 +4,10 @@ import { useTranslation } from "react-i18next";
 
 import type { NodeCard, NodesOverview } from "@entities/overview/api";
 import { formatBytes } from "@shared/lib/format";
+import { formatRelative } from "@shared/lib/relative-time";
 import type { AsyncState } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -22,7 +22,7 @@ function statusDot(node: NodeCard): string {
 
 function Track({ value, max }: { value: number; max: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+    <div className="h-2 overflow-hidden rounded-full glass-track">
       <div className="h-full rounded-full bg-primary" style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
     </div>
   );
@@ -45,6 +45,11 @@ function NodeRows({ nodes }: { nodes: NodeCard[] }) {
       <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
         <span className={`size-2 shrink-0 rounded-full ${statusDot(node)}`} />
         <span className="truncate">{node.name}</span>
+        {!node.is_disabled && !node.is_connected && node.last_status_change && (
+          <span className="shrink-0 text-[11px] font-normal text-error">
+            {t("dashboard.nodes.offlineSince", { time: formatRelative(node.last_status_change, i18n.language) })}
+          </span>
+        )}
       </span>
       <Track value={node.users_online} max={max} />
       <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
@@ -86,35 +91,36 @@ export function NodesCard({ state }: { state: AsyncState<NodesOverview | null> }
   const rows = data?.available ? (view === "nodes" ? data.nodes : data.countries) : [];
 
   return (
-    <Card>
-      <CardHeader
-        icon={Globe2}
-        title={t("dashboard.nodes.title")}
-        description={t("dashboard.nodes.description")}
-        aside={
-          <SegmentedPills
-            value={view}
-            onChange={setView}
-            options={[
-              { value: "nodes", label: t("dashboard.nodes.nodes") },
-              { value: "countries", label: t("dashboard.nodes.countries") },
-            ]}
-          />
-        }
-      />
+    <Section
+      // an empty state fills the row to sit centred; a list eases its height
+      stretched={rows.length === 0}
+      icon={Globe2}
+      title={t("dashboard.nodes.title")}
+      description={t("dashboard.nodes.description")}
+      aside={
+        <SegmentedPills
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "nodes", label: t("dashboard.nodes.nodes") },
+            { value: "countries", label: t("dashboard.nodes.countries") },
+          ]}
+        />
+      }
+    >
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {data && !data.available && (
-        <p className="py-6 text-center text-[13px] text-muted-foreground">{t("dashboard.remnawaveUnavailable")}</p>
+        <EmptyState text={t("dashboard.remnawaveUnavailable")} />
       )}
       {data?.available && rows.length === 0 && (
-        <p className="py-6 text-center text-[13px] text-muted-foreground">{t("dashboard.nodes.empty")}</p>
+        <EmptyState text={t("dashboard.nodes.empty")} />
       )}
       {data?.available && rows.length > 0 && (
         <div className="pt-2">
           {view === "nodes" ? <NodeRows nodes={data.nodes} /> : <CountryRows countries={data.countries} />}
         </div>
       )}
-    </Card>
+    </Section>
   );
 }

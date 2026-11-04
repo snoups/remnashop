@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { GuideDialog, GuideHeading, GuideTip } from "@shared/ui/glass/GuideDialog";
 
-const SECTIONS = ["calculation", "anchorColumn", "pin", "bulk", "anchorSwitch"] as const;
+const SECTIONS = ["calculation", "anchorColumn", "pin", "bulk", "ladder", "anchorSwitch"] as const;
 
 export function PricingGuideDialog() {
   const { t } = useTranslation();

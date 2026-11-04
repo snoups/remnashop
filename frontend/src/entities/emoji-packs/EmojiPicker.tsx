@@ -91,8 +91,12 @@ export function EmojiPicker({
 
   const activePack = packs.find((pack) => pack.set_name === activeTab);
 
+  const selectTab = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   const open = () => {
-    setActiveTab("standard");
+    selectTab("standard");
     setIsOpen(true);
   };
 
@@ -157,14 +161,14 @@ export function EmojiPicker({
             <PackTab
               isActive={activeTab === "standard"}
               glyph={<Smile className="size-[18px]" />}
-              onSelect={() => setActiveTab("standard")}
+              onSelect={() => selectTab("standard")}
             />
             {packs.map((pack) => (
               <PackTab
                 key={pack.set_name}
                 isActive={activeTab === pack.set_name}
                 glyph={<PremiumEmoji item={pack.items[0]} size={20} />}
-                onSelect={() => setActiveTab(pack.set_name)}
+                onSelect={() => selectTab(pack.set_name)}
               />
             ))}
           </div>

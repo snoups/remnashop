@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 
 import { getPlanShareUrls } from "@entities/plans/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { CopyableValue } from "@shared/ui/CopyableValue";
-import { Field } from "@shared/ui/Field";
+import { Field } from "@shared/ui/glass/Field";
+import { CopyInput } from "@shared/ui/glass/Input";
 
 export function PlanShareLinks({ planId }: { planId: number }) {
   const { t } = useTranslation();
@@ -13,14 +13,18 @@ export function PlanShareLinks({ planId }: { planId: number }) {
   return (
     <>
       {botUrl && (
-        <Field label={t("plans.edit.botLinkLabel")} className="sm:col-span-2">
-          <CopyableValue value={botUrl} />
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label={t("plans.edit.botLinkLabel")}>
+            <CopyInput value={botUrl} />
+          </Field>
+        </div>
       )}
       {cabinetUrl && (
-        <Field label={t("plans.edit.cabinetLinkLabel")} className="sm:col-span-2">
-          <CopyableValue value={cabinetUrl} />
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label={t("plans.edit.cabinetLinkLabel")}>
+            <CopyInput value={cabinetUrl} />
+          </Field>
+        </div>
       )}
     </>
   );

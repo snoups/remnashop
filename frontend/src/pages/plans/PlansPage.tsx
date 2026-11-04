@@ -3,28 +3,26 @@ import {
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
-  ArrowDownUp,
   BadgePercent,
-  GripVertical,
-  Layers,
   Pencil,
   Plus,
+  Power,
+  PowerOff,
   ShieldCheck,
-  Smartphone,
+  SquarePlus,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { deletePlan, listPlans, type Plan, type PlanAvailability, reorderPlans, updatePlan } from "@entities/plans/api";
-import { PLAN_DISCOUNT_STATUS_TONE, planDiscountStatus } from "@entities/plans/discount";
+import { deletePlan, listPlans, type Plan, reorderPlans, updatePlan } from "@entities/plans/api";
 import { useAnchorCurrency } from "@entities/pricing/use-anchor-currency";
 import { usePermissions } from "@entities/user/use-current-user";
 import { PlanAccessDialog } from "@features/plan-access/PlanAccessDialog";
@@ -32,25 +30,28 @@ import { PlanDiscountDialog } from "@features/plan-discount/PlanDiscountDialog";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
-import { formatMoney } from "@shared/lib/format";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { toast } from "@shared/lib/toast";
-import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
+import type { ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import { Button } from "@shared/ui/Button";
-import { Badge } from "@shared/ui/Badge";
-import { Tag } from "@shared/ui/Tag";
-import { IconButton } from "@shared/ui/IconButton";
 import { Pressable } from "@shared/ui/Pressable";
+
+import { PlanCard } from "./PlanCard";
 
 type Filter = "all" | "active" | "inactive";
 
-const RESTRICTED_AVAILABILITIES: ReadonlySet<PlanAvailability> = new Set(["INVITED", "ALLOWED", "LINK"]);
-const CARD_HEIGHT_CLASSNAME = "min-h-[318px]";
+// On the grid wrapper so longer content can grow the card without clipping.
+const CARD_HEIGHT_CLASSNAME = "aspect-[1.4]";
+
+// the create card turns primary on hover, its icon too
+function CreatePlanIcon({ className = "" }: { className?: string }) {
+  return <SquarePlus className={`${className} transition-colors group-hover:text-primary`} />;
+}
 
 export function PlansPage() {
   const { t } = useTranslation();
@@ -60,7 +61,9 @@ export function PlansPage() {
   const [discountPlan, setDiscountPlan] = useState<Plan | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Plan | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    // long press: a plain swipe over the cards still scrolls the page
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -71,6 +74,11 @@ export function PlansPage() {
   const canManageAccess = permissions.includes("PLANS_ACCESS_MANAGE");
   const canManageDiscount = permissions.includes("PLANS_DISCOUNT_MANAGE");
   const canReorder = permissions.includes("PLANS_ORDER_MANAGE");
+  // the dialog gates its fields, durations and squads by their own permissions
+  const canEdit =
+    canUpdate ||
+    permissions.includes("PLANS_DURATIONS_MANAGE") ||
+    (permissions.includes("PLANS_SQUADS_MANAGE") && permissions.includes("SUBSCRIPTIONS_PANEL_SQUADS_VIEW"));
 
   const [state, reload, setPlans] = useAsyncResource(listPlans);
   useEntityChanged("plan", reload);
@@ -128,64 +136,62 @@ export function PlansPage() {
   // reordering a filtered subset has no well-defined position in the full list
   const isSortable = canReorder && filter === "all";
 
+  const activeCount = state.kind === "ready" ? state.data.filter((plan) => plan.is_active).length : 0;
+  const filterLabel = (key: Filter) => {
+    const label = t(`plans.filters.${key}`);
+    if (state.kind !== "ready") return label;
+    const n = key === "all" ? state.data.length : key === "active" ? activeCount : state.data.length - activeCount;
+    return `${label} · ${n}`;
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground">
-            <Layers className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              {t("plans.title")}
-              {state.kind === "ready" && (
-                <span className="text-[12px] font-normal tabular-nums text-muted-foreground">
-                  {state.data.length} &middot;{" "}
-                  {t("plans.activeCount", { count: state.data.filter((plan) => plan.is_active).length })}
-                </span>
-              )}
-            </h2>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">{t("plans.description")}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SegmentedPills
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "all", label: t("plans.filters.all") },
-              { value: "active", label: t("plans.filters.active") },
-              { value: "inactive", label: t("plans.filters.inactive") },
-            ]}
+    // as the broadcasts page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <div className="min-w-0 flex-1 md:max-w-md">
+          <PillTabs
+            items={(["all", "active", "inactive"] as const).map((key) => ({ key, label: filterLabel(key) }))}
+            activeKey={filter}
+            onSelect={setFilter}
           />
-          {canCreate && (
-            <Button
-              variant="solid"
-              type="button"
-              onClick={() => setEditingPlan("new")}
-            >
-              <Plus className="size-3.5" />
-              {t("plans.create.button")}
-            </Button>
-          )}
         </div>
+        {canCreate && (
+          <Button variant="glassAccent" type="button" onClick={() => setEditingPlan("new")} className="md:ml-auto">
+            <Plus className="size-4" />
+            {t("plans.create.button")}
+          </Button>
+        )}
       </div>
 
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}
       {state.kind === "error" && (
-        <ErrorState text={t("common.loadError")} size="page" />
+        <div className="glass-panel rounded-3xl p-4">
+          <ErrorState text={t("common.loadError")} size="page" />
+        </div>
       )}
       {state.kind === "ready" && visibleItems.length === 0 && !canCreate && (
-        <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
+        <div className="glass-panel rounded-3xl p-4">
+          <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
+        </div>
       )}
       {state.kind === "ready" && (visibleItems.length > 0 || canCreate) && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void handleDragEnd(e)}>
           <SortableContext items={visibleItems.map((plan) => plan.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {visibleItems.map((plan) => {
                 const menuItems: ActionMenuItem[] = [];
-                if (canUpdate) {
+                if (canEdit) {
                   menuItems.push({ label: t("common.edit"), icon: Pencil, onClick: () => setEditingPlan(plan) });
+                }
+                if (canUpdate) {
+                  menuItems.push({
+                    label: t(plan.is_active ? "plans.disable" : "plans.enable"),
+                    icon: plan.is_active ? PowerOff : Power,
+                    onClick: () => void handleToggleActive(plan),
+                  });
                 }
                 if (canManageAccess) {
                   menuItems.push({
@@ -203,7 +209,7 @@ export function PlansPage() {
                 }
                 if (canDelete) {
                   menuItems.push({
-                    label: t("plans.delete.button"),
+                    label: t("common.delete"),
                     icon: Trash2,
                     variant: "danger",
                     onClick: () => setPendingDelete(plan),
@@ -216,7 +222,6 @@ export function PlansPage() {
                     anchorCurrency={anchorCurrency}
                     sortable={isSortable}
                     menuItems={menuItems}
-                    onToggleActive={canUpdate ? () => void handleToggleActive(plan) : undefined}
                   />
                 );
               })}
@@ -224,11 +229,9 @@ export function PlansPage() {
                 <Pressable
                   type="button"
                   onClick={() => setEditingPlan("new")}
-                  className={`group flex flex-col items-center justify-center gap-2.5 rounded-[20px] max-md:rounded-card border-[1.5px] border-dashed border-white/[0.18] text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground ${CARD_HEIGHT_CLASSNAME}`}
+                  className={`group flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-glass-border p-4 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary ${CARD_HEIGHT_CLASSNAME}`}
                 >
-                  <span className="flex size-11 items-center justify-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary/20">
-                    <Plus className="size-[18px]" />
-                  </span>
+                  <CreatePlanIcon className="size-5" />
                   {t("plans.create.button")}
                 </Pressable>
               )}
@@ -236,6 +239,8 @@ export function PlansPage() {
           </SortableContext>
         </DndContext>
       )}
+      </LoadGate>
+      </div>
 
       {editingPlan !== null && (
         <PlanEditDialog
@@ -269,135 +274,5 @@ export function PlansPage() {
         />
       )}
     </div>
-  );
-}
-
-function PlanCard({
-  plan,
-  anchorCurrency,
-  sortable,
-  menuItems,
-  onToggleActive,
-}: {
-  plan: Plan;
-  anchorCurrency: string | null;
-  sortable: boolean;
-  menuItems: ActionMenuItem[];
-  onToggleActive?: () => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: plan.id,
-    disabled: !sortable,
-  });
-
-  const durations = plan.durations.slice().sort((a, b) => a.order_index - b.order_index);
-  const cheapest = durations.reduce<(typeof durations)[number] | null>(
-    (min, d) => (min === null || Number(d.base_price) < Number(min.base_price) ? d : min),
-    null,
-  );
-  const isRestricted = RESTRICTED_AVAILABILITIES.has(plan.availability);
-  const discountStatus = planDiscountStatus(plan);
-
-  return (
-    <article
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`relative flex flex-col gap-3.5 rounded-[20px] max-md:rounded-card border p-4 transition-[border-color,background-color,opacity] ${CARD_HEIGHT_CLASSNAME} ${
-        plan.badge ? "border-primary/30 bg-primary/[0.05]" : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18]"
-      } ${plan.is_active ? "" : "opacity-55"} ${isDragging ? "z-10 shadow-2xl shadow-black/50" : ""}`}
-    >
-      <div className="flex items-start gap-2.5">
-        <span
-          className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-            plan.is_active ? "bg-primary/10 text-primary" : "bg-white/[0.06] text-muted-foreground"
-          }`}
-        >
-          <Layers className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-[15px] font-bold text-foreground">{plan.name}</span>
-            {plan.is_trial && (
-              <Badge tone="warning">
-                {t("plans.edit.isTrialLabel")}
-              </Badge>
-            )}
-            {plan.badge && (
-              <Badge tone="accent">
-                {t(`plans.edit.badges.${plan.badge}`)}
-              </Badge>
-            )}
-            {plan.tag && <Tag>{plan.tag}</Tag>}
-            {discountStatus && (
-              <Badge tone={PLAN_DISCOUNT_STATUS_TONE[discountStatus]}>
-                {t("plans.discount.badge", { percent: plan.discount_percent })}
-                {discountStatus !== "active" && ` · ${t(`plans.discount.status.${discountStatus}`)}`}
-              </Badge>
-            )}
-          </div>
-          <p className="truncate font-mono text-[12px] text-muted-foreground">
-            {plan.public_code} &middot; {t(`plans.edit.type.${plan.type}`)}
-          </p>
-        </div>
-        <div className="-mr-1.5 -mt-1.5 flex shrink-0 items-center">
-          {sortable && (
-            <IconButton size="8" className="cursor-grab touch-none active:cursor-grabbing"
-              ref={setActivatorNodeRef}
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="size-4" />
-            </IconButton>
-          )}
-          {menuItems.length > 0 && <ActionMenu items={menuItems} />}
-        </div>
-      </div>
-
-      {cheapest && (
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[12px] text-muted-foreground">{t("plans.priceFrom")}</span>
-          <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">
-            {anchorCurrency
-              ? formatMoney(cheapest.base_price, anchorCurrency, i18n.language)
-              : new Intl.NumberFormat(i18n.language).format(Number(cheapest.base_price))}
-          </span>
-          <span className="text-[12px] text-muted-foreground">{t("plans.perDays", { count: cheapest.days })}</span>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1.5 rounded-[14px] bg-white/[0.035] px-3 py-2.5 text-[12.5px] text-foreground">
-        <span className="flex items-center gap-2">
-          <ArrowDownUp className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="flex-1">{plan.traffic_limit === 0 ? t("plans.unlimited") : `${plan.traffic_limit} GB`}</span>
-          {plan.traffic_limit !== 0 && (
-            <span className="text-muted-foreground">{t(`plans.edit.strategy.${plan.traffic_limit_strategy}`)}</span>
-          )}
-        </span>
-        <span className="flex items-center gap-2">
-          <Smartphone className="size-3.5 shrink-0 text-muted-foreground" />
-          {plan.device_limit === 0 ? t("plans.unlimited") : t("plans.devices", { count: plan.device_limit })}
-        </span>
-      </div>
-
-      {durations.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {durations.map((d) => (
-            <Tag key={d.days}>
-              {t("plans.daysShort", { count: d.days })}
-            </Tag>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-white/[0.08] pt-3">
-        <Badge tone={isRestricted ? "violet" : "neutral"} className="min-w-0">
-          <span className="truncate">{t(`plans.access.availability.${plan.availability}`)}</span>
-        </Badge>
-        {onToggleActive && (
-          <Switch checked={plan.is_active} onChange={onToggleActive} />
-        )}
-      </div>
-    </article>
   );
 }

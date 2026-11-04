@@ -1,23 +1,19 @@
-import { Filter, Pin, PinOff, Table2, Wand2 } from "lucide-react";
+import { Pin, PinOff, Table2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import {
-  adjustBasePrices,
-  previewPricingChange,
-  pricingRowLabel,
+  CURRENCIES,
   setMatrixPrices,
-  type BulkAdjustScope,
   type Currency,
   type PriceBook,
   type SetMatrixPricesBody,
   type PriceBookCell,
   type PriceBookRow,
-  type PricingDiff,
 } from "@entities/pricing/api";
-import { PricingDiffList } from "@entities/pricing/PricingDiffList";
+import { BulkAdjustButton } from "@features/pricing-matrix/BulkAdjustButton";
 import { PricingGuideDialog } from "@features/pricing-matrix/PricingGuideDialog";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
@@ -28,19 +24,12 @@ import { COLLAPSE_MOTION } from "@shared/ui/collapse-motion";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
-import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
 import { Section } from "@shared/ui/glass/Section";
 import { Button } from "@shared/ui/Button";
 import { IconButton } from "@shared/ui/IconButton";
-import { DialogHeader } from "@shared/ui/glass/DialogHeader";
-import { Modal } from "@shared/ui/Modal";
-import { useModalClose } from "@shared/ui/modal-hooks";
-import { EYEBROW_CLASS, GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
-const CURRENCIES: Currency[] = ["USD", "XTR", "RUB"];
-const BULK_SCOPES: BulkAdjustScope[] = ["ALL_PLANS", "ALL_ADDONS"];
 
 // an unsaved edit in a matrix field
 const EDITED_CLASS = "ring-1 ring-warning/60";
@@ -142,14 +131,20 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<MatrixSection>>(new Set());
-  const toggleSection = (section: MatrixSection) =>
+  const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<string>>(new Set());
+  const toggleSection = (section: string) =>
     setCollapsedSections((prev) => {
       const next = new Set(prev);
       if (!next.delete(section)) next.add(section);
       return next;
     });
 
+  const planGroups: PriceBookRow[][] = [];
+  for (const row of book.plans) {
+    const group = planGroups.find((rows) => rows[0].plan_id === row.plan_id);
+    if (group) group.push(row);
+    else planGroups.push([row]);
+  }
   const rows: { row: PriceBookRow }[] = [
     ...book.plans.map((row) => ({ row })),
     ...book.addons.map((row) => ({ row })),
@@ -164,7 +159,13 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
       aside={
         <>
           <PricingGuideDialog />
-          {canBulkAdjust && <BulkAdjustButton onChanged={onChanged} />}
+          {canBulkAdjust && (
+            <BulkAdjustButton
+              planGroups={planGroups}
+              anchorCurrency={book.settings.anchor_currency}
+              onChanged={onChanged}
+            />
+          )}
         </>
       }
       footer={
@@ -210,27 +211,33 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
               </tr>
             </thead>
             <tbody>
-              {book.plans.length > 0 && (
-                <SectionHeader
-                  label={t("pricing.matrix.plansSection")}
-                  count={book.plans.length}
-                  isCollapsed={collapsedSections.has("plans")}
-                  onToggle={() => toggleSection("plans")}
-                />
-              )}
-              <AnimatePresence initial={false}>
-                {!collapsedSections.has("plans") &&
-                  book.plans.map((row, index) => (
-                    <MatrixRow
-                      key={`plan_duration-${row.ref_id}`}
-                      row={row}
-                      isLast={index === book.plans.length - 1}
-                      anchorCurrency={book.settings.anchor_currency}
-                      drafts={drafts}
-                      onDraft={setDraft}
+              {/* a section per plan, its durations as rows */}
+              {planGroups.map((group) => {
+                const section = `plan:${group[0].plan_id}`;
+                return (
+                  <Fragment key={section}>
+                    <SectionHeader
+                      label={group[0].name}
+                      count={group.length}
+                      isCollapsed={collapsedSections.has(section)}
+                      onToggle={() => toggleSection(section)}
                     />
-                  ))}
-              </AnimatePresence>
+                    <AnimatePresence initial={false}>
+                      {!collapsedSections.has(section) &&
+                        group.map((row, index) => (
+                          <MatrixRow
+                            key={`plan_duration-${row.ref_id}`}
+                            row={row}
+                            isLast={index === group.length - 1}
+                            anchorCurrency={book.settings.anchor_currency}
+                            drafts={drafts}
+                            onDraft={setDraft}
+                          />
+                        ))}
+                    </AnimatePresence>
+                  </Fragment>
+                );
+              })}
               {book.addons.length > 0 && (
                 <SectionHeader
                   label={t("pricing.matrix.addonsSection")}
@@ -271,8 +278,6 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
     </Section>
   );
 }
-
-type MatrixSection = "plans" | "addons";
 
 function SectionHeader({
   label,
@@ -339,7 +344,7 @@ function MatrixRow({
         isLast ? "" : "[&>td]:border-b [&>td>div]:pb-[11px]"
       }`}
     >
-      <Cell className="min-w-40 font-medium text-foreground">{pricingRowLabel(row, t)}</Cell>
+      <Cell className="min-w-40 font-medium text-foreground">{row.days === null ? row.name : t("plans.daysShort", { count: row.days })}</Cell>
       <Cell>
         <Input
           type="number"
@@ -428,168 +433,5 @@ function OverrideCell({
         {isPinned ? <Pin className="size-4 text-primary" /> : <PinOff className="size-4" />}
       </IconButton>
     </div>
-  );
-}
-
-function BulkAdjustButton({ onChanged }: { onChanged: () => void }) {
-  const { t } = useTranslation();
-  const [step, setStep] = useState<"closed" | "form" | "confirm">("closed");
-  const [scope, setScope] = useState<BulkAdjustScope>("ALL_PLANS");
-  const [factor, setFactor] = useState("1.00");
-  const [diff, setDiff] = useState<PricingDiff | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const buildBody = () => ({
-    scope,
-    factor,
-    plan_duration_ids: [],
-    addon_ids: [],
-  });
-
-  const handlePreview = async () => {
-    setIsLoading(true);
-    try {
-      const preview = await previewPricingChange({ adjust: buildBody() });
-      setDiff(preview);
-      setStep("confirm");
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("pricing.matrix.previewError")));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleConfirm = async () => {
-    // closed first: the factor multiplies current prices, a second click would apply it twice
-    setStep("closed");
-    setDiff(null);
-    try {
-      await adjustBasePrices(buildBody());
-      toast.success(t("pricing.matrix.applied"));
-      onChanged();
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("pricing.matrix.applyError")));
-    }
-  };
-
-  return (
-    <>
-      <Button
-        variant="glass"
-        icon={Wand2}
-        onClick={() => setStep("form")}
-      >
-        {t("pricing.matrix.bulkAdjust")}
-      </Button>
-
-      {step === "form" && (
-        <Modal onClose={() => setStep("closed")} size="sm" material="glass" scrollable>
-          <BulkAdjustFormBody
-            scope={scope}
-            factor={factor}
-            isLoading={isLoading}
-            onScopeChange={setScope}
-            onFactorChange={setFactor}
-            onSubmit={() => void handlePreview()}
-          />
-        </Modal>
-      )}
-
-      {step === "confirm" && diff && (
-        <ConfirmDialog
-          title={t("pricing.matrix.confirmTitle")}
-          icon={Wand2}
-          size="md"
-          message={t("pricing.matrix.confirmMessage", { count: diff.affected_count })}
-          confirmLabel={t("pricing.matrix.apply")}
-          cancelLabel={t("common.cancel")}
-          onConfirm={() => void handleConfirm()}
-          onCancel={() => {
-            setStep("closed");
-            setDiff(null);
-          }}
-        >
-          <PricingDiffList diff={diff} />
-        </ConfirmDialog>
-      )}
-    </>
-  );
-}
-
-interface BulkAdjustFormBodyProps {
-  scope: BulkAdjustScope;
-  factor: string;
-  isLoading: boolean;
-  onScopeChange: (scope: BulkAdjustScope) => void;
-  onFactorChange: (factor: string) => void;
-  onSubmit: () => void;
-}
-
-function BulkAdjustFormBody({ scope, factor, isLoading, onScopeChange, onFactorChange, onSubmit }: BulkAdjustFormBodyProps) {
-  const { t } = useTranslation();
-  const close = useModalClose();
-  // the backend rejects <= 0 too (factor: gt=0); 0 would zero every price
-  const isFactorValid = factor.trim() !== "" && Number(factor) > 0;
-
-  return (
-    <>
-      <DialogHeader icon={Wand2} title={t("pricing.matrix.bulkAdjustTitle")} />
-
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (isFactorValid) onSubmit();
-        }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
-          <div className={GLASS_DIALOG_CARD_CLASS}>
-            <Field label={t("pricing.matrix.scopeLabel")} htmlFor="pricing-bulk-scope">
-              <SelectDropdown
-                variant="well"
-                size="compact"
-                id="pricing-bulk-scope"
-                value={scope}
-                onChange={(value) => onScopeChange(value as BulkAdjustScope)}
-                icon={Filter}
-                placeholder={t(`pricing.matrix.scope.${scope}`)}
-                options={BULK_SCOPES.map((option) => ({
-                  value: option,
-                  label: t(`pricing.matrix.scope.${option}`),
-                }))}
-              />
-            </Field>
-            <Field
-              label={t("pricing.matrix.factorLabel")}
-              htmlFor="pricing-bulk-factor"
-              required
-              hint={t("pricing.matrix.factorHint")}
-              error={factor.trim() !== "" && !isFactorValid ? t("pricing.matrix.factorPositive") : undefined}
-            >
-              <Input
-                id="pricing-bulk-factor"
-                type="number"
-                onKeyDown={blockNonDecimalKeys}
-                step="any"
-                min="0"
-                required
-                placeholder={t("pricing.matrix.factorPlaceholder")}
-                value={factor}
-                onChange={(event) => onFactorChange(event.target.value)}
-                aria-invalid={factor.trim() !== "" && !isFactorValid}
-              />
-            </Field>
-          </div>
-        </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
-          <Button variant="glass" type="button" onClick={close}>
-            {t("common.cancel")}
-          </Button>
-          <Button variant="glassAccent" type="submit" isLoading={isLoading} disabled={!isFactorValid}>
-            {isLoading ? t("pricing.matrix.previewing") : t("pricing.matrix.preview")}
-          </Button>
-        </div>
-      </form>
-    </>
   );
 }

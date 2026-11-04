@@ -6,8 +6,9 @@ import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
 // a round-trip through <input type="number"> loses no precision.
 
 export type Currency = "USD" | "XTR" | "RUB";
+export const CURRENCIES: readonly Currency[] = ["USD", "XTR", "RUB"];
 export type RoundingMode = "INTEGER" | "DECIMAL_2";
-export type BulkAdjustScope = "ALL_PLANS" | "ALL_ADDONS";
+export type BulkAdjustScope = "ALL_PLANS" | "ALL_ADDONS" | "SELECTED";
 
 export interface CurrencyRate {
   currency: Currency;
@@ -98,9 +99,21 @@ export function switchAnchorCurrency(newAnchor: Currency): Promise<PriceBook> {
   return apiPost<PriceBook, { new_anchor: Currency }>("/pricing/actions/switch-anchor", { new_anchor: newAnchor });
 }
 
+export type PriceAdjustMode = "MULTIPLY" | "SET" | "LADDER";
+export type PinnedPriceAction = "KEEP" | "SCALE" | "RESET";
+
 export interface AdjustBasePricesBody {
   scope: BulkAdjustScope;
-  factor: string;
+  mode: PriceAdjustMode;
+  /** MULTIPLY */
+  factor?: string;
+  /** SET: the new price; LADDER: the base duration's price */
+  price?: string;
+  /** LADDER: the duration `price` is for */
+  ladder_base_days?: number;
+  /** LADDER: percent off by duration in days; negative is a markup */
+  ladder_discounts?: Record<number, string>;
+  pinned: PinnedPriceAction;
   plan_duration_ids: number[];
   addon_ids: number[];
 }

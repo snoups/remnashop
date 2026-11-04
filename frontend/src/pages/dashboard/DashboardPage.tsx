@@ -1,5 +1,5 @@
 import { Layers, Users, Wallet, Wifi } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -15,9 +15,10 @@ import type {
 import { usePermissions } from "@entities/user/use-current-user";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { formatTime } from "@shared/lib/relative-time";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 import { AttentionCard } from "@pages/dashboard/AttentionCard";
@@ -30,7 +31,7 @@ import { SubscriptionsCard } from "@pages/dashboard/SubscriptionsCard";
 import { SystemStatusCard } from "@pages/dashboard/SystemStatusCard";
 
 // a lone card spans the row
-const PAIR_ROW_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))] gap-3";
+const PAIR_ROW_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))] gap-5";
 
 function KpiRow({
   overview,
@@ -47,9 +48,10 @@ function KpiRow({
   const liveNodes = nodes?.available ? nodes.nodes.filter((node) => !node.is_disabled) : null;
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-5">
       {users && (
         <KpiTile
+          panel
           icon={Users}
           label={t("dashboard.kpi.users")}
           value={users.total.toLocaleString(language)}
@@ -65,6 +67,7 @@ function KpiRow({
       )}
       {subscriptions && (
         <KpiTile
+          panel
           icon={Layers}
           label={t("dashboard.kpi.activePaid")}
           value={subscriptions.paid_active.toLocaleString(language)}
@@ -76,6 +79,7 @@ function KpiRow({
       )}
       {hourlyOnline && (
         <KpiTile
+          panel
           icon={Wifi}
           label={t("dashboard.kpi.online")}
           value={hourlyOnline.current.toLocaleString(language)}
@@ -92,9 +96,13 @@ function KpiRow({
       )}
       {revenue && (
         <KpiTile
+          panel
           icon={Wallet}
           label={t("dashboard.kpi.revenueToday")}
           value={formatMoney(revenue.today, revenue.report_currency, language)}
+          hint={t("dashboard.kpi.revenueYesterday", {
+            value: formatMoney(revenue.yesterday_same_time, revenue.report_currency, language),
+          })}
           trend={
             revenue.change === null
               ? undefined
@@ -115,8 +123,9 @@ export function DashboardPage() {
   const permissions = usePermissions();
   const canViewNodes = permissions.includes("REMNAWAVE_NODES_VIEW");
 
-  const { token: refreshKey } = useRefreshSignal();
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const { token: refreshKey, updatedAt, setUpdatedAt } = useRefreshSignal();
+  // the header shows it beside the refresh button; gone with the page
+  useEffect(() => () => setUpdatedAt(null), [setUpdatedAt]);
   const [kpiState] = useAsyncResource(getOverview, {
     deps: [refreshKey],
     keepData: true,
@@ -135,16 +144,29 @@ export function DashboardPage() {
   const showClientApps = permissions.includes("REMNAWAVE_CLIENT_APPS_VIEW");
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    // its own scroller: main's fade would dim the first cards at rest. data-under-header: the
+    // header's 20px padding moves into this one, where the fade (scroll-fade-gap) sits
+    <div data-fills-main data-under-header className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+    <div className="scroll-fade-y scroll-fade-gap page-scroll md:min-h-0 md:pt-5 md:scroll-pt-5 md:flex-1 md:overflow-y-auto [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+    <LoadGate>
+    <LoadGateHold
+      isLoading={kpiState.kind === "loading" || hourlyOnlineState.kind === "loading" || nodesState.kind === "loading"}
+    />
+    <div className="flex flex-col gap-5">
       {updatedAt && (
-        <span className="text-[12.5px] text-muted-foreground">
+        // the header holds it on desktop
+        <span className="text-[12px] text-muted-foreground md:hidden">
           {t("dashboard.updatedAt", {
             time: formatTime(updatedAt, i18n.language),
           })}
         </span>
       )}
       {kpiState.kind === "loading" && <Spinner className="py-4" />}
-      {kpiState.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {kpiState.kind === "error" && (
+        <div className="glass-panel rounded-3xl p-4">
+          <ErrorState text={t("common.loadError")} />
+        </div>
+      )}
       {kpiState.kind === "ready" && (
         <KpiRow
           overview={kpiState.data}
@@ -157,7 +179,7 @@ export function DashboardPage() {
 
       {(showRevenue || subscriptions) && (
         <div
-          className={`grid grid-cols-1 gap-3 ${showRevenue && subscriptions ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}
+          className={`grid grid-cols-1 gap-5 ${showRevenue && subscriptions ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : ""}`}
         >
           {showRevenue && <RevenueCard refreshKey={refreshKey} />}
           {subscriptions && <SubscriptionsCard subscriptions={subscriptions} />}
@@ -183,6 +205,9 @@ export function DashboardPage() {
           host={kpiState.data.host}
         />
       )}
+    </div>
+    </LoadGate>
+    </div>
     </div>
   );
 }

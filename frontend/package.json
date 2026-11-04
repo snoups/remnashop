@@ -19,6 +19,7 @@
     "@tiptap/pm": "3.32.0",
     "@tiptap/react": "3.32.0",
     "@tiptap/starter-kit": "3.32.0",
+    "html-to-image": "^1.11.13",
     "i18next": "^26.3.6",
     "lottie-web": "^5.13.0",
     "lucide-react": "^1.31.0",

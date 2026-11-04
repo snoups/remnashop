@@ -18,7 +18,15 @@ export interface PlanDuration {
   overrides: PlanPriceOverride[];
 }
 
-export interface Plan {
+export interface PlanIconValue {
+  /** a Telegram custom emoji from an imported pack */
+  icon_emoji_id: string | null;
+  icon_emoji_fallback: string | null;
+}
+
+export const NO_PLAN_ICON: PlanIconValue = { icon_emoji_id: null, icon_emoji_fallback: null };
+
+export interface Plan extends PlanIconValue {
   id: number;
   public_code: string;
   name: string;
@@ -58,6 +66,8 @@ export interface CreatePlanRequest {
   description?: string | null;
   tag?: string | null;
   badge?: PlanBadge | null;
+  icon_emoji_id?: string | null;
+  icon_emoji_fallback?: string | null;
   type: PlanType;
   traffic_limit_strategy: TrafficLimitStrategy;
   traffic_limit: number;
@@ -76,6 +86,8 @@ export interface UpdatePlanRequest {
   description?: string | null;
   tag?: string | null;
   badge?: PlanBadge | null;
+  icon_emoji_id?: string | null;
+  icon_emoji_fallback?: string | null;
   type?: PlanType;
   traffic_limit_strategy?: TrafficLimitStrategy;
   traffic_limit?: number;
@@ -106,9 +118,17 @@ export interface SetPlanDurationsItem {
   base_price: string;
 }
 
-// per-currency overrides are set on the Pricing page; this endpoint ignores them
 export function setPlanDurations(planId: number, durations: SetPlanDurationsItem[]): Promise<Plan> {
   return apiPut<Plan, { durations: SetPlanDurationsItem[] }>(`/plans/${planId}/durations`, { durations });
+}
+
+export interface PlanSquads {
+  internal_squads: string[];
+  external_squad: string | null;
+}
+
+export function updatePlanSquads(planId: number, squads: PlanSquads): Promise<Plan> {
+  return apiPut<Plan, PlanSquads>(`/plans/${planId}/squads`, squads);
 }
 
 export interface UpdatePlanAccessRequest {

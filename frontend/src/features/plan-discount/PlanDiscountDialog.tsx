@@ -5,39 +5,23 @@ import { useTranslation } from "react-i18next";
 import { type Plan, updatePlanDiscount } from "@entities/plans/api";
 import { PLAN_DISCOUNT_STATUS_TONE, planDiscountStatus } from "@entities/plans/discount";
 import { getErrorMessage } from "@shared/api/http";
-import { parseIsoDate, toIsoDate } from "@shared/lib/iso-date";
+import { isoToLastDay, lastDayToIso, startToIso, toIsoDate } from "@shared/lib/iso-date";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
 import { DatePickerField } from "@shared/ui/DatePickerField";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Field } from "@shared/ui/Field";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
-import { SuffixInput } from "@shared/ui/TextInput";
 
 interface PlanDiscountDialogProps {
   plan: Plan;
   onClose: () => void;
   onSaved: (plan: Plan) => void;
-}
-
-// both bounds are local midnights; the end one is the day after the picked last day
-function startToIso(day: string): string | null {
-  return parseIsoDate(day)?.toISOString() ?? null;
-}
-
-function lastDayToIso(day: string): string | null {
-  const date = parseIsoDate(day);
-  if (!date) return null;
-  date.setDate(date.getDate() + 1);
-  return date.toISOString();
-}
-
-function isoToLastDay(iso: string | null): string {
-  return iso ? toIsoDate(new Date(new Date(iso).getTime() - 1)) : "";
 }
 
 export function PlanDiscountDialog({ plan, onClose, onSaved }: PlanDiscountDialogProps) {
@@ -93,10 +77,10 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
       <DialogHeader icon={BadgePercent} title={t("plans.discount.title")} subtitle={plan.name} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 p-4">
-          <Card variant="form">
+        <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("plans.discount.percentLabel")} htmlFor="plan-discount-percent" hint={t("plans.discount.percentHint")}>
-              <SuffixInput
+              <Input
                 id="plan-discount-percent"
                 type="number"
                 min={0}
@@ -112,7 +96,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("plans.discount.startsLabel")} htmlFor="plan-discount-starts">
                 <DatePickerField
-                  variant="form"
+                  compact
                   id="plan-discount-starts"
                   value={startsOn}
                   onChange={setStartsOn}
@@ -125,7 +109,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
                 error={isWindowInvalid ? t("apiErrors.PLAN_DISCOUNT_WINDOW_INVALID") : undefined}
               >
                 <DatePickerField
-                  variant="form"
+                  compact
                   id="plan-discount-ends"
                   value={lastDay}
                   onChange={setLastDay}
@@ -134,20 +118,20 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
               </Field>
             </div>
             <p className="text-[12px] text-muted-foreground">{t("plans.discount.stackingHint")}</p>
-          </Card>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
           <div className="min-w-0 flex-1">
             {status && (
-              <Badge tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>
+              <Badge borderless tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>
             )}
           </div>
-          <Button variant="outline" type="button" onClick={close}>
+          <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="accent" type="submit" disabled={isSubmitting || isPercentInvalid || isWindowInvalid}>
-            {isSubmitting ? t("common.saving") : t("common.save")}
+          <Button variant="glassAccent" type="submit" disabled={isPercentInvalid || isWindowInvalid} isLoading={isSubmitting}>
+            {t("common.save")}
           </Button>
         </div>
       </form>

@@ -2,8 +2,7 @@ import { Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { OverviewSubscriptions } from "@entities/overview/api";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { Section } from "@shared/ui/glass/Section";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSubscriptions }) {
@@ -16,15 +15,14 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
   ] as const;
 
   return (
-    <Card>
-      <CardHeader
-        icon={Layers}
-        title={t("dashboard.subscriptions.title")}
-        description={t("dashboard.subscriptions.description")}
-      />
+    <Section
+      icon={Layers}
+      title={t("dashboard.subscriptions.title")}
+      description={t("dashboard.subscriptions.description")}
+    >
       <div className="flex flex-col gap-4 pt-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-foreground">{subscriptions.total.toLocaleString(i18n.language)}</span>
+          <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{subscriptions.total.toLocaleString(i18n.language)}</span>
           <span className={EYEBROW_CLASS}>{t("dashboard.subscriptions.total")}</span>
         </div>
         <div className="flex flex-col gap-2.5">
@@ -41,6 +39,6 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
           ))}
         </div>
       </div>
-    </Card>
+    </Section>
   );
 }

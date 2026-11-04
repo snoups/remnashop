@@ -5,13 +5,12 @@ import { useTranslation } from "react-i18next";
 import { getOnlineChart } from "@entities/overview/api";
 import type { HourlyOnline } from "@entities/overview/api";
 import type { AsyncState } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-import { fillDailySeries, formatChartDay, useChart } from "@pages/dashboard/chart-data";
+import { fillDailySeries, formatChartDay, formatChartDayLong, useChart } from "@pages/dashboard/chart-data";
 import { TrendChart } from "@pages/dashboard/charts";
 
 type View = "hours" | 7 | 30;
@@ -23,19 +22,19 @@ function OnlineView({
   peakTag,
   data,
   xFormatter,
-  isEmpty = false,
+  labelFormatter,
 }: {
   current: number;
   peakTag: string | null;
   data: { x: string; value: number | null }[];
   xFormatter: (x: string) => string;
-  isEmpty?: boolean;
+  labelFormatter?: (x: string) => string;
 }) {
   const { t, i18n } = useTranslation();
   return (
     <div className="flex flex-col gap-3 pt-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-2xl font-bold text-foreground">{current.toLocaleString(i18n.language)}</span>
+        <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{current.toLocaleString(i18n.language)}</span>
         {peakTag && <Tag>{peakTag}</Tag>}
       </div>
       <TrendChart
@@ -44,8 +43,8 @@ function OnlineView({
         valueName={t("dashboard.online.valueName")}
         valueFormatter={(value) => value.toLocaleString(i18n.language)}
         xFormatter={xFormatter}
+        labelFormatter={labelFormatter}
       />
-      {isEmpty && <p className="text-center text-[13px] text-muted-foreground">{t("dashboard.online.empty")}</p>}
     </div>
   );
 }
@@ -75,7 +74,6 @@ function HourlyBody({ state }: { state: AsyncState<HourlyOnline> }) {
       }
       data={state.data.points.map((point) => ({ x: point.hour, value: point.peak }))}
       xFormatter={hourLabel}
-      isEmpty={measured.length === 0}
     />
   );
 }
@@ -93,6 +91,7 @@ function DailyBody({ days, refreshKey }: { days: 7 | 30; refreshKey: number }) {
       peakTag={null}
       data={series.map((point) => ({ x: point.day, value: point.count }))}
       xFormatter={(x) => formatChartDay(x, i18n.language)}
+      labelFormatter={(x) => formatChartDayLong(x, i18n.language)}
     />
   );
 }
@@ -113,14 +112,13 @@ export function OnlineCard({
   ];
 
   return (
-    <Card>
-      <CardHeader
-        icon={Wifi}
-        title={t("dashboard.online.title")}
-        description={t("dashboard.online.description")}
-        aside={<SegmentedPills value={view} onChange={setView} options={options} />}
-      />
+    <Section
+      icon={Wifi}
+      title={t("dashboard.online.title")}
+      description={t("dashboard.online.description")}
+      aside={<SegmentedPills value={view} onChange={setView} options={options} />}
+    >
       {view === "hours" ? <HourlyBody state={hourlyState} /> : <DailyBody days={view} refreshKey={refreshKey} />}
-    </Card>
+    </Section>
   );
 }

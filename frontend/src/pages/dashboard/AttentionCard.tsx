@@ -16,21 +16,21 @@ import { useNavigate } from "react-router-dom";
 
 import type { BackupKind } from "@entities/backups/api";
 import { getAttention } from "@entities/overview/api";
+import { UNFULFILLED_STATUS } from "@entities/transactions/api";
 import type { AttentionItem, AttentionKind } from "@entities/overview/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
-import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_BODY_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
 
-const ROW_CLASS = `grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 ${LIST_ROW_CLASS}`;
+const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
 
 const SEVERITY_ICON_CLASS = {
   critical: "bg-error/12 text-error",
@@ -58,11 +58,12 @@ function settingsTabAllowed(key: (typeof SETTINGS_TABS)[number]["key"]) {
     SETTINGS_TABS.some((tab) => tab.key === key && tab.anyOf.some((p) => permissions.includes(p)));
 }
 
-const transactionsLink: AttentionLink = {
-  to: "/dashboard/transactions",
+// `status` is read once by the transactions page's status filter
+const transactionsLink = (status: string): AttentionLink => ({
+  to: `/dashboard/transactions?status=${status}`,
   label: "dashboard.attention.actions.transactions",
   allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "transactions" && isNavItemVisible(item, permissions)),
-};
+});
 
 // node_offline has none: nodes are managed in Remnawave
 const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
@@ -76,8 +77,8 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
     label: "dashboard.attention.actions.backups",
     allowed: settingsTabAllowed("backups"),
   },
-  paid_not_fulfilled: transactionsLink,
-  stale_pending: transactionsLink,
+  paid_not_fulfilled: transactionsLink(UNFULFILLED_STATUS),
+  stale_pending: transactionsLink("PENDING"),
   expiring_paid: {
     to: "/dashboard/analytics/retention",
     label: "dashboard.attention.actions.retention",
@@ -121,12 +122,12 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
     case "stale_pending":
       return {
         title: t("dashboard.attention.stalePending.title"),
-        sub: t("dashboard.attention.stalePending.sub", { formatted }),
+        sub: t("dashboard.attention.stalePending.sub", { count: item.count, formatted }),
       };
     case "expiring_paid":
       return {
         title: t("dashboard.attention.expiringPaid.title"),
-        sub: t("dashboard.attention.expiringPaid.sub", { formatted }),
+        sub: t("dashboard.attention.expiringPaid.sub", { count: item.count, formatted }),
       };
     case "bot_webhook":
       return { title: t("dashboard.attention.botWebhook.title"), sub: item.subject };
@@ -143,7 +144,7 @@ function AttentionRow({ item }: { item: AttentionItem }) {
 
   return (
     <div className={ROW_CLASS}>
-      <span className={`flex size-9 items-center justify-center rounded-full ${SEVERITY_ICON_CLASS[item.severity]}`}>
+      <span className={`flex size-8 items-center justify-center rounded-full ${SEVERITY_ICON_CLASS[item.severity]}`}>
         <Icon className="size-4" />
       </span>
       <span className="min-w-0">
@@ -151,7 +152,7 @@ function AttentionRow({ item }: { item: AttentionItem }) {
         {sub && <span className="block truncate text-[12px] text-muted-foreground">{sub}</span>}
       </span>
       {link && link.allowed(permissions) ? (
-        <Button variant="secondary" size="sm" onClick={() => navigate(link.to)}>
+        <Button variant="glass" size="sm" onClick={() => navigate(link.to)}>
           {t(link.label)}
         </Button>
       ) : (
@@ -171,31 +172,30 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
   const warning = items.length - critical;
 
   return (
-    <Card>
-      <CardHeader
-        icon={AlertTriangle}
-        title={t("dashboard.attention.title")}
-        description={t("dashboard.attention.description")}
-        aside={
-          (critical > 0 || warning > 0) && (
-            <>
-              {critical > 0 && (
-                <Badge tone="error">
-                  {t("dashboard.attention.critical", { value: critical.toLocaleString(i18n.language) })}
-                </Badge>
-              )}
-              {warning > 0 && <Badge tone="warning">{warning.toLocaleString(i18n.language)}</Badge>}
-            </>
-          )
-        }
-      />
+    <Section
+      icon={AlertTriangle}
+      title={t("dashboard.attention.title")}
+      description={t("dashboard.attention.description")}
+      aside={
+        (critical > 0 || warning > 0) && (
+          <>
+            {critical > 0 && (
+              <StatusPill tone="error">
+                {t("dashboard.attention.critical", { value: critical.toLocaleString(i18n.language) })}
+              </StatusPill>
+            )}
+            {warning > 0 && <StatusPill tone="warning">{warning.toLocaleString(i18n.language)}</StatusPill>}
+          </>
+        )
+      }
+    >
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
-        <div className={`${LIST_BODY_CLASS} pt-1.5`}>
+        <div className={`${LIST_BODY_CLASS} pt-4`}>
           {sorted.length === 0 ? (
             <div className={ROW_CLASS}>
-              <span className="flex size-9 items-center justify-center rounded-full bg-success/12 text-success">
+              <span className="flex size-8 items-center justify-center rounded-full bg-success/12 text-success">
                 <CheckCircle2 className="size-4" />
               </span>
               <span className="min-w-0">
@@ -213,6 +213,6 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
           )}
         </div>
       )}
-    </Card>
+    </Section>
   );
 }

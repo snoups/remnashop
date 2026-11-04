@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 
 import type { HostMemory, HostStats, RuntimeProcess } from "@entities/overview/api";
 import { formatBytes, formatPercent } from "@shared/lib/format";
-import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { Section } from "@shared/ui/glass/Section";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { StatusPill } from "@shared/ui/glass/StatusPill";
+import { EYEBROW_CLASS, GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { Tag } from "@shared/ui/Tag";
 import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dashboard/runtime";
 
-const SVC_CLASS = "flex flex-col gap-2 rounded-2xl max-md:rounded-card border border-border bg-white/[0.03] p-4";
-const KV_CLASS = "flex items-center justify-between gap-2 text-[12.5px]";
+const SVC_CLASS = `flex flex-col gap-2 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
+const KV_CLASS = "flex items-center justify-between gap-2 text-[13px]";
 
 function Kv({ label, value }: { label: string; value: string }) {
   return (
@@ -30,9 +30,9 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
     <div className={SVC_CLASS}>
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-foreground">
-          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Cpu className="size-4" />
-            <i className="absolute -bottom-px -right-px size-2.5 rounded-full bg-success ring-2 ring-background" />
+          <span className="relative shrink-0">
+            <IconCircle icon={Cpu} />
+            <i className="absolute -bottom-px -right-px size-2.5 rounded-full bg-success" />
           </span>
           <span className="truncate">{RUNTIME_PROCESS_LABELS[process.process] ?? process.process}</span>
         </span>
@@ -40,7 +40,7 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
       </div>
       <Kv label={t("dashboard.runtime.memory")} value={formatBytes(process.rss_bytes, i18n.language)} />
       <Kv label={t("dashboard.runtime.uptime")} value={formatUptime(t, process.uptime_seconds)} />
-      <div className="mt-1 flex flex-col gap-1.5 rounded-xl border border-border/50 bg-white/[0.03] p-2.5">
+      <div className="mt-1 flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
         <span className={EYEBROW_CLASS}>{t("dashboard.runtime.eventLoop")}</span>
         <Kv label={t("dashboard.runtime.eventLoopDelay")} value={`${decimals.format(process.event_loop_delay_ms)} ${ms}`} />
         <Kv label={t("dashboard.runtime.eventLoopP99")} value={`${decimals.format(process.event_loop_p99_ms)} ${ms}`} />
@@ -54,7 +54,7 @@ function UsageRow({ label, value, percent }: { label: string; value: string; per
   return (
     <div className="flex flex-col gap-1.5">
       <Kv label={label} value={value} />
-      <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="h-2 overflow-hidden rounded-full glass-track">
         <div className={`h-full rounded-full ${usageBarClass(percent)}`} style={{ width: `${width}%` }} />
       </div>
     </div>
@@ -130,17 +130,16 @@ export function SystemStatusCard({
 }) {
   const { t, i18n } = useTranslation();
   return (
-    <Card>
-      <CardHeader
-        icon={Cpu}
-        title={t("dashboard.runtime.title")}
-        description={t("dashboard.runtime.description")}
-        aside={
-          runtime.length > 0 && (
-            <Badge tone="success">{t("dashboard.runtime.running", { n: runtime.length.toLocaleString(i18n.language) })}</Badge>
-          )
-        }
-      />
+    <Section
+      icon={Cpu}
+      title={t("dashboard.runtime.title")}
+      description={t("dashboard.runtime.description")}
+      aside={
+        runtime.length > 0 && (
+          <StatusPill tone="success">{t("dashboard.runtime.running", { n: runtime.length.toLocaleString(i18n.language) })}</StatusPill>
+        )
+      }
+    >
       <div className="flex flex-col gap-3 pt-4">
         {runtime.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -151,6 +150,6 @@ export function SystemStatusCard({
         )}
         <ServerCard host={host} memory={memory} />
       </div>
-    </Card>
+    </Section>
   );
 }

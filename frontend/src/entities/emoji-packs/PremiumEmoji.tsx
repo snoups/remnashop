@@ -1,6 +1,6 @@
 // light canvas build: no expressions and no eval(); Telegram emoji never use expressions
 import lottie from "lottie-web/build/player/lottie_light_canvas";
-import { Smile } from "lucide-react";
+import { Icon, Smile } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -8,6 +8,7 @@ import {
   emojiThumbnailUrl,
   type EmojiPackItem,
 } from "@entities/emoji-packs/api";
+import { LUCIDE_PACK_ICONS } from "@entities/emoji-packs/lucide-pack";
 
 interface PremiumEmojiProps {
   /** undefined for an empty pack's cover (`pack.items[0]`): drawn as a plain smiley */
@@ -46,6 +47,8 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
   }, [isLottie, emojiId]);
 
   if (!item) return <Smile className="text-muted-foreground" style={{ width: size, height: size }} />;
+  const lucide = LUCIDE_PACK_ICONS[item.custom_emoji_id];
+  if (lucide) return <Icon iconNode={lucide.node} size={size} color="white" />;
   if (isLottie) return <div ref={container} style={{ width: size, height: size }} />;
 
   if (item.animation_kind === "video") {
