@@ -11,9 +11,9 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
@@ -67,13 +67,13 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
 
   return (
     <>
-      <DialogHeader icon={Gift} tone="primary" title={t("subscriptions.grant.title")} />
+      <DialogHeader icon={Gift} title={t("subscriptions.grant.title")} />
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 px-4 pb-4">
+        <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
           {plans.kind === "loading" && <Spinner size="card" />}
           {plans.kind === "error" && <ErrorState text={t("common.loadError")} />}
           {plans.kind === "ready" && (
-            <Card variant="form">
+            <div className={GLASS_DIALOG_CARD_CLASS}>
               <PlanDurationPicker
                 plans={plans.data}
                 planId={planId}
@@ -81,15 +81,14 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
                 duration={duration}
                 onDurationChange={setDuration}
               />
-            </Card>
+            </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-3.5">
-          <span className="flex-1" />
-          <Button variant="outline" type="button" onClick={close}>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="accent" type="submit" disabled={isSubmitting || planId === null}>
+          <Button variant="glassAccent" type="submit" disabled={planId === null} isLoading={isSubmitting}>
             {t("subscriptions.grant.submit")}
           </Button>
         </div>

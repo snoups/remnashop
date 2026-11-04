@@ -99,9 +99,6 @@ export const SubscriptionsPage = lazy(() =>
   import("@pages/subscriptions/SubscriptionsPage").then((m) => ({ default: m.SubscriptionsPage })),
 );
 export const UsersPage = lazy(() => import("@pages/users/UsersPage").then((m) => ({ default: m.UsersPage })));
-export const DebugPage = lazy(() =>
-  import("@pages/debug/DebugPage").then((m) => ({ default: m.DebugPage })),
-);
 export const DebugKitPage = lazy(() =>
   import("@pages/debug/DebugPage").then((m) => ({ default: m.DebugKitPage })),
 );

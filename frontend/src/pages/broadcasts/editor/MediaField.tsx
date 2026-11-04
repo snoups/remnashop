@@ -1,4 +1,4 @@
-import { FileUp, Image } from "lucide-react";
+import { FileUp, Image, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +8,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { formatBytes } from "@shared/lib/format";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
+import { IconButton } from "@shared/ui/IconButton";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif,video/mp4,application/pdf,application/zip";
 
@@ -53,15 +54,14 @@ export function MediaField({ broadcast, fileName, canSet, canDelete, onChanged }
 
   if (!broadcast?.media_type) {
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border p-3">
+      <div className="flex flex-wrap items-center gap-3 rounded-[18px] border border-dashed border-white/[0.18] bg-black/[0.24] py-2 pl-3.5 pr-2">
         {input}
         <FileUp className="size-5 text-muted-foreground" />
-        <span className="min-w-0 flex-1 text-[12.5px] text-muted-foreground">
+        <span className="min-w-0 flex-1 text-[12px] text-muted-foreground">
           {t(broadcast ? "broadcasts.editor.media.hint" : "broadcasts.editor.media.saveFirst")}
         </span>
         <Button
-          variant="secondary"
-          size="sm"
+          variant="glass"
           disabled={!broadcast || !canSet || isBusy}
           onClick={() => inputRef.current?.click()}
         >
@@ -72,41 +72,41 @@ export function MediaField({ broadcast, fileName, canSet, canDelete, onChanged }
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-white/[0.02] p-2.5">
+    <div className="glass-well flex flex-wrap items-center gap-3 rounded-[18px] p-2">
       {input}
-      <span className="flex h-14 w-[88px] items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground">
+      <span className="flex h-14 w-[88px] items-center justify-center rounded-[10px] bg-white/[0.06] text-muted-foreground">
         <Image className="size-5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-[13px] font-semibold text-foreground">
+        <span className="truncate text-[13px] font-medium text-foreground">
           {fileName ?? t(`broadcasts.media.${broadcast.media_type}`)}
         </span>
         <span className="text-[12px] text-muted-foreground">
           {[
             t(`broadcasts.media.${broadcast.media_type}`),
             broadcast.media_size_bytes !== null ? formatBytes(broadcast.media_size_bytes, i18n.language) : null,
-            t("broadcasts.editor.media.captionLimit"),
           ]
             .filter(Boolean)
-            .join(" · ")}
+            .join(" · ")}{" "}
+          {t("broadcasts.editor.media.captionLimit")}
         </span>
       </div>
       <Button
-        variant="secondary"
-        size="sm"
+        variant="glass"
         disabled={!canSet || isBusy}
         onClick={() => inputRef.current?.click()}
       >
         {t("broadcasts.editor.media.replace")}
       </Button>
-      <Button
-        variant="danger"
-        size="sm"
+      <IconButton
+        size="9"
+        tone="glass"
         disabled={!canDelete || isBusy}
         onClick={() => void run(() => deleteBroadcastMedia(broadcast.id), null)}
       >
-        {t("common.delete")}
-      </Button>
+        {/* a glassDanger button's look, square: the bin in the error tone */}
+        <Trash2 className="size-4 text-error" />
+      </IconButton>
     </div>
   );
 }

@@ -28,7 +28,6 @@ import {
   DashboardPage,
   EventLogPage,
   DebugKitPage,
-  DebugPage,
   DebugVariantsPage,
   GatewaysSettingsPage,
   GeneralSettingsPage,
@@ -72,7 +71,13 @@ export const router = createBrowserRouter([
         ),
         children: [
           {
-            errorElement: <PageRouteError />,
+            // data-fills-main: main's fade would dim the card's top; data-under-header: the header's 20px
+            // padding moves above it
+            errorElement: (
+              <div data-fills-main data-under-header className="md:pt-5">
+                <PageRouteError />
+              </div>
+            ),
             children: [
               { index: true, element: <DashboardPage /> },
               {
@@ -121,14 +126,8 @@ export const router = createBrowserRouter([
                 ],
               },
               { path: "events", element: <EventLogPage /> },
-              {
-                path: "debug",
-                element: <DebugPage />,
-                children: [
-                  { index: true, element: <DebugKitPage /> },
-                  { path: "variants", element: <DebugVariantsPage /> },
-                ],
-              },
+              { path: "debug", element: <DebugKitPage /> },
+              { path: "debug/variants", element: <DebugVariantsPage /> },
             ],
           },
         ],

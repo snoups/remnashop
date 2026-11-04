@@ -10,10 +10,11 @@ import type {
   PromocodeRewardType,
   UpdatePromocodeRequest,
 } from "@entities/promocodes/api";
+import { endOfDayToIso, isoToLastDay } from "@shared/lib/iso-date";
 import { parseOptionalInt } from "@shared/lib/number-input";
 import type { BadgeTone } from "@shared/ui/Badge";
 
-export type PromocodeStatus = "ACTIVE" | "INACTIVE" | "EXPIRED";
+export type PromocodeStatus = "ACTIVE" | "INACTIVE" | "EXPIRED" | "EXHAUSTED";
 export type PromocodeReward = Pick<
   Promocode,
   "reward_type" | "reward" | "reward_addon_id" | "reward_plan_id" | "reward_duration_days"
@@ -28,7 +29,7 @@ export interface PromocodeLimitsDraft {
 }
 type LimitsPayload = Required<Omit<UpdatePromocodeRequest, "is_active">>;
 
-export const PROMOCODE_STATUSES: PromocodeStatus[] = ["ACTIVE", "INACTIVE", "EXPIRED"];
+export const PROMOCODE_STATUSES: PromocodeStatus[] = ["ACTIVE", "EXHAUSTED", "INACTIVE", "EXPIRED"];
 export const REWARD_TYPES: PromocodeRewardType[] = [
   "DURATION",
   "TRAFFIC",
@@ -52,11 +53,15 @@ export const PROMOCODE_STATUS_BADGE_TONE: Record<PromocodeStatus, BadgeTone> = {
   ACTIVE: "success",
   INACTIVE: "neutral",
   EXPIRED: "warning",
+  EXHAUSTED: "warning",
 };
 
 export function getPromocodeStatus(promo: Promocode): PromocodeStatus {
   if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) return "EXPIRED";
-  return promo.is_active ? "ACTIVE" : "INACTIVE";
+  if (!promo.is_active) return "INACTIVE";
+  // mirrors the backend's status filter
+  if (promo.max_activations !== null && promo.activations_count >= promo.max_activations) return "EXHAUSTED";
+  return "ACTIVE";
 }
 
 export function describeReward(
@@ -91,7 +96,7 @@ export function limitsDraftOf(promo: Promocode): PromocodeLimitsDraft {
     availability: promo.availability,
     allowedUserIds: promo.allowed_user_ids,
     allowedPlanIds: promo.allowed_plan_ids,
-    expiresAt: promo.expires_at ? promo.expires_at.slice(0, 10) : "",
+    expiresAt: isoToLastDay(promo.expires_at),
     maxActivations: promo.max_activations !== null ? String(promo.max_activations) : "",
     isReusable: promo.is_reusable,
   };
@@ -112,7 +117,8 @@ export function limitsToPayload(
     // the hidden allowlist is dropped with it, not left dangling on the row
     allowed_user_ids: draft.availability === "ALLOWED" ? draft.allowedUserIds : [],
     allowed_plan_ids: PLAN_LIMITED_REWARDS.includes(rewardType) ? draft.allowedPlanIds : [],
-    expires_at: draft.expiresAt ? `${draft.expiresAt}T23:59:59.000Z` : null,
+    // the end of the picked day in the admin's own time zone, as the list shows it
+    expires_at: endOfDayToIso(draft.expiresAt),
     max_activations: maxActivations,
     is_reusable: draft.isReusable,
   };

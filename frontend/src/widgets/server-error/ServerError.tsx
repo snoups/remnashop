@@ -17,14 +17,14 @@ function FullScreenError({ icon, titleKey, descriptionKey }: FullScreenErrorProp
   return (
     <FullScreenMessage
       icon={icon}
-      iconClassName="text-error"
+      tone="error"
       title={t(titleKey)}
       description={t(descriptionKey)}
       action={
         <Pressable
           type="button"
           onClick={() => window.location.reload()}
-          className={`${FULL_SCREEN_ACTION_CLASS}`}
+          className={FULL_SCREEN_ACTION_CLASS}
         >
           {t("errors.retry")}
         </Pressable>

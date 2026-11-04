@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 
 import { updateOwnProfile } from "@entities/user/api";
 import { getErrorMessage } from "@shared/api/http";
-import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
+import { copyToClipboard } from "@shared/lib/clipboard";
+import { generatePassword, PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
-import { Field } from "@shared/ui/Field";
-import { PasswordInput } from "@shared/ui/PasswordInput";
+import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { Field } from "@shared/ui/glass/Field";
+import { PasswordInput } from "@shared/ui/glass/Input";
 
 export function PasswordChangeRequired() {
   const { t } = useTranslation();
@@ -18,6 +20,19 @@ export function PasswordChangeRequired() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleGeneratePassword = () => {
+    const generated = generatePassword();
+    setNewPassword(generated);
+    setConfirmPassword(generated);
+    // a refused copy is soft: the password is in both fields either way
+    void copyToClipboard(generated).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,50 +59,52 @@ export function PasswordChangeRequired() {
     }
   };
 
+  // the sign-in page's card: the same glass, fields and actions
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <form
         onSubmit={(event) => void handleSubmit(event)}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl max-md:rounded-card border border-glass-border bg-surface/40 p-8 shadow-2xl backdrop-blur-xl"
+        className={`flex w-full max-w-sm flex-col gap-3 ${GLASS_STANDALONE_CARD_CLASS}`}
       >
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{t("auth.passwordChange.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("auth.passwordChange.description")}</p>
+        <div className="mb-3 flex flex-col gap-2">
+          <h1 className="text-[21px] font-bold tracking-tight text-foreground">{t("auth.passwordChange.title")}</h1>
+          <p className="text-[13px] text-muted-foreground">{t("auth.passwordChange.description")}</p>
         </div>
 
-        <Field label={t("auth.passwordChange.currentPasswordLabel")} htmlFor="force-current-password">
+        <Field label={t("auth.passwordChange.currentPasswordLabel")} htmlFor="force-current-password" required>
           <PasswordInput
             id="force-current-password"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
             autoComplete="current-password"
-            required
           />
         </Field>
 
-        <Field label={t("profile.edit.newPasswordLabel")} htmlFor="force-new-password" info={t("auth.passwordHint")}>
+        <Field label={t("profile.edit.newPasswordLabel")} htmlFor="force-new-password" info={t("auth.passwordHint")} required>
           <PasswordInput
             id="force-new-password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
             autoComplete="new-password"
             placeholder={t("profile.edit.newPasswordPlaceholder")}
-            required
           />
         </Field>
 
-        <Field label={t("auth.confirmPassword")} htmlFor="force-confirm-password">
+        <Field label={t("auth.confirmPassword")} htmlFor="force-confirm-password" required>
           <PasswordInput
             id="force-confirm-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             autoComplete="new-password"
             placeholder={t("auth.confirmPasswordPlaceholder")}
-            required
           />
         </Field>
 
-        <Button variant="accent" type="submit" disabled={isSubmitting}>
+        <Button variant="glass" type="button" onClick={handleGeneratePassword}>
+          {copied ? t("auth.copiedToClipboard") : t("auth.generatePassword")}
+        </Button>
+
+        <Button variant="glassSolid" type="submit" isLoading={isSubmitting}>
           {t("auth.passwordChange.submit")}
         </Button>
       </form>

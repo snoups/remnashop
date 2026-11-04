@@ -1,24 +1,10 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import type { UserListItem } from "@entities/user/api";
 import type { ListResponse } from "@shared/api/http";
-import type { Permission, Role } from "@shared/types/rbac";
+import type { Permission } from "@shared/types/rbac";
 
-export interface Admin {
-  id: number;
-  login: string | null;
-  name: string;
-  role: Role;
-  telegram_id: number | null;
-  username: string | null;
-  email: string | null;
-  language: string;
-  is_blocked: boolean;
-  personal_discount: number;
-  purchase_discount: number;
-  loyalty_discount: number;
-  points: string;
-  bonus_days: number;
-  is_trial_available: boolean;
-  created_at: string | null;
+/** the user fields plus the permission breakdown */
+export interface Admin extends UserListItem {
   permission_grants: Permission[];
   permission_revokes: Permission[];
   role_permissions: Permission[];
@@ -43,12 +29,8 @@ export interface CreateAdminPayload {
 }
 
 export interface PromoteAdminPayload {
-  user_id?: number;
-  email?: string;
-  telegram_username?: string;
+  user_id: number;
   login?: string;
-  permission_grants: Permission[];
-  permission_revokes: Permission[];
 }
 
 export interface UpdateAdminPayload {
@@ -56,8 +38,13 @@ export interface UpdateAdminPayload {
   permission_revokes: Permission[];
 }
 
-export function listAdmins(signal?: AbortSignal): Promise<Admin[]> {
-  return apiGet<ListResponse<Admin>>("/admins", signal).then((response) => response.items);
+export interface AdminList extends ListResponse<Admin> {
+  /** admins who can still sign in once demoted (Telegram, email or OAuth) */
+  customer_sign_in_ids: number[];
+}
+
+export function listAdmins(signal?: AbortSignal): Promise<AdminList> {
+  return apiGet<AdminList>("/admins", signal);
 }
 
 export function createAdmin(payload: CreateAdminPayload): Promise<AdminWithPassword> {
@@ -72,8 +59,8 @@ export function updateAdmin(userId: number, payload: UpdateAdminPayload): Promis
   return apiPatch<Admin, UpdateAdminPayload>(`/admins/${userId}`, payload);
 }
 
-export function demoteAdmin(userId: number): Promise<Admin> {
-  return apiPost<Admin, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
+export function demoteAdmin(userId: number): Promise<UserListItem> {
+  return apiPost<UserListItem, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
 }
 
 export function deleteAdmin(userId: number): Promise<void> {

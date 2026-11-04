@@ -11,10 +11,10 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
@@ -81,17 +81,18 @@ function MergePicker({
       : [];
 
   return (
-    <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+    <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
       <SearchField
         id="merge-search"
         label={t("users.merge.search")}
         hideLabel
+        compact
         placeholder={t("users.merge.search")}
         value={query}
         onChange={setQuery}
       />
       {results.length > 0 && (
-        <Card variant="list" icon={Users} title={t("users.merge.search")}>
+        <DialogCard icon={Users} title={t("users.merge.search")}>
           {results.map((candidate) => (
             <UserRow
               key={candidate.id}
@@ -100,7 +101,7 @@ function MergePicker({
               onClick={() => onPick(candidate)}
             />
           ))}
-        </Card>
+        </DialogCard>
       )}
     </div>
   );
@@ -109,17 +110,19 @@ function MergePicker({
 function AccountColumn({ label, user }: { label: string; user: UserListItem }) {
   const { t } = useTranslation();
   return (
-    <Card variant="list" icon={UserRound} title={label} className="min-w-0">
-      <InfoRow icon={UserRound} label={`#${user.id}`}>
-        <span className="truncate">{user.name}</span>
-      </InfoRow>
-      <InfoRow icon={Mail} label={t("users.merge.conflict.email")} mono>
-        <span className="truncate">{user.email ?? t("common.none")}</span>
-      </InfoRow>
-      <InfoRow icon={Send} label={t("users.merge.conflict.telegram")} mono>
-        <span className="truncate">{user.telegram_id ?? t("common.none")}</span>
-      </InfoRow>
-    </Card>
+    <div className="min-w-0">
+      <DialogCard icon={UserRound} title={label}>
+        <InfoRow icon={UserRound} label={`#${user.id}`}>
+          <span className="truncate">{user.name}</span>
+        </InfoRow>
+        <InfoRow icon={Mail} label={t("users.merge.conflict.email")} mono>
+          <span className="truncate">{user.email ?? t("common.none")}</span>
+        </InfoRow>
+        <InfoRow icon={Send} label={t("users.merge.conflict.telegram")} mono>
+          <span className="truncate">{user.telegram_id ?? t("common.none")}</span>
+        </InfoRow>
+      </DialogCard>
+    </div>
   );
 }
 
@@ -193,7 +196,7 @@ function MergePreviewStep({
 
   return (
     <>
-      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <AccountColumn label={t("users.merge.keeps")} user={target} />
           <IconButton
@@ -212,7 +215,7 @@ function MergePreviewStep({
           <AccountColumn label={t("users.merge.mergedIn")} user={source} />
         </div>
         <div className="flex justify-end">
-          <Button variant="secondary" size="sm" disabled={isSubmitting} onClick={onChange}>
+          <Button variant="glass" disabled={isSubmitting} onClick={onChange}>
             {t("users.merge.change")}
           </Button>
         </div>
@@ -225,12 +228,12 @@ function MergePreviewStep({
             <span className={EYEBROW_CLASS}>{t("users.merge.moves")}</span>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {COUNT_KEYS.map((key) => (
-                <KpiTile key={key} label={t(`users.merge.counts.${key}`)} value={String(data.source_counts[key])} />
+                <KpiTile glass key={key} label={t(`users.merge.counts.${key}`)} value={String(data.source_counts[key])} />
               ))}
             </div>
 
             {data.conflicts.length > 0 && (
-              <Card variant="list" icon={Swords} title={t("users.merge.conflicts")}>
+              <DialogCard icon={Swords} title={t("users.merge.conflicts")}>
                 {data.conflicts.map((conflict) => (
                   <div key={conflict.key} className="flex flex-col gap-1.5 px-2.5 py-2">
                     <span className="text-[12.5px] text-muted-foreground">{conflictLabel(conflict.key)}</span>
@@ -238,6 +241,7 @@ function MergePreviewStep({
                       {(["target", "source"] as const).map((side) => (
                         <ChoiceChip
                           key={side}
+                          glass
                           active={(conflict.forced ?? choices[conflict.key]) === side}
                           disabled={conflict.forced !== null || isSubmitting}
                           onClick={() => setChoices((prev) => ({ ...prev, [conflict.key]: side }))}
@@ -253,31 +257,31 @@ function MergePreviewStep({
                     )}
                   </div>
                 ))}
-              </Card>
+              </DialogCard>
             )}
 
             {droppedReferrers.map((cycle) => (
               <p
                 key={cycle.side}
-                className="flex items-start gap-2 rounded-2xl bg-warning/10 px-3 py-2.5 text-[12.5px] text-warning"
+                className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-[12.5px] text-warning"
               >
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 {t("users.merge.referrerCycle", { id: cycle.referrer_id })}
               </p>
             ))}
 
-            <div className="flex items-center gap-2 rounded-2xl border border-error/30 bg-error/10 px-3.5 py-3 text-[13px] text-error">
+            <div className="flex items-center gap-2 rounded-xl border border-error/30 bg-error/10 px-3.5 py-3 text-[13px] text-error">
               <ShieldAlert className="size-4 shrink-0" />
               {t("users.merge.warning")}
             </div>
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-3.5">
-        <Button variant="outline" onClick={close}>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <Button variant="glass" onClick={close}>
           {t("common.cancel")}
         </Button>
-        <Button variant="danger" disabled={!isComplete || isSubmitting || isReloading} onClick={() => void handleMerge()}>
+        <Button variant="glassDanger" disabled={!isComplete || isSubmitting || isReloading} onClick={() => void handleMerge()}>
           {t("users.merge.confirm")}
         </Button>
       </div>

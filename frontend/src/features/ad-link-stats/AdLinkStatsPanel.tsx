@@ -5,12 +5,10 @@ import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
 import { roiClassName } from "@entities/advertising/format";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Tooltip } from "@shared/ui/Tooltip";
-import { Card } from "@shared/ui/Card";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { DAY_MS } from "@shared/lib/period";
-import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 const CHART_FALLBACK_DAYS = 30;
 
@@ -61,6 +59,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
         <KpiTile
+          glass
           label={t("advertising.stats.attributions")}
           value={String(stats.attributions_count)}
           hint={t("advertising.stats.channelSplit", {
@@ -69,6 +68,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           })}
         />
         <KpiTile
+          glass
           label={t("advertising.stats.paidCount")}
           value={String(stats.paid_count)}
           hint={`${t("advertising.stats.conversionRate")} ${
@@ -76,6 +76,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           }`}
         />
         <KpiTile
+          glass
           label={t("advertising.stats.cost")}
           value={formatMoney(stats.cost, stats.report_currency, i18n.language)}
           hint={`${t("advertising.stats.cpa")} ${
@@ -83,6 +84,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           }`}
         />
         <KpiTile
+          glass
           label={t("advertising.stats.revenue")}
           value={formatMoney(stats.revenue, stats.report_currency, i18n.language)}
           hint={
@@ -96,9 +98,9 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
         />
       </div>
 
-      <Card>
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className={SECTION_TITLE_CLASS}>
+          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
             <BarChart3 className="size-3.5" />
             {t("advertising.stats.daily")}
           </h3>
@@ -139,7 +141,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           <span>{formatDay(days[0].day)}</span>
           <span>{formatDay(days[days.length - 1].day)}</span>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

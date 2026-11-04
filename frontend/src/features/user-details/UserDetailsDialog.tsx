@@ -1,8 +1,8 @@
 import {
   BarChart3,
-  CreditCard,
   GitMerge,
   History,
+  Layers,
   ListX,
   Lock,
   MailCheck,
@@ -14,6 +14,7 @@ import {
   ShieldPlus,
   Ticket,
   Trash2,
+  Unlink,
   Unlock,
   User,
   Users,
@@ -39,7 +40,7 @@ import { initials } from "@shared/lib/initials";
 import type { Permission } from "@shared/types/rbac";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -118,7 +119,7 @@ function UserDetailsDialogBody({
       ? [{ key: "analytics" as const, label: t("users.details.tabs.analytics"), icon: BarChart3 }]
       : []),
     ...(hasAny("SUBSCRIPTIONS_VIEW")
-      ? [{ key: "subscriptions" as const, label: t("users.details.tabs.subscriptions"), icon: CreditCard }]
+      ? [{ key: "subscriptions" as const, label: t("users.details.tabs.subscriptions"), icon: Layers }]
       : []),
     ...(hasAny("TRANSACTIONS_VIEW")
       ? [{ key: "transactions" as const, label: t("users.details.tabs.transactions"), icon: Receipt }]
@@ -147,25 +148,25 @@ function UserDetailsDialogBody({
             <span className="text-[11px] font-bold">{initials(user.login ?? user.name)}</span>
           )
         }
-        tone={user.is_blocked && !isDeleted ? "danger" : "glass"}
+        danger={user.is_blocked && !isDeleted}
         title={isDeleted ? t("users.deleted.name") : user.name}
-        badges={
+        subtitle={handle && <span className="font-mono">{handle}</span>}
+        actions={
           <>
-            {user.role !== "USER" && <Badge tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
-            {isDeleted && <Badge tone="neutral">{t("users.deleted.badge")}</Badge>}
-            {user.is_blocked && !isDeleted && <Badge tone="error">{t("users.status.blocked")}</Badge>}
+            {user.role !== "USER" && <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
+            {isDeleted && <Badge borderless tone="neutral">{t("users.deleted.badge")}</Badge>}
+            {user.is_blocked && !isDeleted && <Badge borderless tone="error">{t("users.status.blocked")}</Badge>}
           </>
         }
-        subtitle={handle && <span className="font-mono">{handle}</span>}
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pt-4">
+        <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -185,9 +186,10 @@ function UserDetailsDialogBody({
       </div>
 
       {available.length > 0 && (
-        <div className="flex items-center gap-2 border-t border-white/[0.08] px-5 py-4">
+        <div className="flex items-center gap-2 border-t border-white/[0.08] p-4">
           <div className="ml-auto">
             <ActionMenu
+              glass
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}
               items={[
                 ...(available.includes("promote")
@@ -195,6 +197,9 @@ function UserDetailsDialogBody({
                   : []),
                 ...(available.includes("bindTelegram")
                   ? [{ label: t("users.telegram.action"), icon: Send, onClick: () => actions.run("bindTelegram", user) }]
+                  : []),
+                ...(available.includes("unbindTelegram")
+                  ? [{ label: t("users.telegram.unbind"), icon: Unlink, onClick: () => actions.run("unbindTelegram", user) }]
                   : []),
                 ...(available.includes("clearEmailUndeliverable")
                   ? [{ label: t("users.emailUndeliverable.clear"), icon: MailCheck, onClick: () => actions.run("clearEmailUndeliverable", user) }]

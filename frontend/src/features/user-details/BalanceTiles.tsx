@@ -3,6 +3,7 @@ import { useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent, ty
 import { useTranslation } from "react-i18next";
 
 import { listEventLog, type EventLogEntry } from "@entities/event-log/api";
+import { initiatorLabel } from "@entities/event-log/describe-entry";
 import { getUserLoyalty, setUserLoyaltyExcluded } from "@entities/loyalty/api";
 import { adjustUserBonusDays, adjustUserPoints } from "@entities/referrals/api";
 import { setUserDiscount, type UserListItem } from "@entities/user/api";
@@ -20,8 +21,8 @@ import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
-import { SuffixInput, TextInput } from "@shared/ui/TextInput";
+import { Input } from "@shared/ui/glass/Input";
+import { Switch } from "@shared/ui/glass/Switch";
 import { Pressable } from "@shared/ui/Pressable";
 
 // Points, bonus days, discount and loyalty tiles of the user profile; each opens its own editor.
@@ -69,7 +70,7 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
 
   const discountTile = (kind: DiscountKind, label: string) => {
     const percent = user[kind];
-    if (!canEditDiscount) return <KpiTile label={label} value={`${percent}%`} />;
+    if (!canEditDiscount) return <KpiTile glass label={label} value={`${percent}%`} />;
     return (
       <EditableKpi label={label} value={`${percent}%`}>
         {(close) => (
@@ -100,84 +101,91 @@ export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChange
   const points = Math.trunc(Number(user.points));
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-      {canEditPoints ? (
-        <EditableKpi label={t("users.details.points")} value={String(user.points)}>
-          {(close) => (
-            <>
-              <ValueEditor
-                current={points}
-                hint={t("users.details.balance.pointsHint")}
-                chips={POINT_DELTAS.map((delta) => ({
-                  label: delta > 0 ? `+${delta}` : `−${-delta}`,
-                  apply: (value) => value + delta,
-                }))}
-                onApply={async (next) => {
-                  try {
-                    // the endpoint takes a change, not a value
-                    const stats = await adjustUserPoints(user.id, String(next - points));
-                    onChanged?.({ ...user, points: stats.points });
-                    toast.success(t("users.details.balance.saved"));
-                    close();
-                  } catch (err) {
-                    toast.error(getErrorMessage(err, t("users.details.balance.pointsError")));
-                  }
-                }}
-              />
-              {lastChange("UserPointsAdjustedEvent", close)}
-            </>
-          )}
-        </EditableKpi>
-      ) : (
-        <KpiTile label={t("users.details.points")} value={String(user.points)} />
-      )}
-      {canEditBonusDays ? (
-        <EditableKpi label={t("users.details.bonusDays")} value={String(user.bonus_days)}>
-          {(close) => (
-            <>
-              <ValueEditor
-                current={user.bonus_days}
-                hint={t("users.details.balance.bonusDaysHint")}
-                chips={DAY_DELTAS.map((delta) => ({
-                  label: delta > 0 ? `+${delta}` : `−${-delta}`,
-                  apply: (value) => value + delta,
-                }))}
-                onApply={async (next) => {
-                  try {
-                    // the endpoint takes a change, not a value
-                    const stats = await adjustUserBonusDays(user.id, next - user.bonus_days);
-                    onChanged?.({ ...user, bonus_days: stats.bonus_days });
-                    toast.success(t("users.details.balance.saved"));
-                    close();
-                  } catch (err) {
-                    toast.error(getErrorMessage(err, t("users.details.balance.bonusDaysError")));
-                  }
-                }}
-              />
-              {lastChange("UserBonusDaysAdjustedEvent", close)}
-            </>
-          )}
-        </EditableKpi>
-      ) : (
-        <KpiTile label={t("users.details.bonusDays")} value={String(user.bonus_days)} />
-      )}
-      {discountTile("personal_discount", t("users.details.personalDiscount"))}
-      {discountTile("purchase_discount", t("users.details.purchaseDiscount"))}
-      {canEditLoyalty ? (
-        <EditableKpi label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`}>
-          {(close) => (
-            <>
-              <LoyaltyEditor
-                userId={user.id}
-                onExcluded={(discount) => onChanged?.({ ...user, loyalty_discount: discount })}
-              />
-              {lastChange("UserLoyaltyExclusionChangedEvent", close)}
-            </>
-          )}
-        </EditableKpi>
-      ) : (
-        <KpiTile label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`} />
-      )}
+    // balance on top two wide, the three discounts under it: five in a row didn't fit the dialog
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+      <div className="min-w-0 sm:col-span-3">
+        {canEditPoints ? (
+          <EditableKpi label={t("users.details.points")} value={String(user.points)}>
+            {(close) => (
+              <>
+                <ValueEditor
+                  current={points}
+                  hint={t("users.details.balance.pointsHint")}
+                  chips={POINT_DELTAS.map((delta) => ({
+                    label: delta > 0 ? `+${delta}` : `−${-delta}`,
+                    apply: (value) => value + delta,
+                  }))}
+                  onApply={async (next) => {
+                    try {
+                      // the endpoint takes a change, not a value
+                      const stats = await adjustUserPoints(user.id, String(next - points));
+                      onChanged?.({ ...user, points: stats.points });
+                      toast.success(t("users.details.balance.saved"));
+                      close();
+                    } catch (err) {
+                      toast.error(getErrorMessage(err, t("users.details.balance.pointsError")));
+                    }
+                  }}
+                />
+                {lastChange("UserPointsAdjustedEvent", close)}
+              </>
+            )}
+          </EditableKpi>
+        ) : (
+          <KpiTile glass label={t("users.details.points")} value={String(user.points)} />
+        )}
+      </div>
+      <div className="min-w-0 sm:col-span-3">
+        {canEditBonusDays ? (
+          <EditableKpi label={t("users.details.bonusDays")} value={String(user.bonus_days)}>
+            {(close) => (
+              <>
+                <ValueEditor
+                  current={user.bonus_days}
+                  hint={t("users.details.balance.bonusDaysHint")}
+                  chips={DAY_DELTAS.map((delta) => ({
+                    label: delta > 0 ? `+${delta}` : `−${-delta}`,
+                    apply: (value) => value + delta,
+                  }))}
+                  onApply={async (next) => {
+                    try {
+                      // the endpoint takes a change, not a value
+                      const stats = await adjustUserBonusDays(user.id, next - user.bonus_days);
+                      onChanged?.({ ...user, bonus_days: stats.bonus_days });
+                      toast.success(t("users.details.balance.saved"));
+                      close();
+                    } catch (err) {
+                      toast.error(getErrorMessage(err, t("users.details.balance.bonusDaysError")));
+                    }
+                  }}
+                />
+                {lastChange("UserBonusDaysAdjustedEvent", close)}
+              </>
+            )}
+          </EditableKpi>
+        ) : (
+          <KpiTile glass label={t("users.details.bonusDays")} value={String(user.bonus_days)} />
+        )}
+      </div>
+      <div className="min-w-0 sm:col-span-2">{discountTile("personal_discount", t("users.details.personalDiscount"))}</div>
+      <div className="min-w-0 sm:col-span-2">{discountTile("purchase_discount", t("users.details.purchaseDiscount"))}</div>
+      <div className="col-span-2 min-w-0">
+        {canEditLoyalty ? (
+          <EditableKpi label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`}>
+            {(close) => (
+              <>
+                <LoyaltyEditor
+                  userId={user.id}
+                  onExcluded={(discount) => onChanged?.({ ...user, loyalty_discount: discount })}
+                />
+                {lastChange("UserLoyaltyExclusionChangedEvent", close)}
+              </>
+            )}
+          </EditableKpi>
+        ) : (
+          <KpiTile glass label={t("users.details.loyaltyDiscount")} value={`${user.loyalty_discount}%`} />
+        )}
+      </div>
       {/* outside the popovers: opening the dialog closes them */}
       {openedEntry && <EventDetailDialog entry={openedEntry} onClose={() => setOpenedEntry(null)} />}
     </div>
@@ -202,17 +210,17 @@ function EditableKpi({
   useCloseOnScroll(isOpen, popoverRef, close);
 
   return (
-    <div ref={ref} className="group relative min-w-0">
+    <div ref={ref} className="group relative h-full min-w-0">
       <Pressable
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="block w-full rounded-2xl max-md:rounded-card text-left transition-colors hover:bg-white/[0.04]"
+        className="block h-full w-full rounded-xl text-left transition-colors hover:bg-white/[0.04]"
       >
-        <KpiTile label={label} value={value} highlighted={isOpen} />
+        <KpiTile glass label={label} value={value} highlighted={isOpen} />
       </Pressable>
       <Pencil
-        className={`pointer-events-none absolute right-3.5 top-4 size-3.5 transition-opacity ${
-          isOpen ? "text-accent-foreground opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100"
+        className={`pointer-events-none absolute right-3.5 top-3.5 size-3.5 text-white transition-opacity ${
+          isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       />
       <PortalPopover
@@ -225,6 +233,7 @@ function EditableKpi({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
+        glass
         className="flex w-72 flex-col gap-2.5 p-3"
       >
         {children(close)}
@@ -279,18 +288,14 @@ function ValueEditor({ current, max = Number.MAX_SAFE_INTEGER, suffix, hint, chi
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-2.5">
       <div className="flex gap-2">
-        {suffix ? (
-          <SuffixInput suffix={suffix} className="min-w-0 flex-1" {...field} />
-        ) : (
-          <TextInput className="min-w-0 flex-1" {...field} />
-        )}
-        <Button variant="accent" size="field" type="submit" disabled={!isValid || resolved === current || isSaving}>
+        <Input suffix={suffix} className="min-w-0 flex-1" {...field} />
+        <Button variant="glassAccent" type="submit" isLoading={isSaving} disabled={!isValid || resolved === current}>
           {t("users.details.balance.apply")}
         </Button>
       </div>
       <div className="flex gap-1.5">
         {chips.map((chip) => (
-          <ChoiceChip
+          <ChoiceChip glass
             key={chip.label}
             size="sm"
             className="flex-1"
@@ -345,7 +350,7 @@ function LastChange({
       className="truncate border-t border-white/[0.08] pt-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
     >
       {t("users.details.balance.lastChange", {
-        name: entry.actor_name ?? entry.actor_login ?? t("common.none"),
+        name: initiatorLabel(entry, t),
         when: formatRelative(entry.occurred_at, i18n.language),
       })}
     </Pressable>
@@ -384,19 +389,25 @@ function LoyaltyEditor({ userId, onExcluded }: { userId: number; onExcluded: (di
 
   return (
     <div className="flex flex-col gap-2.5">
-      <p className="text-[12.5px] text-foreground">
-        {t("users.details.loyalty.spent", { amount: money(spent) })}
-      </p>
-      <p className="text-[12px] text-muted-foreground">
-        {loyalty.next_tier
-          ? t("users.details.loyalty.toNext", {
-              amount: money(Number(loyalty.next_tier.threshold) - spent),
-              percent: loyalty.next_tier.percent,
-            })
-          : t("users.details.loyalty.topTier")}
-      </p>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-foreground/80">{t("users.details.loyalty.exclude")}</span>
+      {loyalty.is_program_active ? (
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[13px] font-medium text-foreground">
+            {t("users.details.loyalty.spent", { amount: money(spent) })}
+          </p>
+          <p className="text-[12px] text-muted-foreground">
+            {loyalty.next_tier
+              ? t("users.details.loyalty.toNext", {
+                  amount: money(Number(loyalty.next_tier.threshold) - spent),
+                  percent: loyalty.next_tier.percent,
+                })
+              : t("users.details.loyalty.topTier")}
+          </p>
+        </div>
+      ) : (
+        <p className="text-[13px] font-medium text-muted-foreground">{t("users.details.loyalty.inactive")}</p>
+      )}
+      <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] pt-2.5">
+        <span className="text-[13px] font-medium text-foreground">{t("users.details.loyalty.exclude")}</span>
         <Switch checked={loyalty.excluded} onChange={(value) => void toggle(value)} disabled={isSaving} />
       </div>
     </div>

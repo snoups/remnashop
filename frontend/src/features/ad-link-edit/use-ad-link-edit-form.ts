@@ -32,7 +32,8 @@ export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => v
         cost,
         cost_currency: currency,
         ...channels,
-        note: note.trim() || null,
+        // "" clears it; null would leave the old note
+        note: note.trim(),
       });
       toast.success(t("advertising.edit.saved"));
       onSaved(updated);
@@ -55,7 +56,7 @@ export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => v
     channels,
     setChannels,
     isSubmitting,
-    canSubmit: !isSubmitting && name.trim() !== "",
+    canSubmit: !isSubmitting,
     submit,
   };
 }

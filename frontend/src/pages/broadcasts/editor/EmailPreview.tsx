@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Save, Send } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { previewBroadcastEmail, sendTestBroadcastEmail } from "@entities/broadcasts/api";
@@ -6,13 +7,16 @@ import type { BroadcastEmailPreview } from "@entities/broadcasts/api";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
-import { TextInput } from "@shared/ui/TextInput";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { Input } from "@shared/ui/glass/Input";
 
 const DEBOUNCE_MS = 600;
+// before the letter loads and measures itself
+const FRAME_MIN_HEIGHT = 160;
 
 interface EmailPreviewProps {
+  /** false: behind the Telegram tab, still loading the letter */
+  visible: boolean;
   broadcastId: number | null;
   /** changes on every save, which is what refreshes the preview */
   savedAt: string | null;
@@ -22,12 +26,23 @@ interface EmailPreviewProps {
   canTestSend: boolean;
 }
 
-export function EmailPreview({ broadcastId, savedAt, dirty, locale, canPreview, canTestSend }: EmailPreviewProps) {
+export function EmailPreview({ visible, broadcastId, savedAt, dirty, locale, canPreview, canTestSend }: EmailPreviewProps) {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<BroadcastEmailPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [to, setTo] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [frameHeight, setFrameHeight] = useState(FRAME_MIN_HEIGHT);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  // a hidden frame has no layout: measured once it shows, before that paint
+  const measure = () => {
+    const doc = frameRef.current?.contentDocument;
+    if (doc && doc.documentElement.scrollHeight > 0) setFrameHeight(doc.documentElement.scrollHeight);
+  };
+  useLayoutEffect(() => {
+    if (visible) measure();
+  }, [visible]);
 
   // another locale's letter or error must not stay under the new label
   useEffect(() => {
@@ -73,47 +88,57 @@ export function EmailPreview({ broadcastId, savedAt, dirty, locale, canPreview, 
   const isSaved = broadcastId !== null && !dirty;
 
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span className={EYEBROW_CLASS}>{t("broadcasts.editor.emailPreview.title")}</span>
-        <span className="ml-auto text-[12px] text-muted-foreground">{locale.toUpperCase()}</span>
-      </div>
+    // a body only: the page's preview card (one Section for Telegram and email) frames it
+    <div className={`mt-4 flex-col gap-3 ${visible ? "flex" : "hidden"}`}>
       {!isSaved && (
-        <p className="text-[12.5px] text-muted-foreground">{t("broadcasts.editor.emailPreview.saveFirst")}</p>
+        <EmptyState icon={Save} text={t("broadcasts.editor.emailPreview.saveFirst")} />
       )}
-      {error && <p className="text-[12.5px] text-error">{error}</p>}
+      {error && <ErrorState text={error} />}
       {preview && (
-        <>
-          <div className="truncate text-[13px] font-semibold text-foreground">
-            {preview.subject || t("broadcasts.editor.emailPreview.noSubject")}
+        // an inbox's view of it: the subject on a header strip, the letter under it
+        <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
+          <div className="border-b border-white/[0.08] px-3.5 py-2.5">
+            <p className="truncate text-[13px]">
+              <span className="text-muted-foreground">{t("broadcasts.editor.emailPreview.subjectLabel")} </span>
+              <span className={preview.subject ? "font-medium text-foreground" : "text-muted-foreground"}>
+                {preview.subject || t("broadcasts.editor.emailPreview.noSubject")}
+              </span>
+            </p>
           </div>
+          {/* as tall as the letter; same-origin only to measure it, scripts stay off */}
           <iframe
-            sandbox=""
+            sandbox="allow-same-origin"
             srcDoc={preview.html}
-            className="h-[480px] w-full rounded-xl bg-white"
+            ref={frameRef}
+            onLoad={measure}
+            style={{ height: frameHeight }}
+            className="block w-full bg-[#f4f4f5]"
           />
-        </>
+        </div>
       )}
       {canTestSend && (
-        <div className="flex items-center gap-2">
-          <TextInput
+        // under a line across the card: the address on a line of its own, the button full width under it
+        <div className="-mx-4 mt-1 border-t border-white/[0.08] px-4 pt-4 flex flex-col gap-2">
+          <Input
             type="email"
             value={to}
             onChange={(event) => setTo(event.target.value)}
             placeholder={t("broadcasts.editor.emailPreview.toPlaceholder")}
             autoComplete="off"
-            className="min-w-0 flex-1"
           />
           <Button
-            variant="secondary"
+            variant="glass"
             type="button"
+            className="w-full"
             onClick={() => void handleTest()}
-            disabled={isSending || !isSaved || !to.includes("@")}
+            disabled={!isSaved || !to.includes("@")}
+            isLoading={isSending}
           >
-            {isSending ? t("broadcasts.editor.emailPreview.testSending") : t("broadcasts.editor.emailPreview.testButton")}
+            <Send className="size-4" />
+            {t("broadcasts.editor.emailPreview.testButton")}
           </Button>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

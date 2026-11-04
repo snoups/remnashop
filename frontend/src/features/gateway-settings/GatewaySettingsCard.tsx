@@ -211,7 +211,6 @@ export function GatewaySettingsCard({
               const mustFill = field.required && !gateway.is_configured;
               const inputProps = {
                 id: `gateway-${gateway.type}-${field.key}`,
-                required: mustFill,
                 inputMode: inputModeFor(field),
                 value: values[field.key] ?? "",
                 onChange: (event: ChangeEvent<HTMLInputElement>) =>

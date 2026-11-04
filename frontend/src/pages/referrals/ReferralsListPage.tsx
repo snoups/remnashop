@@ -1,5 +1,5 @@
-import { ChevronRight, Coins, CornerUpLeft, Gift, Layers } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarPlus, CalendarRange, ChevronRight, Coins, CornerUpLeft, Gift, ListOrdered, UserPlus } from "lucide-react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -16,6 +16,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
 import { userHandle } from "@features/user-referrals/format";
 import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
@@ -27,24 +28,29 @@ import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { initials } from "@shared/lib/initials";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
-import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
+import type { PeriodDays } from "@shared/ui/PeriodPills";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const FILTER_DEBOUNCE_MS = 200;
 const LEVELS = [1, 2, 3];
 const REWARD_TYPES: ReferralRewardType[] = ["EXTRA_DAYS", "POINTS"];
+const REWARD_TYPE_ICONS: Record<ReferralRewardType, ComponentType<{ className?: string }>> = {
+  EXTRA_DAYS: CalendarPlus,
+  POINTS: Coins,
+};
+const PERIODS: PeriodDays[] = [0, 7, 30, 90];
 
 const ROW_GRID_CLASSNAME =
-  "grid grid-cols-[36px_minmax(0,1fr)_minmax(0,220px)_84px_130px_64px_16px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(0,1fr)_minmax(0,220px)_84px_130px_64px_16px] items-center gap-3";
 
 const LEVEL_BADGE_TONE: Record<number, BadgeTone> = {
   1: "accent",
@@ -64,6 +70,7 @@ export function ReferralsListPage() {
 
   const permissions = usePermissions();
   const canViewStats = permissions.includes("REFERRALS_VIEW");
+  const canViewSummary = permissions.includes("REFERRALS_SUMMARY_VIEW");
 
   const baseFilters = useMemo<ReferralListFilters>(
     () => ({
@@ -81,13 +88,16 @@ export function ReferralsListPage() {
     baseFilters,
   );
 
-  const [summaryState] = useAsyncResource((signal) => getReferralSummary(baseFilters, signal), {
-    deps: [baseFilters],
-    keepData: true,
-  });
+  const [summaryState] = useAsyncResource(
+    (signal) => (canViewSummary ? getReferralSummary(baseFilters, signal) : Promise.resolve(null)),
+    { deps: [canViewSummary, baseFilters], keepData: true },
+  );
   const [compareState] = useAsyncResource(
-    (signal) => getReferralSummary({ ...baseFilters, ...previousWindow(period) }, signal),
-    { deps: [baseFilters, period] },
+    (signal) =>
+      canViewSummary
+        ? getReferralSummary({ ...baseFilters, ...previousWindow(period) }, signal)
+        : Promise.resolve(null),
+    { deps: [canViewSummary, baseFilters, period] },
   );
   const summary = summaryState.kind === "ready" ? summaryState.data : null;
   const compareSummary = compareState.kind === "ready" ? compareState.data : null;
@@ -117,15 +127,107 @@ export function ReferralsListPage() {
     summary && compareSummary ? { delta: pick(summary) - pick(compareSummary), hint: trendHint } : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <SearchField
+          id="referrals-search"
+          label={t("referrals.list.search")}
+          hideLabel
+          compact
+          placeholder={t("referrals.list.searchPlaceholder")}
+          value={searchInput}
+          onChange={setSearchInput}
+        />
+        <div className="w-40 min-w-0">
+          <SelectDropdown
+            id="referrals-level"
+            value={level}
+            onChange={setLevel}
+            icon={ListOrdered}
+            size="compact"
+            glassPopover
+            placeholder={t("referrals.list.levelAll")}
+            options={[
+              { value: "", label: t("referrals.list.levelAll"), icon: ListOrdered },
+              ...LEVELS.map((value) => ({
+                value: String(value),
+                label: t("referrals.list.level", { level: value }),
+                icon: ListOrdered,
+              })),
+            ]}
+          />
+        </div>
+        <div className="w-40 min-w-0">
+          <SelectDropdown
+            id="referrals-reward-status"
+            value={rewardStatus}
+            onChange={setRewardStatus}
+            icon={Gift}
+            size="compact"
+            glassPopover
+            placeholder={t("referrals.list.rewardStatusAll")}
+            options={[
+              { value: "", label: t("referrals.list.rewardStatusAll"), icon: Gift },
+              { value: "true", label: t("referrals.list.rewardStatusWith"), icon: Gift },
+              { value: "false", label: t("referrals.list.rewardStatusWithout"), icon: Gift },
+            ]}
+          />
+        </div>
+        <div className="w-40 min-w-0">
+          <SelectDropdown
+            id="referrals-reward-type"
+            value={rewardType}
+            onChange={setRewardType}
+            icon={Coins}
+            size="compact"
+            glassPopover
+            placeholder={t("referrals.list.rewardTypeAll")}
+            options={[
+              { value: "", label: t("referrals.list.rewardTypeAll"), icon: Coins },
+              ...REWARD_TYPES.map((type) => ({
+                value: type,
+                label: t(`referrals.settings.rewardType.${type}`),
+                icon: REWARD_TYPE_ICONS[type],
+              })),
+            ]}
+          />
+        </div>
+        <div className="w-40 min-w-0">
+          <SelectDropdown
+            id="referrals-period"
+            value={String(period)}
+            onChange={(value) => setPeriod(Number(value) as PeriodDays)}
+            icon={CalendarRange}
+            size="compact"
+            glassPopover
+            placeholder={t("dashboard.periodAll")}
+            options={PERIODS.map((days) => ({
+              value: String(days),
+              label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
+              icon: CalendarRange,
+            }))}
+          />
+        </div>
+      </div>
+
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
+      {canViewSummary && (
+      <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
         <KpiTile
+          panel
+          icon={UserPlus}
           label={t("referrals.summary.invited")}
           value={summary ? String(summary.total_count) : none}
           trend={trend((s) => s.total_count)}
           hint={summary ? t("referrals.summary.referrers", { count: summary.referrers_count }) : undefined}
         />
         <KpiTile
+          panel
+          icon={Gift}
           label={t("referrals.summary.rewarded")}
           value={summary ? String(summary.rewarded_count) : none}
           trend={trend((s) => s.rewarded_count)}
@@ -136,83 +238,25 @@ export function ReferralsListPage() {
           }
         />
         <KpiTile
+          panel
+          icon={CalendarPlus}
           label={t("referrals.summary.days")}
           value={rewardTotal("EXTRA_DAYS")}
           trend={trend((s) => rewardAmount(s, "EXTRA_DAYS"))}
         />
         <KpiTile
+          panel
+          icon={Coins}
           label={t("referrals.summary.points")}
           value={rewardTotal("POINTS")}
           trend={trend((s) => rewardAmount(s, "POINTS"))}
         />
       </div>
+      )}
 
-      <Card>
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
-          <div className="flex flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("referrals.list.levelFilter")}</label>
-            <SelectDropdown
-              id="referrals-level"
-              value={level}
-              onChange={setLevel}
-              icon={Layers}
-              placeholder={t("referrals.list.levelAll")}
-              options={[
-                { value: "", label: t("referrals.list.levelAll") },
-                ...LEVELS.map((value) => ({
-                  value: String(value),
-                  label: t("referrals.list.level", { level: value }),
-                })),
-              ]}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("referrals.list.rewardStatusFilter")}</label>
-            <SelectDropdown
-              id="referrals-reward-status"
-              value={rewardStatus}
-              onChange={setRewardStatus}
-              icon={Gift}
-              placeholder={t("referrals.list.rewardStatusAll")}
-              options={[
-                { value: "", label: t("referrals.list.rewardStatusAll") },
-                { value: "true", label: t("referrals.list.rewardStatusWith") },
-                { value: "false", label: t("referrals.list.rewardStatusWithout") },
-              ]}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("referrals.list.rewardTypeFilter")}</label>
-            <SelectDropdown
-              id="referrals-reward-type"
-              value={rewardType}
-              onChange={setRewardType}
-              icon={Coins}
-              placeholder={t("referrals.list.rewardTypeAll")}
-              options={[
-                { value: "", label: t("referrals.list.rewardTypeAll") },
-                ...REWARD_TYPES.map((type) => ({ value: type, label: t(`referrals.settings.rewardType.${type}`) })),
-              ]}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className={EYEBROW_CLASS}>{t("referrals.list.periodFilter")}</span>
-            <PeriodPills value={period} onChange={setPeriod} />
-          </div>
-          <div className="sm:col-span-2">
-            <SearchField
-              id="referrals-search"
-              label={t("referrals.list.search")}
-              placeholder={t("referrals.list.searchPlaceholder")}
-              value={searchInput}
-              onChange={setSearchInput}
-            />
-          </div>
-        </div>
-      </Card>
-
-      <Card className="relative">
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={permissions.includes("REFERRALS_LIST") ? t("common.loadError") : t("referrals.list.noPermission")} size="page" />
@@ -223,7 +267,7 @@ export function ReferralsListPage() {
         {state.kind === "ready" && state.items.length > 0 && (
           <>
             <div
-              className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}
+              className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
             >
               <span className="col-span-2">{t("referrals.list.columns.referred")}</span>
               <span>{t("referrals.list.columns.referrer")}</span>
@@ -237,6 +281,7 @@ export function ReferralsListPage() {
                 <section key={group.key} className="flex flex-col">
                   <h3>
                     <GroupToggle
+                      glass
                       open={!collapsedDays.has(group.key)}
                       onToggle={() => toggleDay(group.key)}
                       label={formatDayLabel(group.date, t, i18n.language)}
@@ -250,6 +295,7 @@ export function ReferralsListPage() {
                       const rewards = formatRewards(item);
                       return (
                         <ListRow
+                          glass
                           key={item.id}
                           type="button"
                           disabled={!canOpen}
@@ -257,7 +303,7 @@ export function ReferralsListPage() {
                           className={ROW_GRID_CLASSNAME}
                         >
                           <span
-                            className="flex size-9 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground"
+                            className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground"
                           >
                             {initials(referred?.name)}
                           </span>
@@ -274,7 +320,7 @@ export function ReferralsListPage() {
                           <span className="flex min-w-0 items-center gap-2">
                             <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
                             <span
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-semibold text-foreground"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground"
                             >
                               {initials(item.referrer?.name)}
                             </span>
@@ -283,13 +329,13 @@ export function ReferralsListPage() {
                             </span>
                           </span>
                           <span>
-                            <Badge tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
+                            <Badge borderless tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
                               {t("referrals.list.levelBadge", { level: item.level })}
                             </Badge>
                           </span>
                           <span className="min-w-0 tabular-nums">
                             <span
-                              className={`block truncate text-[14px] ${
+                              className={`block truncate text-[13px] ${
                                 rewards ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
                               }`}
                             >
@@ -324,7 +370,11 @@ export function ReferralsListPage() {
             )}
           </>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </div>
+      </LoadGate>
+      </div>
 
       {statsUser && (
         <UserReferralsDialog

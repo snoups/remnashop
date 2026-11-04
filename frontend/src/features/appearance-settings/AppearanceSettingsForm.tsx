@@ -134,7 +134,7 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
       <div
         // 26px = 8px inset + 18px (half the h-9 upload pill): the pill's ends sit concentric in the corners
         className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[26px] ${
-          hasImage ? "glass-well" : "border border-dashed border-white/[0.18] bg-black/[0.12]"
+          hasImage ? "glass-well" : "border border-dashed border-white/[0.18] bg-black/[0.24]"
         }`}
       >
         {hasImage ? (

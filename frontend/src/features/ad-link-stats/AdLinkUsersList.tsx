@@ -4,11 +4,11 @@ import { formatDateTime } from "@shared/lib/relative-time";
 
 import { type AdLink, type AttributedUser, listAdLinkAttributedUsers } from "@entities/advertising/api";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { UserRow } from "@shared/ui/UserRow";
 
 const USERS_PAGE_SIZE = 10;
@@ -19,6 +19,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (id: number, page, signal) => listAdLinkAttributedUsers(id, page, USERS_PAGE_SIZE, signal),
     adLink.id,
+    (user) => user.user_id,
   );
 
   const openUser = (user: AttributedUser) => {
@@ -26,7 +27,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   };
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
@@ -39,7 +40,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
             name={user.name}
             subtitle={`${t(`advertising.channel.${user.channel}`)} · ${formatDateTime(user.created_at, i18n.language)}`}
             aside={
-              <Badge tone={user.has_paid ? "success" : "neutral"}>
+              <Badge borderless tone={user.has_paid ? "success" : "neutral"}>
                 {user.has_paid ? t("advertising.stats.hasPaid") : t("advertising.stats.notPaid")}
               </Badge>
             }
@@ -56,6 +57,6 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
           />
         </div>
       )}
-    </Card>
+    </DialogCard>
   );
 }

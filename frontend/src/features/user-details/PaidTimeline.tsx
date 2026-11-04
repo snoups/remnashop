@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { formatMoney } from "@shared/lib/format";
 import type { TransactionItem, PurchaseType } from "@entities/transactions/api";
-import { Card } from "@shared/ui/Card";
-import { EmptyState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { FieldHint } from "@shared/ui/FieldHint";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { DAY_MS } from "@shared/lib/period";
@@ -101,9 +101,9 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
   }
   if (segments.length === 0) {
     return (
-      <Card variant="form" title={t("users.details.analytics.timeline.title")} icon={CalendarRange}>
+      <DialogCard variant="form" title={t("users.details.analytics.timeline.title")} icon={CalendarRange}>
         <EmptyState text={t("users.details.analytics.timeline.empty")} />
-      </Card>
+      </DialogCard>
     );
   }
 
@@ -169,7 +169,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
   };
 
   return (
-    <Card variant="form" title={title} icon={CalendarRange}>
+    <DialogCard variant="form" title={title} icon={CalendarRange}>
       <p className="-mt-1 text-[12px] text-muted-foreground">
         {t("users.details.analytics.timeline.coverage", {
           paid: Math.round(paidDays),
@@ -251,6 +251,6 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
           )}
         </div>
       </div>
-    </Card>
+    </DialogCard>
   );
 }

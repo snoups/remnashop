@@ -2,16 +2,16 @@ import { Lock, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getOwnSecurity, isIpOrNetwork, parseEntries, updateOwnSecurity } from "@entities/user/security";
+import { getOwnSecurity, isIpCovered, isIpOrNetwork, parseEntries, updateOwnSecurity } from "@entities/user/security";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { TextArea } from "@shared/ui/glass/Input";
+import { Section, SectionFields } from "@shared/ui/glass/Section";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
-import { TextArea } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { SaveFooter } from "@shared/ui/SaveFooter";
 
 export function SecurityForm() {
   const { t } = useTranslation();
@@ -24,6 +24,7 @@ export function SecurityForm() {
   const entries = parseEntries(text);
   const invalidEntries = entries.filter((entry) => !isIpOrNetwork(entry));
   const clientIp = state.kind === "ready" ? state.data.client_ip : null;
+  const dirty = state.kind === "ready" && entries.join("\n") !== state.data.ip_allowlist.join("\n");
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -41,60 +42,48 @@ export function SecurityForm() {
   };
 
   return (
-    <Card>
-      <CardHeader
+    <form onSubmit={(event) => void handleSubmit(event)}>
+      <Section
         icon={Lock}
         title={t("profile.accountSecurity.title")}
         description={t("profile.accountSecurity.description")}
-      />
-
-      {state.kind === "loading" && (
-        <Spinner size="card" />
-      )}
-      {state.kind === "error" && (
-        <ErrorState text={t("common.loadError")} />
-      )}
-      {state.kind === "ready" && (
-        <form onSubmit={(event) => void handleSubmit(event)} className="mt-4">
-          <TextArea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder={t("profile.accountSecurity.placeholder")}
-            spellCheck={false}
-            rows={4}
-            className="w-full"
-            aria-invalid={invalidEntries.length > 0}
-          />
-          {invalidEntries.length > 0 && (
-            <p className="mt-1.5 text-[12px] text-error">
-              {t("profile.accountSecurity.invalidEntries", { entries: invalidEntries.join(", ") })}
-            </p>
-          )}
-          {clientIp && (
-            <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
-              <span>{t("profile.accountSecurity.currentIp", { ip: clientIp })}</span>
-              {!entries.includes(clientIp) && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setText(entries.concat(clientIp).join("\n"))}
-                >
-                  <Plus className="size-3.5" />
-                  {t("common.add")}
-                </Button>
-              )}
-            </div>
-          )}
-          <Button
-            variant="outline"
-            className="mt-3"
-            type="submit"
-            disabled={isSaving || invalidEntries.length > 0}
-          >
-            {t("common.save")}
-          </Button>
-        </form>
-      )}
-    </Card>
+        footer={
+          state.kind === "ready" && (
+            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={invalidEntries.length > 0} />
+          )
+        }
+      >
+        {state.kind === "loading" && <Spinner size="card" />}
+        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+        {state.kind === "ready" && (
+          <SectionFields>
+            <TextArea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder={t("profile.accountSecurity.placeholder")}
+              spellCheck={false}
+              rows={4}
+              mono
+              aria-invalid={invalidEntries.length > 0}
+            />
+            {invalidEntries.length > 0 && (
+              <p className="text-[12px] text-error">
+                {t("profile.accountSecurity.invalidEntries", { entries: invalidEntries.join(", ") })}
+              </p>
+            )}
+            {clientIp && (
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <span>{t("profile.accountSecurity.currentIp", { ip: clientIp })}</span>
+                {!isIpCovered(clientIp, entries) && (
+                  <Button variant="glass" size="sm" icon={Plus} onClick={() => setText(entries.concat(clientIp).join("\n"))}>
+                    {t("common.add")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </SectionFields>
+        )}
+      </Section>
+    </form>
   );
 }

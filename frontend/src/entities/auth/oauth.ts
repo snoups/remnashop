@@ -1,17 +1,12 @@
 import { apiDelete, apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 
-import type { AuthResult } from "./api";
-
 export type OAuthProvider = "github" | "telegram" | "oidc";
 
 export const OAUTH_PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
+/** sign-in and account linking both answer with the provider's URL */
 export interface OAuthAuthorizeResult {
-  authorization_url: string;
-}
-
-export interface OAuthLoginAuthorizeResult {
   url: string;
 }
 
@@ -25,8 +20,8 @@ export interface OAuthIdentity {
   external_login: string | null;
 }
 
-export function getOAuthLoginAuthorizeUrl(provider: OAuthProvider): Promise<OAuthLoginAuthorizeResult> {
-  return apiPost<OAuthLoginAuthorizeResult, { audience: "dashboard" }>(`/auth/oauth/${provider}/authorize`, {
+export function getOAuthLoginAuthorizeUrl(provider: OAuthProvider): Promise<OAuthAuthorizeResult> {
+  return apiPost<OAuthAuthorizeResult, { audience: "dashboard" }>(`/auth/oauth/${provider}/authorize`, {
     audience: "dashboard",
   });
 }
@@ -34,8 +29,9 @@ export function getOAuthLoginAuthorizeUrl(provider: OAuthProvider): Promise<OAut
 export function oauthLoginCallback(
   provider: OAuthProvider,
   payload: OAuthCallbackPayload,
-): Promise<AuthResult> {
-  return apiPost<AuthResult, OAuthCallbackPayload>(`/auth/oauth/${provider}/callback`, payload);
+): Promise<{ access_token: string }> {
+  // the same route signs in to the cabinet, so it answers with more than the dashboard needs
+  return apiPost<{ access_token: string }, OAuthCallbackPayload>(`/auth/oauth/${provider}/callback`, payload);
 }
 
 export function listConnectedAccounts(signal?: AbortSignal): Promise<OAuthIdentity[]> {

@@ -8,13 +8,12 @@ import { getErrorMessage } from "@shared/api/http";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Field } from "@shared/ui/Field";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
-import { TextInput } from "@shared/ui/TextInput";
 
 interface PromoteAdminDialogProps {
   user: Pick<UserListItem, "id" | "name" | "login">;
@@ -68,8 +67,6 @@ function PromoteAdminForm({
       const result = await promoteAdmin({
         user_id: user.id,
         login: needsLogin ? login.trim() : undefined,
-        permission_grants: [],
-        permission_revokes: [],
       });
       if (!result.password) toast.success(t("admins.promote.success", { name: user.name }));
       onPromoted(result.admin.login ?? login.trim(), result.password);
@@ -88,33 +85,30 @@ function PromoteAdminForm({
         <div className="flex flex-col gap-3 p-4">
           <p className="text-[13px] text-foreground/80">{t("admins.promote.message", { name: user.name })}</p>
           {needsLogin && (
-            <Card variant="form">
-              <Field
-                label={t("admins.promote.loginLabel")}
-                htmlFor="admin-promote-login"
-                hint={t("admins.promote.loginHint")}
-                required
-                error={isLoginInvalid ? t("auth.errors.loginInvalidChars") : undefined}
-              >
-                <TextInput
-                  id="admin-promote-login"
-                  value={login}
-                  onChange={(event) => setLogin(event.target.value)}
-                  placeholder={t("admins.promote.loginLabel")}
-                  required
-                  aria-invalid={isLoginInvalid}
-                />
-              </Field>
-            </Card>
+            <Field
+              label={t("admins.promote.loginLabel")}
+              htmlFor="admin-promote-login"
+              hint={t("admins.promote.loginHint")}
+              required
+              error={isLoginInvalid ? t("auth.errors.loginInvalidChars") : undefined}
+            >
+              <Input
+                id="admin-promote-login"
+                value={login}
+                onChange={(event) => setLogin(event.target.value)}
+                placeholder={t("admins.promote.loginLabel")}
+                aria-invalid={isLoginInvalid}
+              />
+            </Field>
           )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={close}>
-              {t("common.cancel")}
-            </Button>
-            <Button variant="accent" type="submit" disabled={isSubmitting || isLoginInvalid}>
-              {t("admins.promote.submit")}
-            </Button>
-          </div>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="glassAccent" type="submit" disabled={isSubmitting || isLoginInvalid}>
+            {t("admins.promote.submit")}
+          </Button>
         </div>
       </form>
     </>

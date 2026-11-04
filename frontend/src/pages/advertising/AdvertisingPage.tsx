@@ -1,4 +1,4 @@
-import { ChevronRight, Link2, Plus } from "lucide-react";
+import { Banknote, CalendarRange, ChevronRight, Filter, Link2, Plus, ShoppingCart, UserPlus, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,24 +14,27 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
 import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
 import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney, formatPercent } from "@shared/lib/format";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
-import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { dotIcon } from "@shared/ui/option-icons";
+import type { PeriodDays } from "@shared/ui/PeriodPills";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const STATS_GRID_CLASSNAME =
-  "grid grid-cols-[36px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
-const PLAIN_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_104px_104px_16px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
+const PERIODS: PeriodDays[] = [0, 7, 30, 90];
+const PLAIN_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_104px_104px_16px] items-center gap-3";
 
 // mirrors AdLinkRepository.list_paginated: active first, then newest
 function compareAdLinks(a: AdLink, b: AdLink): number {
@@ -93,11 +96,14 @@ export function AdvertisingPage() {
     [summary],
   );
 
+  const matchesFilter = (link: AdLink) => isActive === undefined || link.is_active === isActive;
+
   const handleSaved = (link: AdLink) => {
     reloadSummaries();
     setState((prev) => {
       if (prev.kind !== "ready") return prev;
       const exists = prev.items.some((item) => item.id === link.id);
+      if (!exists && !matchesFilter(link)) return prev;
       const items = exists ? prev.items.map((item) => (item.id === link.id ? link : item)) : [link, ...prev.items];
       return {
         kind: "ready",
@@ -106,6 +112,14 @@ export function AdvertisingPage() {
       };
     });
   };
+
+  // a link paused or resumed in the dialog stays put until it closes, so the dialog doesn't vanish
+  const dropUnmatched = () =>
+    setState((prev) => {
+      if (prev.kind !== "ready") return prev;
+      const items = prev.items.filter(matchesFilter);
+      return { kind: "ready", items, total: prev.total - (prev.items.length - items.length) };
+    });
 
   const handleDeleted = (link: AdLink) => {
     reloadSummaries();
@@ -131,10 +145,60 @@ export function AdvertisingPage() {
   const detailsLink = state.kind === "ready" ? state.items.find((item) => item.id === detailsId) : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="advertising-status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            icon={Filter}
+            size="compact"
+            glassPopover
+            placeholder={t("advertising.filters.statusAll")}
+            options={[
+              { value: "", label: t("advertising.filters.statusAll"), icon: Filter },
+              { value: "true", label: t("advertising.filters.statusActive"), icon: dotIcon("bg-success") },
+              { value: "false", label: t("advertising.filters.statusInactive"), icon: dotIcon("bg-muted-foreground") },
+            ]}
+          />
+        </div>
+        {canViewSummary && (
+          <div className="min-w-40 flex-1 md:min-w-0">
+            <SelectDropdown
+              id="advertising-period"
+              value={String(period)}
+              onChange={(value) => setPeriod(Number(value) as PeriodDays)}
+              icon={CalendarRange}
+              size="compact"
+              glassPopover
+              placeholder={t("dashboard.periodAll")}
+              options={PERIODS.map((days) => ({
+                value: String(days),
+                label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
+                icon: CalendarRange,
+              }))}
+            />
+          </div>
+        )}
+        {canCreate && (
+          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)}>
+            <Plus className="size-4" />
+            {t("advertising.create.button")}
+          </Button>
+        )}
+      </div>
+
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
       {canViewSummary && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
           <KpiTile
+            panel
+            icon={UserPlus}
             label={t("advertising.stats.attributions")}
             value={summary ? String(summary.attributions_count) : none}
             trend={countTrend((s) => s.attributions_count)}
@@ -148,6 +212,8 @@ export function AdvertisingPage() {
             }
           />
           <KpiTile
+            panel
+            icon={ShoppingCart}
             label={t("advertising.stats.paidCount")}
             value={summary ? String(summary.paid_count) : none}
             trend={countTrend((s) => s.paid_count)}
@@ -160,11 +226,15 @@ export function AdvertisingPage() {
             }
           />
           <KpiTile
+            panel
+            icon={Banknote}
             label={t("advertising.stats.cost")}
             value={summary ? money(summary.cost) : none}
             hint={summary ? `${t("advertising.stats.cpa")} ${summary.cpa != null ? money(summary.cpa) : none}` : undefined}
           />
           <KpiTile
+            panel
+            icon={Wallet}
             label={t("advertising.stats.revenue")}
             value={summary ? money(summary.revenue) : none}
             trend={revenueTrend}
@@ -182,43 +252,9 @@ export function AdvertisingPage() {
         </div>
       )}
 
-      <Card>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1.5">
-            <span className={EYEBROW_CLASS}>{t("advertising.columns.status")}</span>
-            <SegmentedPills
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: "", label: t("advertising.filters.statusAll") },
-                { value: "true", label: t("advertising.filters.statusActive") },
-                { value: "false", label: t("advertising.filters.statusInactive") },
-              ]}
-            />
-          </div>
-          {canViewSummary && (
-            <div className="flex flex-col gap-1.5">
-              <span className={EYEBROW_CLASS}>{t("advertising.filters.period")}</span>
-              <PeriodPills value={period} onChange={setPeriod} />
-            </div>
-          )}
-          {canCreate && (
-            <Button
-              variant="solid"
-              size="field"
-              type="button"
-              className="ml-auto"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Plus className="size-3.5" />
-              {t("advertising.create.button")}
-            </Button>
-          )}
-        </div>
-      </Card>
-
-      <Card className="relative">
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
 
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
@@ -229,7 +265,7 @@ export function AdvertisingPage() {
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <>
-            <div className={`${gridClassName} ${LIST_HEAD_CLASS}`}>
+            <div className={`${gridClassName} ${GLASS_LIST_HEAD_CLASS}`}>
               <span className="col-span-2">{t("advertising.columns.link")}</span>
               {canViewSummary && (
                 <>
@@ -252,13 +288,14 @@ export function AdvertisingPage() {
 
                 return (
                   <ListRow
+                    glass
                     key={link.id}
                     type="button"
                     onClick={() => setDetailsId(link.id)}
                     className={gridClassName}
                   >
                     <span
-                      className={`flex size-9 items-center justify-center rounded-full ${
+                      className={`flex size-8 items-center justify-center rounded-full ${
                         link.is_active ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}
                     >
@@ -280,7 +317,7 @@ export function AdvertisingPage() {
                           <span className="text-[13px] tabular-nums text-foreground">
                             {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
                           </span>
-                          <span className="h-[3px] w-14 overflow-hidden rounded-full bg-white/[0.07]">
+                          <span className="h-[3px] w-14 overflow-hidden rounded-full glass-track">
                             <span
                               className="block h-full rounded-full bg-primary"
                               style={{ width: `${(conversion ?? 0) * 100}%` }}
@@ -300,7 +337,7 @@ export function AdvertisingPage() {
                       </span>
                     )}
                     <span>
-                      <Badge tone={link.is_active ? "success" : "neutral"}>
+                      <Badge borderless tone={link.is_active ? "success" : "neutral"}>
                         {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
                       </Badge>
                     </span>
@@ -323,7 +360,11 @@ export function AdvertisingPage() {
             )}
           </>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </div>
+      </LoadGate>
+      </div>
 
       {isCreateOpen && (
         <AdLinkCreateDialog
@@ -345,7 +386,10 @@ export function AdvertisingPage() {
           canDelete={canDelete}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
-          onClose={() => setDetailsId(null)}
+          onClose={() => {
+            setDetailsId(null);
+            dropUnmatched();
+          }}
         />
       )}
 

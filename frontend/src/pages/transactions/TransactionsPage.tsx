@@ -1,8 +1,13 @@
 import type { ParseKeys } from "i18next";
 import {
   ArrowLeftRight,
+  Calculator,
+  CalendarRange,
   ChevronRight,
+  CircleCheck,
   Filter,
+  PackageX,
+  Receipt,
   RefreshCw,
   Repeat,
   Sparkles,
@@ -12,32 +17,34 @@ import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPercent, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactions, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
+import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPercent, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactionsAfter, UNFULFILLED_STATUS, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ALL_TIME_TREND_DAYS, DAY_MS } from "@shared/lib/period";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
 import { formatTime } from "@shared/lib/relative-time";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
-import { dotIcon, letterIcon } from "@shared/ui/optionIcons";
-import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
+import { dotIcon, letterIcon } from "@shared/ui/option-icons";
+import type { PeriodDays } from "@shared/ui/PeriodPills";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
-import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
+const PERIODS: PeriodDays[] = [0, 7, 30, 90];
 
 const STATUS_DOT_ICONS = Object.fromEntries(
   STATUSES.map((value) => [value, dotIcon(PAYMENT_STATUS_DOT_CLASSNAME[value])]),
@@ -48,17 +55,21 @@ const PURCHASE_TYPE_ICONS: Record<PurchaseType, ComponentType<{ className?: stri
   CHANGE: ArrowLeftRight,
 };
 
-const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_150px_80px_112px_16px] items-center gap-3";
+const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_150px_80px_112px_16px] items-center gap-3";
+
+const STATUS_FILTERS: readonly string[] = [...STATUSES, UNFULFILLED_STATUS];
 
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
-  const [status, setStatus] = useState("");
+  const [searchParams] = useSearchParams();
+  // `?status=` comes from the overview's attention links
+  const [status, setStatus] = useState(() => {
+    const fromUrl = searchParams.get("status") ?? "";
+    return STATUS_FILTERS.includes(fromUrl) ? fromUrl : "";
+  });
   const [gatewayType, setGatewayType] = useState("");
   const [purchaseType, setPurchaseType] = useState("");
   const [period, setPeriod] = useState<PeriodDays>(0);
-  // set by the header search's deep link; no local search box
-  const [searchParams] = useSearchParams();
-  const search = searchParams.get("search") ?? "";
   const [detailsOrder, setDetailsOrder] = useState<TransactionItem | null>(null);
   const permissions = usePermissions();
   const canViewDetails = permissions.includes("TRANSACTIONS_DETAIL_VIEW");
@@ -69,29 +80,30 @@ export function TransactionsPage() {
   );
   const gatewayOptions = gatewaysState.kind === "ready" ? gatewaysState.data : [];
 
-  const hasFilters = Boolean(status || gatewayType || purchaseType || period || search);
+  const hasFilters = Boolean(status || gatewayType || purchaseType || period);
   const baseFilters = useMemo<TransactionListFilters>(
     () => ({
-      status: (status || undefined) as TransactionStatus | undefined,
+      status: (status && status !== UNFULFILLED_STATUS ? status : undefined) as TransactionStatus | undefined,
+      unfulfilled: status === UNFULFILLED_STATUS || undefined,
       gatewayType: gatewayType || undefined,
       purchaseType: (purchaseType || undefined) as PurchaseType | undefined,
       createdFrom: period ? new Date(Date.now() - period * DAY_MS).toISOString() : undefined,
-      search: search || undefined,
     }),
-    [status, gatewayType, purchaseType, period, search],
+    [status, gatewayType, purchaseType, period],
   );
 
-  const { state, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
-    (filters, page, signal) => listTransactions({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+  const { state, setState, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
+    (filters, _page, signal, loaded?: TransactionItem[]) =>
+      listTransactionsAfter({ ...filters, pageSize: DEFAULT_PAGE_SIZE }, loaded, signal),
     baseFilters,
   );
 
-  const [summaryState] = useAsyncResource((signal) => getTransactionSummary(baseFilters, signal), {
+  const [summaryState, reloadSummary] = useAsyncResource((signal) => getTransactionSummary(baseFilters, signal), {
     deps: [baseFilters],
     keepData: true,
   });
   // the previous window of the same length; for "all time", the last ALL_TIME_TREND_DAYS days
-  const [compareState] = useAsyncResource(
+  const [compareState, reloadCompare] = useAsyncResource(
     (signal) => {
       const now = Date.now();
       return getTransactionSummary(
@@ -149,15 +161,104 @@ export function TransactionsPage() {
       : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    // as the event log: the filter bar floats over a scroller of its own, whose fade clears the bar.
+    // Desktop keeps the bar on one line, the 68px under it assumes its 48px. lg: 32px between filters
+    // (the tiles' 20px plus 6px either side) puts each one over its tile, inset as the bar's padding.
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 lg:gap-8 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="transactions-status"
+            value={status}
+            onChange={setStatus}
+            icon={Filter}
+            size="compact"
+            glassPopover
+            placeholder={t("transactions.filters.statusAll")}
+            options={[
+              { value: "", label: t("transactions.filters.statusAll"), icon: Filter },
+              ...STATUSES.map((value) => ({
+                value,
+                label: t(`transactions.status.${value}`),
+                icon: STATUS_DOT_ICONS[value],
+              })),
+              { value: UNFULFILLED_STATUS, label: t("transactions.filters.unfulfilled"), icon: PackageX },
+            ]}
+          />
+        </div>
+        {canFilterByGateway && (
+          <div className="min-w-40 flex-1 md:min-w-0">
+            <SelectDropdown
+              id="transactions-gateway"
+              value={gatewayType}
+              onChange={setGatewayType}
+              icon={Wallet}
+              size="compact"
+              glassPopover
+              placeholder={t("transactions.filters.gatewayAll")}
+              options={[
+                { value: "", label: t("transactions.filters.gatewayAll"), icon: Wallet },
+                ...gatewayOptions.map((type) => {
+                  const label = t(`settings.gateways.types.${type}` as ParseKeys);
+                  return { value: type, label, icon: letterIcon(label) };
+                }),
+              ]}
+            />
+          </div>
+        )}
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="transactions-purchase-type"
+            value={purchaseType}
+            onChange={setPurchaseType}
+            icon={Repeat}
+            size="compact"
+            glassPopover
+            placeholder={t("transactions.filters.purchaseTypeAll")}
+            options={[
+              { value: "", label: t("transactions.filters.purchaseTypeAll"), icon: Repeat },
+              ...PURCHASE_TYPES.map((type) => ({
+                value: type,
+                label: t(`transactions.purchaseType.${type}`),
+                icon: PURCHASE_TYPE_ICONS[type],
+              })),
+            ]}
+          />
+        </div>
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="transactions-period"
+            value={String(period)}
+            onChange={(value) => setPeriod(Number(value) as PeriodDays)}
+            icon={CalendarRange}
+            size="compact"
+            glassPopover
+            placeholder={t("dashboard.periodAll")}
+            options={PERIODS.map((days) => ({
+              value: String(days),
+              label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
+              icon: CalendarRange,
+            }))}
+          />
+        </div>
+      </div>
+
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
+      <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
         <KpiTile
+          panel
+          icon={Receipt}
           label={t("transactions.stats.orders")}
           value={summary ? String(summary.total_count) : none}
           trend={countTrend((s) => s.total_count)}
           hint={summary ? t("transactions.stats.pending", { count: summary.pending_count }) : undefined}
         />
         <KpiTile
+          panel
+          icon={CircleCheck}
           label={t("transactions.stats.paid")}
           value={summary ? String(summary.paid_count) : none}
           trend={countTrend((s) => s.paid_count)}
@@ -168,6 +269,8 @@ export function TransactionsPage() {
           }
         />
         <KpiTile
+          panel
+          icon={Calculator}
           label={t("transactions.stats.averageCheck")}
           value={summary?.average_check != null ? money(summary.average_check) : none}
           trend={averageCheckTrend}
@@ -178,6 +281,8 @@ export function TransactionsPage() {
           }
         />
         <KpiTile
+          panel
+          icon={Wallet}
           label={t("transactions.stats.revenue")}
           value={summary ? money(summary.revenue) : none}
           trend={revenueTrend}
@@ -189,78 +294,9 @@ export function TransactionsPage() {
         />
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>
-              {t("transactions.filters.status")}
-            </label>
-            <SelectDropdown
-              id="transactions-status"
-              value={status}
-              onChange={setStatus}
-              icon={Filter}
-              placeholder={t("transactions.filters.statusAll")}
-              options={[
-                { value: "", label: t("transactions.filters.statusAll") },
-                ...STATUSES.map((value) => ({
-                  value,
-                  label: t(`transactions.status.${value}`),
-                  icon: STATUS_DOT_ICONS[value],
-                })),
-              ]}
-            />
-          </div>
-          {canFilterByGateway && (
-            <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-              <label className={EYEBROW_CLASS}>
-                {t("transactions.filters.gateway")}
-              </label>
-              <SelectDropdown
-                id="transactions-gateway"
-                value={gatewayType}
-                onChange={setGatewayType}
-                icon={Wallet}
-                placeholder={t("transactions.filters.gatewayAll")}
-                options={[
-                  { value: "", label: t("transactions.filters.gatewayAll") },
-                  ...gatewayOptions.map((type) => {
-                    const label = t(`settings.gateways.types.${type}` as ParseKeys);
-                    return { value: type, label, icon: letterIcon(label) };
-                  }),
-                ]}
-              />
-            </div>
-          )}
-          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>
-              {t("transactions.filters.purchaseType")}
-            </label>
-            <SelectDropdown
-              id="transactions-purchase-type"
-              value={purchaseType}
-              onChange={setPurchaseType}
-              icon={Repeat}
-              placeholder={t("transactions.filters.purchaseTypeAll")}
-              options={[
-                { value: "", label: t("transactions.filters.purchaseTypeAll") },
-                ...PURCHASE_TYPES.map((type) => ({
-                  value: type,
-                  label: t(`transactions.purchaseType.${type}`),
-                  icon: PURCHASE_TYPE_ICONS[type],
-                })),
-              ]}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className={EYEBROW_CLASS}>{t("transactions.filters.period")}</span>
-            <PeriodPills value={period} onChange={setPeriod} />
-          </div>
-        </div>
-      </Card>
-
-      <Card className="relative">
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={t("common.loadError")} size="page" />
@@ -273,7 +309,7 @@ export function TransactionsPage() {
             {state.items.length > 0 && (
               <>
                 <div
-                  className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}
+                  className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
                 >
                   <span className="col-span-2">{t("transactions.columns.order")}</span>
                   <span>{t("transactions.columns.amount")}</span>
@@ -286,6 +322,7 @@ export function TransactionsPage() {
                     <section key={group.key} className="flex flex-col">
                       <h3>
                         <GroupToggle
+                              glass
                           open={!collapsedDays.has(group.key)}
                           onToggle={() => toggleDay(group.key)}
                           label={formatDayLabel(group.date, t, i18n.language)}
@@ -299,6 +336,7 @@ export function TransactionsPage() {
 
                           return (
                             <ListRow
+                    glass
                               key={order.id}
                               type="button"
                               disabled={!canViewDetails}
@@ -306,7 +344,7 @@ export function TransactionsPage() {
                               className={ROW_GRID_CLASSNAME}
                             >
                               <span
-                                className={`flex size-9 items-center justify-center rounded-full text-[14px] font-semibold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
+                                className={`flex size-8 items-center justify-center rounded-full text-[13px] font-bold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
                               >
                                 {symbol}
                               </span>
@@ -315,7 +353,7 @@ export function TransactionsPage() {
                                   <span className="truncate text-[13px] font-medium text-foreground">
                                     {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
                                     {" · "}
-                                    {order.duration_days}d
+                                    {t("plans.daysShort", { count: order.duration_days })}
                                   </span>
                                   <Tag>
                                     {t(`transactions.purchaseType.${order.purchase_type}`)}
@@ -326,7 +364,7 @@ export function TransactionsPage() {
                                 </span>
                               </span>
                               <span className="tabular-nums">
-                                <span className="block text-[14px] font-semibold text-foreground">
+                                <span className="block text-[13px] font-semibold text-foreground">
                                   {formatMoney(order.final_price, order.currency, i18n.language, true)}
                                 </span>
                                 {hasDiscount(order) && (
@@ -342,7 +380,7 @@ export function TransactionsPage() {
                                 {formatTime(order.created_at, i18n.language)}
                               </span>
                               <span>
-                                <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
+                                <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
                                   {t(`transactions.status.${order.status}`)}
                                 </Badge>
                               </span>
@@ -368,9 +406,27 @@ export function TransactionsPage() {
             )}
           </>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </div>
+      </LoadGate>
+      </div>
 
-      {detailsOrder && <TransactionDetailsDialog order={detailsOrder} onClose={() => setDetailsOrder(null)} />}
+      {detailsOrder && (
+        <TransactionDetailsDialog
+          order={detailsOrder}
+          onClose={() => setDetailsOrder(null)}
+          onChanged={(changed) => {
+            setState((prev) =>
+              prev.kind === "ready"
+                ? { ...prev, items: prev.items.map((item) => (item.id === changed.id ? changed : item)) }
+                : prev,
+            );
+            reloadSummary();
+            reloadCompare();
+          }}
+        />
+      )}
     </div>
   );
 }

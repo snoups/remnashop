@@ -1,9 +1,8 @@
-import { ChevronLeft, Send } from "lucide-react";
+import { ChevronLeft, Mail, MailOpen, MessageSquareText, Send, Settings2 } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useBlocker, useNavigate, useParams } from "react-router-dom";
 
-import { listAddons } from "@entities/addons/api";
 import { listAdLinks } from "@entities/advertising/api";
 import {
   createBroadcast,
@@ -17,23 +16,22 @@ import type { Broadcast } from "@entities/broadcasts/api";
 import { BROADCAST_STATUS_TONE, broadcastTitle, isEditable } from "@entities/broadcasts/display";
 import { listPlans } from "@entities/plans/api";
 import { listPromocodes } from "@entities/promocodes/api";
-import type { Promocode } from "@entities/promocodes/api";
-import { describeReward } from "@entities/promocodes/display";
 import { getBotRequirements } from "@entities/settings/api";
 import { listActiveLocales } from "@entities/translations/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { formatDate, formatDateTime } from "@shared/lib/relative-time";
+import { formatDateTime } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
+import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Input } from "@shared/ui/glass/Input";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { IconButton } from "@shared/ui/IconButton";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
-import { TextInput } from "@shared/ui/TextInput";
 
 import { AudienceEditor } from "@pages/broadcasts/editor/AudienceEditor";
 import type { AudienceMode } from "@pages/broadcasts/editor/AudienceEditor";
@@ -41,7 +39,7 @@ import { ButtonsEditor } from "@pages/broadcasts/editor/ButtonsEditor";
 import { CategoryPicker } from "@pages/broadcasts/editor/CategoryPicker";
 import { ContentEditor } from "@pages/broadcasts/editor/ContentEditor";
 import { DeliveryPicker } from "@pages/broadcasts/editor/DeliveryPicker";
-import { EditorFooter } from "@pages/broadcasts/editor/EditorFooter";
+import { EditorActions } from "@pages/broadcasts/editor/EditorActions";
 import { EmailPreview } from "@pages/broadcasts/editor/EmailPreview";
 import { isDirty, sendsEmail, sendsTelegram, toForm } from "@pages/broadcasts/editor/form";
 import type { EditorForm } from "@pages/broadcasts/editor/form";
@@ -84,9 +82,9 @@ function BroadcastEditorLoader({ id }: { id: number | null }) {
   if (broadcastState.kind === "loading" || localesState.kind === "loading") return <Spinner size="page" />;
   if (broadcastState.kind === "error") {
     return (
-      <Card>
+      <div className="glass-panel rounded-3xl p-4">
         <ErrorState text={t("common.loadError")} size="page" />
-      </Card>
+      </div>
     );
   }
   const broadcast = broadcastState.data;
@@ -117,10 +115,16 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   const [mediaName, setMediaName] = useState<string | null>(null);
   const [scheduleAt, setScheduleAt] = useState(initial?.scheduled_at ? toLocalInput(initial.scheduled_at) : "");
   const [isBusy, setIsBusy] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [contentTab, setContentTab] = useState<"TELEGRAM" | "EMAIL">("TELEGRAM");
+  const [previewTab, setPreviewTab] = useState<"TELEGRAM" | "EMAIL">("TELEGRAM");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const dirty = isDirty(form, baseline);
+  // a scheduled broadcast's date field is its schedule: clearing or moving it is a change to save
+  const savedScheduleAt = broadcast?.status === "SCHEDULED" && broadcast.scheduled_at ? toLocalInput(broadcast.scheduled_at) : null;
+  const scheduleChanged = savedScheduleAt !== null && scheduleAt !== savedScheduleAt;
   // read when a navigation starts, after a save that cleared it in the same tick
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -128,7 +132,6 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   const canEdit = can(broadcast ? "BROADCASTS_UPDATE" : "BROADCASTS_CREATE");
 
   const [plansState] = useAsyncResource((signal) => (can("PLANS_VIEW") ? listPlans(signal) : Promise.resolve([])));
-  const [addonsState] = useAsyncResource(listAddons);
   const [adLinksState] = useAsyncResource((signal) => listAdLinks({ pageSize: PICKER_PAGE_SIZE }, signal));
   const [promocodesState] = useAsyncResource((signal) =>
     can("PROMOCODES_VIEW")
@@ -139,7 +142,6 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
     can("BOT_REQUIREMENTS_VIEW") ? getBotRequirements(signal) : Promise.resolve(null),
   );
   const plans = plansState.kind === "ready" ? plansState.data : [];
-  const addons = addonsState.kind === "ready" ? addonsState.data : [];
   const adLinks = adLinksState.kind === "ready" ? adLinksState.data.items : [];
   const promocodes = promocodesState.kind === "ready" ? promocodesState.data.items : [];
   const requirements = requirementsState.kind === "ready" ? requirementsState.data : null;
@@ -171,17 +173,6 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-
-  const describePromocode = (p: Promocode) =>
-    [
-      describeReward(p, addons, plans, t),
-      p.expires_at
-        ? t("broadcasts.editor.promocode.until", { date: formatDate(p.expires_at, i18n.language) })
-        : t("promocodes.noExpiry"),
-      p.max_activations !== null ? t("broadcasts.editor.promocode.activations", { count: p.max_activations }) : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
 
   // a save or media change drops a SCHEDULED broadcast to DRAFT; put it back on its slot while that is still ahead
   const keepSchedule = async (saved: Broadcast, previousAt: string | null): Promise<Broadcast> => {
@@ -226,17 +217,29 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
 
   const handleSave = () =>
     run(async () => {
-      const wasScheduled = broadcast?.status === "SCHEDULED";
-      await persist();
-      if (!wasScheduled) toast.success(t("common.saved"));
+      if (broadcast?.status !== "SCHEDULED") {
+        await persist();
+        toast.success(t("common.saved"));
+        return;
+      }
+      // saving drops it to a draft; the date field then says where it goes: back on a slot, or nowhere
+      const saved = await persist(true);
+      if (!scheduleAt) {
+        toast.success(t("broadcasts.editor.unscheduled"));
+        return;
+      }
+      await keepSchedule(saved, new Date(scheduleAt).toISOString());
     });
 
-  const handleTest = () =>
-    run(async () => {
+  const handleTest = async () => {
+    setIsTesting(true);
+    await run(async () => {
       const saved = await persist();
       await sendTestBroadcast(saved.id);
       toast.success(t("broadcasts.editor.testSent"));
     });
+    setIsTesting(false);
+  };
 
   const handleSend = () =>
     run(async () => {
@@ -256,39 +259,68 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
     });
 
   const status = broadcast?.status ?? "DRAFT";
+  // both channels: one content card, a switch in its header picks the Telegram text or the email
+  const bothChannels = sendsTelegram(form) && sendsEmail(form);
+  const showTelegram = sendsTelegram(form) && (!bothChannels || contentTab === "TELEGRAM");
+  const showEmail = sendsEmail(form) && (!bothChannels || contentTab === "EMAIL");
+  const previewTelegram = sendsTelegram(form) && (!bothChannels || previewTab === "TELEGRAM");
+  const previewEmail = sendsEmail(form) && (!bothChannels || previewTab === "EMAIL");
+  const channelTabs = (active: "TELEGRAM" | "EMAIL", onSelect: (key: "TELEGRAM" | "EMAIL") => void) =>
+    bothChannels ? (
+      <PillTabs
+        items={(["TELEGRAM", "EMAIL"] as const).map((key) => ({ key, label: t(`broadcasts.channel.${key}`) }))}
+        activeKey={active}
+        onSelect={onSelect}
+      />
+    ) : undefined;
+  const previewTabs = channelTabs(previewTab, setPreviewTab);
+  const contentTabs = channelTabs(contentTab, setContentTab);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
+    // as the settings pages: the title bar, the actions in it, floats over a scroller of its own,
+    // whose fade clears it
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
         <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 text-foreground" />
         </IconButton>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-[12px] text-muted-foreground">
-            {broadcast
-              ? t("broadcasts.editor.breadcrumb", { id: broadcast.id })
-              : t("broadcasts.editor.newBreadcrumb")}
-          </span>
-          <TextInput
-            type="text"
-            value={form.title ?? ""}
-            maxLength={120}
-            disabled={!canEdit}
-            placeholder={broadcastTitle({ ...form, title: null }, t("broadcasts.untitled"))}
-            onChange={(event) => setForm({ ...form, title: event.target.value || null })}
-            className="w-full max-w-xl"
-          />
-        </div>
-        <Badge tone={BROADCAST_STATUS_TONE[status]}>{t(`broadcasts.status.${status}`)}</Badge>
-        {broadcast && status === "SCHEDULED" && can("BROADCASTS_DETAIL_VIEW") && (
-          <Button variant="outline" onClick={() => navigate(`${LIST_PATH}/${broadcast.id}`)}>
-            {t("broadcasts.editor.openCard")}
-          </Button>
-        )}
+        <Input
+          type="text"
+          value={form.title ?? ""}
+          maxLength={120}
+          disabled={!canEdit}
+          placeholder={broadcastTitle({ ...form, title: null }, t("broadcasts.untitled"))}
+          onChange={(event) => setForm({ ...form, title: event.target.value || null })}
+          className="min-w-40 flex-1"
+          // the status inside the field's end: a ~20px badge 8px in, on the 36px well's curve
+          end={
+            <span className="flex shrink-0 pr-1">
+              <Badge borderless tone={BROADCAST_STATUS_TONE[status]}>{t(`broadcasts.status.${status}`)}</Badge>
+            </span>
+          }
+        />
+        <EditorActions
+          isDirty={dirty || scheduleChanged}
+          isBusy={isBusy}
+          canSave={canEdit}
+          canSend={can("BROADCASTS_SEND") && (canEdit || !dirty)}
+          sendBlocked={!audienceReady}
+          scheduleAt={scheduleAt}
+          onScheduleChange={setScheduleAt}
+          onSave={() => void handleSave()}
+          onSend={() => setIsConfirmOpen(true)}
+          onDelete={broadcast && can("BROADCASTS_DELETE") ? () => setIsDeleteOpen(true) : null}
+        />
       </div>
 
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      {/* full width: the rows read better long, and both columns follow from them */}
+      <Section
+        icon={Settings2}
+        title={t("broadcasts.editor.sending.title")}
+        description={t("broadcasts.editor.sending.description")}
+      >
+        <SectionRows>
           <CategoryPicker
             value={form.category}
             disabled={!canEdit}
@@ -301,89 +333,119 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
             channelMissing={channelMissing}
             disabled={!canEdit}
           />
-          {sendsTelegram(form) && (
-            <>
-              <ContentEditor
-                form={form}
-                onChange={setForm}
-                activeLocale={activeLocale}
-                onLocaleChange={setActiveLocale}
-                botLocales={botLocales}
-                hasMedia={Boolean(broadcast?.media_type)}
-                disabled={!canEdit}
-              >
-                <MediaField
-                  broadcast={broadcast}
-                  fileName={mediaName}
-                  canSet={can("BROADCASTS_MEDIA_SET")}
-                  canDelete={can("BROADCASTS_MEDIA_DELETE")}
-                  onChanged={(updated, name) => {
-                    const previousAt = broadcast?.status === "SCHEDULED" ? broadcast.scheduled_at : null;
-                    setBroadcast(updated);
-                    setMediaName(name);
-                    void run(async () => void (await keepSchedule(updated, previousAt)));
-                  }}
-                />
-              </ContentEditor>
-              <ButtonsEditor
-                form={form}
-                onChange={setForm}
-                activeLocale={activeLocale}
-                promocodes={promocodes}
-                describePromocode={describePromocode}
-                disabled={!canEdit}
-              />
-            </>
-          )}
-          {sendsEmail(form) && (
-            <Suspense fallback={<Spinner size="card" />}>
-              <EmailEditor
-                form={form}
-                onChange={setForm}
-                activeLocale={activeLocale}
-                onLocaleChange={setActiveLocale}
-                botLocales={botLocales}
-                broadcastId={broadcast?.id ?? null}
-                canAddImage={can("BROADCASTS_EMAIL_IMAGE_ADD")}
-                canViewImages={can("BROADCASTS_EMAIL_IMAGE_VIEW")}
-                disabled={!canEdit}
-              />
-            </Suspense>
-          )}
-          <Card className="flex flex-col gap-3.5">
-            <AudienceEditor
-              audience={audience}
-              onChange={(next) => setForm({ ...form, audience: next })}
-              mode={mode}
-              onModeChange={setMode}
-              plans={plans}
-              adLinks={adLinks}
-              botLocales={botLocales}
+        </SectionRows>
+      </Section>
+      <div className="flex flex-wrap items-start gap-5">
+        {/* cards that come and go (delivery, the content tabs) fold like the settings' spoilers: height
+            and opacity together; their 20px gap rides inside them, so it folds away too */}
+        <div className="flex min-w-0 flex-[999_1_560px] flex-col">
+          {/* one card for the content, as a settings Section: switching Telegram | email swaps its body
+              and the card eases to the new height */}
+          <Collapse open={sendsTelegram(form) || sendsEmail(form)} className="pb-5">
+            <Section
+              icon={showEmail ? Mail : MessageSquareText}
+              title={t(showEmail ? "broadcasts.editor.email.title" : "broadcasts.editor.text")}
+              description={t("broadcasts.editor.fallbackHint")}
+              aside={contentTabs}
+            >
+              {showTelegram && (
+                <ContentEditor
+                  form={form}
+                  onChange={setForm}
+                  activeLocale={activeLocale}
+                  onLocaleChange={setActiveLocale}
+                  botLocales={botLocales}
+                  hasMedia={Boolean(broadcast?.media_type)}
+                  disabled={!canEdit}
+                >
+                  <MediaField
+                    broadcast={broadcast}
+                    fileName={mediaName}
+                    canSet={can("BROADCASTS_MEDIA_SET")}
+                    canDelete={can("BROADCASTS_MEDIA_DELETE")}
+                    onChanged={(updated, name) => {
+                      const previousAt = broadcast?.status === "SCHEDULED" ? broadcast.scheduled_at : null;
+                      setBroadcast(updated);
+                      setMediaName(name);
+                      void run(async () => void (await keepSchedule(updated, previousAt)));
+                    }}
+                  />
+                </ContentEditor>
+              )}
+              {showEmail && (
+                <Suspense fallback={<Spinner size="card" />}>
+                  <EmailEditor
+                    form={form}
+                    onChange={setForm}
+                    activeLocale={activeLocale}
+                    onLocaleChange={setActiveLocale}
+                    botLocales={botLocales}
+                    broadcastId={broadcast?.id ?? null}
+                    canAddImage={can("BROADCASTS_EMAIL_IMAGE_ADD")}
+                    canViewImages={can("BROADCASTS_EMAIL_IMAGE_VIEW")}
+                    disabled={!canEdit}
+                  />
+                </Suspense>
+              )}
+            </Section>
+          </Collapse>
+          <Collapse open={sendsTelegram(form)} className="pb-5">
+            <ButtonsEditor
+              form={form}
+              onChange={setForm}
+              activeLocale={activeLocale}
+              promocodes={promocodes}
               disabled={!canEdit}
             />
-          </Card>
+          </Collapse>
+          {/* one preview card under the buttons, its own Telegram | email switch, apart from the content card's */}
+          <Section
+            icon={previewEmail ? MailOpen : Send}
+            title={t(previewEmail ? "broadcasts.editor.emailPreview.title" : "broadcasts.editor.preview.title")}
+            description={t("broadcasts.editor.preview.as", { name: t("broadcasts.editor.preview.sampleName"), locale: activeLocale.toUpperCase() })}
+            aside={previewTabs}
+          >
+            {previewTelegram && (
+              <TelegramPreview
+                  form={form}
+                  locale={activeLocale}
+                  mediaType={broadcast?.media_type ?? null}
+                  mediaName={mediaName}
+                  promocodeCode={promocodeCode}
+                  onTest={can("BROADCASTS_TEST_SEND") && (canEdit || !dirty) ? () => void handleTest() : undefined}
+                  isTesting={isTesting}
+                  isSaved={broadcast !== null}
+                />
+            )}
+            {/* kept mounted behind the Telegram tab: the letter is fetched already when its tab opens */}
+            {sendsEmail(form) && (
+              <EmailPreview
+                  visible={previewEmail}
+                  broadcastId={broadcast?.id ?? null}
+                  savedAt={broadcast?.updated_at ?? null}
+                  dirty={dirty}
+                  locale={activeLocale}
+                  canPreview={can("BROADCASTS_EMAIL_PREVIEW")}
+                  canTestSend={can("BROADCASTS_EMAIL_TEST_SEND")}
+                />
+            )}
+          </Section>
         </div>
 
-        <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-4">
-          {sendsTelegram(form) && (
-            <TelegramPreview
-              form={form}
-              locale={activeLocale}
-              mediaType={broadcast?.media_type ?? null}
-              mediaName={mediaName}
-              promocodeCode={promocodeCode}
-            />
-          )}
-          {sendsEmail(form) && (
-            <EmailPreview
-              broadcastId={broadcast?.id ?? null}
-              savedAt={broadcast?.updated_at ?? null}
-              dirty={dirty}
-              locale={activeLocale}
-              canPreview={can("BROADCASTS_EMAIL_PREVIEW")}
-              canTestSend={can("BROADCASTS_EMAIL_TEST_SEND")}
-            />
-          )}
+        <div className="flex min-w-0 flex-[1_1_360px] flex-col">
+          {/* beside the text: who gets it, next to what they get */}
+          <div className="pb-5">
+          <AudienceEditor
+                audience={audience}
+                onChange={(next) => setForm({ ...form, audience: next })}
+                mode={mode}
+                onModeChange={setMode}
+                plans={plans}
+                adLinks={adLinks}
+                botLocales={botLocales}
+                disabled={!canEdit}
+              />
+          </div>
           {can("BROADCASTS_AUDIENCE_PREVIEW") && (
             <RecipientsPreview
               state={previewState}
@@ -395,21 +457,7 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
         </div>
       </div>
 
-      <EditorFooter
-        isDirty={dirty}
-        savedAt={broadcast?.updated_at ?? null}
-        isBusy={isBusy}
-        canTest={can("BROADCASTS_TEST_SEND") && (canEdit || !dirty)}
-        canSave={canEdit}
-        canSend={can("BROADCASTS_SEND") && (canEdit || !dirty)}
-        sendBlocked={!audienceReady}
-        scheduleAt={scheduleAt}
-        onScheduleChange={setScheduleAt}
-        onTest={() => void handleTest()}
-        onSave={() => void handleSave()}
-        onSend={() => setIsConfirmOpen(true)}
-        onDelete={broadcast && can("BROADCASTS_DELETE") ? () => setIsDeleteOpen(true) : null}
-      />
+      </div>
 
       {isDeleteOpen && (
         <ConfirmDialog

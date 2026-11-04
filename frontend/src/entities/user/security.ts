@@ -40,3 +40,23 @@ export function parseEntries(text: string): string[] {
     .map((line) => line.trim())
     .filter(Boolean);
 }
+
+function ipv4ToNumber(address: string): number | null {
+  if (!IPV4_PATTERN.test(address)) return null;
+  const octets = address.split(".").map(Number);
+  if (octets.some((octet) => octet > 255)) return null;
+  return octets.reduce((total, octet) => total * 256 + octet, 0);
+}
+
+/** Whether the list lets this IP in: an exact entry, or an IPv4 network around it (IPv6 networks aren't matched). */
+export function isIpCovered(ip: string, entries: string[]): boolean {
+  const address = ipv4ToNumber(ip);
+  return entries.some((entry) => {
+    if (entry === ip) return true;
+    const [network, prefix] = entry.split("/");
+    const base = ipv4ToNumber(network);
+    if (address === null || base === null || prefix === undefined) return false;
+    const block = 2 ** (32 - Number(prefix));
+    return Math.floor(address / block) === Math.floor(base / block);
+  });
+}

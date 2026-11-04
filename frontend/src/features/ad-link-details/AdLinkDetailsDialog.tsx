@@ -9,16 +9,16 @@ import { AD_LINK_EDIT_FORM_ID, useAdLinkEditForm } from "@features/ad-link-edit/
 import { AdLinkShareMenu } from "@features/ad-link-share/AdLinkShareMenu";
 import { AdLinkStatsPanel } from "@features/ad-link-stats/AdLinkStatsPanel";
 import { AdLinkUsersList } from "@features/ad-link-stats/AdLinkUsersList";
-import { ApiError, getErrorMessage } from "@shared/api/http";
+import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 type AdLinkDetailsTab = "overview" | "users" | "settings";
@@ -105,18 +105,13 @@ function AdLinkDetailsDialogBody({
       onDeleted();
       close();
     } catch (err) {
-      // 400 here only means the link already has attributed users
-      toast.error(
-        err instanceof ApiError && err.status === 400
-          ? t("advertising.delete.hasUsers")
-          : getErrorMessage(err, t("advertising.delete.error")),
-      );
+      toast.error(getErrorMessage(err, t("advertising.delete.error")));
     }
   };
 
   const deleteButton = canDelete && (
-    <Button variant="danger" type="button" onClick={() => setIsConfirmingDelete(true)}>
-      <Trash2 className="size-3.5" />
+    <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>
+      <Trash2 className="size-4" />
       {t("common.delete")}
     </Button>
   );
@@ -126,21 +121,21 @@ function AdLinkDetailsDialogBody({
       <DialogHeader
         icon={Link2}
         title={adLink.name}
-        badges={
-          <Badge tone={adLink.is_active ? "success" : "neutral"}>
+        subtitle={<span className="font-mono">{adLink.code}</span>}
+        actions={
+          <Badge borderless tone={adLink.is_active ? "success" : "neutral"}>
             {adLink.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
           </Badge>
         }
-        subtitle={<span className="font-mono">{adLink.code}</span>}
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pt-4">
+        <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -150,11 +145,11 @@ function AdLinkDetailsDialogBody({
             {tab === "overview" && (
               <div className="flex flex-col gap-3">
                 {adLink.note && (
-                  <Card variant="list" title={t("advertising.edit.noteLabel")} icon={StickyNote}>
+                  <DialogCard title={t("advertising.edit.noteLabel")} icon={StickyNote}>
                     <p className="whitespace-pre-wrap break-words px-2.5 pb-1.5 text-[13px] text-foreground">
                       {adLink.note}
                     </p>
-                  </Card>
+                  </DialogCard>
                 )}
 
                 {canViewStats && (
@@ -174,22 +169,32 @@ function AdLinkDetailsDialogBody({
       </div>
 
       {tab === "settings" ? (
-        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.08] p-4">
           <div className="flex gap-2">
             {deleteButton}
-            <Button variant="outline" onClick={() => void handleToggleActive()} disabled={isToggling}>
-              {adLink.is_active ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+            <Button variant="glass" onClick={() => void handleToggleActive()} isLoading={isToggling}>
+              {adLink.is_active ? <Pause className="size-4" /> : <Play className="size-4" />}
               {adLink.is_active ? t("advertising.pause") : t("advertising.resume")}
             </Button>
           </div>
-          <Button variant="accent" type="submit" form={AD_LINK_EDIT_FORM_ID} disabled={!editForm.canSubmit}>
-            {editForm.isSubmitting ? t("common.saving") : t("common.save")}
+          <Button
+            variant="glassAccent"
+            type="submit"
+            form={AD_LINK_EDIT_FORM_ID}
+            disabled={!editForm.canSubmit}
+            isLoading={editForm.isSubmitting}
+          >
+            {t("common.save")}
           </Button>
         </div>
       ) : (
-        canShare && (
-          <div className="flex justify-end border-t border-white/[0.08] px-5 py-4">
-            <AdLinkShareMenu key={`${adLink.id}-${adLink.allow_bot}-${adLink.allow_webcabinet}`} adLink={adLink} />
+        // without the settings tab, delete has nowhere else to live
+        (canShare || (canDelete && !canUpdate)) && (
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.08] p-4">
+            <div>{!canUpdate && deleteButton}</div>
+            {canShare && (
+              <AdLinkShareMenu key={`${adLink.id}-${adLink.allow_bot}-${adLink.allow_webcabinet}`} adLink={adLink} />
+            )}
           </div>
         )
       )}

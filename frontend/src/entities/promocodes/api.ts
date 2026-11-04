@@ -29,6 +29,8 @@ export interface Promocode {
   expires_at: string | null;
   max_activations: number | null;
   is_reusable: boolean;
+  /** all-time activations */
+  activations_count: number;
   created_at: string | null;
 }
 
@@ -126,8 +128,6 @@ export interface PromocodeSummary {
   active_count: number;
   activations_count: number;
   activated_users_count: number;
-  /** all-time, keyed by promocode id; compare against max_activations */
-  activations_by_promocode: Record<string, number>;
   /** DURATION rewards plus SUBSCRIPTION durations */
   granted_days: number;
   granted_subscriptions_count: number;

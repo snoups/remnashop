@@ -1,22 +1,28 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { type Admin, demoteAdmin } from "@entities/admin/api";
+import { type Admin, deleteAdmin, demoteAdmin } from "@entities/admin/api";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
-import { AdminDetailsDialog, type AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
+import {
+  AdminDetailsDialog,
+  type AdminDetailsFollowUp,
+  type AdminDetailsTab,
+} from "@features/admin-details/AdminDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 interface DemoteAdminConfirmProps {
   admin: Admin;
+  /** Telegram, email or OAuth left once the login is cleared; false adds a warning */
+  canSignInAfterDemote: boolean;
   onDemoted: () => void;
   onClose: () => void;
   /** defaults to onClose */
   onCancel?: () => void;
 }
 
-export function DemoteAdminConfirm({ admin, onDemoted, onClose, onCancel = onClose }: DemoteAdminConfirmProps) {
+export function DemoteAdminConfirm({ admin, canSignInAfterDemote, onDemoted, onClose, onCancel = onClose }: DemoteAdminConfirmProps) {
   const { t } = useTranslation();
 
   const handleConfirm = async () => {
@@ -32,8 +38,46 @@ export function DemoteAdminConfirm({ admin, onDemoted, onClose, onCancel = onClo
   return (
     <ConfirmDialog
       title={t("admins.demote.title")}
-      message={t("admins.demote.confirm")}
+      message={
+        !canSignInAfterDemote
+          ? `${t("admins.demote.confirm")} ${t("admins.demote.noSignIn")}`
+          : t("admins.demote.confirm")
+      }
       confirmLabel={t("admins.demote.button")}
+      cancelLabel={t("common.cancel")}
+      danger
+      onConfirm={() => void handleConfirm()}
+      onCancel={onCancel}
+    />
+  );
+}
+
+interface DeleteAdminConfirmProps {
+  admin: Admin;
+  onDeleted: () => void;
+  onClose: () => void;
+  /** defaults to onClose */
+  onCancel?: () => void;
+}
+
+export function DeleteAdminConfirm({ admin, onDeleted, onClose, onCancel = onClose }: DeleteAdminConfirmProps) {
+  const { t } = useTranslation();
+
+  const handleConfirm = async () => {
+    onClose();
+    try {
+      await deleteAdmin(admin.id);
+      onDeleted();
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("admins.delete.error")));
+    }
+  };
+
+  return (
+    <ConfirmDialog
+      title={t("admins.delete.title")}
+      message={t("admins.delete.confirm", { name: admin.name })}
+      confirmLabel={t("common.delete")}
       cancelLabel={t("common.cancel")}
       danger
       onConfirm={() => void handleConfirm()}
@@ -44,29 +88,34 @@ export function DemoteAdminConfirm({ admin, onDemoted, onClose, onCancel = onClo
 
 interface AdminDetailsFlowProps {
   admin: Admin;
+  canSignInAfterDemote: boolean;
   initialTab?: AdminDetailsTab;
-  /** Permissions saved or the admin demoted. */
+  /** Permissions saved, the admin demoted or deleted. */
   onChanged: () => void;
   onClose: () => void;
 }
 
-/** The admin details dialog plus its demote follow-up, usable outside the Admins page. */
-export function AdminDetailsFlow({ admin, initialTab, onChanged, onClose }: AdminDetailsFlowProps) {
+/** The admin details dialog plus its demote and delete follow-ups, usable outside the Admins page. */
+export function AdminDetailsFlow({ admin, canSignInAfterDemote, initialTab, onChanged, onClose }: AdminDetailsFlowProps) {
   const currentUser = useCurrentUser();
-  const [isDemoting, setIsDemoting] = useState(false);
+  const [followUp, setFollowUp] = useState<AdminDetailsFollowUp | null>(null);
   const permissions = usePermissions();
   const isSelf = currentUser.kind === "ready" && currentUser.data.id === admin.id;
 
   // cancelling the confirm goes back to the details dialog, not out of the flow
-  if (isDemoting) {
+  if (followUp === "demote") {
     return (
       <DemoteAdminConfirm
         admin={admin}
+        canSignInAfterDemote={canSignInAfterDemote}
         onDemoted={onChanged}
         onClose={onClose}
-        onCancel={() => setIsDemoting(false)}
+        onCancel={() => setFollowUp(null)}
       />
     );
+  }
+  if (followUp === "delete") {
+    return <DeleteAdminConfirm admin={admin} onDeleted={onChanged} onClose={onClose} onCancel={() => setFollowUp(null)} />;
   }
 
   return (
@@ -75,8 +124,10 @@ export function AdminDetailsFlow({ admin, initialTab, onChanged, onClose }: Admi
       initialTab={initialTab}
       canViewSessions={permissions.includes("USER_SESSIONS_VIEW") && !isSelf}
       canViewEvents={permissions.includes("EVENT_LOG_VIEW")}
+      // demoting would leave no way in, so the account may as well go
+      canDelete={!canSignInAfterDemote}
       onUpdated={onChanged}
-      onClose={(followUp) => (followUp === "demote" ? setIsDemoting(true) : onClose())}
+      onClose={(picked) => (picked ? setFollowUp(picked) : onClose())}
     />
   );
 }

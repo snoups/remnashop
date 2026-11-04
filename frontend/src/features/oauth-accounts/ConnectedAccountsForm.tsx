@@ -25,19 +25,20 @@ import { setOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GithubIcon, TelegramIcon } from "@shared/ui/BrandIcons";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { IconButton } from "@shared/ui/IconButton";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Card } from "@shared/ui/Card";
 import { Button } from "@shared/ui/Button";
 import { formatDate } from "@shared/lib/relative-time";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { Field } from "@shared/ui/Field";
-import { TextInput } from "@shared/ui/TextInput";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { Pressable } from "@shared/ui/Pressable";
 
 const PROVIDERS: OAuthProvider[] = ["github", "telegram", "oidc"];
 
@@ -51,6 +52,9 @@ interface ConnectedAccountsData {
   identities: OAuthIdentity[];
   oidcDisplayName: string | null;
   passkeys: Passkey[];
+  /** providers an admin can sign in with now: only those get a row */
+  usableProviders: OAuthProvider[];
+  isPasskeyEnabled: boolean;
 }
 
 async function loadConnectedAccountsData(signal?: AbortSignal): Promise<ConnectedAccountsData> {
@@ -59,7 +63,13 @@ async function loadConnectedAccountsData(signal?: AbortSignal): Promise<Connecte
     getAuthStatus(signal),
     getPasskeys(signal),
   ]);
-  return { identities, oidcDisplayName: status.oidc_display_name, passkeys };
+  return {
+    identities,
+    oidcDisplayName: status.oidc_display_name,
+    passkeys,
+    usableProviders: PROVIDERS.filter((provider) => status.oauth_providers[provider]),
+    isPasskeyEnabled: status.is_passkey_login_enabled,
+  };
 }
 
 export function ConnectedAccountsForm() {
@@ -72,14 +82,14 @@ export function ConnectedAccountsForm() {
   const handleConnect = async (provider: OAuthProvider) => {
     setPendingProvider(provider);
     try {
-      const { authorization_url } = await getOAuthConnectAuthorizeUrl(provider);
-      if (!isHttpsUrl(authorization_url)) {
+      const { url } = await getOAuthConnectAuthorizeUrl(provider);
+      if (!isHttpsUrl(url)) {
         toast.error(t("auth.errors.unsafeAuthorizationUrl"));
         setPendingProvider(null);
         return;
       }
       setOAuthFlow("connect");
-      window.location.href = authorization_url;
+      window.location.href = url;
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
       setPendingProvider(null);
@@ -107,49 +117,39 @@ export function ConnectedAccountsForm() {
       t("profile.oauthAccounts.oidcFallback"),
   };
 
-  return (
-    <Card>
-      <CardHeader
-        icon={Link2}
-        title={t("profile.oauthAccounts.title")}
-        description={t("profile.oauthAccounts.description")}
-      />
+  // no sign-in without a password is set up: nothing to link
+  if (
+    state.kind === "ready" &&
+    state.data.usableProviders.length === 0 &&
+    !state.data.isPasskeyEnabled &&
+    state.data.passkeys.length === 0
+  ) {
+    return null;
+  }
 
-      <div className="mt-4 flex flex-col divide-y divide-border/50">
-        {state.kind === "loading" && (
-          <Spinner size="card" />
-        )}
-        {state.kind === "error" && (
-          <ErrorState text={t("common.loadError")} />
-        )}
-        {state.kind === "ready" &&
-          PROVIDERS.map((provider) => {
-            const identity = state.data.identities.find(
-              (item) => item.provider.toLowerCase() === provider,
-            );
-            const Icon = PROVIDER_ICONS[provider];
+  return (
+    <Section icon={Link2} title={t("profile.oauthAccounts.title")} description={t("profile.oauthAccounts.description")}>
+      {state.kind === "loading" && <Spinner size="card" />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "ready" && (
+        <SectionRows>
+          {state.data.usableProviders.map((provider) => {
+            const identity = state.data.identities.find((item) => item.provider.toLowerCase() === provider);
             return (
-              <div
+              <Row
                 key={provider}
-                className="flex items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]"
+                icon={PROVIDER_ICONS[provider]}
+                label={providerLabels[provider]}
+                description={
+                  identity
+                    ? identity.external_login
+                      ? t("profile.oauthAccounts.connectedAs", { login: identity.external_login })
+                      : t("profile.oauthAccounts.connected")
+                    : t("profile.oauthAccounts.notConnected")
+                }
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                    <Icon className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-medium text-foreground">{providerLabels[provider]}</p>
-                    <p className="text-[12px] text-muted-foreground">
-                      {identity
-                        ? identity.external_login
-                          ? t("profile.oauthAccounts.connectedAs", { login: identity.external_login })
-                          : t("profile.oauthAccounts.connected")
-                        : t("profile.oauthAccounts.notConnected")}
-                    </p>
-                  </div>
-                </div>
                 <Button
-                  variant="outline"
+                  variant={identity ? "glassDanger" : "glass"}
                   size="sm"
                   onClick={() => {
                     if (!identity) void handleConnect(provider);
@@ -161,11 +161,15 @@ export function ConnectedAccountsForm() {
                 >
                   {identity ? t("profile.oauthAccounts.disconnect") : t("profile.oauthAccounts.connect")}
                 </Button>
-              </div>
+              </Row>
             );
           })}
-        {state.kind === "ready" && <PasskeyRow passkeys={state.data.passkeys} onChange={reload} />}
-      </div>
+          {/* switched off, keys already added can still be renamed or deleted */}
+          {(state.data.isPasskeyEnabled || state.data.passkeys.length > 0) && (
+            <PasskeyRow passkeys={state.data.passkeys} canAdd={state.data.isPasskeyEnabled} onChange={reload} />
+          )}
+        </SectionRows>
+      )}
       {confirmTelegram && (
         <ConfirmDialog
           title={t("profile.oauthAccounts.disconnectTelegramTitle")}
@@ -177,28 +181,71 @@ export function ConnectedAccountsForm() {
           onCancel={() => setConfirmTelegram(false)}
         />
       )}
-    </Card>
+    </Section>
   );
 }
 
 interface PasskeyRowProps {
   passkeys: Passkey[];
+  canAdd: boolean;
   onChange: () => void;
 }
 
-function PasskeyRow({ passkeys, onChange }: PasskeyRowProps) {
+function PasskeyRow({ passkeys, canAdd, onChange }: PasskeyRowProps) {
   const { t } = useTranslation();
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [isManaging, setIsManaging] = useState(false);
 
-  const handleAdd = async () => {
+  return (
+    <>
+      <Row
+        icon={Fingerprint}
+        label={t("profile.passkeys.title")}
+        description={passkeys.length > 0 ? t("profile.oauthAccounts.connected") : t("profile.oauthAccounts.notConnected")}
+      >
+        {passkeys.length > 0 && (
+          <Button variant="glass" size="sm" onClick={() => setIsManaging(true)}>
+            {t("profile.passkeys.manage")}
+          </Button>
+        )}
+        {canAdd && (
+          <Button variant="glass" size="sm" onClick={() => setIsAddOpen(true)}>
+            {t("profile.passkeys.addButton")}
+          </Button>
+        )}
+      </Row>
+
+      {isAddOpen && (
+        <Modal onClose={() => setIsAddOpen(false)} size="sm">
+          <PasskeyAddDialogBody onAdded={onChange} />
+        </Modal>
+      )}
+
+      {isManaging && (
+        <Modal onClose={() => setIsManaging(false)} size="sm">
+          <PasskeysManageDialogBody passkeys={passkeys} onChange={onChange} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/** The name first, then the browser's own passkey prompt; the name may stay empty. */
+function PasskeyAddDialogBody({ onAdded }: { onAdded: () => void }) {
+  const { t } = useTranslation();
+  const close = useModalClose();
+  const [name, setName] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     setIsAdding(true);
     try {
       const optionsJSON = await getPasskeyRegistrationOptions();
       const response = await startRegistration({ optionsJSON: optionsJSON as never });
-      const name = window.prompt(t("profile.passkeys.namePrompt"), "") || null;
-      await verifyPasskeyRegistration(response as unknown as Record<string, unknown>, name);
-      onChange();
+      await verifyPasskeyRegistration(response as unknown as Record<string, unknown>, name.trim() || null);
+      onAdded();
+      close();
     } catch (err) {
       if (err instanceof Error && err.name === "NotAllowedError") {
         toast.error(t("profile.passkeys.cancelled"));
@@ -207,52 +254,36 @@ function PasskeyRow({ passkeys, onChange }: PasskeyRowProps) {
       } else {
         toast.error(getErrorMessage(err, t("profile.passkeys.addError")));
       }
-    } finally {
       setIsAdding(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-full px-[12.5px] py-2.5 transition-colors hover:bg-white/[0.04]">
-      <div className="flex items-center gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-          <Fingerprint className="size-4" />
-        </div>
-        <div>
-          <p className="text-[13px] font-medium text-foreground">{t("profile.passkeys.title")}</p>
-          <p className="text-[12px] text-muted-foreground">
-            {passkeys.length > 0
-              ? t("profile.oauthAccounts.connected")
-              : t("profile.oauthAccounts.notConnected")}
-          </p>
-        </div>
-      </div>
-      <div className="flex shrink-0 gap-2">
-        {passkeys.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsManaging(true)}
-          >
-            {t("profile.passkeys.manage")}
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void handleAdd()}
-          disabled={isAdding}
-        >
-          {isAdding ? t("profile.passkeys.adding") : t("profile.passkeys.addButton")}
-        </Button>
-      </div>
+    <>
+      <DialogHeader icon={Fingerprint} title={t("profile.passkeys.addButton")} />
 
-      {isManaging && (
-        <Modal onClose={() => setIsManaging(false)} size="sm">
-          <PasskeysManageDialogBody passkeys={passkeys} onChange={onChange} />
-        </Modal>
-      )}
-    </div>
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-col gap-3 p-4">
+          <Field label={t("profile.passkeys.namePrompt")} htmlFor="passkey-add-name" hint={t("profile.passkeys.nameHint")}>
+            <Input
+              id="passkey-add-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t("profile.passkeys.namePlaceholder")}
+              autoFocus
+            />
+          </Field>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="glassAccent" type="submit" disabled={isAdding}>
+            {isAdding ? t("profile.passkeys.adding") : t("common.add")}
+          </Button>
+        </div>
+      </form>
+    </>
   );
 }
 
@@ -297,54 +328,40 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
     <>
       <DialogHeader icon={Fingerprint} title={t("profile.passkeys.title")} />
 
-      <div className="flex flex-col divide-y divide-border/50 px-5 pb-5 pt-4">
-        {passkeys.length === 0 && (
-          <EmptyState text={t("profile.passkeys.empty")} />
-        )}
-        {passkeys.map((passkey) => (
-          <div
-            key={passkey.id}
-            className="flex items-center justify-between gap-3 rounded-full py-1.5 hover:bg-white/[0.04]"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                <Fingerprint className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium text-foreground">{passkey.name}</p>
-                <p className="text-[12px] text-muted-foreground">
-                  {passkey.last_used_at
-                    ? t("profile.passkeys.lastUsed", {
-                        date: formatDate(passkey.last_used_at, i18n.language),
-                      })
-                    : t("profile.passkeys.neverUsed")}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 gap-1">
-              <Pressable
-                type="button"
-                onClick={() => setRenameTarget(passkey)}
-                disabled={pendingAction !== null}
-                className="rounded-full p-1.5 text-foreground/70 hover:bg-white/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-              >
+      <div className="p-3">
+        <DialogCard>
+          {passkeys.length === 0 && <EmptyState text={t("profile.passkeys.empty")} />}
+          <SectionRows flush>
+          {passkeys.map((passkey) => (
+            <Row
+              key={passkey.id}
+              icon={Fingerprint}
+              label={<span className="min-w-0 truncate">{passkey.name}</span>}
+              description={
+                passkey.last_used_at
+                  ? t("profile.passkeys.lastUsed", { date: formatDate(passkey.last_used_at, i18n.language) })
+                  : t("profile.passkeys.neverUsed")
+              }
+            >
+              <IconButton size="8" onClick={() => setRenameTarget(passkey)} disabled={pendingAction !== null}>
                 <Pencil className="size-4" />
-              </Pressable>
-              <Pressable
-                type="button"
+              </IconButton>
+              <IconButton
+                size="8"
+                tone="danger"
                 onClick={() => setDeleteTarget(passkey)}
                 disabled={pendingAction !== null}
-                className="rounded-full p-1.5 text-error/80 hover:bg-white/[0.06] hover:text-error disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {pendingAction === `delete:${passkey.id}` ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Trash2 className="size-4" />
                 )}
-              </Pressable>
-            </div>
-          </div>
-        ))}
+              </IconButton>
+            </Row>
+          ))}
+          </SectionRows>
+        </DialogCard>
       </div>
 
       {renameTarget && (
@@ -409,25 +426,17 @@ function PasskeyRenameDialogBody({ name, onRename }: Omit<PasskeyRenameDialogPro
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 p-4">
-          <Card variant="form">
-            <Field label={t("profile.passkeys.namePrompt")} htmlFor="passkey-rename" required>
-              <TextInput
-                id="passkey-rename"
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                autoFocus
-                required
-              />
-            </Field>
-          </Card>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={close}>
-              {t("common.cancel")}
-            </Button>
-            <Button variant="accent" type="submit" isLoading={isSubmitting} disabled={!trimmed}>
-              {t("common.save")}
-            </Button>
-          </div>
+          <Field label={t("profile.passkeys.namePrompt")} htmlFor="passkey-rename" required>
+            <Input id="passkey-rename" value={value} onChange={(event) => setValue(event.target.value)} autoFocus />
+          </Field>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="glassAccent" type="submit" isLoading={isSubmitting} disabled={!trimmed}>
+            {t("common.save")}
+          </Button>
         </div>
       </form>
     </>

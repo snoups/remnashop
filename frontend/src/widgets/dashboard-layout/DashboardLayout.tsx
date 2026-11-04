@@ -17,6 +17,7 @@ import { RefreshSignalContext } from "@shared/lib/refresh-signal";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import { EntityDialogHost } from "@widgets/entity-dialog-host/EntityDialogHost";
 import { Header } from "@widgets/header/Header";
+import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { ServerError, ServerUnreachable } from "@widgets/server-error/ServerError";
 import { isNavItemVisible, NAV_ITEMS } from "@widgets/sidebar/nav-items";
 import { Sidebar } from "@widgets/sidebar/Sidebar";
@@ -96,9 +97,10 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
   const location = useLocation();
   const isIntro = (location.state as typeof DASHBOARD_INTRO_STATE | null)?.intro === true;
   const [refreshToken, setRefreshToken] = useState(0);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const refreshSignal = useMemo(
-    () => ({ token: refreshToken, refresh: () => setRefreshToken((n) => n + 1) }),
-    [refreshToken],
+    () => ({ token: refreshToken, refresh: () => setRefreshToken((n) => n + 1), updatedAt, setUpdatedAt }),
+    [refreshToken, updatedAt],
   );
 
   if (userState.kind === "error") {
@@ -110,7 +112,15 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
     return <Spinner className="h-dvh" />;
   }
   if (userState.data.password_change_required) {
-    return <PasswordChangeRequired />;
+    // no header here: the picker sits where the sign-in page has it
+    return (
+      <div className="relative">
+        <div className="absolute right-4 top-4 z-10">
+          <LanguagePicker />
+        </div>
+        <PasswordChangeRequired />
+      </div>
+    );
   }
 
   return (

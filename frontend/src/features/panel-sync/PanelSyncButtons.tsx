@@ -1,3 +1,4 @@
+import { Download, Upload, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -16,9 +17,9 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 const POLL_INTERVAL_MS = 5_000;
 
-const DIRECTIONS: { direction: PanelSyncDirection; permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM" | "SUBSCRIPTIONS_PANEL_SYNC_TO"; key: "pull" | "push" }[] = [
-  { direction: "FROM_PANEL", permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM", key: "pull" },
-  { direction: "TO_PANEL", permission: "SUBSCRIPTIONS_PANEL_SYNC_TO", key: "push" },
+const DIRECTIONS: { direction: PanelSyncDirection; permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM" | "SUBSCRIPTIONS_PANEL_SYNC_TO"; key: "pull" | "push"; icon: LucideIcon }[] = [
+  { direction: "FROM_PANEL", permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM", key: "pull", icon: Download },
+  { direction: "TO_PANEL", permission: "SUBSCRIPTIONS_PANEL_SYNC_TO", key: "push", icon: Upload },
 ];
 
 function isRunning(status: PanelSyncStatus | null, direction: PanelSyncDirection): boolean {
@@ -92,10 +93,11 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
 
   return (
     <div className="flex items-center gap-2">
-      {allowed.map(({ direction, key }) => (
+      {allowed.map(({ direction, key, icon }) => (
         <Button
           key={direction}
-          variant="secondary"
+          variant="glass"
+          icon={icon}
           isLoading={isRunning(status, direction)}
           onClick={() => setConfirming(direction)}
         >
@@ -106,8 +108,9 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
         <ConfirmDialog
           title={t(`subscriptions.panelSync.bulk.${confirmKey}Title`)}
           message={t(`subscriptions.panelSync.bulk.${confirmKey}Confirm`)}
-          confirmLabel={t(`subscriptions.panelSync.bulk.${confirmKey}`)}
+          confirmLabel={t(`subscriptions.panelSync.bulk.${confirmKey}Action`)}
           cancelLabel={t("common.cancel")}
+          danger={confirming === "TO_PANEL"}
           onConfirm={() => void start(confirming)}
           onCancel={() => setConfirming(null)}
         />

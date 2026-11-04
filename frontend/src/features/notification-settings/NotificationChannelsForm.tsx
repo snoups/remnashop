@@ -8,7 +8,6 @@ import {
   Server,
   ShieldAlert,
   ShoppingCart,
-  UserCog,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -20,17 +19,18 @@ import type { NotificationChannels } from "@entities/notifications/api";
 import { pushApi } from "@entities/notifications/push-api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { useLoadGateHold } from "@shared/lib/load-gate";
 import { currentPushEndpoint, detectPushSupport, disablePush, enablePush } from "@shared/lib/push";
 import type { EnablePushResult } from "@shared/lib/push";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Row } from "@shared/ui/glass/Row";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
+import { Switch } from "@shared/ui/glass/Switch";
 import { Spinner } from "@shared/ui/Spinner";
-import { Switch } from "@shared/ui/Switch";
 import { PushDevicesList } from "@features/notification-settings/PushDevicesList";
 
 // Mirrors NOTIFICATION_GROUPS (backend/app/modules/notifications/dto.py); an
@@ -39,7 +39,6 @@ const GROUP_ICONS: Record<string, LucideIcon> = {
   security: ShieldAlert,
   failures: CircleAlert,
   money: ShoppingCart,
-  admins: UserCog,
   infrastructure: Server,
   customers: Users,
   subscriptions: CalendarX,
@@ -47,7 +46,7 @@ const GROUP_ICONS: Record<string, LucideIcon> = {
 
 const PUSH_ERRORS: Record<Exclude<EnablePushResult, "subscribed">, ParseKeys> = {
   denied: "profile.notifications.push.denied",
-  "not-configured": "profile.notifications.push.notConfigured",
+  "not-configured": "profile.notifications.push.notConfiguredError",
   failed: "profile.notifications.push.failed",
 };
 
@@ -57,18 +56,25 @@ export function NotificationChannelsForm() {
   const [state, , setData] = useAsyncResource(getNotificationChannels);
   // one save at a time: each sends the whole matrix, so overlapping answers could land out of order
   const [isSaving, setIsSaving] = useState(false);
-  const [pushOn, setPushOn] = useState(false);
+  // null until the browser says: the switch shouldn't flip on in front of the user
+  const [pushOn, setPushOn] = useState<boolean | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [devicesVersion, setDevicesVersion] = useState(0);
   const support = detectPushSupport();
+  useLoadGateHold(pushOn === null);
 
   useEffect(() => {
-    void currentPushEndpoint().then((endpoint) => setPushOn(endpoint !== null));
+    currentPushEndpoint().then(
+      (endpoint) => setPushOn(endpoint !== null),
+      () => setPushOn(false),
+    );
   }, []);
 
   if (!canView) return null;
 
   const toggle = async (current: NotificationChannels, group: string, channel: string) => {
+    // dropped rather than disabled: greying every switch for each save would flicker
+    if (isSaving) return;
     const chosen = current.channels[group] ?? [];
     const next = {
       ...current.channels,
@@ -126,103 +132,99 @@ export function NotificationChannelsForm() {
   const isChannelAvailable = (data: NotificationChannels, channel: string) =>
     channel === "push" ? data.is_push_configured : channel === "telegram" ? data.telegram_available : true;
 
+  // the bot's column only once Telegram is linked: until then it has nowhere to send
+  const shownChannels = (data: NotificationChannels) =>
+    data.available_channels.filter((channel) => channel !== "telegram" || data.telegram_available);
+
   return (
-    <Card>
-      <CardHeader
-        icon={Bell}
-        title={t("profile.notifications.title")}
-        description={t("profile.notifications.description")}
-      />
-
-      <div className="mt-4 flex flex-col gap-3">
-        {state.kind === "loading" && <Spinner size="card" />}
-        {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-        {state.kind === "ready" && (
-          <>
-            <div className="flex flex-col gap-2 rounded-2xl max-md:rounded-card border border-border/60 p-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <BellRing className="size-4 text-muted-foreground" />
-                <span className="flex-1 text-[13px] font-medium text-foreground">
-                  {t("profile.notifications.push.label")}
-                </span>
-                {pushStatus(state.data) ?? (
-                  <>
-                    {pushOn && (
-                      <Button variant="secondary" size="sm" onClick={() => void test()}>
-                        <Send className="size-3.5" />
-                        {t("profile.notifications.push.test")}
-                      </Button>
-                    )}
-                    <Switch checked={pushOn} onChange={(on) => void togglePush(on)} disabled={isTogglingPush} />
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <Send className="size-4 text-muted-foreground" />
-                <span className="flex-1 text-[13px] font-medium text-foreground">
-                  {t("profile.notifications.telegram.label")}
-                </span>
-                <span className="text-[12px] text-muted-foreground">
-                  {t(
-                    state.data.telegram_available
-                      ? "profile.notifications.telegram.linked"
-                      : "profile.notifications.telegram.link",
+    <Section
+      icon={Bell}
+      title={t("profile.notifications.title")}
+      description={t(
+        state.kind === "ready" && !state.data.telegram_available
+          ? "profile.notifications.descriptionPushOnly"
+          : "profile.notifications.description",
+      )}
+    >
+      {state.kind === "loading" && <Spinner size="card" />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "ready" && (
+        <>
+          <SectionRows>
+            <Row icon={BellRing} label={t("profile.notifications.push.label")} description={pushStatus(state.data)}>
+              {pushStatus(state.data) === null && (
+                <>
+                  {pushOn && (
+                    <Button variant="glass" size="sm" icon={Send} onClick={() => void test()}>
+                      {t("profile.notifications.push.test")}
+                    </Button>
                   )}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col divide-y divide-border/50">
-              {state.data.available_groups.map((group) => {
-                const Icon = GROUP_ICONS[group] ?? Bell;
-                const chosen = state.data.channels[group] ?? [];
-                return (
-                  <div key={group} className="flex flex-wrap items-center gap-3 px-[12.5px] py-2.5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                      <Icon className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium text-foreground">
-                        {t(`profile.notifications.groups.${group}.title` as ParseKeys)}
-                      </p>
-                      <p className="text-[12px] text-muted-foreground">
-                        {t(`profile.notifications.groups.${group}.description` as ParseKeys)}
-                      </p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      {state.data.available_channels.map((channel) => (
-                        <ChoiceChip
-                          key={channel}
-                          size="sm"
-                          active={chosen.includes(channel)}
-                          disabled={isSaving || !isChannelAvailable(state.data, channel)}
-                          onClick={() => void toggle(state.data, group, channel)}
-                        >
-                          {t(`profile.notifications.channels.${channel}` as ParseKeys)}
-                        </ChoiceChip>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {state.data.is_push_configured && support === "ready" && (
-              <PushDevicesList
-                version={devicesVersion}
-                onRemoved={(endpoint) => {
-                  // disablePush unsubscribes the browser even when the server call fails
-                  void currentPushEndpoint()
-                    .then((own) =>
-                      own === endpoint ? disablePush(pushApi, { optOut: true }).finally(() => setPushOn(false)) : undefined,
-                    )
-                    .catch(() => undefined);
-                }}
+                  <Switch checked={pushOn ?? false} onChange={(on) => void togglePush(on)} disabled={isTogglingPush} />
+                </>
+              )}
+            </Row>
+            {state.data.telegram_available && (
+              <Row
+                icon={Send}
+                label={t("profile.notifications.telegram.label")}
+                description={t("profile.oauthAccounts.connected")}
               />
             )}
-          </>
-        )}
-      </div>
-    </Card>
+          </SectionRows>
+
+          {/* SectionRows divided's line and spacing, the column heads outside the rows so no line follows them */}
+          <div className="mt-2 border-t border-white/[0.08] pt-2">
+            {/* over the rows' switches: 48px each, 8px apart, 16px from the edge as in a Row; -mb-3 pulls the
+                first row's switches up close under the heads */}
+            <div className={`-mb-3 flex justify-end gap-2 pr-4 ${EYEBROW_CLASS}`}>
+              {shownChannels(state.data).map((channel) => (
+                <span key={channel} className="flex w-12 justify-center whitespace-nowrap">
+                  {t(`profile.notifications.channels.${channel}` as ParseKeys)}
+                </span>
+              ))}
+            </div>
+            <SectionRows flush>
+              {state.data.available_groups.map((group) => {
+                const chosen = state.data.channels[group] ?? [];
+                return (
+                  <Row
+                    key={group}
+                    icon={GROUP_ICONS[group] ?? Bell}
+                    label={t(`profile.notifications.groups.${group}.title` as ParseKeys)}
+                    description={t(`profile.notifications.groups.${group}.description` as ParseKeys)}
+                  >
+                    {shownChannels(state.data).map((channel) => (
+                      // an unavailable channel delivers nothing, so it reads off whatever is stored
+                      <Switch
+                        key={channel}
+                        checked={isChannelAvailable(state.data, channel) && chosen.includes(channel)}
+                        disabled={!isChannelAvailable(state.data, channel)}
+                        onChange={() => void toggle(state.data, group, channel)}
+                      />
+                    ))}
+                  </Row>
+                );
+              })}
+            </SectionRows>
+          </div>
+
+          {state.data.is_push_configured && support === "ready" && (
+            <PushDevicesList
+              version={devicesVersion}
+              onRemoved={(endpoint) => {
+                // disablePush unsubscribes the browser even when the server call fails
+                void currentPushEndpoint()
+                  .then((own) =>
+                    own === endpoint
+                      ? disablePush(pushApi, { optOut: true }).finally(() => setPushOn(false))
+                      : undefined,
+                  )
+                  .catch(() => undefined);
+              }}
+            />
+          )}
+        </>
+      )}
+    </Section>
   );
 }

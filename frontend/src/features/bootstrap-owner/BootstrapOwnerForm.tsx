@@ -6,17 +6,12 @@ import { bootstrapOwner } from "@entities/auth/api";
 import { getErrorMessage } from "@shared/api/http";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
-import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
-import { randomString } from "@shared/lib/random-string";
+import { generatePassword, PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
 import { Field } from "@shared/ui/glass/Field";
 import { Input, PasswordInput } from "@shared/ui/glass/Input";
-
-const PASSWORD_CHARSET =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const GENERATED_PASSWORD_LENGTH = 32;
 
 // fields dissolve one by one before the welcome screen takes over
 const FORM_VARIANTS: Variants = {
@@ -27,16 +22,6 @@ const FORM_ITEM_VARIANTS: Variants = {
   rest: { opacity: 1, y: 0, filter: "none" },
   leave: { opacity: 0, y: 10, filter: "blur(4px)", transition: { duration: 0.28, ease: "easeIn" } },
 };
-
-// Retries on a miss instead of forcing characters into positions, so the draw
-// stays uniform; at 32 characters a retry almost never happens.
-function generatePassword(): string {
-  let candidate: string;
-  do {
-    candidate = randomString(PASSWORD_CHARSET, GENERATED_PASSWORD_LENGTH);
-  } while (!PASSWORD_PATTERN.test(candidate));
-  return candidate;
-}
 
 interface BootstrapOwnerFormProps {
   onSuccess: () => void;

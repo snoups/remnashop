@@ -48,7 +48,7 @@ interface Props {
 
 export function LegalDocumentDialog({ onClose, ...props }: Props) {
   return (
-    <Modal onClose={onClose} size="xl" scrollable material="glass">
+    <Modal onClose={onClose} size="xl" scrollable>
       <LegalDocumentDialogBody {...props} />
     </Modal>
   );

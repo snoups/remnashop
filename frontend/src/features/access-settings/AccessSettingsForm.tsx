@@ -22,7 +22,7 @@ import { Spinner } from "@shared/ui/Spinner";
 import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { Switch } from "@shared/ui/glass/Switch";
-import { Tag } from "@shared/ui/glass/Tag";
+import { Tag } from "@shared/ui/Tag";
 
 export const ACCESS_SECTION_ID = "access";
 

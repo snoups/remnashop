@@ -72,6 +72,7 @@ export function AdLinkShareMenu({ adLink }: { adLink: AdLink }) {
 
   return (
     <ActionMenu
+      glass
       trigger={{ label: t("advertising.share.button"), icon: Forward }}
       items={[...itemsFor("copy"), ...itemsFor("qr")]}
     />

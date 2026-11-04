@@ -2,6 +2,7 @@ import { apiGet } from "@shared/api/http";
 import { toIsoDate } from "@shared/lib/iso-date";
 import type { Permission } from "@shared/types/rbac";
 import type { PromocodeRewardType } from "@entities/promocodes/api";
+import type { PromocodeStatus } from "@entities/promocodes/display";
 
 export type AnalyticsPeriod =
   | { kind: "days"; days: 7 | 30 | 90 | 365 }
@@ -49,6 +50,18 @@ export interface SnapshotKpi {
   paid_subscriptions: number;
   limited_subscriptions: number;
   active_trials: number;
+  /** people with a live paid subscription: one may hold several */
+  paying_customers: number;
+  never_connected: number;
+  /** paid subscriptions ending within expiring_soon_days, and the MRR they carry */
+  expiring_soon_days: number;
+  expiring_soon: number;
+  expiring_soon_mrr: string;
+  /** active trials ending within trials_ending_days */
+  trials_ending_days: number;
+  trials_ending_soon: number;
+  points_owed: string;
+  bonus_days_owed: number;
 }
 
 export interface Analytics {
@@ -97,6 +110,8 @@ export interface Funnel {
   period: AnalyticsPeriodInfo;
   steps: FunnelStep[];
   paid_via_trial: number;
+  /** null: nobody registered in the previous period */
+  previous_conversion: number | null;
   by_source: FunnelSourceRow[];
 }
 
@@ -145,7 +160,8 @@ export interface TopPayer {
   user_id: number;
   name: string;
   username: string | null;
-  current_plan: string | null;
+  /** live paid subscriptions' plans, the one expiring last first */
+  current_plans: string[];
   payments: number;
   spent: string;
   last_paid_at: string;
@@ -175,6 +191,7 @@ export interface RevenueTotals {
   refunded: string;
   previous_revenue: string;
   previous_payments: number;
+  previous_refunds: number;
 }
 
 export interface RevenueBucket {
@@ -239,8 +256,11 @@ export interface Trial {
   trials: number;
   converted: number;
   conversion_rate: number;
-  previous_conversion_rate: number;
+  /** null: nobody took a trial in the previous period */
+  previous_conversion_rate: number | null;
+  previous_trials: number;
   revenue_from_converted: string;
+  previous_revenue_from_converted: string;
   median_days_to_pay: number;
   trial_days: number;
   by_trial_day: TrialDayBucket[];
@@ -268,7 +288,8 @@ export interface ExpiringCustomer {
   user_id: number;
   name: string;
   username: string | null;
-  plan_name: string;
+  /** plans of the subscriptions expiring in the window, the nearest first */
+  plan_names: string[];
   expire_at: string;
   spent: string;
   renewals: number;
@@ -331,10 +352,17 @@ export interface TopReferrer {
   reward_days: number;
 }
 
+export interface ChannelRevenue {
+  source: SourceKind;
+  revenue: string;
+}
+
 export interface Sources {
   period: AnalyticsPeriodInfo;
   report_currency: string;
   channels: SourceRow[];
+  /** the previous period's cohort, paying for as long as this one has */
+  previous_channels: ChannelRevenue[];
   ad_links: SourceRow[];
   referral: ReferralPayback;
   top_referrers: TopReferrer[];
@@ -360,7 +388,7 @@ export interface PromocodeRow {
   max_activations: number | null;
   revenue_after: string;
   conversion_rate: number | null;
-  status: "ACTIVE" | "EXPIRED" | "INACTIVE";
+  status: PromocodeStatus;
 }
 
 export interface PromocodeStats {
@@ -371,7 +399,14 @@ export interface PromocodeStats {
   discount_given: string;
   revenue_with_discount: string;
   revenue_share: number;
+  /** activations of free-reward codes the conversion is counted from */
+  free_rewards: number;
   free_reward_conversion: number;
+  previous_activations: number;
+  previous_discount_given: string;
+  previous_revenue_with_discount: string;
+  /** null: no free reward was activated in the previous period */
+  previous_free_reward_conversion: number | null;
   by_reward_type: RewardTypeCount[];
   codes: PromocodeRow[];
 }

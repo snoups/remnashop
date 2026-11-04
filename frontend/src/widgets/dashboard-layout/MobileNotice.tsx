@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 
@@ -26,10 +26,12 @@ export function MobileNotice() {
   if (dismissed || !isMobile) return null;
 
   return (
-    <Modal onClose={() => {
-      writeStorage(DISMISSED_KEY, "1", "session");
-      setDismissed(true);
-    }}>
+    <Modal
+      onClose={() => {
+        writeStorage(DISMISSED_KEY, "1", "session");
+        setDismissed(true);
+      }}
+    >
       <MobileNoticeBody />
     </Modal>
   );
@@ -40,16 +42,14 @@ function MobileNoticeBody() {
   const close = useModalClose();
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t("mobileNotice.title")} aria-describedby="mobile-notice-description">
-      <DialogHeader icon={Monitor} title={t("mobileNotice.title")} />
-      <div className="flex flex-col gap-5 p-5">
-        <p id="mobile-notice-description" className="text-sm leading-relaxed text-foreground/80">
-          {t("mobileNotice.description")}
-        </p>
-        <Button variant="solid" className="w-full" onClick={close}>
+    <>
+      <DialogHeader icon={Monitor} title={t("mobileNotice.title")} closable={false} />
+      <p className="p-4 text-[13px] leading-relaxed text-foreground/80">{t("mobileNotice.description")}</p>
+      <div className="border-t border-white/[0.08] p-4">
+        <Button variant="glassAccent" className="w-full" onClick={close}>
           {t("mobileNotice.continueButton")}
         </Button>
       </div>
-    </div>
+    </>
   );
 }

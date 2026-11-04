@@ -1,7 +1,6 @@
-import { ChevronRight, Filter, Gift, Plus, Ticket } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarPlus, ChevronRight, Filter, Gift, Percent, Plus, Ticket, TicketCheck } from "lucide-react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router-dom";
 
 import { listAddons } from "@entities/addons/api";
 import { listPlans } from "@entities/plans/api";
@@ -16,6 +15,8 @@ import {
   getPromocodeStatus,
   PROMOCODE_STATUS_BADGE_TONE,
   PROMOCODE_STATUSES,
+  type PromocodeStatus,
+  REWARD_TYPE_ICON,
   REWARD_TYPES,
 } from "@entities/promocodes/display";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -25,19 +26,28 @@ import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatMoney } from "@shared/lib/format";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
+import { dotIcon } from "@shared/ui/option-icons";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Spinner } from "@shared/ui/Spinner";
+import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 import { ListRow } from "@shared/ui/ListRow";
 
-const ROW_GRID_CLASSNAME = "grid grid-cols-[36px_minmax(0,1fr)_120px_110px_100px_16px] items-center gap-3";
+const STATUS_DOTS: Record<PromocodeStatus, ComponentType<{ className?: string }>> = {
+  ACTIVE: dotIcon("bg-success"),
+  INACTIVE: dotIcon("bg-muted-foreground"),
+  EXPIRED: dotIcon("bg-warning"),
+  EXHAUSTED: dotIcon("bg-warning"),
+};
+
+const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_minmax(0,200px)_120px_110px_100px_16px] items-center gap-3";
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
@@ -47,11 +57,8 @@ export function PromocodesPage() {
   const plans = plansState.kind === "ready" ? plansState.data : [];
   const [status, setStatus] = useState("");
   const [rewardType, setRewardType] = useState("");
-  // set by the header search's deep link; no local search box
-  const [searchParams] = useSearchParams();
-  const search = (searchParams.get("search") ?? "").trim();
-  const filters = useMemo(() => ({ status, rewardType, search }), [status, rewardType, search]);
-  const { state, setState, isLoadingMore, hasMore, loadMore: handleLoadMore, reload } = usePaginatedList(
+  const filters = useMemo(() => ({ status, rewardType }), [status, rewardType]);
+  const { state, setState, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore, reload } = usePaginatedList(
     (current, page, signal) => listPromocodes({ ...current, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
     filters,
   );
@@ -73,7 +80,7 @@ export function PromocodesPage() {
   const summary = summaryState.kind === "ready" ? summaryState.data : null;
 
   const visibleItems = state.kind === "ready" ? state.items : [];
-  const hasFilters = Boolean(status || rewardType || search);
+  const hasFilters = Boolean(status || rewardType);
 
   const handleSaved = (promo: Promocode) => {
     reloadSummary();
@@ -96,24 +103,76 @@ export function PromocodesPage() {
   };
 
   const none = t("common.none");
-  const usedCount = (promo: Promocode): number | undefined =>
-    summary ? (summary.activations_by_promocode[promo.id] ?? 0) : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="promocodes-status"
+            value={status}
+            onChange={setStatus}
+            icon={Filter}
+            size="compact"
+            glassPopover
+            placeholder={t("promocodes.filters.statusAll")}
+            options={[
+              { value: "", label: t("promocodes.filters.statusAll"), icon: Filter },
+              ...PROMOCODE_STATUSES.map((value) => ({ value, label: t(`promocodes.status.${value}`), icon: STATUS_DOTS[value] })),
+            ]}
+          />
+        </div>
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="promocodes-reward-type"
+            value={rewardType}
+            onChange={setRewardType}
+            icon={Gift}
+            size="compact"
+            glassPopover
+            placeholder={t("promocodes.filters.rewardAll")}
+            options={[
+              { value: "", label: t("promocodes.filters.rewardAll"), icon: Gift },
+              ...REWARD_TYPES.map((value) => ({
+                value,
+                label: t(`promocodes.rewardType.${value}`),
+                icon: REWARD_TYPE_ICON[value],
+              })),
+            ]}
+          />
+        </div>
+        {canCreate && (
+          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)}>
+            <Plus className="size-4" />
+            {t("promocodes.create.button")}
+          </Button>
+        )}
+      </div>
+
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
       {canViewSummary && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
           <KpiTile
+            panel
+            icon={Ticket}
             label={t("promocodes.stats.promocodes")}
             value={summary ? String(summary.total_count) : none}
             hint={summary ? t("promocodes.stats.active", { count: summary.active_count }) : undefined}
           />
           <KpiTile
+            panel
+            icon={TicketCheck}
             label={t("promocodes.stats.activations")}
             value={summary ? String(summary.activations_count) : none}
             hint={summary ? t("promocodes.stats.users", { count: summary.activated_users_count }) : undefined}
           />
           <KpiTile
+            panel
+            icon={CalendarPlus}
             label={t("promocodes.stats.grantedDays")}
             value={summary ? summary.granted_days.toLocaleString(i18n.language) : none}
             hint={
@@ -121,6 +180,8 @@ export function PromocodesPage() {
             }
           />
           <KpiTile
+            panel
+            icon={Percent}
             label={t("promocodes.stats.discounts")}
             value={summary ? formatMoney(summary.discount_amount, summary.report_currency, i18n.language) : none}
             hint={summary ? t("promocodes.stats.discountedOrders", { count: summary.discounted_orders_count }) : undefined}
@@ -128,46 +189,9 @@ export function PromocodesPage() {
         </div>
       )}
 
-      <Card>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("promocodes.filters.status")}</label>
-            <SelectDropdown
-              id="promocodes-status"
-              value={status}
-              onChange={setStatus}
-              icon={Filter}
-              placeholder={t("promocodes.filters.statusAll")}
-              options={[
-                { value: "", label: t("promocodes.filters.statusAll") },
-                ...PROMOCODE_STATUSES.map((value) => ({ value, label: t(`promocodes.status.${value}`) })),
-              ]}
-            />
-          </div>
-          <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-            <label className={EYEBROW_CLASS}>{t("promocodes.filters.reward")}</label>
-            <SelectDropdown
-              id="promocodes-reward-type"
-              value={rewardType}
-              onChange={setRewardType}
-              icon={Gift}
-              placeholder={t("promocodes.filters.rewardAll")}
-              options={[
-                { value: "", label: t("promocodes.filters.rewardAll") },
-                ...REWARD_TYPES.map((value) => ({ value, label: t(`promocodes.rewardType.${value}`) })),
-              ]}
-            />
-          </div>
-          {canCreate && (
-            <Button variant="solid" size="field" type="button" className="ml-auto" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="size-3.5" />
-              {t("promocodes.create.button")}
-            </Button>
-          )}
-        </div>
-      </Card>
-
-      <Card>
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
+        {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={t("common.loadError")} size="page" />
@@ -177,8 +201,9 @@ export function PromocodesPage() {
         )}
         {state.kind === "ready" && visibleItems.length > 0 && (
           <>
-            <div className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}>
+            <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
               <span className="col-span-2">{t("promocodes.columns.code")}</span>
+              <span>{t("promocodes.columns.availability")}</span>
               <span>{t("promocodes.columns.used")}</span>
               <span>{t("promocodes.details.expires")}</span>
               <span>{t("promocodes.columns.status")}</span>
@@ -187,34 +212,34 @@ export function PromocodesPage() {
             <div className={LIST_BODY_CLASS}>
               {visibleItems.map((promo) => {
                 const promoStatus = getPromocodeStatus(promo);
-                const used = usedCount(promo);
                 return (
                   <ListRow
+                    glass
                     key={promo.id}
                     type="button"
                     onClick={() => setDetailsPromocode(promo)}
                     className={ROW_GRID_CLASSNAME}
                   >
                     <span
-                      className={`flex size-9 items-center justify-center rounded-full ${
+                      className={`flex size-8 items-center justify-center rounded-full ${
                         promoStatus === "ACTIVE" ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
                       }`}
                     >
                       <Ticket className="size-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate font-mono text-[13px] font-bold text-foreground">{promo.code}</span>
-                        {promo.is_reusable && <Badge tone="accent">&infin;</Badge>}
-                      </span>
+                      <span className="block truncate font-mono text-[13px] font-medium text-foreground">{promo.code}</span>
                       <span className="block truncate text-[12px] text-muted-foreground">
-                        <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
+                        {t(`promocodes.rewardType.${promo.reward_type}`)}
                         {" · "}
-                        {t(`promocodes.availability.${promo.availability}`)}
+                        <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
                       </span>
                     </span>
+                    <span className="truncate text-[13px] text-foreground">
+                      {t(`promocodes.availability.${promo.availability}`)}
+                    </span>
                     <span className="text-[13px] tabular-nums text-foreground">
-                      {used ?? none}
+                      {promo.activations_count}
                       <span className="text-muted-foreground">
                         {" / "}
                         {promo.max_activations ?? "∞"}
@@ -226,7 +251,7 @@ export function PromocodesPage() {
                         : t("promocodes.noExpiry")}
                     </span>
                     <span>
-                      <Badge tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
+                      <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
                     </span>
                     <ChevronRight className="size-4 text-muted-foreground" />
                   </ListRow>
@@ -246,7 +271,11 @@ export function PromocodesPage() {
             )}
           </>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </div>
+      </LoadGate>
+      </div>
 
       {isCreateOpen && (
         <PromocodeCreateDialog
@@ -261,7 +290,6 @@ export function PromocodesPage() {
       {detailsPromocode && (
         <PromocodeDetailsDialog
           promocode={detailsPromocode}
-          usedCount={usedCount(detailsPromocode)}
           addons={addons}
           plans={plans}
           onSaved={handleSaved}

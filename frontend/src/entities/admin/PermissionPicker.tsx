@@ -26,6 +26,7 @@ import {
   Package,
   PackagePlus,
   Palette,
+  Receipt,
   ScrollText,
   Server,
   Share2,
@@ -35,7 +36,7 @@ import {
   Store,
   Ticket,
   Users,
-  Wallet,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -84,7 +85,7 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   subscriptions: Layers,
   addons: PackagePlus,
   promocodes: Ticket,
-  transactions: Wallet,
+  transactions: Receipt,
   referrals: Share2,
   backups: Database,
   ad_links: Link2,
@@ -201,8 +202,10 @@ interface KindPillProps {
 function KindPill({ label, state, disabled, onClick }: KindPillProps) {
   return (
     <Button variant={state === "off" ? "glass" : "glassAccent"} size="sm" disabled={disabled} onClick={onClick}>
+      {/* an icon in every state keeps the pill one width as it toggles */}
       {state === "on" && <Check className="size-3.5" />}
       {state === "partial" && <Minus className="size-3.5" />}
+      {state === "off" && <X className="size-3.5" />}
       {label}
     </Button>
   );

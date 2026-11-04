@@ -1,23 +1,25 @@
 import {
-  Ban,
-  CircleCheck,
-  CreditCard,
   ArrowDown,
   ArrowUp,
+  Ban,
+  CircleCheck,
   Gift,
   GitMerge,
   History,
   Info,
   KeyRound,
   LaptopMinimal,
+  Layers,
   Mail,
   Send,
   ShieldPlus,
   Trash2,
   type LucideIcon,
+  Unlink,
+  UserPlus,
+  Users,
 } from "lucide-react";
-import { motion } from "motion/react";
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -37,6 +39,7 @@ import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import type { UserDetailsTab } from "@features/user-details/UserDetailsDialog";
 import { useUserActions } from "@features/user-details/use-user-actions";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { formatPercent } from "@shared/lib/format";
@@ -48,15 +51,15 @@ import { useCurrentUser, usePermissions } from "@entities/user/use-current-user"
 import { userHandle } from "@features/user-referrals/format";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
-import { SelectDropdown, type SelectOption } from "@shared/ui/SelectDropdown";
-import { dotIcon } from "@shared/ui/optionIcons";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
+import { dotIcon } from "@shared/ui/option-icons";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
 type Kpi = "all" | "new" | "subscribed" | "blocked";
@@ -65,18 +68,27 @@ const KPIS: Kpi[] = ["all", "new", "subscribed", "blocked"];
 const FILTER_DEBOUNCE_MS = 200;
 
 const ROW_GRID_CLASSNAME =
-  "grid grid-cols-[36px_minmax(0,1fr)_100px_90px_130px_32px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(0,1fr)_100px_90px_130px_32px] items-center gap-3";
 
 const YES_DOT = dotIcon("bg-success");
 const NO_DOT = dotIcon("bg-muted-foreground");
 const BLOCKED_DOT = dotIcon("bg-error");
 const LISTS_DOT = dotIcon("bg-warning");
+const DELETED_DOT = dotIcon("bg-muted-foreground");
+// the account-state filter's last choice: anonymized accounts, which the list leaves out otherwise
+const DELETED_FILTER = "deleted";
 
 const KPI_STAT: Record<Kpi, keyof UserListStats> = {
   all: "total",
   new: "new",
   subscribed: "subscribed",
   blocked: "blocked",
+};
+const KPI_ICON: Record<Kpi, LucideIcon> = {
+  all: Users,
+  new: UserPlus,
+  subscribed: Layers,
+  blocked: Ban,
 };
 
 // active, limited, expired; a zero is left out
@@ -102,34 +114,10 @@ function parseTriState(value: string): boolean | undefined {
   return value === "" ? undefined : value === "true";
 }
 
-function FilterSelect({
-  id,
-  label,
-  icon,
-  value,
-  onChange,
-  options,
-}: {
-  id: string;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  value: string;
-  onChange: (value: string) => void;
-  options: SelectOption[];
-}) {
-  return (
-    // fixed width: the search field takes the rest of the row
-    <div className="flex w-44 shrink-0 flex-col gap-1.5">
-      <span className={EYEBROW_CLASS}>{label}</span>
-      <SelectDropdown id={id} value={value} onChange={onChange} icon={icon} placeholder={options[0].label} options={options} />
-    </div>
-  );
-}
-
 export function UsersPage() {
   const { t, i18n } = useTranslation();
   const [searchInput, setSearchInput] = useUrlSearch();
-  const [blockedBy, setBlockedBy] = useState<BlockedBy | "">("");
+  const [blockedBy, setBlockedBy] = useState<BlockedBy | typeof DELETED_FILTER | "">("");
   const [subscription, setSubscription] = useState("");
   const [trial, setTrial] = useState("");
   const [sort, setSort] = useState<{ by: UserSort; descending: boolean }>({ by: "created_at", descending: true });
@@ -154,7 +142,8 @@ export function UsersPage() {
     () => ({
       search: debouncedSearch || undefined,
       includeStaff,
-      blockedBy: blockedBy || undefined,
+      blockedBy: blockedBy && blockedBy !== DELETED_FILTER ? blockedBy : undefined,
+      deleted: blockedBy === DELETED_FILTER ? "only" : undefined,
       hasSubscription: parseTriState(subscription),
       isTrialAvailable: parseTriState(trial),
       sort: sort.by,
@@ -185,10 +174,7 @@ export function UsersPage() {
       prev.kind === "ready"
         ? {
             kind: "ready",
-            // block/unblock responses carry no subscription count
-            items: prev.items.map((u) =>
-              u.id === updated.id ? { ...updated, active_subscriptions: u.active_subscriptions } : u,
-            ),
+            items: prev.items.map((u) => (u.id === updated.id ? updated : u)),
             total: prev.total,
           }
         : prev,
@@ -232,11 +218,79 @@ export function UsersPage() {
     ].filter((channel): channel is { key: string; icon: LucideIcon } => Boolean(channel));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 lg:gap-8 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <SearchField
+          id="users-search"
+          label={t("users.filters.search")}
+          hideLabel
+          compact
+          placeholder={t("users.filters.searchPlaceholder")}
+          value={searchInput}
+          onChange={setSearchInput}
+        />
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="users-blocked-by"
+            value={blockedBy}
+            onChange={(value) => setBlockedBy(value as BlockedBy | typeof DELETED_FILTER | "")}
+            icon={Ban}
+            size="compact"
+            glassPopover
+            placeholder={t("users.filters.blockedByAll")}
+            options={[
+              { value: "", label: t("users.filters.blockedByAll"), icon: Ban },
+              { value: "manual", label: t("users.filters.blockedByManual"), icon: BLOCKED_DOT },
+              { value: "lists", label: t("users.filters.blockedByLists"), icon: LISTS_DOT },
+              { value: DELETED_FILTER, label: t("users.filters.deleted"), icon: DELETED_DOT },
+            ]}
+          />
+        </div>
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="users-subscription"
+            value={subscription}
+            onChange={setSubscription}
+            icon={Layers}
+            size="compact"
+            glassPopover
+            placeholder={t("users.filters.subscriptionAll")}
+            options={[
+              { value: "", label: t("users.filters.subscriptionAll"), icon: Layers },
+              { value: "true", label: t("users.filters.subscriptionWith"), icon: YES_DOT },
+              { value: "false", label: t("users.filters.subscriptionWithout"), icon: NO_DOT },
+            ]}
+          />
+        </div>
+        <div className="min-w-40 flex-1 md:min-w-0">
+          <SelectDropdown
+            id="users-trial"
+            value={trial}
+            onChange={setTrial}
+            icon={Gift}
+            size="compact"
+            glassPopover
+            placeholder={t("users.filters.trialAll")}
+            options={[
+              { value: "", label: t("users.filters.trialAll"), icon: Gift },
+              { value: "true", label: t("users.filters.trialAvailable"), icon: YES_DOT },
+              { value: "false", label: t("users.filters.trialUsed"), icon: NO_DOT },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading" || statsState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
+      <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
         {KPIS.map((value) => (
           <KpiTile
+            panel
             key={value}
+            icon={KPI_ICON[value]}
             label={t(`users.kpi.${value}`)}
             value={stats ? String(stats[KPI_STAT[value]]) : "—"}
             hint={
@@ -259,56 +313,9 @@ export function UsersPage() {
         ))}
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-end gap-3">
-          <SearchField
-            id="users-search"
-            label={t("users.filters.search")}
-            placeholder={t("users.filters.searchPlaceholder")}
-            value={searchInput}
-            onChange={setSearchInput}
-          />
-          <FilterSelect
-            id="users-blocked-by"
-            label={t("users.filters.blockedBy")}
-            icon={Ban}
-            value={blockedBy}
-            onChange={(value) => setBlockedBy(value as BlockedBy | "")}
-            options={[
-              { value: "", label: t("users.filters.blockedByAll") },
-              { value: "manual", label: t("users.filters.blockedByManual"), icon: BLOCKED_DOT },
-              { value: "lists", label: t("users.filters.blockedByLists"), icon: LISTS_DOT },
-            ]}
-          />
-          <FilterSelect
-            id="users-subscription"
-            label={t("users.filters.subscription")}
-            icon={CreditCard}
-            value={subscription}
-            onChange={setSubscription}
-            options={[
-              { value: "", label: t("users.filters.subscriptionAll") },
-              { value: "true", label: t("users.filters.subscriptionWith"), icon: YES_DOT },
-              { value: "false", label: t("users.filters.subscriptionWithout"), icon: NO_DOT },
-            ]}
-          />
-          <FilterSelect
-            id="users-trial"
-            label={t("users.filters.trial")}
-            icon={Gift}
-            value={trial}
-            onChange={setTrial}
-            options={[
-              { value: "", label: t("users.filters.trialAll") },
-              { value: "true", label: t("users.filters.trialAvailable"), icon: YES_DOT },
-              { value: "false", label: t("users.filters.trialUsed"), icon: NO_DOT },
-            ]}
-          />
-        </div>
-      </Card>
-
-      <Card className="relative">
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={t("common.loadError")} size="page" />
@@ -317,9 +324,9 @@ export function UsersPage() {
         {state.kind === "ready" && state.items.length > 0 && (
           // overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar
           <div className="-mx-2 -my-1 overflow-x-auto overflow-y-hidden px-2 py-1">
-            <div className="min-w-[860px]">
+            <div className="min-w-[720px]">
               <div
-                className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}
+                className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
               >
                 <span className="col-span-2">{sortHeader("name", t("users.columns.user"))}</span>
                 {sortHeader("channels", t("users.columns.channels"))}
@@ -377,22 +384,21 @@ export function UsersPage() {
                       onClick: () => actions.run("bindTelegram", user),
                     });
                   }
+                  if (available.includes("unbindTelegram")) {
+                    menuItems.push({
+                      label: t("users.telegram.unbind"),
+                      icon: Unlink,
+                      onClick: () => actions.run("unbindTelegram", user),
+                    });
+                  }
                   if (available.includes("unblock")) {
                     menuItems.push({
-                      label: t("users.unblock.button"),
+                      label: t("users.unblock.action"),
                       icon: CircleCheck,
                       onClick: () => actions.run("unblock", user),
                     });
                   }
                   const dangerItems: ActionMenuItem[] = [];
-                  if (available.includes("block")) {
-                    dangerItems.push({
-                      label: t("users.block.button"),
-                      icon: Ban,
-                      variant: "danger",
-                      onClick: () => actions.run("block", user),
-                    });
-                  }
                   if (available.includes("merge")) {
                     dangerItems.push({
                       label: t("users.merge.action"),
@@ -401,9 +407,17 @@ export function UsersPage() {
                       onClick: () => actions.run("merge", user),
                     });
                   }
+                  if (available.includes("block")) {
+                    dangerItems.push({
+                      label: t("users.block.action"),
+                      icon: Ban,
+                      variant: "danger",
+                      onClick: () => actions.run("block", user),
+                    });
+                  }
                   if (available.includes("delete")) {
                     dangerItems.push({
-                      label: t("users.delete.button"),
+                      label: t("common.delete"),
                       icon: Trash2,
                       variant: "danger",
                       onClick: () => actions.run("delete", user),
@@ -412,9 +426,9 @@ export function UsersPage() {
                   menuItems.push(...dangerItems.map((item, index) => ({ ...item, separatorBefore: index === 0 })));
 
                   return (
-                    <motion.div
+                    <div
                       key={user.id}
-                      className={`${ROW_GRID_CLASSNAME} relative ${LIST_ROW_CLASS} hover:bg-white/[0.04] has-[[aria-expanded=true]]:z-20`}
+                      className={`${ROW_GRID_CLASSNAME} relative ${GLASS_LIST_ROW_CLASS} hover:bg-white/[0.04] has-[[aria-expanded=true]]:z-20`}
                     >
                       {/* whole-row hit area; sits under the action menu (z-10) */}
                       <Pressable
@@ -422,7 +436,7 @@ export function UsersPage() {
                         onClick={() => setDetailsUser(user)}
                         className="absolute inset-0 cursor-pointer rounded-full" />
                       <span
-                        className={`flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
+                        className={`flex size-8 items-center justify-center rounded-full text-[11px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >
                         {isDeleted ? <Trash2 className="size-4" /> : initials(user.login ?? user.name)}
                       </span>
@@ -434,7 +448,7 @@ export function UsersPage() {
                             {displayName}
                           </span>
                           {user.role !== "USER" && (
-                            <Badge tone={ROLE_BADGE_TONE[user.role]}>
+                            <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>
                               {t(`roles.${user.role}`)}
                             </Badge>
                           )}
@@ -455,7 +469,7 @@ export function UsersPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         {subscriptionCounts(user).map(({ status, count }) => (
-                          <Badge key={status} tone={SUBSCRIPTION_STATUS_BADGE_TONE[status]} shape="count">
+                          <Badge borderless key={status} tone={SUBSCRIPTION_STATUS_BADGE_TONE[status]} shape="count">
                             {count}
                           </Badge>
                         ))}
@@ -478,9 +492,9 @@ export function UsersPage() {
                         )}
                       </span>
                       <span className="relative z-10 flex justify-end">
-                        <ActionMenu items={menuItems} />
+                        <ActionMenu glass items={menuItems} />
                       </span>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -497,7 +511,11 @@ export function UsersPage() {
             />
           </div>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </div>
+      </LoadGate>
+      </div>
 
       {detailsUser && (
         <UserDetailsDialog

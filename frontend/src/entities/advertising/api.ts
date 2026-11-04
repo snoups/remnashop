@@ -67,7 +67,8 @@ export interface UpdateAdLinkRequest {
   is_active?: boolean;
   allow_bot?: boolean;
   allow_webcabinet?: boolean;
-  note?: string | null;
+  /** "" clears it */
+  note?: string;
 }
 
 export function updateAdLink(adLinkId: number, payload: UpdateAdLinkRequest): Promise<AdLink> {
@@ -90,7 +91,6 @@ export interface AdLinkStats {
   paid_count: number;
   conversion_rate: string;
   revenue: string;
-  revenue_by_currency: Record<string, string>;
   cost: string;
   report_currency: string;
   cpa: string | null;

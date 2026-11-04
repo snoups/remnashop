@@ -49,7 +49,7 @@ export function resetReferralSettings(): Promise<ReferralSettings> {
 export interface ReferralReward {
   type: ReferralRewardType;
   amount: string;
-  created_at: string | null;
+  created_at: string;
   /** whose payment earned it; admin endpoints only */
   buyer?: ReferralUser | null;
   /** buyer's depth below the rewarded user */
@@ -62,9 +62,9 @@ export interface ReferralStats {
   points: string;
   bonus_days: number;
   counts_by_level: Record<string, number>;
-  rewards: ReferralReward[];
-  /** admin endpoints only */
-  referrer?: ReferralUser | null;
+  reward_count: number;
+  reward_amounts: Partial<Record<ReferralRewardType, string>>;
+  referrer: ReferralUser | null;
 }
 
 /** what the user's downline has paid, in the pricing anchor currency */
@@ -82,16 +82,36 @@ export function getUserReferralStats(userId: number, signal?: AbortSignal): Prom
   return apiGet<ReferralStats>(`/users/${userId}/referrals`, signal);
 }
 
-export function adjustUserPoints(userId: number, delta: string): Promise<ReferralStats> {
-  return apiPost<ReferralStats, { delta: string }>(`/users/${userId}/actions/adjust-points`, { delta });
+export interface ReferralRewardPage {
+  items: ReferralReward[];
+  total: number;
 }
 
-export function adjustUserBonusDays(userId: number, delta: number): Promise<ReferralStats> {
-  return apiPost<ReferralStats, { delta: number }>(`/users/${userId}/actions/adjust-bonus-days`, { delta });
+export function listUserReferralRewards(
+  userId: number,
+  page = 1,
+  pageSize = REFERRALS_PAGE_SIZE,
+  signal?: AbortSignal,
+): Promise<ReferralRewardPage> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiGet<ReferralRewardPage>(`/users/${userId}/referrals/rewards?${params.toString()}`, signal);
 }
 
-export function resetUserReferralCode(userId: number): Promise<ReferralStats> {
-  return apiPost<ReferralStats, Record<string, never>>(`/users/${userId}/referral-code/actions/reset`, {});
+export function adjustUserPoints(userId: number, delta: string): Promise<{ points: string }> {
+  return apiPost<{ points: string }, { delta: string }>(`/users/${userId}/actions/adjust-points`, { delta });
+}
+
+export function adjustUserBonusDays(userId: number, delta: number): Promise<{ bonus_days: number }> {
+  return apiPost<{ bonus_days: number }, { delta: number }>(`/users/${userId}/actions/adjust-bonus-days`, {
+    delta,
+  });
+}
+
+export function resetUserReferralCode(userId: number): Promise<{ referral_code: string | null }> {
+  return apiPost<{ referral_code: string | null }, Record<string, never>>(
+    `/users/${userId}/referral-code/actions/reset`,
+    {},
+  );
 }
 
 export const REFERRALS_PAGE_SIZE = 50;
@@ -169,7 +189,7 @@ export interface InvitedUser {
   /** direct inviter, set only below the first level */
   via: ReferralUser | null;
   level: number;
-  created_at: string | null;
+  created_at: string;
   reward_amounts: Partial<Record<ReferralRewardType, string>>;
 }
 

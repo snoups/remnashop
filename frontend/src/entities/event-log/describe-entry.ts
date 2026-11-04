@@ -63,13 +63,16 @@ function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
   return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
 }
 
-export function describeEntry(entry: EventLogEntry, t: TFunction): string {
+/** Who did it: a login or name, "System" or "Anonymous"; an API token reads as its own name. */
+export function initiatorLabel(entry: EventLogEntry, t: TFunction): string {
   const initiator = getInitiator(entry);
-  const actor = !initiator
-    ? t(getMissingInitiatorKey(entry))
-    : isSystemActor(initiator)
-      ? t("eventLog.detail.system")
-      : (initiator.login ?? initiator.name ?? "—");
+  if (!initiator) return t(getMissingInitiatorKey(entry));
+  if (isSystemActor(initiator)) return t("eventLog.detail.system");
+  return initiator.login ?? initiator.name ?? "—";
+}
+
+export function describeEntry(entry: EventLogEntry, t: TFunction): string {
+  const actor = initiatorLabel(entry, t);
   const target = getTargetLogin(entry);
   return target ? `${actor} → ${target}` : actor;
 }

@@ -41,9 +41,9 @@ export function SettingsPage() {
     // fills main and scrolls on its own (data-fills-main: see AnimatedOutlet and main). Negative
     // margins hand main's bottom and right padding to the scroller, so its scrollbar sits on the
     // panel edge as main's did; pr-[var(--scrollbar-size)] is the scrollbar; no bottom fade. Desktop: the 48px tab bar floats
-    // over the scroller's top. Under it a 20px gap, as between cards: content scrolling up is gone
-    // under the bar and the gap's first 8px (0–56px), fades in over the last 12px (56–68px), and
-    // starts at 68px at rest; scroll-pt lands a linked card (#access) there too
+    // over the scroller's top. Under it a 20px gap, as between cards, where the top fade sits
+    // (scroll-fade-gap from 48px); content starts at 68px at rest; scroll-pt lands a linked card
+    // (#access) there too
     <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
       <div className="md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10">
         <TabBar
@@ -58,7 +58,7 @@ export function SettingsPage() {
       </div>
       <div
         ref={scrollerRef}
-        className="scroll-fade-y page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-top-size:12px] [--fade-top-start:56px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+        className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
       >
         <LoadGate key={pathname}>
           <Outlet />

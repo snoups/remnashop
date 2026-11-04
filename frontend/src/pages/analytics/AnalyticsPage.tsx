@@ -1,24 +1,30 @@
 import { ArrowRightLeft, BarChart3, Gift, RefreshCw, Share2, TicketPercent, TrendingUp, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { matchPath, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { usePermissions } from "@entities/user/use-current-user";
 import { ANALYTICS_TAB_PERMISSIONS } from "@entities/analytics/api";
 import type { AnalyticsPeriod } from "@entities/analytics/api";
-import { TabBar } from "@shared/ui/TabBar";
-import type { TabBarItem } from "@shared/ui/TabBar";
+import { LoadGate } from "@shared/lib/load-gate";
+import { TabBar, type TabBarItem } from "@shared/ui/glass/TabBar";
 import type { AnalyticsOutletContext } from "@pages/analytics/period";
+import { PeriodPicker } from "@pages/analytics/PeriodPicker";
 
 const BASE_PATH = "/dashboard/analytics";
 
-const TABS: { key: keyof typeof ANALYTICS_TAB_PERMISSIONS; to: string; icon: TabBarItem["icon"] }[] = [
+const TABS: {
+  key: keyof typeof ANALYTICS_TAB_PERMISSIONS;
+  to: string;
+  icon: TabBarItem["icon"];
+  periodIndependent?: boolean;
+}[] = [
   { key: "metrics", to: "", icon: BarChart3 },
   { key: "revenue", to: "revenue", icon: Wallet },
   { key: "funnel", to: "funnel", icon: ArrowRightLeft },
   { key: "trial", to: "trial", icon: Gift },
-  { key: "retention", to: "retention", icon: RefreshCw },
-  { key: "ltv", to: "ltv", icon: TrendingUp },
+  { key: "retention", to: "retention", icon: RefreshCw, periodIndependent: true },
+  { key: "ltv", to: "ltv", icon: TrendingUp, periodIndependent: true },
   { key: "sources", to: "sources", icon: Share2 },
   { key: "promocodes", to: "promocodes", icon: TicketPercent },
 ];
@@ -28,6 +34,13 @@ export function AnalyticsPage() {
   const { pathname } = useLocation();
   const permissions = usePermissions();
   const [period, setPeriod] = useState<AnalyticsPeriod>({ kind: "days", days: 30 });
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // the scroller outlives the tabs; below md it doesn't scroll and main does
+  useLayoutEffect(() => {
+    scrollerRef.current?.scrollTo(0, 0);
+    scrollerRef.current?.closest("main")?.scrollTo(0, 0);
+  }, [pathname]);
 
   const isActive = (tab: (typeof TABS)[number]) =>
     matchPath({ path: tab.to ? `${BASE_PATH}/${tab.to}` : BASE_PATH, end: tab.to === "" }, pathname) !== null;
@@ -49,10 +62,29 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div>
-      <TabBar items={items} />
-      <div className="mt-6">
-        <Outlet context={{ period, setPeriod } satisfies AnalyticsOutletContext} />
+    // as the settings page: the 48px bar floats over a scroller of its own, content starts at 68px
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="flex flex-wrap items-center gap-2 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <div className="min-w-0">
+          <TabBar items={items} />
+        </div>
+        <div className="ml-auto max-w-full shrink-0">
+          {activeTab?.periodIndependent ? (
+            <span className="glass-panel flex h-12 items-center rounded-full px-4 text-[13px] font-medium text-muted-foreground">
+              {t("analytics.periodIndependent")}
+            </span>
+          ) : (
+            <PeriodPicker period={period} onChange={setPeriod} />
+          )}
+        </div>
+      </div>
+      <div
+        ref={scrollerRef}
+        className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+      >
+        <LoadGate key={pathname}>
+          <Outlet context={{ period, setPeriod } satisfies AnalyticsOutletContext} />
+        </LoadGate>
       </div>
     </div>
   );

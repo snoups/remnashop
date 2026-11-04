@@ -6,12 +6,11 @@ import { bindUserTelegram, listUsers, type UserListItem } from "@entities/user/a
 import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Field } from "@shared/ui/Field";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
-import { TextInput } from "@shared/ui/TextInput";
 
 // the search also matches ids and names, so look past the first hit for the telegram_id owner
 const OWNER_LOOKUP_LIMIT = 10;
@@ -70,11 +69,11 @@ function BindTelegramForm({ user, onBound, onMergeWith }: Omit<BindTelegramDialo
 
   return (
     <>
-      <DialogHeader icon={Send} title={t("users.telegram.title")} />
-      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3 p-4">
-        <Card variant="form">
+      <DialogHeader icon={Send} title={t("users.telegram.action")} />
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col">
+        <div className="p-4">
           <Field label={t("users.telegram.title")} htmlFor="user-telegram-id" error={error ?? undefined}>
-            <TextInput
+            <Input
               id="user-telegram-id"
               inputMode="numeric"
               value={value}
@@ -84,27 +83,27 @@ function BindTelegramForm({ user, onBound, onMergeWith }: Omit<BindTelegramDialo
                 setOwner(null);
               }}
               placeholder="123456789"
-              className="font-mono"
+              mono
               aria-invalid={error !== null}
             />
           </Field>
-        </Card>
-        <div className="flex justify-end gap-2">
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
           {owner && (
             <Button
-              variant="secondary"
+              variant="glass"
               type="button"
               // replaces this dialog in place; closing it first would clear the hand-off
               onClick={() => onMergeWith(owner)}
             >
-              <GitMerge className="size-3.5" />
+              <GitMerge className="size-4" />
               {t("users.telegram.mergeWith", { id: owner.id })}
             </Button>
           )}
-          <Button variant="outline" type="button" onClick={close}>
+          <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="accent" type="submit" disabled={isSubmitting || telegramId === null || error !== null}>
+          <Button variant="glassAccent" type="submit" disabled={isSubmitting || telegramId === null || error !== null}>
             {t("common.save")}
           </Button>
         </div>

@@ -23,7 +23,7 @@ import { Button } from "@shared/ui/Button";
 import { Input } from "@shared/ui/glass/Input";
 import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
-import { Tag } from "@shared/ui/glass/Tag";
+import { Tag } from "@shared/ui/Tag";
 import { IconButton } from "@shared/ui/IconButton";
 
 // mirrors backend emoji_packs/telegram_api.py's _SET_NAME_RE: a t.me/addemoji link or the bare set name
@@ -120,7 +120,7 @@ export function EmojiPacksManager() {
                 label={pack.set_name}
                 onClick={() => setOpenPack(pack)}
               >
-                <Tag subtle>{pack.items.length}</Tag>
+                <Tag>{pack.items.length}</Tag>
                 {canDelete && (
                   <IconButton size="8" tone="danger" onClick={() => setPendingDelete(pack)}>
                     <Trash2 className="size-4" />

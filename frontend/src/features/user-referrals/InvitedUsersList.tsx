@@ -8,8 +8,8 @@ import { formatRewardAmounts, userHandle } from "@features/user-referrals/format
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { Spinner } from "@shared/ui/Spinner";
@@ -33,6 +33,7 @@ export function InvitedUsersList({ userId }: { userId: number }) {
           id={`referral-invited-search-${userId}`}
           label={t("referrals.list.search")}
           hideLabel
+          compact
           placeholder={t("referrals.dialog.searchPlaceholder")}
           value={searchInput}
           onChange={setSearchInput}
@@ -45,7 +46,7 @@ export function InvitedUsersList({ userId }: { userId: number }) {
             ]}
             activeKey={level === undefined ? "ALL" : String(level)}
             onSelect={(key) => setLevel(key === "ALL" ? undefined : Number(key))}
-            size="field"
+            size="compact"
           />
         </div>
       </div>
@@ -82,15 +83,13 @@ export function InvitedUsersPage({
     [
       item.user ? userHandle(item.user) : null,
       item.via ? t("referrals.dialog.via", { name: item.via.name }) : null,
-      item.created_at
-        ? formatDate(item.created_at, i18n.language)
-        : null,
+      formatDate(item.created_at, i18n.language),
     ]
       .filter(Boolean)
       .join(" · ");
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
@@ -106,10 +105,10 @@ export function InvitedUsersPage({
               subtitle={subtitle(item)}
               aside={
                 <>
-                  <Badge tone={item.level === 1 ? "accent" : "neutral"}>
+                  <Badge borderless tone={item.level === 1 ? "accent" : "neutral"}>
                     {t("referrals.list.levelBadge", { level: item.level })}
                   </Badge>
-                  <span className="flex w-24 shrink-0 flex-col items-end text-[12.5px] leading-tight tabular-nums">
+                  <span className="flex w-24 shrink-0 flex-col items-end text-[12px] leading-tight tabular-nums">
                     {rewards.length === 0 && <span className="text-muted-foreground">{t("common.none")}</span>}
                     {rewards.map((reward) => (
                       <span key={reward} className="max-w-full truncate font-semibold text-foreground">
@@ -133,6 +132,6 @@ export function InvitedUsersPage({
           />
         </div>
       )}
-    </Card>
+    </DialogCard>
   );
 }

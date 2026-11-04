@@ -1,4 +1,4 @@
-import { History, MonitorSmartphone, ShieldCheck, User, UserMinus } from "lucide-react";
+import { History, MonitorSmartphone, ShieldCheck, Trash2, User, UserMinus } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,11 +16,11 @@ import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
 
-export type AdminDetailsFollowUp = "demote";
+export type AdminDetailsFollowUp = "demote" | "delete";
 
 export type AdminDetailsTab = "profile" | "permissions" | "sessions" | "events";
 
@@ -29,6 +29,7 @@ interface AdminDetailsDialogProps {
   initialTab?: AdminDetailsTab;
   canViewSessions: boolean;
   canViewEvents: boolean;
+  canDelete: boolean;
   /** The admin was changed from inside the dialog (permissions saved). */
   onUpdated: () => void;
   /** Fires after the exit animation; `followUp` is the action picked in the footer, if any. */
@@ -40,6 +41,7 @@ export function AdminDetailsDialog({
   initialTab = "profile",
   canViewSessions,
   canViewEvents,
+  canDelete,
   onUpdated,
   onClose,
 }: AdminDetailsDialogProps) {
@@ -53,6 +55,7 @@ export function AdminDetailsDialog({
         initialTab={initialTab}
         canViewSessions={canViewSessions}
         canViewEvents={canViewEvents}
+        canDelete={canDelete}
         onUpdated={onUpdated}
         onFollowUp={(followUp) => {
           followUpRef.current = followUp;
@@ -67,6 +70,7 @@ interface AdminDetailsDialogBodyProps {
   initialTab: AdminDetailsTab;
   canViewSessions: boolean;
   canViewEvents: boolean;
+  canDelete: boolean;
   onUpdated: () => void;
   onFollowUp: (followUp: AdminDetailsFollowUp) => void;
 }
@@ -76,6 +80,7 @@ function AdminDetailsDialogBody({
   initialTab,
   canViewSessions,
   canViewEvents,
+  canDelete,
   onUpdated,
   onFollowUp,
 }: AdminDetailsDialogBodyProps) {
@@ -110,21 +115,17 @@ function AdminDetailsDialogBody({
       <DialogHeader
         glyph={<span className="text-[11px] font-bold">{initials(admin.login ?? admin.name)}</span>}
         title={admin.name}
-        badges={
-          <Badge tone={ROLE_BADGE_TONE[admin.role]}>
-            {t(`roles.${admin.role}`)}
-          </Badge>
-        }
         subtitle={admin.login && <span className="font-mono">{admin.login}</span>}
+        actions={<Badge borderless tone={ROLE_BADGE_TONE[admin.role]}>{t(`roles.${admin.role}`)}</Badge>}
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pt-4">
+        <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -133,7 +134,7 @@ function AdminDetailsDialogBody({
           <div ref={contentRef}>
             {tab === "profile" && <ProfileTab user={admin} />}
             {tab === "permissions" && (
-              <Card variant="form">
+              <div className={GLASS_DIALOG_CARD_CLASS}>
                 <AdminPermissionsEditor
                   key={permissionsRevision}
                   admin={admin}
@@ -144,7 +145,7 @@ function AdminDetailsDialogBody({
                   }}
                   onSubmittingChange={setIsSavingPermissions}
                 />
-              </Card>
+              </div>
             )}
             {tab === "sessions" && <SessionsTab userId={admin.id} />}
             {tab === "events" && <EventsTab userId={admin.id} by="actor" />}
@@ -153,21 +154,26 @@ function AdminDetailsDialogBody({
       </div>
 
       {isAdmin && (
-        <div className="flex items-center gap-2 border-t border-white/[0.08] px-5 py-4">
+        <div className="flex items-center gap-2 border-t border-white/[0.08] p-4">
           <Button
-            variant="danger"
+            variant="glassDanger"
             type="button"
+            icon={UserMinus}
             onClick={() => closeWith("demote")}
           >
-            <UserMinus className="size-3.5" />
             {t("admins.demote.button")}
           </Button>
+          {canDelete && (
+            <Button variant="glassDanger" type="button" icon={Trash2} onClick={() => closeWith("delete")}>
+              {t("common.delete")}
+            </Button>
+          )}
           {tab === "permissions" && (
             <div className="ml-auto flex gap-2">
-              <Button variant="outline" type="button" onClick={() => setPermissionsRevision((value) => value + 1)}>
+              <Button variant="glass" type="button" onClick={() => setPermissionsRevision((value) => value + 1)}>
                 {t("common.reset")}
               </Button>
-              <Button variant="accent" type="submit" form={ADMIN_PERMISSIONS_FORM_ID} disabled={isSavingPermissions}>
+              <Button variant="glassAccent" type="submit" form={ADMIN_PERMISSIONS_FORM_ID} isLoading={isSavingPermissions}>
                 {t("common.save")}
               </Button>
             </div>

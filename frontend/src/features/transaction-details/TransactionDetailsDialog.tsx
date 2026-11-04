@@ -8,6 +8,7 @@ import {
   Layers,
   Mail,
   Package,
+  PackageMinus,
   PackageCheck,
   Receipt,
   Repeat,
@@ -41,10 +42,10 @@ import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal } from "@shared/ui/Modal";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
@@ -52,21 +53,26 @@ import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 interface TransactionDetailsDialogProps {
   order: TransactionItem;
   onClose: () => void;
+  /** after a fulfill or refund, so the list behind can show the new status */
+  onChanged?: (order: TransactionItem) => void;
 }
 
 function DetailValue({ value }: { value: string }) {
   return <span className="max-w-60 truncate">{value}</span>;
 }
 
-export function TransactionDetailsDialog({ order, onClose }: TransactionDetailsDialogProps) {
+export function TransactionDetailsDialog({ order, onClose, onChanged }: TransactionDetailsDialogProps) {
   return (
     <Modal onClose={onClose} size="lg" scrollable>
-      <TransactionDetailsDialogBody order={order} />
+      <TransactionDetailsDialogBody order={order} onChanged={onChanged} />
     </Modal>
   );
 }
 
-function TransactionDetailsDialogBody({ order: initialOrder }: { order: TransactionItem }) {
+function TransactionDetailsDialogBody({
+  order: initialOrder,
+  onChanged,
+}: Pick<TransactionDetailsDialogProps, "order" | "onChanged">) {
   const { t, i18n } = useTranslation();
   const [order, setOrder] = useState(initialOrder);
   const [isConfirmingFulfill, setIsConfirmingFulfill] = useState(false);
@@ -88,7 +94,9 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
   const handleFulfill = async () => {
     setIsFulfilling(true);
     try {
-      setOrder(await fulfillTransaction(order.id));
+      const fulfilled = await fulfillTransaction(order.id);
+      setOrder(fulfilled);
+      onChanged?.(fulfilled);
       toast.success(t("transactions.fulfill.success"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("transactions.fulfill.error")));
@@ -114,6 +122,7 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
     try {
       const result = await refundTransaction(order.id, rollbackSubscription);
       setOrder(result.transaction);
+      onChanged?.(result.transaction);
       if (result.rollback_failed) toast.warning(t("transactions.refund.rollbackFailed"));
       else toast.success(t("transactions.refund.done"));
     } catch (err) {
@@ -124,8 +133,17 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
   };
 
   const plan = `${order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? none} · ${t("plans.daysShort", { count: order.duration_days })}`;
+  const previous = order.previous_plan_snapshot;
+  const previousPlan =
+    previous &&
+    [previous.name ?? previous.public_code ?? none, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
+      .filter(Boolean)
+      .join(" · ");
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);
-  const targetSubscription = order.target_subscription_id !== null ? `#${order.target_subscription_id}` : undefined;
+  // what a renewal or change was for, otherwise what the order issued
+  const subscriptionId = order.target_subscription_id ?? order.fulfilled_subscription_id;
+  const targetSubscription = subscriptionId !== null ? `#${subscriptionId}` : undefined;
+  const missingSubscription = order.status === "PAID" ? t("transactions.details.notIssued") : none;
   const createdAt = formatDateTime(order.created_at, i18n.language);
   const { user } = order;
   const username = user?.username ? `@${user.username}` : undefined;
@@ -136,17 +154,15 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
       <DialogHeader
         glyph={<span className="text-[13px] font-bold">{symbol}</span>}
         title={t("transactions.orderLabel", { id: order.id })}
-        badges={
-          <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
-            {statusLabel}
-          </Badge>
-        }
+        subtitle={<span className="font-mono">{createdAt}</span>}
+        actions={<Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{statusLabel}</Badge>}
       />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <KpiTile
+              glass
               label={t("transactions.details.total")}
               value={money(order.final_price)}
               valueSuffix={hasDiscount(order) && <s>{money(order.base_price)}</s>}
@@ -166,10 +182,10 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
                   : t("transactions.details.noDiscount")
               }
             />
-            <KpiTile label={t("transactions.details.period")} value={t("plans.daysShort", { count: order.duration_days })} hint={purchaseType} />
+            <KpiTile glass label={t("transactions.details.period")} value={t("plans.daysShort", { count: order.duration_days })} hint={purchaseType} />
           </div>
 
-          <Card variant="list" title={t("transactions.details.sections.payment")} icon={Wallet}>
+          <DialogCard title={t("transactions.details.sections.payment")} icon={Wallet}>
             <InfoRow icon={Hash} label={t("transactions.details.id")} copyValue={String(order.id)} mono>
               {order.id}
             </InfoRow>
@@ -201,21 +217,26 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
             <InfoRow icon={KeyRound} label={t("transactions.details.idempotencyKey")} copyValue={order.idempotency_key} mono>
               <DetailValue value={order.idempotency_key} />
             </InfoRow>
-          </Card>
+          </DialogCard>
 
-          <Card variant="list" title={t("transactions.details.sections.purchase")} icon={ShoppingCart}>
+          <DialogCard title={t("transactions.details.sections.purchase")} icon={ShoppingCart}>
             <InfoRow icon={Repeat} label={t("transactions.details.purchaseType")} copyValue={purchaseType}>
               <DetailValue value={purchaseType} />
             </InfoRow>
+            {previousPlan && (
+              <InfoRow icon={PackageMinus} label={t("transactions.details.previousPlan")} copyValue={previousPlan}>
+                <DetailValue value={previousPlan} />
+              </InfoRow>
+            )}
             <InfoRow icon={Package} label={t("transactions.details.plan")} copyValue={plan}>
               <DetailValue value={plan} />
             </InfoRow>
             <InfoRow icon={Layers} label={t("transactions.details.targetSubscription")} copyValue={targetSubscription} mono>
-              <DetailValue value={targetSubscription ?? none} />
+              <DetailValue value={targetSubscription ?? missingSubscription} />
             </InfoRow>
-          </Card>
+          </DialogCard>
 
-          <Card variant="list" title={t("transactions.details.sections.user")} icon={User}>
+          <DialogCard title={t("transactions.details.sections.user")} icon={User}>
             <InfoRow icon={Hash} label={t("users.details.id")} copyValue={String(order.user_id)} mono>
               {order.user_id}
             </InfoRow>
@@ -226,7 +247,7 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
               <DetailValue value={user?.email ?? none} />
             </InfoRow>
             {telegramId !== undefined && (
-              <div className="m-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+              <div className="mt-1 rounded-md border border-white/[0.08] bg-white/[0.02] p-1">
                 <h4 className={SECTION_TITLE_CLASS}>
                   <Send className="size-3.5" />
                   {t("transactions.details.sections.telegram")}
@@ -239,22 +260,23 @@ function TransactionDetailsDialogBody({ order: initialOrder }: { order: Transact
                 </InfoRow>
               </div>
             )}
-          </Card>
+          </DialogCard>
         </div>
       </div>
 
       <OpenUserFooter
+        glass
         links={[{ label: t("users.openUser"), icon: User, user: user && { id: order.user_id } }]}
       >
         {canRefund && (
-          <Button variant="danger" onClick={() => void openRefund()} disabled={isRefunding}>
-            <Undo2 className="size-3.5" />
+          <Button variant="glassDanger" onClick={() => void openRefund()} isLoading={isRefunding}>
+            <Undo2 className="size-4" />
             {t("transactions.refund.button")}
           </Button>
         )}
         {canFulfill && (
-          <Button variant="accent" onClick={() => setIsConfirmingFulfill(true)} disabled={isFulfilling}>
-            <PackageCheck className="size-3.5" />
+          <Button variant="glassAccent" onClick={() => setIsConfirmingFulfill(true)} isLoading={isFulfilling}>
+            <PackageCheck className="size-4" />
             {t("transactions.fulfill.action")}
           </Button>
         )}

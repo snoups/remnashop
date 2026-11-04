@@ -1,9 +1,9 @@
 import {
   CornerDownLeft,
-  CreditCard,
   Layers,
   Loader2,
   Package,
+  Receipt,
   ScrollText,
   Search,
   Ticket,
@@ -178,7 +178,7 @@ export function HeaderSearch() {
       label: `${t("header.searchOrders")} #${order.id}`,
       hint: [order.plan_snapshot.name, order.status].filter(Boolean).join(" · "),
       open: () => openOrder(order.id, { data: order }),
-      icon: CreditCard,
+      icon: Receipt,
     }));
     const subscriptionEntries = subscriptions.map((sub) => ({
       id: `subscription:${sub.id}`,

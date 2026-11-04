@@ -64,15 +64,18 @@ export function broadcastMeta(b: Broadcast, t: TFunction): string {
   return parts.join(" · ");
 }
 
-export function audienceSummary(
+/** Each audience filter set, in words; empty for everyone. */
+export function audienceParts(
   a: BroadcastAudience,
   t: TFunction,
   plans: { id: number; name: string }[],
-): string {
+): string[] {
   const parts: string[] = [];
   if (a.user_ids.length) parts.push(t("broadcasts.audience.users", { count: a.user_ids.length }));
   if (a.subscription.length) {
-    parts.push(a.subscription.map((s) => t(`broadcasts.audience.subscription.${s}` as ParseKeys)).join(", "));
+    // the editor's chip names
+    const names = a.subscription.map((s) => t(`broadcasts.editor.audience.subscriptionChip.${s}` as ParseKeys));
+    parts.push(t("broadcasts.audience.subscriptionList", { names: names.join(", ") }));
   }
   if (a.plan_ids.length) {
     const names = a.plan_ids.map((id) => plans.find((plan) => plan.id === id)?.name ?? `#${id}`);
@@ -84,7 +87,16 @@ export function audienceSummary(
   if (a.expired_within_days !== null) {
     parts.push(t("broadcasts.audience.expiredWithin", { days: a.expired_within_days }));
   }
+  if (a.not_connected_within_days !== null) {
+    parts.push(t("broadcasts.audience.notConnected", { days: a.not_connected_within_days }));
+  }
   if (a.paid !== null) parts.push(t(a.paid ? "broadcasts.audience.paid" : "broadcasts.audience.notPaid"));
+  if (a.has_telegram !== null) {
+    parts.push(t(a.has_telegram ? "broadcasts.audience.withTelegram" : "broadcasts.audience.withoutTelegram"));
+  }
+  if (a.has_email !== null) {
+    parts.push(t(a.has_email ? "broadcasts.audience.withEmail" : "broadcasts.audience.withoutEmail"));
+  }
   if (a.locales.length) {
     parts.push(t("broadcasts.audience.locales", { locales: a.locales.map((l) => l.toUpperCase()).join(", ") }));
   }
@@ -100,6 +112,15 @@ export function audienceSummary(
   if (a.referred !== null) {
     parts.push(t(a.referred ? "broadcasts.audience.referred" : "broadcasts.audience.notReferred"));
   }
+  return parts;
+}
+
+export function audienceSummary(
+  a: BroadcastAudience,
+  t: TFunction,
+  plans: { id: number; name: string }[],
+): string {
+  const parts = audienceParts(a, t, plans);
   return parts.length ? parts.join(", ") : t("broadcasts.audience.all");
 }
 
@@ -118,6 +139,8 @@ export function isRecallRunning(b: Broadcast, now: number): boolean {
 export function canRecall(b: Broadcast, now: number): boolean {
   if (isRecallRunning(b, now)) return false;
   if (!b.started_at || now - new Date(b.started_at).getTime() >= RECALL_WINDOW_MS) return false;
+  // only Telegram messages come back: an email-only broadcast has nothing to recall
+  if (b.delivery === "EMAIL") return false;
   const left = b.recallable_count ?? b.sent_count;
   if (left === 0 && !b.has_channel_post) return false;
   return b.status === "SENDING" || b.status === "COMPLETED" || b.status === "CANCELED";

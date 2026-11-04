@@ -1,10 +1,24 @@
-import { TriangleAlert } from "lucide-react";
+import {
+  Coins,
+  Gauge,
+  Gift,
+  Globe,
+  Hash,
+  Network,
+  Package,
+  RefreshCw,
+  Smartphone,
+  Tag,
+  TriangleAlert,
+} from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { listPlans } from "@entities/plans/api";
-import { changeSubscriptionPlan, type SubscriptionListItem } from "@entities/subscriptions/api";
+import { changeSubscriptionPlan, formatLimit, formatTraffic, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { SubscriptionField } from "@features/subscription-edit/SubscriptionField";
+import { useSquadName } from "@features/subscription-edit/use-squad-name";
 import { durationDays } from "@features/subscription-grant/duration";
 import type { DurationChoice } from "@features/subscription-grant/duration";
 import { PlanDurationPicker } from "@features/subscription-grant/PlanDurationPicker";
@@ -14,8 +28,9 @@ import { formatDate } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -30,23 +45,70 @@ export function SubscriptionPlanTab({ subscription, onChanged }: SubscriptionPla
   const canChange =
     permissions.includes("SUBSCRIPTIONS_PLAN_CHANGE") && permissions.includes("PLANS_VIEW") && subscription.status !== "DELETED";
   const [isEditing, setIsEditing] = useState(false);
+  const squadName = useSquadName();
   const snapshot = subscription.plan_snapshot;
+  const none = t("common.none");
+  const unlimited = t("subscriptions.unlimited");
+  // a free grant, trial or import stores a hardcoded 0 USD: no price, not a price of zero dollars
+  const money = (amount: string) =>
+    Number(amount) > 0 ? formatMoney(amount, snapshot.currency, i18n.language, true) : none;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-2">
-        <KpiTile label={t("subscriptions.plan.name")} value={snapshot.name} />
+      <div className="grid grid-cols-3 gap-3">
+        <KpiTile glass label={t("subscriptions.plan.name")} value={snapshot.name} />
+        <KpiTile glass label={t("subscriptions.plan.price")} value={money(snapshot.price_paid)} />
         <KpiTile
-          label={t("subscriptions.plan.price")}
-          value={formatMoney(snapshot.price_paid, snapshot.currency, i18n.language, true)}
-        />
-        <KpiTile
+          glass
           label={t("subscriptions.plan.duration")}
           value={t("subscriptions.duration.days", { count: snapshot.duration_days })}
         />
       </div>
+      <DialogCard title={t("subscriptions.plan.title")} icon={Package}>
+        <SubscriptionField icon={Hash} label={t("subscriptions.plan.code")} value={snapshot.public_code} mono />
+        {snapshot.credit_paid != null && snapshot.credit_days != null && (
+          <SubscriptionField
+            icon={Coins}
+            label={t("subscriptions.plan.credit")}
+            value={`${money(snapshot.credit_paid)} · ${t("subscriptions.duration.days", { count: snapshot.credit_days })}`}
+          />
+        )}
+        <SubscriptionField
+          icon={Gift}
+          label={t("subscriptions.plan.trial")}
+          value={snapshot.is_trial ? t("common.yes") : t("common.no")}
+        />
+        <SubscriptionField
+          icon={Gauge}
+          label={t("subscriptions.fields.traffic")}
+          value={formatTraffic(snapshot.traffic_limit, unlimited)}
+        />
+        <SubscriptionField
+          icon={Smartphone}
+          label={t("subscriptions.fields.devices")}
+          value={formatLimit(snapshot.device_limit, unlimited)}
+        />
+        <SubscriptionField
+          icon={RefreshCw}
+          label={t("subscriptions.edit.strategyLabel")}
+          value={t(`subscriptions.edit.strategy.${snapshot.traffic_limit_strategy}`)}
+        />
+        <SubscriptionField icon={Tag} label={t("subscriptions.edit.tagLabel")} value={snapshot.tag} />
+        <SubscriptionField
+          icon={Network}
+          label={t("subscriptions.details.internalSquads")}
+          value={snapshot.internal_squads.map(squadName).join(", ")}
+          copyValue={snapshot.internal_squads.join(", ")}
+        />
+        <SubscriptionField
+          icon={Globe}
+          label={t("subscriptions.details.externalSquad")}
+          value={snapshot.external_squad && squadName(snapshot.external_squad)}
+          copyValue={snapshot.external_squad}
+        />
+      </DialogCard>
       {canChange && !isEditing && (
-        <Button variant="secondary" onClick={() => setIsEditing(true)}>
+        <Button variant="glass" onClick={() => setIsEditing(true)}>
           {t("subscriptions.plan.change")}
         </Button>
       )}
@@ -103,7 +165,7 @@ function PlanChangeForm({ subscriptionId, keepLabel, onChanged, onCancel }: Plan
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)}>
-      <Card variant="form">
+      <div className={GLASS_DIALOG_CARD_CLASS}>
         <PlanDurationPicker
           plans={plans.data}
           planId={planId}
@@ -112,19 +174,19 @@ function PlanChangeForm({ subscriptionId, keepLabel, onChanged, onCancel }: Plan
           onDurationChange={setDuration}
           keepLabel={keepLabel}
         />
-        <p className="flex items-start gap-2 rounded-2xl bg-warning/10 px-3 py-2.5 text-[12.5px] text-warning">
+        <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-[12px] text-warning">
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
           {t("subscriptions.plan.resetWarning")}
         </p>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onCancel}>
+          <Button variant="glass" type="button" onClick={onCancel}>
             {t("common.cancel")}
           </Button>
-          <Button variant="accent" type="submit" disabled={isSubmitting || planId === null}>
+          <Button variant="glassAccent" type="submit" disabled={planId === null} isLoading={isSubmitting}>
             {t("subscriptions.plan.submit")}
           </Button>
         </div>
-      </Card>
+      </div>
     </form>
   );
 }

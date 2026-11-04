@@ -7,19 +7,19 @@ import type { PromocodeRow, PromocodeStats } from "@entities/analytics/api";
 import { PROMOCODE_STATUS_BADGE_TONE } from "@entities/promocodes/display";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney, formatPercent } from "@shared/lib/format";
+import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { LIST_HEAD_CLASS } from "@shared/ui/classes";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
-import { BarRows, CurrencyNote } from "@pages/analytics/charts";
+import { BarRows } from "@pages/analytics/charts";
 import type { BarRow } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
+import { countTrend, ppTrend, previousPeriodHint, relativeTrend } from "@pages/analytics/trends";
 import { ListRow } from "@shared/ui/ListRow";
 
 const TABLE_GRID =
@@ -34,14 +34,10 @@ export function AnalyticsPromocodesPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
-      <AnalyticsToolbar
-        currency={
-          state.kind === "ready" ? state.data.report_currency : undefined
-        }
-      />
+    <div className="flex flex-col gap-5">
+      <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>
   );
@@ -51,6 +47,9 @@ function Overview({ data }: { data: PromocodeStats }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const currency = data.report_currency;
+  const { period } = useAnalyticsPeriod();
+  const isAll = period.kind === "all";
+  const vs = previousPeriodHint(period, t);
   const { openPromocode } = useOpenEntity();
 
   const withDiscount = Number(data.revenue_with_discount);
@@ -67,6 +66,8 @@ function Overview({ data }: { data: PromocodeStats }) {
       row.reward_type === "PURCHASE_DISCOUNT"
     )
       return `-${row.reward ?? 0}%`;
+    if (row.reward_type === "SUBSCRIPTION" && row.reward_duration_days !== null)
+      return `${t("promocodes.rewardTypeShort.SUBSCRIPTION")} · ${t("plans.daysShort", { count: row.reward_duration_days })}`;
     return t(`promocodes.rewardTypeShort.${row.reward_type}`);
   };
 
@@ -79,22 +80,25 @@ function Overview({ data }: { data: PromocodeStats }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile
-          highlighted
+          panel
           icon={Ticket}
           label={t("analytics.promocodes.activations")}
           value={data.activations.toLocaleString(language)}
+          trend={isAll ? undefined : countTrend(data.activations, data.previous_activations, vs, language)}
           hint={t("analytics.promocodes.codesUsed", {
             count: data.codes_used,
             formatted: data.codes_used.toLocaleString(language),
           })}
         />
         <KpiTile
+          panel
           icon={Percent}
           label={t("analytics.promocodes.discounts")}
           info={t("analytics.promocodes.discountsInfo")}
           value={formatMoney(data.discount_given, currency, language)}
+          trend={isAll ? undefined : relativeTrend(Number(data.discount_given), Number(data.previous_discount_given), vs, language)}
           hint={
             discountShare === null
               ? undefined
@@ -104,124 +108,130 @@ function Overview({ data }: { data: PromocodeStats }) {
           }
         />
         <KpiTile
+          panel
           icon={Wallet}
           label={t("analytics.promocodes.revenue")}
           value={formatMoney(data.revenue_with_discount, currency, language)}
+          trend={
+            isAll
+              ? undefined
+              : relativeTrend(Number(data.revenue_with_discount), Number(data.previous_revenue_with_discount), vs, language)
+          }
           hint={t("analytics.promocodes.revenueCaption", {
             share: formatPercent(data.revenue_share, language),
           })}
         />
         <KpiTile
+          panel
           icon={Repeat}
           label={t("analytics.promocodes.conversion")}
-          value={formatPercent(data.free_reward_conversion, language)}
+          value={data.free_rewards > 0 ? formatPercent(data.free_reward_conversion, language) : t("common.none")}
+          trend={
+            isAll || data.free_rewards === 0 || data.previous_free_reward_conversion === null
+              ? undefined
+              : ppTrend(data.free_reward_conversion, data.previous_free_reward_conversion, vs, t, language)
+          }
           hint={t("analytics.promocodes.conversionCaption")}
         />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <Card>
-          <CardHeader
-            icon={Gift}
-            title={t("analytics.promocodes.byTypeTitle")}
-            description={t("analytics.promocodes.byTypeDescription")}
-          />
-          <BarRows rows={typeRows} empty={t("analytics.promocodes.empty")} />
-        </Card>
+      <Section
+        icon={Gift}
+        title={t("analytics.promocodes.byTypeTitle")}
+        description={t("analytics.promocodes.byTypeDescription")}
+      >
+        <BarRows rows={typeRows} empty={t("analytics.promocodes.empty")} />
+      </Section>
 
-        <Card>
-          <CardHeader
-            icon={Receipt}
-            title={t("analytics.promocodes.codesTitle")}
-            description={t("analytics.promocodes.codesDescription")}
-          />
-          {data.codes.length === 0 ? (
-            <p className="py-6 text-center text-[13px] text-muted-foreground">
-              {t("analytics.promocodes.empty")}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[740px]">
-                <div className={`${TABLE_GRID} ${LIST_HEAD_CLASS} pt-3`}>
-                  <span>{t("analytics.promocodes.code")}</span>
-                  <span>{t("analytics.promocodes.reward")}</span>
-                  <span>{t("analytics.promocodes.activationsColumn")}</span>
-                  <span className="text-right">
-                    {t("analytics.promocodes.revenueColumn")}
-                  </span>
-                  <span className="text-right">
-                    {t("analytics.promocodes.toPayment")}
-                  </span>
-                  <span className="text-right">
-                    {t("promocodes.columns.status")}
-                  </span>
-                </div>
-                {data.codes.map((row) => {
-                  const max = row.max_activations;
-                  return (
-                    <ListRow
-                      key={row.promocode_id}
-                      type="button"
-                      onClick={() => openPromocode(row.promocode_id)}
-                      className={TABLE_GRID}
-                    >
-                      <span className="truncate font-mono text-[12px] text-muted-foreground">
-                        {row.code}
-                      </span>
-                      <span>
-                        <Tag>{rewardLabel(row)}</Tag>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                          {max !== null && max > 0 && (
-                            <span
-                              className="block h-full rounded-full bg-primary"
-                              style={{
-                                width: `${Math.min(row.total_activations / max, 1) * 100}%`,
-                              }}
-                            />
-                          )}
-                        </span>
-                        <span className="w-24 text-right text-[12px] tabular-nums text-muted-foreground">
-                          {max === null
-                            ? t("analytics.promocodes.activationsCaption", {
-                                activations:
-                                  row.activations.toLocaleString(language),
-                                total:
-                                  row.total_activations.toLocaleString(language),
-                              })
-                            : t("analytics.promocodes.activationsLimitCaption", {
-                                activations:
-                                  row.activations.toLocaleString(language),
-                                total:
-                                  row.total_activations.toLocaleString(language),
-                                max: max.toLocaleString(language),
-                              })}
-                        </span>
-                      </span>
-                      <span className="text-right text-[13px] font-semibold tabular-nums">
-                        {formatMoney(row.revenue_after, currency, language)}
-                      </span>
-                      <span className="text-right text-[13px] font-semibold tabular-nums">
-                        {row.conversion_rate === null
-                          ? t("common.none")
-                          : formatPercent(row.conversion_rate, language)}
-                      </span>
-                      <span className="text-right">
-                        <Badge tone={PROMOCODE_STATUS_BADGE_TONE[row.status]}>
-                          {t(`promocodes.status.${row.status}` as ParseKeys)}
-                        </Badge>
-                      </span>
-                    </ListRow>
-                  );
-                })}
+      <Section
+        icon={Receipt}
+        title={t("analytics.promocodes.codesTitle")}
+        description={t("analytics.promocodes.codesDescription")}
+      >
+        {data.codes.length === 0 ? (
+          <EmptyState text={t("analytics.promocodes.empty")} />
+        ) : (
+          <div className="overflow-x-auto pt-4">
+            <div className="min-w-[740px]">
+              <div className={`${TABLE_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
+                <span>{t("analytics.promocodes.code")}</span>
+                <span>{t("analytics.promocodes.reward")}</span>
+                <span>{t("analytics.promocodes.activationsColumn")}</span>
+                <span className="text-right">
+                  {t("analytics.promocodes.revenueColumn")}
+                </span>
+                <span className="text-right">
+                  {t("analytics.promocodes.toPayment")}
+                </span>
+                <span className="text-right">
+                  {t("promocodes.columns.status")}
+                </span>
               </div>
+              {data.codes.map((row) => {
+                const max = row.max_activations;
+                return (
+                  <ListRow
+                    glass
+                    key={row.promocode_id}
+                    type="button"
+                    onClick={() => openPromocode(row.promocode_id)}
+                    className={TABLE_GRID}
+                  >
+                    <span className="truncate font-mono text-[12px] text-muted-foreground">
+                      {row.code}
+                    </span>
+                    <span>
+                      <Tag>{rewardLabel(row)}</Tag>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 flex-1 overflow-hidden rounded-full glass-track">
+                        {max !== null && max > 0 && (
+                          <span
+                            className="block h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
+                            style={{
+                              width: `${Math.min(row.total_activations / max, 1) * 100}%`,
+                            }}
+                          />
+                        )}
+                      </span>
+                      <span className="w-24 text-right text-[12px] tabular-nums text-muted-foreground">
+                        {max === null
+                          ? t("analytics.promocodes.activationsCaption", {
+                              activations:
+                                row.activations.toLocaleString(language),
+                              total:
+                                row.total_activations.toLocaleString(language),
+                            })
+                          : t("analytics.promocodes.activationsLimitCaption", {
+                              activations:
+                                row.activations.toLocaleString(language),
+                              total:
+                                row.total_activations.toLocaleString(language),
+                              max: max.toLocaleString(language),
+                            })}
+                      </span>
+                    </span>
+                    <span className="text-right text-[13px] font-semibold tabular-nums">
+                      {formatMoney(row.revenue_after, currency, language)}
+                    </span>
+                    <span className="text-right text-[13px] font-semibold tabular-nums">
+                      {row.conversion_rate === null
+                        ? t("common.none")
+                        : formatPercent(row.conversion_rate, language)}
+                    </span>
+                    <span className="text-right">
+                      <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[row.status]}>
+                        {t(`promocodes.status.${row.status}` as ParseKeys)}
+                      </Badge>
+                    </span>
+                  </ListRow>
+                );
+              })}
             </div>
-          )}
-        </Card>
-      </div>
+          </div>
+        )}
+      </Section>
 
-      <CurrencyNote currency={currency} />
     </>
   );
 }

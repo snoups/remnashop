@@ -75,7 +75,7 @@ function DebugButton({
       className={`${className} group relative flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border transition-colors ${
         active
           ? "bg-accent text-primary"
-          : "bg-white/[0.05] text-muted-foreground hover:bg-white/[0.07] hover:text-foreground"
+          : "bg-white/[0.05] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
       }`}
     >
       <Icon className="size-[17px]" />
@@ -235,7 +235,7 @@ export function DebugBar() {
       layout
       transition={BAR_TRANSITION}
       style={{ borderRadius: 9999 }}
-      className="fixed bottom-4 left-4 z-50 hidden flex-col-reverse items-center gap-2 border border-glass-border bg-popover/50 p-1.5 backdrop-blur-2xl backdrop-saturate-150 md:flex"
+      className="fixed bottom-4 left-4 z-50 hidden flex-col-reverse items-center gap-2 glass-panel p-1.5 md:flex"
     >
       <motion.div layout="position" transition={BAR_TRANSITION}>
         <DebugButton icon={X} label={t("debugBar.close")} onClick={() => setDebugState({ barVisible: false })} />

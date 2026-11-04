@@ -1,12 +1,12 @@
-import { CalendarClock, Layers } from "lucide-react";
+import { CalendarClock, Package } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { Plan } from "@entities/plans/api";
 import type { DurationChoice } from "@features/subscription-grant/duration";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
-import { Field } from "@shared/ui/Field";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { TextInput } from "@shared/ui/TextInput";
 
 const KEEP = "keep";
 const CUSTOM = "custom";
@@ -44,18 +44,20 @@ export function PlanDurationPicker({ plans, planId, onPlanChange, duration, onDu
     <>
       <Field label={t("subscriptions.grant.planLabel")} htmlFor="subscription-plan">
         <SelectDropdown
-          variant="form"
+          variant="well"
+          size="compact"
           id="subscription-plan"
           value={planId === null ? "" : String(planId)}
           onChange={(value) => onPlanChange(Number(value))}
-          icon={Layers}
+          icon={Package}
           placeholder={plan?.name ?? t("subscriptions.grant.planPlaceholder")}
           options={plans.map((item) => ({ value: String(item.id), label: item.name }))}
         />
       </Field>
       <Field label={t("subscriptions.grant.durationLabel")} htmlFor="subscription-duration">
         <SelectDropdown
-          variant="form"
+          variant="well"
+          size="compact"
           id="subscription-duration"
           value={durationValue}
           onChange={handleDurationChange}
@@ -66,7 +68,7 @@ export function PlanDurationPicker({ plans, planId, onPlanChange, duration, onDu
       </Field>
       {duration.kind === "custom" && (
         <Field label={t("subscriptions.duration.customLabel")} htmlFor="subscription-custom-days">
-          <TextInput
+          <Input
             id="subscription-custom-days"
             type="number"
             min={1}

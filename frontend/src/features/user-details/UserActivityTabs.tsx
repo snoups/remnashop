@@ -1,10 +1,10 @@
-import { CreditCard, Gift, Receipt, Ticket } from "lucide-react";
+import { CreditCard, Gift, Layers, Receipt, Ticket } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { ParseKeys, TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listTransactions, type TransactionItem } from "@entities/transactions/api";
+import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listTransactions, listTransactionsAfter, type TransactionItem } from "@entities/transactions/api";
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
@@ -21,8 +21,8 @@ import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
@@ -78,7 +78,7 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
 
   return (
     <>
-      <KpiTile
+      <KpiTile glass
         label={t("users.details.analytics.paid")}
         value={String(paid.length)}
         valueSuffix={t("users.details.analytics.ofTotal", { total })}
@@ -104,13 +104,13 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
         }
       />
       {saved !== undefined && (
-        <KpiTile
+        <KpiTile glass
           label={t("users.details.analytics.saved")}
           value={saved}
           hint={t("users.details.analytics.savedHint", { count: discounted.length, total: paid.length })}
         />
       )}
-      <KpiTile
+      <KpiTile glass
         label={t("users.details.analytics.gateway")}
         value={topGateway ? t(`settings.gateways.types.${topGateway}` as ParseKeys) : "—"}
         hint={topGateway ? t("users.details.analytics.gatewayHint", { count: topGatewayCount, total: paid.length }) : undefined}
@@ -146,7 +146,7 @@ export function AnalyticsTab({ userId }: { userId: number }) {
           <SectionTitle>{t("users.details.analytics.purchases")}</SectionTitle>
           <div className="grid grid-cols-2 gap-3">
             {canViewSummary && (
-              <KpiTile
+              <KpiTile glass
                 label={t("users.details.analytics.total")}
                 value={kpiValue(summary, (s) => money(s.revenue))}
                 hint={
@@ -186,13 +186,14 @@ export function TransactionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const canViewDetails = usePermissions().includes("TRANSACTIONS_DETAIL_VIEW");
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
-    (id: number, page, signal) => listTransactions({ userId: id, page, pageSize: TRANSACTIONS_PAGE_SIZE }, signal),
+    (id: number, _page, signal, loaded?: TransactionItem[]) =>
+      listTransactionsAfter({ userId: id, pageSize: TRANSACTIONS_PAGE_SIZE }, loaded, signal),
     userId,
   );
   const [openedOrder, setOpenedOrder] = useState<TransactionItem | null>(null);
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
@@ -228,7 +229,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
               <span className="shrink-0 text-[13px] font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
-              <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
+              <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
             </Pressable>
           );
         })}
@@ -243,7 +244,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
         </div>
       )}
       {openedOrder && <TransactionDetailsDialog order={openedOrder} onClose={() => setOpenedOrder(null)} />}
-    </Card>
+    </DialogCard>
   );
 }
 
@@ -268,11 +269,11 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
           </Button>
         </div>
       )}
-      <Card variant="list">
+      <DialogCard>
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && state.data.items.length === 0 && (
-          <EmptyState icon={CreditCard} text={t("users.details.empty.subscriptions")} />
+          <EmptyState icon={Layers} text={t("users.details.empty.subscriptions")} />
         )}
         {state.kind === "ready" &&
           state.data.items.map((subscription) => (
@@ -306,12 +307,12 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
               <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
                 {formatDate(subscription.expire_at, i18n.language)}
               </span>
-              <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+              <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                 {t(`subscriptions.status.${subscription.status}`)}
               </Badge>
             </Pressable>
           ))}
-      </Card>
+      </DialogCard>
       {isGranting && (
         <GrantSubscriptionDialog userId={userId} onGranted={reload} onClose={() => setIsGranting(false)} />
       )}
@@ -324,7 +325,7 @@ export function PromocodesTab({ userId }: { userId: number }) {
   const [state] = useAsyncResource((signal) => listUserPromocodeActivations(userId, signal));
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.data.length === 0 && (
@@ -345,7 +346,7 @@ export function PromocodesTab({ userId }: { userId: number }) {
             </span>
           </div>
         ))}
-    </Card>
+    </DialogCard>
   );
 }
 

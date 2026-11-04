@@ -312,7 +312,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
 
   const handleAddSource = async () => {
     const url = sourceUrl.trim();
-    if (!url) return;
     setIsAddingSource(true);
     try {
       const created = await addBlacklistSource(url, sourceName.trim() || undefined);
@@ -406,7 +405,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                 type="submit"
                 icon={Plus}
                 isLoading={isAddingSource}
-                disabled={!sourceUrl.trim()}
               >
                 {t("common.add")}
               </Button>

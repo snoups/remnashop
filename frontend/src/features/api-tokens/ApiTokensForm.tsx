@@ -17,7 +17,7 @@ import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Section } from "@shared/ui/glass/Section";
-import { Tag } from "@shared/ui/glass/Tag";
+import { Tag } from "@shared/ui/Tag";
 import { IconButton } from "@shared/ui/IconButton";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 import { Pressable } from "@shared/ui/Pressable";
@@ -165,9 +165,9 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
           >
             <KeyRound className="size-4" />
           </div>
-          <div className="flex min-w-0 flex-1 items-start gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <p className="min-w-0 truncate text-[13px] font-medium leading-8 text-foreground">{token.name}</p>
-            {preset && <Tag subtle>{t(`apiTokens.${preset}`)}</Tag>}
+            {preset && <Tag>{t(`apiTokens.${preset}`)}</Tag>}
           </div>
           <span className="flex size-8 shrink-0 items-center justify-center">
             <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -195,7 +195,7 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
                   {totalDays}
                 </span>
               </div>
-              <div className="mt-2 h-1 rounded-full bg-white/[0.08]">
+              <div className="mt-2 h-1 rounded-full glass-track">
                 <div
                   className={`h-1 rounded-full ${isExpiringSoon ? "bg-warning" : "bg-primary"}`}
                   style={{ width: `${Math.min(100, (daysLeft / totalDays) * 100)}%` }}
@@ -222,9 +222,9 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
       <Collapse open={isOpen} className="flex flex-col gap-3 px-3.5 pb-3.5 pt-1">
         <div className="flex flex-wrap gap-1.5">
           {listedTokenScopes(token.scopes, catalog).map((scope) => (
-            <Tag key={scope} subtle>{tokenScopeLabel(scope, t)}</Tag>
+            <Tag key={scope}>{tokenScopeLabel(scope, t)}</Tag>
           ))}
-          {token.ip_allowlist.length > 0 && <Tag subtle>{t("apiTokens.ipRestricted", { n: token.ip_allowlist.length })}</Tag>}
+          {token.ip_allowlist.length > 0 && <Tag>{t("apiTokens.ipRestricted", { n: token.ip_allowlist.length })}</Tag>}
         </div>
       </Collapse>
     </div>

@@ -8,10 +8,10 @@ import {
   type PromocodeActivatedUser,
 } from "@entities/promocodes/api";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
-import { Card } from "@shared/ui/Card";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { Tag } from "@shared/ui/Tag";
 import { UserRow } from "@shared/ui/UserRow";
 
@@ -23,6 +23,7 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (id: number, page, signal) => listPromocodeActivatedUsers(id, page, USERS_PAGE_SIZE, signal),
     promocode.id,
+    (user) => user.activation_id,
   );
 
   const openUser = (user: PromocodeActivatedUser) => {
@@ -30,7 +31,7 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   };
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
@@ -56,6 +57,6 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
           />
         </div>
       )}
-    </Card>
+    </DialogCard>
   );
 }

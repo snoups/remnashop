@@ -31,7 +31,10 @@
     },
     "lessThanMinuteAgo": "less than a minute ago",
     "inLessThanMinute": "in less than a minute",
-    "loadError": "Failed to load"
+    "loadError": "Failed to load",
+    "notEnoughData": "Not enough data",
+    "time": "Time",
+    "timePlaceholder": "hh:mm"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -74,7 +77,7 @@
     "signIn": "Sign in",
     "passwordChange": {
       "title": "Set a new password",
-      "description": "Your password was issued by an admin. Choose your own to continue.",
+      "description": "You signed in with a temporary password. Choose your own to continue",
       "currentPasswordLabel": "Temporary password",
       "submit": "Change password",
       "done": "Password changed. Sign in with the new one."
@@ -110,19 +113,20 @@
     "kpi": {
       "users": "Users",
       "today": "today",
-      "activePaid": "Active paid",
-      "trials_one": "and {{formatted}} trial",
-      "trials_other": "and {{formatted}} trials",
+      "activePaid": "Active subscriptions",
+      "trials_one": "Plus {{formatted}} trial",
+      "trials_other": "Plus {{formatted}} trials",
       "online": "Online",
-      "onlineNodes_one": "on {{connected}} of {{total}} node",
-      "onlineNodes_other": "on {{connected}} of {{total}} nodes",
+      "onlineNodes_one": "On {{connected}} of {{total}} node",
+      "onlineNodes_other": "On {{connected}} of {{total}} nodes",
       "revenueToday": "Revenue today",
+      "revenueYesterday": "Yesterday by now: {{value}}",
       "revenueComparison": "vs yesterday at this time"
     },
     "attention": {
       "title": "Needs attention",
       "description": "Urgent first; an item disappears once the problem is resolved",
-      "critical": "{{value}} urgent",
+      "critical": "Urgent · {{value}}",
       "allClear": {
         "title": "All good",
         "sub": "Nothing needs attention"
@@ -141,42 +145,45 @@
       },
       "paidNotFulfilled": {
         "title": "Paid but not delivered",
-        "sub_one": "{{formatted}} order older than 10 minutes",
-        "sub_other": "{{formatted}} orders older than 10 minutes"
+        "sub_one": "{{formatted}} order waiting over 10 minutes",
+        "sub_other": "{{formatted}} orders waiting over 10 minutes"
       },
       "stalePending": {
         "title": "Payments stuck in pending",
-        "sub": "{{formatted}} for over 15 minutes"
+        "sub_one": "{{formatted}} payment waiting over 15 minutes",
+        "sub_other": "{{formatted}} payments waiting over 15 minutes"
       },
       "expiringPaid": {
         "title": "Paid subscriptions expiring",
-        "sub": "{{formatted}} in the next 7 days"
+        "sub_one": "{{formatted}} subscription in the next 7 days",
+        "sub_other": "{{formatted}} subscriptions in the next 7 days"
       },
       "botWebhook": {
-        "title": "Bot webhook reports an error"
+        "title": "Telegram bot webhook reports an error"
       },
       "actions": {
         "gateways": "Gateways",
         "backups": "Backups",
         "transactions": "Transactions",
         "retention": "Retention",
-        "bot": "Bot"
+        "bot": "Telegram bot"
       }
     },
     "revenue": {
       "title": "Revenue",
-      "description": "Revenue for the selected period",
-      "orders_one": "{{formatted}} payment",
-      "orders_other": "{{formatted}} payments",
-      "valueName": "Revenue"
+      "description": "Paid total for the selected period",
+      "orders_one": "{{formatted}} transaction",
+      "orders_other": "{{formatted}} transactions",
+      "valueName": "Revenue",
+      "transactions": "Transactions"
     },
     "subscriptions": {
       "title": "Subscriptions",
-      "description": "Current state",
+      "description": "Subscriptions by status",
       "total": "total",
-      "paid": "Active paid",
+      "paid": "Active",
       "trials": "Trials",
-      "limited": "Traffic limit reached",
+      "limited": "At limit",
       "expired": "Expired"
     },
     "online": {
@@ -184,8 +191,7 @@
       "description": "Peak per hour, sampled every 5 minutes",
       "hours24": "24h",
       "valueName": "Users",
-      "peak": "peak in 24h · {{peak}} at {{time}}",
-      "empty": "No samples yet."
+      "peak": "peak in 24h · {{peak}} at {{time}}"
     },
     "runtime": {
       "title": "System status",
@@ -200,7 +206,7 @@
       "units": {
         "millisecond": "ms"
       },
-      "description": "App processes and the server",
+      "description": "App processes and server",
       "running": "Running · {{n}}",
       "pid": "PID {{pid}}",
       "server": "Server",
@@ -212,29 +218,30 @@
       "cores_one": "{{count}} core",
       "cores_other": "{{count}} cores"
     },
-    "remnawaveUnavailable": "Remnawave is unavailable. Data will appear once the panel responds.",
+    "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
     "nodes": {
       "title": "Nodes and countries",
-      "description": "From Remnawave: connections and traffic today",
+      "description": "Connections and traffic today, from Remnawave",
       "nodes": "Nodes",
       "countries": "Countries",
-      "empty": "No nodes yet.",
+      "empty": "No nodes",
       "connected_one": "{{connected}} of {{nodes}} node",
-      "connected_other": "{{connected}} of {{nodes}} nodes"
+      "connected_other": "{{connected}} of {{nodes}} nodes",
+      "offlineSince": "offline {{time}}"
     },
     "clientApps": {
       "title": "Client apps",
-      "description": "What clients connect with, by devices from Remnawave",
+      "description": "What clients connect with, by platform",
       "other": "Other",
-      "empty": "No devices yet.",
+      "empty": "No devices",
       "devices_one": "{{formatted}} device · {{avg}} per user",
       "devices_other": "{{formatted}} devices · {{avg}} per user"
     },
     "payments": {
       "title": "Recent payments",
-      "description": "Today {{today}}",
+      "description": "Today: {{today}}",
       "all": "All transactions",
-      "empty": "No payments yet."
+      "empty": "No payments"
     }
   },
   "analytics": {
@@ -252,23 +259,22 @@
     "funnel": {
       "title": "New customer funnel",
       "steps": {
-        "registered": "Registered",
-        "connected": "Connected to VPN",
-        "first_paid": "First paid purchase",
-        "repeat_paid": "Repeat paid purchase"
+        "registered": "Registration",
+        "connected": "VPN connection",
+        "first_paid": "First payment",
+        "repeat_paid": "Repeat payment"
       },
       "ofPrevious": "of previous step",
-      "description": "What happened to those who registered in the period. Each step counts only those who passed the previous one",
-      "conversion": "Sign-up → payment",
+      "description": "The path of customers who registered in the period",
+      "conversion": "Registration → payment",
       "biggestDrop": "biggest drop-off",
       "viaTrial": "via trial · {{value}}",
       "direct": "directly · {{value}}",
       "neverConnected": "Never connected",
-      "neverConnectedHint": "registered but never opened the VPN",
-      "connectedUnpaid": "Connected, but didn’t pay",
+      "connectedUnpaid": "Connected but didn’t pay",
       "bySource": "Funnel by source",
-      "bySourceDescription": "Share of registrations at each step; payments as of today",
-      "sourcesEmpty": "No registrations in this period.",
+      "bySourceDescription": "How customers from each source move through the funnel",
+      "sourcesEmpty": "No registrations in this period",
       "source": "Source",
       "registrations": "Registrations",
       "connectedShort": "Connected",
@@ -278,13 +284,12 @@
     "retention": {
       "after_one": "After {{count}} month",
       "after_other": "After {{count}} months",
-      "afterCaption": "with an active paid subscription",
-      "noneEligible": "no one to count yet",
+      "afterCaption": "With an active paid subscription",
       "avgLifetime": "Average customer lifetime",
       "monthsValue": "{{value}} mo.",
-      "avgLifetimeCaption": "from first payment to churn",
+      "avgLifetimeCaption": "From first payment to churn",
       "expiringTitle": "Expiring in the next 30 days",
-      "expiringDescription": "Who to keep: paid subscriptions won’t renew themselves. Most valuable customers first",
+      "expiringDescription": "Sorted by total paid",
       "expiringPaid": "Paid · {{value}}",
       "expiringTrials": "Trials · {{value}}",
       "weeks": {
@@ -295,35 +300,35 @@
       },
       "mrrAtRisk": "{{money}} MRR at risk",
       "customer": "Customer",
-      "plan": "Plan",
+      "subscriptionsColumn": "Subscriptions",
       "expires": "Expires",
       "renewals": "Renewals",
       "inDays_one": "in {{count}} day",
       "inDays_other": "in {{count}} days",
-      "expiringEmpty": "No paid subscriptions expire in the next 30 days.",
+      "expiringEmpty": "No paid subscriptions expire in the next 30 days",
       "curveTitle": "Retention curve",
       "curveDescription": "Share of a cohort with an active paid subscription N months later",
       "average": "Average",
+      "noChurn": "No churn",
       "churnTitle": "Paid churn by month",
-      "churnDescription": "Share of paid subscribers who didn’t renew within the month; trials and reward days don’t count",
+      "churnDescription": "Paid subscribers who didn’t renew within the month, trials and rewards aside",
       "byPlanTitle": "Active subscriptions by plan",
       "byPlanDescription": "Which plans customers are on now and how many hit their traffic limit",
       "limited": "{{value}} at limit",
       "cohortsTitle": "Retention by first payment month",
-      "cohortsDescription": "Each row is customers who first paid in that month; M0, M1… is the share with an active paid subscription that many months later. Long plans don’t show false dips",
+      "cohortsDescription": "Customers by month of first payment and the share still on a paid subscription M0, M1… months later",
       "cohortColumn": "Cohort",
       "sizeColumn": "Customers"
     },
     "ltv": {
-      "allTime": "All time · {{currency}}",
       "mean": "Mean LTV",
-      "meanCaption": "per paying customer, all time",
+      "meanCaption": "Per paying customer, all time",
       "median": "Median LTV",
-      "medianCaption": "half of customers paid less",
+      "medianCaption": "Half of customers paid less",
       "payers": "Paying customers",
-      "payersCaption": "at least one payment",
+      "payersCaption": "At least one payment",
       "title": "LTV distribution",
-      "titleHint": "How many customers paid this much in total, all time",
+      "titleHint": "Customers by total amount paid, all time",
       "rangeColumn": "Total paid",
       "usersColumn": "Customers",
       "shareColumn": "Share",
@@ -333,14 +338,13 @@
       "bySourceDescription": "Which channels bring the most valuable customers",
       "customers_one": "{{count}} customer",
       "customers_other": "{{count}} customers",
-      "topTitle": "Top payers",
-      "topDescription": "All-time spend; a row opens the user’s card",
+      "topTitle": "Top paying customers",
+      "topDescription": "Who paid the most, all time",
       "customer": "Customer",
-      "currentPlan": "Current plan",
+      "subscriptionsColumn": "Subscriptions",
       "payments": "Payments",
       "lastPayment": "Last payment"
     },
-    "reportCurrency": "Report currency",
     "period": {
       "year": "Year",
       "custom": "Custom",
@@ -353,40 +357,55 @@
       "apply": "Apply"
     },
     "periodIndependent": "Doesn’t depend on the period",
-    "currencyNote": "Amounts in other currencies are converted to {{currency}} at the rate set in pricing at the time of payment.",
-    "was": "was {{value}}",
+    "currencyNote": "Across all analytics, amounts in other currencies are converted to {{currency}} at the pricing settings rate at the time of payment",
+    "vsPrevious": "vs previous period",
+    "vsPreviousDays": "vs previous {{days}} days",
     "pp": "{{value}} pp",
-    "empty": "No data yet",
-    "emptyPeriod": "No data for this period.",
+    "empty": "No data",
+    "emptyPeriod": "No data for this period",
     "totalPaid": "Paid in total",
     "metrics": {
       "periodSection": "For the period",
       "comparedWith": "compared with {{range}}",
       "nowSection": "Right now",
       "revenue": "Revenue",
+      "revenueCaption": "{{payers}} paid · {{arppu}} per payer",
       "arppu": "Revenue per payer",
-      "arppuHint": "ARPPU — revenue in the period divided by the number of customers who paid in it.",
-      "arppuCaption_one": "{{formatted}} payer",
-      "arppuCaption_other": "{{formatted}} payers",
       "newPayers": "New payers",
       "conversion": "Paid within {{days}} days",
       "conversionHint": "Share of users who registered {{days}}+ days before the period’s end and paid within {{days}} days of registering.",
-      "conversionCaption": "of registered up to {{date}}",
+      "conversionCaption": "Of registered up to {{date}}",
       "churn": "Paid churn",
       "churnHint": "Share of paid subscribers active at the start of the period who did not renew by its end.",
       "churnCaption": "{{churned}} of {{base}} did not renew",
       "mrr": "MRR",
-      "mrrHint": "Monthly Recurring Revenue — the sum of all paid subscriptions' monthly value.",
-      "mrrCaption": "monthly value of paid subscriptions, including those at the traffic limit",
+      "mrrHint": "Monthly Recurring Revenue — the sum of all paid subscriptions’ monthly value.",
+      "mrrCaption": "Paid subscriptions per month, limited ones included",
       "paidSubscriptions": "Paid subscriptions",
       "limitedCaption": "{{value}} of them at the traffic limit",
-      "trials": "Active trials"
+      "trials": "Active trials",
+      "arpu": "Income per customer",
+      "arpuHint": "ARPU — MRR divided by the customers paying right now.",
+      "payingCustomers": "Paying customers",
+      "payingCustomersCaption": "With a live paid subscription",
+      "neverConnected": "Paid, never connected",
+      "neverConnectedCaption": "Paid subscriptions with no connection yet",
+      "expiringSoon_one": "Expiring in {{count}} day",
+      "expiringSoon_other": "Expiring in {{count}} days",
+      "expiringSoonCaption": "{{money}} MRR unless renewed",
+      "trialsEndingCaption_one": "{{value}} of them end within {{count}} day",
+      "trialsEndingCaption_other": "{{value}} of them end within {{count}} days",
+      "balances": "On customer balances",
+      "pointsValue_one": "{{formatted}} point",
+      "pointsValue_other": "{{formatted}} points",
+      "bonusDaysCaption_one": "and {{formatted}} bonus day",
+      "bonusDaysCaption_other": "and {{formatted}} bonus days"
     },
     "revenue": {
       "revenue": "Revenue",
       "payments": "Payments",
-      "avgCheck": "Average check",
-      "medianCaption": "median — {{median}}",
+      "avgCheck": "Average order",
+      "medianCaption": "Median — {{median}}",
       "refunds": "Refunds",
       "refundsCaption": "{{amount}} · {{share}} of revenue",
       "granularity": {
@@ -399,14 +418,15 @@
         "week": "Revenue by week",
         "month": "Revenue by month"
       },
-      "chartDescription": "Bars — by purchase type, dashed line — the previous period of the same length",
-      "chartEmpty": "No payments in this period.",
+      "chartDescription": "New subscriptions, renewals and plan changes",
+      "chartEmpty": "No payments in this period",
       "new": "New subscriptions",
       "renew": "Renewals",
       "change": "Plan changes",
       "previous": "Previous period",
+      "breakdown": "Revenue breakdown",
       "byPlan": "By plan",
-      "byPlanDescription": "Money, not the number of subscriptions",
+      "byPlanDescription": "Revenue by subscription plan",
       "byDuration": "By duration",
       "byDurationDescription": "Revenue by subscription length",
       "byChannel": "By channel",
@@ -417,28 +437,28 @@
       "sales": "Sales",
       "share": "Share",
       "gateways": "Payment gateways",
-      "gatewaysDescription": "How many payment attempts went through and how many failed",
+      "gatewaysDescription": "Revenue and payment success rate per gateway",
       "successRate": "{{rate}} successful",
-      "gatewayCaption": "paid {{paid}} · canceled {{canceled}} · failed {{failed}} · refunds {{refunded}}"
+      "gatewayCaption": "Paid {{paid}} · canceled {{canceled}} · failed {{failed}} · refunded {{refunded}}"
     },
     "sources": {
       "organic": "Organic",
-      "adLink": "Ad link",
-      "referral": "Referral",
+      "adLink": "Ad links",
+      "referral": "Referrals",
       "tileCaption_one": "{{share}} of revenue · {{formatted}} registration",
       "tileCaption_other": "{{share}} of revenue · {{formatted}} registrations",
       "linksCount_one": "{{formatted}} link",
       "linksCount_other": "{{formatted}} links",
       "channelsTitle": "Acquisition channels",
-      "channelsDescription": "Registrations in the period and their payments to date; per-link details are on the Advertising page",
-      "openAdvertising": "Open Advertising",
+      "channelsDescription": "Registrations in the period and their payments; per link — in “Advertising links”",
+      "openAdvertising": "Open advertising links",
       "channel": "Channel",
       "registrations": "Registrations",
       "paid": "Paid",
       "conversion": "Conversion",
       "revenue": "Revenue",
       "paybackTitle": "Referral program payback",
-      "paybackDescription": "For the period: what invitees brought in and what was paid out in rewards",
+      "paybackDescription": "In the period: what invitees brought in and what was paid out in rewards",
       "referredRevenue": "Revenue from invitees",
       "rewards": "Rewards granted",
       "rewardsDays_one": "{{formatted}} day",
@@ -449,30 +469,30 @@
       "referrers_other": "Inviting · {{formatted}} customers",
       "deepLevels": "Level 2+ · {{share}} of revenue",
       "topTitle": "Top referrers",
-      "topDescription": "By invitees' revenue for the period",
+      "topDescription": "By invitees’ revenue in the period",
       "sort": {
         "revenue": "By revenue",
         "invited": "By invitees"
       },
       "invitedPaid": "invited {{invited}} · paid {{paid}}",
-      "empty": "No referrers in this period."
+      "empty": "No referrers in this period"
     },
     "trial": {
       "trials": "Took a trial",
       "conversion": "Trial → payment",
       "convertedCaption": "{{converted}} of {{trials}} paid",
       "revenue": "Revenue from converted",
-      "revenueInfo": "First purchase and everything after",
+      "revenueInfo": "First purchase and everything after it.",
       "daysToPay": "Days to pay",
-      "daysToPayCaption": "median from trial start",
+      "daysToPayCaption": "Median from trial start",
       "byDayTitle": "Which trial day people buy on",
-      "byDayDescription": "First payment of those who took a trial: by trial day and after it ended",
+      "byDayDescription": "First payment of those who took a trial",
       "during": "During the trial",
       "afterEnd": "After it ended",
       "lastDay": "Last trial day · {{share}} of purchases",
       "afterEndShare": "After it ended · {{share}} — came back on their own",
       "timeToPayTitle": "Time to first payment",
-      "timeToPayDescription": "From registration to first purchase, all new payers in the period",
+      "timeToPayDescription": "From registration to first purchase for all new paying customers in the period",
       "viaTrial": "Via trial · {{value}}",
       "noTrial": "Without trial · {{value}}",
       "plansTitle": "What they buy after the trial",
@@ -484,8 +504,8 @@
         "after_later": "later"
       },
       "timeToPay": {
-        "same_day": "same day",
         "1": "1d",
+        "same_day": "same day",
         "2_3": "2–3d",
         "4_7": "4–7d",
         "8_14": "8–14d",
@@ -495,19 +515,19 @@
     },
     "promocodes": {
       "activations": "Activations",
-      "codesUsed_one": "across {{formatted}} promocode",
-      "codesUsed_other": "across {{formatted}} promocodes",
+      "codesUsed_one": "Across {{formatted}} promocode",
+      "codesUsed_other": "Across {{formatted}} promocodes",
       "discounts": "Given as discounts",
-      "discountsInfo": "All discounts on paid orders — promocodes, plan discounts and personal ones",
+      "discountsInfo": "All discounts on paid orders: promocodes, plan discounts and personal ones.",
       "discountsCaption": "{{share}} of revenue",
       "revenue": "Revenue with discount",
       "revenueCaption": "{{share}} of all revenue",
       "conversion": "Activation → payment",
-      "conversionCaption": "for free rewards: days, traffic, subscription",
+      "conversionCaption": "For free rewards: days, traffic, subscription",
       "byTypeTitle": "By reward type",
       "byTypeDescription": "Activations in the period",
       "codesTitle": "Promocode performance",
-      "codesDescription": "Revenue — payments by those who activated, after activation",
+      "codesDescription": "Revenue — customers’ payments after activating the promocode",
       "code": "Promocode",
       "reward": "Reward",
       "activationsColumn": "Activations",
@@ -515,7 +535,7 @@
       "activationsLimitCaption": "{{activations}} · {{total}} / {{max}}",
       "revenueColumn": "Revenue",
       "toPayment": "→ payment",
-      "empty": "No promocode activations in this period."
+      "empty": "No promocode activations in this period"
     }
   },
   "eventLog": {
@@ -523,7 +543,6 @@
     "empty": "No events",
     "noMatches": "Nothing found",
     "filters": {
-      "category": "Type",
       "categoryAll": "All categories",
       "categoryAuth": "Auth",
       "categoryAdminManagement": "Admin management",
@@ -582,6 +601,7 @@
       "SignInMethodLinkedEvent": "Sign-in method linked",
       "SignInMethodUnlinkedEvent": "Sign-in method unlinked",
       "SessionRevokedEvent": "Session revoked",
+      "OtherSessionsRevokedEvent": "Other sessions ended",
       "SessionTheftDetectedEvent": "Session theft",
       "UserSessionRevokedByAdminEvent": "Session revoked by admin",
       "AdminCreatedEvent": "Admin created",
@@ -590,6 +610,7 @@
       "AdminDemotedEvent": "Admin demoted",
       "AdminDeletedEvent": "Admin deleted",
       "TelegramIdBoundEvent": "Telegram ID bound",
+      "TelegramIdUnboundEvent": "Telegram ID unbound",
       "UserDeletedEvent": "User deleted",
       "CabinetUserRegisteredEvent": "Cabinet sign-up",
       "TelegramUserRegisteredEvent": "Telegram sign-up",
@@ -761,7 +782,9 @@
       "button": "Create admin",
       "title": "Create admin",
       "loginLabel": "Login",
+      "loginPlaceholder": "e.g. john.smith",
       "nameLabel": "Display name",
+      "namePlaceholder": "e.g. John Smith",
       "permissionsLabel": "Permissions",
       "error": "Failed to create admin."
     },
@@ -774,8 +797,14 @@
     "demote": {
       "button": "Demote to user",
       "title": "Demote admin?",
-      "confirm": "Demote this admin to a regular user? Their login and permissions will be cleared.",
+      "confirm": "The admin will become a regular user, and their login, password and permissions will be removed.",
+      "noSignIn": "They have no Telegram, email, or Google or Yandex sign-in, so they won't be able to sign in afterwards. If the account is no longer needed, delete it instead.",
       "error": "Failed to demote admin."
+    },
+    "delete": {
+      "title": "Delete admin?",
+      "confirm": "Delete “{{name}}”? The account is wiped along with its login, password, passkeys and sessions, and subscriptions are revoked in the panel. Transaction history and the event log are kept. This cannot be undone.",
+      "error": "Failed to delete admin."
     },
     "details": {
       "tabs": {
@@ -809,19 +838,17 @@
     "noMatches": "Nothing found",
     "filters": {
       "search": "Search",
-      "searchPlaceholder": "Name, @username, ID or email",
-      "blockedBy": "Blocked",
-      "blockedByAll": "All",
-      "blockedByManual": "Manually",
-      "blockedByLists": "By lists",
-      "subscription": "Subscription",
-      "subscriptionAll": "All",
-      "subscriptionWith": "Has active",
-      "subscriptionWithout": "No active",
-      "trial": "Trial",
-      "trialAll": "All",
-      "trialAvailable": "Available",
-      "trialUsed": "Used"
+      "searchPlaceholder": "Name, ID or email",
+      "blockedByAll": "Blocked: all",
+      "blockedByManual": "Blocked manually",
+      "blockedByLists": "Blocked by lists",
+      "deleted": "Deleted",
+      "subscriptionAll": "Subscription: all",
+      "subscriptionWith": "Active subscription",
+      "subscriptionWithout": "No active subscription",
+      "trialAll": "Trial: all",
+      "trialAvailable": "Trial available",
+      "trialUsed": "Trial used"
     },
     "deleteSubscriptions": {
       "action": "Delete all subscriptions",
@@ -832,13 +859,11 @@
       "error": "Failed to delete the subscriptions."
     },
     "delete": {
-      "button": "Delete user",
       "confirmTitle": "Delete user?",
       "confirm": "Delete “{{name}}”? Personal data and contacts are wiped and subscriptions are revoked in the panel. Transaction and referral history is kept. This cannot be undone.",
       "error": "Failed to delete user."
     },
     "block": {
-      "button": "Block user",
       "action": "Block",
       "error": "Failed to block user."
     },
@@ -848,7 +873,6 @@
       "confirmButton": "Block"
     },
     "unblock": {
-      "button": "Unblock user",
       "action": "Unblock",
       "error": "Failed to unblock user."
     },
@@ -861,8 +885,8 @@
       "telegramId": "Telegram ID",
       "email": "Email",
       "referralCode": "Referral code",
-      "points": "Points\nbalance",
-      "bonusDays": "Bonus\ndays",
+      "points": "Points balance",
+      "bonusDays": "Bonus days",
       "personalDiscount": "Personal discount",
       "purchaseDiscount": "Next purchase discount",
       "trialAvailable": "Trial access",
@@ -930,11 +954,12 @@
         "bonusDaysHint": "Enter a number or an expression: +7; −1; 30−7.",
         "discountHint": "Enter a number or an expression: +5; −5; 100−50."
       },
-      "loyaltyDiscount": "Loyalty",
+      "loyaltyDiscount": "Loyalty discount",
       "loyalty": {
         "spent": "Spent in the window: {{amount}}",
         "toNext": "{{amount}} to the next tier ({{percent}}%)",
         "topTier": "Top tier reached",
+        "inactive": "The loyalty program is off",
         "exclude": "Exclude from the program",
         "saved": "Saved.",
         "error": "Failed to change the loyalty program.",
@@ -1007,11 +1032,15 @@
       "taken": "This Telegram ID belongs to another account.",
       "mergeWith": "Merge with #{{id}}",
       "done": "Telegram ID saved.",
-      "error": "Failed to save the Telegram ID."
+      "error": "Failed to save the Telegram ID.",
+      "unbind": "Unbind Telegram",
+      "unbindTitle": "Unbind Telegram?",
+      "unbindConfirm": "{{name}} will lose Telegram sign-in, and the bot will create a new user the next time this Telegram writes to it.",
+      "unbound": "Telegram unbound.",
+      "unbindError": "Failed to unbind Telegram."
     },
     "registration": {
       "title": "Registration",
-      "none": "No data: the account was created before this was recorded.",
       "source": "Source",
       "startPayload": "Start link",
       "telegramLanguage": "Telegram language",
@@ -1038,7 +1067,6 @@
     },
     "legalAcceptances": {
       "title": "Accepted documents",
-      "none": "No documents accepted yet.",
       "triggers": {
         "SIGN_UP": "Sign-up",
         "PAYMENT": "Payment"
@@ -1196,7 +1224,6 @@
         "originBody": "The exact URL the dashboard loads from, protocol included — for example https://example.com."
       },
       "placeholder": "Leave blank to keep the current value",
-      "errorEmptyFields": "Enter at least one field to update.",
       "telegramGuide": {
         "title": "Telegram OAuth2",
         "intro": "Setting up “Sign in with Telegram” requires a Telegram bot, and that bot needs some extra configuration for the feature to work correctly.",
@@ -1371,7 +1398,6 @@
     "webPush": {
       "title": "Push notifications",
       "description": "Shared keys for notifications in the dashboard and the cabinet",
-      "configured": "Configured",
       "notConfigured": "Not configured",
       "publicKey": "Public key",
       "contact": "Contact email",
@@ -1650,7 +1676,7 @@
       "reaccept": "Ask customers to accept again",
       "reacceptHint": "Every customer will see the new version on their next bot action or cabinet visit.",
       "lastReaccept": "Last acceptance request: {{date}}",
-      "hidden": "Hidden",
+      "hidden": "Not shown",
       "visibility": "Visibility"
     },
     "support": {
@@ -1730,6 +1756,8 @@
       "adding": "Waiting for your device…",
       "manage": "Manage",
       "namePrompt": "Name this passkey",
+      "namePlaceholder": "For example, MacBook or iPhone",
+      "nameHint": "Optional. Helps tell your keys apart.",
       "deleteConfirm": "This device will no longer be able to sign in with this passkey.",
       "lastUsed": "Last used {{date}}",
       "neverUsed": "Never used",
@@ -1752,46 +1780,42 @@
     },
     "notifications": {
       "title": "Notifications",
-      "description": "Choose where each kind of event reaches you.",
+      "description": "Choose which events reach you by push and in the bot.",
+      "descriptionPushOnly": "Choose which events reach you by push.",
       "saveError": "Failed to save notification settings.",
       "groups": {
         "security": {
           "title": "Security",
-          "description": "Failed sign-ins, Remnawave panel sign-ins and suspected session theft"
+          "description": "Failed sign-ins, Remnawave panel sign-ins, session theft and the rescue console"
         },
         "failures": {
           "title": "Failures",
-          "description": "Failed backups, webhook and channel check errors"
+          "description": "Backup, Telegram webhook, channel check and bonus day errors"
         },
         "broadcasts": {
           "title": "Broadcasts",
-          "description": "Finished and failed broadcasts"
+          "description": "Sent and stopped by an error"
         },
         "money": {
           "title": "Transactions",
-          "description": "Purchases, renewals and refunds"
-        },
-        "admins": {
-          "title": "Admins",
-          "description": "Admins created, deleted or given different permissions"
+          "description": "Purchases, renewals, refunds, manual issues and unissued orders"
         },
         "infrastructure": {
           "title": "Infrastructure",
-          "description": "Nodes, the Remnawave panel and the bot going down or back up"
+          "description": "Node, panel and bot uptime, node traffic and hosting payments"
         },
         "customers": {
           "title": "Customers",
-          "description": "Registrations, first connections and torrent blocks"
+          "description": "New and blocked registrations, first connections and torrent traffic"
         },
         "subscriptions": {
           "title": "Subscriptions",
-          "description": "Expired, out of traffic, reissued or never connected"
+          "description": "Expiry, traffic run out, link reissued and customers who never connected"
         }
       },
       "channels": {
-        "bell": "Bell",
         "push": "Push",
-        "telegram": "Telegram"
+        "telegram": "Bot"
       },
       "push": {
         "label": "Push notifications on this device",
@@ -1799,14 +1823,13 @@
         "testSent": "Test notification sent.",
         "iosInstall": "Add the dashboard to the Home Screen to get push on iPhone",
         "unsupported": "This browser doesn’t support push",
-        "notConfigured": "Not set up by the owner",
+        "notConfigured": "Unavailable",
+        "notConfiguredError": "Push notifications aren’t set up.",
         "denied": "Notifications are blocked in the browser settings.",
         "failed": "Failed to turn on push."
       },
       "telegram": {
-        "label": "Telegram",
-        "link": "Link Telegram to your account",
-        "linked": "Linked"
+        "label": "Telegram"
       },
       "devices": {
         "title": "My devices",
@@ -1826,6 +1849,11 @@
     "revokeConfirm": "The device will be signed out.",
     "revokeConfirmCurrent": "This is your current device. You will be signed out.",
     "revokeError": "Failed to revoke session.",
+    "revokeOthers": "End all other sessions",
+    "revokeOthersTitle": "End all other sessions?",
+    "revokeOthersConfirm": "Every device except this one will be signed out of the dashboard.",
+    "revokeOthersDone": "Other sessions ended.",
+    "revokeOthersError": "Failed to end other sessions.",
     "thisDevice": "This device",
     "lastUsed": "{{date}}"
   },
@@ -1886,6 +1914,7 @@
     "USERS_MERGE_PREVIEW": "Preview a user account merge",
     "USERS_MERGE": "Merge user accounts",
     "USERS_TELEGRAM_BIND": "Bind a Telegram ID to a user",
+    "USERS_TELEGRAM_UNBIND": "Unbind a Telegram ID from a user",
     "USERS_DISCOUNT_MANAGE": "Manage user discounts",
     "USER_SESSIONS_VIEW": "View user sessions",
     "USER_SESSIONS_REVOKE": "Revoke user sessions",
@@ -1936,6 +1965,7 @@
     "SUBSCRIPTIONS_DEVICES_DELETE": "Delete subscription devices",
     "SUBSCRIPTIONS_DEVICES_DELETE_ALL": "Delete all subscription devices",
     "SUBSCRIPTIONS_PANEL_DIFF_VIEW": "View differences with the panel",
+    "SUBSCRIPTIONS_PANEL_SQUADS_VIEW": "View squad names from the panel",
     "SUBSCRIPTIONS_PULL_FROM_PANEL": "Take a subscription from the panel",
     "SUBSCRIPTIONS_PUSH_TO_PANEL": "Send a subscription to the panel",
     "SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW": "View panel sync status",
@@ -2041,6 +2071,7 @@
     "ANALYTICS_PROMOCODES_VIEW": "View promocode analytics",
     "REMNAWAVE_NODES_VIEW": "View Remnawave nodes",
     "REMNAWAVE_CLIENT_APPS_VIEW": "View client apps",
+    "OVERVIEW_RECAP_VIEW": "View shop recap",
     "BOT_STATUS_VIEW": "View bot status",
     "BOT_LOGS_VIEW": "View bot logs",
     "BANNERS_RESTORE_DEFAULT": "Restore default banner",
@@ -2150,8 +2181,7 @@
       "previewError": "Failed to preview the rate change.",
       "confirmTitle": "Confirm rate change",
       "confirmMessage": "This will recalculate every price shown in {{currency}}. Review the changes below:",
-      "confirmButton": "Apply",
-      "unsaved": "Unsaved changes"
+      "confirmButton": "Apply"
     },
     "roundingModes": {
       "INTEGER": "Round to whole number",
@@ -2178,7 +2208,6 @@
     },
     "matrix": {
       "title": "Price matrix",
-      "titleHint": "The base price is the number you set; every currency is calculated from it. The anchor currency column shows the final price a customer pays after the rounding and price ending from Currency rates. Other currencies follow their rate; to fix a price in a currency, type your own value or click the pin — a pinned price doesn’t change when the rate does.",
       "leave": {
         "title": "Leave without saving?",
         "message": "Unsaved price edits will be lost.",
@@ -2195,11 +2224,14 @@
         "anchorColumnBody": "The base price is the number you enter. The anchor currency column shows the final price for the customer, with rounding and the ending already applied. This column can’t be edited or pinned; to change it, change the base price.",
         "anchorColumnExample": "Example: base 4.20 USD, with ending 99 and rounding to 2 decimals for USD. The customer sees 4.99 $.",
         "pinTitle": "Pinned prices",
-        "pinBody": "To set your own price in a currency, type a value into its column or press the pin, which pins the current price. A pinned price doesn’t change with the rate or the base price, and rounding and the ending don’t apply to it. The minimum amount still does. Pressing the pin again removes it and the price follows the rate again.",
+        "pinBody": "To set your own price in a currency, type a value into its column or press the pin, which pins the current price. A pinned price doesn’t change with the rate or the base price unless a bulk change rescales or resets it, and rounding and the ending don’t apply to it. The minimum amount still does. Pressing the pin again removes it and the price follows the rate again.",
         "pinExample": "Example: you want exactly 399 ₽ a month. Type 399 into the RUB column. If the rate goes from 85 to 95, the price stays 399 ₽ while unpinned prices are recalculated.",
         "bulkTitle": "Bulk adjust",
-        "bulkBody": "Multiplies the base prices of all plans or all add-ons by the given number. Pinned prices don’t change. You see the list of changes before applying.",
-        "bulkExample": "Example: a factor of 1.10 raises base prices by 10%, 0.90 lowers them by 10%. A base of 4.99 becomes 5.49.",
+        "bulkBody": "Changes the base prices of all plans, all add-ons or one plan. Three methods: by percent, one price for all, or a duration ladder. Pinned prices can be kept, rescaled by the same ratio as the base price, or reset to follow the rate. A list of changes with the percent difference is shown before applying.",
+        "bulkExample": "Example: “by percent” with 10 raises base prices by 10%, −10 lowers them by 10%. A base of 4.99 becomes 5.49.",
+        "ladderTitle": "Duration ladder",
+        "ladderBody": "Every duration is priced from one base duration: its daily price times the days, then the duration’s discount. A negative discount is a markup, for when short durations should cost more per day. The base is picked from the durations in the selection, 30 days by default.",
+        "ladderExample": "Example: a 30-day base at 300 ₽. With 10% off for 90 days: 300 × 3 × 0.9 = 810 ₽. With a −40% markup for 7 days: 300 × 7 / 30 × 1.4 = 98 ₽.",
         "anchorSwitchTitle": "Changing the anchor currency",
         "anchorSwitchBody": "Base prices and rates are recalculated for the new currency, and its rate becomes 1. Final prices may shift slightly because of rounding, so you see the list of changes before applying.",
         "anchorSwitchExample": "Example: the anchor changes from USD to RUB at a rate of 85. A base price of 4.99 becomes 424.15 and the RUB rate becomes 1."
@@ -2207,9 +2239,6 @@
       "description": "Base prices and per-currency overrides",
       "item": "Item",
       "basePrice": "Base price",
-      "pin": "Pin price",
-      "unpin": "Unpin price",
-      "plansSection": "Plans",
       "addonsSection": "Add-ons",
       "empty": "No plans or add-ons",
       "saved": "Price updated.",
@@ -2218,14 +2247,36 @@
       "bulkAdjustTitle": "Bulk price change",
       "scopeLabel": "Scope",
       "scope": {
-        "ALL_PLANS": "All plan durations",
+        "ALL_PLANS": "All plans",
         "ALL_ADDONS": "All add-ons",
         "SELECTED": "Selected items"
       },
-      "factorLabel": "Factor",
-      "factorHint": "Base prices are multiplied by this number: 1.10 is +10%, 0.90 is −10%.",
-      "factorPositive": "The factor must be greater than 0.",
-      "factorPlaceholder": "e.g. 1.10 for +10%",
+      "modeLabel": "Method",
+      "mode": {
+        "MULTIPLY": "By percent",
+        "SET": "One price",
+        "LADDER": "Duration ladder"
+      },
+      "percentLabel": "Change",
+      "percentHint": "Positive raises prices, negative lowers them: 10 is 10% more, −15 is 15% less.",
+      "percentInvalid": "A cut must be under 100%.",
+      "priceLabel": "New base price",
+      "ladderPriceLabel": "Price for {{duration}}",
+      "ladderBaseLabel": "Base duration",
+      "ladderHint": "A duration costs the base duration’s daily price times its days, less its discount.",
+      "ladderDiscountLabel": "Discount by duration",
+      "ladderDiscountHint": "Negative is a markup: −40 means 40% more.",
+      "pinnedLabel": "Pinned prices",
+      "pinned": {
+        "KEEP": "Keep",
+        "SCALE": "Rescale",
+        "RESET": "Reset"
+      },
+      "pinnedHint": {
+        "KEEP": "Pinned currency prices stay as they are.",
+        "SCALE": "They change by the same ratio as the base price.",
+        "RESET": "Pins are removed and prices follow the rate."
+      },
       "preview": "Preview",
       "previewing": "Loading preview…",
       "previewError": "Failed to preview the change.",
@@ -2238,6 +2289,7 @@
     "diff": {
       "old": "Old",
       "new": "New",
+      "change": "Change",
       "empty": "No prices will change.",
       "loyaltyThreshold": "Loyalty tier threshold",
       "rescaledTransactions": "Transactions with recalculated anchor amounts: {{count}}"
@@ -2264,7 +2316,6 @@
       "description": "External lists synced automatically",
       "urlPlaceholder": "https://example.com/list.txt",
       "namePlaceholder": "e.g. Remnashop",
-      "add": "Add source",
       "removeConfirmTitle": "Remove source?",
       "removeConfirm": "Remove the source “{{name}}”?\nThe entries it contributed leave the blacklist immediately. Users already blocked stay blocked.",
       "entriesCount": "Entries: {{count}}",
@@ -2350,12 +2401,10 @@
     "manual": {
       "title": "Manual run",
       "description": "One-off backup outside the schedule",
-      "kindLabel": "What to back up",
       "runNow": "Run now",
       "runHint": "At most one backup of each kind runs at a time.",
       "runStarted": "Backup started.",
       "runError": "Failed to start the backup.",
-      "storageLabel": "Storage",
       "statCompleted": "Copies",
       "statSize": "Size",
       "statFailed": "Failures"
@@ -2387,26 +2436,26 @@
     "title": "Advertising links",
     "empty": "No advertising links",
     "filters": {
-      "statusAll": "All",
+      "statusAll": "All statuses",
       "statusActive": "Active",
-      "statusInactive": "Inactive",
-      "period": "Period"
+      "statusInactive": "Inactive"
     },
     "channel": {
-      "BOT": "Bot",
+      "BOT": "Telegram bot",
       "WEBCABINET": "Web cabinet"
     },
     "create": {
       "button": "New link",
       "title": "New advertising link",
       "nameLabel": "Name",
+      "namePlaceholder": "e.g. Telegram post",
       "codeLabel": "Code",
       "codePlaceholder": "e.g. spring_launch",
       "generate": "Generate",
       "costLabel": "Cost",
       "currencyLabel": "Currency",
       "noteLabel": "Note",
-      "saving": "Creating…",
+      "notePlaceholder": "Where it runs, terms, contacts",
       "saved": "Advertising link created.",
       "error": "Failed to create the advertising link.",
       "codeInvalid": "Only Latin letters, digits, “_” and “-”."
@@ -2422,8 +2471,7 @@
     "delete": {
       "title": "Delete advertising link?",
       "confirm": "Permanently delete “{{name}}”? This cannot be undone.",
-      "error": "Failed to delete the advertising link.",
-      "hasUsers": "Users have already signed up through this link, so it can’t be deleted. Deactivate it instead — its stats stay intact."
+      "error": "Failed to delete the advertising link."
     },
     "stats": {
       "attributions": "Sign-ups",
@@ -2438,7 +2486,7 @@
       "notPaid": "No purchase",
       "daily": "Sign-ups per day",
       "peak": "peak {{count}} · {{day}}",
-      "channelSplit": "Bot {{bot}} · Web {{web}}",
+      "channelSplit": "Telegram bot {{bot}} · Web cabinet {{web}}",
       "totalTrend": "last 30 days",
       "periodTrend": "vs. prior {{days}} days"
     },
@@ -2466,9 +2514,7 @@
       }
     },
     "channels": {
-      "label": "Channels",
-      "all": "All",
-      "web": "Web"
+      "label": "Channels"
     },
     "share": {
       "button": "Share",
@@ -2802,15 +2848,11 @@
       "levelAll": "All levels",
       "level": "Level {{level}}",
       "levelBadge": "Lvl {{level}}",
-      "levelFilter": "Level",
-      "periodFilter": "Period",
       "search": "User",
       "searchPlaceholder": "Name, @username, ID or email",
-      "rewardStatusFilter": "Rewards",
       "rewardStatusAll": "Any",
       "rewardStatusWith": "With rewards",
       "rewardStatusWithout": "No rewards",
-      "rewardTypeFilter": "Reward type",
       "rewardTypeAll": "All types",
       "columns": {
         "referred": "Invited",
@@ -2850,14 +2892,14 @@
       "DURATION": "Extra days",
       "TRAFFIC": "Extra traffic",
       "DEVICES": "Extra devices",
-      "SUBSCRIPTION": "Free subscription",
+      "SUBSCRIPTION": "Subscription",
       "PERSONAL_DISCOUNT": "Personal discount",
       "PURCHASE_DISCOUNT": "Purchase discount"
     },
     "availability": {
       "ALL": "Everyone",
-      "NEW": "New users",
-      "EXISTING": "Existing users",
+      "NEW": "Never bought a subscription",
+      "EXISTING": "Bought a subscription before",
       "INVITED": "Invited only",
       "ALLOWED": "Allow-listed only"
     },
@@ -2874,8 +2916,7 @@
       "rewardPlanLabel": "Plan",
       "rewardPlanPlaceholder": "Select a plan",
       "rewardPlanEmpty": "No plans",
-      "rewardDurationDaysLabel": "Duration (days)",
-      "saving": "Creating…",
+      "rewardDurationDaysLabel": "Duration",
       "saved": "Promocode created.",
       "error": "Failed to create the promocode.",
       "daysSuffix": "days",
@@ -2894,16 +2935,16 @@
     "status": {
       "ACTIVE": "Active",
       "INACTIVE": "Disabled",
-      "EXPIRED": "Expired"
+      "EXPIRED": "Expired",
+      "EXHAUSTED": "Used up"
     },
     "filters": {
       "statusAll": "All statuses",
-      "rewardAll": "All rewards",
-      "status": "Status",
-      "reward": "Reward"
+      "rewardAll": "All rewards"
     },
     "columns": {
       "code": "Promocode",
+      "availability": "Who can use it",
       "status": "Status",
       "used": "Used"
     },
@@ -2924,8 +2965,8 @@
       "availabilityLabel": "Who can use it",
       "allowedUserIdsLabel": "Allowed user IDs",
       "allowedUserIdsPlaceholder": "Type an ID and press Enter",
-      "plansLabel": "Plans",
-      "plansHint": "None selected — any plan",
+      "plansLabel": "Which plans it applies to",
+      "plansAll": "All",
       "plansPromocodesOff": "Grayed-out plans don’t accept promocodes",
       "expiresLabel": "Valid until",
       "expiresPlaceholder": "No expiry",
@@ -2963,17 +3004,18 @@
   "plans": {
     "title": "Plans",
     "empty": "No plans",
-    "unlimited": "Unlimited",
     "reorderError": "Failed to reorder plans.",
-    "description": "Plans are shown to customers in this order. Drag a card by its handle to reorder.",
-    "activeCount": "{{count}} active",
     "noMatches": "Nothing found",
     "filters": {
       "all": "All",
       "active": "Active",
       "inactive": "Hidden"
     },
+    "codeLabel": "Code",
+    "trialBadge": "Trial",
     "priceFrom": "from",
+    "enable": "Enable",
+    "disable": "Disable",
     "perDays_one": "/ {{count}} day",
     "perDays_other": "/ {{count}} days",
     "daysShort": "{{count, number}}d",
@@ -3007,19 +3049,25 @@
         "MONTH_ROLLING": "Monthly (rolling)"
       },
       "isTrialLabel": "Trial plan",
-      "isActiveLabel": "Active",
-      "durationsHint": "Per-currency price overrides are managed on the Pricing page.",
       "trialDurationHint": "A trial plan has one duration. Price 0 makes it a free trial activated by a button; a higher price sells it once per customer.",
       "daysLabel": "Days",
       "basePriceLabel": "Base price",
       "saved": "Plan saved.",
       "error": "Failed to save the plan.",
       "durationsError": "Plan settings saved, durations weren’t: {{error}}",
+      "internalSquadsLabel": "Internal squads",
+      "externalSquadLabel": "External squad",
+      "externalSquadNone": "None",
+      "squadsEmpty": "The panel has no squads",
+      "squadsError": "Plan settings saved, squads weren’t: {{error}}",
+      "accessError": "Plan created, access wasn’t saved: {{error}}",
       "sections": {
         "durations": "Durations"
       },
       "publicCodeHint": "Generated automatically. For a link-only plan it is the access code — share it only with those who should buy the plan.",
       "tagHint": "Remnawave user tag: capital Latin letters, digits and “_”",
+      "iconNoPacks": "No emoji packs yet. Import one in the bot settings.",
+      "iconClear": "Remove icon",
       "badgeLabel": "Badge",
       "badgeHint": "Shown to customers on the plan card",
       "badges": {
@@ -3029,19 +3077,17 @@
       },
       "trafficShortLabel": "Traffic",
       "deviceShortLabel": "Devices",
-      "limitHint": "0 — unlimited",
       "trafficSuffix": "GB",
       "deviceSuffix": "pcs",
       "daysSuffix": "d",
       "addPresetLabel": "Add:",
       "customDuration": "Custom",
-      "isActiveHint": "Inactive plans are hidden from customers",
       "isTrialHint": "Offered as a trial period",
+      "isTrialUnavailableHint": "Not available: the plan is open to existing users only",
       "allowBonusDaysLabel": "Bonus days",
       "allowBonusDaysHint": "Customers can spend bonus days on this plan’s subscriptions",
       "allowPromocodesLabel": "Promocodes",
-      "allowPromocodesHint": "Days, traffic and device promocodes apply to this plan’s subscriptions; already activated ones stay",
-      "durationsAfterCreate": "Durations can be added once the plan is created."
+      "allowPromocodesHint": "Customers can apply days, traffic and device promocodes to this plan’s subscriptions"
     },
     "access": {
       "button": "Access",
@@ -3058,7 +3104,7 @@
       "emailsLabel": "Allowed emails",
       "saved": "Access updated.",
       "error": "Failed to update access.",
-      "availabilitySection": "Who sees the plan",
+      "availabilitySection": "Access",
       "restricted": "Restricted",
       "availabilityHint": {
         "ALL": "Any user",
@@ -3071,7 +3117,8 @@
       "recipients_one": "Access: {{count}} recipient",
       "recipients_other": "Access: {{count}} recipients",
       "telegramIdsPlaceholder": "Telegram ID, Enter to add",
-      "emailsPlaceholder": "email, Enter to add"
+      "emailsPlaceholder": "email, Enter to add",
+      "trialUnavailable": "Not available for a trial plan"
     },
     "discount": {
       "button": "Discount",
@@ -3095,7 +3142,7 @@
     "delete": {
       "button": "Delete plan",
       "confirmTitle": "Delete plan?",
-      "confirm": "Permanently delete “{{name}}”? This cannot be undone. Promocodes limited to this plan alone become valid for every plan.",
+      "confirm": "Permanently delete “{{name}}”? This cannot be undone. Promocodes limited to this plan alone will be disabled.",
       "error": "Failed to delete the plan."
     }
   },
@@ -3156,13 +3203,10 @@
       "error": "Failed to refund the Stars."
     },
     "filters": {
-      "status": "Status",
-      "gateway": "Gateway",
-      "purchaseType": "Purchase type",
-      "period": "Period",
       "statusAll": "All statuses",
       "gatewayAll": "All gateways",
-      "purchaseTypeAll": "All types"
+      "purchaseTypeAll": "All types",
+      "unfulfilled": "Paid, not issued"
     },
     "status": {
       "PENDING": "Pending",
@@ -3183,8 +3227,8 @@
       "CHANGE": "Change"
     },
     "channel": {
-      "BOT": "Bot",
-      "CABINET": "Cabinet"
+      "BOT": "Telegram bot",
+      "CABINET": "Web cabinet"
     },
     "discountSource": {
       "NONE": "None",
@@ -3197,8 +3241,10 @@
       "noDiscount": "No discount",
       "period": "Period",
       "plan": "Plan",
+      "previousPlan": "Previous plan",
       "purchaseType": "Purchase type",
-      "targetSubscription": "Target subscription",
+      "targetSubscription": "Subscription",
+      "notIssued": "Not issued yet",
       "externalPaymentId": "External payment ID",
       "discount": "{{percent}}% off · {{source}}",
       "planDiscount": "{{percent}}% off · plan",
@@ -3221,7 +3267,6 @@
     "title": "Subscriptions",
     "empty": "No subscriptions",
     "noMatches": "Nothing found",
-    "description": "User subscriptions synced with Remnawave",
     "trial": "Trial",
     "unlimited": "Unlimited",
     "trafficUnlimited": "Traffic ∞",
@@ -3245,8 +3290,7 @@
     "fields": {
       "traffic": "Traffic",
       "devices": "Devices",
-      "expires": "Expires",
-      "squads": "Squads: {{count}}"
+      "expires": "Expires"
     },
     "edit": {
       "toUser": "To user",
@@ -3270,13 +3314,31 @@
       "expireAtInPast": "Pick a date in the future.",
       "plusDays": "+{{days}}d",
       "tabs": {
-        "params": "Settings",
+        "params": "Details",
         "plan": "Plan",
         "devices": "Devices"
-      }
+      },
+      "addonsHint": "Add-ons on top: +{{value}}"
+    },
+    "details": {
+      "paidTotal": "Paid since the last plan change",
+      "subscription": "Subscription",
+      "trafficUsed": "{{value}} used",
+      "trafficLeftOf": "left of {{limit}}",
+      "trafficUnlimited": "unlimited traffic",
+      "trafficLimit": "traffic limit",
+      "daysLeft": "Left",
+      "devicesUpTo": "up to {{limit}}",
+      "panel": "Panel",
+      "createdAt": "Created",
+      "firstConnectedAt": "First connection",
+      "link": "Link",
+      "remnawaveId": "Remnawave ID",
+      "internalSquads": "Internal squads",
+      "externalSquad": "External squad",
+      "addons": "Add-ons"
     },
     "delete": {
-      "button": "Delete subscription",
       "confirmTitle": "Delete subscription?",
       "confirm": "Permanently delete subscription #{{id}}? This cannot be undone.",
       "error": "Failed to delete the subscription."
@@ -3308,14 +3370,18 @@
       "keep": "Keep current (until {{date}})"
     },
     "plan": {
+      "title": "Plan snapshot",
+      "trial": "Trial",
+      "code": "Code",
+      "credit": "Accumulated credit",
       "name": "Plan",
-      "price": "Paid",
+      "price": "Price",
       "duration": "Duration",
       "change": "Change plan",
       "submit": "Change",
       "changed": "Plan changed.",
       "error": "Failed to change the plan.",
-      "resetWarning": "Add-ons, manual limits and the tag will be reset to the new plan’s values."
+      "resetWarning": "Add-ons will be removed. Limits, reset strategy, squads and tag will match the new plan. The subscription number will change; the link stays the same."
     },
     "devices": {
       "empty": "No devices",
@@ -3370,12 +3436,14 @@
       "bulk": {
         "pull": "From panel",
         "push": "To panel",
-        "pullTitle": "Sync everything from the panel?",
-        "pullConfirm": "Every subscription that differs takes the panel’s status, expiry, limits, squads, tag and link. A shop user’s panel user with no subscription is imported.",
-        "pushTitle": "Sync everything to the panel?",
-        "pushConfirm": "The panel takes the shop’s configuration and on/off state for every subscription that differs; a subscription with no panel user gets a new one, and a shop user’s panel user with no subscription is deleted from the panel.",
+        "pullAction": "Update from panel",
+        "pullTitle": "Update subscriptions from the panel?",
+        "pullConfirm": "The shop takes the status, expiry, limits, squads, tag and link from the panel for subscriptions that differ.\n\nA subscription with no panel user is deleted from the shop.\n\nA panel user with no subscription is imported if they belong to a shop user.",
+        "pushAction": "Send to panel",
+        "pushTitle": "Send subscriptions to the panel?",
+        "pushConfirm": "The panel takes the expiry, limits, squads, on/off state and the owner’s contacts from the shop for subscriptions that differ.\n\nIf a subscription has no panel user, a new one is created and the subscription link changes.\n\nA panel user with no subscription is deleted from the panel if they belong to a shop user. This cannot be undone.",
         "started": "Sync started.",
-        "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{missing}} missing, {{failed}} failed.",
+        "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{missing}} deleted, {{failed}} failed.",
         "finishedToPanel": "Sync finished: {{updated}} updated, {{recreated}} recreated in the panel, {{deleted}} deleted from the panel, {{failed}} failed.",
         "error": "Failed to start the sync."
       }
@@ -3420,17 +3488,55 @@
     "snapshotFailed": "Failed to reach the clipboard.",
     "openDebugPage": "Open the debug page"
   },
+  "recap": {
+    "copied": "Image copied.",
+    "copyError": "Failed to copy the image.",
+    "downloadError": "Failed to save the image.",
+    "title": "Remnashop recap",
+    "revenueTotal": "All-time revenue",
+    "customers": "Total\ncustomers",
+    "payers": "Paying customers",
+    "activeSubscriptions": "Active subscriptions",
+    "monthRevenue": "Month revenue",
+    "newCustomers": "New\ncustomers",
+    "newPayers": "New paying",
+    "nodes": "Nodes",
+    "countries": "Countries",
+    "transactions": "Transactions",
+    "since": "{{date}}",
+    "blocks": {
+      "totals": "Totals",
+      "month": "This month",
+      "infra": "Infrastructure"
+    },
+    "fields": {
+      "revenueTotal": "Revenue",
+      "monthRevenue": "Month revenue",
+      "customers": "Total customers",
+      "payers": "Paying customers"
+    },
+    "controls": {
+      "blocks": "Blocks",
+      "hide": "Hide values",
+      "note": "Custom note",
+      "notePlaceholder": "E.g. thanks, snoups!",
+      "copy": "Copy",
+      "download": "Download"
+    }
+  },
   "debugPage": {
     "title": "Debug",
+    "tabs": {
+      "kit": "UI kit",
+      "variants": "Variants"
+    },
     "kit": {
       "intro": {
-        "title": "UI kit",
         "caption": "Shared components from shared/ui — live. Under each: its name and where it is used.",
-        "meta": "shared/ui",
-        "nav": "Sections"
+        "meta": "shared/ui"
       },
       "u": {
-        "announcementsCarousel": "Developer shorts: story carousel over the dashboard",
+        "announcementsCarousel": "Developer shorts: story carousel over the dashboard.",
         "primary": "Main actions, dialog and form footers. 14px.",
         "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
         "glass": "PillTabs capsule fill, 13px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
@@ -3438,15 +3544,14 @@
         "disabled": "A disabled button — 50% opacity.",
         "loadMore": "“Show more” under lists.",
         "dashed": "One-off: “Add” in the dialog editor and the admin form.",
-        "copy": "In a 38px field, pr-1 — 4 inset, radius 19−1−4 = 14.",
+        "copy": "CopyInput: copy at the end of a 36px field, pr-1.",
         "clear": "In the date field, right-2 — 8 inset, radius 19−1−8 = 10.",
         "monthCalendar": "Single-date and range mode, as inside a popover. Range: first click sets the start, second the end.",
         "chip": "On a chip, pr-0.5 — 2 inset.",
         "fieldRow": "Beside a 38px field — same height.",
         "cardCorner": "In a p-4 card corner, −mr/−mt 1.5 — 10/10 inset.",
         "toast": "In a p-3.5 toast, −my/−mr 1 — 10 inset all round.",
-        "dialogClose": "In a px-5 py-4 dialog header.",
-        "tabBar": "Page route tabs: settings, referrals, analytics.",
+        "dialogClose": "In a p-4 dialog header, the 36px icon’s height.",
         "dialogTabs": "Dialog tabs: ad link, admin, event.",
         "segmented": "Page filters: plans, users, subscriptions.",
         "period": "Period picker: transactions, ads, dashboard, analytics.",
@@ -3457,53 +3562,39 @@
         "tag": "Counts and metadata: gray pill, no uppercase.",
         "badgeCount": "A number in a circle: subscriptions in the users list; stretches past one digit.",
         "badgeIcon": "Status with an icon.",
-        "statusPill": "Card-header status at button height: bot, push notifications. Not uppercase, unlike Badge.",
-        "field": "Label, a 38px field and text under it.",
-        "fieldInfo": "info — hint icon, aside — required star or a count.",
-        "fieldError": "error replaces hint; the button beside it — secondary field.",
-        "textarea": "Multi-line field with a count by the label.",
-        "textInput": "Inactive field.",
         "search": "Glass field — filters and search only.",
         "select": "Dropdown select; compact — 36px, in the editor.",
-        "switch": "Switch: on, off, disabled.",
         "slider": "Slider: a value within a range, regular and disabled.",
         "color": "Accent color picker.",
         "labels": "Labels: forms — 14px, filters and columns — eyebrow.",
-        "cardPage": "Page and settings card, p-4.",
         "cardForm": "Form section in a dialog, 11px title.",
         "cardList": "InfoRow rows, title with an icon.",
-        "cardBare": "Container without padding: editor, tables.",
         "kpi": "Number tiles; highlighted variant.",
         "kpiIcon": "With an icon and a label hint.",
         "list": "Reference row list: admins, event log, transactions, ads, referrals.",
         "pressable": "The base of everything pressable: positioning and the ripple, no look of its own. as picks the tag.",
-        "settingsRowPress": "A pressable settings row (OAuth, gateways, emoji packs): the row presses, its own controls keep their clicks; chevron via expanded, a custom badge via glyph.",
         "listRow": "A table row that opens details: Pressable + LIST_ROW_CLASS, the grid via className. Disabled (no right to open): no hover, no ripple, third row.",
         "table": "Page table: analytics cohorts.",
         "compact": "Compact table in a dialog: price changes.",
-        "dialogHeader": "Every dialog’s header: icon or glyph, badges, subtitle, actions, close.",
+        "dialogHeader": "Every glass dialog’s header: icon or glyph, subtitle, danger/warning tone, actions, close.",
         "modal": "Dialog shell: sm and lg.",
         "confirm": "Confirmation: regular and destructive.",
-        "guide": "Guide in its own window, opened by the icon on the right.",
         "fieldHint": "Hint icon by a label: up, down, at the right edge.",
         "tooltip": "Label for a button or badge on hover, from any side.",
         "actionMenu": "Row actions menu in a list.",
         "popover": "Menu shells: glass (1.5 and 3 padding) and solid — emoji and toasts.",
         "spinner": "Loading: shows after 150 ms, same heights as the empty state.",
         "empty": "Empty states: page, card, search.",
-        "error": "Load failure in place of a list, card, form or tab",
+        "error": "Load failure in place of a list, card, form or tab.",
         "collapse": "Height expand in 0.2s.",
         "brand": "Logo and sign-in provider icons.",
-        "suffixInput": "Number with a unit after the value: days, currency. The suffix takes its own width; error and disabled match TextInput. Plans, promocodes, currency rates.",
         "groupToggle": "Collapsible group header: chevron, label, count; leading takes a status dot. Transactions, event log, referrals, subscriptions, pricing matrix.",
         "actionMenuTrigger": "Menu behind a labeled button, e.g. “Share” in a dialog footer. A disabled item explains why on hover.",
         "segmentedStretch": "Full-width switch inside a form field, e.g. ad link channels.",
-        "kpiTrend": "Change next to the value: green up, red down, gray no change. The period is in the popup.",
-        "passwordInput": "Login, bootstrap, profile passwords and OAuth client secrets",
-        "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red",
-        "cardHeader": "Page and settings card header: icon, title, description, right-side block, divider",
-        "settingsRow": "Settings card rows (General tab): icon, label, description or hint, control on the right. A thin line between rows of a section, a plain one between sections; one Save with the unsaved mark.",
-        "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards",
+        "segmentedPanel": "Glass capsule beside the TabBar in a page’s floating bar, e.g. the analytics period.",
+        "kpiTrend": "Change next to the value: green up, red down, gray no change. The period is in the popup. lowerIsBetter: a rise is red, a fall green (refunds).",
+        "chipsInput": "Promocode and plan access lists: IDs and emails; a bad token stays in the field, red.",
+        "userRow": "Users in dialog lists: ad link, promocode, invited, referral rewards.",
         "labeledDivider": "Rule with a label in the middle: “or” on sign-in, donation section.",
         "refetchSpinner": "Corner spinner over a loaded list while it refetches.",
         "buttonLoading": "icon — leading icon; isLoading swaps it for a spinner (or adds one) and disables the button.",
@@ -3515,9 +3606,16 @@
         "glassSwitch": "48×28; off it is a well like the fields. The knob stretches while held.",
         "glassToggle": "A field-like capsule with a switch: clicking anywhere toggles it. Pairs split a line.",
         "glassTextWidth": "Controls as wide as a text in a field: lines a field+switch up with a field sized to its placeholder.",
-        "glassTabBar": "Route tabs in a 48px capsule; the glass dialog: dense frosted panel over a light dim.",
+        "glassTabBar": "Route tabs in a 48px capsule: settings pages, this page.",
         "glassGuide": "The ? in a Row opening a glass help dialog: 13px text, step titles, values to copy, an accent tip.",
-        "glassStatus": "A section header’s status, button height: the state’s colour as a tinted capsule with a dot."
+        "glassSecret": "A secret shown once: API token, generated password. Only “Done” closes it.",
+        "cardPill": "Limits on a plan card and in the subscription dialog: traffic, devices.",
+        "chartTooltip": "Chart tooltip in analytics and the overview: a dot for a single series, a row per value.",
+        "glassStatus": "A section header’s status, button height: the state’s colour as a tinted capsule with a dot.",
+        "dateTime": "A date and time on the app's calendar: a broadcast's send time.",
+        "fullScreen": "Standalone screens without the dashboard: app crash, 404, server error and server unreachable, the OAuth sign-in wait. Open over the window, the cross at the top left closes.",
+        "pageRouteError": "One dashboard page crashed: the sidebar and header stay.",
+        "editorFields": "The dialog editor’s own field, kept in its editor styling."
       },
       "s": {
         "openCarousel": "Open carousel",
@@ -3527,10 +3625,8 @@
         "edit": "Edit",
         "delete": "Delete",
         "sync": "Sync",
-        "generate": "Generate",
         "add": "Add",
         "disabled": "Disabled",
-        "signOut": "Sign out everywhere",
         "name": "Name",
         "namePlaceholder": "For example, Month",
         "nameHint": "Shown to users in the bot.",
@@ -3538,8 +3634,6 @@
         "codeError": "Latin letters and digits only.",
         "login": "Login",
         "password": "Password",
-        "ids": "Telegram ID",
-        "idsHint": "One per line.",
         "search": "Search",
         "searchPlaceholder": "Name, login or ID",
         "status": "Active",
@@ -3580,18 +3674,10 @@
         "tooltipSide": "Label, side=\"{{side}}\"",
         "tooltipLong": "Delete the backup. The file is removed from disk and can’t be restored.",
         "tooltipBadge": "Like the badge in the dialog editor.",
-        "guideRow": "A setting that has a guide",
-        "guideOpen": "Open the guide",
-        "guideTitle": "How to set up GitHub sign-in",
-        "guideStep": "1. Create an OAuth app",
-        "guideStepText": "Open GitHub developer settings and create a new app.",
-        "guideValue": "Callback URL",
-        "guideNote": "The URL must match exactly.",
         "overview": "Overview",
         "settings": "Settings",
         "month": "Month",
         "filterLabel": "Status",
-        "days": "d",
         "today": "Today",
         "active": "Active",
         "share": "Share",
@@ -3602,9 +3688,16 @@
         "webUnavailable": "CABINET_DOMAIN is not set",
         "trendMonth": "last 30 days",
         "trendWeek": "vs. prior 7 days",
-        "cardHeaderDescription": "Scheduled database dumps, kept on the server and rotated by the file limit.",
         "or": "or",
-        "hours": "h"
+        "hours": "h",
+        "screen": {
+          "crash": "Something went wrong",
+          "notFound": "404",
+          "serverError": "Server error",
+          "serverUnreachable": "Server unreachable",
+          "oauthCallback": "Completing sign-in"
+        },
+        "refunds": "Refunds"
       },
       "sections": {
         "buttons": {
@@ -3620,22 +3713,22 @@
         "tabs": {
           "nav": "Tabs",
           "title": "Tabs and choices",
-          "meta": "TabBar · DialogTabs · Pills · ChoiceChip"
+          "meta": "TabBar · DialogTabs · Pills · ChoiceChip · ToggleCapsule · GroupToggle"
         },
         "badges": {
           "nav": "Badges",
           "title": "Badges",
-          "meta": "Badge · Tag"
+          "meta": "Badge · Tag · StatusPill · CardPill"
         },
         "fields": {
           "nav": "Fields",
           "title": "Fields",
-          "meta": "Field · TextInput · SearchField"
+          "meta": "Field · Input · TextArea · SelectDropdown · DatePickerField · Switch"
         },
         "cards": {
-          "nav": "Cards",
-          "title": "Cards",
-          "meta": "Card · CardHeader · KpiTile · InfoRow · UserRow"
+          "nav": "Sections",
+          "title": "Sections and cards",
+          "meta": "Section · Row · DialogCard · KpiTile · InfoRow · UserRow"
         },
         "tables": {
           "nav": "Tables",
@@ -3645,12 +3738,12 @@
         "dialogs": {
           "nav": "Dialogs",
           "title": "Dialogs",
-          "meta": "Modal · DialogHeader · ConfirmDialog"
+          "meta": "Modal · DialogHeader · ConfirmDialog · GuideDialog · OneTimeSecretDialog"
         },
         "hints": {
           "nav": "Hints",
           "title": "Hints",
-          "meta": "FieldHint · Tooltip · GuideDialog"
+          "meta": "FieldHint · Tooltip · ChartTooltip"
         },
         "menus": {
           "nav": "Menus",
@@ -3662,20 +3755,20 @@
           "title": "States",
           "meta": "Spinner · EmptyState · ErrorState · Collapse · brand"
         },
-        "glass": {
-          "nav": "Glass",
-          "title": "Glass",
-          "meta": "shared/ui/glass · Section · Row · Input · Field · Switch"
+        "screens": {
+          "nav": "Screens",
+          "title": "Screens",
+          "meta": "FullScreenMessage · PageRouteError"
         }
       },
       "variants": {
-        "title": "Variants to pick from",
-        "caption": "Live copies of markup that has drifted apart across pages. The chosen one becomes the shared component."
+        "caption": "Live copies of markup being redesigned, beside the current one. Once the new one is signed off, the copy goes.",
+        "planCards": "Plan cards",
+        "old": "Previous design",
+        "new": "Current design",
+        "planName": "Standard plan",
+        "previewOnly": "This is a preview. Real plans are not changed."
       }
-    },
-    "tabs": {
-      "kit": "UI kit",
-      "variants": "Variants"
     }
   },
   "pagination": {
@@ -3888,6 +3981,7 @@
     "PLAN_DURATION_NOT_FOUND": "The plan has no such duration.",
     "PLAN_DURATION_PRICE_REQUIRED": "Only a trial plan can have a free duration.",
     "PLAN_IN_USE": "The plan is still in use.",
+    "PLAN_LIMIT_REQUIRED": "A plan of this type needs a traffic or device limit of at least 1.",
     "PLAN_NAME_TAKEN": "A plan with this name already exists.",
     "PLAN_NOT_AVAILABLE": "This plan isn’t available for purchase.",
     "PLAN_NOT_FOUND": "Plan not found.",
@@ -3895,6 +3989,8 @@
     "PLAN_NO_SQUADS": "A plan needs at least one squad to be active.",
     "PLAN_PUBLIC_CODE_TAKEN": "A plan with this code already exists.",
     "PLAN_REORDER_INCOMPLETE": "The new order must include every plan exactly once.",
+    "PLAN_TRIAL_BADGE": "A trial plan can’t have a badge.",
+    "PLAN_TRIAL_EXISTING_ACCESS": "A trial plan can’t be limited to existing users.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",
     "PLAN_USED_BY_PROMOCODE": "The plan is still used by a promocode.",
     "POINTS_BELOW_ZERO": "Points can’t go below zero.",
@@ -4043,7 +4139,7 @@
       "PENDING": "Pending",
       "SENT": "Sent",
       "FAILED": "Failed",
-      "BLOCKED": "Blocked the bot",
+      "BLOCKED": "Bot blocked",
       "CANCELED": "Canceled",
       "RECALLED": "Recalled"
     },
@@ -4052,10 +4148,10 @@
       "MARKETING": "Promo"
     },
     "media": {
-      "PHOTO": "photo",
-      "VIDEO": "video",
-      "ANIMATION": "animation",
-      "DOCUMENT": "document"
+      "PHOTO": "Photo",
+      "VIDEO": "Video",
+      "ANIMATION": "Animation",
+      "DOCUMENT": "Document"
     },
     "meta": {
       "promocode": "promocode",
@@ -4066,94 +4162,88 @@
       "plans": "Plans: {{names}}",
       "expiresWithin": "Expires in ≤ {{days}}d",
       "expiredWithin": "Expired ≤ {{days}}d ago",
-      "paid": "paid",
-      "notPaid": "never paid",
+      "paid": "Paid",
+      "notPaid": "Never paid",
       "locales": "Languages: {{locales}}",
       "registered": "Registered {{from}} – {{to}}",
-      "referred": "referred",
-      "notReferred": "not referred",
-      "subscription": {
-        "ACTIVE": "active subscription",
-        "TRIAL": "trial",
-        "EXPIRED": "expired",
-        "NONE": "no subscription"
-      },
+      "referred": "Invited",
+      "notReferred": "Not invited",
       "users_one": "{{count}} customer",
       "users_other": "{{count}} customers",
       "adLinks_one": "{{count}} ad link",
-      "adLinks_other": "{{count}} ad links"
+      "adLinks_other": "{{count}} ad links",
+      "subscriptionList": "Subscription: {{names}}",
+      "notConnected": "Not connected ≤ {{days}} d",
+      "withTelegram": "With Telegram",
+      "withoutTelegram": "Without Telegram",
+      "withEmail": "With email",
+      "withoutEmail": "Without email",
+      "filters_one": "{{count}} filter",
+      "filters_other": "{{count}} filters"
     },
-    "description": "Messages to customers in Telegram, the channel and by email",
     "create": "New broadcast",
-    "promoBadge": "Promo",
     "search": "Search by text",
-    "empty": "No broadcasts yet.",
+    "empty": "No broadcasts",
     "noMatches": "Nothing found",
     "kpi": {
       "sending": "Sending now",
       "scheduled": "Scheduled",
       "nextScheduled": "Next: {{date}}",
-      "delivered": "Delivered in 30 days",
-      "deliveredShare": "{{percent}} of processed",
-      "optedOut": "Opted out of promos",
-      "optedOutShare": "{{percent}} of reachable customers",
-      "reachableByEmail": "Reachable by email"
+      "delivered": "Delivered",
+      "optedOut": "Opted out",
+      "optedOutOf_one": "Of {{count, number}} customer",
+      "optedOutOf_other": "Of {{count, number}} customers",
+      "deliveredOf_one": "of {{count, number}} sent",
+      "deliveredOf_other": "of {{count, number}} sent",
+      "period30": "Last 30 days",
+      "byEmail": "{{count, number}} by email"
     },
     "filters": {
-      "all": "All",
+      "all": "All statuses",
       "DRAFT": "Drafts",
       "SCHEDULED": "Scheduled",
       "SENDING": "Sending",
       "COMPLETED": "Completed",
-      "problems": "Canceled and failed"
+      "CANCELED": "Canceled",
+      "FAILED": "Failed"
     },
     "columns": {
       "broadcast": "Broadcast",
       "status": "Status",
       "audience": "Audience",
       "delivery": "Delivery",
-      "when": "When"
+      "when": "Date"
     },
-    "progress": {
-      "draft": "Not sent",
-      "waiting": "Waiting to start",
-      "failed": "Stopped · {{ratio}}",
-      "canceled": "{{ratio}} · canceled",
-      "delivered": "{{count}} delivered",
-      "blocked": "{{count}} blocked"
-    },
+    "progress": {},
     "when": {
-      "now": "Now",
-      "edited": "Edited {{date}}"
+      "now": "Now"
     },
     "editor": {
-      "breadcrumb": "Broadcasts · #{{id}}",
-      "newBreadcrumb": "Broadcasts · new",
       "category": "Category",
       "categoryOption": {
         "SERVICE": "Service",
         "MARKETING": "Promo"
       },
       "categoryHint": {
-        "SERVICE": "Maintenance, a domain change, new servers. Everyone gets it, no opting out.",
-        "MARKETING": "Discounts and promocodes. Customers who opted out won’t get it; an “Unsubscribe from promos” button is added at the bottom."
+        "SERVICE": "Maintenance and news",
+        "MARKETING": "Discounts and promotions"
       },
       "text": "Text",
       "defaultLocale": "default",
       "addLocale": "Add language",
-      "fallbackHint": "Customers in other languages get {{locale}}",
+      "fallbackHint": "Other languages get the default one",
       "withMedia": "with media",
       "media": {
         "hint": "Photo, GIF, MP4 video, PDF or ZIP; a caption is up to 1024 characters",
         "saveFirst": "Media can be attached after the first save",
         "upload": "Upload",
         "replace": "Replace",
-        "captionLimit": "caption up to 1024 characters",
+        "captionLimit": "(with media, the text is up to 1024 characters)",
         "error": "Failed to update the media."
       },
       "buttons": {
         "title": "Buttons",
-        "hint": "Labels are per language",
+        "hint": "Button text follows the message language",
         "add": "Button",
         "kind": {
           "URL": "Link",
@@ -4162,19 +4252,17 @@
         },
         "limit_one": "Up to {{count}} button",
         "limit_other": "Up to {{count}} buttons",
-        "label": "Button label",
-        "promocodeTarget": "Opens promocode {{code}} in the bot",
-        "menuTarget": "The bot’s main menu"
+        "label": "Button text",
+        "menuTarget": "The bot’s main menu",
+        "empty": "No buttons set"
       },
       "promocode": {
         "label": "Promocode",
-        "none": "No promocode",
-        "until": "until {{date}}",
-        "activations_one": "up to {{count}} activation",
-        "activations_other": "up to {{count}} activations"
+        "none": "No promocode"
       },
       "audience": {
         "title": "Audience",
+        "description": "Who the broadcast goes to",
         "byFilters": "By filters",
         "byUsers": "Selected customers",
         "search": "Find a customer",
@@ -4182,7 +4270,7 @@
         "userIds": "Customers",
         "userIdsHint": "Customer IDs; paste a list or pick from the search",
         "userIdsPlaceholder": "Customer ID",
-        "any": "Any",
+        "any": "All",
         "all": "All",
         "withinDays_one": "≤ {{count}} day",
         "withinDays_other": "≤ {{count}} days",
@@ -4207,37 +4295,35 @@
         "from": "From",
         "to": "To",
         "bothDates": "Set both dates.",
-        "notConnected": "Not connected to VPN (days)",
+        "notConnected": "Not connected",
         "hasTelegram": "Telegram",
-        "hasEmail": "Email"
+        "hasEmail": "Email",
+        "daysSuffix": "days"
       },
       "channel": {
         "title": "Post to the channel",
         "titleNamed": "Post to the channel {{name}}",
-        "hint": "The post uses the default language. Personal variables other than { $promocode } aren’t available in it.",
-        "missing": "Set the channel in the bot requirements first."
+        "hint": "A post in the default language, without personal variables"
       },
       "preview": {
-        "title": "Preview",
+        "title": "Telegram preview",
         "sampleName": "Anna",
-        "as": "as {{name}} sees it · {{locale}}",
-        "unsubscribe": "Unsubscribe from promos",
-        "empty": "No text yet"
+        "as": "Example for a customer · {{locale}}",
+        "empty": "No text yet",
+        "testButton": "Send test message",
+        "saveFirst": "Save to preview"
       },
       "recipients": {
         "title": "Recipients",
         "others": "Others → get {{locale}}",
         "error": "Failed to count the recipients.",
-        "excluded": "Customers who blocked the bot won’t get the Telegram message.",
-        "excludedMarketing": "Customers who blocked the bot won’t get the Telegram message; those who opted out of promos aren’t counted."
+        "excluded": "Except those who blocked the bot",
+        "excludedMarketing": "Except those who blocked the bot or opted out"
       },
       "footer": {
-        "unsaved": "Unsaved changes",
-        "savedAt": "Saved at {{time}}",
-        "test": "Test to myself",
-        "when": "When",
         "sendNow": "Send now",
-        "schedule": "Schedule"
+        "schedule": "Schedule",
+        "sendAt": "Send time"
       },
       "confirm": {
         "sendTitle": "Send the broadcast?",
@@ -4257,7 +4343,6 @@
       "testSent": "Test message sent.",
       "savedStillScheduled": "Saved, still scheduled for {{date}}.",
       "savedUnscheduled": "Saved. The broadcast is off the schedule.",
-      "openCard": "Open card",
       "sent": "Broadcast started.",
       "scheduled": "Broadcast scheduled.",
       "delivery": {
@@ -4268,13 +4353,13 @@
           "ALL": "Telegram and email"
         },
         "hint": {
-          "TELEGRAM": "Sent by the bot to customers with Telegram.",
-          "EMAIL": "Sent as an email to customers with a confirmed address.",
-          "ALL": "Customers with Telegram get a message, customers with an email get an email."
+          "TELEGRAM": "Sent by the bot to customers with Telegram",
+          "EMAIL": "Sent as an email to customers’ inboxes",
+          "ALL": "Customers with Telegram get a message, customers with an email get an email"
         },
         "fallback": {
           "title": "Email customers without Telegram",
-          "hint": "Those who can’t be reached by the bot get an email instead."
+          "hint": "Those who can’t be reached by the bot get an email instead"
         }
       },
       "email": {
@@ -4286,40 +4371,36 @@
       },
       "emailPreview": {
         "title": "Email preview",
-        "saveFirst": "Save to refresh the preview",
+        "saveFirst": "Save to preview",
         "error": "Failed to build the preview.",
         "noSubject": "No subject",
         "toPlaceholder": "Address for a test email",
         "testButton": "Send test email",
-        "testSending": "Sending…",
-        "testSent": "Test email sent."
-      }
+        "testSent": "Test email sent.",
+        "subjectLabel": "Subject:"
+      },
+      "sending": {
+        "title": "Sending",
+        "description": "Broadcast type, delivery channels"
+      },
+      "unscheduled": "The broadcast is off the schedule and back to a draft."
     },
     "details": {
-      "noRecipients": "No recipients here.",
-      "breadcrumb": "Broadcasts · #{{id}} · {{category}}",
+      "noRecipients": "No recipients",
       "of": "of {{total}}",
       "speed": "≈ {{speed}} messages per second",
       "remainingSoon": "less than a minute left",
       "remaining_one": "about {{count}} min left",
       "remaining_other": "about {{count}} min left",
       "started": "Started {{date}}",
-      "recallUntil": "can be recalled until {{date}}",
+      "recallUntil": "Telegram recall until {{date}}",
       "legend": {
         "delivered": "Delivered",
         "blocked": "Blocked the bot",
         "failed": "Errors",
-        "queued": "Queued"
-      },
-      "kpi": {
-        "delivered": "Delivered",
-        "deliveredShare": "{{percent}} of processed",
-        "blocked": "Blocked the bot",
-        "blockedHint": "They won’t get a retry",
-        "failed": "Errors",
-        "failedHint": "Can be retried once sending ends",
+        "queued": "Queued",
         "recalled": "Recalled",
-        "recalledHint": "Available for 48 h after the start"
+        "canceled": "Canceled"
       },
       "recipients": "Recipients",
       "tabs": {
@@ -4338,16 +4419,14 @@
         "time": "Time"
       },
       "idLabel": "id {{id}}",
-      "messageSent": "Message sent",
       "stopped": "Broadcast was stopped",
       "reasons": {
         "noTelegram": "No Telegram account",
-        "optedOut": "Opted out of promos",
-        "blocked": "Blocked in the shop",
+        "optedOut": "Opted out of promotional broadcasts",
+        "blocked": "Blocked by an admin",
         "recallFailed": "Recall failed: {{reason}}"
       },
       "params": {
-        "title": "Parameters",
         "category": "Category",
         "locales": "Languages",
         "main": "(main)",
@@ -4359,9 +4438,8 @@
       },
       "channel": {
         "title": "Channel post",
-        "posted": "Published in the channel",
-        "planned": "Will be published in the channel",
-        "recallHint": "Recalling deletes the post along with the private messages."
+        "posted": "Published",
+        "planned": "To be published"
       },
       "actions": {
         "cancel": {
@@ -4373,7 +4451,7 @@
         },
         "retry": {
           "button": "Retry failed",
-          "unavailable": "Nothing to retry: no failed deliveries.",
+          "unavailable": "Can’t retry after a recall",
           "title": "Retry failed deliveries?",
           "message": "Customers with errors will get the message again. Those who blocked the bot are skipped.",
           "confirm": "Retry",
@@ -4381,21 +4459,22 @@
         },
         "recall": {
           "button": "Recall",
-          "unavailable": "Messages can be recalled within 48 hours of the start, if something was delivered.",
-          "running": "The recall is running. You can repeat it in a few minutes if some messages remain.",
           "title": "Recall the broadcast?",
-          "message": "Delivered messages are deleted from customers’ chats and the channel post is removed. This can’t be undone.",
+          "message": "The delivered Telegram messages are deleted from customers’ chats and the channel post is removed. Emails can’t be recalled. This can’t be undone.",
           "confirm": "Recall",
-          "done": "Recall started."
+          "done": "Recall started.",
+          "hint": "Deletes the delivered Telegram messages and the channel post. Emails can’t be recalled"
         },
         "delete": {
           "title": "Delete the broadcast?",
           "message": "The broadcast and its delivery history will be deleted. This can’t be undone.",
           "confirm": "Delete",
-          "button": "Delete",
           "done": "Broadcast deleted."
         }
-      }
+      },
+      "sentTelegram": "Message delivered",
+      "sentEmail": "Email sent",
+      "recipientsHint": "Delivery status for each customer"
     },
     "channel": {
       "TELEGRAM": "Telegram",
@@ -4404,6 +4483,11 @@
     "recipients": {
       "channel": "Channel",
       "channelAll": "All channels"
+    },
+    "pageTitle": {
+      "new": "New broadcast",
+      "edit": "Editing broadcast #{{id}}",
+      "details": "Broadcast #{{id}}"
     }
   },
   "connectGuide": {

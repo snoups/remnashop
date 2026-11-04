@@ -14,8 +14,8 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
@@ -77,15 +77,15 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
 
   return (
     <>
-      <DialogHeader icon={RefreshCw} tone="glass" title={t("subscriptions.panelSync.title")} />
+      <DialogHeader icon={RefreshCw} title={t("subscriptions.panelSync.title")} />
 
-      <div className="px-5 pt-4">
+      <div className="p-4">
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {missing && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
         {inSync && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.inSync")}</p>}
         {state.kind === "ready" && state.diff.fields.length > 0 && (
-          <div className="flex flex-col gap-1.5 text-[12.5px]">
+          <div className="flex flex-col gap-1.5 text-[12px]">
             <div className="grid grid-cols-3 gap-3 text-muted-foreground">
               <span>{t("subscriptions.panelSync.columns.field")}</span>
               <span>{t("subscriptions.panelSync.columns.shop")}</span>
@@ -105,10 +105,10 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
         )}
       </div>
 
-      <div className="flex gap-2 px-5 pb-5 pt-4">
+      <div className="flex gap-2 border-t border-white/[0.08] p-4">
         {canPull && (
           <Button
-            variant="outline"
+            variant="glass"
             className="flex-1"
             disabled={busy || state.kind !== "ready" || inSync}
             onClick={() =>
@@ -120,7 +120,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
         )}
         {canPush && (
           <Button
-            variant="accent"
+            variant="glassAccent"
             className="flex-1"
             disabled={busy || state.kind !== "ready" || inSync}
             onClick={() =>

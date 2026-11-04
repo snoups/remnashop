@@ -12,7 +12,7 @@ import { EYEBROW_CLASS } from "@shared/ui/classes";
 import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { periodLabel, useAnalyticsPeriod } from "@pages/analytics/period";
+import { periodLabel } from "@pages/analytics/period";
 import { Pressable } from "@shared/ui/Pressable";
 
 type PillValue = "7" | "30" | "90" | "365" | "custom";
@@ -49,9 +49,8 @@ function sameDraft(a: Draft, b: Draft): boolean {
   return a.from === b.from && a.to === b.to;
 }
 
-export function PeriodPicker() {
+export function PeriodPicker({ period, onChange: setPeriod }: { period: AnalyticsPeriod; onChange: (period: AnalyticsPeriod) => void }) {
   const { t, i18n } = useTranslation();
-  const { period, setPeriod } = useAnalyticsPeriod();
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>({ kind: "all" });
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -96,12 +95,13 @@ export function PeriodPicker() {
 
   return (
     <div ref={wrapperRef}>
-      <SegmentedPills value={value} onChange={handleChange} options={options} />
+      <SegmentedPills panel value={value} onChange={handleChange} options={options} />
       <PortalPopover
         open={isOpen}
         triggerRef={wrapperRef}
         popoverRef={popoverRef}
         align="right"
+        glass
         maxHeight={420}
         initial={{ opacity: 0, scale: 0.96, y: -4 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -139,7 +139,7 @@ export function PeriodPicker() {
             <MonthCalendar key={from} value={from} rangeEnd={to} onPick={pickDay} />
             <div className="flex justify-end gap-2">
               <Button
-                variant="outline"
+                variant="glass"
                 onClick={() => {
                   setPeriod(DEFAULT_PERIOD);
                   close();
@@ -148,7 +148,7 @@ export function PeriodPicker() {
                 {t("common.reset")}
               </Button>
               <Button
-                variant="accent"
+                variant="glassAccent"
                 disabled={!canApply}
                 onClick={() => {
                   setPeriod(draft);

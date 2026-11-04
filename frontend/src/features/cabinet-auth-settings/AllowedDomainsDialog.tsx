@@ -27,7 +27,7 @@ interface AllowedDomainsDialogProps {
 
 export function AllowedDomainsDialog({ onClose, ...props }: AllowedDomainsDialogProps) {
   return (
-    <Modal onClose={onClose} size="lg" material="glass">
+    <Modal onClose={onClose} size="lg">
       <AllowedDomainsForm {...props} />
     </Modal>
   );

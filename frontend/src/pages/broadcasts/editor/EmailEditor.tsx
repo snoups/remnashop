@@ -26,10 +26,9 @@ import { BROADCAST_VARIABLES, uploadEmailImage } from "@entities/broadcasts/api"
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
-import { Card } from "@shared/ui/Card";
 import { IconButton } from "@shared/ui/IconButton";
 import { Spinner } from "@shared/ui/Spinner";
-import { FIELD_SURFACE_CLASS, TextInput } from "@shared/ui/TextInput";
+import { Input } from "@shared/ui/glass/Input";
 import { Tooltip } from "@shared/ui/Tooltip";
 
 import { EmailButton } from "@pages/broadcasts/editor/email-button";
@@ -88,7 +87,7 @@ const ACTIONS: { key: string; icon: ComponentType<{ className?: string }>; run: 
 
 // Tailwind resets headings and lists; the letter's look is applied by the backend
 const BODY_CLASS = [
-  "min-h-64 w-full px-3.5 py-3 text-sm leading-relaxed text-foreground outline-none",
+  "min-h-64 w-full px-3.5 py-3 text-[13px] leading-relaxed text-foreground outline-none",
   "[&_p]:my-1 [&_h1]:my-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-semibold",
   "[&_h3]:my-2 [&_h3]:text-base [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
   "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
@@ -157,7 +156,7 @@ function EmailBody({ initialHtml, urls, broadcastId, canAddImage, disabled, onIm
   };
 
   return (
-    <div className={`overflow-hidden rounded-2xl ${FIELD_SURFACE_CLASS}`}>
+    <div className="glass-well overflow-hidden rounded-[18px] ring-inset focus-within:ring-1 focus-within:ring-primary">
       <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5">
         {ACTIONS.map(({ key, icon: Icon, run }) => (
           <IconButton
@@ -265,9 +264,9 @@ export function EmailEditor({
   };
 
   return (
-    <Card className="flex flex-col gap-3">
+    // a body only: the page's content card (one Section for Telegram and email) frames it
+    <div className="mt-4 flex flex-col gap-3">
       <LocaleTabs
-        title={t("broadcasts.editor.email.title")}
         form={form}
         onChange={onChange}
         activeLocale={activeLocale}
@@ -277,7 +276,7 @@ export function EmailEditor({
         manageLocales={!sendsTelegram(form)}
       />
       <div className="flex items-center gap-2">
-        <TextInput
+        <Input
           ref={subjectRef}
           type="text"
           value={content.subject}
@@ -286,12 +285,17 @@ export function EmailEditor({
           placeholder={t("broadcasts.editor.email.subject")}
           onChange={(event) => onChange(setEmailSubject(form, activeLocale, event.target.value))}
           className="min-w-0 flex-1"
-        />
-        <VariablePicker
-          variables={BROADCAST_VARIABLES}
-          format={formatVariable}
-          onPick={insertIntoSubject}
-          disabled={disabled}
+          // the 26px picker 5px in, on the 36px well's curve
+          end={
+            <span className="mr-px flex">
+              <VariablePicker
+                variables={BROADCAST_VARIABLES}
+                format={formatVariable}
+                onPick={insertIntoSubject}
+                disabled={disabled}
+              />
+            </span>
+          }
         />
       </div>
       {ready ? (
@@ -308,6 +312,6 @@ export function EmailEditor({
       ) : (
         <Spinner size="card" />
       )}
-    </Card>
+    </div>
   );
 }

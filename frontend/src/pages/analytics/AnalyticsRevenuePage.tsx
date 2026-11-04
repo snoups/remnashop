@@ -1,4 +1,4 @@
-import { BarChart3, CreditCard, Receipt, RotateCcw, ShoppingCart } from "lucide-react";
+import { BarChart3, CreditCard, Package, Receipt, RotateCcw } from "lucide-react";
 import type { ParseKeys } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,22 +8,23 @@ import type { AnalyticsPeriod, GatewayStats, Revenue, RevenueGranularity, Revenu
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { parseIsoDate } from "@shared/lib/iso-date";
 import { DAY_MS } from "@shared/lib/period";
+import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
-import { BarRows, ColumnChart, CurrencyNote, Legend } from "@pages/analytics/charts";
+import { BarRows, ColumnChart, Legend } from "@pages/analytics/charts";
 import type { BarRow } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
-import { countTrend, relativeTrend } from "@pages/analytics/trends";
+import { countTrend, previousPeriodHint, relativeTrend } from "@pages/analytics/trends";
 
 const GRANULARITIES: RevenueGranularity[] = ["day", "week", "month"];
 const MAX_DAILY_RANGE_DAYS = 92;
+const GROUPS = ["plan", "duration", "channel"] as const;
+const GROUP_KEYS = { plan: "byPlan", duration: "byDuration", channel: "byChannel" } as const;
 
 function defaultGranularity(period: AnalyticsPeriod): RevenueGranularity {
   if (period.kind === "all") return "month";
@@ -45,10 +46,10 @@ export function AnalyticsRevenuePage() {
   });
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
-      <AnalyticsToolbar currency={state.kind === "ready" ? state.data.report_currency : undefined} />
+    <div className="flex flex-col gap-5">
+      <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
       {state.kind === "ready" && (
         <Overview data={state.data} isAll={period.kind === "all"} granularity={granularity} onGranularity={(value) => setManual({ period, granularity: value })} />
       )}
@@ -68,6 +69,8 @@ function Overview({
   onGranularity: (value: RevenueGranularity) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const vs = previousPeriodHint(useAnalyticsPeriod().period, t);
+  const [group, setGroup] = useState<(typeof GROUPS)[number]>("plan");
   const language = i18n.language;
   const currency = data.report_currency;
   const { totals } = data;
@@ -78,8 +81,15 @@ function Overview({
   const count = (value: number) => value.toLocaleString(language);
   const revenueTrend = isAll
     ? undefined
-    : relativeTrend(revenue, Number(totals.previous_revenue), money(totals.previous_revenue), t, language);
-  const paymentsTrend = isAll ? undefined : countTrend(totals.payments, totals.previous_payments, t, language);
+    : relativeTrend(revenue, Number(totals.previous_revenue), vs, language);
+  const paymentsTrend = isAll ? undefined : countTrend(totals.payments, totals.previous_payments, vs, language);
+  const avgCheckTrend =
+    isAll || totals.payments === 0 || totals.previous_payments === 0
+      ? undefined
+      : relativeTrend(Number(totals.avg_check), Number(totals.previous_revenue) / totals.previous_payments, vs, language);
+  const refundsTrend = isAll
+    ? undefined
+    : { ...countTrend(totals.refunds, totals.previous_refunds, vs, language), lowerIsBetter: true };
 
   const labelFormat = new Intl.DateTimeFormat(
     language,
@@ -118,25 +128,29 @@ function Overview({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile
-          highlighted
+          panel
           icon={CreditCard}
           label={t("analytics.revenue.revenue")}
           value={money(totals.revenue)}
           trend={revenueTrend}
         />
-        <KpiTile icon={ShoppingCart} label={t("analytics.revenue.payments")} value={count(totals.payments)} trend={paymentsTrend} />
+        <KpiTile panel icon={Receipt} label={t("analytics.revenue.payments")} value={count(totals.payments)} trend={paymentsTrend} />
         <KpiTile
+          panel
           icon={Receipt}
           label={t("analytics.revenue.avgCheck")}
-          value={money(totals.avg_check, true)}
-          hint={t("analytics.revenue.medianCaption", { median: money(totals.median_check, true) })}
+          value={totals.payments > 0 ? money(totals.avg_check, true) : t("common.none")}
+          trend={avgCheckTrend}
+          hint={totals.payments > 0 ? t("analytics.revenue.medianCaption", { median: money(totals.median_check, true) }) : undefined}
         />
         <KpiTile
+          panel
           icon={RotateCcw}
           label={t("analytics.revenue.refunds")}
           value={count(totals.refunds)}
+          trend={refundsTrend}
           hint={t("analytics.revenue.refundsCaption", {
             amount: money(totals.refunded),
             share: sharePct(Number(totals.refunded)),
@@ -144,78 +158,71 @@ function Overview({
         />
       </div>
 
-      <Card>
-        <CardHeader
-          icon={BarChart3}
-          title={t(`analytics.revenue.chartTitle.${granularity}`)}
-          description={t("analytics.revenue.chartDescription")}
-          aside={
-            <SegmentedPills
-              value={granularity}
-              onChange={onGranularity}
-              options={GRANULARITIES.map((value) => ({ value, label: t(`analytics.revenue.granularity.${value}`) }))}
-            />
-          }
-        />
-        <div className="flex flex-col gap-4 pt-4">
+      <Section
+        icon={BarChart3}
+        title={t(`analytics.revenue.chartTitle.${granularity}`)}
+        description={t("analytics.revenue.chartDescription")}
+        aside={
+          <PillTabs
+            activeKey={granularity}
+            onSelect={onGranularity}
+            items={GRANULARITIES.map((key) => ({ key, label: t(`analytics.revenue.granularity.${key}`) }))}
+          />
+        }
+      >
+        <div className="flex flex-col gap-4 px-3.5 pt-4">
           <ColumnChart columns={columns} empty={t("analytics.revenue.chartEmpty")} />
           <Legend items={legend} />
         </div>
-      </Card>
+      </Section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            icon={BarChart3}
-            title={t("analytics.revenue.byPlan")}
-            description={t("analytics.revenue.byPlanDescription")}
+      <Section
+        icon={Package}
+        title={t("analytics.revenue.breakdown")}
+        description={t(`analytics.revenue.${GROUP_KEYS[group]}Description`)}
+        aside={
+          <PillTabs
+            activeKey={group}
+            onSelect={setGroup}
+            items={GROUPS.map((key) => ({ key, label: t(`analytics.revenue.${GROUP_KEYS[key]}`) }))}
           />
+        }
+      >
+        {group === "plan" && (
           <BarRows head={groupHead(t("analytics.revenue.plan"))} rows={groupRows(data.by_plan, (key) => key)} empty={empty} />
-        </Card>
-        <Card>
-          <CardHeader
-            icon={BarChart3}
-            title={t("analytics.revenue.byDuration")}
-            description={t("analytics.revenue.byDurationDescription")}
-          />
+        )}
+        {group === "duration" && (
           <BarRows
             head={groupHead(t("analytics.revenue.duration"))}
             rows={groupRows(data.by_duration, (key) => t("plans.daysShort", { count: Number(key) }))}
             empty={empty}
           />
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader
-            icon={BarChart3}
-            title={t("analytics.revenue.byChannel")}
-            description={t("analytics.revenue.byChannelDescription")}
-          />
+        )}
+        {group === "channel" && (
           <BarRows
             head={groupHead(t("analytics.revenue.channel"))}
             rows={groupRows(data.by_channel, (key) => t(`transactions.channel.${key}` as ParseKeys))}
             empty={empty}
           />
-        </Card>
-      </div>
+        )}
+      </Section>
 
-      <Card>
-        <CardHeader
-          icon={CreditCard}
-          title={t("analytics.revenue.gateways")}
-          description={t("analytics.revenue.gatewaysDescription")}
-        />
+      <Section
+        icon={CreditCard}
+        title={t("analytics.revenue.gateways")}
+        description={t("analytics.revenue.gatewaysDescription")}
+      >
         {data.gateways.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-muted-foreground">{empty}</p>
+          <EmptyState text={empty} />
         ) : (
-          <div className="flex flex-col gap-4 pt-4">
+          <div className="flex flex-col gap-4 px-3.5 pt-4">
             {data.gateways.map((gateway) => (
               <GatewayRow key={gateway.gateway_type} gateway={gateway} revenue={money(gateway.revenue)} />
             ))}
           </div>
         )}
-      </Card>
+      </Section>
 
-      <CurrencyNote currency={currency} />
     </>
   );
 }
@@ -236,10 +243,10 @@ function GatewayRow({ gateway, revenue }: { gateway: GatewayStats; revenue: stri
         )}
         <span className="tabular-nums text-foreground">{revenue}</span>
       </div>
-      <div className="flex h-2 gap-[3px] overflow-hidden rounded-full bg-white/[0.06]">
-        <div className="bg-success" style={{ width: width(gateway.paid) }} />
-        <div className="bg-muted-foreground" style={{ width: width(gateway.canceled) }} />
-        <div className="bg-error" style={{ width: width(gateway.failed) }} />
+      <div className="flex h-2 gap-[3px] overflow-hidden rounded-full glass-track">
+        <div className="bg-success transition-[width] duration-200 ease-out" style={{ width: width(gateway.paid) }} />
+        <div className="bg-muted-foreground transition-[width] duration-200 ease-out" style={{ width: width(gateway.canceled) }} />
+        <div className="bg-error transition-[width] duration-200 ease-out" style={{ width: width(gateway.failed) }} />
       </div>
       <span className="text-[12px] text-muted-foreground">
         {t("analytics.revenue.gatewayCaption", {

@@ -1,32 +1,41 @@
-import { History, KeyRound, LaptopMinimal, UserMinus } from "lucide-react";
-import { motion } from "motion/react";
+import { History, KeyRound, LaptopMinimal, ShieldPlus, Trash2, UserMinus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type Admin, listAdmins } from "@entities/admin/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalog";
-import { AdminCreateForm } from "@features/admin-create/AdminCreateForm";
+import { AdminCreateDialog } from "@features/admin-create/AdminCreateDialog";
 import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
-import { AdminDetailsFlow, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
+import { AdminDetailsFlow, DeleteAdminConfirm, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
-import { ErrorState } from "@shared/ui/EmptyState";
-import { Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { LIST_DIVIDER_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Row } from "@shared/ui/glass/Row";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { SectionRows } from "@shared/ui/glass/Section";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 import { Pressable } from "@shared/ui/Pressable";
+import { Spinner } from "@shared/ui/Spinner";
+
+// the create row turns primary on hover, its icon too
+function CreateAdminIcon({ className = "" }: { className?: string }) {
+  return <ShieldPlus className={`${className} transition-colors group-hover:text-primary`} />;
+}
 
 export function AdminsPage() {
   const { t } = useTranslation();
   const [state, reload] = useAsyncResource(listAdmins);
+  const [isCreating, setIsCreating] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [details, setDetails] = useState<{ admin: Admin; tab: AdminDetailsTab } | null>(null);
   const [pendingDemote, setPendingDemote] = useState<Admin | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Admin | null>(null);
   const currentUserState = useCurrentUser();
 
   // warm the catalog so the details dialog's Permissions tab opens without a spinner
@@ -35,113 +44,143 @@ export function AdminsPage() {
   const canViewSessions = permissions.includes("USER_SESSIONS_VIEW");
   const canViewEvents = permissions.includes("EVENT_LOG_VIEW");
   const currentUserId = currentUserState.kind === "ready" ? currentUserState.data.id : null;
+  const canSignInAfterDemote = (admin: Admin) =>
+    state.kind === "ready" && state.data.customer_sign_in_ids.includes(admin.id);
+
+  const menuItemsFor = (admin: Admin): ActionMenuItem[] => {
+    const items: ActionMenuItem[] = [];
+    if (admin.role === "ADMIN") {
+      items.push({
+        label: t("admins.details.tabs.permissions"),
+        icon: KeyRound,
+        onClick: () => setDetails({ admin, tab: "permissions" }),
+      });
+    }
+    if (canViewSessions) {
+      items.push({
+        label: t("admins.details.tabs.sessions"),
+        icon: LaptopMinimal,
+        onClick: () => setDetails({ admin, tab: "sessions" }),
+      });
+    }
+    if (canViewEvents) {
+      items.push({
+        label: t("admins.details.tabs.events"),
+        icon: History,
+        onClick: () => setDetails({ admin, tab: "events" }),
+      });
+    }
+    if (admin.role === "ADMIN") {
+      items.push({
+        label: t("admins.demote.button"),
+        icon: UserMinus,
+        variant: "danger",
+        separatorBefore: true,
+        onClick: () => setPendingDemote(admin),
+      });
+      // demoting would leave no way in, so the account may as well go
+      if (!canSignInAfterDemote(admin)) {
+        items.push({
+          label: t("common.delete"),
+          icon: Trash2,
+          variant: "danger",
+          onClick: () => setPendingDelete(admin),
+        });
+      }
+    }
+    return items;
+  };
 
   return (
-    <Card>
-      {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && (
-        <ErrorState text={t("common.loadError")} size="page" />
-      )}
-      {state.kind === "ready" && (
-        <>
-          <AdminCreateForm
-            onCreated={(password) => {
-              setRevealedPassword(password);
-              reload();
-            }}
-          />
-
-          <div className={`grid grid-cols-[auto_minmax(0,max-content)_auto_1fr_auto] gap-x-3 ${LIST_DIVIDER_CLASS}`}>
-            {[...state.data].sort((a, b) => Number(b.id === currentUserId) - Number(a.id === currentUserId)).map((admin) => {
-              const menuItems: ActionMenuItem[] = [];
-              if (admin.role === "ADMIN") {
-                menuItems.push({
-                  label: t("admins.details.tabs.permissions"),
-                  icon: KeyRound,
-                  onClick: () => setDetails({ admin, tab: "permissions" }),
-                });
-              }
-              if (canViewSessions && admin.id !== currentUserId) {
-                menuItems.push({
-                  label: t("admins.details.tabs.sessions"),
-                  icon: LaptopMinimal,
-                  onClick: () => setDetails({ admin, tab: "sessions" }),
-                });
-              }
-              if (canViewEvents) {
-                menuItems.push({
-                  label: t("admins.details.tabs.events"),
-                  icon: History,
-                  onClick: () => setDetails({ admin, tab: "events" }),
-                });
-              }
-              if (admin.role === "ADMIN") {
-                menuItems.push({
-                  label: t("admins.demote.button"),
-                  icon: UserMinus,
-                  variant: "danger",
-                  separatorBefore: true,
-                  onClick: () => setPendingDemote(admin),
-                });
-              }
-
-              return (
-                <motion.div
-                  key={admin.id}
-                  className={`relative col-span-full grid grid-cols-subgrid items-center has-[[aria-expanded=true]]:z-20 gap-y-0 ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
-                >
-                  {/* whole-row hit area; sits under the menu and channel icons (z-10) */}
-                  <Pressable
-                    type="button"
+    // its own scroller: main's fade would dim the card at rest. data-under-header: the header's 20px
+    // padding moves into this one, where the fade (scroll-fade-gap) sits
+    <div data-fills-main data-under-header className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div
+        className="scroll-fade-y scroll-fade-gap page-scroll md:min-h-0 md:pt-5 md:scroll-pt-5 md:flex-1 md:overflow-y-auto [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+      >
+        <LoadGate>
+        <LoadGateHold isLoading={state.kind === "loading"} />
+        <div className="glass-panel rounded-3xl p-4">
+          <AnimatedHeight>
+          {state.kind === "loading" && <Spinner size="card" />}
+          {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+          {state.kind === "ready" && (
+            <>
+              {/* a Row's geometry: 60px pill, 32px circle 14px in */}
+              <Pressable
+                type="button"
+                onClick={() => setIsCreating(true)}
+                className="group mb-2 flex min-h-15 w-full items-center gap-3 rounded-full border border-dashed border-glass-border px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+              >
+                <IconCircle icon={CreateAdminIcon} />
+                {t("admins.create.button")}
+              </Pressable>
+              <SectionRows flush>
+                {[...state.data.items].sort((a, b) => Number(b.id === currentUserId) - Number(a.id === currentUserId)).map((admin) => (
+                  <Row
+                    key={admin.id}
+                    glyph={
+                      <span className={`text-[11px] font-bold ${admin.id === currentUserId ? "text-primary" : ""}`}>
+                        {initials(admin.login ?? admin.name)}
+                      </span>
+                    }
+                    label={admin.name}
+                    description={<span className="font-mono">{admin.login ?? "—"}</span>}
                     onClick={() => setDetails({ admin, tab: "profile" })}
-                    className="absolute inset-0 cursor-pointer rounded-full" />
-                  <div
-                    className={`row-span-2 flex size-9 items-center justify-center rounded-full text-[12.5px] font-bold ${
-                      admin.id === currentUserId ? "bg-accent text-primary" : "bg-white/[0.06] text-foreground"
-                    }`}
                   >
-                    {initials(admin.login ?? admin.name)}
-                  </div>
-                  <p className="min-w-0 truncate text-[13px] font-medium text-foreground">{admin.name}</p>
-                  <div className="flex items-center gap-2">
-                    <Badge tone={ROLE_BADGE_TONE[admin.role]}>
+                    {/* the row's end item when there's no menu: 20px in, as far from the side as from top and bottom */}
+                    <Badge borderless tone={ROLE_BADGE_TONE[admin.role]} className={admin.id === currentUserId ? "mr-1.5" : ""}>
                       {t(`roles.${admin.role}`)}
                     </Badge>
-                  </div>
-                  <div className="relative z-10 col-start-5 row-span-2 row-start-1 flex items-center justify-end">
-                    {admin.id !== currentUserId && <ActionMenu items={menuItems} />}
-                  </div>
-                  <p className="col-span-3 col-start-2 min-w-0 truncate font-mono text-[12px] text-muted-foreground">
-                    {admin.login ?? "—"}
-                  </p>
-                </motion.div>
-              );
-            })}
-          </div>
-        </>
-      )}
+                    {admin.id !== currentUserId && <ActionMenu glass items={menuItemsFor(admin)} />}
+                  </Row>
+                ))}
+              </SectionRows>
+            </>
+          )}
+          </AnimatedHeight>
 
-      {details && (
-        <AdminDetailsFlow
-          admin={details.admin}
-          initialTab={details.tab}
-          onChanged={reload}
-          onClose={() => setDetails(null)}
-        />
-      )}
+          {isCreating && (
+            <AdminCreateDialog
+              onClose={() => setIsCreating(false)}
+              onCreated={(password) => {
+                setRevealedPassword(password);
+                reload();
+              }}
+            />
+          )}
 
-      {revealedPassword && (
-        <OneTimeSecretDialog
-          title={t("admins.passwordModal.title")}
-          value={revealedPassword}
-          onDone={() => setRevealedPassword(null)}
-        />
-      )}
+          {details && (
+            <AdminDetailsFlow
+              admin={details.admin}
+              initialTab={details.tab}
+              canSignInAfterDemote={canSignInAfterDemote(details.admin)}
+              onChanged={reload}
+              onClose={() => setDetails(null)}
+            />
+          )}
 
-      {pendingDemote && (
-        <DemoteAdminConfirm admin={pendingDemote} onDemoted={reload} onClose={() => setPendingDemote(null)} />
-      )}
-    </Card>
+          {revealedPassword && (
+            <OneTimeSecretDialog
+              title={t("admins.passwordModal.title")}
+              value={revealedPassword}
+              onDone={() => setRevealedPassword(null)}
+            />
+          )}
+
+          {pendingDemote && (
+            <DemoteAdminConfirm
+              admin={pendingDemote}
+              canSignInAfterDemote={canSignInAfterDemote(pendingDemote)}
+              onDemoted={reload} onClose={() => setPendingDemote(null)} />
+          )}
+
+          {pendingDelete && (
+            <DeleteAdminConfirm admin={pendingDelete} onDeleted={reload} onClose={() => setPendingDelete(null)} />
+          )}
+        </div>
+        </LoadGate>
+      </div>
+    </div>
   );
 }
-

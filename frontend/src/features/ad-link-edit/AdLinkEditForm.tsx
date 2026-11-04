@@ -2,15 +2,15 @@ import { Coins } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ChannelsPicker } from "@entities/advertising/ChannelsPicker";
+import { CURRENCIES } from "@entities/pricing/api";
 import { CURRENCY_ICON } from "@entities/transactions/api";
 import { AD_LINK_EDIT_FORM_ID, type AdLinkEditFormState } from "@features/ad-link-edit/use-ad-link-edit-form";
 import { blockNonDecimalKeys } from "@shared/lib/number-input";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Card } from "@shared/ui/Card";
-import { TextInput, TextArea } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, TextArea } from "@shared/ui/glass/Input";
 
-const CURRENCIES = ["USD", "XTR", "RUB"] as const;
 
 export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
   const { t } = useTranslation();
@@ -23,16 +23,17 @@ export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
         event.preventDefault();
         if (form.canSubmit) void form.submit();
       }}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3"
     >
       {/* column order pairs the rows: name | channels, cost | currency */}
-      <Card variant="form">
+      <div className={GLASS_DIALOG_CARD_CLASS}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={t("advertising.edit.nameLabel")} htmlFor="adlink-edit-name" required>
-            <TextInput
+            <Input
               id="adlink-edit-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
+              placeholder={t("advertising.create.namePlaceholder")}
               maxLength={255}
               className="w-full"
             />
@@ -41,7 +42,7 @@ export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
             <ChannelsPicker value={channels} onChange={setChannels} />
           </Field>
           <Field label={t("advertising.edit.costLabel")} htmlFor="adlink-edit-cost">
-            <TextInput
+            <Input
               id="adlink-edit-cost"
               type="number"
               onKeyDown={blockNonDecimalKeys}
@@ -54,7 +55,8 @@ export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
           </Field>
           <Field label={t("advertising.edit.currencyLabel")} htmlFor="adlink-edit-currency">
             <SelectDropdown
-              variant="form"
+              variant="well"
+              size="compact"
               id="adlink-edit-currency"
               value={currency}
               onChange={setCurrency}
@@ -68,19 +70,20 @@ export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
             />
           </Field>
         </div>
-      </Card>
+      </div>
 
-      <Card variant="form">
+      <div className={GLASS_DIALOG_CARD_CLASS}>
         <Field label={t("advertising.edit.noteLabel")} htmlFor="adlink-edit-note">
           <TextArea
             id="adlink-edit-note"
             value={note}
             onChange={(event) => setNote(event.target.value)}
+            placeholder={t("advertising.create.notePlaceholder")}
             rows={2}
             className="w-full"
           />
         </Field>
-      </Card>
+      </div>
     </form>
   );
 }

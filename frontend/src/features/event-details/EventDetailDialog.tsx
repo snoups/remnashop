@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { EventLogEntry } from "@entities/event-log/api";
@@ -40,6 +40,7 @@ import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { Modal } from "@shared/ui/Modal";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDateTime } from "@shared/lib/relative-time";
@@ -58,29 +59,6 @@ interface ParticipantSectionProps {
   user: UserSnapshot | undefined;
   missingLabel?: string;
   ipAddress?: string | null;
-}
-
-// a Card's list form on the glass dialog's 12px corners
-function DialogCard({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title?: string;
-  icon?: ComponentType<{ className?: string }>;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-1.5">
-      {title && (
-        <h3 className={SECTION_TITLE_CLASS}>
-          {Icon && <Icon className="size-3.5" />}
-          {title}
-        </h3>
-      )}
-      {children}
-    </div>
-  );
 }
 
 function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }: ParticipantSectionProps) {
@@ -152,7 +130,7 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
 
 export function EventDetailDialog({ entry, onClose }: EventDetailDialogProps) {
   return (
-    <Modal onClose={onClose} size="lg" scrollable material="glass">
+    <Modal onClose={onClose} size="lg" scrollable>
       <EventDetailDialogBody entry={entry} />
     </Modal>
   );

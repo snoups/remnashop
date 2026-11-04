@@ -1,4 +1,4 @@
-import { Calendar, ChevronLeft, Image, Languages, Tag, Ticket, User, Users } from "lucide-react";
+import { Calendar, ChevronLeft, Image, Languages, Mail, Megaphone, Send, Tag, Ticket, Trash2, User, Users } from "lucide-react";
 import type { ParseKeys } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,24 +19,21 @@ import {
   canRecall,
   isRecallRunning,
   isEditable,
-  processedCount,
 } from "@entities/broadcasts/display";
 import { listPlans } from "@entities/plans/api";
 import { getPromocode } from "@entities/promocodes/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
-import { formatBytes, formatPercent } from "@shared/lib/format";
+import { formatBytes } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { InfoRow } from "@shared/ui/InfoRow";
-import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
 
@@ -147,13 +144,18 @@ function BroadcastDetails({ id }: { id: number }) {
   );
 
   if (loaded.kind === "loading") return <Spinner size="page" />;
-  if (loaded.kind === "error" || !broadcast) return <ErrorState text={t("common.loadError")} size="page" />;
+  if (loaded.kind === "error" || !broadcast) {
+    return (
+      <div className="glass-panel rounded-3xl p-4">
+        <ErrorState text={t("common.loadError")} size="page" />
+      </div>
+    );
+  }
   const b = broadcast;
 
   const now = Date.now();
   const plans = plansState.kind === "ready" ? plansState.data : [];
   const promocodeCode = promocodeState.kind === "ready" ? promocodeState.data?.code : undefined;
-  const processed = processedCount(b);
   const none = t("common.none");
 
   const canCancel = (b.status === "SCHEDULED" || b.status === "SENDING") && can("BROADCASTS_CANCEL");
@@ -162,9 +164,13 @@ function BroadcastDetails({ id }: { id: number }) {
     b.failed_count > 0 &&
     b.recalled_count === 0 &&
     !b.recall_requested;
-  const showRetry = can("BROADCASTS_RETRY") && (b.status === "COMPLETED" || b.status === "CANCELED" || b.status === "FAILED");
-  const showRecall = can("BROADCASTS_RECALL") && b.started_at !== null;
-  const recallable = canRecall(b, now);
+  // only with failed recipients to retry; a recall still shows it, greyed with the reason
+  const showRetry =
+    can("BROADCASTS_RETRY") &&
+    (b.status === "COMPLETED" || b.status === "CANCELED" || b.status === "FAILED") &&
+    b.failed_count > 0;
+  // only while a recall can run: within 48h, not already running, something left in Telegram
+  const showRecall = can("BROADCASTS_RECALL") && canRecall(b, now);
   const canEdit = isEditable(b) && can("BROADCASTS_UPDATE");
   const canDelete = b.status !== "SENDING" && can("BROADCASTS_DELETE");
 
@@ -191,115 +197,74 @@ function BroadcastDetails({ id }: { id: number }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
+    // as the editor: the title bar, the actions in it, floats over a scroller of its own
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
         <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 text-foreground" />
         </IconButton>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-[12px] text-muted-foreground">
-            {t("broadcasts.details.breadcrumb", { id: b.id, category: t(`broadcasts.category.${b.category}`).toLowerCase() })}
+        {/* the status right after the title, the actions pushed to the end */}
+        <span className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
+          <span className="min-w-0 truncate text-[15px] font-semibold tracking-tight text-foreground">
+            {broadcastTitle(b, t("broadcasts.untitled"))}
           </span>
-          <h1 className="truncate text-xl font-bold text-foreground">{broadcastTitle(b, t("broadcasts.untitled"))}</h1>
-        </div>
-        <Badge tone={BROADCAST_STATUS_TONE[b.status]}>{t(`broadcasts.status.${b.status}`)}</Badge>
-        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          <span className="flex shrink-0">
+            <Badge borderless tone={BROADCAST_STATUS_TONE[b.status]}>{t(`broadcasts.status.${b.status}`)}</Badge>
+          </span>
+        </span>
+        <div className="flex shrink-0 flex-wrap gap-2">
           {canEdit && (
-            <Button variant="outline" onClick={() => navigate(`${LIST_PATH}/${b.id}/edit`)}>
+            <Button variant="glass" onClick={() => navigate(`${LIST_PATH}/${b.id}/edit`)}>
               {t("common.edit")}
             </Button>
           )}
           {canCancel && (
-            <Button variant="outline" disabled={isBusy} onClick={() => setPending("cancel")}>
+            <Button variant="glass" disabled={isBusy} onClick={() => setPending("cancel")}>
               {t("broadcasts.details.actions.cancel.button")}
             </Button>
           )}
           {showRetry && (
             <span className="group relative">
-              <Button variant="outline" disabled={isBusy || !retryable} onClick={() => setPending("retry")}>
+              <Button variant="glass" disabled={isBusy || !retryable} onClick={() => setPending("retry")}>
                 {t("broadcasts.details.actions.retry.button")}
               </Button>
               {!retryable && <Tooltip side="bottom" text={t("broadcasts.details.actions.retry.unavailable")} />}
             </span>
           )}
           {canDelete && (
-            <Button variant="danger" disabled={isBusy} onClick={() => setPending("delete")}>
-              {t("broadcasts.details.actions.delete.button")}
-            </Button>
+            <IconButton size="9" tone="glass" disabled={isBusy} onClick={() => setPending("delete")}>
+              {/* a glassDanger button's look, square: the bin in the error tone */}
+              <Trash2 className="size-4 text-error" />
+            </IconButton>
           )}
           {showRecall && (
             <span className="group relative">
-              <Button variant="danger" disabled={isBusy || !recallable} onClick={() => setPending("recall")}>
+              <Button variant="glassDanger" disabled={isBusy} onClick={() => setPending("recall")}>
                 {t("broadcasts.details.actions.recall.button")}
               </Button>
-              {!recallable && (
-                <Tooltip
-                  side="bottom"
-                  text={
-                    isRecallRunning(b, now)
-                      ? t("broadcasts.details.actions.recall.running")
-                      : t("broadcasts.details.actions.recall.unavailable")
-                  }
-                />
-              )}
+              <Tooltip side="bottom-end" text={t("broadcasts.details.actions.recall.hint")} />
             </span>
           )}
         </div>
       </div>
 
-      <DeliveryProgress broadcast={b} now={now} />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile
-          label={t("broadcasts.details.kpi.delivered")}
-          value={b.sent_count.toLocaleString(i18n.language)}
-          valueClassName="text-success"
-          hint={
-            processed > 0
-              ? t("broadcasts.details.kpi.deliveredShare", { percent: formatPercent(b.sent_count / processed, i18n.language) })
-              : undefined
-          }
-        />
-        <KpiTile
-          label={t("broadcasts.details.kpi.blocked")}
-          value={b.blocked_count.toLocaleString(i18n.language)}
-          valueClassName="text-warning"
-          hint={t("broadcasts.details.kpi.blockedHint")}
-        />
-        <KpiTile
-          label={t("broadcasts.details.kpi.failed")}
-          value={b.failed_count.toLocaleString(i18n.language)}
-          valueClassName="text-error"
-          hint={t("broadcasts.details.kpi.failedHint")}
-        />
-        <KpiTile
-          label={t("broadcasts.details.kpi.recalled")}
-          value={b.recalled_count.toLocaleString(i18n.language)}
-          hint={t("broadcasts.details.kpi.recalledHint")}
-        />
-      </div>
-
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-0 flex-[999_1_560px]">
-          {can("BROADCASTS_RECIPIENTS_VIEW") && <RecipientsTable broadcast={b} refreshKey={refreshKey} />}
-        </div>
-        <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
-          <Card variant="list" title={t("broadcasts.details.params.title")}>
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <DeliveryProgress broadcast={b} now={now}>
+          <div className="grid lg:grid-cols-2 lg:gap-x-2">
             <InfoRow icon={Tag} label={t("broadcasts.details.params.category")}>
               {t(`broadcasts.category.${b.category}`)}
+            </InfoRow>
+            <InfoRow icon={b.delivery === "EMAIL" ? Mail : b.delivery === "ALL" ? Megaphone : Send} label={t("broadcasts.editor.delivery.title")}>
+              {t(`broadcasts.editor.delivery.option.${b.delivery}`)}
             </InfoRow>
             <InfoRow icon={Languages} label={t("broadcasts.details.params.locales")}>
               {Object.keys(b.contents)
                 .map((locale) => (locale === b.default_locale ? `${locale.toUpperCase()} ${t("broadcasts.details.params.main")}` : locale.toUpperCase()))
                 .join(", ")}
             </InfoRow>
-            <div className="flex flex-col gap-1 px-2.5 py-2">
-              <span className="flex items-center gap-2.5 text-[12.5px] text-muted-foreground">
-                <Users className="size-[15px]" />
-                {t("broadcasts.details.params.audience")}
-              </span>
-              <span className="pl-[25px] text-[13px] font-semibold text-foreground">{audienceSummary(b.audience, t, plans)}</span>
-            </div>
+            <InfoRow icon={Users} label={t("broadcasts.details.params.audience")}>
+              <span className="truncate">{audienceSummary(b.audience, t, plans)}</span>
+            </InfoRow>
             {b.promocode_id !== null && (
               <InfoRow icon={Ticket} label={t("broadcasts.details.params.promocode")} mono>
                 {promocodeCode ?? `#${b.promocode_id}`}
@@ -319,18 +284,15 @@ function BroadcastDetails({ id }: { id: number }) {
                 {formatDateTime(b.scheduled_at, i18n.language)}
               </InfoRow>
             )}
-          </Card>
-          {(b.has_channel_post || b.post_to_channel) && (
-            <Card title={t("broadcasts.details.channel.title")} className="flex flex-col gap-1.5">
-              <span className="text-[13px] text-foreground">
+            {(b.has_channel_post || b.post_to_channel) && (
+              <InfoRow icon={Megaphone} label={t("broadcasts.details.channel.title")}>
                 {b.has_channel_post ? t("broadcasts.details.channel.posted") : t("broadcasts.details.channel.planned")}
-              </span>
-              <span className="text-[12px] leading-relaxed text-muted-foreground">
-                {t("broadcasts.details.channel.recallHint")}
-              </span>
-            </Card>
-          )}
-        </div>
+              </InfoRow>
+            )}
+          </div>
+      </DeliveryProgress>
+
+      {can("BROADCASTS_RECIPIENTS_VIEW") && <RecipientsTable broadcast={b} refreshKey={refreshKey} />}
       </div>
 
       {pending && (

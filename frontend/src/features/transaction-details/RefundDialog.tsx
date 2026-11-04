@@ -7,8 +7,8 @@ import type { RefundPreview, TransactionItem } from "@entities/transactions/api"
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { Switch } from "@shared/ui/Switch";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Switch } from "@shared/ui/glass/Switch";
 
 interface RefundDialogProps {
   order: TransactionItem;
@@ -30,13 +30,13 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
   const close = useModalClose();
   const [rollbackOn, setRollbackOn] = useState(false);
   const { rollback } = preview;
-  const hint = "text-[12.5px] text-muted-foreground";
+  const hint = "text-[12px] text-muted-foreground";
 
   return (
     <>
-      <DialogHeader icon={Undo2} tone="danger" title={t("transactions.refund.title")} />
+      <DialogHeader icon={Undo2} danger title={t("transactions.refund.title")} />
 
-      <div className="flex flex-col gap-3 px-5 pt-4 text-[13px] text-foreground/80">
+      <div className="flex flex-col gap-3 p-4 text-[13px] text-foreground/80">
         {!preview.refundable ? (
           <p>{t(`transactions.refund.notRefundable.${preview.reason}` as ParseKeys)}</p>
         ) : (
@@ -68,12 +68,12 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
         )}
       </div>
 
-      <div className="flex gap-2 px-5 pb-5 pt-4">
-        <Button variant="outline" className="flex-1" type="button" onClick={close}>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <Button variant="glass" type="button" onClick={close}>
           {t("common.cancel")}
         </Button>
         {preview.refundable && (
-          <Button variant="danger" className="flex-1" onClick={() => onConfirm(rollbackOn)}>
+          <Button variant="glassDanger" onClick={() => onConfirm(rollbackOn)}>
             {t("transactions.refund.confirm")}
           </Button>
         )}

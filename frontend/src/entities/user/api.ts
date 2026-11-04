@@ -48,7 +48,7 @@ export interface UserListItem {
   deleted_at?: string | null;
   email_undeliverable_at?: string | null;
   is_bot_blocked?: boolean;
-  // list endpoint only
+  // absent only from the merge preview's two sides
   active_subscriptions?: number;
   limited_subscriptions?: number;
   expired_subscriptions?: number;
@@ -186,6 +186,10 @@ export function mergeUsers(
 
 export function bindUserTelegram(userId: number, telegramId: number): Promise<UserListItem> {
   return apiPut<UserListItem, { telegram_id: number }>(`/users/${userId}/telegram`, { telegram_id: telegramId });
+}
+
+export function unbindUserTelegram(userId: number): Promise<UserListItem> {
+  return apiDelete<UserListItem>(`/users/${userId}/telegram`);
 }
 
 export type RegistrationSource =

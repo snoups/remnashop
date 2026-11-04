@@ -2,12 +2,12 @@ import type { ParseKeys } from "i18next";
 import {
   ChevronRight,
   Coins,
-  CreditCard,
   Filter,
   Layers,
   LogIn,
   Megaphone,
   Package,
+  Receipt,
   Server,
   Settings,
   Share2,
@@ -25,17 +25,20 @@ import {
   type EventLogEntry,
   type EventLogFilters,
   type EventLogLocationState,
-  listEventLog,
+  listEventLogAfter,
 } from "@entities/event-log/api";
 import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { formatTime } from "@shared/lib/relative-time";
+import { lastDayToIso, startToIso } from "@shared/lib/iso-date";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { DatePickerField } from "@shared/ui/DatePickerField";
@@ -72,7 +75,7 @@ const CATEGORY_ICONS: Record<(typeof CATEGORIES)[number], LucideIcon> = {
   REFERRAL: Share2,
   PRICING: Coins,
   PLANS: Package,
-  PAYMENT: CreditCard,
+  PAYMENT: Receipt,
   BROADCAST: Megaphone,
   INFRASTRUCTURE: Server,
 };
@@ -113,14 +116,15 @@ export function EventLogPage() {
     () => ({
       category: category || undefined,
       search: debouncedSearch || undefined,
-      occurredFrom: debouncedDateFrom || undefined,
-      occurredTo: debouncedDateTo || undefined,
+      // the day groups below are local days, so the bounds are local midnights too
+      occurredFrom: startToIso(debouncedDateFrom) ?? undefined,
+      occurredTo: lastDayToIso(debouncedDateTo) ?? undefined,
     }),
     [category, debouncedSearch, debouncedDateFrom, debouncedDateTo],
   );
 
   const { state, isFetching, isLoadingMore, hasMore, loadMore: handleLoadMore } = usePaginatedList(
-    (filters, page, signal) => listEventLog({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
+    (filters, _page, signal, loaded?: EventLogEntry[]) => listEventLogAfter({ ...filters, pageSize: DEFAULT_PAGE_SIZE }, loaded, signal),
     baseFilters,
   );
 
@@ -171,7 +175,6 @@ export function EventLogPage() {
             value={dateFromInput}
             onChange={setDateFromInput}
             placeholder={t("eventLog.filters.dateFrom")}
-            valuePrefix={t("eventLog.filters.dateFrom")}
             compact
           />
         </div>
@@ -182,15 +185,17 @@ export function EventLogPage() {
             value={dateToInput}
             onChange={setDateToInput}
             placeholder={t("eventLog.filters.dateTo")}
-            valuePrefix={t("eventLog.filters.dateTo")}
             compact
           />
         </div>
       </div>
 
-      <div className="scroll-fade-y page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-top-size:12px] [--fade-top-start:56px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading"} />
       <div className="glass-panel relative rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={t("common.loadError")} size="page" />
@@ -205,7 +210,7 @@ export function EventLogPage() {
                 {/* overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar */}
                 <div className="overflow-x-auto overflow-y-hidden">
                   <div className="min-w-[640px]">
-                    <div className="grid grid-cols-[2fr_64px_1fr_140px_16px] gap-4 border-b border-border px-3 pb-2.5">
+                    <div className="grid grid-cols-[2fr_64px_1fr_140px_16px] gap-4 border-b border-border px-3.5 pb-2.5">
                       <span className={EYEBROW_CLASS}>
                         {t("eventLog.columns.eventType")}
                       </span>
@@ -220,6 +225,7 @@ export function EventLogPage() {
                         <section key={group.key} className="flex flex-col">
                           <h3>
                             <GroupToggle
+                              glass
                               open={!collapsedDays.has(group.key)}
                               onToggle={() => toggleDay(group.key)}
                               label={formatDayLabel(group.date, t, i18n.language)}
@@ -229,13 +235,14 @@ export function EventLogPage() {
                           <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
                           {group.items.map((entry) => (
                             <ListRow
+                    glass
                               key={entry.id}
                               onClick={() => setSelectedEntry(entry)}
                               className="grid grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4"
                             >
                               <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
                                 <span
-                                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
+                                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
                                 >
                                   <EventTypeIcon eventType={entry.event_type} className="size-4" />
                                 </span>
@@ -273,7 +280,9 @@ export function EventLogPage() {
             )}
           </>
         )}
+        </AnimatedHeight>
       </div>
+      </LoadGate>
       </div>
 
       {selectedEntry && (

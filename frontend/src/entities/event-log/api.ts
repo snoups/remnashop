@@ -33,6 +33,8 @@ export interface EventLogFilters {
   search?: string;
   occurredFrom?: string;
   occurredTo?: string;
+  /** keyset cursor: entries listed after this one */
+  beforeId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -49,10 +51,21 @@ export function listEventLog(
   if (filters.search) params.set("search", filters.search);
   if (filters.occurredFrom) params.set("occurred_from", filters.occurredFrom);
   if (filters.occurredTo) params.set("occurred_to", filters.occurredTo);
+  if (filters.beforeId !== undefined) params.set("before_id", String(filters.beforeId));
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
   return apiGet<EventLogPage>(`/events?${params.toString()}`, signal);
+}
+
+/** "Load more" over a live log: continues after the last row on screen, so new entries don't repeat it. */
+export async function listEventLogAfter(
+  filters: Omit<EventLogFilters, "beforeId" | "page">,
+  loaded: EventLogEntry[] = [],
+  signal?: AbortSignal,
+): Promise<EventLogPage> {
+  const page = await listEventLog({ ...filters, beforeId: loaded.at(-1)?.id }, signal);
+  return { items: page.items, total: loaded.length + page.total };
 }
 
 export interface Notifications {

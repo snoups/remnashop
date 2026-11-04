@@ -683,13 +683,12 @@ export function ConnectGuideSettingsPage() {
                 <div className={BLOCK_CLASS}>
                   <div className="flex flex-wrap items-end gap-3">
                     <div className="min-w-48 flex-1">
-                    <Field label={t("connectGuide.appName")}>
+                    <Field label={t("connectGuide.appName")} required>
                       <Input
                         value={app.name}
                         disabled={disabled}
                         aria-invalid={app.name.trim() === ""}
                         maxLength={APP_NAME_MAX_LENGTH}
-                        required
                         onChange={(event) => setApp({ ...app, name: event.target.value })}
                       />
                     </Field>

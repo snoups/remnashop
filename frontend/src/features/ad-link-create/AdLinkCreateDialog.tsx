@@ -10,6 +10,7 @@ import {
   generateAdLinkCode,
 } from "@entities/advertising/api";
 import { type AdLinkChannels, ChannelsPicker } from "@entities/advertising/ChannelsPicker";
+import { CURRENCIES } from "@entities/pricing/api";
 import { CURRENCY_ICON } from "@entities/transactions/api";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -18,12 +19,11 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { TextInput, TextArea } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, TextArea } from "@shared/ui/glass/Input";
 
-const CURRENCIES = ["USD", "XTR", "RUB"] as const;
 const FORM_ID = "adlink-create-form";
 
 interface AdLinkCreateDialogProps {
@@ -56,7 +56,6 @@ function AdLinkCreateDialogBody({
   const [channels, setChannels] = useState<AdLinkChannels>({ allow_bot: true, allow_webcabinet: true });
   const trimmedCode = code.trim();
   const isCodeInvalid = trimmedCode !== "" && !AD_LINK_CODE_PATTERN.test(trimmedCode);
-  const canSubmit = name.trim() !== "" && trimmedCode !== "" && !isCodeInvalid;
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -97,15 +96,16 @@ function AdLinkCreateDialogBody({
     <>
       <DialogHeader icon={Link2} title={t("advertising.create.title")} />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
-          <Card variant="form">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label={t("advertising.create.nameLabel")} htmlFor="adlink-name" required>
-                <TextInput
+                <Input
                   id="adlink-name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
+                  placeholder={t("advertising.create.namePlaceholder")}
                   maxLength={255}
                 />
               </Field>
@@ -113,7 +113,7 @@ function AdLinkCreateDialogBody({
                 <ChannelsPicker value={channels} onChange={setChannels} />
               </Field>
               <Field label={t("advertising.create.costLabel")} htmlFor="adlink-cost">
-                <TextInput
+                <Input
                   id="adlink-cost"
                   type="number"
                   onKeyDown={blockNonDecimalKeys}
@@ -125,7 +125,8 @@ function AdLinkCreateDialogBody({
               </Field>
               <Field label={t("advertising.create.currencyLabel")} htmlFor="adlink-currency">
                 <SelectDropdown
-                  variant="form"
+                  variant="well"
+                  size="compact"
                   id="adlink-currency"
                   value={currency}
                   onChange={setCurrency}
@@ -139,24 +140,24 @@ function AdLinkCreateDialogBody({
                 />
               </Field>
             </div>
-          </Card>
+          </div>
 
-          <Card variant="form">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("advertising.create.codeLabel")} htmlFor="adlink-code" required>
               <div className="flex gap-2">
-                <TextInput
+                <Input
                   id="adlink-code"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
                   placeholder={t("advertising.create.codePlaceholder")}
                   maxLength={AD_LINK_CODE_MAX_LENGTH}
                   aria-invalid={isCodeInvalid}
-                  className="flex-1 font-mono"
+                  mono
+                  className="flex-1"
                 />
                 {canGenerateCode && (
                   <Button
-                    variant="secondary"
-                    size="field"
+                    variant="glass"
                     onClick={() => void handleGenerate()}
                     icon={Dices}
                     isLoading={isGenerating}
@@ -171,27 +172,28 @@ function AdLinkCreateDialogBody({
                 </p>
               )}
             </Field>
-          </Card>
+          </div>
 
-          <Card variant="form">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("advertising.create.noteLabel")} htmlFor="adlink-note">
               <TextArea
                 id="adlink-note"
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
+                placeholder={t("advertising.create.notePlaceholder")}
                 rows={2}
               />
             </Field>
-          </Card>
+          </div>
         </form>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
-        <Button variant="outline" onClick={close}>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <Button variant="glass" onClick={close}>
           {t("common.cancel")}
         </Button>
-        <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting || !canSubmit}>
-          {isSubmitting ? t("advertising.create.saving") : t("common.create")}
+        <Button variant="glassAccent" type="submit" form={FORM_ID} disabled={isCodeInvalid} isLoading={isSubmitting}>
+          {t("common.create")}
         </Button>
       </div>
     </>

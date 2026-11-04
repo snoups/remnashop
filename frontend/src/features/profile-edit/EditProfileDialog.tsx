@@ -1,23 +1,22 @@
-import { ChevronDown, Pencil } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { KeyRound, Pencil } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateOwnProfile } from "@entities/user/api";
 import { getErrorMessage } from "@shared/api/http";
-import { PASSWORD_PATTERN } from "@shared/lib/password-validation";
+import { copyToClipboard } from "@shared/lib/clipboard";
+import { generatePassword, PASSWORD_PATTERN } from "@shared/lib/password-validation";
 import { toast } from "@shared/lib/toast";
 import { initials } from "@shared/lib/initials";
 import { useReloadCurrentUser } from "@entities/user/use-current-user";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { PasswordInput } from "@shared/ui/PasswordInput";
-import { TextInput } from "@shared/ui/TextInput";
-import { Field } from "@shared/ui/Field";
-import { Card } from "@shared/ui/Card";
-import { Pressable } from "@shared/ui/Pressable";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input, PasswordInput } from "@shared/ui/glass/Input";
+import { Row } from "@shared/ui/glass/Row";
 
 interface EditProfileDialogProps {
   name: string;
@@ -30,11 +29,7 @@ export function EditProfileDialog({ name, login }: EditProfileDialogProps) {
 
   return (
     <>
-      <Button
-        variant="secondary"
-        onClick={() => setIsOpen(true)}
-      >
-        <Pencil className="size-3.5" />
+      <Button variant="glass" icon={Pencil} onClick={() => setIsOpen(true)}>
         {t("common.edit")}
       </Button>
 
@@ -57,6 +52,19 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const handleGeneratePassword = () => {
+    const generated = generatePassword();
+    setNewPassword(generated);
+    setConfirmPassword(generated);
+    // a refused copy is soft: the password is in both fields either way
+    void copyToClipboard(generated).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
 
   const handleSubmit = async (event: FormEvent) => {
@@ -99,86 +107,76 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
       <DialogHeader icon={Pencil} title={t("profile.edit.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 p-4">
-          <Card variant="form">
-            <div className="flex size-14 items-center justify-center rounded-full bg-foreground text-[18px] font-bold text-canvas">
-              {initials(login)}
+        <div className="flex flex-col gap-3 p-3">
+          <DialogCard variant="form">
+            <div className="flex items-center gap-3">
+              <div className="glass-control flex size-14 shrink-0 items-center justify-center rounded-full text-[18px] font-semibold text-foreground">
+                {initials(login)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <Field label={t("profile.edit.nameLabel")} htmlFor="edit-name" required>
+                  <Input id="edit-name" value={nameValue} maxLength={32} onChange={(event) => setNameValue(event.target.value)} />
+                </Field>
+              </div>
             </div>
+          </DialogCard>
 
-            <Field label={t("profile.edit.nameLabel")} htmlFor="edit-name">
-              <TextInput
-                id="edit-name"
-                value={nameValue}
-                maxLength={32}
-                onChange={(event) => setNameValue(event.target.value)}
-              />
-            </Field>
+          <DialogCard>
+            <Row
+              icon={KeyRound}
+              label={t("profile.edit.changePassword")}
+              expanded={isPasswordOpen}
+              onClick={() => setIsPasswordOpen((open) => !open)}
+              panel={
+                <>
+                  <Field label={t("profile.edit.currentPasswordLabel")} htmlFor="edit-current-password" required>
+                    <PasswordInput
+                      id="edit-current-password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      autoComplete="current-password"
+                      placeholder={t("profile.edit.currentPasswordPlaceholder")}
+                    />
+                  </Field>
 
-            <div>
-              <Pressable
-                type="button"
-                onClick={() => setIsPasswordOpen((open) => !open)}
-                className="flex w-full items-center justify-between rounded-xl py-1 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
-              >
-                {t("profile.edit.changePassword")}
-                <ChevronDown
-                  className={`size-4 text-muted-foreground transition-transform ${isPasswordOpen ? "rotate-180" : ""}`}
-                />
-              </Pressable>
+                  <Field label={t("profile.edit.newPasswordLabel")} htmlFor="edit-new-password" required info={t("auth.passwordHint")}>
+                    <PasswordInput
+                      id="edit-new-password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                      minLength={24}
+                      // Safari's "Suggest Strong Password" reads this to generate a password that passes PASSWORD_PATTERN
+                      passwordrules="minlength: 24; required: lower; required: upper; required: digit;"
+                      placeholder={t("profile.edit.newPasswordPlaceholder")}
+                    />
+                  </Field>
 
-              <AnimatePresence initial={false}>
-                {isPasswordOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex flex-col gap-4 pt-3">
-                      <Field label={t("profile.edit.currentPasswordLabel")} htmlFor="edit-current-password">
-                        <PasswordInput
-                          id="edit-current-password"
-                          value={currentPassword}
-                          onChange={(event) => setCurrentPassword(event.target.value)}
-                          autoComplete="current-password"
-                          placeholder={t("profile.edit.currentPasswordPlaceholder")}
-                        />
-                      </Field>
+                  <Field label={t("auth.confirmPassword")} htmlFor="edit-confirm-password" required>
+                    <PasswordInput
+                      id="edit-confirm-password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      autoComplete="new-password"
+                      placeholder={t("auth.confirmPasswordPlaceholder")}
+                    />
+                  </Field>
 
-                      <Field label={t("profile.edit.newPasswordLabel")} htmlFor="edit-new-password" info={t("auth.passwordHint")}>
-                        <PasswordInput
-                          id="edit-new-password"
-                          value={newPassword}
-                          onChange={(event) => setNewPassword(event.target.value)}
-                          autoComplete="new-password"
-                          placeholder={t("profile.edit.newPasswordPlaceholder")}
-                        />
-                      </Field>
-
-                      <Field label={t("auth.confirmPassword")} htmlFor="edit-confirm-password">
-                        <PasswordInput
-                          id="edit-confirm-password"
-                          value={confirmPassword}
-                          onChange={(event) => setConfirmPassword(event.target.value)}
-                          autoComplete="new-password"
-                          placeholder={t("auth.confirmPasswordPlaceholder")}
-                        />
-                      </Field>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </Card>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={close}>
-              {t("common.cancel")}
-            </Button>
-            <Button variant="accent" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          </div>
+                  <Button variant="glass" type="button" onClick={handleGeneratePassword}>
+                    {copied ? t("auth.copiedToClipboard") : t("auth.generatePassword")}
+                  </Button>
+                </>
+              }
+            />
+          </DialogCard>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="glassAccent" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? t("common.saving") : t("common.save")}
+          </Button>
         </div>
       </form>
     </>

@@ -31,7 +31,10 @@
     },
     "lessThanMinuteAgo": "менее минуты назад",
     "inLessThanMinute": "менее чем через минуту",
-    "loadError": "Не удалось загрузить"
+    "loadError": "Не удалось загрузить",
+    "notEnoughData": "Недостаточно данных",
+    "time": "Время",
+    "timePlaceholder": "чч:мм"
   },
   "errors": {
     "notFoundTitle": "Страница не найдена",
@@ -74,7 +77,7 @@
     "signIn": "Войти",
     "passwordChange": {
       "title": "Смените пароль",
-      "description": "Пароль выдал администратор. Задайте свой, чтобы продолжить.",
+      "description": "Вы вошли по временному паролю. Придумайте свой, чтобы продолжить",
       "currentPasswordLabel": "Временный пароль",
       "submit": "Сменить пароль",
       "done": "Пароль изменён. Войдите с новым паролем."
@@ -110,23 +113,24 @@
     "kpi": {
       "users": "Пользователи",
       "today": "сегодня",
-      "activePaid": "Активные платные",
-      "trials_one": "и {{formatted}} пробная",
-      "trials_few": "и {{formatted}} пробные",
-      "trials_many": "и {{formatted}} пробных",
-      "trials_other": "и {{formatted}} пробные",
+      "activePaid": "Активные подписки",
+      "trials_one": "Ещё {{formatted}} пробная",
+      "trials_few": "Ещё {{formatted}} пробные",
+      "trials_many": "Ещё {{formatted}} пробных",
+      "trials_other": "Ещё {{formatted}} пробные",
       "online": "Онлайн",
-      "onlineNodes_one": "на {{connected}} из {{total}} ноды",
-      "onlineNodes_few": "на {{connected}} из {{total}} нод",
-      "onlineNodes_many": "на {{connected}} из {{total}} нод",
-      "onlineNodes_other": "на {{connected}} из {{total}} ноды",
+      "onlineNodes_one": "На {{connected}} из {{total}} ноды",
+      "onlineNodes_few": "На {{connected}} из {{total}} нод",
+      "onlineNodes_many": "На {{connected}} из {{total}} нод",
+      "onlineNodes_other": "На {{connected}} из {{total}} ноды",
       "revenueToday": "Выручка сегодня",
+      "revenueYesterday": "Вчера к этому времени: {{value}}",
       "revenueComparison": "ко вчера в это же время"
     },
     "attention": {
       "title": "Требует внимания",
       "description": "Срочное сверху; пункт пропадает, когда проблема решена",
-      "critical": "срочных: {{value}}",
+      "critical": "Срочно · {{value}}",
       "allClear": {
         "title": "Всё в порядке",
         "sub": "Ничего не требует внимания"
@@ -154,48 +158,54 @@
       },
       "stalePending": {
         "title": "Платежи зависли в ожидании",
-        "sub": "{{formatted}} дольше 15 минут"
+        "sub_one": "{{formatted}} платёж ждёт дольше 15 минут",
+        "sub_few": "{{formatted}} платежа ждут дольше 15 минут",
+        "sub_many": "{{formatted}} платежей ждут дольше 15 минут",
+        "sub_other": "{{formatted}} платежа ждут дольше 15 минут"
       },
       "expiringPaid": {
         "title": "Истекают платные подписки",
-        "sub": "{{formatted}} в ближайшие 7 дней"
+        "sub_one": "{{formatted}} подписка в ближайшие 7 дней",
+        "sub_few": "{{formatted}} подписки в ближайшие 7 дней",
+        "sub_many": "{{formatted}} подписок в ближайшие 7 дней",
+        "sub_other": "{{formatted}} подписки в ближайшие 7 дней"
       },
       "botWebhook": {
-        "title": "Вебхук бота сообщает об ошибке"
+        "title": "Вебхук Telegram-бота сообщает об ошибке"
       },
       "actions": {
         "gateways": "Шлюзы",
         "backups": "Резервные копии",
         "transactions": "Транзакции",
         "retention": "Удержание",
-        "bot": "Бот"
+        "bot": "Telegram-бот"
       }
     },
     "revenue": {
       "title": "Выручка",
-      "description": "Выручка за выбранный период",
-      "orders_one": "{{formatted}} оплата",
-      "orders_few": "{{formatted}} оплаты",
-      "orders_many": "{{formatted}} оплат",
-      "orders_other": "{{formatted}} оплаты",
-      "valueName": "Выручка"
+      "description": "Сумма оплат за выбранный период",
+      "orders_one": "{{formatted}} транзакция",
+      "orders_few": "{{formatted}} транзакции",
+      "orders_many": "{{formatted}} транзакций",
+      "orders_other": "{{formatted}} транзакции",
+      "valueName": "Выручка",
+      "transactions": "Транзакции"
     },
     "subscriptions": {
       "title": "Подписки",
-      "description": "Состояние сейчас",
+      "description": "Количество подписок по статусам",
       "total": "всего",
-      "paid": "Активные платные",
+      "paid": "Активные",
       "trials": "Пробные",
-      "limited": "На лимите трафика",
+      "limited": "На лимите",
       "expired": "Истёкшие"
     },
     "online": {
       "title": "Онлайн",
-      "description": "Максимум за час, замер раз в 5 минут",
+      "description": "Пик за каждый час, замер раз в 5 минут",
       "hours24": "24 ч",
       "valueName": "Пользователи",
-      "peak": "пик за сутки · {{peak}} в {{time}}",
-      "empty": "Замеров пока нет."
+      "peak": "пик за сутки · {{peak}} в {{time}}"
     },
     "runtime": {
       "title": "Состояние системы",
@@ -224,23 +234,24 @@
       "cores_many": "{{count}} ядер",
       "cores_other": "{{count}} ядра"
     },
-    "remnawaveUnavailable": "Remnawave недоступна — данные появятся, когда панель ответит.",
+    "remnawaveUnavailable": "Remnawave недоступна\nДанные появятся, когда панель ответит",
     "nodes": {
       "title": "Ноды и страны",
-      "description": "Из Remnawave: подключения и трафик за сегодня",
+      "description": "Подключения и трафик за сегодня, по данным Remnawave",
       "nodes": "Ноды",
       "countries": "Страны",
-      "empty": "Нод пока нет.",
+      "empty": "Нет нод",
       "connected_one": "{{connected}} из {{nodes}} ноды",
       "connected_few": "{{connected}} из {{nodes}} нод",
       "connected_many": "{{connected}} из {{nodes}} нод",
-      "connected_other": "{{connected}} из {{nodes}} ноды"
+      "connected_other": "{{connected}} из {{nodes}} ноды",
+      "offlineSince": "офлайн {{time}}"
     },
     "clientApps": {
       "title": "Приложения клиентов",
-      "description": "Чем подключаются, по устройствам из Remnawave",
+      "description": "Чем подключаются клиенты, по платформам",
       "other": "Другие",
-      "empty": "Устройств пока нет.",
+      "empty": "Нет устройств",
       "devices_one": "{{formatted}} устройство · {{avg}} на пользователя",
       "devices_few": "{{formatted}} устройства · {{avg}} на пользователя",
       "devices_many": "{{formatted}} устройств · {{avg}} на пользователя",
@@ -248,9 +259,9 @@
     },
     "payments": {
       "title": "Последние платежи",
-      "description": "Сегодня {{today}}",
+      "description": "Сегодня: {{today}}",
       "all": "Все транзакции",
-      "empty": "Платежей пока нет."
+      "empty": "Нет платежей"
     }
   },
   "analytics": {
@@ -269,22 +280,21 @@
       "title": "Воронка новых клиентов",
       "steps": {
         "registered": "Регистрация",
-        "connected": "Подключились к VPN",
+        "connected": "Подключение к VPN",
         "first_paid": "Первая оплата",
         "repeat_paid": "Повторная оплата"
       },
       "ofPrevious": "от предыдущего шага",
-      "description": "Что стало с теми, кто зарегистрировался за период. Каждый шаг — только из прошедших предыдущий",
+      "description": "Путь клиентов, зарегистрированных за период",
       "conversion": "Регистрация → оплата",
       "biggestDrop": "наибольший отсев",
-      "viaTrial": "через пробный · {{value}}",
+      "viaTrial": "через пробный период · {{value}}",
       "direct": "сразу · {{value}}",
       "neverConnected": "Не подключились ни разу",
-      "neverConnectedHint": "зарегистрировались, но ни разу не открыли VPN",
       "connectedUnpaid": "Подключились, но не оплатили",
       "bySource": "Воронка по источникам",
-      "bySourceDescription": "Доля от зарегистрировавшихся на каждом шаге; оплаты — на сегодня",
-      "sourcesEmpty": "За этот период нет регистраций.",
+      "bySourceDescription": "Как проходят воронку клиенты из разных источников",
+      "sourcesEmpty": "За этот период нет регистраций",
       "source": "Источник",
       "registrations": "Регистрации",
       "connectedShort": "Подключились",
@@ -296,13 +306,12 @@
       "after_few": "Через {{count}} месяца",
       "after_many": "Через {{count}} месяцев",
       "after_other": "Через {{count}} месяца",
-      "afterCaption": "с активной платной подпиской",
-      "noneEligible": "пока некого считать",
+      "afterCaption": "С активной платной подпиской",
       "avgLifetime": "Средний срок клиента",
       "monthsValue": "{{value}} мес.",
-      "avgLifetimeCaption": "от первой оплаты до ухода",
+      "avgLifetimeCaption": "От первой оплаты до ухода",
       "expiringTitle": "Истекают в ближайшие 30 дней",
-      "expiringDescription": "Кого удержать: платные подписки сами не продлятся. Сверху — самые ценные клиенты",
+      "expiringDescription": "Отсортированы по сумме оплат",
       "expiringPaid": "Платные · {{value}}",
       "expiringTrials": "Пробные · {{value}}",
       "weeks": {
@@ -313,37 +322,37 @@
       },
       "mrrAtRisk": "{{money}} MRR под угрозой",
       "customer": "Клиент",
-      "plan": "План",
+      "subscriptionsColumn": "Подписки",
       "expires": "Истекает",
       "renewals": "Продлений",
       "inDays_one": "через {{count}} дн.",
       "inDays_few": "через {{count}} дн.",
       "inDays_many": "через {{count}} дн.",
       "inDays_other": "через {{count}} дн.",
-      "expiringEmpty": "В ближайшие 30 дней платные подписки не истекают.",
+      "expiringEmpty": "В ближайшие 30 дней платные подписки не истекают",
       "curveTitle": "Кривая удержания",
       "curveDescription": "Доля когорты с активной платной подпиской спустя N месяцев",
       "average": "Среднее",
+      "noChurn": "Оттока не было",
       "churnTitle": "Отток платных по месяцам",
-      "churnDescription": "Доля платных подписчиков, не продливших за месяц; пробные и дни из наград не считаются",
+      "churnDescription": "Доля платных, не продливших за месяц, без пробных и наград",
       "byPlanTitle": "Действующие подписки по планам",
-      "byPlanDescription": "На каких планах сидят сейчас и сколько упёрлись в лимит трафика",
+      "byPlanDescription": "На каких планах клиенты сейчас и сколько из них упёрлись в лимит трафика",
       "limited": "{{value}} на лимите",
       "cohortsTitle": "Удержание по месяцу первой оплаты",
-      "cohortsDescription": "Строка — клиенты, впервые оплатившие в этом месяце; M0, M1… — доля с активной платной подпиской спустя столько месяцев. Длинные планы не дают ложных провалов",
+      "cohortsDescription": "Клиенты по месяцу первой оплаты и доля из них с платной подпиской через M0, M1… месяцев",
       "cohortColumn": "Когорта",
       "sizeColumn": "Клиентов"
     },
     "ltv": {
-      "allTime": "За всё время · {{currency}}",
       "mean": "Средний LTV",
-      "meanCaption": "на платящего клиента за всё время",
+      "meanCaption": "На платящего клиента за всё время",
       "median": "Медианный LTV",
-      "medianCaption": "половина клиентов заплатила меньше",
-      "payers": "Платящих клиентов",
-      "payersCaption": "хотя бы одна оплата",
+      "medianCaption": "Половина клиентов заплатила меньше",
+      "payers": "Платящие клиенты",
+      "payersCaption": "Хотя бы одна оплата",
       "title": "Распределение LTV",
-      "titleHint": "Сколько клиентов заплатили в сумме столько за всё время",
+      "titleHint": "Клиенты по сумме всех оплат за всё время",
       "rangeColumn": "Сумма за всё время",
       "usersColumn": "Клиентов",
       "shareColumn": "Доля",
@@ -355,14 +364,13 @@
       "customers_few": "{{count}} клиента",
       "customers_many": "{{count}} клиентов",
       "customers_other": "{{count}} клиента",
-      "topTitle": "Топ плательщиков",
-      "topDescription": "Траты за всё время; строка открывает карточку пользователя",
+      "topTitle": "Топ платящих клиентов",
+      "topDescription": "Кто заплатил больше всего за всё время",
       "customer": "Клиент",
-      "currentPlan": "План сейчас",
+      "subscriptionsColumn": "Подписки",
       "payments": "Платежей",
       "lastPayment": "Последний платёж"
     },
-    "reportCurrency": "Отчётная валюта",
     "period": {
       "year": "Год",
       "custom": "Свой",
@@ -375,42 +383,63 @@
       "apply": "Применить"
     },
     "periodIndependent": "Не зависит от периода",
-    "currencyNote": "Суммы в других валютах пересчитаны в {{currency}} по курсу из настроек цен на момент оплаты.",
-    "was": "было {{value}}",
+    "currencyNote": "Во всей аналитике суммы в других валютах пересчитаны в {{currency}} по курсу из настроек цен на момент оплаты",
+    "vsPrevious": "к прошлому периоду",
+    "vsPreviousDays": "к прошлым {{days}} дн.",
     "pp": "{{value}} п.п.",
     "empty": "Нет данных",
-    "emptyPeriod": "За этот период данных нет.",
-    "totalPaid": "Заплатил всего",
+    "emptyPeriod": "За этот период нет данных",
+    "totalPaid": "Оплачено всего",
     "metrics": {
       "periodSection": "За период",
       "comparedWith": "сравнение с {{range}}",
       "nowSection": "Сейчас",
       "revenue": "Выручка",
-      "arppu": "Доход на платящего",
-      "arppuHint": "ARPPU — выручка за период, делённая на число клиентов, плативших в нём.",
-      "arppuCaption_one": "{{formatted}} плательщик",
-      "arppuCaption_few": "{{formatted}} плательщика",
-      "arppuCaption_many": "{{formatted}} плательщиков",
-      "arppuCaption_other": "{{formatted}} плательщика",
-      "newPayers": "Новые плательщики",
+      "revenueCaption": "Платили {{payers}} · {{arppu}} на платящего",
+      "arppu": "Выручка на платящего",
+      "newPayers": "Новые платящие",
       "conversion": "Оплатили за {{days}} дней",
       "conversionHint": "Доля пользователей, зарегистрированных не позже чем за {{days}} дней до конца периода и оплативших в течение {{days}} дней.",
-      "conversionCaption": "от зарегистрированных до {{date}}",
+      "conversionCaption": "От зарегистрированных до {{date}}",
       "churn": "Отток платных",
       "churnHint": "Доля платных подписчиков, активных на начало периода, которые не продлили к его концу.",
       "churnCaption": "{{churned}} из {{base}} не продлили",
       "mrr": "MRR",
       "mrrHint": "Monthly Recurring Revenue — суммарная месячная стоимость платных подписок.",
-      "mrrCaption": "месячная стоимость платных подписок, включая упёршиеся в лимит трафика",
+      "mrrCaption": "Платные подписки в месяц, с упёршимися в лимит",
       "paidSubscriptions": "Платные подписки",
-      "limitedCaption": "из них {{value}} на лимите трафика",
-      "trials": "Активные пробные"
+      "limitedCaption": "Из них {{value}} на лимите трафика",
+      "trials": "Активные пробные",
+      "arpu": "Доход на клиента",
+      "arpuHint": "ARPU — MRR, делённый на число клиентов, которые платят сейчас.",
+      "payingCustomers": "Платящие клиенты",
+      "payingCustomersCaption": "С живой платной подпиской",
+      "neverConnected": "Оплатили, не подключились",
+      "neverConnectedCaption": "Платные подписки без единого подключения",
+      "expiringSoon_one": "Истекают за {{count}} день",
+      "expiringSoon_few": "Истекают за {{count}} дня",
+      "expiringSoon_many": "Истекают за {{count}} дней",
+      "expiringSoon_other": "Истекают за {{count}} дня",
+      "expiringSoonCaption": "{{money}} MRR, если не продлят",
+      "trialsEndingCaption_one": "Из них {{value}} заканчиваются за {{count}} день",
+      "trialsEndingCaption_few": "Из них {{value}} заканчиваются за {{count}} дня",
+      "trialsEndingCaption_many": "Из них {{value}} заканчиваются за {{count}} дней",
+      "trialsEndingCaption_other": "Из них {{value}} заканчиваются за {{count}} дня",
+      "balances": "На балансах клиентов",
+      "pointsValue_one": "{{formatted}} балл",
+      "pointsValue_few": "{{formatted}} балла",
+      "pointsValue_many": "{{formatted}} баллов",
+      "pointsValue_other": "{{formatted}} балла",
+      "bonusDaysCaption_one": "и {{formatted}} бонусный день",
+      "bonusDaysCaption_few": "и {{formatted}} бонусных дня",
+      "bonusDaysCaption_many": "и {{formatted}} бонусных дней",
+      "bonusDaysCaption_other": "и {{formatted}} бонусного дня"
     },
     "revenue": {
       "revenue": "Выручка",
       "payments": "Платежи",
       "avgCheck": "Средний чек",
-      "medianCaption": "медиана — {{median}}",
+      "medianCaption": "Медиана — {{median}}",
       "refunds": "Возвраты",
       "refundsCaption": "{{amount}} · {{share}} выручки",
       "granularity": {
@@ -423,14 +452,15 @@
         "week": "Выручка по неделям",
         "month": "Выручка по месяцам"
       },
-      "chartDescription": "Столбцы — по типу покупки, пунктир — предыдущий период такой же длины",
-      "chartEmpty": "За этот период платежей нет.",
+      "chartDescription": "Новые подписки, продления и смены плана",
+      "chartEmpty": "За этот период нет платежей",
       "new": "Новые подписки",
       "renew": "Продления",
-      "change": "Смена плана",
+      "change": "Смены плана",
       "previous": "Прошлый период",
+      "breakdown": "Структура выручки",
       "byPlan": "По планам",
-      "byPlanDescription": "Деньги, а не число подписок",
+      "byPlanDescription": "Выручка по плану подписки",
       "byDuration": "По длительности",
       "byDurationDescription": "Выручка по сроку подписки",
       "byChannel": "По каналам",
@@ -441,14 +471,14 @@
       "sales": "Продаж",
       "share": "Доля",
       "gateways": "Платёжные шлюзы",
-      "gatewaysDescription": "Сколько попыток оплаты прошло и сколько сорвалось",
+      "gatewaysDescription": "Выручка и успешность оплат по каждому шлюзу",
       "successRate": "{{rate}} успешных",
-      "gatewayCaption": "оплачено {{paid}} · отменено {{canceled}} · ошибка {{failed}} · возвратов {{refunded}}"
+      "gatewayCaption": "Оплачено {{paid}} · отменено {{canceled}} · с ошибкой {{failed}} · возвращено {{refunded}}"
     },
     "sources": {
       "organic": "Органика",
-      "adLink": "Рекламная ссылка",
-      "referral": "Реферал",
+      "adLink": "Рекламные ссылки",
+      "referral": "Рефералы",
       "tileCaption_one": "{{share}} выручки · {{formatted}} регистрация",
       "tileCaption_few": "{{share}} выручки · {{formatted}} регистрации",
       "tileCaption_many": "{{share}} выручки · {{formatted}} регистраций",
@@ -458,8 +488,8 @@
       "linksCount_many": "{{formatted}} ссылок",
       "linksCount_other": "{{formatted}} ссылки",
       "channelsTitle": "Каналы привлечения",
-      "channelsDescription": "Регистрации за период и их оплаты на сегодня; детали по каждой ссылке — на странице «Реклама»",
-      "openAdvertising": "Открыть «Рекламу»",
+      "channelsDescription": "Регистрации за период и их оплаты; по ссылкам — в «Рекламных ссылках»",
+      "openAdvertising": "Открыть рекламные ссылки",
       "channel": "Канал",
       "registrations": "Регистрации",
       "paid": "Оплатили",
@@ -481,35 +511,35 @@
       "referrers_few": "Приглашают · {{formatted}} клиента",
       "referrers_many": "Приглашают · {{formatted}} клиентов",
       "referrers_other": "Приглашают · {{formatted}} клиента",
-      "deepLevels": "2+ уровень · {{share}} выручки",
+      "deepLevels": "Уровень 2+ · {{share}} выручки",
       "topTitle": "Топ рефереров",
       "topDescription": "По выручке приглашённых за период",
       "sort": {
         "revenue": "По выручке",
         "invited": "По приглашённым"
       },
-      "invitedPaid": "пригласил {{invited}} · оплатили {{paid}}",
-      "empty": "За период рефереров нет."
+      "invitedPaid": "приглашено {{invited}} · оплатили {{paid}}",
+      "empty": "За этот период нет рефереров"
     },
     "trial": {
-      "trials": "Взяли пробный",
+      "trials": "Взяли пробный период",
       "conversion": "Пробный → оплата",
-      "convertedCaption": "оплатили {{converted}} из {{trials}}",
+      "convertedCaption": "Оплатили {{converted}} из {{trials}}",
       "revenue": "Выручка с перешедших",
-      "revenueInfo": "Первая покупка и всё, что после",
+      "revenueInfo": "Первая покупка и всё, что после неё.",
       "daysToPay": "Дней до оплаты",
-      "daysToPayCaption": "медиана от начала пробного",
-      "byDayTitle": "На какой день пробного покупают",
-      "byDayDescription": "Первая оплата тех, кто брал пробный: по дню пробного и после его окончания",
-      "during": "Во время пробного",
+      "daysToPayCaption": "Медиана от начала пробного периода",
+      "byDayTitle": "На какой день пробного периода покупают",
+      "byDayDescription": "Первая оплата тех, кто брал пробный период",
+      "during": "Во время пробного периода",
       "afterEnd": "После окончания",
-      "lastDay": "Последний день пробного · {{share}} покупок",
+      "lastDay": "Последний день пробного периода · {{share}} покупок",
       "afterEndShare": "После окончания · {{share}} — вернулись сами",
       "timeToPayTitle": "Время до первой оплаты",
-      "timeToPayDescription": "От регистрации до первой покупки, все новые платящие за период",
-      "viaTrial": "Через пробный · {{value}}",
-      "noTrial": "Без пробного · {{value}}",
-      "plansTitle": "Что покупают после пробного",
+      "timeToPayDescription": "От регистрации до первой покупки у всех новых платящих клиентов за период",
+      "viaTrial": "Через пробный период · {{value}}",
+      "noTrial": "Без пробного периода · {{value}}",
+      "plansTitle": "Что покупают после пробного периода",
       "plansDescription": "Первый оплаченный план",
       "after": {
         "after_1_3": "+1–3",
@@ -518,8 +548,8 @@
         "after_later": "позже"
       },
       "timeToPay": {
-        "same_day": "в тот же день",
         "1": "1 дн.",
+        "same_day": "в тот же день",
         "2_3": "2–3 дн.",
         "4_7": "4–7 дн.",
         "8_14": "8–14 дн.",
@@ -529,21 +559,21 @@
     },
     "promocodes": {
       "activations": "Активации",
-      "codesUsed_one": "по {{formatted}} промокоду",
-      "codesUsed_few": "по {{formatted}} промокодам",
-      "codesUsed_many": "по {{formatted}} промокодам",
-      "codesUsed_other": "по {{formatted}} промокодам",
+      "codesUsed_one": "По {{formatted}} промокоду",
+      "codesUsed_few": "По {{formatted}} промокодам",
+      "codesUsed_many": "По {{formatted}} промокодам",
+      "codesUsed_other": "По {{formatted}} промокодам",
       "discounts": "Отдано скидками",
-      "discountsInfo": "Все скидки на оплаченных заказах — промокоды, скидки планов и персональные",
+      "discountsInfo": "Все скидки на оплаченных заказах: промокоды, скидки планов и персональные.",
       "discountsCaption": "{{share}} выручки",
       "revenue": "Выручка со скидкой",
       "revenueCaption": "{{share}} всей выручки",
       "conversion": "Активация → оплата",
-      "conversionCaption": "для бесплатных наград: дни, трафик, подписка",
+      "conversionCaption": "Для бесплатных наград: дни, трафик, подписка",
       "byTypeTitle": "По типу награды",
       "byTypeDescription": "Активации за период",
       "codesTitle": "Эффективность промокодов",
-      "codesDescription": "Выручка — оплаты активировавших после активации",
+      "codesDescription": "Выручка — оплаты клиентов после активации промокода",
       "code": "Промокод",
       "reward": "Награда",
       "activationsColumn": "Активаций",
@@ -551,7 +581,7 @@
       "activationsLimitCaption": "{{activations}} · {{total}} / {{max}}",
       "revenueColumn": "Выручка",
       "toPayment": "→ оплата",
-      "empty": "За период активаций промокодов нет."
+      "empty": "За этот период нет активаций промокодов"
     }
   },
   "eventLog": {
@@ -559,7 +589,6 @@
     "empty": "Нет событий",
     "noMatches": "Ничего не найдено",
     "filters": {
-      "category": "Тип",
       "categoryAll": "Все категории",
       "categoryAuth": "Авторизация",
       "categoryAdminManagement": "Управление администраторами",
@@ -618,6 +647,7 @@
       "SignInMethodLinkedEvent": "Способ входа привязан",
       "SignInMethodUnlinkedEvent": "Способ входа отвязан",
       "SessionRevokedEvent": "Сессия отозвана",
+      "OtherSessionsRevokedEvent": "Другие сессии завершены",
       "SessionTheftDetectedEvent": "Кража сессии",
       "UserSessionRevokedByAdminEvent": "Сессия отозвана администратором",
       "AdminCreatedEvent": "Администратор создан",
@@ -626,6 +656,7 @@
       "AdminDemotedEvent": "Администратор понижен",
       "AdminDeletedEvent": "Администратор удалён",
       "TelegramIdBoundEvent": "Привязан Telegram ID",
+      "TelegramIdUnboundEvent": "Отвязан Telegram ID",
       "UserDeletedEvent": "Пользователь удалён",
       "CabinetUserRegisteredEvent": "Регистрация через Веб-кабинет",
       "TelegramUserRegisteredEvent": "Регистрация через Telegram",
@@ -799,7 +830,9 @@
       "button": "Создать администратора",
       "title": "Создание администратора",
       "loginLabel": "Логин",
+      "loginPlaceholder": "например, ivan.petrov",
       "nameLabel": "Отображаемое имя",
+      "namePlaceholder": "например, Иван Петров",
       "permissionsLabel": "Права",
       "error": "Не удалось создать администратора."
     },
@@ -812,8 +845,14 @@
     "demote": {
       "button": "Разжаловать",
       "title": "Разжаловать администратора?",
-      "confirm": "Разжаловать этого администратора до обычного пользователя? Его логин и права будут очищены.",
+      "confirm": "Администратор станет обычным пользователем, его логин, пароль и права будут удалены.",
+      "noSignIn": "У него нет ни Telegram, ни почты, ни входа через Google или Yandex, поэтому после понижения войти в аккаунт не получится. Если аккаунт больше не нужен, его лучше удалить.",
       "error": "Не удалось разжаловать администратора."
+    },
+    "delete": {
+      "title": "Удалить администратора?",
+      "confirm": "Удалить «{{name}}»? Аккаунт будет стёрт вместе с логином, паролем, Passkey и сессиями, подписки отозваны в панели. История транзакций и журнал действий сохранятся. Это действие нельзя отменить.",
+      "error": "Не удалось удалить администратора."
     },
     "details": {
       "tabs": {
@@ -847,19 +886,17 @@
     "noMatches": "Ничего не найдено",
     "filters": {
       "search": "Поиск",
-      "searchPlaceholder": "Имя, @username, ID или email",
-      "blockedBy": "Блокировка",
-      "blockedByAll": "Все",
-      "blockedByManual": "Вручную",
-      "blockedByLists": "По спискам",
-      "subscription": "Подписка",
-      "subscriptionAll": "Все",
-      "subscriptionWith": "Есть активная",
-      "subscriptionWithout": "Нет активной",
-      "trial": "Пробный период",
-      "trialAll": "Все",
-      "trialAvailable": "Доступен",
-      "trialUsed": "Использован"
+      "searchPlaceholder": "Имя, ID или email",
+      "blockedByAll": "Блокировка: все",
+      "blockedByManual": "Заблокирован вручную",
+      "blockedByLists": "Заблокирован списком",
+      "deleted": "Удалённые",
+      "subscriptionAll": "Подписка: все",
+      "subscriptionWith": "С активной подпиской",
+      "subscriptionWithout": "Без активной подписки",
+      "trialAll": "Пробный: все",
+      "trialAvailable": "Пробный доступен",
+      "trialUsed": "Пробный использован"
     },
     "deleteSubscriptions": {
       "action": "Удалить все подписки",
@@ -872,13 +909,11 @@
       "error": "Не удалось удалить подписки."
     },
     "delete": {
-      "button": "Удалить пользователя",
       "confirmTitle": "Удалить пользователя?",
       "confirm": "Удалить «{{name}}»? Личные данные и контакты будут стёрты, подписки отозваны в панели. История транзакций и рефералов сохранится. Это действие нельзя отменить.",
       "error": "Не удалось удалить пользователя."
     },
     "block": {
-      "button": "Заблокировать пользователя",
       "action": "Заблокировать",
       "error": "Не удалось заблокировать пользователя."
     },
@@ -888,7 +923,6 @@
       "confirmButton": "Заблокировать"
     },
     "unblock": {
-      "button": "Разблокировать пользователя",
       "action": "Разблокировать",
       "error": "Не удалось разблокировать пользователя."
     },
@@ -901,8 +935,8 @@
       "telegramId": "Telegram ID",
       "email": "Почта",
       "referralCode": "Реферальный код",
-      "points": "Баланс\nбаллов",
-      "bonusDays": "Бонусные\nдни",
+      "points": "Баланс баллов",
+      "bonusDays": "Бонусные дни",
       "personalDiscount": "Персональная скидка",
       "purchaseDiscount": "Скидка на покупку",
       "trialAvailable": "Доступ к пробному периоду",
@@ -978,11 +1012,12 @@
         "bonusDaysHint": "Введите число или выражение: +7; −1; 30−7.",
         "discountHint": "Введите число или выражение: +5; −5; 100−50."
       },
-      "loyaltyDiscount": "Лояльность",
+      "loyaltyDiscount": "Скидка лояльности",
       "loyalty": {
         "spent": "Потрачено за окно: {{amount}}",
         "toNext": "До следующего уровня: {{amount}} ({{percent}}%)",
         "topTier": "Достигнут высший уровень",
+        "inactive": "Программа лояльности выключена",
         "exclude": "Исключить из программы",
         "saved": "Сохранено.",
         "error": "Не удалось изменить участие в программе лояльности.",
@@ -1055,11 +1090,15 @@
       "taken": "Этот Telegram ID принадлежит другому аккаунту.",
       "mergeWith": "Объединить с #{{id}}",
       "done": "Telegram ID сохранён.",
-      "error": "Не удалось сохранить Telegram ID."
+      "error": "Не удалось сохранить Telegram ID.",
+      "unbind": "Отвязать Telegram",
+      "unbindTitle": "Отвязать Telegram?",
+      "unbindConfirm": "{{name}} потеряет вход через Telegram, а бот при следующем сообщении с этого Telegram создаст нового пользователя.",
+      "unbound": "Telegram отвязан.",
+      "unbindError": "Не удалось отвязать Telegram."
     },
     "registration": {
       "title": "Регистрация",
-      "none": "Нет данных: аккаунт создан до того, как это начали записывать.",
       "source": "Источник",
       "startPayload": "Ссылка /start",
       "telegramLanguage": "Язык Telegram",
@@ -1086,7 +1125,6 @@
     },
     "legalAcceptances": {
       "title": "Принятые документы",
-      "none": "Документы ещё не принимались.",
       "triggers": {
         "SIGN_UP": "Регистрация",
         "PAYMENT": "Оплата"
@@ -1244,7 +1282,6 @@
         "originBody": "Точный URL, с которого загружается панель управления, включая протокол — например, https://example.com."
       },
       "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
-      "errorEmptyFields": "Заполните хотя бы одно поле для обновления.",
       "telegramGuide": {
         "title": "Telegram OAuth2",
         "intro": "Для работы функции «Вход через Telegram» необходим Telegram-бот, который нужно дополнительно настроить.",
@@ -1419,7 +1456,6 @@
     "webPush": {
       "title": "Push-уведомления",
       "description": "Общие ключи для уведомлений в панели управления и кабинете",
-      "configured": "Настроены",
       "notConfigured": "Не настроены",
       "publicKey": "Публичный ключ",
       "contact": "Контактный email",
@@ -1700,7 +1736,7 @@
       "reaccept": "Попросить клиентов принять заново",
       "reacceptHint": "Каждый клиент увидит новую редакцию при следующем действии в боте или входе в кабинет.",
       "lastReaccept": "Последний запрос на принятие: {{date}}",
-      "hidden": "Скрыт",
+      "hidden": "Не показывается",
       "visibility": "Видимость"
     },
     "support": {
@@ -1782,6 +1818,8 @@
       "adding": "Ожидание устройства…",
       "manage": "Управление",
       "namePrompt": "Название Passkey",
+      "namePlaceholder": "Например, MacBook или iPhone",
+      "nameHint": "Необязательно. Поможет отличить ключи друг от друга.",
       "deleteConfirm": "Это устройство больше не сможет входить с помощью этого Passkey.",
       "lastUsed": "Использован {{date}}",
       "neverUsed": "Не использовался",
@@ -1804,46 +1842,42 @@
     },
     "notifications": {
       "title": "Уведомления",
-      "description": "Куда приходят уведомления о событиях каждого типа.",
+      "description": "Выберите, какие события получать в push-уведомлениях и в боте.",
+      "descriptionPushOnly": "Выберите, какие события получать в push-уведомлениях.",
       "saveError": "Не удалось сохранить настройки уведомлений.",
       "groups": {
         "security": {
           "title": "Безопасность",
-          "description": "Неудачные входы, входы в панель Remnawave и подозрение на кражу сессии"
+          "description": "Неудачные входы, входы в панель Remnawave, кража сессии и консоль восстановления"
         },
         "failures": {
           "title": "Сбои",
-          "description": "Сбои резервного копирования, ошибки вебхука и проверки канала"
+          "description": "Ошибки резервного копирования, вебхука Telegram, проверки канала и бонус-дней"
         },
         "broadcasts": {
           "title": "Рассылки",
-          "description": "Завершённые рассылки и рассылки с ошибкой"
+          "description": "Отправленные и остановленные из-за ошибки"
         },
         "money": {
           "title": "Транзакции",
-          "description": "Покупки, продления и возвраты"
-        },
-        "admins": {
-          "title": "Администраторы",
-          "description": "Создание, удаление и изменение прав администраторов"
+          "description": "Покупки, продления, возвраты, ручная выдача и невыданные заказы"
         },
         "infrastructure": {
           "title": "Инфраструктура",
-          "description": "Падение и восстановление нод, панели Remnawave и бота"
+          "description": "Связь с нодами, панелью и ботом, трафик нод и оплата хостинга"
         },
         "customers": {
           "title": "Клиенты",
-          "description": "Регистрации, первые подключения и блокировки торрентов"
+          "description": "Новые и заблокированные регистрации, первые подключения и торрент-трафик"
         },
         "subscriptions": {
           "title": "Подписки",
-          "description": "Истекли, закончился трафик, перевыпущены или не подключены"
+          "description": "Окончание срока и трафика, перевыпуск ссылки и клиенты без подключения"
         }
       },
       "channels": {
-        "bell": "Колокольчик",
-        "push": "Push-уведомления",
-        "telegram": "Telegram"
+        "push": "Push",
+        "telegram": "Bot"
       },
       "push": {
         "label": "Push-уведомления на этом устройстве",
@@ -1851,14 +1885,13 @@
         "testSent": "Тестовое уведомление отправлено.",
         "iosInstall": "Чтобы получать push-уведомления на iPhone, добавьте панель управления на экран «Домой»",
         "unsupported": "Этот браузер не поддерживает push-уведомления",
-        "notConfigured": "Владелец ещё не настроил",
+        "notConfigured": "Недоступно",
+        "notConfiguredError": "Push-уведомления не настроены.",
         "denied": "Уведомления запрещены в настройках браузера.",
         "failed": "Не удалось включить push-уведомления."
       },
       "telegram": {
-        "label": "Telegram",
-        "link": "Привяжите Telegram к аккаунту",
-        "linked": "Привязан"
+        "label": "Telegram"
       },
       "devices": {
         "title": "Мои устройства",
@@ -1878,6 +1911,11 @@
     "revokeConfirm": "Устройство будет отключено от аккаунта.",
     "revokeConfirmCurrent": "Это текущее устройство. Вы выйдете из аккаунта.",
     "revokeError": "Не удалось завершить сессию.",
+    "revokeOthers": "Завершить все другие",
+    "revokeOthersTitle": "Завершить все другие сессии?",
+    "revokeOthersConfirm": "Все устройства, кроме этого, выйдут из панели управления.",
+    "revokeOthersDone": "Другие сессии завершены.",
+    "revokeOthersError": "Не удалось завершить другие сессии.",
     "thisDevice": "Это устройство",
     "lastUsed": "{{date}}"
   },
@@ -1938,6 +1976,7 @@
     "USERS_MERGE_PREVIEW": "Предпросмотр объединения аккаунтов",
     "USERS_MERGE": "Объединение аккаунтов пользователей",
     "USERS_TELEGRAM_BIND": "Привязка Telegram ID к пользователю",
+    "USERS_TELEGRAM_UNBIND": "Отвязка Telegram ID от пользователя",
     "USERS_DISCOUNT_MANAGE": "Управление скидками пользователей",
     "USER_SESSIONS_VIEW": "Просмотр сессий пользователей",
     "USER_SESSIONS_REVOKE": "Завершение сессий пользователей",
@@ -1988,6 +2027,7 @@
     "SUBSCRIPTIONS_DEVICES_DELETE": "Удаление устройств подписок",
     "SUBSCRIPTIONS_DEVICES_DELETE_ALL": "Удаление всех устройств подписок",
     "SUBSCRIPTIONS_PANEL_DIFF_VIEW": "Просмотр расхождений с панелью",
+    "SUBSCRIPTIONS_PANEL_SQUADS_VIEW": "Просмотр названий сквадов из панели",
     "SUBSCRIPTIONS_PULL_FROM_PANEL": "Загрузка подписки из панели",
     "SUBSCRIPTIONS_PUSH_TO_PANEL": "Отправка подписки в панель",
     "SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW": "Просмотр статуса синхронизации с панелью",
@@ -2093,6 +2133,7 @@
     "ANALYTICS_PROMOCODES_VIEW": "Просмотр аналитики промокодов",
     "REMNAWAVE_NODES_VIEW": "Просмотр нод Remnawave",
     "REMNAWAVE_CLIENT_APPS_VIEW": "Просмотр приложений клиентов",
+    "OVERVIEW_RECAP_VIEW": "Просмотр итогов магазина",
     "BOT_STATUS_VIEW": "Просмотр статуса бота",
     "BOT_LOGS_VIEW": "Просмотр логов бота",
     "BANNERS_RESTORE_DEFAULT": "Восстановление баннера по умолчанию",
@@ -2202,8 +2243,7 @@
       "previewError": "Не удалось получить предпросмотр изменения курса.",
       "confirmTitle": "Подтвердите изменение курса",
       "confirmMessage": "Это пересчитает все цены в {{currency}}. Проверьте изменения ниже:",
-      "confirmButton": "Применить",
-      "unsaved": "Есть несохранённые изменения"
+      "confirmButton": "Применить"
     },
     "roundingModes": {
       "INTEGER": "Округлять до целого",
@@ -2230,7 +2270,6 @@
     },
     "matrix": {
       "title": "Матрица цен",
-      "titleHint": "Базовая цена — число, которое вы задаёте, от него считаются все валюты. В колонке опорной валюты — итоговая цена для покупателя после округления и окончания цены из «Курсов валют». Цены в остальных валютах считаются по курсу; чтобы зафиксировать цену в валюте, впишите своё значение или нажмите на булавку — закреплённая цена не меняется при смене курса.",
       "leave": {
         "title": "Уйти без сохранения?",
         "message": "Несохранённые правки цен будут потеряны.",
@@ -2247,11 +2286,14 @@
         "anchorColumnBody": "Базовая цена — число, которое вы вводите. В колонке опорной валюты показана итоговая цена для покупателя: к базовой уже применены округление и окончание. Эту колонку нельзя менять и закреплять, чтобы изменить её, поменяйте базовую цену.",
         "anchorColumnExample": "Пример: база 4.20 USD, у USD окончание 99 и округление до 2 знаков. Покупатель увидит 4.99 $.",
         "pinTitle": "Закреплённая цена",
-        "pinBody": "Чтобы задать свою цену в валюте, впишите значение в её колонку или нажмите на булавку: она закрепит текущую цену. Закреплённая цена не меняется при смене курса и базовой цены, округление и окончание к ней не применяются. Минимальная сумма действует всё равно. Повторное нажатие на булавку снимает закрепление, и цена снова считается по курсу.",
+        "pinBody": "Чтобы задать свою цену в валюте, впишите значение в её колонку или нажмите на булавку: она закрепит текущую цену. Закреплённая цена не меняется при смене курса и базовой цены, если массовое изменение не пересчитывает или не сбрасывает её; округление и окончание к ней не применяются. Минимальная сумма действует всё равно. Повторное нажатие на булавку снимает закрепление, и цена снова считается по курсу.",
         "pinExample": "Пример: вы хотите ровно 399 ₽ в месяц. Впишите 399 в колонку RUB. Если курс вырастет с 85 до 95, цена останется 399 ₽, а незакреплённые цены пересчитаются.",
         "bulkTitle": "Массовое изменение",
-        "bulkBody": "Умножает базовые цены всех планов или всех дополнений на заданное число. Закреплённые цены не меняются. Перед применением показывается список изменений.",
-        "bulkExample": "Пример: множитель 1.10 поднимает базовые цены на 10%, 0.90 снижает на 10%. База 4.99 станет 5.49.",
+        "bulkBody": "Меняет базовые цены всех планов, всех дополнений или одного плана. Три способа: на процент, одна цена для всех или лесенка по срокам. Закреплённые цены можно не трогать, пересчитать в той же пропорции, что и базовую, или сбросить, чтобы они считались по курсу. Перед применением показывается список изменений с разницей в процентах.",
+        "bulkExample": "Пример: «на процент» со значением 10 поднимает базовые цены на 10%, −10 снижает на 10%. База 4.99 станет 5.49.",
+        "ladderTitle": "Лесенка по срокам",
+        "ladderBody": "Цены всех сроков считаются от одного базового срока: его цена за день умножается на число дней, затем применяется скидка за срок. Отрицательная скидка — наценка, она нужна, когда короткие сроки должны стоить дороже за день. Базовый срок выбирается из сроков в выборке, по умолчанию 30 дней.",
+        "ladderExample": "Пример: база 30 дней за 300 ₽. Для 90 дней скидка 10%: 300 × 3 × 0.9 = 810 ₽. Для 7 дней наценка −40%: 300 × 7 / 30 × 1.4 = 98 ₽.",
         "anchorSwitchTitle": "Смена опорной валюты",
         "anchorSwitchBody": "Базовые цены и курсы пересчитываются под новую валюту, а её курс становится равным 1. Итоговые цены могут немного измениться из-за округления, поэтому перед применением показывается список изменений.",
         "anchorSwitchExample": "Пример: опорная USD меняется на RUB при курсе 85. Базовая цена 4.99 станет 424.15, а курс RUB станет 1."
@@ -2259,9 +2301,6 @@
       "description": "Базовые цены и переопределения по валютам",
       "item": "Позиция",
       "basePrice": "Базовая цена",
-      "pin": "Закрепить цену",
-      "unpin": "Открепить цену",
-      "plansSection": "Планы",
       "addonsSection": "Дополнения",
       "empty": "Нет планов и дополнений",
       "saved": "Цена обновлена.",
@@ -2270,14 +2309,36 @@
       "bulkAdjustTitle": "Массовое изменение цен",
       "scopeLabel": "Область",
       "scope": {
-        "ALL_PLANS": "Все сроки планов",
+        "ALL_PLANS": "Все планы",
         "ALL_ADDONS": "Все дополнения",
         "SELECTED": "Выбранные"
       },
-      "factorLabel": "Коэффициент",
-      "factorHint": "Базовые цены умножатся на это число: 1.10 — плюс 10%, 0.90 — минус 10%.",
-      "factorPositive": "Коэффициент должен быть больше 0.",
-      "factorPlaceholder": "например, 1.10 для +10%",
+      "modeLabel": "Способ",
+      "mode": {
+        "MULTIPLY": "На процент",
+        "SET": "Одна цена",
+        "LADDER": "Лесенка по срокам"
+      },
+      "percentLabel": "Изменение",
+      "percentHint": "Плюс повышает цены, минус снижает: 10 — на 10 % дороже, −15 — на 15 % дешевле.",
+      "percentInvalid": "Снизить можно меньше чем на 100 %.",
+      "priceLabel": "Новая базовая цена",
+      "ladderPriceLabel": "Цена за {{duration}}",
+      "ladderBaseLabel": "Базовый срок",
+      "ladderHint": "Цена срока = цена базового срока за день × дни − скидка за срок.",
+      "ladderDiscountLabel": "Скидка за срок",
+      "ladderDiscountHint": "Минус — наценка: −40 означает на 40 % дороже.",
+      "pinnedLabel": "Закреплённые цены",
+      "pinned": {
+        "KEEP": "Не трогать",
+        "SCALE": "Пересчитать",
+        "RESET": "Сбросить"
+      },
+      "pinnedHint": {
+        "KEEP": "Закреплённые цены в валютах останутся как есть.",
+        "SCALE": "Изменятся в той же пропорции, что и базовая цена.",
+        "RESET": "Закрепления снимутся, цены посчитаются по курсу."
+      },
       "preview": "Предпросмотр",
       "previewing": "Загрузка предпросмотра…",
       "previewError": "Не удалось получить предпросмотр изменения.",
@@ -2290,6 +2351,7 @@
     "diff": {
       "old": "Было",
       "new": "Стало",
+      "change": "Изменение",
       "empty": "Изменений не будет.",
       "loyaltyThreshold": "Порог уровня лояльности",
       "rescaledTransactions": "Транзакций с пересчётом якорных сумм: {{count}}"
@@ -2316,7 +2378,6 @@
       "description": "Внешние списки с автоматической синхронизацией",
       "urlPlaceholder": "https://example.com/list.txt",
       "namePlaceholder": "например, Remnashop",
-      "add": "Добавить источник",
       "removeConfirmTitle": "Удалить источник?",
       "removeConfirm": "Удалить источник «{{name}}»?\nЕго записи сразу исчезнут из чёрного списка. Уже заблокированные пользователи останутся заблокированными.",
       "entriesCount": "записей: {{count}}",
@@ -2404,12 +2465,10 @@
     "manual": {
       "title": "Ручной запуск",
       "description": "Разовая копия вне расписания",
-      "kindLabel": "Что сохранить",
       "runNow": "Запустить сейчас",
       "runHint": "Одновременно выполняется не больше одной копии каждого типа.",
       "runStarted": "Резервное копирование запущено.",
       "runError": "Не удалось запустить резервное копирование.",
-      "storageLabel": "Хранилище",
       "statCompleted": "Копий",
       "statSize": "Объём",
       "statFailed": "Ошибок"
@@ -2441,26 +2500,26 @@
     "title": "Рекламные ссылки",
     "empty": "Нет рекламных ссылок",
     "filters": {
-      "statusAll": "Все",
+      "statusAll": "Все статусы",
       "statusActive": "Активные",
-      "statusInactive": "Неактивные",
-      "period": "Период"
+      "statusInactive": "Неактивные"
     },
     "channel": {
-      "BOT": "Бот",
+      "BOT": "Telegram-бот",
       "WEBCABINET": "Веб-кабинет"
     },
     "create": {
       "button": "Новая ссылка",
       "title": "Новая рекламная ссылка",
       "nameLabel": "Название",
+      "namePlaceholder": "например, пост в Telegram",
       "codeLabel": "Код",
       "codePlaceholder": "например, spring_launch",
       "generate": "Сгенерировать",
       "costLabel": "Стоимость размещения",
       "currencyLabel": "Валюта",
       "noteLabel": "Заметка",
-      "saving": "Создание…",
+      "notePlaceholder": "Где размещена, условия, контакты",
       "saved": "Рекламная ссылка создана.",
       "error": "Не удалось создать рекламную ссылку.",
       "codeInvalid": "Только латиница, цифры, «_» и «-»."
@@ -2476,8 +2535,7 @@
     "delete": {
       "title": "Удалить рекламную ссылку?",
       "confirm": "Безвозвратно удалить «{{name}}»? Это действие нельзя отменить.",
-      "error": "Не удалось удалить ссылку.",
-      "hasUsers": "По ссылке уже пришли пользователи, поэтому её нельзя удалить. Выключите её — статистика сохранится."
+      "error": "Не удалось удалить ссылку."
     },
     "stats": {
       "attributions": "Регистрации",
@@ -2492,7 +2550,7 @@
       "notPaid": "Без покупки",
       "daily": "Регистрации по дням",
       "peak": "пик {{count}} · {{day}}",
-      "channelSplit": "Бот {{bot}} · Веб {{web}}",
+      "channelSplit": "Telegram-бот {{bot}} · Веб-кабинет {{web}}",
       "totalTrend": "за 30 дней",
       "periodTrend": "к прошлым {{days}} дн."
     },
@@ -2520,9 +2578,7 @@
       }
     },
     "channels": {
-      "label": "Каналы",
-      "all": "Все",
-      "web": "Веб"
+      "label": "Каналы"
     },
     "share": {
       "button": "Поделиться",
@@ -2858,15 +2914,11 @@
       "levelAll": "Все уровни",
       "level": "Уровень {{level}}",
       "levelBadge": "Ур. {{level}}",
-      "levelFilter": "Уровень",
-      "periodFilter": "Период",
       "search": "Пользователь",
       "searchPlaceholder": "Имя, @username, ID или email",
-      "rewardStatusFilter": "Награды",
       "rewardStatusAll": "Любые",
       "rewardStatusWith": "С наградами",
       "rewardStatusWithout": "Без наград",
-      "rewardTypeFilter": "Тип награды",
       "rewardTypeAll": "Все типы",
       "columns": {
         "referred": "Приглашённый",
@@ -2912,14 +2964,14 @@
       "DURATION": "Дополнительные дни",
       "TRAFFIC": "Дополнительный трафик",
       "DEVICES": "Дополнительные устройства",
-      "SUBSCRIPTION": "Бесплатная подписка",
+      "SUBSCRIPTION": "Подписка",
       "PERSONAL_DISCOUNT": "Персональная скидка",
       "PURCHASE_DISCOUNT": "Скидка на покупку"
     },
     "availability": {
       "ALL": "Все",
-      "NEW": "Новые пользователи",
-      "EXISTING": "Существующие пользователи",
+      "NEW": "Ещё не покупали подписку",
+      "EXISTING": "Уже покупали подписку",
       "INVITED": "Только приглашённые",
       "ALLOWED": "Только из списка"
     },
@@ -2936,8 +2988,7 @@
       "rewardPlanLabel": "План",
       "rewardPlanPlaceholder": "Выберите план",
       "rewardPlanEmpty": "Нет планов",
-      "rewardDurationDaysLabel": "Длительность, дней",
-      "saving": "Создание…",
+      "rewardDurationDaysLabel": "Длительность",
       "saved": "Промокод создан.",
       "error": "Не удалось создать промокод.",
       "daysSuffix": "дн.",
@@ -2956,16 +3007,16 @@
     "status": {
       "ACTIVE": "Активен",
       "INACTIVE": "Выключен",
-      "EXPIRED": "Истёк"
+      "EXPIRED": "Истёк",
+      "EXHAUSTED": "Исчерпан"
     },
     "filters": {
       "statusAll": "Все статусы",
-      "rewardAll": "Все награды",
-      "status": "Статус",
-      "reward": "Награда"
+      "rewardAll": "Все награды"
     },
     "columns": {
       "code": "Промокод",
+      "availability": "Кому доступен",
       "status": "Статус",
       "used": "Использовано"
     },
@@ -2986,8 +3037,8 @@
       "availabilityLabel": "Кому доступен",
       "allowedUserIdsLabel": "ID пользователей",
       "allowedUserIdsPlaceholder": "Введите ID и нажмите Enter",
-      "plansLabel": "Планы",
-      "plansHint": "Ничего не выбрано — любой план",
+      "plansLabel": "На какие планы действует",
+      "plansAll": "Все",
       "plansPromocodesOff": "Неактивные планы не принимают промокоды",
       "expiresLabel": "Действует до",
       "expiresPlaceholder": "Без срока",
@@ -2998,13 +3049,13 @@
     },
     "stats": {
       "promocodes": "Промокоды",
-      "active": "активных: {{count}}",
+      "active": "Активных: {{count}}",
       "activations": "Активации",
-      "users": "пользователей: {{count}}",
+      "users": "Пользователей: {{count}}",
       "grantedDays": "Выдано дней",
-      "subscriptions": "подписок: {{count}}",
+      "subscriptions": "Подписок: {{count}}",
       "discounts": "Скидки",
-      "discountedOrders": "заказов: {{count}}"
+      "discountedOrders": "Заказов: {{count}}"
     },
     "details": {
       "tabs": {
@@ -3025,17 +3076,18 @@
   "plans": {
     "title": "Планы",
     "empty": "Нет планов",
-    "unlimited": "Без ограничений",
     "reorderError": "Не удалось изменить порядок планов.",
-    "description": "Клиенты видят планы в этом порядке. Перетащите карточку за ручку, чтобы изменить его.",
-    "activeCount": "активных: {{count}}",
     "noMatches": "Ничего не найдено",
     "filters": {
       "all": "Все",
       "active": "Активные",
       "inactive": "Скрытые"
     },
+    "codeLabel": "Код",
+    "trialBadge": "Пробный",
     "priceFrom": "от",
+    "enable": "Включить",
+    "disable": "Выключить",
     "perDays_one": "/ {{count}} день",
     "perDays_few": "/ {{count}} дня",
     "perDays_many": "/ {{count}} дней",
@@ -3073,19 +3125,25 @@
         "MONTH_ROLLING": "Ежемесячно (скользящее)"
       },
       "isTrialLabel": "Пробный план",
-      "isActiveLabel": "Активен",
-      "durationsHint": "Цены по валютам настраиваются в разделе «Ценообразование».",
       "trialDurationHint": "У пробного плана одна длительность. Цена 0 — бесплатный пробный период по кнопке; цена выше — продаётся клиенту один раз.",
       "daysLabel": "Дней",
       "basePriceLabel": "Базовая цена",
       "saved": "План сохранён.",
       "error": "Не удалось сохранить план.",
       "durationsError": "Параметры плана сохранены, длительности — нет: {{error}}",
+      "internalSquadsLabel": "Внутренние сквады",
+      "externalSquadLabel": "Внешний сквад",
+      "externalSquadNone": "Нет",
+      "squadsEmpty": "В панели нет сквадов",
+      "squadsError": "Параметры плана сохранены, сквады — нет: {{error}}",
+      "accessError": "План создан, доступ — нет: {{error}}",
       "sections": {
         "durations": "Длительности"
       },
       "publicCodeHint": "Генерируется автоматически. Для плана «по ссылке» это код доступа — передавайте его только тем, кто должен купить план.",
       "tagHint": "Тег пользователя в Remnawave: латинские заглавные буквы, цифры и «_»",
+      "iconNoPacks": "Паков эмодзи пока нет. Импортируйте пак в настройках бота.",
+      "iconClear": "Убрать иконку",
       "badgeLabel": "Бейдж",
       "badgeHint": "Показывается покупателям на карточке плана",
       "badges": {
@@ -3095,28 +3153,26 @@
       },
       "trafficShortLabel": "Трафик",
       "deviceShortLabel": "Устройства",
-      "limitHint": "0 — без ограничений",
       "trafficSuffix": "ГБ",
       "deviceSuffix": "шт.",
       "daysSuffix": "дн.",
       "addPresetLabel": "Добавить:",
       "customDuration": "Своя",
-      "isActiveHint": "Выключенный план не виден клиентам",
       "isTrialHint": "Предлагается как пробный период",
+      "isTrialUnavailableHint": "Недоступно: план открыт только существующим пользователям",
       "allowBonusDaysLabel": "Бонусные дни",
       "allowBonusDaysHint": "Клиенты могут тратить бонусные дни на подписки этого плана",
       "allowPromocodesLabel": "Промокоды",
-      "allowPromocodesHint": "Промокоды на дни, трафик и устройства применяются к подпискам плана; уже активированные остаются",
-      "durationsAfterCreate": "Длительности добавляются после создания плана."
+      "allowPromocodesHint": "Клиенты могут применять промокоды на дни, трафик и устройства к подпискам этого плана"
     },
     "access": {
       "button": "Доступ",
       "title": "Доступ к плану",
       "availability": {
-        "ALL": "Все",
-        "NEW": "Новые пользователи",
-        "EXISTING": "Существующие пользователи",
-        "INVITED": "Только приглашённые",
+        "ALL": "Всем",
+        "NEW": "Новым пользователям",
+        "EXISTING": "Существующим пользователям",
+        "INVITED": "Только приглашённым",
         "ALLOWED": "Только из списка",
         "LINK": "Только по ссылке"
       },
@@ -3124,7 +3180,7 @@
       "emailsLabel": "Разрешённые адреса почты",
       "saved": "Доступ обновлён.",
       "error": "Не удалось обновить доступ.",
-      "availabilitySection": "Кто видит план",
+      "availabilitySection": "Доступ",
       "restricted": "Ограничен",
       "availabilityHint": {
         "ALL": "Любой пользователь",
@@ -3139,7 +3195,8 @@
       "recipients_many": "Доступ: {{count}} получателей",
       "recipients_other": "Доступ: {{count}} получателя",
       "telegramIdsPlaceholder": "Telegram ID, Enter — добавить",
-      "emailsPlaceholder": "email, Enter — добавить"
+      "emailsPlaceholder": "email, Enter — добавить",
+      "trialUnavailable": "Недоступно для пробного плана"
     },
     "discount": {
       "button": "Скидка",
@@ -3163,7 +3220,7 @@
     "delete": {
       "button": "Удалить план",
       "confirmTitle": "Удалить план?",
-      "confirm": "Безвозвратно удалить план «{{name}}»? Это действие нельзя отменить. Промокоды, ограниченные только этим планом, станут доступны для всех планов.",
+      "confirm": "Безвозвратно удалить план «{{name}}»? Это действие нельзя отменить. Промокоды, ограниченные только этим планом, будут выключены.",
       "error": "Не удалось удалить план."
     }
   },
@@ -3224,13 +3281,10 @@
       "error": "Не удалось вернуть Stars."
     },
     "filters": {
-      "status": "Статус",
-      "gateway": "Шлюз",
-      "purchaseType": "Тип покупки",
-      "period": "Период",
       "statusAll": "Все статусы",
       "gatewayAll": "Все шлюзы",
-      "purchaseTypeAll": "Все типы"
+      "purchaseTypeAll": "Все типы",
+      "unfulfilled": "Оплачена, не выдана"
     },
     "status": {
       "PENDING": "Ожидает",
@@ -3251,8 +3305,8 @@
       "CHANGE": "Смена плана"
     },
     "channel": {
-      "BOT": "Бот",
-      "CABINET": "Кабинет"
+      "BOT": "Telegram-бот",
+      "CABINET": "Веб-кабинет"
     },
     "discountSource": {
       "NONE": "Нет",
@@ -3265,8 +3319,10 @@
       "noDiscount": "Без скидки",
       "period": "Период",
       "plan": "План",
+      "previousPlan": "Предыдущий план",
       "purchaseType": "Тип покупки",
-      "targetSubscription": "Целевая подписка",
+      "targetSubscription": "Подписка",
+      "notIssued": "Ещё не выдана",
       "externalPaymentId": "Внешний ID платежа",
       "discount": "Скидка {{percent}}% · {{source}}",
       "planDiscount": "Скидка {{percent}}% · план",
@@ -3289,7 +3345,6 @@
     "title": "Подписки",
     "empty": "Нет подписок",
     "noMatches": "Ничего не найдено",
-    "description": "Подписки пользователей, синхронизированные с Remnawave",
     "trial": "Пробная",
     "unlimited": "Без ограничений",
     "trafficUnlimited": "Трафик ∞",
@@ -3315,8 +3370,7 @@
     "fields": {
       "traffic": "Трафик",
       "devices": "Устройства",
-      "expires": "Истекает",
-      "squads": "Сквадов: {{count}}"
+      "expires": "Истекает"
     },
     "edit": {
       "toUser": "К пользователю",
@@ -3340,13 +3394,31 @@
       "expireAtInPast": "Выберите дату в будущем.",
       "plusDays": "+{{days}} дн.",
       "tabs": {
-        "params": "Параметры",
+        "params": "Данные",
         "plan": "План",
         "devices": "Устройства"
-      }
+      },
+      "addonsHint": "Аддоны сверху: +{{value}}"
+    },
+    "details": {
+      "paidTotal": "Оплачено с последней смены плана",
+      "subscription": "Подписка",
+      "trafficUsed": "израсходовано {{value}}",
+      "trafficLeftOf": "осталось из {{limit}}",
+      "trafficUnlimited": "безлимитный трафик",
+      "trafficLimit": "лимит трафика",
+      "daysLeft": "Осталось",
+      "devicesUpTo": "до {{limit}}",
+      "panel": "Панель",
+      "createdAt": "Создана",
+      "firstConnectedAt": "Первое подключение",
+      "link": "Ссылка",
+      "remnawaveId": "ID в Remnawave",
+      "internalSquads": "Внутренние сквады",
+      "externalSquad": "Внешний сквад",
+      "addons": "Аддоны"
     },
     "delete": {
-      "button": "Удалить подписку",
       "confirmTitle": "Удалить подписку?",
       "confirm": "Безвозвратно удалить подписку #{{id}}? Это действие нельзя отменить.",
       "error": "Не удалось удалить подписку."
@@ -3365,7 +3437,7 @@
       "title": "Выдача подписки",
       "planLabel": "План",
       "planPlaceholder": "Выберите план",
-      "durationLabel": "Срок",
+      "durationLabel": "Длительность",
       "submit": "Выдать",
       "done": "Подписка выдана.",
       "error": "Не удалось выдать подписку."
@@ -3375,19 +3447,23 @@
       "days_few": "{{count}} дня",
       "days_many": "{{count}} дней",
       "days_other": "{{count}} дня",
-      "custom": "Свой срок",
+      "custom": "Своя длительность",
       "customLabel": "Дней",
       "keep": "Оставить текущий (до {{date}})"
     },
     "plan": {
+      "title": "Снимок плана",
+      "trial": "Пробный",
+      "code": "Код",
+      "credit": "Накопленный зачёт",
       "name": "План",
-      "price": "Оплачено",
-      "duration": "Срок",
+      "price": "Стоимость",
+      "duration": "Длительность",
       "change": "Сменить план",
       "submit": "Сменить",
       "changed": "План изменён.",
       "error": "Не удалось сменить план.",
-      "resetWarning": "Дополнения, ручные лимиты и тег будут сброшены к значениям нового плана."
+      "resetWarning": "Дополнения будут удалены. Лимиты, стратегия сброса, сквады и тег станут как в новом плане. Номер подписки изменится, ссылка останется прежней."
     },
     "devices": {
       "empty": "Устройств нет",
@@ -3442,12 +3518,14 @@
       "bulk": {
         "pull": "Из панели",
         "push": "В панель",
-        "pullTitle": "Синхронизировать всё из панели?",
-        "pullConfirm": "Каждая расходящаяся подписка возьмёт из панели статус, срок, лимиты, сквады, тег и ссылку. Пользователь панели без подписки, принадлежащий пользователю магазина, будет импортирован.",
-        "pushTitle": "Синхронизировать всё в панель?",
-        "pushConfirm": "Панель получит настройки и состояние вкл./выкл. из магазина для каждой расходящейся подписки; подписке без пользователя в панели будет создан новый, а пользователь панели без подписки, принадлежащий пользователю магазина, будет удалён из панели.",
+        "pullAction": "Обновить из панели",
+        "pullTitle": "Обновить подписки из панели?",
+        "pullConfirm": "Магазин возьмёт из панели статус, срок, лимиты, сквады, тег и ссылку для подписок, которые отличаются.\n\nЕсли у подписки нет пользователя в панели, она будет удалена из магазина.\n\nПользователь панели без подписки будет импортирован, если он принадлежит пользователю магазина.",
+        "pushAction": "Отправить в панель",
+        "pushTitle": "Отправить подписки в панель?",
+        "pushConfirm": "Панель получит из магазина срок, лимиты, сквады, статус включения и контакты владельца для подписок, которые отличаются.\n\nЕсли у подписки нет пользователя в панели, он будет создан заново, а ссылка на подписку изменится.\n\nПользователь панели без подписки будет удалён из панели, если он принадлежит пользователю магазина. Это необратимо.",
         "started": "Синхронизация запущена.",
-        "finished": "Синхронизация завершена: обновлено {{updated}}, импортировано {{imported}}, нет в панели {{missing}}, ошибок {{failed}}.",
+        "finished": "Синхронизация завершена: обновлено {{updated}}, импортировано {{imported}}, удалено {{missing}}, ошибок {{failed}}.",
         "finishedToPanel": "Синхронизация завершена: обновлено {{updated}}, пересоздано в панели {{recreated}}, удалено из панели {{deleted}}, ошибок {{failed}}.",
         "error": "Не удалось запустить синхронизацию."
       }
@@ -3492,17 +3570,55 @@
     "snapshotFailed": "Нет доступа к буферу обмена.",
     "openDebugPage": "Открыть страницу отладки"
   },
+  "recap": {
+    "copied": "Картинка скопирована.",
+    "copyError": "Не удалось скопировать картинку.",
+    "downloadError": "Не удалось сохранить картинку.",
+    "title": "Итоги Remnashop",
+    "revenueTotal": "Выручка за всё время",
+    "customers": "Всего\nклиентов",
+    "payers": "Платящие клиенты",
+    "activeSubscriptions": "Активные подписки",
+    "monthRevenue": "Выручка за месяц",
+    "newCustomers": "Новые\nклиенты",
+    "newPayers": "Новые платящие",
+    "nodes": "Ноды",
+    "countries": "Страны",
+    "transactions": "Транзакции",
+    "since": "{{date}}",
+    "blocks": {
+      "totals": "Итоги",
+      "month": "Этот месяц",
+      "infra": "Инфраструктура"
+    },
+    "fields": {
+      "revenueTotal": "Выручка",
+      "monthRevenue": "Выручка за месяц",
+      "customers": "Всего клиентов",
+      "payers": "Платящие клиенты"
+    },
+    "controls": {
+      "blocks": "Блоки",
+      "hide": "Скрыть значения",
+      "note": "Своя подпись",
+      "notePlaceholder": "Например, snoups, спасибо!",
+      "copy": "Копировать",
+      "download": "Скачать"
+    }
+  },
   "debugPage": {
     "title": "Отладка",
+    "tabs": {
+      "kit": "UI-кит",
+      "variants": "Варианты"
+    },
     "kit": {
       "intro": {
-        "title": "UI-кит",
         "caption": "Общие компоненты из shared/ui — живые. Под каждым: как называется и где используется.",
-        "meta": "shared/ui",
-        "nav": "Разделы"
+        "meta": "shared/ui"
       },
       "u": {
-        "announcementsCarousel": "Шортсы от разработчика: карусель историй поверх панели управления",
+        "announcementsCarousel": "Шортсы от разработчика: карусель историй поверх панели управления.",
         "primary": "Основные действия, футеры диалогов и форм. 14px.",
         "secondary": "Шапки карточек и рядом с полями. 12.5px semibold, одна высота с плашками.",
         "glass": "Фон капсулы PillTabs, 13px medium — для действий рядом с ней; glassAccent — главное действие, glassDanger — опасное.",
@@ -3510,15 +3626,14 @@
         "disabled": "Неактивная кнопка — прозрачность 50%.",
         "loadMore": "«Показать ещё» под списками.",
         "dashed": "Разовая: «Добавить» в редакторе диалогов и форме администратора.",
-        "copy": "В поле 38px, pr-1 — отступ 4, радиус 19−1−4 = 14.",
+        "copy": "CopyInput: копирование в конце поля 36px, pr-1.",
         "clear": "В поле даты, right-2 — отступ 8, радиус 19−1−8 = 10.",
         "monthCalendar": "Режим одной даты и диапазона, как внутри поповера. Диапазон: первый клик задаёт начало, второй — конец.",
         "chip": "На чипе, pr-0.5 — отступ 2.",
         "fieldRow": "Рядом с полем 38px — одна высота.",
         "cardCorner": "В углу карточки p-4, −mr/−mt 1.5 — отступ 10/10.",
         "toast": "В тосте p-3.5, −my/−mr 1 — отступ 10 со всех сторон.",
-        "dialogClose": "В шапке диалога px-5 py-4.",
-        "tabBar": "Табы-ссылки страниц: настройки, рефералы, аналитика.",
+        "dialogClose": "В шапке диалога p-4, по высоте иконки 36px.",
         "dialogTabs": "Вкладки диалогов: реклама, администратор, событие.",
         "segmented": "Фильтры страниц: планы, пользователи, подписки.",
         "period": "Выбор периода: транзакции, реклама, обзор, аналитика.",
@@ -3529,53 +3644,39 @@
         "tag": "Счётчики и метки: серая плашка без uppercase.",
         "badgeCount": "Число в кружке: подписки в списке пользователей; растягивается, если цифр больше одной.",
         "badgeIcon": "Статус с иконкой.",
-        "statusPill": "Статус в шапке карточки высотой с кнопку: бот, push-уведомления. Не капсом, в отличие от Badge.",
-        "field": "Подпись, поле 38px и текст под ним.",
-        "fieldInfo": "info — подсказка-вопросик, aside — звёздочка или счётчик.",
-        "fieldError": "error заменяет hint; кнопка рядом — secondary field.",
-        "textarea": "Многострочное поле, со счётчиком у подписи.",
-        "textInput": "Неактивное поле.",
         "search": "Стеклянное поле — только фильтры и поиск.",
         "select": "Выпадающий выбор; compact — 36px, в редакторе.",
-        "switch": "Переключатель: вкл, выкл, недоступен.",
         "slider": "Ползунок: значение в диапазоне, обычный и недоступный.",
         "color": "Выбор цвета акцента.",
         "labels": "Подписи: у форм — 14px, у фильтров и колонок — надзаголовок.",
-        "cardPage": "Карточка страницы и настроек, p-4.",
         "cardForm": "Секция формы в диалоге, заголовок 11px.",
         "cardList": "Строки InfoRow, заголовок с иконкой.",
-        "cardBare": "Контейнер без отступов: редактор, таблицы.",
         "kpi": "Плитки с цифрой; highlighted — выделенная.",
         "kpiIcon": "С иконкой и подсказкой у подписи.",
         "list": "Эталонный список строк: администраторы, журнал, транзакции, реклама, рефералы.",
         "pressable": "Основа всех нажимаемых элементов: позиционирование и волна, без своего вида. as выбирает тег.",
-        "settingsRowPress": "Кликабельная строка настроек (OAuth, шлюзы, эмодзи-паки): весь ряд нажимается, свои контролы — нет; шеврон через expanded, значок через glyph.",
         "listRow": "Строка таблицы, открывающая подробности: Pressable + LIST_ROW_CLASS, сетка — через className. Выключенная (нет права открыть) — без наведения и волны, третья строка.",
         "table": "Таблица на странице: когорты аналитики.",
         "compact": "Компактная таблица в диалоге: изменения цен.",
-        "dialogHeader": "Шапка всех диалогов: иконка или glyph, бейджи, подзаголовок, действия, крестик.",
+        "dialogHeader": "Шапка всех glass-диалогов: иконка или glyph, подзаголовок, тон danger/warning, действия, крестик.",
         "modal": "Оболочка диалога: sm и lg.",
         "confirm": "Подтверждение: обычное и опасное.",
-        "guide": "Инструкция в отдельном окне, открывается значком справа.",
         "fieldHint": "Вопросик у подписи: вверх, вниз, у правого края.",
         "tooltip": "Подпись к кнопке или бейджу при наведении, с любой стороны.",
         "actionMenu": "Меню действий в строке списка.",
         "popover": "Оболочки меню: стеклянные (отступ 1.5 и 3) и непрозрачная — эмодзи и тосты.",
         "spinner": "Загрузка: появляется через 150 мс, высоты как у пустого состояния.",
         "empty": "Пустые состояния: страница, карточка, поиск.",
-        "error": "Ошибка загрузки вместо списка, карточки, формы или вкладки",
+        "error": "Ошибка загрузки вместо списка, карточки, формы или вкладки.",
         "collapse": "Раскрытие по высоте за 0,2 с.",
         "brand": "Логотип и иконки провайдеров входа.",
-        "suffixInput": "Число с единицей после значения: дни, валюта. Суффикс занимает свою ширину; ошибка и disabled — как у TextInput. Планы, промокоды, курсы валют.",
         "groupToggle": "Заголовок сворачиваемой группы: шеврон, название, счётчик; leading — точка статуса. Транзакции, журнал, рефералы, подписки, матрица цен.",
         "actionMenuTrigger": "Меню за кнопкой с подписью, например «Поделиться» в футере диалога. Неактивный пункт объясняет причину при наведении.",
         "segmentedStretch": "Переключатель на всю ширину поля формы, например каналы рекламной ссылки.",
-        "kpiTrend": "Динамика рядом со значением: зелёная — рост, красная — падение, серая — без изменений. Период — в попапе.",
-        "passwordInput": "Пароли входа, bootstrap, профиля и секреты клиентов OAuth",
-        "chipsInput": "Списки доступа промокода и плана: ID и email; неверное значение остаётся в поле, красным",
-        "cardHeader": "Шапка карточки страниц и настроек: иконка, заголовок, описание, правый блок, разделитель",
-        "settingsRow": "Строки карточек настроек (вкладка «Общее»): иконка, подпись, описание или вопросик, элемент справа. Тонкая линия между строками раздела, простая — между разделами; одна кнопка «Сохранить» с пометкой о несохранённом.",
-        "userRow": "Пользователи в списках диалогов: рекламная ссылка, промокод, приглашённые, награды рефералов",
+        "segmentedPanel": "Glass-капсула рядом с TabBar в плавающей панели страницы, например период аналитики.",
+        "kpiTrend": "Динамика рядом со значением: зелёная — рост, красная — падение, серая — без изменений. Период — в попапе. lowerIsBetter: рост красный, спад зелёный (возвраты).",
+        "chipsInput": "Списки доступа промокода и плана: ID и email; неверное значение остаётся в поле, красным.",
+        "userRow": "Пользователи в списках диалогов: рекламная ссылка, промокод, приглашённые, награды рефералов.",
         "labeledDivider": "Линия с подписью посередине: «или» на входе, блок доната.",
         "refetchSpinner": "Спиннер в углу загруженного списка, пока он обновляется.",
         "buttonLoading": "icon — иконка перед подписью; isLoading меняет её на спиннер (или добавляет его) и блокирует кнопку.",
@@ -3587,9 +3688,16 @@
         "glassSwitch": "48×28; выключенный — вдавленный, как поля. Бегунок тянется при зажатии.",
         "glassToggle": "Капсула-поле с тумблером: нажатие в любом месте переключает. Пара делит строку пополам.",
         "glassTextWidth": "Контролы шириной с текст в поле: выравнивает поле с тумблером по полю, подогнанному под плейсхолдер.",
-        "glassTabBar": "Вкладки-ссылки в капсуле 48px; стеклянный диалог — плотная матовая панель над лёгким затемнением.",
+        "glassTabBar": "Вкладки-ссылки в капсуле 48px: страницы настроек, эта страница.",
         "glassGuide": "Кнопка «?» в строке со стеклянным диалогом подсказки: текст 13px, заголовки шагов, значения для копирования, акцентная заметка.",
-        "glassStatus": "Статус в шапке карточки, высотой с кнопку: цвет состояния тонированной капсулой с точкой."
+        "glassSecret": "Секрет, который показывается один раз: API-токен, сгенерированный пароль. Закрывается только кнопкой «Готово».",
+        "cardPill": "Лимиты на карточке плана и в диалоге подписки: трафик, устройства.",
+        "chartTooltip": "Подсказка графика в аналитике и обзоре: точка для одной серии, строка на значение.",
+        "glassStatus": "Статус в шапке карточки, высотой с кнопку: цвет состояния тонированной капсулой с точкой.",
+        "dateTime": "Дата и время на календаре приложения: время отправки рассылки.",
+        "fullScreen": "Отдельные экраны без панели: сбой приложения, 404, ошибка и недоступность сервера, ожидание входа через OAuth. Открываются поверх окна, крестик слева сверху закрывает.",
+        "pageRouteError": "Сбой одной страницы дашборда: меню и шапка остаются.",
+        "editorFields": "Собственное поле редактора диалогов, в его стиле редактора."
       },
       "s": {
         "openCarousel": "Открыть карусель",
@@ -3599,10 +3707,8 @@
         "edit": "Редактировать",
         "delete": "Удалить",
         "sync": "Синхронизировать",
-        "generate": "Сгенерировать",
         "add": "Добавить",
         "disabled": "Недоступна",
-        "signOut": "Выйти везде",
         "name": "Название",
         "namePlaceholder": "Например, Месяц",
         "nameHint": "Видно пользователям в боте.",
@@ -3610,8 +3716,6 @@
         "codeError": "Только латиница и цифры.",
         "login": "Логин",
         "password": "Пароль",
-        "ids": "Telegram ID",
-        "idsHint": "По одному в строке.",
         "search": "Поиск",
         "searchPlaceholder": "Имя, логин или ID",
         "status": "Активна",
@@ -3652,18 +3756,10 @@
         "tooltipSide": "Подпись, side=\"{{side}}\"",
         "tooltipLong": "Удалить резервную копию. Файл будет удалён с диска без возможности восстановления.",
         "tooltipBadge": "Как у бейджа в редакторе диалогов.",
-        "guideRow": "Настройка, у которой есть инструкция",
-        "guideOpen": "Открыть инструкцию",
-        "guideTitle": "Как подключить вход через GitHub",
-        "guideStep": "1. Создайте OAuth-приложение",
-        "guideStepText": "Откройте настройки разработчика на GitHub и создайте новое приложение.",
-        "guideValue": "Callback URL",
-        "guideNote": "URL должен совпадать до символа.",
         "overview": "Обзор",
         "settings": "Настройки",
         "month": "Месяц",
         "filterLabel": "Статус",
-        "days": "дн.",
         "today": "Сегодня",
         "active": "Активные",
         "share": "Поделиться",
@@ -3674,9 +3770,16 @@
         "webUnavailable": "Не задан CABINET_DOMAIN",
         "trendMonth": "за 30 дней",
         "trendWeek": "к прошлым 7 дн.",
-        "cardHeaderDescription": "Дампы базы по расписанию, хранятся на сервере и ротируются по лимиту файлов.",
         "or": "или",
-        "hours": "ч"
+        "hours": "ч",
+        "screen": {
+          "crash": "Что-то пошло не так",
+          "notFound": "404",
+          "serverError": "Ошибка сервера",
+          "serverUnreachable": "Сервер недоступен",
+          "oauthCallback": "Завершаем вход"
+        },
+        "refunds": "Возвраты"
       },
       "sections": {
         "buttons": {
@@ -3692,22 +3795,22 @@
         "tabs": {
           "nav": "Табы",
           "title": "Табы и выбор",
-          "meta": "TabBar · DialogTabs · Pills · ChoiceChip"
+          "meta": "TabBar · DialogTabs · Pills · ChoiceChip · ToggleCapsule · GroupToggle"
         },
         "badges": {
           "nav": "Бейджи",
           "title": "Бейджи",
-          "meta": "Badge · Tag"
+          "meta": "Badge · Tag · StatusPill · CardPill"
         },
         "fields": {
           "nav": "Поля",
           "title": "Поля",
-          "meta": "Field · TextInput · SearchField"
+          "meta": "Field · Input · TextArea · SelectDropdown · DatePickerField · Switch"
         },
         "cards": {
-          "nav": "Карточки",
-          "title": "Карточки",
-          "meta": "Card · CardHeader · KpiTile · InfoRow · UserRow"
+          "nav": "Секции",
+          "title": "Секции и карточки",
+          "meta": "Section · Row · DialogCard · KpiTile · InfoRow · UserRow"
         },
         "tables": {
           "nav": "Таблицы",
@@ -3717,12 +3820,12 @@
         "dialogs": {
           "nav": "Диалоги",
           "title": "Диалоги",
-          "meta": "Modal · DialogHeader · ConfirmDialog"
+          "meta": "Modal · DialogHeader · ConfirmDialog · GuideDialog · OneTimeSecretDialog"
         },
         "hints": {
           "nav": "Подсказки",
           "title": "Подсказки",
-          "meta": "FieldHint · Tooltip · GuideDialog"
+          "meta": "FieldHint · Tooltip · ChartTooltip"
         },
         "menus": {
           "nav": "Меню",
@@ -3734,20 +3837,20 @@
           "title": "Состояния",
           "meta": "Spinner · EmptyState · ErrorState · Collapse · бренд"
         },
-        "glass": {
-          "nav": "Стекло",
-          "title": "Стекло",
-          "meta": "shared/ui/glass · Section · Row · Input · Field · Switch"
+        "screens": {
+          "nav": "Экраны",
+          "title": "Экраны",
+          "meta": "FullScreenMessage · PageRouteError"
         }
       },
       "variants": {
-        "title": "Варианты на выбор",
-        "caption": "Живые копии разметки, которая сейчас разъехалась по страницам. Выбранный вариант станет общим компонентом."
+        "caption": "Живые копии разметки, которую переделывают, рядом с текущей. Когда новый вариант одобрен, копия удаляется.",
+        "planCards": "Карточки планов",
+        "old": "Старый вариант",
+        "new": "Текущий вариант",
+        "planName": "Стандартный тариф",
+        "previewOnly": "Это предпросмотр. Настоящие планы не изменяются."
       }
-    },
-    "tabs": {
-      "kit": "UI-кит",
-      "variants": "Варианты"
     }
   },
   "pagination": {
@@ -3960,6 +4063,7 @@
     "PLAN_DURATION_NOT_FOUND": "В плане нет такой длительности.",
     "PLAN_DURATION_PRICE_REQUIRED": "Бесплатная длительность бывает только у пробного плана.",
     "PLAN_IN_USE": "План ещё используется.",
+    "PLAN_LIMIT_REQUIRED": "Плану этого типа нужен лимит трафика или устройств не меньше 1.",
     "PLAN_NAME_TAKEN": "План с таким названием уже есть.",
     "PLAN_NOT_AVAILABLE": "Этот план недоступен для покупки.",
     "PLAN_NOT_FOUND": "План не найден.",
@@ -3967,6 +4071,8 @@
     "PLAN_NO_SQUADS": "Чтобы включить план, нужен хотя бы один сквад.",
     "PLAN_PUBLIC_CODE_TAKEN": "План с таким кодом уже есть.",
     "PLAN_REORDER_INCOMPLETE": "Новый порядок должен включать каждый план ровно один раз.",
+    "PLAN_TRIAL_BADGE": "У пробного плана не может быть бейджа.",
+    "PLAN_TRIAL_EXISTING_ACCESS": "Пробный план нельзя открыть только существующим пользователям.",
     "PLAN_TRIAL_SINGLE_DURATION": "У пробного плана ровно одна длительность.",
     "PLAN_USED_BY_PROMOCODE": "План ещё используется в промокоде.",
     "POINTS_BELOW_ZERO": "Баллы не могут стать меньше нуля.",
@@ -4117,7 +4223,7 @@
       "PENDING": "Ожидает",
       "SENT": "Отправлено",
       "FAILED": "Ошибка",
-      "BLOCKED": "Заблокировал бота",
+      "BLOCKED": "Бот заблокирован",
       "CANCELED": "Отменено",
       "RECALLED": "Отозвано"
     },
@@ -4126,10 +4232,10 @@
       "MARKETING": "Акция"
     },
     "media": {
-      "PHOTO": "фото",
-      "VIDEO": "видео",
-      "ANIMATION": "анимация",
-      "DOCUMENT": "документ"
+      "PHOTO": "Фото",
+      "VIDEO": "Видео",
+      "ANIMATION": "Анимация",
+      "DOCUMENT": "Документ"
     },
     "meta": {
       "promocode": "промокод",
@@ -4140,18 +4246,12 @@
       "plans": "Планы: {{names}}",
       "expiresWithin": "Истекает через ≤ {{days}} дн.",
       "expiredWithin": "Истекла ≤ {{days}} дн. назад",
-      "paid": "платили",
-      "notPaid": "не платили",
+      "paid": "Платили",
+      "notPaid": "Не платили",
       "locales": "Языки: {{locales}}",
       "registered": "Регистрация {{from}} – {{to}}",
-      "referred": "приглашённые",
-      "notReferred": "не приглашённые",
-      "subscription": {
-        "ACTIVE": "с подпиской",
-        "TRIAL": "на пробном",
-        "EXPIRED": "подписка истекла",
-        "NONE": "без подписки"
-      },
+      "referred": "Приглашённые",
+      "notReferred": "Не приглашённые",
       "users_one": "{{count}} клиент",
       "users_few": "{{count}} клиента",
       "users_many": "{{count}} клиентов",
@@ -4159,79 +4259,85 @@
       "adLinks_one": "{{count}} рекламная ссылка",
       "adLinks_few": "{{count}} рекламные ссылки",
       "adLinks_many": "{{count}} рекламных ссылок",
-      "adLinks_other": "{{count}} рекламной ссылки"
+      "adLinks_other": "{{count}} рекламной ссылки",
+      "subscriptionList": "Подписка: {{names}}",
+      "notConnected": "Не подключались ≤ {{days}} дн.",
+      "withTelegram": "С Telegram",
+      "withoutTelegram": "Без Telegram",
+      "withEmail": "С почтой",
+      "withoutEmail": "Без почты",
+      "filters_one": "{{count}} фильтр",
+      "filters_few": "{{count}} фильтра",
+      "filters_many": "{{count}} фильтров",
+      "filters_other": "{{count}} фильтра"
     },
-    "description": "Сообщения клиентам в Telegram, канал и на почту",
     "create": "Новая рассылка",
-    "promoBadge": "Акция",
     "search": "Поиск по тексту",
-    "empty": "Рассылок пока нет.",
+    "empty": "Нет рассылок",
     "noMatches": "Ничего не найдено",
     "kpi": {
-      "sending": "Идёт сейчас",
+      "sending": "Запущены",
       "scheduled": "Запланировано",
       "nextScheduled": "Ближайшая — {{date}}",
-      "delivered": "Доставлено за 30 дней",
-      "deliveredShare": "{{percent}} от обработанных",
-      "optedOut": "Отписались от акций",
-      "optedOutShare": "{{percent}} доступных клиентов",
-      "reachableByEmail": "Доступны по почте"
+      "delivered": "Доставлено",
+      "optedOut": "Отписались",
+      "optedOutOf_one": "Из {{count, number}} клиента",
+      "optedOutOf_few": "Из {{count, number}} клиентов",
+      "optedOutOf_many": "Из {{count, number}} клиентов",
+      "optedOutOf_other": "Из {{count, number}} клиентов",
+      "deliveredOf_one": "из {{count, number}} отправленного",
+      "deliveredOf_few": "из {{count, number}} отправленных",
+      "deliveredOf_many": "из {{count, number}} отправленных",
+      "deliveredOf_other": "из {{count, number}} отправленных",
+      "period30": "За последние 30 дней",
+      "byEmail": "почтой: {{count, number}}"
     },
     "filters": {
-      "all": "Все",
+      "all": "Все статусы",
       "DRAFT": "Черновики",
       "SCHEDULED": "Запланированы",
-      "SENDING": "Идут",
+      "SENDING": "Запущены",
       "COMPLETED": "Завершены",
-      "problems": "Отменены и ошибки"
+      "CANCELED": "Отменены",
+      "FAILED": "С ошибкой"
     },
     "columns": {
       "broadcast": "Рассылка",
       "status": "Статус",
       "audience": "Аудитория",
       "delivery": "Доставка",
-      "when": "Когда"
+      "when": "Дата"
     },
-    "progress": {
-      "draft": "Не отправлялась",
-      "waiting": "Ожидает старта",
-      "failed": "Остановлена · {{ratio}}",
-      "canceled": "{{ratio}} · отменена",
-      "delivered": "{{count}} доставлено",
-      "blocked": "заблокировали: {{count}}"
-    },
+    "progress": {},
     "when": {
-      "now": "Сейчас",
-      "edited": "Изм. {{date}}"
+      "now": "Сейчас"
     },
     "editor": {
-      "breadcrumb": "Рассылки · #{{id}}",
-      "newBreadcrumb": "Рассылки · новая",
       "category": "Категория",
       "categoryOption": {
         "SERVICE": "Сервисная",
         "MARKETING": "Акция"
       },
       "categoryHint": {
-        "SERVICE": "Работы, смена домена, новые серверы. Получают все, отписаться нельзя.",
-        "MARKETING": "Скидки и промокоды. Отписавшиеся не получат, внизу появится кнопка «Отписаться от акций»."
+        "SERVICE": "Технические работы и новости",
+        "MARKETING": "Скидки и акции"
       },
       "text": "Текст",
       "defaultLocale": "основной",
       "addLocale": "Добавить язык",
-      "fallbackHint": "Клиенты на других языках получат {{locale}}",
+      "fallbackHint": "Другие языки получат основной",
       "withMedia": "с медиа",
       "media": {
         "hint": "Фото, GIF, видео MP4, PDF или ZIP; подпись не длиннее 1024 символов",
         "saveFirst": "Медиа можно прикрепить после первого сохранения",
         "upload": "Загрузить",
         "replace": "Заменить",
-        "captionLimit": "подпись не длиннее 1024 символов",
+        "captionLimit": "(С медиа текст — до 1024 символов)",
         "error": "Не удалось обновить медиа."
       },
       "buttons": {
         "title": "Кнопки",
-        "hint": "Подписи — для каждого языка",
+        "hint": "Текст кнопок меняется вместе с языком сообщения",
         "add": "Кнопка",
         "kind": {
           "URL": "Ссылка",
@@ -4242,21 +4348,17 @@
         "limit_few": "Не больше {{count}} кнопок",
         "limit_many": "Не больше {{count}} кнопок",
         "limit_other": "Не больше {{count}} кнопки",
-        "label": "Подпись кнопки",
-        "promocodeTarget": "Откроет промокод {{code}} в боте",
-        "menuTarget": "Главное меню бота"
+        "label": "Текст кнопки",
+        "menuTarget": "Главное меню бота",
+        "empty": "Нет заданных кнопок"
       },
       "promocode": {
         "label": "Промокод",
-        "none": "Без промокода",
-        "until": "до {{date}}",
-        "activations_one": "до {{count}} активации",
-        "activations_few": "до {{count}} активаций",
-        "activations_many": "до {{count}} активаций",
-        "activations_other": "до {{count}} активации"
+        "none": "Без промокода"
       },
       "audience": {
         "title": "Аудитория",
+        "description": "Кому уйдёт рассылка",
         "byFilters": "По фильтрам",
         "byUsers": "Выбранным клиентам",
         "search": "Найти клиента",
@@ -4264,7 +4366,7 @@
         "userIds": "Клиенты",
         "userIdsHint": "ID клиентов; вставьте список или выберите в поиске",
         "userIdsPlaceholder": "ID клиента",
-        "any": "Неважно",
+        "any": "Все",
         "all": "Все",
         "withinDays_one": "≤ {{count}} дн.",
         "withinDays_few": "≤ {{count}} дн.",
@@ -4291,37 +4393,35 @@
         "from": "С",
         "to": "По",
         "bothDates": "Укажите обе даты.",
-        "notConnected": "Не подключался к VPN (дней)",
+        "notConnected": "Не подключался",
         "hasTelegram": "Telegram",
-        "hasEmail": "Почта"
+        "hasEmail": "Почта",
+        "daysSuffix": "дн."
       },
       "channel": {
         "title": "Опубликовать в канале",
         "titleNamed": "Опубликовать в канале {{name}}",
-        "hint": "Пост на основном языке. Персональные переменные кроме { $promocode } в нём недоступны.",
-        "missing": "Сначала укажите канал в требованиях бота."
+        "hint": "Пост на основном языке без поддержки персональных переменных"
       },
       "preview": {
-        "title": "Предпросмотр",
+        "title": "Предпросмотр в Telegram",
         "sampleName": "Анна",
-        "as": "как увидит {{name}} · {{locale}}",
-        "unsubscribe": "Отписаться от акций",
-        "empty": "Текста пока нет"
+        "as": "Пример для клиента · {{locale}}",
+        "empty": "Текста пока нет",
+        "testButton": "Отправить тестовое сообщение",
+        "saveFirst": "Сохраните для предпросмотра"
       },
       "recipients": {
         "title": "Получатели",
         "others": "Другие → получат {{locale}}",
         "error": "Не удалось посчитать получателей.",
-        "excluded": "Заблокировавшие бота не получат сообщение в Telegram.",
-        "excludedMarketing": "Заблокировавшие бота не получат сообщение в Telegram, отписавшиеся от акций не входят."
+        "excluded": "Кроме заблокировавших бота",
+        "excludedMarketing": "Кроме заблокировавших бота и отписавшихся"
       },
       "footer": {
-        "unsaved": "Есть несохранённые изменения",
-        "savedAt": "Сохранено {{time}}",
-        "test": "Тест себе",
-        "when": "Когда",
         "sendNow": "Отправить сейчас",
-        "schedule": "Запланировать"
+        "schedule": "Запланировать",
+        "sendAt": "Время отправки"
       },
       "confirm": {
         "sendTitle": "Отправить рассылку?",
@@ -4345,7 +4445,6 @@
       "testSent": "Тестовое сообщение отправлено.",
       "savedStillScheduled": "Сохранено, рассылка по-прежнему запланирована на {{date}}.",
       "savedUnscheduled": "Сохранено. Рассылка снята с расписания.",
-      "openCard": "Открыть карточку",
       "sent": "Рассылка запущена.",
       "scheduled": "Рассылка запланирована.",
       "delivery": {
@@ -4356,13 +4455,13 @@
           "ALL": "Telegram и письма"
         },
         "hint": {
-          "TELEGRAM": "Бот отправит сообщение клиентам с Telegram.",
-          "EMAIL": "Письмо уйдёт клиентам с подтверждённым адресом.",
-          "ALL": "Клиенты с Telegram получат сообщение, клиенты с почтой — письмо."
+          "TELEGRAM": "Бот отправит сообщение клиентам с Telegram",
+          "EMAIL": "Письмо уйдёт клиентам на их почту",
+          "ALL": "Клиенты с Telegram получат сообщение, клиенты с почтой — письмо"
         },
         "fallback": {
           "title": "Тем, у кого нет Telegram, — письмом",
-          "hint": "Кому бот написать не может, уйдёт письмо."
+          "hint": "Кому бот написать не может, уйдёт письмо"
         }
       },
       "email": {
@@ -4374,18 +4473,22 @@
       },
       "emailPreview": {
         "title": "Предпросмотр письма",
-        "saveFirst": "Сохраните, чтобы обновить предпросмотр",
+        "saveFirst": "Сохраните для предпросмотра",
         "error": "Не удалось построить предпросмотр.",
         "noSubject": "Без темы",
         "toPlaceholder": "Адрес для тестового письма",
         "testButton": "Отправить тестовое письмо",
-        "testSending": "Отправка…",
-        "testSent": "Тестовое письмо отправлено."
-      }
+        "testSent": "Тестовое письмо отправлено.",
+        "subjectLabel": "Тема:"
+      },
+      "sending": {
+        "title": "Отправка",
+        "description": "Тип рассылки, каналы доставки"
+      },
+      "unscheduled": "Рассылка снята с расписания и стала черновиком."
     },
     "details": {
-      "noRecipients": "Здесь нет получателей.",
-      "breadcrumb": "Рассылки · #{{id}} · {{category}}",
+      "noRecipients": "Нет получателей",
       "of": "из {{total}}",
       "speed": "≈ {{speed}} сообщ. в секунду",
       "remainingSoon": "осталось меньше минуты",
@@ -4394,22 +4497,14 @@
       "remaining_many": "осталось около {{count}} мин",
       "remaining_other": "осталось около {{count}} мин",
       "started": "Начата {{date}}",
-      "recallUntil": "отозвать можно до {{date}}",
+      "recallUntil": "отозвать в Telegram можно до {{date}}",
       "legend": {
         "delivered": "Доставлено",
         "blocked": "Заблокировали бота",
         "failed": "Ошибки",
-        "queued": "В очереди"
-      },
-      "kpi": {
-        "delivered": "Доставлено",
-        "deliveredShare": "{{percent}} от обработанных",
-        "blocked": "Заблокировали бота",
-        "blockedHint": "Повтор им не уйдёт",
-        "failed": "Ошибки",
-        "failedHint": "Можно повторить после завершения",
+        "queued": "В очереди",
         "recalled": "Отозвано",
-        "recalledHint": "Доступно 48 ч с начала"
+        "canceled": "Отменены"
       },
       "recipients": "Получатели",
       "tabs": {
@@ -4428,16 +4523,14 @@
         "time": "Время"
       },
       "idLabel": "id {{id}}",
-      "messageSent": "Сообщение отправлено",
       "stopped": "Рассылка была остановлена",
       "reasons": {
         "noTelegram": "Нет аккаунта Telegram",
-        "optedOut": "Отписался от акций",
-        "blocked": "Заблокирован в магазине",
+        "optedOut": "Отписался от рекламных рассылок",
+        "blocked": "Заблокирован администратором",
         "recallFailed": "Отозвать не удалось: {{reason}}"
       },
       "params": {
-        "title": "Параметры",
         "category": "Категория",
         "locales": "Языки",
         "main": "(основной)",
@@ -4449,9 +4542,8 @@
       },
       "channel": {
         "title": "Пост в канале",
-        "posted": "Опубликован в канале",
-        "planned": "Будет опубликован в канале",
-        "recallHint": "При отзыве пост удалится вместе с личными сообщениями."
+        "posted": "Опубликован",
+        "planned": "Будет опубликован"
       },
       "actions": {
         "cancel": {
@@ -4463,7 +4555,7 @@
         },
         "retry": {
           "button": "Повторить неудачные",
-          "unavailable": "Повторять нечего: нет неудачных доставок.",
+          "unavailable": "После отзыва повторить нельзя",
           "title": "Повторить неудачные доставки?",
           "message": "Клиенты с ошибками получат сообщение ещё раз. Заблокировавшие бота будут пропущены.",
           "confirm": "Повторить",
@@ -4471,21 +4563,22 @@
         },
         "recall": {
           "button": "Отозвать",
-          "unavailable": "Отозвать можно в течение 48 часов с начала, если что-то было доставлено.",
-          "running": "Отзыв идёт. Повторить можно через несколько минут, если какие-то сообщения останутся.",
           "title": "Отозвать рассылку?",
-          "message": "Доставленные сообщения удалятся из чатов клиентов, пост в канале будет убран. Это нельзя отменить.",
+          "message": "Доставленные сообщения в Telegram удалятся из чатов клиентов, пост в канале будет убран. Письма не отзываются. Это нельзя отменить.",
           "confirm": "Отозвать",
-          "done": "Отзыв запущен."
+          "done": "Отзыв запущен.",
+          "hint": "Удалит доставленные сообщения в Telegram и пост в канале. Письма не отзываются"
         },
         "delete": {
           "title": "Удалить рассылку?",
           "message": "Рассылка и история её доставки будут удалены. Это нельзя отменить.",
           "confirm": "Удалить",
-          "button": "Удалить",
           "done": "Рассылка удалена."
         }
-      }
+      },
+      "sentTelegram": "Сообщение доставлено",
+      "sentEmail": "Письмо отправлено",
+      "recipientsHint": "Статус доставки по каждому клиенту"
     },
     "channel": {
       "TELEGRAM": "Telegram",
@@ -4494,6 +4587,11 @@
     "recipients": {
       "channel": "Канал",
       "channelAll": "Все каналы"
+    },
+    "pageTitle": {
+      "new": "Новая рассылка",
+      "edit": "Редактирование рассылки #{{id}}",
+      "details": "Рассылка #{{id}}"
     }
   },
   "connectGuide": {

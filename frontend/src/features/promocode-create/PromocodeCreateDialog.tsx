@@ -1,4 +1,4 @@
-import { Dices, Package, Tag, Ticket } from "lucide-react";
+import { Dices, Package, Ticket } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,11 +14,9 @@ import {
   type PromocodeRewardType,
 } from "@entities/promocodes/api";
 import {
-  describeReward,
   limitsToPayload,
   PLAN_LIMITED_REWARDS,
   type PromocodeLimitsDraft,
-  type PromocodeReward,
   REWARD_TYPE_ICON,
   REWARD_TYPES,
 } from "@entities/promocodes/display";
@@ -32,14 +30,15 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { SuffixInput, TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { Pressable } from "@shared/ui/Pressable";
 
-const DAY_PRESETS = [7, 30, 90];
+const DAY_PRESETS = [1, 3, 7, 14, 30, 60];
+const DISABLED_REWARD_TYPES: PromocodeRewardType[] = ["TRAFFIC", "DEVICES"];
 
 interface PromocodeCreateDialogProps {
   canGenerateCode: boolean;
@@ -85,18 +84,9 @@ function PromocodeCreateDialogBody({
 
   const trimmedCode = code.trim();
   const isCodeInvalid = trimmedCode !== "" && !PROMOCODE_CODE_PATTERN.test(trimmedCode);
-  const canSubmit = trimmedCode !== "" && !isCodeInvalid;
 
   const matchingAddons = addons.filter((addon) => addon.type === rewardType);
   const isDiscount = rewardType === "PERSONAL_DISCOUNT" || rewardType === "PURCHASE_DISCOUNT";
-
-  const draftReward: PromocodeReward = {
-    reward_type: rewardType,
-    reward: rewardType === "DURATION" ? Number(rewardDays) || 0 : isDiscount ? Number(rewardPercent) || 0 : null,
-    reward_addon_id: rewardAddonId ? Number(rewardAddonId) : null,
-    reward_plan_id: rewardPlanId ? Number(rewardPlanId) : null,
-    reward_duration_days: Number(rewardDurationDays) || 0,
-  };
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -172,11 +162,16 @@ function PromocodeCreateDialogBody({
       <DialogHeader icon={Ticket} title={t("promocodes.create.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          <Card variant="form">
-            <Field label={t("promocodes.sections.code")} htmlFor="promo-code" required>
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
+            <Field
+              label={t("promocodes.sections.code")}
+              htmlFor="promo-code"
+              required
+              error={isCodeInvalid ? t("promocodes.create.codeInvalid") : undefined}
+            >
               <div className="flex gap-2">
-                <TextInput
+                <Input
                   id="promo-code"
                   value={code}
                   onChange={(event) => setCode(event.target.value.toUpperCase())}
@@ -184,12 +179,12 @@ function PromocodeCreateDialogBody({
                   autoComplete="off"
                   maxLength={PROMOCODE_CODE_MAX_LENGTH}
                   aria-invalid={isCodeInvalid}
-                  className="min-w-0 flex-1 font-mono tracking-wider"
+                  mono
+                  className="min-w-0 flex-1"
                 />
                 {canGenerateCode && (
                   <Button
-                    variant="secondary"
-                    size="field"
+                    variant="glass"
                     onClick={() => void handleGenerate()}
                     icon={Dices}
                     isLoading={isGenerating}
@@ -198,17 +193,12 @@ function PromocodeCreateDialogBody({
                   </Button>
                 )}
               </div>
-              {isCodeInvalid && (
-                <p id="promo-code-hint" className="text-[12px] text-error">
-                  {t("promocodes.create.codeInvalid")}
-                </p>
-              )}
             </Field>
-          </Card>
+          </div>
 
-          <Card variant="form">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("promocodes.sections.reward")}>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid auto-rows-fr grid-cols-3 gap-2">
                 {REWARD_TYPES.map((type) => {
                   const Icon = REWARD_TYPE_ICON[type];
                   const isSelected = rewardType === type;
@@ -216,15 +206,16 @@ function PromocodeCreateDialogBody({
                     <Pressable
                       key={type}
                       type="button"
+                      disabled={DISABLED_REWARD_TYPES.includes(type)}
                       onClick={() => setRewardType(type)}
-                      className={`flex flex-col items-start gap-2 rounded-[14px] border p-3 text-left transition-colors ${
+                      className={`flex flex-col items-start gap-2 rounded-[10px] border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         isSelected
-                          ? "border-primary/50 bg-accent text-primary"
-                          : "border-border bg-white/[0.02] text-foreground hover:bg-white/[0.06]"
+                          ? "border-primary/35 bg-primary/15 text-primary"
+                          : "border-glass-border bg-white/[0.03] text-foreground enabled:hover:bg-white/[0.06]"
                       }`}
                     >
-                      <Icon className={`size-[18px] ${isSelected ? "" : "text-muted-foreground"}`} />
-                      <span className="text-[12.5px] font-semibold">{t(`promocodes.rewardTypeShort.${type}`)}</span>
+                      <Icon className={`size-4 ${isSelected ? "" : "text-muted-foreground"}`} />
+                      <span className="text-[13px] font-medium">{t(`promocodes.rewardTypeShort.${type}`)}</span>
                     </Pressable>
                   );
                 })}
@@ -233,8 +224,9 @@ function PromocodeCreateDialogBody({
 
             {rewardType === "DURATION" && (
               <Field label={t("promocodes.create.rewardDaysLabel")} htmlFor="promo-reward-days">
-                <div className="flex items-center gap-2">
-                  <SuffixInput
+                {/* the reward cards' grid: the field as wide as one card */}
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <Input
                     id="promo-reward-days"
                     type="number"
                     onKeyDown={blockNonIntegerKeys}
@@ -243,24 +235,28 @@ function PromocodeCreateDialogBody({
                     value={rewardDays}
                     onChange={(event) => setRewardDays(event.target.value)}
                     suffix={daysSuffix}
-                    className="flex-1"
                   />
-                  {DAY_PRESETS.map((days) => (
-                    <ChoiceChip
-                      key={days}
-                      onClick={() => setRewardDays(String(days))}
-                      active={rewardDays === String(days)}
-                    >
-                      {days}
-                    </ChoiceChip>
-                  ))}
+                  <div className="col-span-2 grid grid-cols-6 gap-1.5">
+                    {DAY_PRESETS.map((days) => (
+                      <ChoiceChip
+                        glass
+                        // 36px, the field's height beside it
+                        className="h-9"
+                        key={days}
+                        onClick={() => setRewardDays(String(days))}
+                        active={rewardDays === String(days)}
+                      >
+                        {days}
+                      </ChoiceChip>
+                    ))}
+                  </div>
                 </div>
               </Field>
             )}
 
             {isDiscount && (
               <Field label={t("promocodes.create.rewardPercentLabel")} htmlFor="promo-reward-percent">
-                <TextInput
+                <Input
                   id="promo-reward-percent"
                   type="number"
                   onKeyDown={blockNonIntegerKeys}
@@ -269,6 +265,7 @@ function PromocodeCreateDialogBody({
                   step="1"
                   value={rewardPercent}
                   onChange={(event) => setRewardPercent(event.target.value)}
+                  suffix="%"
                 />
               </Field>
             )}
@@ -276,10 +273,11 @@ function PromocodeCreateDialogBody({
             {(rewardType === "TRAFFIC" || rewardType === "DEVICES") && (
               <Field label={t("promocodes.create.rewardAddonLabel")} htmlFor="promo-reward-addon">
                 {matchingAddons.length === 0 ? (
-                  <p className="text-[12.5px] text-muted-foreground">{t("promocodes.create.rewardAddonEmpty")}</p>
+                  <p className="text-[12px] text-muted-foreground">{t("promocodes.create.rewardAddonEmpty")}</p>
                 ) : (
                   <SelectDropdown
-                    variant="form"
+                    variant="well"
+                    size="compact"
                     id="promo-reward-addon"
                     value={rewardAddonId}
                     onChange={setRewardAddonId}
@@ -298,21 +296,22 @@ function PromocodeCreateDialogBody({
               <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
                 <Field label={t("promocodes.create.rewardPlanLabel")} htmlFor="promo-reward-plan">
                   {plans.length === 0 ? (
-                    <p className="text-[12.5px] text-muted-foreground">{t("promocodes.create.rewardPlanEmpty")}</p>
+                    <p className="text-[12px] text-muted-foreground">{t("promocodes.create.rewardPlanEmpty")}</p>
                   ) : (
                     <SelectDropdown
-                      variant="form"
+                      variant="well"
+                      size="compact"
                       id="promo-reward-plan"
                       value={rewardPlanId}
                       onChange={setRewardPlanId}
-                      icon={Tag}
+                      icon={Package}
                       placeholder={t("promocodes.create.rewardPlanPlaceholder")}
                       options={plans.map((plan) => ({ value: String(plan.id), label: plan.name }))}
                     />
                   )}
                 </Field>
                 <Field label={t("promocodes.create.rewardDurationDaysLabel")} htmlFor="promo-reward-duration">
-                  <SuffixInput
+                  <Input
                     id="promo-reward-duration"
                     type="number"
                     onKeyDown={blockNonIntegerKeys}
@@ -325,7 +324,7 @@ function PromocodeCreateDialogBody({
                 </Field>
               </div>
             )}
-          </Card>
+          </div>
 
           <PromocodeLimitsFields
             idPrefix="promo"
@@ -335,23 +334,12 @@ function PromocodeCreateDialogBody({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] px-5 py-4">
-          <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
-            <span className="font-mono font-bold text-foreground">{trimmedCode || "—"}</span>
-            {" · "}
-            <span className="font-semibold text-primary">{describeReward(draftReward, addons, plans, t)}</span>
-            {" · "}
-            {t(`promocodes.availability.${limits.availability}`)}
-          </p>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={close}
-          >
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="accent" type="submit" disabled={isSubmitting || !canSubmit}>
-            {isSubmitting ? t("promocodes.create.saving") : t("common.create")}
+          <Button variant="glassAccent" type="submit" disabled={isCodeInvalid} isLoading={isSubmitting}>
+            {t("common.create")}
           </Button>
         </div>
       </form>

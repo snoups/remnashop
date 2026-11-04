@@ -1,4 +1,4 @@
-import { ChevronDown, Menu, LogOut, RefreshCw, User as UserIcon, Wrench } from "lucide-react";
+import { ChevronDown, Menu, LogOut, RefreshCw, Sparkles, User as UserIcon, Wrench } from "lucide-react";
 import { createPortal } from "react-dom";
 import { MobileMenu } from "@widgets/sidebar/MobileMenu";
 
@@ -16,8 +16,10 @@ import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { usePageTitle } from "@shared/lib/use-page-title";
 import { useRefreshSignal } from "@shared/lib/refresh-signal";
 import { initials } from "@shared/lib/initials";
+import { formatTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ACCESS_SECTION_ID } from "@features/access-settings/AccessSettingsForm";
+import { RecapDialog } from "@features/recap/RecapDialog";
 import { HeaderSearch } from "@widgets/header/HeaderSearch";
 import { NotificationsBell } from "@widgets/header/NotificationsBell";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -51,16 +53,16 @@ export function Header({ onLogout }: HeaderProps) {
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const brandName = useBrandName();
   const pageTitle = usePageTitle(brandName);
   const location = useLocation();
   const isOverviewPage = location.pathname === "/dashboard" || location.pathname === "/dashboard/";
   // the profile and the debug page have no sidebar link
-  const pageIcon =
+  const PageIcon =
     NAV_ITEMS.find((item) => matchPath({ path: item.to, end: item.end ?? false }, location.pathname))?.icon ??
     (location.pathname.startsWith("/dashboard/profile") ? UserIcon : Wrench);
-  const { refresh } = useRefreshSignal();
+  const { refresh, updatedAt } = useRefreshSignal();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const handleRefresh = useCallback(() => {
     refresh();
@@ -72,6 +74,7 @@ export function Header({ onLogout }: HeaderProps) {
   const login = userState.kind === "ready" ? userState.data.login : null;
   const role = userState.kind === "ready" ? userState.data.role : null;
   const [openPopover, setOpenPopover] = useState<"user" | "notifications" | null>(null);
+  const [isRecapOpen, setIsRecapOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const menuPopoverRef = useRef<HTMLDivElement>(null);
@@ -101,17 +104,30 @@ export function Header({ onLogout }: HeaderProps) {
       <div className={mobile ? "contents" : "glass-panel flex h-12 items-center justify-between gap-5 rounded-full p-1.5"}>
       <div className="flex min-w-0 items-center gap-2.5">
         {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-4" /></IconButton>}
-        {!mobile && <IconCircle icon={pageIcon} header />}
-        <span className="truncate text-[21px] font-bold tracking-tight text-foreground max-md:text-[17px]">{pageTitle}</span>
+        {!mobile && !isOverviewPage && <IconCircle icon={PageIcon} header />}
         {!mobile && isOverviewPage && (
-          <IconButton
-            size="9"
-            tone="glass"
+          // the page icon is the refresh button: hover swaps it for the refresh arrows
+          <Pressable
+            type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
+            className="group flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.05] text-foreground transition-colors enabled:hover:bg-white/[0.08]"
           >
-            <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          </IconButton>
+            {isRefreshing ? (
+              <RefreshCw className="size-4 animate-spin" />
+            ) : (
+              <>
+                <PageIcon className="size-4 group-hover:hidden" />
+                <RefreshCw className="hidden size-4 group-hover:block" />
+              </>
+            )}
+          </Pressable>
+        )}
+        <span className="truncate text-[17px] font-semibold tracking-tight text-foreground">{pageTitle}</span>
+        {!mobile && isOverviewPage && updatedAt && (
+          <span className="mt-1 shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
+            {t("dashboard.updatedAt", { time: formatTime(updatedAt, i18n.language) })}
+          </span>
         )}
       </div>
 
@@ -121,6 +137,12 @@ export function Header({ onLogout }: HeaderProps) {
         {!mobile && permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
         {!mobile && <HeaderSearch />}
+
+        {!mobile && isOverviewPage && permissions.includes("OVERVIEW_RECAP_VIEW") && (
+          <IconButton size="9" onClick={() => setIsRecapOpen(true)}>
+            <Sparkles className="size-4" />
+          </IconButton>
+        )}
 
         {!mobile && <LanguagePicker capsule />}
 
@@ -148,7 +170,7 @@ export function Header({ onLogout }: HeaderProps) {
             <span
               className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
             />
-            <div className="relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full bg-foreground text-[12px] font-bold text-canvas md:size-8">
+            <div className="glass-control relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-foreground md:size-8">
               {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
             <div className="relative z-10 hidden text-left leading-tight md:block">
@@ -199,6 +221,7 @@ export function Header({ onLogout }: HeaderProps) {
       <AnimatePresence>
         {mobile && menuOpen && <MobileMenu key="mobile-menu" onClose={() => setMenuOpen(false)} />}
       </AnimatePresence>
+      {isRecapOpen && <RecapDialog onClose={() => setIsRecapOpen(false)} />}
     </>
   );
 }

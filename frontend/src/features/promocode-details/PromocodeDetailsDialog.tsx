@@ -28,9 +28,9 @@ import { KpiTile } from "@shared/ui/KpiTile";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDate } from "@shared/lib/relative-time";
@@ -42,8 +42,6 @@ const FORM_ID = "promocode-settings-form";
 
 interface PromocodeDetailsDialogProps {
   promocode: Promocode;
-  /** all-time activations; undefined while the summary is unavailable */
-  usedCount?: number;
   addons: AddOnListItem[];
   plans: Plan[];
   onSaved?: (promocode: Promocode) => void;
@@ -62,7 +60,6 @@ export function PromocodeDetailsDialog({ onClose, ...props }: PromocodeDetailsDi
 
 function PromocodeDetailsDialogBody({
   promocode: initialPromocode,
-  usedCount,
   addons,
   plans,
   onSaved,
@@ -85,7 +82,6 @@ function PromocodeDetailsDialogBody({
 
   const status = getPromocodeStatus(promocode);
   const RewardIcon = REWARD_TYPE_ICON[promocode.reward_type];
-  const none = t("common.none");
 
   const tabs: DialogTabItem<PromocodeDetailsTab>[] = [
     { key: "overview", label: t("promocodes.details.tabs.overview"), icon: BarChart3 },
@@ -153,26 +149,25 @@ function PromocodeDetailsDialogBody({
     <>
       <DialogHeader
         icon={Ticket}
-        tone={status === "ACTIVE" ? "primary" : "muted"}
-        title={<span className="font-mono">{promocode.code}</span>}
-        badges={
+        title={promocode.code}
+        subtitle={t(`promocodes.rewardType.${promocode.reward_type}`)}
+        actions={
           <>
-            <IconButton size="6" onClick={handleCopy}>
-              {isCopied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
+            <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
+            <IconButton size="9" onClick={handleCopy}>
+              {isCopied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
             </IconButton>
-            <Badge tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
           </>
         }
-        subtitle={t(`promocodes.rewardType.${promocode.reward_type}`)}
       />
 
       {tabs.length > 1 && (
-        <div className="px-4 pt-4">
+        <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
       )}
 
-      <div className={`scroll-fade-y min-h-0 flex-1 overflow-y-auto px-4 pb-4 ${tabs.length > 1 ? "pt-3" : "pt-4"}`}>
+      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -183,20 +178,21 @@ function PromocodeDetailsDialogBody({
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <KpiTile
+                    glass
                     icon={RewardIcon}
                     label={t("promocodes.sections.reward")}
                     value={describeReward(promocode, addons, plans, t)}
-                    hint={t(`promocodes.availability.${promocode.availability}`)}
                   />
                   <KpiTile
+                    glass
                     icon={Hash}
                     label={t("promocodes.details.used")}
-                    value={usedCount !== undefined ? String(usedCount) : none}
+                    value={String(promocode.activations_count)}
                     valueSuffix={t("promocodes.details.ofMax", { max: promocode.max_activations ?? "∞" })}
                   />
                 </div>
 
-                <Card variant="list" title={t("promocodes.sections.limits")} icon={ShieldCheck}>
+                <DialogCard title={t("promocodes.sections.limits")} icon={ShieldCheck}>
                   <InfoRow icon={Users} label={t("promocodes.details.availability")}>
                     <span className="truncate">{t(`promocodes.availability.${promocode.availability}`)}</span>
                   </InfoRow>
@@ -206,7 +202,7 @@ function PromocodeDetailsDialogBody({
                   <InfoRow icon={Repeat} label={t("promocodes.details.reusable")}>
                     {promocode.is_reusable ? t("common.yes") : t("common.no")}
                   </InfoRow>
-                </Card>
+                </DialogCard>
               </div>
             )}
             {tab === "users" && <PromocodeUsersList promocode={promocode} />}
@@ -224,27 +220,27 @@ function PromocodeDetailsDialogBody({
         </motion.div>
       </div>
 
-      {tab === "settings" && (
-        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] px-5 py-4">
+      {(canUpdate || canDelete) && (
+        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] p-4">
           <div className="flex gap-2">
             {canDelete && (
-              <Button
-                variant="danger"
-                type="button"
-                onClick={() => setIsConfirmingDelete(true)}
-              >
-                <Trash2 className="size-3.5" />
+              <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>
+                <Trash2 className="size-4" />
                 {t("common.delete")}
               </Button>
             )}
-            <Button variant="outline" onClick={() => void handleToggleActive()} disabled={isToggling}>
-              {promocode.is_active ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-              {promocode.is_active ? t("promocodes.pause") : t("promocodes.resume")}
-            </Button>
+            {canUpdate && (
+              <Button variant="glass" onClick={() => void handleToggleActive()} isLoading={isToggling}>
+                {promocode.is_active ? <Pause className="size-4" /> : <Play className="size-4" />}
+                {promocode.is_active ? t("promocodes.pause") : t("promocodes.resume")}
+              </Button>
+            )}
           </div>
-          <Button variant="accent" type="submit" form={FORM_ID} disabled={isSubmitting}>
-            {isSubmitting ? t("common.saving") : t("common.save")}
-          </Button>
+          {tab === "settings" && (
+            <Button variant="glassAccent" type="submit" form={FORM_ID} isLoading={isSubmitting}>
+              {t("common.save")}
+            </Button>
+          )}
         </div>
       )}
       {isConfirmingDelete && (

@@ -43,7 +43,7 @@ const EXPIRY_OPTIONS = [
 
 export function CreateApiTokenDialog({ onCreated, onCancel }: CreateApiTokenDialogProps) {
   return (
-    <Modal onClose={onCancel} size="lg" scrollable material="glass">
+    <Modal onClose={onCancel} size="lg" scrollable>
       <CreateApiTokenDialogBody onCreated={onCreated} />
     </Modal>
   );
@@ -209,7 +209,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             variant="glassAccent"
             type="submit"
             isLoading={isSubmitting}
-            disabled={name.trim().length === 0 || permissions.size === 0 || invalidIps.length > 0}
+            disabled={permissions.size === 0 || invalidIps.length > 0}
           >
             {t("common.create")}
           </Button>

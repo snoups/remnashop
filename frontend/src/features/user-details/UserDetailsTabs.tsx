@@ -6,7 +6,6 @@ import {
   Hash,
   KeyRound,
   Languages,
-  Link2,
   Mail,
   Megaphone,
   Send,
@@ -19,7 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import { getUserAdAttribution } from "@entities/advertising/api";
 import { getUserReferralStats } from "@entities/referrals/api";
-import { listEventLog } from "@entities/event-log/api";
+import { listEventLogAfter } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
 import { eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
@@ -35,8 +34,8 @@ import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
@@ -91,7 +90,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
     // name and contacts are wiped on delete; only what history still refers to is left
     const deletedAt = formatDateTime(user.deleted_at, i18n.language);
     return (
-      <Card variant="list" title={t("admins.details.sections.account")} icon={User}>
+      <DialogCard title={t("admins.details.sections.account")} icon={User}>
         <InfoRow icon={Hash} label={t("users.details.id")} copyValue={String(user.id)} mono>
           {user.id}
         </InfoRow>
@@ -101,13 +100,13 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
         <InfoRow icon={Trash2} label={t("users.deleted.at")} copyValue={deletedAt} mono>
           {deletedAt}
         </InfoRow>
-      </Card>
+      </DialogCard>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <Card variant="list" title={t("admins.details.sections.account")} icon={User}>
+      <DialogCard title={t("admins.details.sections.account")} icon={User}>
         <InfoRow icon={Hash} label={t("users.details.id")} copyValue={String(user.id)} mono>
           {user.id}
         </InfoRow>
@@ -121,14 +120,17 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
         )}
         <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user.email ?? undefined} mono>
           <span className="truncate">{user.email ?? dash}</span>
-          {user.email_undeliverable_at && <Badge tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
+          {user.email_undeliverable_at && <Badge borderless tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
         </InfoRow>
         <InfoRow icon={Languages} label={t("users.details.language")} copyValue={language}>
           {language}
         </InfoRow>
-        <InfoRow icon={Ban} label={t("admins.details.blocked")} copyValue={blocked}>
-          <span className={user.is_blocked ? "text-error" : undefined}>{blocked}</span>
-        </InfoRow>
+        {/* blocking demotes first, so staff are never blocked */}
+        {user.role === "USER" && (
+          <InfoRow icon={Ban} label={t("admins.details.blocked")} copyValue={blocked}>
+            <span className={user.is_blocked ? "text-error" : undefined}>{blocked}</span>
+          </InfoRow>
+        )}
         <InfoRow icon={Gift} label={t("users.details.trialAvailable")} copyValue={trialAvailable}>
           {trialAvailable}
         </InfoRow>
@@ -136,7 +138,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           {createdAt ?? dash}
         </InfoRow>
         {user.referral_code && (
-          <InfoRow icon={Link2} label={t("users.details.referralCode")} copyValue={user.referral_code} mono>
+          <InfoRow icon={Hash} label={t("users.details.referralCode")} copyValue={user.referral_code} mono>
             {user.referral_code}
           </InfoRow>
         )}
@@ -167,14 +169,14 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           </InfoRow>
         )}
         {user.telegram_id !== null && (
-          <div className="m-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
+          <div className="mt-1 rounded-md border border-white/[0.08] bg-white/[0.02] p-1">
             <h4 className={SECTION_TITLE_CLASS}>
               <Send className="size-3.5" />
               {t("admins.details.sections.telegram")}
             </h4>
             <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={String(user.telegram_id)} mono>
               {user.telegram_id}
-              {user.is_bot_blocked && <Badge tone="error">{t("users.botBlocked.badge")}</Badge>}
+              {user.is_bot_blocked && <Badge borderless tone="error">{t("users.botBlocked.badge")}</Badge>}
             </InfoRow>
             <InfoRow
               icon={AtSign}
@@ -186,7 +188,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
             </InfoRow>
           </div>
         )}
-      </Card>
+      </DialogCard>
 
       {canViewRegistration && <RegistrationCard userId={user.id} />}
       {canViewLegal && <LegalAcceptancesCard userId={user.id} />}
@@ -198,9 +200,9 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
 
 export function SessionsTab({ userId }: { userId: number }) {
   return (
-    <Card variant="list">
+    <DialogCard>
       <SessionsPanel userId={userId} />
-    </Card>
+    </DialogCard>
   );
 }
 
@@ -209,18 +211,19 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
   const { t, i18n } = useTranslation();
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
-    (id: number, page, signal) =>
-      listEventLog(
+    (id: number, _page, signal, loaded?: EventLogEntry[]) =>
+      listEventLogAfter(
         by === "actor"
-          ? { actorId: id, page, pageSize: EVENTS_PAGE_SIZE }
-          : { targetId: id, page, pageSize: EVENTS_PAGE_SIZE },
+          ? { actorId: id, pageSize: EVENTS_PAGE_SIZE }
+          : { targetId: id, pageSize: EVENTS_PAGE_SIZE },
+        loaded,
         signal,
       ),
     userId,
   );
 
   return (
-    <Card variant="list">
+    <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.items.length === 0 && (
@@ -232,7 +235,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
             key={entry.id}
             type="button"
             onClick={() => setOpenedEntry(entry)}
-            className="flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left transition-colors hover:bg-white/[0.04]"
+            className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors hover:bg-white/[0.04]"
           >
             <span
               className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
@@ -258,6 +261,6 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
         </div>
       )}
       {openedEntry && <EventDetailDialog entry={openedEntry} onClose={() => setOpenedEntry(null)} />}
-    </Card>
+    </DialogCard>
   );
 }

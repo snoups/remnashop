@@ -407,7 +407,7 @@ export function BotSettingsForm() {
         </fieldset>
 
         {isLogsOpen && (
-          <Modal onClose={() => setIsLogsOpen(false)} size="xl" scrollable material="glass">
+          <Modal onClose={() => setIsLogsOpen(false)} size="xl" scrollable>
             <BotLogsDialogBody />
           </Modal>
         )}

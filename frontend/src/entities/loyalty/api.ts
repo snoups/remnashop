@@ -17,6 +17,7 @@ export type SaveLoyaltySettingsRequest = Omit<LoyaltySettings, "currency">;
 export interface UserLoyalty {
   discount: number;
   excluded: boolean;
+  is_program_active: boolean;
   spent: string;
   next_tier: LoyaltyTier | null;
   currency: string;

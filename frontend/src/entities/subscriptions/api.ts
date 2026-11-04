@@ -1,4 +1,6 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
+import type { AddOnType } from "@entities/addons/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import { DAY_MS } from "@shared/lib/period";
 import type { BadgeTone } from "@shared/ui/Badge";
 
 export type SubscriptionStatus = "ACTIVE" | "LIMITED" | "EXPIRED" | "DISABLED" | "DELETED";
@@ -6,16 +8,35 @@ export type TrafficLimitStrategy = "NO_RESET" | "DAY" | "WEEK" | "MONTH" | "MONT
 
 export interface PlanSnapshot {
   plan_id: number;
+  public_code: string;
   name: string;
   price_paid: string;
   currency: string;
   duration_days: number;
+  traffic_limit: number;
+  device_limit: number;
+  traffic_limit_strategy: TrafficLimitStrategy;
   is_trial: boolean;
+  internal_squads: string[];
+  external_squad: string | null;
+  tag?: string | null;
+  /** money and days behind the current credit, in the snapshot's currency; absent on an old snapshot */
+  credit_paid?: string | null;
+  credit_days?: number | null;
+}
+
+export interface AddOnEntitlement {
+  addon_id: number | null;
+  type: AddOnType;
+  /** GB or devices on top of the subscription's own limit */
+  amount: number;
+  granted_at: string;
 }
 
 export interface SubscriptionListItem {
   id: number;
   user_id: number;
+  remnawave_user_id: number;
   status: SubscriptionStatus;
   is_trial: boolean;
   tag: string | null;
@@ -27,8 +48,25 @@ export interface SubscriptionListItem {
   internal_squads: string[];
   external_squad: string | null;
   expire_at: string;
+  created_at: string | null;
+  first_connected_at: string | null;
   url: string;
   plan_snapshot: PlanSnapshot;
+  addon_entitlements: AddOnEntitlement[];
+}
+
+export function addonTotal(subscription: Pick<SubscriptionListItem, "addon_entitlements">, type: AddOnType): number {
+  return subscription.addon_entitlements.reduce((sum, item) => sum + (item.type === type ? item.amount : 0), 0);
+}
+
+export interface SubscriptionRow extends SubscriptionListItem {
+  /** null once the account is deleted */
+  user_name: string | null;
+}
+
+export interface SubscriptionDetail extends SubscriptionListItem {
+  /** bytes; null when the panel is unreachable */
+  used_traffic: number | null;
 }
 
 export const SUBSCRIPTION_STATUS_BADGE_TONE: Record<SubscriptionStatus, BadgeTone> = {
@@ -39,10 +77,24 @@ export const SUBSCRIPTION_STATUS_BADGE_TONE: Record<SubscriptionStatus, BadgeTon
   DELETED: "neutral",
 };
 
+export const EXPIRING_SOON_DAYS = 7;
+
+export function daysUntil(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / DAY_MS);
+}
+
+export function formatTraffic(gb: number, unlimitedLabel: string): string {
+  return gb === 0 ? unlimitedLabel : `${gb} GB`;
+}
+
+export function formatLimit(value: number, unlimitedLabel: string): string {
+  return value === 0 ? unlimitedLabel : String(value);
+}
+
 export const DEFAULT_PAGE_SIZE = 50;
 
 export interface SubscriptionListPage {
-  items: SubscriptionListItem[];
+  items: SubscriptionRow[];
   total: number;
 }
 
@@ -83,8 +135,30 @@ export function updateSubscription(
   return apiPatch<SubscriptionListItem, UpdateSubscriptionRequest>(`/subscriptions/${subscriptionId}`, payload);
 }
 
-export function getSubscription(subscriptionId: number, signal?: AbortSignal): Promise<SubscriptionListItem> {
-  return apiGet<SubscriptionListItem>(`/subscriptions/${subscriptionId}`, signal);
+export interface SubscriptionSquads {
+  internal_squads: string[];
+  external_squad: string | null;
+}
+
+export function updateSubscriptionSquads(
+  subscriptionId: number,
+  squads: SubscriptionSquads,
+): Promise<SubscriptionListItem> {
+  return apiPut<SubscriptionListItem, SubscriptionSquads>(`/subscriptions/${subscriptionId}/squads`, squads);
+}
+
+export function getSubscription(subscriptionId: number, signal?: AbortSignal): Promise<SubscriptionDetail> {
+  return apiGet<SubscriptionDetail>(`/subscriptions/${subscriptionId}`, signal);
+}
+
+export interface PanelSquad {
+  uuid: string;
+  name: string;
+  kind: "internal" | "external";
+}
+
+export function listPanelSquads(signal?: AbortSignal): Promise<{ items: PanelSquad[]; total: number }> {
+  return apiGet<{ items: PanelSquad[]; total: number }>("/subscriptions/squads", signal);
 }
 
 export function deleteSubscription(subscriptionId: number): Promise<void> {

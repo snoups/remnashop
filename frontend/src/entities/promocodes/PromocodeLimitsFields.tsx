@@ -9,10 +9,10 @@ import { ChipsInput } from "@shared/ui/ChipsInput";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Switch } from "@shared/ui/Switch";
-import { TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { Switch } from "@shared/ui/glass/Switch";
 
 
 function PromocodeSwitchRow({
@@ -27,9 +27,9 @@ function PromocodeSwitchRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+    <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-[13px] font-medium text-foreground">{label}</p>
         <p className="text-[12px] text-muted-foreground">{hint}</p>
       </div>
       <Switch checked={checked} onChange={onChange} />
@@ -50,10 +50,11 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
   const set = (patch: Partial<PromocodeLimitsDraft>) => onChange({ ...value, ...patch });
 
   return (
-    <Card variant="form">
+    <div className={GLASS_DIALOG_CARD_CLASS}>
       <Field label={t("promocodes.limits.availabilityLabel")} htmlFor={`${idPrefix}-availability`}>
         <SelectDropdown
-          variant="form"
+          variant="well"
+          size="compact"
           id={`${idPrefix}-availability`}
           value={value.availability}
           onChange={(availability) => set({ availability: availability as PromocodeAvailability })}
@@ -64,8 +65,9 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
       </Field>
 
       {value.availability === "ALLOWED" && (
-        <Field label={t("promocodes.limits.allowedUserIdsLabel")} htmlFor={`${idPrefix}-allowed-users`} className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
+        <Field label={t("promocodes.limits.allowedUserIdsLabel")} htmlFor={`${idPrefix}-allowed-users`}>
           <ChipsInput
+            glass
             id={`${idPrefix}-allowed-users`}
             values={value.allowedUserIds.map(String)}
             onChange={(ids) => set({ allowedUserIds: ids.map(Number) })}
@@ -77,12 +79,17 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
       )}
 
       {plans && plans.length > 0 && (
-        <Field label={t("promocodes.limits.plansLabel")} hint={t("promocodes.limits.plansHint")}>
+        <Field label={t("promocodes.limits.plansLabel")}>
           <div className="flex flex-wrap gap-1.5">
+            {/* an empty list is "any plan" */}
+            <ChoiceChip glass active={value.allowedPlanIds.length === 0} onClick={() => set({ allowedPlanIds: [] })}>
+              {t("promocodes.limits.plansAll")}
+            </ChoiceChip>
             {plans.map((plan) => {
               const isSelected = value.allowedPlanIds.includes(plan.id);
               return (
                 <ChoiceChip
+                  glass
                   key={plan.id}
                   active={isSelected}
                   // a plan that refuses promocodes can be unticked, not picked
@@ -109,7 +116,8 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("promocodes.limits.expiresLabel")} htmlFor={`${idPrefix}-expires-at`}>
           <DatePickerField
-            variant="form"
+            variant="well"
+            compact
             id={`${idPrefix}-expires-at`}
             value={value.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}
@@ -117,7 +125,7 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
           />
         </Field>
         <Field label={t("promocodes.limits.maxActivationsLabel")} htmlFor={`${idPrefix}-max-activations`}>
-          <TextInput
+          <Input
             id={`${idPrefix}-max-activations`}
             type="number"
             onKeyDown={blockNonIntegerKeys}
@@ -136,6 +144,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
         checked={value.isReusable}
         onChange={(isReusable) => set({ isReusable })}
       />
-    </Card>
+    </div>
   );
 }

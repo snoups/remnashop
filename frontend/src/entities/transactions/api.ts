@@ -11,6 +11,7 @@ export type DiscountSource = "NONE" | "PERSONAL" | "PURCHASE" | "LOYALTY";
 export interface PlanSnapshot {
   name?: string;
   public_code?: string;
+  duration_days?: number;
 }
 
 export interface TransactionUser {
@@ -27,6 +28,8 @@ export interface TransactionItem {
   user: TransactionUser | null;
   plan_id: number | null;
   plan_snapshot: PlanSnapshot;
+  /** a CHANGE order's plan before it; null on other orders and older ones */
+  previous_plan_snapshot: PlanSnapshot | null;
   duration_days: number;
   currency: string;
   purchase_type: PurchaseType;
@@ -74,6 +77,12 @@ export interface TransactionListFilters {
   createdTo?: string;
   search?: string;
   userId?: number;
+  /** the summary only */
+  subscriptionId?: number;
+  /** paid, but no subscription recorded for it yet */
+  unfulfilled?: boolean;
+  /** keyset cursor: orders listed after this one (the list only) */
+  beforeId?: number;
   page?: number;
   pageSize?: number;
 }
@@ -87,12 +96,25 @@ export function listTransactions(
   if (filters.gatewayType) params.set("gateway_type", filters.gatewayType);
   if (filters.purchaseType) params.set("purchase_type", filters.purchaseType);
   if (filters.createdFrom) params.set("created_from", filters.createdFrom);
+  if (filters.createdTo) params.set("created_to", filters.createdTo);
   if (filters.search) params.set("search", filters.search);
   if (filters.userId !== undefined) params.set("user_id", String(filters.userId));
+  if (filters.unfulfilled) params.set("unfulfilled", "true");
+  if (filters.beforeId !== undefined) params.set("before_id", String(filters.beforeId));
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.pageSize ?? DEFAULT_PAGE_SIZE));
 
   return apiGet<TransactionListPage>(`/transactions?${params.toString()}`, signal);
+}
+
+/** "Load more" over a live list: continues after the last row on screen, so new orders don't repeat it. */
+export async function listTransactionsAfter(
+  filters: Omit<TransactionListFilters, "beforeId" | "page">,
+  loaded: TransactionItem[] = [],
+  signal?: AbortSignal,
+): Promise<TransactionListPage> {
+  const page = await listTransactions({ ...filters, beforeId: loaded.at(-1)?.id }, signal);
+  return { items: page.items, total: loaded.length + page.total };
 }
 
 export interface TransactionSummary {
@@ -120,10 +142,11 @@ export function getTransactionSummary(
   if (filters.createdTo) params.set("created_to", filters.createdTo);
   if (filters.search) params.set("search", filters.search);
   if (filters.userId !== undefined) params.set("user_id", String(filters.userId));
+  if (filters.subscriptionId !== undefined) params.set("subscription_id", String(filters.subscriptionId));
+  if (filters.unfulfilled) params.set("unfulfilled", "true");
   return apiGet<TransactionSummary>(`/transactions/summary?${params.toString()}`, signal);
 }
 
-/** Gateway types that appear in at least one (non-test) order. */
 export function getTransaction(transactionId: number, signal?: AbortSignal): Promise<TransactionItem> {
   return apiGet<TransactionItem>(`/transactions/${transactionId}`, signal);
 }
@@ -164,11 +187,15 @@ export function canFulfillTransaction(order: TransactionItem): boolean {
   return order.status === "PAID" && order.fulfilled_subscription_id === null;
 }
 
+/** Gateway types that appear in at least one (non-test) order. */
 export function listTransactionGateways(signal?: AbortSignal): Promise<string[]> {
   return apiGet<ListResponse<string>>("/transactions/gateways", signal).then((response) => response.items);
 }
 
 export const PURCHASE_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];
+
+/** The status filter's "paid, not issued" choice; sent as `unfulfilled`, not as a status. */
+export const UNFULFILLED_STATUS = "UNFULFILLED";
 
 export const CURRENCY_ICON: Record<string, LucideIcon> = { USD: DollarSign, XTR: Star, RUB: RussianRuble };
 

@@ -5,18 +5,17 @@ import { useTranslation } from "react-i18next";
 import { getTrial } from "@entities/analytics/api";
 import type { Trial } from "@entities/analytics/api";
 import { formatMoney, formatPercent } from "@shared/lib/format";
+import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { Section } from "@shared/ui/glass/Section";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
-import { BarRows, ColumnChart, CurrencyNote, Legend } from "@pages/analytics/charts";
+import { BarRows, ColumnChart, Legend } from "@pages/analytics/charts";
 import type { BarRow, Column } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
-import { ppTrend } from "@pages/analytics/trends";
+import { countTrend, ppTrend, previousPeriodHint, relativeTrend } from "@pages/analytics/trends";
 
 const AFTER_PREFIX = "after_";
 
@@ -26,10 +25,10 @@ export function AnalyticsTrialPage() {
   const [state] = useAsyncResource((signal) => getTrial(period, signal), { deps: [period], keepData: true });
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
-      <AnalyticsToolbar currency={state.kind === "ready" ? state.data.report_currency : undefined} />
+    <div className="flex flex-col gap-5">
+      <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
       {state.kind === "ready" && <Overview data={state.data} isAll={period.kind === "all"} />}
     </div>
   );
@@ -37,11 +36,15 @@ export function AnalyticsTrialPage() {
 
 function Overview({ data, isAll }: { data: Trial; isAll: boolean }) {
   const { t, i18n } = useTranslation();
+  const vs = previousPeriodHint(useAnalyticsPeriod().period, t);
   const language = i18n.language;
   const currency = data.report_currency;
 
   const count = (value: number) => value.toLocaleString(language);
-  const conversionTrend = isAll ? undefined : ppTrend(data.conversion_rate, data.previous_conversion_rate, t, language);
+  const conversionTrend =
+    isAll || data.trials === 0 || data.previous_conversion_rate === null
+      ? undefined
+      : ppTrend(data.conversion_rate, data.previous_conversion_rate, vs, t, language);
 
   const isAfter = (key: string) => key.startsWith(AFTER_PREFIX);
   const dayTotal = data.by_trial_day.reduce((sum, bucket) => sum + bucket.count, 0);
@@ -51,7 +54,8 @@ function Overview({ data, isAll }: { data: Trial; isAll: boolean }) {
 
   const dayColumns: Column[] = data.by_trial_day.map((bucket) => ({
     key: bucket.key,
-    label: isAfter(bucket.key) ? t(`analytics.trial.after.${bucket.key}` as ParseKeys) : bucket.key,
+    // a long trial groups its days: "8_14" is days 8 to 14
+    label: isAfter(bucket.key) ? t(`analytics.trial.after.${bucket.key}` as ParseKeys) : bucket.key.replace("_", "–"),
     segments: [{ value: bucket.count, className: isAfter(bucket.key) ? "bg-success" : "bg-primary" }],
     caption: count(bucket.count),
   }));
@@ -78,81 +82,93 @@ function Overview({ data, isAll }: { data: Trial; isAll: boolean }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile icon={Timer} label={t("analytics.trial.trials")} value={count(data.trials)} />
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile
-          highlighted
-          icon={CalendarClock}
-          label={t("analytics.trial.conversion")}
-          value={formatPercent(data.conversion_rate, language)}
-          trend={conversionTrend}
-          hint={t("analytics.trial.convertedCaption", { converted: count(data.converted), trials: count(data.trials) })}
+          panel
+          icon={Timer}
+          label={t("analytics.trial.trials")}
+          value={count(data.trials)}
+          trend={isAll ? undefined : countTrend(data.trials, data.previous_trials, vs, language)}
         />
         <KpiTile
+          panel
+          icon={CalendarClock}
+          label={t("analytics.trial.conversion")}
+          value={data.trials > 0 ? formatPercent(data.conversion_rate, language) : t("common.none")}
+          trend={conversionTrend}
+          hint={data.trials > 0 ? t("analytics.trial.convertedCaption", { converted: count(data.converted), trials: count(data.trials) }) : undefined}
+        />
+        <KpiTile
+          panel
           icon={Wallet}
           label={t("analytics.trial.revenue")}
           info={t("analytics.trial.revenueInfo")}
           value={formatMoney(data.revenue_from_converted, currency, language)}
+          trend={
+            isAll
+              ? undefined
+              : relativeTrend(Number(data.revenue_from_converted), Number(data.previous_revenue_from_converted), vs, language)
+          }
         />
         <KpiTile
+          panel
           icon={Clock}
           label={t("analytics.trial.daysToPay")}
-          value={data.median_days_to_pay.toLocaleString(language)}
+          // 0 is a same-day payment once someone has paid
+          value={data.converted > 0 ? data.median_days_to_pay.toLocaleString(language) : t("common.none")}
           hint={t("analytics.trial.daysToPayCaption")}
         />
       </div>
 
-      <Card>
-        <CardHeader
+      <Section
+        icon={Receipt}
+        title={t("analytics.trial.timeToPayTitle")}
+        description={t("analytics.trial.timeToPayDescription")}
+      >
+        <div className="flex flex-col gap-4 px-3.5 pt-4">
+          <ColumnChart columns={payColumns} empty={t("analytics.emptyPeriod")} />
+          <Legend
+            items={[
+              { className: "bg-primary", label: t("analytics.trial.viaTrial", { value: count(viaTotal) }) },
+              { className: "bg-warning", label: t("analytics.trial.noTrial", { value: count(directTotal) }) },
+            ]}
+          />
+        </div>
+      </Section>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Section
+          stretched
           icon={BarChart3}
           title={t("analytics.trial.byDayTitle")}
           description={t("analytics.trial.byDayDescription")}
-        />
-        <div className="flex flex-col gap-4 pt-4">
-          <ColumnChart columns={dayColumns} empty={t("analytics.emptyPeriod")} />
-          <Legend
-            items={[
-              { className: "bg-primary", label: t("analytics.trial.during") },
-              { className: "bg-success", label: t("analytics.trial.afterEnd") },
-            ]}
-          />
-          {dayTotal > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <Tag>{t("analytics.trial.lastDay", { share: share(lastDay?.count ?? 0) })}</Tag>
-              <Tag>{t("analytics.trial.afterEndShare", { share: share(afterTotal) })}</Tag>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            icon={Receipt}
-            title={t("analytics.trial.timeToPayTitle")}
-            description={t("analytics.trial.timeToPayDescription")}
-          />
-          <div className="flex flex-col gap-4 pt-4">
-            <ColumnChart columns={payColumns} empty={t("analytics.emptyPeriod")} />
+        >
+          <div className="flex flex-col gap-4 px-3.5 pt-4">
+            <ColumnChart columns={dayColumns} empty={t("analytics.emptyPeriod")} />
             <Legend
               items={[
-                { className: "bg-primary", label: t("analytics.trial.viaTrial", { value: count(viaTotal) }) },
-                { className: "bg-warning", label: t("analytics.trial.noTrial", { value: count(directTotal) }) },
+                { className: "bg-primary", label: t("analytics.trial.during") },
+                { className: "bg-success", label: t("analytics.trial.afterEnd") },
               ]}
             />
+            {dayTotal > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <Tag>{t("analytics.trial.lastDay", { share: share(lastDay?.count ?? 0) })}</Tag>
+                <Tag>{t("analytics.trial.afterEndShare", { share: share(afterTotal) })}</Tag>
+              </div>
+            )}
           </div>
-        </Card>
-        <Card>
-          <CardHeader
-            icon={Package}
-            title={t("analytics.trial.plansTitle")}
-            description={t("analytics.trial.plansDescription")}
-          />
-          <BarRows rows={planRows} empty={t("analytics.emptyPeriod")} />
-        </Card>
+        </Section>
+        <Section
+          stretched
+          icon={Package}
+          title={t("analytics.trial.plansTitle")}
+          description={t("analytics.trial.plansDescription")}
+        >
+          <BarRows compact rows={planRows} empty={t("analytics.emptyPeriod")} />
+        </Section>
       </div>
 
-      <CurrencyNote currency={currency} />
     </>
   );
 }

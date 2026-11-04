@@ -6,11 +6,11 @@ import {
   Gift,
   Hash,
   Info,
-  Layers,
+  ListOrdered,
   Percent,
   Power,
   Repeat,
-  Users,
+  Share2,
 } from "lucide-react";
 import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -203,7 +203,7 @@ export function ReferralSettingsPage() {
   if (state.kind === "error") {
     return (
       <Section
-        icon={Users}
+        icon={Share2}
         title={t("referrals.settings.programTitle")}
         description={t("referrals.settings.programDescription")}
       >
@@ -263,7 +263,7 @@ export function ReferralSettingsPage() {
     <form onSubmit={(event) => void handleSubmit(event)} className="grid items-stretch gap-5 lg:grid-cols-2">
       <Section
         stretched
-        icon={Users}
+        icon={Share2}
         title={t("referrals.settings.programTitle")}
         description={t("referrals.settings.programDescription")}
         aside={
@@ -348,7 +348,7 @@ export function ReferralSettingsPage() {
       <Section
         stretched
         className={`transition-opacity ${dimmed}`}
-        icon={Layers}
+        icon={ListOrdered}
         title={t("referrals.settings.levelsTitle")}
         description={t("referrals.settings.levelsDescription")}
       >

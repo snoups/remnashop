@@ -207,7 +207,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       <IconButton size="9" tone={capsule ? "default" : "glass"} className="relative" onClick={onToggle}>
         <Bell className="size-4" />
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+          <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
             {unread > MAX_BADGE ? `${MAX_BADGE}+` : unread}
           </span>
         )}

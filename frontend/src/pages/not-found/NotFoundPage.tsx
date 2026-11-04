@@ -14,12 +14,12 @@ export function NotFoundPage() {
   return (
     <FullScreenMessage
       icon={Compass}
-      iconClassName="text-primary"
+      tone="primary"
       code="404"
       title={t("errors.notFoundTitle")}
       description={t("errors.notFoundDescription")}
       action={
-        <Pressable as="link" to="/" className={`${FULL_SCREEN_ACTION_CLASS}`}>
+        <Pressable as="link" to="/" className={FULL_SCREEN_ACTION_CLASS}>
           {t("errors.notFoundButton")}
         </Pressable>
       }

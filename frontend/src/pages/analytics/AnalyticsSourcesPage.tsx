@@ -10,23 +10,23 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { initials } from "@shared/lib/initials";
+import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { Section } from "@shared/ui/glass/Section";
 import {
   EYEBROW_CLASS,
-  LIST_HEAD_CLASS,
-  LIST_ROW_CLASS,
+  GLASS_LIST_HEAD_CLASS,
+  GLASS_LIST_ROW_CLASS,
 } from "@shared/ui/classes";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
-import { AnalyticsToolbar } from "@pages/analytics/AnalyticsToolbar";
-import { CurrencyNote, Legend } from "@pages/analytics/charts";
+import { Legend } from "@pages/analytics/charts";
 import { useAnalyticsPeriod } from "@pages/analytics/period";
+import { previousPeriodHint, relativeTrend } from "@pages/analytics/trends";
 import { ListRow } from "@shared/ui/ListRow";
 
 const KINDS: SourceKind[] = ["organic", "ad_link", "referral"];
@@ -46,7 +46,7 @@ const KIND_IC = {
   referral: "bg-violet-400/10 text-violet-300",
 } as const;
 const TABLE_GRID =
-  "grid grid-cols-[36px_minmax(180px,1fr)_100px_90px_170px_120px_90px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(180px,1fr)_100px_90px_170px_120px_90px] items-center gap-3";
 
 type ReferrerSort = "revenue" | "invited";
 
@@ -59,14 +59,10 @@ export function AnalyticsSourcesPage() {
   });
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
-      <AnalyticsToolbar
-        currency={
-          state.kind === "ready" ? state.data.report_currency : undefined
-        }
-      />
+    <div className="flex flex-col gap-5">
+      <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}
-      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} size="page" />}
       {state.kind === "ready" && <Overview data={state.data} />}
     </div>
   );
@@ -76,6 +72,10 @@ function Overview({ data }: { data: Sources }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   const currency = data.report_currency;
+  const { period } = useAnalyticsPeriod();
+  const vs = previousPeriodHint(period, t);
+  const previousRevenue = (kind: SourceKind) =>
+    Number(data.previous_channels.find((row) => row.source === kind)?.revenue ?? 0);
   const navigate = useNavigate();
   const canAdLinks = usePermissions().includes("AD_LINKS_VIEW");
 
@@ -111,7 +111,7 @@ function Overview({ data }: { data: Sources }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {KINDS.map((kind) => {
           const row = channel(kind);
           const parts = [
@@ -131,41 +131,43 @@ function Overview({ data }: { data: Sources }) {
           }
           return (
             <KpiTile
+              panel
               key={kind}
               icon={Link2}
               label={kindLabel(kind)}
               value={formatMoney(row?.revenue ?? "0", currency, language)}
+              trend={
+                period.kind === "all" ? undefined : relativeTrend(Number(row?.revenue ?? 0), previousRevenue(kind), vs, language)
+              }
               hint={parts.join(" · ")}
             />
           );
         })}
       </div>
 
-      <Card>
-        <CardHeader
-          icon={Link2}
-          title={t("analytics.sources.channelsTitle")}
-          description={t("analytics.sources.channelsDescription")}
-          aside={
-            canAdLinks && (
-              <Button
-                variant="secondary"
-                size="md"
-                type="button"
-                onClick={() => navigate("/dashboard/advertising")}
-              >
-                {t("analytics.sources.openAdvertising")}
-                <ChevronRight className="size-3.5" />
-              </Button>
-            )
-          }
-        />
-        <div className="flex flex-col gap-2 px-3 py-4">
+      <Section
+        icon={Link2}
+        title={t("analytics.sources.channelsTitle")}
+        description={t("analytics.sources.channelsDescription")}
+        aside={
+          canAdLinks && (
+            <Button
+              variant="glass"
+              type="button"
+              onClick={() => navigate("/dashboard/advertising")}
+            >
+              {t("analytics.sources.openAdvertising")}
+              <ChevronRight className="size-4" />
+            </Button>
+          )
+        }
+      >
+        <div className="flex flex-col gap-2 px-3.5 py-4">
           <div className="flex h-3 gap-[3px]">
             {KINDS.map((kind) => (
               <div
                 key={kind}
-                className={`rounded-full ${KIND_BG[kind]}`}
+                className={`rounded-full transition-[width] duration-200 ease-out ${KIND_BG[kind]}`}
                 style={{ width: `${share(channel(kind)) * 100}%` }}
               />
             ))}
@@ -179,14 +181,14 @@ function Overview({ data }: { data: Sources }) {
         </div>
         <div className="overflow-x-auto">
           <div className="min-w-[820px]">
-            <div className={`${TABLE_GRID} ${LIST_HEAD_CLASS}`}>
+            <div className={`${TABLE_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
               <span />
               <span>{t("analytics.sources.channel")}</span>
               <span className="text-right">
                 {t("analytics.sources.registrations")}
               </span>
               <span className="text-right">{t("analytics.sources.paid")}</span>
-              <span>{t("analytics.sources.conversion")}</span>
+              <span className="pl-6">{t("analytics.sources.conversion")}</span>
               <span className="text-right">
                 {t("analytics.sources.revenue")}
               </span>
@@ -197,12 +199,12 @@ function Overview({ data }: { data: Sources }) {
             {tableRows.map(({ row, top, key }) => (
               <div
                 key={key}
-                className={`${TABLE_GRID} ${LIST_ROW_CLASS} ${top ? "" : "!h-12"}`}
+                className={`${TABLE_GRID} ${GLASS_LIST_ROW_CLASS} ${top ? "" : "!h-12"}`}
               >
                 <span>
                   {top && (
                     <span
-                      className={`flex size-9 items-center justify-center rounded-full text-[12px] font-bold ${KIND_IC[row.source]}`}
+                      className={`flex size-8 items-center justify-center rounded-full text-[11px] font-bold ${KIND_IC[row.source]}`}
                     >
                       {kindLabel(row.source).charAt(0).toUpperCase()}
                     </span>
@@ -228,10 +230,10 @@ function Overview({ data }: { data: Sources }) {
                 <span className="text-right text-[13px] font-semibold tabular-nums">
                   {row.payers.toLocaleString(language)}
                 </span>
-                <span className="flex items-center gap-2">
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                <span className="flex items-center gap-2 pl-6">
+                  <span className="h-2 flex-1 overflow-hidden rounded-full glass-track">
                     <span
-                      className={`block h-full rounded-full ${KIND_BG[row.source]}`}
+                      className={`block h-full rounded-full transition-[width] duration-200 ease-out ${KIND_BG[row.source]}`}
                       style={{
                         width: `${maxConversion > 0 ? (row.conversion_rate / maxConversion) * 100 : 0}%`,
                       }}
@@ -251,14 +253,11 @@ function Overview({ data }: { data: Sources }) {
             ))}
           </div>
         </div>
-      </Card>
+      </Section>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <Payback data={data} />
-        <TopReferrers data={data} />
-      </div>
+      <Payback data={data} />
+      <TopReferrers data={data} />
 
-      <CurrencyNote currency={currency} />
     </>
   );
 }
@@ -269,13 +268,12 @@ function Payback({ data }: { data: Sources }) {
   const { referral } = data;
 
   return (
-    <Card>
-      <CardHeader
-        icon={Share2}
-        title={t("analytics.sources.paybackTitle")}
-        description={t("analytics.sources.paybackDescription")}
-      />
-      <div className="flex flex-col gap-4 pt-4">
+    <Section
+      icon={Share2}
+      title={t("analytics.sources.paybackTitle")}
+      description={t("analytics.sources.paybackDescription")}
+    >
+      <div className="flex flex-col gap-4 px-3.5 pt-4">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-3">
             <span className={EYEBROW_CLASS}>
@@ -328,7 +326,7 @@ function Payback({ data }: { data: Sources }) {
           </Tag>
         </div>
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -345,35 +343,34 @@ function TopReferrers({ data }: { data: Sources }) {
   );
 
   return (
-    <Card>
-      <CardHeader
-        icon={Trophy}
-        title={t("analytics.sources.topTitle")}
-        description={t("analytics.sources.topDescription")}
-        aside={
-          <SegmentedPills
-            value={sort}
-            onChange={setSort}
-            options={(["revenue", "invited"] as const).map((value) => ({
-              value,
-              label: t(`analytics.sources.sort.${value}` as ParseKeys),
-            }))}
-          />
-        }
-      />
+    <Section
+      icon={Trophy}
+      title={t("analytics.sources.topTitle")}
+      description={t("analytics.sources.topDescription")}
+      aside={
+        <PillTabs
+          activeKey={sort}
+          onSelect={setSort}
+          items={(["revenue", "invited"] as const).map((key) => ({
+            key,
+            label: t(`analytics.sources.sort.${key}` as ParseKeys),
+          }))}
+        />
+      }
+    >
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-[13px] text-muted-foreground">
-          {t("analytics.sources.empty")}
-        </p>
+        <EmptyState text={t("analytics.sources.empty")} />
       ) : (
-        rows.map((row) => (
+        <div className="mt-4 flex flex-col">
+        {rows.map((row) => (
           <ListRow
+            glass
             key={row.user_id}
             type="button"
             onClick={() => openUser(row.user_id)}
-            className={`grid grid-cols-[36px_minmax(0,1fr)_auto_auto] items-center gap-3`}
+            className={`grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3`}
           >
-            <span className="flex size-9 items-center justify-center rounded-full bg-violet-400/10 text-[12px] font-bold text-violet-300">
+            <span className="flex size-8 items-center justify-center rounded-full bg-violet-400/10 text-[11px] font-bold text-violet-300">
               {initials(row.name)}
             </span>
             <span className="min-w-0">
@@ -394,8 +391,9 @@ function TopReferrers({ data }: { data: Sources }) {
               {t("plans.daysShort", { count: row.reward_days })}
             </span>
           </ListRow>
-        ))
+        ))}
+        </div>
       )}
-    </Card>
+    </Section>
   );
 }

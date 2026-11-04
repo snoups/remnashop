@@ -9,6 +9,7 @@ import {
   blockUser,
   clearEmailUndeliverable,
   deleteUser,
+  unbindUserTelegram,
   unblockUser,
 } from "@entities/user/api";
 import {
@@ -26,6 +27,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 export type UserAction =
   | "promote"
   | "bindTelegram"
+  | "unbindTelegram"
   | "block"
   | "unblock"
   | "resetReferralCode"
@@ -73,6 +75,7 @@ export function useUserActions({
     action:
       | "promote"
       | "bindTelegram"
+      | "unbindTelegram"
       | "blockAdmin"
       | "resetReferralCode"
       | "merge"
@@ -107,8 +110,12 @@ export function useUserActions({
       ...(user.role === "USER" && permissions.includes("ADMINS_MANAGE")
         ? ["promote" as const]
         : []),
-      ...(canTouchStaff && permissions.includes("USERS_TELEGRAM_BIND")
+      // bound: only unbinding is offered; a new id goes on after that
+      ...(user.telegram_id === null && canTouchStaff && permissions.includes("USERS_TELEGRAM_BIND")
         ? ["bindTelegram" as const]
+        : []),
+      ...(user.telegram_id !== null && canTouchStaff && permissions.includes("USERS_TELEGRAM_UNBIND")
+        ? ["unbindTelegram" as const]
         : []),
       ...(user.is_blocked
         ? canManage && permissions.includes("USERS_UNBLOCK")
@@ -145,6 +152,15 @@ export function useUserActions({
           t(blocked ? "users.block.error" : "users.unblock.error"),
         ),
       );
+    }
+  };
+
+  const unbindTelegram = async (user: UserListItem) => {
+    try {
+      onUpdated(await unbindUserTelegram(user.id));
+      toast.success(t("users.telegram.unbound"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("users.telegram.unbindError")));
     }
   };
 
@@ -237,6 +253,19 @@ export function useUserActions({
         danger
         onConfirm={() => {
           void setBlocked(pending.user, true);
+          close();
+        }}
+        onCancel={close}
+      />
+    ) : pending.action === "unbindTelegram" ? (
+      <ConfirmDialog
+        title={t("users.telegram.unbindTitle")}
+        message={t("users.telegram.unbindConfirm", { name: pending.user.name })}
+        confirmLabel={t("users.telegram.unbind")}
+        cancelLabel={t("common.cancel")}
+        danger
+        onConfirm={() => {
+          void unbindTelegram(pending.user);
           close();
         }}
         onCancel={close}

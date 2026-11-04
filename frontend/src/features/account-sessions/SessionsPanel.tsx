@@ -16,17 +16,27 @@ import { clearAccessToken, getSessionId } from "@shared/lib/token-storage";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { ErrorState } from "@shared/ui/EmptyState";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 
 /** Sessions with revoke: the actor's own without `userId`, another account's with it. */
-export function SessionsPanel({ userId }: { userId?: number }) {
+export function SessionsPanel({
+  userId,
+  version = 0,
+  rowSize = "compact",
+}: {
+  userId?: number;
+  /** bumped to reload in place */
+  version?: number;
+  rowSize?: "default" | "compact";
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const isOwn = userId === undefined;
   const currentSessionId = isOwn ? getSessionId() : null;
-  const [state, reload] = useAsyncResource((signal) =>
-    isOwn ? listOwnSessions(signal) : listUserSessions(userId, signal),
+  const [state, reload] = useAsyncResource(
+    (signal) => (isOwn ? listOwnSessions(signal) : listUserSessions(userId, signal)),
+    { deps: [version], keepData: true },
   );
   const [pendingRevoke, setPendingRevoke] = useState<Session | null>(null);
   const isRevokingCurrent = pendingRevoke !== null && pendingRevoke.id === currentSessionId;
@@ -53,7 +63,7 @@ export function SessionsPanel({ userId }: { userId?: number }) {
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
-        <SessionList sessions={state.data} currentSessionId={currentSessionId} onRequestRevoke={setPendingRevoke} />
+        <SessionList sessions={state.data} currentSessionId={currentSessionId} onRequestRevoke={setPendingRevoke} size={rowSize} />
       )}
 
       {pendingRevoke && (

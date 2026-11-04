@@ -1,4 +1,4 @@
-import { apiDelete, apiGet } from "@shared/api/http";
+import { apiDelete, apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 
 export interface Session {
@@ -16,6 +16,10 @@ export function listOwnSessions(signal?: AbortSignal): Promise<Session[]> {
 
 export function revokeOwnSession(sessionId: number): Promise<void> {
   return apiDelete<void>(`/auth/sessions/${sessionId}`);
+}
+
+export function revokeOtherOwnSessions(): Promise<void> {
+  return apiPost<void, Record<string, never>>("/auth/sessions/actions/revoke-others", {});
 }
 
 export function listUserSessions(userId: number, signal?: AbortSignal): Promise<Session[]> {

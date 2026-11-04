@@ -21,7 +21,7 @@ export function AnnouncementDialog({ announcement, onClose }: AnnouncementDialog
   const { url } = announcement;
 
   return (
-    <Modal onClose={onClose} size="md" scrollable material="glass">
+    <Modal onClose={onClose} size="md" scrollable>
       <DialogHeader
         glyph={<AnnouncementIcon icon={announcement.icon} className="size-4" />}
         warning={critical}

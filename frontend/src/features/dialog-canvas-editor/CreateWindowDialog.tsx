@@ -20,7 +20,7 @@ interface CreateWindowDialogProps {
 
 export function CreateWindowDialog({ onCreate, onClose }: CreateWindowDialogProps) {
   return (
-    <Modal onClose={onClose} size="sm" material="glass">
+    <Modal onClose={onClose} size="sm">
       <CreateWindowDialogBody onCreate={onCreate} />
     </Modal>
   );
@@ -35,7 +35,6 @@ function CreateWindowDialogBody({ onCreate }: Pick<CreateWindowDialogProps, "onC
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!trimmed) return;
     setIsSubmitting(true);
     const created = await onCreate(trimmed);
     setIsSubmitting(false);
@@ -68,7 +67,7 @@ function CreateWindowDialogBody({ onCreate }: Pick<CreateWindowDialogProps, "onC
           <Button variant="glass" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="glassAccent" type="submit" isLoading={isSubmitting} disabled={!trimmed}>
+          <Button variant="glassAccent" type="submit" isLoading={isSubmitting}>
             {t("common.create")}
           </Button>
         </div>

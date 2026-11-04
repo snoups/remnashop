@@ -11,7 +11,7 @@ import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { Switch } from "@shared/ui/Switch";
+import { Switch } from "@shared/ui/glass/Switch";
 import { Button } from "@shared/ui/Button";
 import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { Pressable } from "@shared/ui/Pressable";

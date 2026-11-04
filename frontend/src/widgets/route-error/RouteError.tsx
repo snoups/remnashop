@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useRouteError } from "react-router-dom";
 
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
+import { Pressable } from "@shared/ui/Pressable";
 import { FULL_SCREEN_ACTION_CLASS, FullScreenMessage } from "@widgets/full-screen-message/FullScreenMessage";
 
 function useLoggedRouteError() {
@@ -20,13 +20,13 @@ export function AppRouteError() {
   return (
     <FullScreenMessage
       icon={TriangleAlert}
-      iconClassName="text-error"
+      tone="error"
       title={t("errors.crashTitle")}
       description={t("errors.crashDescription")}
       action={
-        <button type="button" onClick={() => window.location.reload()} className={FULL_SCREEN_ACTION_CLASS}>
+        <Pressable type="button" onClick={() => window.location.reload()} className={FULL_SCREEN_ACTION_CLASS}>
           {t("errors.reload")}
-        </button>
+        </Pressable>
       }
     />
   );
@@ -38,15 +38,18 @@ export function PageRouteError() {
   useLoggedRouteError();
 
   return (
-    <Card className="flex flex-col items-center gap-3 py-12 text-center">
-      <TriangleAlert className="size-8 text-error" />
-      <div>
-        <h2 className="text-base font-bold text-foreground">{t("errors.crashTitle")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("errors.crashDescription")}</p>
+    // a glass card with the full-screen message's layout, smaller
+    <div className="glass-panel flex flex-col items-center gap-4 rounded-3xl px-4 py-12 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full border border-error/40 bg-error/10 text-error">
+        <TriangleAlert className="size-5" />
+      </span>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{t("errors.crashTitle")}</h2>
+        <p className="text-[13px] text-muted-foreground">{t("errors.crashDescription")}</p>
       </div>
-      <Button variant="accent" onClick={() => window.location.reload()}>
+      <Button variant="glassSolid" onClick={() => window.location.reload()}>
         {t("errors.reload")}
       </Button>
-    </Card>
+    </div>
   );
 }

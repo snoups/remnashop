@@ -3,6 +3,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  CURRENCIES,
   previewPricingChange,
   switchAnchorCurrency,
   updateCurrencyRate,
@@ -31,7 +32,6 @@ import { PillTabs } from "@shared/ui/PillTabs";
 import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Tooltip } from "@shared/ui/Tooltip";
 
-const CURRENCIES: Currency[] = ["USD", "RUB", "XTR"];
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
 
@@ -194,6 +194,7 @@ function RateRow({
         <Field
           label={t("pricing.rates.rateLabel")}
           htmlFor={`${idPrefix}-rate`}
+          required={!isAnchor}
           error={isRateInvalid ? t("pricing.rates.rateInvalid") : undefined}
         >
           <Input
@@ -202,7 +203,6 @@ function RateRow({
             onKeyDown={blockNonDecimalKeys}
             step="any"
             min="0"
-            required
             disabled={isAnchor}
             aria-invalid={isRateInvalid}
             value={form.rate}

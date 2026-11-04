@@ -11,46 +11,26 @@ import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { DialogHeader } from "@shared/ui/DialogHeader";
-import { TextInput } from "@shared/ui/TextInput";
-import { Card } from "@shared/ui/Card";
-import { Field } from "@shared/ui/Field";
+import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
 import type { Permission } from "@shared/types/rbac";
-import { Pressable } from "@shared/ui/Pressable";
 
-const labelClassName = "text-sm font-medium text-foreground/80";
-
-interface AdminCreateFormProps {
+interface AdminCreateDialogProps {
   onCreated: (password: string) => void;
+  onClose: () => void;
 }
 
-export function AdminCreateForm({ onCreated }: AdminCreateFormProps) {
-  const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-
+export function AdminCreateDialog({ onCreated, onClose }: AdminCreateDialogProps) {
   return (
-    <>
-      <Pressable
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="group mb-2 flex w-full items-center gap-3 rounded-full border border-dashed border-white/[0.12] h-15 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] transition-colors group-hover:bg-transparent">
-          <ShieldPlus className="size-4" />
-        </span>
-        {t("admins.create.button")}
-      </Pressable>
-
-      {isOpen && (
-        <Modal onClose={() => setIsOpen(false)} size="lg" scrollable>
-          <AdminCreateFormBody onCreated={onCreated} />
-        </Modal>
-      )}
-    </>
+    <Modal onClose={onClose} size="lg" scrollable>
+      <AdminCreateFormBody onCreated={onCreated} />
+    </Modal>
   );
 }
 
-function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
+function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCreated">) {
   const { t } = useTranslation();
   const close = useModalClose();
   const [login, setLogin] = useState("");
@@ -105,48 +85,48 @@ function AdminCreateFormBody({ onCreated }: AdminCreateFormProps) {
       <DialogHeader icon={ShieldPlus} title={t("admins.create.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-          <Card variant="form">
+        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+          <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field
               label={t("admins.create.loginLabel")}
               htmlFor="admin-create-login"
               required
               error={isLoginInvalid ? t("auth.errors.loginInvalidChars") : undefined}
             >
-              <TextInput
+              <Input
                 id="admin-create-login"
                 value={login}
                 onChange={(event) => setLogin(event.target.value)}
-                placeholder={t("admins.create.loginLabel")}
-                required
+                placeholder={t("admins.create.loginPlaceholder")}
                 aria-invalid={isLoginInvalid}
               />
             </Field>
             <Field label={t("admins.create.nameLabel")} htmlFor="admin-create-name" required>
-              <TextInput
+              <Input
                 id="admin-create-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={t("admins.create.nameLabel")}
-                required
+                placeholder={t("admins.create.namePlaceholder")}
               />
             </Field>
-          </Card>
+          </div>
 
-          <Card variant="form">
-            <span className={labelClassName}>{t("admins.create.permissionsLabel")}</span>
-            <PermissionPicker selected={selected} onToggle={toggle} baseline={roleDefaults} />
-          </Card>
+          <div className={GLASS_DIALOG_CARD_CLASS}>
+            <Field label={t("admins.create.permissionsLabel")}>
+              <PermissionPicker selected={selected} onToggle={toggle} baseline={roleDefaults} />
+            </Field>
+          </div>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] px-5 py-4">
-          <Button variant="outline" type="button" onClick={close}>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
           <Button
-            variant="accent"
+            variant="glassAccent"
             type="submit"
-            disabled={isSubmitting || isLoginInvalid || catalogState.kind !== "ready"}
+            isLoading={isSubmitting}
+            disabled={isLoginInvalid || catalogState.kind !== "ready"}
           >
             {t("common.create")}
           </Button>

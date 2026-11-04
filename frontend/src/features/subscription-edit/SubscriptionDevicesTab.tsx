@@ -13,9 +13,9 @@ import { formatDate } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { Card } from "@shared/ui/Card";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { IconButton } from "@shared/ui/IconButton";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -52,7 +52,7 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
 
   return (
     <div className="flex flex-col gap-3">
-      <Card variant="list">
+      <DialogCard>
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && state.data.items.length === 0 && (
@@ -70,7 +70,7 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
                 </span>
                 <span className="block truncate font-mono text-[12px] text-muted-foreground">{device.hwid}</span>
               </span>
-              <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
+              <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
                 {formatDate(device.created_at, i18n.language)}
               </span>
               {canDelete && (
@@ -80,15 +80,15 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
                   disabled={isBusy}
                   onClick={() => void run(() => deleteDevice(device.hwid), t("subscriptions.devices.deleted"))}
                 >
-                  <Trash2 className="size-3.5" />
+                  <Trash2 className="size-4" />
                 </IconButton>
               )}
             </div>
           ))}
-      </Card>
+      </DialogCard>
       {canDeleteAll && state.kind === "ready" && state.data.items.length > 0 && (
         <div className="flex justify-end">
-          <Button variant="danger" disabled={isBusy} onClick={() => setIsConfirmingAll(true)}>
+          <Button variant="glassDanger" disabled={isBusy} onClick={() => setIsConfirmingAll(true)}>
             {t("subscriptions.devices.deleteAll")}
           </Button>
         </div>

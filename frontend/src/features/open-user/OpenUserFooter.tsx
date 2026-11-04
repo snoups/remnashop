@@ -18,7 +18,7 @@ export function OpenUserFooter({
   children,
 }: {
   links: OpenUserLink[];
-  /** in a Modal material="glass": its footer inset and buttons */
+  /** in a Modal: its footer inset and buttons */
   glass?: boolean;
   children?: ReactNode;
 }) {

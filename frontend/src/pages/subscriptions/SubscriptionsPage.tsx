@@ -1,47 +1,65 @@
-import { Layers, Pencil, Trash2 } from "lucide-react";
+import { Captions, ChevronRight, Filter } from "lucide-react";
+import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   DEFAULT_PAGE_SIZE,
-  deleteSubscription,
+  daysUntil,
+  EXPIRING_SOON_DAYS,
+  formatLimit,
+  formatTraffic,
   listSubscriptions,
   SUBSCRIPTION_STATUS_BADGE_TONE,
   type SubscriptionListItem,
+  type SubscriptionRow,
   type SubscriptionStatus,
 } from "@entities/subscriptions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { PanelSyncButtons } from "@features/panel-sync/PanelSyncButtons";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
-import { getErrorMessage } from "@shared/api/http";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
-import { toast } from "@shared/lib/toast";
 import { GroupToggle } from "@shared/ui/GroupToggle";
-import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { ListRow } from "@shared/ui/ListRow";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useUrlSearch } from "@shared/lib/use-url-search";
-import { EmptyState, ErrorState } from "@shared/ui/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
+import { dotIcon } from "@shared/ui/option-icons";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
-import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
-import { Card } from "@shared/ui/Card";
 import { Collapse } from "@shared/ui/Collapse";
-import { LIST_BODY_CLASS, LIST_HEAD_CLASS, LIST_ROW_CLASS } from "@shared/ui/classes";
-import { CardHeader } from "@shared/ui/CardHeader";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
-import { DAY_MS } from "@shared/lib/period";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 
 const STATUSES: SubscriptionStatus[] = ["ACTIVE", "LIMITED", "EXPIRED", "DISABLED", "DELETED"];
 const FILTER_DEBOUNCE_MS = 200;
 const ROW_GRID_CLASSNAME =
-  "grid grid-cols-[36px_minmax(0,1fr)_130px_96px_150px_112px_32px] items-center gap-3";
-const EXPIRING_SOON_DAYS = 7;
+  "grid grid-cols-[32px_minmax(0,1fr)_130px_96px_150px_112px_16px] items-center gap-3";
 const INACTIVE_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["EXPIRED", "DISABLED", "DELETED"]);
+
+const STATUS_DOTS: Record<SubscriptionStatus, ComponentType<{ className?: string }>> = {
+  ACTIVE: dotIcon("bg-success"),
+  LIMITED: dotIcon("bg-warning"),
+  EXPIRED: dotIcon("bg-error"),
+  DISABLED: dotIcon("bg-muted-foreground"),
+  DELETED: dotIcon("bg-muted-foreground"),
+};
+
+// the status badge's tones
+const STATUS_ICON_CLASSNAME: Record<SubscriptionStatus, string> = {
+  ACTIVE: "bg-success/10 text-success",
+  LIMITED: "bg-warning/10 text-warning",
+  EXPIRED: "bg-error/10 text-error",
+  DISABLED: "bg-white/[0.06] text-muted-foreground",
+  DELETED: "bg-white/[0.06] text-muted-foreground",
+};
 
 type ExpiryGroup = "soon" | "active" | "inactive";
 const EXPIRY_GROUPS: ExpiryGroup[] = ["soon", "active", "inactive"];
@@ -51,18 +69,6 @@ const GROUP_DOT_CLASSNAME: Record<ExpiryGroup, string> = {
   active: "bg-success",
   inactive: "bg-muted-foreground",
 };
-
-function formatTraffic(gb: number, unlimitedLabel: string): string {
-  return gb === 0 ? unlimitedLabel : `${gb} GB`;
-}
-
-function formatLimit(value: number, unlimitedLabel: string): string {
-  return value === 0 ? unlimitedLabel : String(value);
-}
-
-function daysUntil(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / DAY_MS);
-}
 
 // grouped client-side over the loaded pages only; move to a server filter if totals per group matter
 function expiryGroup(subscription: SubscriptionListItem): ExpiryGroup {
@@ -80,13 +86,11 @@ export function SubscriptionsPage() {
   const { t, i18n } = useTranslation();
   const [status, setStatus] = useState("");
   const [searchInput, setSearchInput] = useUrlSearch();
-  const [editingSubscription, setEditingSubscription] = useState<SubscriptionListItem | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SubscriptionListItem | null>(null);
+  const [editingSubscription, setEditingSubscription] = useState<SubscriptionRow | null>(null);
   const [collapsedGroups, toggleGroup] = useCollapsedSet<ExpiryGroup>();
 
   const permissions = usePermissions();
-  const canEdit = permissions.includes("SUBSCRIPTIONS_UPDATE");
-  const canDelete = permissions.includes("SUBSCRIPTIONS_DELETE");
+  const canViewDetails = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
 
   const unlimitedLabel = t("subscriptions.unlimited");
 
@@ -114,7 +118,12 @@ export function SubscriptionsPage() {
     }
     setState((prev) =>
       prev.kind === "ready"
-        ? { kind: "ready", items: prev.items.map((item) => (item.id === updated.id ? updated : item)), total: prev.total }
+        ? {
+            kind: "ready",
+            // a write answers without the owner's name
+            items: prev.items.map((item) => (item.id === updated.id ? { ...updated, user_name: item.user_name } : item)),
+            total: prev.total,
+          }
         : prev,
     );
   };
@@ -125,15 +134,6 @@ export function SubscriptionsPage() {
         ? { kind: "ready", items: prev.items.filter((item) => item.id !== subscription.id), total: prev.total - 1 }
         : prev,
     );
-
-  const handleDelete = async (subscription: SubscriptionListItem) => {
-    try {
-      await deleteSubscription(subscription.id);
-      handleDeleted(subscription);
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("subscriptions.delete.error")));
-    }
-  };
 
   const groups = useMemo(
     () =>
@@ -147,43 +147,46 @@ export function SubscriptionsPage() {
   const relativeTime = new Intl.RelativeTimeFormat(i18n.language, { numeric: "auto" });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <SegmentedPills
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: "", label: t("subscriptions.filters.all") },
-            ...STATUSES.map((s) => ({ value: s, label: t(`subscriptions.status.${s}`) })),
-          ]}
+    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
+    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+        <SearchField
+          id="subscriptions-search"
+          label={t("subscriptions.filters.search")}
+          hideLabel
+          compact
+          placeholder={t("subscriptions.filters.searchPlaceholder")}
+          value={searchInput}
+          onChange={setSearchInput}
         />
-        <div className="flex w-80">
-          <SearchField
-            id="subscriptions-search"
-            label={t("subscriptions.filters.search")}
-            placeholder={t("subscriptions.filters.searchPlaceholder")}
-            value={searchInput}
-            onChange={setSearchInput}
+        <div className="w-44 min-w-0">
+          <SelectDropdown
+            id="subscriptions-status"
+            value={status}
+            onChange={setStatus}
+            icon={Filter}
+            size="compact"
+            glassPopover
+            placeholder={t("subscriptions.filters.all")}
+            options={[
+              { value: "", label: t("subscriptions.filters.all"), icon: Filter },
+              ...STATUSES.map((value) => ({
+                value,
+                label: t(`subscriptions.status.${value}`),
+                icon: STATUS_DOTS[value],
+              })),
+            ]}
           />
         </div>
+        <PanelSyncButtons onFinished={reload} />
       </div>
 
-      <Card className="relative">
+      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <LoadGate>
+      <LoadGateHold isLoading={state.kind === "loading"} />
+      <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
-        <CardHeader
-          icon={Layers}
-          title={
-            <>
-              {t("subscriptions.title")}
-              {state.kind === "ready" && (
-                <span className="text-[12px] font-normal tabular-nums text-muted-foreground">{state.total}</span>
-              )}
-            </>
-          }
-          description={t("subscriptions.description")}
-          aside={<PanelSyncButtons onFinished={reload} />}
-        />
-
+        <AnimatedHeight>
         {state.kind === "loading" && <Spinner size="page" />}
         {state.kind === "error" && (
           <ErrorState text={t("common.loadError")} size="page" />
@@ -192,10 +195,8 @@ export function SubscriptionsPage() {
           <EmptyState text={t(hasFilters ? "subscriptions.noMatches" : "subscriptions.empty")} size="page" />
         )}
         {state.kind === "ready" && state.items.length > 0 && (
-          <div className="mt-3">
-            <div
-              className={`${ROW_GRID_CLASSNAME} ${LIST_HEAD_CLASS}`}
-            >
+          <>
+            <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
               <span className="col-span-2">{t("subscriptions.columns.subscription")}</span>
               <span>{t("subscriptions.fields.traffic")}</span>
               <span>{t("subscriptions.fields.devices")}</span>
@@ -208,6 +209,7 @@ export function SubscriptionsPage() {
                 <section key={group.key} className="flex flex-col">
                   <h3>
                     <GroupToggle
+                      glass
                       open={!collapsedGroups.has(group.key)}
                       onToggle={() => toggleGroup(group.key)}
                       leading={<span className={`-ml-1 size-1.5 rounded-full ${GROUP_DOT_CLASSNAME[group.key]}`} />}
@@ -217,59 +219,35 @@ export function SubscriptionsPage() {
                   </h3>
                   <Collapse open={!collapsedGroups.has(group.key)} className={LIST_BODY_CLASS}>
                     {group.items.map((subscription) => {
-                      const squadCount =
-                        subscription.internal_squads.length + (subscription.external_squad ? 1 : 0);
                       const days = daysUntil(subscription.expire_at);
 
-                      const menuItems: ActionMenuItem[] = [];
-                      if (canEdit) {
-                        menuItems.push({
-                          label: t("common.edit"),
-                          icon: Pencil,
-                          onClick: () => setEditingSubscription(subscription),
-                        });
-                      }
-                      if (canDelete) {
-                        menuItems.push({
-                          label: t("subscriptions.delete.button"),
-                          icon: Trash2,
-                          variant: "danger",
-                          onClick: () => setPendingDelete(subscription),
-                        });
-                      }
-
                       return (
-                        <div
+                        <ListRow
+                          glass
                           key={subscription.id}
-                          className={`${ROW_GRID_CLASSNAME} ${LIST_ROW_CLASS} hover:bg-white/[0.04]`}
+                          type="button"
+                          disabled={!canViewDetails}
+                          onClick={() => setEditingSubscription(subscription)}
+                          className={ROW_GRID_CLASSNAME}
                         >
                           <span
-                            className={`flex size-9 items-center justify-center rounded-full ${
-                              subscription.status === "ACTIVE"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-white/[0.06] text-muted-foreground"
-                            }`}
+                            className={`flex size-8 items-center justify-center rounded-full ${STATUS_ICON_CLASSNAME[subscription.status]}`}
                           >
-                            <Layers className="size-4" />
+                            <Captions className="size-4" />
                           </span>
                           <span className="min-w-0">
                             <span className="flex min-w-0 items-center gap-1.5">
                               <span className="truncate text-[13px] font-medium text-foreground">
-                                {t("subscriptions.userLabel", { id: subscription.user_id })}
+                                {subscription.plan_snapshot.name} #{subscription.id}
                               </span>
                               {subscription.is_trial && (
-                                <Badge tone="warning">
+                                <Badge borderless tone="warning">
                                   {t("subscriptions.trial")}
                                 </Badge>
                               )}
-                              {subscription.tag && (
-                                <Badge tone="accent">
-                                  {subscription.tag}
-                                </Badge>
-                              )}
                             </span>
-                            <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                              #{subscription.id} &middot; {t("subscriptions.fields.squads", { count: squadCount })}
+                            <span className="block truncate text-[12px] text-muted-foreground">
+                              {subscription.user_name ?? t("subscriptions.userLabel", { id: subscription.user_id })}
                             </span>
                           </span>
                           <span className="min-w-0">
@@ -292,21 +270,19 @@ export function SubscriptionsPage() {
                             </span>
                           </span>
                           <span>
-                            <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+                            <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                               {t(`subscriptions.status.${subscription.status}`)}
                             </Badge>
                           </span>
-                          <span className="flex justify-end">
-                            {menuItems.length > 0 && <ActionMenu items={menuItems} />}
-                          </span>
-                        </div>
+                          {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
+                        </ListRow>
                       );
                     })}
                   </Collapse>
                 </section>
               ))}
             </div>
-            {state.kind === "ready" && hasMore && (
+            {hasMore && (
               <div className="mx-3 mt-4">
                 <LoadMoreButton
                   onClick={() => void handleLoadMore()}
@@ -316,33 +292,23 @@ export function SubscriptionsPage() {
                 />
               </div>
             )}
-          </div>
+          </>
         )}
-      </Card>
+        </AnimatedHeight>
+      </div>
+      </LoadGate>
+      </div>
 
       {editingSubscription && (
         <SubscriptionEditDialog
           subscription={editingSubscription}
+          userName={editingSubscription.user_name}
           onClose={() => setEditingSubscription(null)}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
         />
       )}
 
-      {pendingDelete && (
-        <ConfirmDialog
-          title={t("subscriptions.delete.confirmTitle")}
-          message={t("subscriptions.delete.confirm", { id: pendingDelete.id })}
-          confirmLabel={t("common.delete")}
-          cancelLabel={t("common.cancel")}
-          danger
-          onConfirm={() => {
-            void handleDelete(pendingDelete);
-            setPendingDelete(null);
-          }}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
     </div>
   );
 }

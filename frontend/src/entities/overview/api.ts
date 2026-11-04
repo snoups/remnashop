@@ -14,6 +14,7 @@ export interface OverviewDailyCount {
 export interface OverviewDailyAmount {
   day: string;
   amount: string;
+  count: number;
 }
 
 export interface OverviewUsers {
@@ -67,7 +68,6 @@ export interface RevenueToday {
 export interface RecentPayment {
   user_id: number;
   name: string;
-  username: string | null;
   plan_name: string;
   gateway_type: string;
   purchase_type: PurchaseType;
@@ -93,7 +93,6 @@ interface OverviewChart {
 
 export interface RevenueChart extends OverviewChart {
   paid_orders_count: number;
-  revenue_by_currency: Record<string, string>;
   report_currency: string;
   daily: OverviewDailyAmount[];
 }
@@ -177,6 +176,26 @@ export function getNodesOverview(signal?: AbortSignal): Promise<NodesOverview> {
 
 export function getClientApps(signal?: AbortSignal): Promise<ClientApps> {
   return apiGet<ClientApps>("/overview/client-apps", signal);
+}
+
+export interface Recap {
+  report_currency: string;
+  revenue_total: string;
+  customers: number;
+  payers: number;
+  active_subscriptions: number;
+  transactions: number;
+  month_revenue: string;
+  new_customers: number;
+  new_payers: number;
+  /** null: the panel didn't answer */
+  nodes: number | null;
+  countries: number | null;
+  since: string;
+}
+
+export function getRecap(signal?: AbortSignal): Promise<Recap> {
+  return apiGet<Recap>("/overview/recap", signal);
 }
 
 export function getAttention(signal?: AbortSignal): Promise<ListResponse<AttentionItem>> {
