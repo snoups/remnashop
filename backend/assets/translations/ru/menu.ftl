@@ -297,7 +297,7 @@ platform-icon =
     .default = ❓
 
 btn-broadcast =
-    .unsubscribe = Отписаться от акций
+    .unsubscribe = Отписаться от рассылки
     .resubscribe = Снова получать акции
 
 ntf-broadcast =

@@ -111,3 +111,41 @@ async def test_is_rate_limited(client: httpx.AsyncClient, setup) -> None:
     blocked = await client.post(_URL, headers=headers)
 
     assert blocked.status_code == 429
+
+
+async def test_dashboard_session_revokes_other_dashboard_sessions_only(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    async with uow:
+        owner = await user_repository.create(
+            CreateUserDto(login="rev-owner", name="rev", role=Role.OWNER, language=Locale.EN)
+        )
+        await uow.commit()
+    ids: dict[str, int] = {}
+    for label, audience in (
+        ("current", SessionAudience.DASHBOARD),
+        ("other", SessionAudience.DASHBOARD),
+        ("cabinet", SessionAudience.CABINET),
+    ):
+        created = await session_repository.create(
+            CreateSessionDto(
+                user_id=owner.id,
+                refresh_token_hash=hash_refresh_token(f"rev-owner-{label}"),
+                ip_address="127.0.0.1",
+                user_agent=None,
+                expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+                audience=audience,
+            )
+        )
+        ids[label] = created.id
+    token = create_access_token(owner.id, ids["current"], config.jwt_secret.get_secret_value())
+
+    response = await client.post(_URL, headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 204
+    alive = {s.id for s in await session_repository.list_active_by_user(owner.id)}
+    assert alive == {ids["current"], ids["cabinet"]}

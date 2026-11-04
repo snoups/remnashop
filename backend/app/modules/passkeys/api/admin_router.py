@@ -80,15 +80,21 @@ async def verify_registration(
 async def rename_passkey(
     passkey_id: int,
     payload: RenamePasskeyRequest,
+    request: Request,
     use_case: FromDishka[RenamePasskeyUseCase],
     actor: UserDto = Depends(require_admin_user),
 ) -> PasskeyResponse:
-    renamed = await use_case(actor, RenamePasskeyDto(id=passkey_id, name=payload.name))
+    renamed = await use_case(
+        actor,
+        RenamePasskeyDto(id=passkey_id, name=payload.name, client_ip=resolve_client_ip(request)),
+    )
     return PasskeyResponse.model_validate(renamed, from_attributes=True)
 
 
 @router.delete(
-    "/{passkey_id:int}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(404)
+    "/{passkey_id:int}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(404, 409),
 )
 @inject
 async def delete_passkey(

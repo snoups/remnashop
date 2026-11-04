@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Optional, cast
 
 from sqlalchemy import CursorResult, delete, select
@@ -5,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.errors import constraint_name
+from app.core.db.filters import in_ids
 from app.core.db.models.oauth_identity import OAuthIdentity
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
@@ -70,6 +72,19 @@ class OAuthIdentityRepository:
         stmt = select(OAuthIdentity).where(OAuthIdentity.user_id == user_id)
         rows = await self.session.scalars(stmt)
         return [self._to_dto(row) for row in rows]
+
+    async def user_ids_with_identities(
+        self, user_ids: list[int], providers: Iterable[OAuthProvider]
+    ) -> set[int]:
+        stmt = (
+            select(OAuthIdentity.user_id)
+            .where(
+                in_ids(OAuthIdentity.user_id, user_ids),
+                OAuthIdentity.provider.in_(list(providers)),
+            )
+            .distinct()
+        )
+        return set(await self.session.scalars(stmt))
 
     async def delete_by_user_and_provider(self, user_id: int, provider: OAuthProvider) -> bool:
         stmt = delete(OAuthIdentity).where(

@@ -7,13 +7,14 @@ from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.users.dto import ClearEmailUndeliverableDto, UserDto
+from app.modules.users.dto import ClearEmailUndeliverableDto, UserListItemDto
 from app.modules.users.events import UserEmailUndeliverableClearedEvent
+from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
-class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserDto]):
+class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserListItemDto]):
     required_permission = Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR
 
     def __init__(
@@ -23,7 +24,7 @@ class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserDto
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: ClearEmailUndeliverableDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: ClearEmailUndeliverableDto) -> UserListItemDto:
         async with self._uow:
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
@@ -39,5 +40,6 @@ class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserDto
                     actor=actor, target=updated, ip_address=data.client_ip
                 )
             )
+            item = await self._user_repository.get_list_item(updated.id, detail_roles(actor))
         logger.info(f"{actor.log} Cleared undeliverable email of user '{data.user_id}'")
-        return updated
+        return item

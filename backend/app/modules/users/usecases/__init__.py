@@ -20,6 +20,7 @@ from app.modules.users.usecases.register_telegram_user import RegisterTelegramUs
 from app.modules.users.usecases.set_bot_blocked import SetBotBlockedUseCase
 from app.modules.users.usecases.set_marketing_opt_out import SetMarketingOptOutUseCase
 from app.modules.users.usecases.set_user_discount import SetUserDiscountUseCase
+from app.modules.users.usecases.unbind_telegram_id import UnbindTelegramIdUseCase
 from app.modules.users.usecases.unblock_blacklist_matches import UnblockBlacklistMatchesUseCase
 from app.modules.users.usecases.unblock_user import UnblockUserUseCase
 from app.modules.users.usecases.unsubscribe_marketing import UnsubscribeMarketingUseCase
@@ -52,6 +53,7 @@ __all__ = [
     "SetMarketingOptOutUseCase",
     "SetUserDiscountDto",
     "SetUserDiscountUseCase",
+    "UnbindTelegramIdUseCase",
     "UnblockBlacklistMatchesUseCase",
     "UnblockUserUseCase",
     "UnsubscribeMarketingUseCase",

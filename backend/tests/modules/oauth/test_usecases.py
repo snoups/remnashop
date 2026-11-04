@@ -10,6 +10,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError, PermissionDeniedError
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer, SessionRepository
+from app.modules.auth.sign_in_methods import SignInMethodGuard
 from app.modules.auth.usecases import BootstrapOwnerUseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
@@ -621,6 +622,7 @@ async def test_connect_callback_rejects_identity_already_linked_to_another_user(
 
 
 async def test_disconnect_removes_identity(
+    sign_in_method_guard: SignInMethodGuard,
     user_repository: UserRepository,
     uow: UnitOfWork,
     config: AppConfig,
@@ -640,7 +642,7 @@ async def test_disconnect_removes_identity(
         )
     )
     interactor = OAuthDisconnectUseCase(
-        oauth_identity_repository, user_repository, uow, event_publisher
+        oauth_identity_repository, user_repository, uow, event_publisher, sign_in_method_guard
     )
 
     await interactor(owner, OAuthDisconnectDto(provider=OAuthProvider.GITHUB, client_ip=CLIENT_IP))
@@ -650,6 +652,7 @@ async def test_disconnect_removes_identity(
 
 
 async def test_disconnect_is_idempotent_when_nothing_linked(
+    sign_in_method_guard: SignInMethodGuard,
     user_repository: UserRepository,
     uow: UnitOfWork,
     config: AppConfig,
@@ -661,7 +664,7 @@ async def test_disconnect_is_idempotent_when_nothing_linked(
         user_repository, uow, config, event_publisher, session_repository
     )
     interactor = OAuthDisconnectUseCase(
-        oauth_identity_repository, user_repository, uow, event_publisher
+        oauth_identity_repository, user_repository, uow, event_publisher, sign_in_method_guard
     )
 
     await interactor(owner, OAuthDisconnectDto(provider=OAuthProvider.GITHUB, client_ip=CLIENT_IP))

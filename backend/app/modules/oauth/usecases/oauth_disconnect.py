@@ -3,6 +3,7 @@ from app.core.enums import OAuthProvider
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.auth import SignInMethodGuard
 from app.modules.oauth.dto import OAuthDisconnectDto
 from app.modules.oauth.events import OAuthIdentityDisconnectedEvent
 from app.modules.oauth.repository import OAuthIdentityRepository
@@ -18,11 +19,13 @@ class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None, UserDto]):
         user_repository: UserRepository,
         uow: UnitOfWork,
         event_publisher: EventPublisher,
+        sign_in_method_guard: SignInMethodGuard,
     ) -> None:
         self._oauth_identity_repository = oauth_identity_repository
         self._user_repository = user_repository
         self._uow = uow
         self._event_publisher = event_publisher
+        self._sign_in_method_guard = sign_in_method_guard
 
     async def _execute(self, actor: UserDto, data: OAuthDisconnectDto) -> None:
         async with self._uow:
@@ -36,6 +39,10 @@ class OAuthDisconnectUseCase(UseCase[OAuthDisconnectDto, None, UserDto]):
                     data.provider,
                 )
             if deleted:
+                # raising here rolls the removal back
+                await self._sign_in_method_guard.assert_one_left(
+                    actor, without_provider=data.provider
+                )
                 await self._event_publisher.publish(
                     OAuthIdentityDisconnectedEvent(
                         user=actor, provider=data.provider, ip_address=data.client_ip

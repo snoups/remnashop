@@ -2,16 +2,17 @@ from app.core.enums import BlacklistKind, Role
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
 from app.modules.users.blacklist_repository import UserBlacklistRepository
-from app.modules.users.dto import CreateUserDto
+from app.modules.users.dto import CreateUserDto, UnblockBlacklistMatchesDto
+from app.modules.users.events import UsersBulkUnblockedEvent
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnblockBlacklistMatchesUseCase
+from tests.fakes.events import RecordingEventPublisher
 
 
 async def test_unblocks_matches_and_drops_their_manual_entries(
     user_repository: UserRepository,
     blacklist_repository: BlacklistRepository,
     uow,
-    event_publisher,
 ) -> None:
     # the outbox row has a real FK to users.id
     owner = await user_repository.create(CreateUserDto(login="owner", name="o", role=Role.OWNER))
@@ -31,10 +32,14 @@ async def test_unblocks_matches_and_drops_their_manual_entries(
     for user in (manual, listed, other):
         await user_repository.set_blocked(user.id, True)
 
+    events = RecordingEventPublisher()
     use_case = UnblockBlacklistMatchesUseCase(
-        UserBlacklistRepository(user_repository.session), blacklist_repository, uow, event_publisher
+        UserBlacklistRepository(user_repository.session), blacklist_repository, uow, events
     )
-    assert await use_case(owner) == 2
+    assert await use_case(owner, UnblockBlacklistMatchesDto(client_ip="10.0.0.1")) == 2
+    (event,) = events.events
+    assert isinstance(event, UsersBulkUnblockedEvent)
+    assert (event.count, event.ip_address) == (2, "10.0.0.1")
 
     for user, blocked in ((manual, False), (listed, False), (other, True)):
         fetched = await user_repository.find_by_id(user.id)

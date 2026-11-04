@@ -31,11 +31,12 @@ class UpdateOwnSecuritySettingsUseCase(UseCase[UpdateSecuritySettingsDto, UserDt
             updated = await self._user_repository.update_fields(
                 actor.id, UpdateUserDto(ip_allowlist=list(data.ip_allowlist))
             )
-            await self._event_publisher.publish(
-                SecuritySettingsChangedEvent(
-                    user=actor, changed_fields=["ip_allowlist"], ip_address=data.client_ip
+            if list(data.ip_allowlist) != actor.ip_allowlist:
+                await self._event_publisher.publish(
+                    SecuritySettingsChangedEvent(
+                        user=actor, changed_fields=["ip_allowlist"], ip_address=data.client_ip
+                    )
                 )
-            )
 
         assert updated is not None
         return updated

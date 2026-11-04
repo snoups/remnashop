@@ -54,7 +54,7 @@ async def oauth_connect_authorize(
         url = await use_case(actor, provider)
     except AuthenticationError as error:
         raise ValidationError(str(error), code=error.code) from error
-    return OAuthAuthorizeResponse(authorization_url=url)
+    return OAuthAuthorizeResponse(url=url)
 
 
 @router.post(
@@ -86,7 +86,9 @@ async def oauth_connect_callback(
     return OAuthIdentityResponse.model_validate(identity, from_attributes=True)
 
 
-@router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{provider}", status_code=status.HTTP_204_NO_CONTENT, responses=error_responses(409)
+)
 @inject
 async def disconnect_oauth_account(
     provider: OAuthProvider,

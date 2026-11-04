@@ -12,7 +12,7 @@ from app.modules.account_merge.api.schemas import (
 )
 from app.modules.account_merge.dto import GetMergePreviewDto, MergeAccountsDto
 from app.modules.account_merge.usecases import GetMergePreviewUseCase, MergeAccountsUseCase
-from app.modules.users import UserResponse
+from app.modules.users import UserListItemResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -34,7 +34,9 @@ async def get_merge_preview(
 
 
 @router.post(
-    "/{user_id:int}/actions/merge", response_model=UserResponse, responses=error_responses(400, 404)
+    "/{user_id:int}/actions/merge",
+    response_model=UserListItemResponse,
+    responses=error_responses(400, 404),
 )
 @inject
 async def merge_users(
@@ -43,7 +45,7 @@ async def merge_users(
     request: Request,
     use_case: FromDishka[MergeAccountsUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     merged = await use_case(
         actor,
         MergeAccountsDto(
@@ -54,4 +56,4 @@ async def merge_users(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return UserResponse.model_validate(merged, from_attributes=True)
+    return UserListItemResponse.model_validate(merged, from_attributes=True)

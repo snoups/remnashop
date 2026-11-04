@@ -1,4 +1,7 @@
+from collections.abc import Iterable
 from typing import Optional, Protocol
+
+from app.core.enums import OAuthProvider
 
 
 class SessionRevoker(Protocol):
@@ -13,6 +16,12 @@ class SubscriptionRevoker(Protocol):
 
 class PasskeyRevoker(Protocol):
     async def delete_all_by_user(self, user_id: int) -> int: ...
+
+
+class OAuthIdentityLookup(Protocol):
+    async def user_ids_with_identities(
+        self, user_ids: list[int], providers: Iterable[OAuthProvider]
+    ) -> set[int]: ...
 
 
 class PromocodeLiveness(Protocol):

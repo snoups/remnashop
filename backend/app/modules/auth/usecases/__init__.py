@@ -9,6 +9,7 @@ from app.modules.auth.usecases.refresh_session import RefreshSessionUseCase
 from app.modules.auth.usecases.revoke_other_cabinet_sessions import (
     RevokeOtherCabinetSessionsUseCase,
 )
+from app.modules.auth.usecases.revoke_other_sessions import RevokeOtherSessionsUseCase
 from app.modules.auth.usecases.revoke_session import RevokeSessionUseCase
 from app.modules.auth.usecases.revoke_user_session import RevokeUserSessionUseCase
 
@@ -22,6 +23,7 @@ __all__ = [
     "PruneStaleSessionsUseCase",
     "RefreshSessionUseCase",
     "RevokeOtherCabinetSessionsUseCase",
+    "RevokeOtherSessionsUseCase",
     "RevokeSessionUseCase",
     "RevokeUserSessionUseCase",
 ]

@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -9,7 +8,7 @@ from app.core.enums import BlacklistKind, Locale
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
 from app.core.utils.http import validate_ip_allowlist
-from app.modules.users.schemas import UserResponse
+from app.modules.users.schemas import UserListItemResponse, UserResponse
 
 
 def _validate_login_charset(value: str) -> str:
@@ -20,34 +19,11 @@ def _validate_login_charset(value: str) -> str:
     return value
 
 
-def _enum_as_name(value: object) -> str:
-    # Role's value is its rank; the API speaks its name
-    return str(value)
-
-
-class AdminResponse(BaseModel):
-    id: int
-    login: Optional[str]
-    name: str
-    role: str
-    telegram_id: Optional[int]
-    username: Optional[str]
-    email: Optional[str]
-    language: str
-    is_blocked: bool
-    personal_discount: int
-    purchase_discount: int
-    loyalty_discount: int
-    points: Decimal
-    bonus_days: int
-    is_trial_available: bool
-    created_at: Optional[datetime]
+class AdminResponse(UserResponse):
     permission_grants: list[Permission]
     permission_revokes: list[Permission]
     role_permissions: list[Permission]
     effective_permissions: list[Permission]
-
-    _role_and_language_as_name = field_validator("role", "language", mode="before")(_enum_as_name)
 
     @field_validator("permission_grants", "permission_revokes", mode="before")
     @classmethod
@@ -106,12 +82,6 @@ class UserRegistrationResponse(BaseModel):
     registration: Optional[RegistrationSnapshotResponse]
 
 
-class UserListItemResponse(UserResponse):
-    active_subscriptions: int
-    limited_subscriptions: int
-    expired_subscriptions: int
-
-
 class UserPageResponse(BaseModel):
     items: list[UserListItemResponse]
     total: int
@@ -136,24 +106,13 @@ class CreateAdminRequest(BaseModel):
 
 
 class PromoteAdminRequest(BaseModel):
-    user_id: Optional[int] = None
-    email: Optional[str] = None
-    telegram_username: Optional[str] = None
+    user_id: int
     login: Optional[str] = Field(default=None, min_length=1, max_length=64)
-    permission_grants: list[Permission] = Field(default_factory=list)
-    permission_revokes: list[Permission] = Field(default_factory=list)
 
     @field_validator("login")
     @classmethod
     def validate_login(cls, value: Optional[str]) -> Optional[str]:
         return _validate_login_charset(value) if value is not None else value
-
-    @model_validator(mode="after")
-    def validate_exactly_one_identifier(self) -> "PromoteAdminRequest":
-        identifiers = (self.user_id is not None, bool(self.email), bool(self.telegram_username))
-        if sum(identifiers) != 1:
-            raise ValueError("Provide exactly one of user_id, email or telegram_username")
-        return self
 
 
 class UpdateAdminRequest(BaseModel):
@@ -219,3 +178,4 @@ class UnblockBlacklistMatchesResponse(BaseModel):
 class AdminListResponse(BaseModel):
     items: list[AdminResponse]
     total: int
+    customer_sign_in_ids: list[int]

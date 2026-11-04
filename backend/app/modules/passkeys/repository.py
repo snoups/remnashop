@@ -1,6 +1,6 @@
 from typing import Optional, cast
 
-from sqlalchemy import CursorResult, delete, select
+from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.passkey_credential import PasskeyCredential
@@ -50,6 +50,10 @@ class PasskeyRepository:
         )
         rows = await self.session.scalars(stmt)
         return [self._to_dto(row) for row in rows]
+
+    async def count_by_user(self, user_id: int) -> int:
+        stmt = select(func.count()).where(PasskeyCredential.user_id == user_id)
+        return await self.session.scalar(stmt) or 0
 
     async def update_name(self, id: int, name: str) -> PasskeyCredentialDto:
         row = await self.session.get_one(PasskeyCredential, id)

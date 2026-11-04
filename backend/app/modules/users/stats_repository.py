@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional, cast
 
 from sqlalchemy import func, select
@@ -67,6 +68,18 @@ class UserStatsRepository:
             )
         )
         return cast(Optional[date], earliest)
+
+    async def balance_totals(self) -> tuple[Decimal, int]:
+        """Points and bonus days customers hold, not yet spent."""
+        points, days = (
+            await self.session.execute(
+                select(
+                    func.coalesce(func.sum(User.points), 0),
+                    func.coalesce(func.sum(User.bonus_days), 0),
+                ).where(User.role == Role.USER)
+            )
+        ).one()
+        return Decimal(points), int(days)
 
     async def list_registrations(
         self, start: datetime, end: datetime, role: Role

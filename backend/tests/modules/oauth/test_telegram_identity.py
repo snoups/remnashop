@@ -9,6 +9,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer, SessionRepository
+from app.modules.auth.sign_in_methods import SignInMethodGuard
 from app.modules.blacklist import BlacklistRepository
 from app.modules.oauth.dto import CreateOAuthIdentityDto, OAuthCallbackDto, OAuthDisconnectDto
 from app.modules.oauth.providers.base import OAuthProfile
@@ -375,6 +376,7 @@ async def test_telegram_connect_refuses_a_blacklisted_id(
 
 
 async def test_telegram_disconnect_clears_telegram_id(
+    sign_in_method_guard: SignInMethodGuard,
     user_repository: UserRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
@@ -382,10 +384,15 @@ async def test_telegram_disconnect_clears_telegram_id(
 ) -> None:
     admin = await _create_user(user_repository, uow, "adm", Role.ADMIN, TELEGRAM_ID)
     use_case = OAuthDisconnectUseCase(
-        oauth_identity_repository, user_repository, uow, event_publisher
+        oauth_identity_repository, user_repository, uow, event_publisher, sign_in_method_guard
     )
 
-    await use_case(admin, OAuthDisconnectDto(provider=OAuthProvider.TELEGRAM, client_ip=CLIENT_IP))
+    # a password left to sign in with
+    with_password = admin.model_copy(update={"password_hash": "hash"})
+
+    await use_case(
+        with_password, OAuthDisconnectDto(provider=OAuthProvider.TELEGRAM, client_ip=CLIENT_IP)
+    )
 
     async with uow:
         reloaded = await user_repository.find_by_id(admin.id)
@@ -393,7 +400,31 @@ async def test_telegram_disconnect_clears_telegram_id(
     assert reloaded.telegram_id is None
 
 
+async def test_telegram_disconnect_refuses_the_last_way_to_sign_in(
+    sign_in_method_guard: SignInMethodGuard,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    admin = await _create_user(user_repository, uow, "adm", Role.ADMIN, TELEGRAM_ID)
+    use_case = OAuthDisconnectUseCase(
+        oauth_identity_repository, user_repository, uow, event_publisher, sign_in_method_guard
+    )
+
+    with pytest.raises(ConflictError):
+        await use_case(
+            admin, OAuthDisconnectDto(provider=OAuthProvider.TELEGRAM, client_ip=CLIENT_IP)
+        )
+
+    async with uow:
+        reloaded = await user_repository.find_by_id(admin.id)
+    assert reloaded is not None
+    assert reloaded.telegram_id == TELEGRAM_ID
+
+
 async def test_telegram_disconnect_without_telegram_id_is_noop(
+    sign_in_method_guard: SignInMethodGuard,
     user_repository: UserRepository,
     uow: UnitOfWork,
     event_publisher: EventPublisher,
@@ -401,7 +432,7 @@ async def test_telegram_disconnect_without_telegram_id_is_noop(
 ) -> None:
     admin = await _create_user(user_repository, uow, "adm", Role.ADMIN)
     use_case = OAuthDisconnectUseCase(
-        oauth_identity_repository, user_repository, uow, event_publisher
+        oauth_identity_repository, user_repository, uow, event_publisher, sign_in_method_guard
     )
 
     await use_case(admin, OAuthDisconnectDto(provider=OAuthProvider.TELEGRAM, client_ip=CLIENT_IP))

@@ -7,7 +7,7 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import generate_password, hash_password
-from app.core.security.permissions import Permission, assert_grantable
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.dto import AdminWithPasswordDto, PromoteAdminDto, PromoteToAdminDto
 from app.modules.users.events import AdminPromotedEvent
@@ -31,17 +31,7 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
 
     async def _execute(self, actor: Actor, data: PromoteToAdminDto) -> AdminWithPasswordDto:
         async with self._uow:
-            assert_grantable(data.permission_grants)
-            assert_grantable(data.permission_revokes)
-
-            target = None
-            if data.user_id is not None:
-                target = await self._user_repository.find_by_id(data.user_id)
-            elif data.email:
-                target = await self._user_repository.find_by_email(data.email)
-            elif data.telegram_username:
-                target = await self._user_repository.find_by_username(data.telegram_username)
-
+            target = await self._user_repository.find_by_id(data.user_id)
             if target is None or target.deleted_at is not None:
                 raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
             if not target.is_customer:
@@ -72,8 +62,6 @@ class PromoteToAdminUseCase(UseCase[PromoteToAdminDto, AdminWithPasswordDto]):
                     login=login,
                     password_hash=password_hash,
                     password_change_required=password is not None,
-                    permission_grants=[p.value for p in data.permission_grants],
-                    permission_revokes=[p.value for p in data.permission_revokes],
                 ),
             )
             assert updated is not None

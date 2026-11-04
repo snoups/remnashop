@@ -7,6 +7,8 @@ from typing import Any, Final
 
 from packaging.version import Version
 
+from app.core.enums import OAuthProvider
+
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[2]
 REPO_ROOT: Final[Path] = BASE_DIR.parent
 ASSETS_DIR: Final[Path] = BASE_DIR / "assets"
@@ -90,6 +92,9 @@ DOCS_COOKIE_NAME: Final[str] = "docs_access"
 # Set by the web cabinet's nginx, which overwrites both on every request.
 CABINET_CLIENT_IP_HEADER: Final[str] = "x-cabinet-client-ip"
 CABINET_PROXY_SECRET_HEADER: Final[str] = "x-cabinet-proxy-secret"
+CABINET_OAUTH_PROVIDERS: Final[frozenset[OAuthProvider]] = frozenset(
+    {OAuthProvider.TELEGRAM, OAuthProvider.GOOGLE, OAuthProvider.YANDEX}
+)
 
 CONTAINER_KEY: Final[str] = "dishka_container"
 USER_KEY: Final[str] = "user"

@@ -7,14 +7,15 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.dto import BlockUserDto, UserDto
+from app.modules.users.dto import BlockUserDto, UserListItemDto
 from app.modules.users.events import AdminDemotedEvent, UserBlockedEvent
+from app.modules.users.listing import detail_roles
 from app.modules.users.ports import PasskeyRevoker, SessionRevoker
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
-class BlockUserUseCase(UseCase[BlockUserDto, UserDto]):
+class BlockUserUseCase(UseCase[BlockUserDto, UserListItemDto]):
     required_permission = Permission.USERS_BLOCK
 
     def __init__(
@@ -33,7 +34,7 @@ class BlockUserUseCase(UseCase[BlockUserDto, UserDto]):
         self._session_revoker = session_revoker
         self._passkey_revoker = passkey_revoker
 
-    async def _execute(self, actor: Actor, data: BlockUserDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: BlockUserDto) -> UserListItemDto:
         async with self._uow:
             # staff are visible only with ADMINS_MANAGE, the same gate as a demotion
             target = await get_visible_target(
@@ -62,5 +63,4 @@ class BlockUserUseCase(UseCase[BlockUserDto, UserDto]):
             await self._event_publisher.publish(
                 UserBlockedEvent(actor=actor, target=updated, ip_address=data.client_ip)
             )
-
-        return updated
+            return await self._user_repository.get_list_item(updated.id, detail_roles(actor))

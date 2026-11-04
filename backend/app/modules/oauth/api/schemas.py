@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class OAuthAuthorizeResponse(BaseModel):
-    authorization_url: str
+    url: str
 
 
 class OAuthCallbackRequest(BaseModel):

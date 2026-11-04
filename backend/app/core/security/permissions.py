@@ -24,6 +24,7 @@ class Permission(UpperStrEnum):
     ANALYTICS_PROMOCODES_VIEW = auto()
     REMNAWAVE_NODES_VIEW = auto()
     REMNAWAVE_CLIENT_APPS_VIEW = auto()
+    OVERVIEW_RECAP_VIEW = auto()
     BOT_SETTINGS_VIEW = auto()
     BOT_STATUS_VIEW = auto()
     BOT_LOGS_VIEW = auto()
@@ -151,6 +152,7 @@ class Permission(UpperStrEnum):
     SUBSCRIPTIONS_DEVICES_DELETE = auto()
     SUBSCRIPTIONS_DEVICES_DELETE_ALL = auto()
     SUBSCRIPTIONS_PANEL_DIFF_VIEW = auto()
+    SUBSCRIPTIONS_PANEL_SQUADS_VIEW = auto()
     SUBSCRIPTIONS_PULL_FROM_PANEL = auto()
     SUBSCRIPTIONS_PUSH_TO_PANEL = auto()
     SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW = auto()
@@ -239,6 +241,7 @@ class Permission(UpperStrEnum):
     USERS_MERGE_PREVIEW = auto()
     USERS_MERGE = auto()
     USERS_TELEGRAM_BIND = auto()
+    USERS_TELEGRAM_UNBIND = auto()
     AD_LINKS_VIEW = auto()
     AD_LINKS_DETAIL_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
@@ -390,6 +393,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
         resource="subscriptions", kind="write"
     ),
     Permission.SUBSCRIPTIONS_PANEL_DIFF_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
+    Permission.SUBSCRIPTIONS_PANEL_SQUADS_VIEW: PermissionMeta(
+        resource="subscriptions", kind="read"
+    ),
     Permission.SUBSCRIPTIONS_PULL_FROM_PANEL: PermissionMeta(
         resource="subscriptions", kind="write"
     ),
@@ -482,6 +488,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.USERS_MERGE_PREVIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_MERGE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_TELEGRAM_BIND: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_TELEGRAM_UNBIND: PermissionMeta(resource="users", kind="write"),
     Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_DETAIL_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
@@ -547,6 +554,7 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.USERS_MERGE_PREVIEW,
         # a Telegram id is how a customer logs into the bot
         Permission.USERS_TELEGRAM_BIND,
+        Permission.USERS_TELEGRAM_UNBIND,
         Permission.SUBSCRIPTIONS_LINK_REISSUE,
         Permission.SUBSCRIPTIONS_DELETE_ALL,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE,
@@ -702,6 +710,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.SUBSCRIPTIONS_DEVICES_DELETE,
             Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
             Permission.SUBSCRIPTIONS_PANEL_DIFF_VIEW,
+            Permission.SUBSCRIPTIONS_PANEL_SQUADS_VIEW,
             Permission.SUBSCRIPTIONS_PULL_FROM_PANEL,
             Permission.SUBSCRIPTIONS_PUSH_TO_PANEL,
             Permission.SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW,

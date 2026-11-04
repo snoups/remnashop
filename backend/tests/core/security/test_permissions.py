@@ -147,6 +147,7 @@ def test_every_catalog_permission_has_metadata() -> None:
         Permission.USERS_UNBLOCK_BLACKLIST_MATCHES,
         Permission.BACKUPS_RUN_DOWNLOAD,
         Permission.NOTIFICATION_VAPID_KEYS_GENERATE,
+        Permission.OVERVIEW_RECAP_VIEW,
     }
     assert set(Permission) - PERMISSION_METADATA.keys() == non_catalog
 
@@ -246,6 +247,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.SUBSCRIPTIONS_DEVICES_DELETE,
         Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL,
         Permission.SUBSCRIPTIONS_PANEL_DIFF_VIEW,
+        Permission.SUBSCRIPTIONS_PANEL_SQUADS_VIEW,
         Permission.SUBSCRIPTIONS_PULL_FROM_PANEL,
         Permission.SUBSCRIPTIONS_PUSH_TO_PANEL,
         Permission.SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW,

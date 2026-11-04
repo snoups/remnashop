@@ -39,6 +39,14 @@ class UserResponse(BaseModel):
         return str(value)
 
 
+# what every admin route answers about one user: the list row, its card, and each
+# action on it, so a list can swap a row for the response
+class UserListItemResponse(UserResponse):
+    active_subscriptions: int
+    limited_subscriptions: int
+    expired_subscriptions: int
+
+
 def effective_permission_names(user: UserDto) -> list[str]:
     return sorted(p.value for p in PermissionPolicy.effective_permissions(user))
 

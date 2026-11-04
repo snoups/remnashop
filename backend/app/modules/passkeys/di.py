@@ -1,5 +1,6 @@
 from dishka import Provider, Scope, alias, provide, provide_all
 
+from app.modules.auth import PasskeyCounter
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.passkeys.usecases import (
@@ -29,6 +30,7 @@ class PasskeysProvider(Provider):
         VerifyPasskeyAuthenticationUseCase,
     )
     passkey_revoker = alias(source=PasskeyRepository, provides=PasskeyRevoker)
+    passkey_counter = alias(source=PasskeyRepository, provides=PasskeyCounter)
 
 
 def get_passkeys_providers() -> list[Provider]:

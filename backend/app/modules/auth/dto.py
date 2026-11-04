@@ -41,6 +41,12 @@ class RevokeSessionDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RevokeOtherSessionsDto:
+    current_session_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class RevokeUserSessionDto:
     user_id: int
     session_id: int

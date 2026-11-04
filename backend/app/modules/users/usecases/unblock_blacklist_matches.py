@@ -6,11 +6,12 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users.blacklist_repository import UserBlacklistRepository
+from app.modules.users.dto import UnblockBlacklistMatchesDto
 from app.modules.users.events import UsersBulkUnblockedEvent
 from app.modules.users.listing import BLACKLIST_MATCH_ROLES, identities_of
 
 
-class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
+class UnblockBlacklistMatchesUseCase(UseCase[UnblockBlacklistMatchesDto, int]):
     required_permission = Permission.USERS_UNBLOCK_BLACKLIST_MATCHES
 
     def __init__(
@@ -25,7 +26,7 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: None) -> int:
+    async def _execute(self, actor: Actor, data: UnblockBlacklistMatchesDto) -> int:
         async with self._uow:
             origins = await self._blacklist_repository.identity_origins()
             # source-list entries can't be removed here; the next reconcile re-blocks those users
@@ -41,6 +42,8 @@ class UnblockBlacklistMatchesUseCase(UseCase[None, int]):
             count = await self._user_blacklist.unblock_matching(
                 *identities_of(origins), roles=BLACKLIST_MATCH_ROLES
             )
-            await self._event_publisher.publish(UsersBulkUnblockedEvent(actor=actor, count=count))
+            await self._event_publisher.publish(
+                UsersBulkUnblockedEvent(actor=actor, count=count, ip_address=data.client_ip)
+            )
 
         return count

@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies.public import (
+    AuthContext,
     forbid_cabinet_proxy,
+    get_auth_context,
     get_current_session_id,
     get_current_user,
 )
@@ -25,6 +27,8 @@ from app.modules.auth import (
     DEEPLINK_BINDING_COOKIE,
     OAUTH_BINDING_COOKIE,
     RevokeOtherCabinetSessionsUseCase,
+    RevokeOtherSessionsDto,
+    RevokeOtherSessionsUseCase,
     clear_oauth_binding_cookie,
     set_audience_cookies,
     set_oauth_binding_cookie,
@@ -327,8 +331,20 @@ async def oauth_callback(
 )
 @inject
 async def revoke_other_sessions(
+    request: Request,
     use_case: FromDishka[RevokeOtherCabinetSessionsUseCase],
+    dashboard_use_case: FromDishka[RevokeOtherSessionsUseCase],
     user: UserDto = Depends(get_current_user),
     session_id: int = Depends(get_current_session_id),
+    auth: AuthContext = Depends(get_auth_context),
 ) -> None:
+    # one path for both audiences: each ends the other sessions of its own kind
+    if auth.audience is SessionAudience.DASHBOARD:
+        await dashboard_use_case(
+            user,
+            RevokeOtherSessionsDto(
+                current_session_id=session_id, client_ip=resolve_client_ip(request)
+            ),
+        )
+        return
     await use_case(user, session_id)

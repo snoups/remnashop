@@ -35,6 +35,7 @@ from app.modules.advertising.repository import AdLinkRepository
 from app.modules.announcements.repository import AnnouncementRepository
 from app.modules.api_tokens.repository import ApiTokenRepository
 from app.modules.auth.repository import SessionRepository
+from app.modules.auth.sign_in_methods import SignInMethodGuard
 from app.modules.banners.repository import BannerRepository
 from app.modules.blacklist.repository import BlacklistRepository
 from app.modules.broadcasts.repository import BroadcastRepository
@@ -167,6 +168,15 @@ def event_publisher(uow: UnitOfWork) -> EventPublisher:
 @pytest.fixture
 def ad_link_repository(session: AsyncSession) -> AdLinkRepository:
     return AdLinkRepository(session)
+
+
+@pytest.fixture
+def sign_in_method_guard(
+    settings_repository: SettingsRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+    passkey_repository: PasskeyRepository,
+) -> SignInMethodGuard:
+    return SignInMethodGuard(settings_repository, oauth_identity_repository, passkey_repository)
 
 
 @pytest.fixture

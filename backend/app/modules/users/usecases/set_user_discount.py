@@ -10,11 +10,12 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.users.dto import SetUserDiscountDto, UpdateUserDto, UserDto
+from app.modules.users.dto import SetUserDiscountDto, UpdateUserDto, UserListItemDto
 from app.modules.users.events import (
     UserPersonalDiscountChangedEvent,
     UserPurchaseDiscountChangedEvent,
 )
+from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 
@@ -23,7 +24,7 @@ def _changed(new: Optional[int], old: int) -> bool:
     return new is not None and new != old
 
 
-class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
+class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserListItemDto]):
     required_permission = Permission.USERS_DISCOUNT_MANAGE
 
     def __init__(
@@ -33,7 +34,7 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: SetUserDiscountDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: SetUserDiscountDto) -> UserListItemDto:
         for percent in (data.personal_discount, data.purchase_discount):
             if percent is not None and not 0 <= percent <= 100:
                 raise ValidationError(
@@ -50,7 +51,7 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
             personal_changed = _changed(data.personal_discount, target.personal_discount)
             purchase_changed = _changed(data.purchase_discount, target.purchase_discount)
             if not (personal_changed or purchase_changed):
-                return target
+                return await self._user_repository.get_list_item(target.id, detail_roles(actor))
 
             # a manual value clears the promocode the old one came from
             updated = await self._user_repository.update_fields(
@@ -85,9 +86,10 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserDto]):
                         ip_address=data.client_ip,
                     )
                 )
+            item = await self._user_repository.get_list_item(updated.id, detail_roles(actor))
 
         logger.info(
             f"{actor.log} Set discounts of user '{data.user_id}': "
             f"personal={updated.personal_discount}, purchase={updated.purchase_discount}"
         )
-        return updated
+        return item

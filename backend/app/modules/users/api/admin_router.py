@@ -27,7 +27,6 @@ from app.modules.users.api.schemas import (
     UnblockBlacklistMatchesResponse,
     UpdateAdminRequest,
     UpdateSecurityRequest,
-    UserListItemResponse,
     UserListStatsResponse,
     UserPageResponse,
     UserRegistrationResponse,
@@ -47,13 +46,19 @@ from app.modules.users.dto import (
     ListUsersDto,
     PromoteToAdminDto,
     SetUserDiscountDto,
+    UnbindTelegramDto,
+    UnblockBlacklistMatchesDto,
     UnblockUserDto,
     UpdateAdminDto,
     UpdateSecuritySettingsDto,
     UserDto,
     UserSort,
 )
-from app.modules.users.schemas import UserResponse, effective_permission_names
+from app.modules.users.schemas import (
+    UserListItemResponse,
+    UserResponse,
+    effective_permission_names,
+)
 from app.modules.users.usecases import (
     BindTelegramIdUseCase,
     BlockUserUseCase,
@@ -71,6 +76,7 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminUseCase,
     SetUserDiscountUseCase,
+    UnbindTelegramIdUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
     UpdateAdminUseCase,
@@ -233,15 +239,18 @@ async def list_blacklist_matches(
 @router.post("/bulk/unblock-blacklist-matches", response_model=UnblockBlacklistMatchesResponse)
 @inject
 async def unblock_blacklist_matches(
+    request: Request,
     use_case: FromDishka[UnblockBlacklistMatchesUseCase],
     actor: Actor = Depends(require_admin),
 ) -> UnblockBlacklistMatchesResponse:
-    count = await use_case(actor)
+    count = await use_case(actor, UnblockBlacklistMatchesDto(client_ip=resolve_client_ip(request)))
     return UnblockBlacklistMatchesResponse(unblocked=count)
 
 
 @router.patch(
-    "/{user_id:int}/discount", response_model=UserResponse, responses=error_responses(400, 404)
+    "/{user_id:int}/discount",
+    response_model=UserListItemResponse,
+    responses=error_responses(400, 404),
 )
 @inject
 async def set_user_discount(
@@ -250,7 +259,7 @@ async def set_user_discount(
     request: Request,
     use_case: FromDishka[SetUserDiscountUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     updated = await use_case(
         actor,
         SetUserDiscountDto(
@@ -260,11 +269,13 @@ async def set_user_discount(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return UserResponse.model_validate(updated, from_attributes=True)
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
 @router.put(
-    "/{user_id:int}/telegram", response_model=UserResponse, responses=error_responses(400, 404, 409)
+    "/{user_id:int}/telegram",
+    response_model=UserListItemResponse,
+    responses=error_responses(400, 404, 409),
 )
 @inject
 async def bind_user_telegram(
@@ -273,7 +284,7 @@ async def bind_user_telegram(
     request: Request,
     use_case: FromDishka[BindTelegramIdUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     updated = await use_case(
         actor,
         BindTelegramDto(
@@ -282,11 +293,29 @@ async def bind_user_telegram(
             client_ip=resolve_client_ip(request),
         ),
     )
-    return UserResponse.model_validate(updated, from_attributes=True)
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
+
+
+@router.delete(
+    "/{user_id:int}/telegram", response_model=UserListItemResponse, responses=error_responses(404)
+)
+@inject
+async def unbind_user_telegram(
+    user_id: int,
+    request: Request,
+    use_case: FromDishka[UnbindTelegramIdUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserListItemResponse:
+    updated = await use_case(
+        actor, UnbindTelegramDto(user_id=user_id, client_ip=resolve_client_ip(request))
+    )
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post(
-    "/{user_id:int}/actions/block", response_model=UserResponse, responses=error_responses(404)
+    "/{user_id:int}/actions/block",
+    response_model=UserListItemResponse,
+    responses=error_responses(404),
 )
 @inject
 async def block_user(
@@ -294,15 +323,17 @@ async def block_user(
     request: Request,
     use_case: FromDishka[BlockUserUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     updated = await use_case(
         actor, BlockUserDto(user_id=user_id, client_ip=resolve_client_ip(request))
     )
-    return UserResponse.model_validate(updated, from_attributes=True)
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post(
-    "/{user_id:int}/actions/unblock", response_model=UserResponse, responses=error_responses(404)
+    "/{user_id:int}/actions/unblock",
+    response_model=UserListItemResponse,
+    responses=error_responses(404),
 )
 @inject
 async def unblock_user(
@@ -310,16 +341,16 @@ async def unblock_user(
     request: Request,
     use_case: FromDishka[UnblockUserUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     updated = await use_case(
         actor, UnblockUserDto(user_id=user_id, client_ip=resolve_client_ip(request))
     )
-    return UserResponse.model_validate(updated, from_attributes=True)
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
 @router.post(
     "/{user_id:int}/actions/clear-email-undeliverable",
-    response_model=UserResponse,
+    response_model=UserListItemResponse,
     responses=error_responses(404),
 )
 @inject
@@ -328,11 +359,11 @@ async def clear_email_undeliverable(
     request: Request,
     use_case: FromDishka[ClearEmailUndeliverableUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserResponse:
+) -> UserListItemResponse:
     updated = await use_case(
         actor, ClearEmailUndeliverableDto(user_id=user_id, client_ip=resolve_client_ip(request))
     )
-    return UserResponse.model_validate(updated, from_attributes=True)
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
 @router.delete(
@@ -354,9 +385,11 @@ async def list_admins(
     use_case: FromDishka[ListAdminsUseCase],
     actor: Actor = Depends(require_admin),
 ) -> AdminListResponse:
-    admins = await use_case(actor)
-    items = [_to_admin_response(a) for a in admins]
-    return AdminListResponse(items=items, total=len(items))
+    result = await use_case(actor)
+    items = [_to_admin_response(a) for a in result.admins]
+    return AdminListResponse(
+        items=items, total=len(items), customer_sign_in_ids=sorted(result.customer_sign_in_ids)
+    )
 
 
 @admins_router.post(
@@ -403,12 +436,8 @@ async def promote_admin(
         actor,
         PromoteToAdminDto(
             user_id=payload.user_id,
-            email=payload.email,
-            telegram_username=payload.telegram_username,
             login=payload.login,
             client_ip=resolve_client_ip(request),
-            permission_grants=payload.permission_grants,
-            permission_revokes=payload.permission_revokes,
         ),
     )
     return AdminPromoteResponse(
@@ -441,7 +470,7 @@ async def update_admin(
 
 @admins_router.post(
     "/{user_id:int}/actions/demote",
-    response_model=AdminResponse,
+    response_model=UserResponse,
     responses=error_responses(404, 409),
 )
 @inject
@@ -450,11 +479,11 @@ async def demote_admin(
     request: Request,
     use_case: FromDishka[DemoteAdminUseCase],
     actor: Actor = Depends(require_admin),
-) -> AdminResponse:
+) -> UserResponse:
     demoted = await use_case(
         actor, DemoteAdminDto(user_id=user_id, client_ip=resolve_client_ip(request))
     )
-    return _to_admin_response(demoted)
+    return UserResponse.model_validate(demoted, from_attributes=True)
 
 
 @admins_router.delete(

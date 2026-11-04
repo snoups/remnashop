@@ -1,9 +1,9 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission, PermissionPolicy
+from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.dto import UserListItemDto
-from app.modules.users.listing import ALLOWED_ROLES, STAFF_ROLES
+from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
 
 
@@ -17,10 +17,5 @@ class GetUserUseCase(UseCase[int, UserListItemDto]):
     async def _execute(self, actor: Actor, data: int) -> UserListItemDto:
         # same staff visibility as ListUsersUseCase; deleted accounts stay
         # reachable since history still points at them
-        roles = (
-            STAFF_ROLES
-            if PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
-            else ALLOWED_ROLES
-        )
         async with self._uow:
-            return await self._user_repository.get_list_item(data, roles)
+            return await self._user_repository.get_list_item(data, detail_roles(actor))

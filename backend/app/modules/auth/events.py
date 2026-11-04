@@ -44,6 +44,12 @@ class SessionRevokedEvent(UserEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class OtherSessionsRevokedEvent(UserEvent):
+    category: ClassVar[EventCategory] = EventCategory.AUTH
+    kept_session_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class UserSessionRevokedByAdminEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.AUTH
     session_id: int

@@ -31,6 +31,8 @@ class RenamePasskeyUseCase(UseCase[RenamePasskeyDto, PasskeyCredentialDto, UserD
 
             renamed = await self._passkey_repository.update_name(data.id, data.name)
             await self._event_publisher.publish(
-                PasskeyRenamedEvent(user=actor, credential_name=renamed.name)
+                PasskeyRenamedEvent(
+                    user=actor, credential_name=renamed.name, ip_address=data.client_ip
+                )
             )
             return renamed

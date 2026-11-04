@@ -1,8 +1,9 @@
-from typing import Final, Optional
+from typing import Optional
 
 from authlib.common.security import generate_token
 
 from app.core.config import AppConfig
+from app.core.constants import CABINET_OAUTH_PROVIDERS
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
@@ -17,10 +18,6 @@ from app.modules.oauth import (
     new_binding,
 )
 from app.modules.settings import SettingsRepository
-
-CABINET_OAUTH_PROVIDERS: Final[frozenset[OAuthProvider]] = frozenset(
-    {OAuthProvider.TELEGRAM, OAuthProvider.GOOGLE, OAuthProvider.YANDEX}
-)
 
 
 class CabinetOAuthAuthorizeUseCase:

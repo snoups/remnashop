@@ -297,7 +297,7 @@ platform-icon =
     .default = ❓
 
 btn-broadcast =
-    .unsubscribe = Unsubscribe from offers
+    .unsubscribe = Unsubscribe from these emails
     .resubscribe = Get offers again
 
 ntf-broadcast =

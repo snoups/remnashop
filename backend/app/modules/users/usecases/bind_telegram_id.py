@@ -6,13 +6,14 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.dto import BindTelegramDto, UserDto
+from app.modules.users.dto import BindTelegramDto, UserListItemDto
 from app.modules.users.events import TelegramIdBoundEvent
+from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
-class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
+class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserListItemDto]):
     required_permission = Permission.USERS_TELEGRAM_BIND
 
     def __init__(
@@ -27,14 +28,14 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: BindTelegramDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: BindTelegramDto) -> UserListItemDto:
         async with self._uow:
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
             assert_manageable(actor, target, allow_self=True)
             if target.telegram_id == data.telegram_id:
-                return target
+                return await self._user_repository.get_list_item(target.id, detail_roles(actor))
             if await self._blacklist_repository.is_blacklisted_telegram_id(data.telegram_id):
                 raise ValidationError(
                     "Telegram ID is blacklisted", code=ErrorCode.TELEGRAM_ID_BLACKLISTED
@@ -48,4 +49,4 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserDto]):
                     ip_address=data.client_ip,
                 )
             )
-        return updated
+            return await self._user_repository.get_list_item(updated.id, detail_roles(actor))

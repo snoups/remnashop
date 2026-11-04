@@ -143,8 +143,6 @@ class PromoteAdminDto:
     login: str
     password_hash: str
     password_change_required: bool
-    permission_grants: list[str]
-    permission_revokes: list[str]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -159,6 +157,12 @@ class SetUserDiscountDto:
 class BindTelegramDto:
     user_id: int
     telegram_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class UnbindTelegramDto:
+    user_id: int
     client_ip: str
 
 
@@ -202,6 +206,13 @@ class DeleteUserDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class AdminListDto:
+    admins: list[UserDto]
+    # can still sign in once demoted (Telegram, email or OAuth): demoting clears the login
+    customer_sign_in_ids: frozenset[int]
+
+
+@dataclass(frozen=True, kw_only=True)
 class DemoteAdminDto:
     user_id: int
     client_ip: str
@@ -213,6 +224,11 @@ class GetUserListStatsDto:
 
 
 BlacklistMatchOrigin = Literal["manual", "lists"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class UnblockBlacklistMatchesDto:
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -268,13 +284,9 @@ class ListUsersDto:
 
 @dataclass(frozen=True, kw_only=True)
 class PromoteToAdminDto:
+    user_id: int
     client_ip: str
-    user_id: Optional[int] = None
-    email: Optional[str] = None
-    telegram_username: Optional[str] = None
     login: Optional[str] = None
-    permission_grants: list[Permission] = field(default_factory=list)
-    permission_revokes: list[Permission] = field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)

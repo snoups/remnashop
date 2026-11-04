@@ -1,12 +1,17 @@
+from datetime import timedelta
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.user import User
-from app.core.enums import Locale, Role
+from app.core.enums import Locale, Role, SubscriptionStatus
 from app.core.exceptions import NotFoundError, PermissionDeniedError
+from app.core.utils.time import datetime_now
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.passkeys.repository import PasskeyRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users.dto import (
     BlockUserDto,
     CreateUserDto,
@@ -16,6 +21,7 @@ from app.modules.users.dto import (
 )
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import BlockUserUseCase, UnblockUserUseCase
+from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
 @pytest.fixture
@@ -84,8 +90,6 @@ async def test_block_user_role_guard(
             login="target-admin",
             password_hash="hash",
             password_change_required=False,
-            permission_grants=[],
-            permission_revokes=[],
         ),
     )
 
@@ -152,3 +156,48 @@ async def test_staff_cannot_block_themselves(
 
     with pytest.raises(NotFoundError):
         await use_case(self_owner, BlockUserDto(user_id=self_owner.id, client_ip="127.0.0.1"))
+
+
+async def test_block_user_answers_with_the_list_row_and_its_subscription_counts(
+    user_repository: UserRepository,
+    blacklist_repository: BlacklistRepository,
+    subscription_repository: SubscriptionRepository,
+    uow,
+    event_publisher,
+    owner,
+    session_repository: SessionRepository,
+    passkey_repository: PasskeyRepository,
+) -> None:
+    # the dashboard swaps the list row for this response; the counts must survive it
+    target = await user_repository.create(CreateUserDto(telegram_id=501, name="t"))
+    for remnawave_id, status in (
+        (912_001, SubscriptionStatus.ACTIVE),
+        (912_002, SubscriptionStatus.EXPIRED),
+    ):
+        await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=target.id,
+                remnawave_user_id=remnawave_id,
+                status=status,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now() + timedelta(days=1),
+                url=f"https://example.com/sub/{remnawave_id}",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+
+    result = await BlockUserUseCase(
+        user_repository,
+        blacklist_repository,
+        uow,
+        event_publisher,
+        session_repository,
+        passkey_repository,
+    )(owner, BlockUserDto(user_id=target.id, client_ip="127.0.0.1"))
+
+    assert (result.is_blocked, result.active_subscriptions, result.expired_subscriptions) == (
+        True,
+        1,
+        1,
+    )

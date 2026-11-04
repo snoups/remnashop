@@ -221,13 +221,6 @@ async def test_list_by_roles_empty_when_none_match(user_repository: UserReposito
     assert await user_repository.list_by_roles([Role.OWNER]) == []
 
 
-async def test_get_by_username(user_repository: UserRepository, uow: UnitOfWork) -> None:
-    await _create_user(user_repository, uow, telegram_id=42, username="alice_tg")
-
-    assert await user_repository.find_by_username("alice_tg") is not None
-    assert await user_repository.find_by_username("nobody_tg") is None
-
-
 async def test_delete_user_nulls_out_actor_id_on_their_own_event_log_entries(
     user_repository: UserRepository,
     event_log_repository: EventLogRepository,

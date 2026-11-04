@@ -7,13 +7,14 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.dto import UnblockUserDto, UserDto
+from app.modules.users.dto import UnblockUserDto, UserListItemDto
 from app.modules.users.events import UserUnblockedEvent
+from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
 from app.modules.users.visibility import assert_manageable, get_visible_target
 
 
-class UnblockUserUseCase(UseCase[UnblockUserDto, UserDto]):
+class UnblockUserUseCase(UseCase[UnblockUserDto, UserListItemDto]):
     required_permission = Permission.USERS_UNBLOCK
 
     def __init__(
@@ -28,7 +29,7 @@ class UnblockUserUseCase(UseCase[UnblockUserDto, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: UnblockUserDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: UnblockUserDto) -> UserListItemDto:
         async with self._uow:
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
@@ -47,5 +48,4 @@ class UnblockUserUseCase(UseCase[UnblockUserDto, UserDto]):
             await self._event_publisher.publish(
                 UserUnblockedEvent(actor=actor, target=updated, ip_address=data.client_ip)
             )
-
-        return updated
+            return await self._user_repository.get_list_item(updated.id, detail_roles(actor))

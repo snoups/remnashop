@@ -38,6 +38,7 @@ class CreatePasskeyCredentialDto:
 class RenamePasskeyDto:
     id: int
     name: str
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)

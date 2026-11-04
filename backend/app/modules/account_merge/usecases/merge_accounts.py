@@ -17,10 +17,10 @@ from app.modules.account_merge.rules import (
     merged_user_fields,
     resolve_sides,
 )
-from app.modules.users import SessionRevoker, UserDto, UserRepository
+from app.modules.users import SessionRevoker, UserListItemDto, UserRepository, detail_roles
 
 
-class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserDto]):
+class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserListItemDto]):
     required_permission = Permission.USERS_MERGE
 
     def __init__(
@@ -37,7 +37,7 @@ class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserDto]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: MergeAccountsDto) -> UserDto:
+    async def _execute(self, actor: Actor, data: MergeAccountsDto) -> UserListItemDto:
         async with self._uow:
             await self._merge_repository.lock_users([data.source_id, data.target_id])
             source, target = await load_pair(
@@ -83,5 +83,6 @@ class MergeAccountsUseCase(UseCase[MergeAccountsDto, UserDto]):
                     ip_address=data.client_ip,
                 )
             )
+            item = await self._user_repository.get_list_item(merged.id, detail_roles(actor))
         logger.info(f"{actor.log} Merged user '{source.id}' into '{target.id}'")
-        return merged
+        return item

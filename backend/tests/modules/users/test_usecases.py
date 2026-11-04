@@ -9,7 +9,7 @@ from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry, User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import BlacklistKind, Locale, Role, SessionAudience
+from app.core.enums import BlacklistKind, Locale, OAuthProvider, Role, SessionAudience
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.security import hash_password
@@ -22,6 +22,8 @@ from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
 from app.modules.blacklist import BlacklistRepository
 from app.modules.blacklist.dto import AddBlacklistSourceDto, ParsedSourceList
+from app.modules.oauth.dto import CreateOAuthIdentityDto
+from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.passkeys.dto import CreatePasskeyCredentialDto
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users.dto import (
@@ -224,33 +226,6 @@ async def test_regular_user_cannot_create_admin(
         await use_case(REGULAR_USER, CreateAdminDto(client_ip="127.0.0.1", login="x", name="x"))
 
 
-async def test_owner_can_promote_existing_user_by_email(
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-    event_publisher: EventPublisher,
-) -> None:
-    async with uow:
-        target = await user_repository.create(
-            CreateUserDto(
-                name="Client", role=Role.USER, language=Locale.EN, email="client@example.com"
-            )
-        )
-        await uow.commit()
-
-    use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
-    result = await use_case(
-        OWNER,
-        PromoteToAdminDto(client_ip="127.0.0.1", email="client@example.com", login="client-admin"),
-    )
-    admin, password = result.admin, result.password
-
-    assert admin.id == target.id
-    assert admin.role == Role.ADMIN
-    assert admin.login == "client-admin"
-    assert len(password) == PASSWORD_MIN_LENGTH
-
-
 async def test_owner_can_promote_existing_user_by_id(
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -282,7 +257,7 @@ async def test_promote_reuses_existing_password_hash_when_already_set(
 ) -> None:
     existing_hash = await hash_password("existing-password", config.crypt_key.get_secret_value())
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Client",
                 role=Role.USER,
@@ -296,45 +271,12 @@ async def test_promote_reuses_existing_password_hash_when_already_set(
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
     result = await use_case(
         OWNER,
-        PromoteToAdminDto(
-            client_ip="127.0.0.1", email="haspassword@example.com", login="haspw-admin"
-        ),
+        PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="haspw-admin"),
     )
     admin, password = result.admin, result.password
 
     assert password is None
     assert admin.password_hash == existing_hash
-
-
-async def test_owner_can_promote_existing_user_by_telegram_username(
-    user_repository: UserRepository,
-    uow: UnitOfWork,
-    config: AppConfig,
-    event_publisher: EventPublisher,
-) -> None:
-    async with uow:
-        await user_repository.create(
-            CreateUserDto(
-                name="Client",
-                role=Role.USER,
-                language=Locale.EN,
-                telegram_id=555,
-                username="client_tg",
-            )
-        )
-        await uow.commit()
-
-    use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
-    admin = (
-        await use_case(
-            OWNER,
-            PromoteToAdminDto(
-                client_ip="127.0.0.1", telegram_username="client_tg", login="client-admin2"
-            ),
-        )
-    ).admin
-
-    assert admin.role == Role.ADMIN
 
 
 async def test_promote_reuses_existing_login_when_already_set(
@@ -344,7 +286,7 @@ async def test_promote_reuses_existing_login_when_already_set(
     event_publisher: EventPublisher,
 ) -> None:
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Client",
                 role=Role.USER,
@@ -357,9 +299,7 @@ async def test_promote_reuses_existing_login_when_already_set(
 
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await use_case(
-            OWNER, PromoteToAdminDto(client_ip="127.0.0.1", email="haslogin@example.com")
-        )
+        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id))
     ).admin
 
     assert admin.login == "already-set"
@@ -372,7 +312,7 @@ async def test_promote_requires_login_when_target_has_none(
     event_publisher: EventPublisher,
 ) -> None:
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Client", role=Role.USER, language=Locale.EN, email="nologin@example.com"
             )
@@ -382,7 +322,7 @@ async def test_promote_requires_login_when_target_has_none(
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
 
     with pytest.raises(ValidationError):
-        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", email="nologin@example.com"))
+        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id))
 
 
 async def test_promote_unknown_user_raises_not_found(
@@ -394,9 +334,7 @@ async def test_promote_unknown_user_raises_not_found(
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
 
     with pytest.raises(NotFoundError):
-        await use_case(
-            OWNER, PromoteToAdminDto(client_ip="127.0.0.1", email="nobody@example.com", login="x")
-        )
+        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=999_999, login="x"))
 
 
 async def test_promote_already_privileged_user_raises_conflict(
@@ -406,7 +344,7 @@ async def test_promote_already_privileged_user_raises_conflict(
     event_publisher: EventPublisher,
 ) -> None:
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Already",
                 role=Role.ADMIN,
@@ -420,7 +358,7 @@ async def test_promote_already_privileged_user_raises_conflict(
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
 
     with pytest.raises(ConflictError):
-        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", email="already@example.com"))
+        await use_case(OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id))
 
 
 async def test_owner_can_update_admin_permissions(
@@ -733,7 +671,7 @@ async def test_demote_admin_preserves_customer_identity(
     passkey_repository: PasskeyRepository,
 ) -> None:
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Client",
                 role=Role.USER,
@@ -748,9 +686,7 @@ async def test_demote_admin_preserves_customer_identity(
     admin = (
         await promote_use_case(
             OWNER,
-            PromoteToAdminDto(
-                client_ip="127.0.0.1", email="client3@example.com", login="client3-admin"
-            ),
+            PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="client3-admin"),
         )
     ).admin
 
@@ -768,6 +704,7 @@ async def test_list_admins_returns_admins_and_owner(
     uow: UnitOfWork,
     config: AppConfig,
     event_publisher: EventPublisher,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
     async with uow:
         await user_repository.create(
@@ -783,8 +720,8 @@ async def test_list_admins_returns_admins_and_owner(
         OWNER, CreateAdminDto(client_ip="127.0.0.1", login="listedadmin", name="X")
     )
 
-    list_use_case = ListAdminsUseCase(user_repository, uow)
-    admins = await list_use_case(OWNER)
+    list_use_case = ListAdminsUseCase(user_repository, uow, oauth_identity_repository)
+    admins = (await list_use_case(OWNER)).admins
 
     logins = {a.login for a in admins}
     assert "owner3" in logins
@@ -792,11 +729,55 @@ async def test_list_admins_returns_admins_and_owner(
     assert "Regular" not in {a.name for a in admins}
 
 
+async def test_list_admins_marks_who_can_sign_in_without_a_login(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    async with uow:
+        login_only = await user_repository.create(
+            CreateUserDto(login="loginonly", name="A", role=Role.ADMIN, language=Locale.EN)
+        )
+        with_telegram = await user_repository.create(
+            CreateUserDto(
+                login="withtg", name="B", role=Role.ADMIN, language=Locale.EN, telegram_id=4242
+            )
+        )
+        with_google = await user_repository.create(
+            CreateUserDto(login="withgoogle", name="C", role=Role.ADMIN, language=Locale.EN)
+        )
+        # GitHub signs in to the dashboard only, not the cabinet
+        with_github = await user_repository.create(
+            CreateUserDto(login="withgithub", name="D", role=Role.ADMIN, language=Locale.EN)
+        )
+        for user_id, provider in (
+            (with_google.id, OAuthProvider.GOOGLE),
+            (with_github.id, OAuthProvider.GITHUB),
+        ):
+            await oauth_identity_repository.create(
+                CreateOAuthIdentityDto(
+                    user_id=user_id,
+                    provider=provider,
+                    external_id=f"{provider}-{user_id}",
+                    external_login=None,
+                )
+            )
+        await uow.commit()
+
+    result = await ListAdminsUseCase(user_repository, uow, oauth_identity_repository)(OWNER)
+
+    assert login_only.id not in result.customer_sign_in_ids
+    assert with_telegram.id in result.customer_sign_in_ids
+    assert with_google.id in result.customer_sign_in_ids
+    assert with_github.id not in result.customer_sign_in_ids
+
+
 async def test_regular_user_cannot_list_admins(
     user_repository: UserRepository,
     uow: UnitOfWork,
+    oauth_identity_repository: OAuthIdentityRepository,
 ) -> None:
-    list_use_case = ListAdminsUseCase(user_repository, uow)
+    list_use_case = ListAdminsUseCase(user_repository, uow, oauth_identity_repository)
 
     with pytest.raises(PermissionDeniedError):
         await list_use_case(REGULAR_USER)
@@ -943,6 +924,27 @@ async def test_actor_can_set_own_ip_allowlist_including_current_ip(
     assert updated.ip_allowlist == ["10.0.0.5"]
 
 
+async def test_saving_an_unchanged_ip_allowlist_records_no_event(
+    user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    async with uow:
+        actor = await user_repository.create(
+            CreateUserDto(login="secowner3", name="secowner3", role=Role.OWNER, language=Locale.EN)
+        )
+        await uow.commit()
+    events = RecordingEventPublisher()
+    use_case = UpdateOwnSecuritySettingsUseCase(user_repository, uow, events)
+
+    updated = await use_case(
+        actor, UpdateSecuritySettingsDto(ip_allowlist=["10.0.0.5"], client_ip="10.0.0.5")
+    )
+    await use_case(
+        updated, UpdateSecuritySettingsDto(ip_allowlist=["10.0.0.5"], client_ip="10.0.0.5")
+    )
+
+    assert len(events.events) == 1
+
+
 async def test_actor_can_clear_own_ip_allowlist(
     user_repository: UserRepository, uow: UnitOfWork
 ) -> None:
@@ -1014,7 +1016,7 @@ async def test_promote_publishes_admin_promoted_event(
     use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
     await use_case(
         OWNER,
-        PromoteToAdminDto(client_ip="127.0.0.1", email="evt2@example.com", login="evt2-admin"),
+        PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="evt2-admin"),
     )
 
     rows = await _outbox_rows(session, AdminPromotedEvent.__name__)

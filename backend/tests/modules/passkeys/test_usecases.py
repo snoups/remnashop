@@ -12,9 +12,10 @@ from webauthn.helpers import base64url_to_bytes, bytes_to_base64url
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError, NotFoundError
+from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.modules.auth import SessionIssuer
+from app.modules.auth.sign_in_methods import SignInMethodGuard
 from app.modules.passkeys.challenge_store import PasskeyChallengeStore
 from app.modules.passkeys.dto import (
     CreatePasskeyCredentialDto,
@@ -214,10 +215,14 @@ async def test_rename_passkey_updates_name(
 
     publisher = RecordingEventPublisher()
     use_case = RenamePasskeyUseCase(passkey_repository, uow, publisher)
-    renamed = await use_case(actor, RenamePasskeyDto(id=created.id, name="New name"))
+    renamed = await use_case(
+        actor, RenamePasskeyDto(id=created.id, name="New name", client_ip="10.0.0.1")
+    )
 
     assert renamed.name == "New name"
-    assert [e.credential_name for e in publisher.events] == ["New name"]  # type: ignore[attr-defined]
+    assert [(e.credential_name, e.ip_address) for e in publisher.events] == [  # type: ignore[attr-defined]
+        ("New name", "10.0.0.1")
+    ]
 
 
 async def test_rename_passkey_rejects_other_users_passkey(
@@ -229,10 +234,13 @@ async def test_rename_passkey_rejects_other_users_passkey(
 
     use_case = RenamePasskeyUseCase(passkey_repository, uow, RecordingEventPublisher())
     with pytest.raises(NotFoundError):
-        await use_case(other, RenamePasskeyDto(id=created.id, name="Hijacked"))
+        await use_case(
+            other, RenamePasskeyDto(id=created.id, name="Hijacked", client_ip="10.0.0.1")
+        )
 
 
 async def test_delete_passkey_removes_it(
+    sign_in_method_guard: SignInMethodGuard,
     passkey_repository: PasskeyRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -241,13 +249,36 @@ async def test_delete_passkey_removes_it(
     actor = await _create_user(user_repository, uow, "owner")
     created = await passkey_repository.create(_create_passkey_dto(actor.id))
 
-    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
-    await use_case(actor, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
+    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher, sign_in_method_guard)
+    # a password left to sign in with
+    with_password = actor.model_copy(update={"password_hash": "hash"})
+    await use_case(with_password, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
 
     assert await passkey_repository.find_by_id_and_user(created.id, actor.id) is None
 
 
+async def test_delete_passkey_refuses_the_last_way_to_sign_in(
+    sign_in_method_guard: SignInMethodGuard,
+    passkey_repository: PasskeyRepository,
+    settings_repository: SettingsRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await _enable_passkeys(settings_repository)
+    actor = await _create_user(user_repository, uow, "solo")
+    async with uow:
+        only = await passkey_repository.create(_create_passkey_dto(actor.id))
+    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher, sign_in_method_guard)
+
+    with pytest.raises(ConflictError):
+        await use_case(actor, DeletePasskeyDto(passkey_id=only.id, client_ip="127.0.0.1"))
+
+    assert await passkey_repository.find_by_id_and_user(only.id, actor.id) is not None
+
+
 async def test_delete_passkey_rejects_other_users_passkey(
+    sign_in_method_guard: SignInMethodGuard,
     passkey_repository: PasskeyRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -257,7 +288,7 @@ async def test_delete_passkey_rejects_other_users_passkey(
     other = await _create_user(user_repository, uow, "other", role=Role.ADMIN)
     created = await passkey_repository.create(_create_passkey_dto(owner.id))
 
-    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher)
+    use_case = DeletePasskeyUseCase(passkey_repository, uow, event_publisher, sign_in_method_guard)
     with pytest.raises(NotFoundError):
         await use_case(other, DeletePasskeyDto(passkey_id=created.id, client_ip="127.0.0.1"))
 

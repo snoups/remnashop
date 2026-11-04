@@ -1,5 +1,7 @@
 from app.modules.auth.di import get_auth_providers
+from app.modules.auth.dto import RevokeOtherSessionsDto
 from app.modules.auth.events import RescueCliAction, RescueCliUsedEvent
+from app.modules.auth.ports import PasskeyCounter
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_cookies import (
     DEEPLINK_BINDING_COOKIE,
@@ -10,18 +12,23 @@ from app.modules.auth.session_cookies import (
 )
 from app.modules.auth.session_issuer import IssuedSession, SessionIssuer
 from app.modules.auth.session_response import AuthResponse, set_session_cookies, to_auth_response
-from app.modules.auth.usecases import RevokeOtherCabinetSessionsUseCase
+from app.modules.auth.sign_in_methods import SignInMethodGuard
+from app.modules.auth.usecases import RevokeOtherCabinetSessionsUseCase, RevokeOtherSessionsUseCase
 
 __all__ = [
     "DEEPLINK_BINDING_COOKIE",
     "OAUTH_BINDING_COOKIE",
     "AuthResponse",
     "IssuedSession",
+    "PasskeyCounter",
     "RescueCliAction",
     "RescueCliUsedEvent",
     "RevokeOtherCabinetSessionsUseCase",
+    "RevokeOtherSessionsDto",
+    "RevokeOtherSessionsUseCase",
     "SessionIssuer",
     "SessionRepository",
+    "SignInMethodGuard",
     "clear_oauth_binding_cookie",
     "get_auth_providers",
     "set_audience_cookies",

@@ -221,11 +221,6 @@ class UserRepository:
         db_user = await self.session.scalar(stmt)
         return self._to_dto(db_user) if db_user else None
 
-    async def find_by_username(self, username: str) -> Optional[UserDto]:
-        stmt = select(User).where(User.username == username)
-        db_user = await self.session.scalar(stmt)
-        return self._to_dto(db_user) if db_user else None
-
     async def find_by_referral_code(self, code: str) -> Optional[UserDto]:
         stmt = select(User).where(User.referral_code == code)
         db_user = await self.session.scalar(stmt)
@@ -542,8 +537,8 @@ class UserRepository:
         db_user.login = data.login
         db_user.password_hash = data.password_hash
         db_user.password_change_required = data.password_change_required
-        db_user.permission_grants = data.permission_grants
-        db_user.permission_revokes = data.permission_revokes
+        db_user.permission_grants = None
+        db_user.permission_revokes = None
 
         await self._flush_unique()
         await self.session.refresh(db_user)

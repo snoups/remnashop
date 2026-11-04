@@ -5,7 +5,6 @@ import httpx
 import pytest
 from dishka import AsyncContainer
 from fastapi import FastAPI
-from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy import update
 
 from app.core.config import AppConfig
@@ -21,7 +20,6 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users import unsubscribe_token
-from app.modules.users.api.schemas import PromoteAdminRequest
 from app.modules.users.dto import CreateUserDto, RegistrationSnapshotDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnsubscribeMarketingUseCase
@@ -114,7 +112,7 @@ async def test_promote_admin_endpoint_returns_null_password_when_already_set(
     _, token = await _owner_token(user_repository, session_repository, uow, config)
     existing_hash = await hash_password("existing-password", config.crypt_key.get_secret_value())
     async with uow:
-        await user_repository.create(
+        target = await user_repository.create(
             CreateUserDto(
                 name="Client",
                 role=Role.USER,
@@ -127,7 +125,7 @@ async def test_promote_admin_endpoint_returns_null_password_when_already_set(
 
     response = await client.post(
         "/api/v1/admins/actions/promote",
-        json={"email": "promotehttp@example.com", "login": "promotehttp-admin"},
+        json={"user_id": target.id, "login": "promotehttp-admin"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -714,23 +712,6 @@ async def test_users_me_is_not_shadowed_by_user_id_route(
 
     assert response.status_code == 200
     assert response.json()["id"] == owner.id
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {},
-        {"user_id": 1, "email": "a@example.com"},
-        {"email": "a@example.com", "telegram_username": "a"},
-    ],
-)
-def test_promote_request_needs_exactly_one_identifier(payload: dict[str, object]) -> None:
-    with pytest.raises(PydanticValidationError):
-        PromoteAdminRequest.model_validate(payload)
-
-
-def test_promote_request_accepts_user_id_alone() -> None:
-    assert PromoteAdminRequest.model_validate({"user_id": 7}).user_id == 7
 
 
 _UNSUBSCRIBE_URL = "/api/v1/unsubscribe"

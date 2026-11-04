@@ -9,20 +9,28 @@ from app.modules.users.dto import (
     SetMarketingOptOutDto,
     UpdateUserDto,
     UserDto,
+    UserListItemDto,
 )
 from app.modules.users.events import (
     CabinetUserRegisteredEvent,
     TelegramUserRegisteredEvent,
     UserDeletedEvent,
 )
+from app.modules.users.listing import detail_roles
 from app.modules.users.ports import (
+    OAuthIdentityLookup,
     PasskeyRevoker,
     PromocodeLiveness,
     SessionRevoker,
     SubscriptionRevoker,
 )
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import CurrentUserResponse, UserResponse, to_current_user_response
+from app.modules.users.schemas import (
+    CurrentUserResponse,
+    UserListItemResponse,
+    UserResponse,
+    to_current_user_response,
+)
 from app.modules.users.stats_repository import UserStatsRepository
 from app.modules.users.unsubscribe import unsubscribe_token
 from app.modules.users.usecases import (
@@ -39,6 +47,7 @@ __all__ = [
     "CreateUserDto",
     "CurrentUserResponse",
     "FindTelegramUserUseCase",
+    "OAuthIdentityLookup",
     "PasskeyRevoker",
     "PromocodeLiveness",
     "RegisterCabinetUserDto",
@@ -56,10 +65,13 @@ __all__ = [
     "UpdateUserDto",
     "UserDeletedEvent",
     "UserDto",
+    "UserListItemDto",
+    "UserListItemResponse",
     "UserRepository",
     "UserResponse",
     "UserStatsRepository",
     "assert_manageable",
+    "detail_roles",
     "get_users_providers",
     "get_visible_target",
     "mark_bot_blocked",

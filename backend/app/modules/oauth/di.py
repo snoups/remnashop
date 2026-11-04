@@ -11,6 +11,7 @@ from app.modules.oauth.usecases import (
     OAuthLoginCallbackUseCase,
 )
 from app.modules.settings import OidcIdentityCleaner
+from app.modules.users import OAuthIdentityLookup
 
 
 class OAuthDIProvider(Provider):
@@ -19,6 +20,7 @@ class OAuthDIProvider(Provider):
     oauth_identity_repository = provide(OAuthIdentityRepository)
     oauth_state_store = provide(OAuthStateStore)
     oidc_identity_cleaner = alias(source=OAuthIdentityRepository, provides=OidcIdentityCleaner)
+    oauth_identity_lookup = alias(source=OAuthIdentityRepository, provides=OAuthIdentityLookup)
     use_cases = provide_all(
         OAuthLoginAuthorizeUseCase,
         OAuthLoginCallbackUseCase,
