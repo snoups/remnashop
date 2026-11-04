@@ -7,7 +7,7 @@ from uuid import UUID
 import orjson
 from aiogram import Bot
 from fastapi import Request
-from httpx import AsyncClient, ConnectError, HTTPStatusError
+from httpx import AsyncClient, ConnectError
 from loguru import logger
 
 from src.application.dto import (
@@ -70,33 +70,21 @@ class YookassaGateway(BasePaymentGateway):
         last_connect_error: ConnectError | None = None
 
         for attempt in range(1, self.CONNECT_RETRIES + 1):
-            try:
-                response = await self._client.post("v3/payments", json=payload, headers=headers)
-                response.raise_for_status()
-                data = orjson.loads(response.content)
-                return self._get_payment_data(data)
+            with self._handle_create_payment_errors():
+                try:
+                    response = await self._client.post("v3/payments", json=payload, headers=headers)
+                    response.raise_for_status()
+                    data = orjson.loads(response.content)
+                    return self._get_payment_data(data)
 
-            except ConnectError as e:
-                last_connect_error = e
-                logger.warning(
-                    f"ConnectError on attempt {attempt}/{self.CONNECT_RETRIES} "
-                    f"while creating payment: {e}"
-                )
-                if attempt < self.CONNECT_RETRIES:
-                    await asyncio.sleep(self.CONNECT_RETRY_DELAY * attempt)
-
-            except HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error creating payment. "
-                    f"Status: '{e.response.status_code}', Body: {e.response.text}"
-                )
-                raise
-            except (KeyError, orjson.JSONDecodeError) as e:
-                logger.error(f"Failed to parse response. Error: {e}")
-                raise
-            except Exception as e:
-                logger.exception(f"An unexpected error occurred while creating payment: {e}")
-                raise
+                except ConnectError as e:
+                    last_connect_error = e
+                    logger.warning(
+                        f"ConnectError on attempt {attempt}/{self.CONNECT_RETRIES} "
+                        f"while creating payment: {e}"
+                    )
+                    if attempt < self.CONNECT_RETRIES:
+                        await asyncio.sleep(self.CONNECT_RETRY_DELAY * attempt)
 
         logger.error(
             f"All {self.CONNECT_RETRIES} attempts to connect to YooKassa failed. "

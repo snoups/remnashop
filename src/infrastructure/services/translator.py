@@ -7,8 +7,6 @@ from fluentogram import FluentTranslator, TranslatorHub, TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
 from loguru import logger
 
-from src.core.utils.converters import event_to_key
-
 
 class TranslatorRunnerImpl(TranslatorRunner):
     def __init__(
@@ -38,12 +36,6 @@ class TranslatorRunnerImpl(TranslatorRunner):
         processed_text = self._postprocess(text)
 
         return processed_text
-
-    def from_event(self, event: Any, **kwargs: Any) -> str:
-        raw_name = getattr(event, "event_type", event.__class__.__name__)
-        key = event_to_key(raw_name)
-        logger.debug(f"Processing event translation for '{key}'")
-        return self.get(key, obj=event, **kwargs)
 
     def _sanitize_data(self, data: Any) -> Any:
         if isinstance(data, dict):

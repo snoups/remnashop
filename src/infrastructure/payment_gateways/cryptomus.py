@@ -10,7 +10,7 @@ from uuid import UUID
 import orjson
 from aiogram import Bot
 from fastapi import Request
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient
 from loguru import logger
 
 from src.application.dto import PaymentGatewayDto, PaymentResultDto
@@ -55,26 +55,13 @@ class CryptomusGateway(BasePaymentGateway):
         headers = {"sign": self._generate_signature(body), "Content-Type": "application/json"}
         logger.debug(f"Creating payment payload: {payload}")
 
-        try:
+        with self._handle_create_payment_errors():
             response = await self._client.post(
                 "v1/payment", content=body.encode("utf-8"), headers=headers
             )
             response.raise_for_status()
             data = orjson.loads(response.content).get("result", {})
             return self._get_payment_data(data)
-
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error creating payment. "
-                f"Status: '{e.response.status_code}', Body: {e.response.text}"
-            )
-            raise
-        except (KeyError, orjson.JSONDecodeError) as e:
-            logger.error(f"Failed to parse response. Error: {e}")
-            raise
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred while creating payment: {e}")
-            raise
 
     async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")

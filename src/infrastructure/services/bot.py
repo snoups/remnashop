@@ -14,16 +14,12 @@ class BotService:
         self.bot = bot
         self.config = config
         self._bot_username: Optional[str] = None
-        self._can_join_groups: Optional[bool] = None
-        self._can_read_all_group_messages: Optional[bool] = None
         self._supports_inline: Optional[bool] = None
 
     async def _update_bot_info(self) -> None:
         if self._bot_username is None:
             me = await self.bot.get_me()
             self._bot_username = me.username
-            self._can_join_groups = me.can_join_groups
-            self._can_read_all_group_messages = me.can_read_all_group_messages
             self._supports_inline = me.supports_inline_queries
 
     async def _get_bot_redirect_url(self) -> str:

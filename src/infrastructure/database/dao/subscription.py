@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Optional, cast
+from typing import Optional
 from uuid import UUID
 
 from adaptix import Retort
@@ -34,9 +34,6 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
         self.user_dao = user_dao
 
         self._convert_to_dto = self.conversion_retort.get_converter(Subscription, SubscriptionDto)
-        self._convert_to_dto_list = self.conversion_retort.get_converter(
-            list[Subscription], list[SubscriptionDto]
-        )
 
     async def create(self, subscription: SubscriptionDto, user_id: int) -> SubscriptionDto:
         subscription_data = self.retort.dump(subscription)
@@ -76,18 +73,6 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
 
         logger.debug(f"Subscription with remna ID '{user_remna_id}' not found")
         return None
-
-    async def get_all_by_user(self, user_id: int) -> list[SubscriptionDto]:
-        stmt = (
-            select(Subscription)
-            .where(Subscription.user_id == user_id)
-            .order_by(Subscription.created_at.desc())
-        )
-        result = await self.session.scalars(stmt)
-        db_subscriptions = cast(list, result.all())
-
-        logger.debug(f"Retrieved '{len(db_subscriptions)}' subscriptions for user_id='{user_id}'")
-        return self._convert_to_dto_list(db_subscriptions)
 
     async def get_current(self, user_id: int) -> Optional[SubscriptionDto]:
         stmt = (

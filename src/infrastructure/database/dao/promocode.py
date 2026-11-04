@@ -90,10 +90,6 @@ class PromocodeDaoImpl(PromocodeDao):
         result = await self.session.scalars(stmt)
         return self._to_dto_list(list(result.all()))
 
-    async def get_count(self) -> int:
-        result = await self.session.scalar(select(func.count(Promocode.id)))
-        return result or 0
-
     async def get_activations_count(self, promocode_id: int) -> int:
         result = await self.session.scalar(
             select(func.count(PromocodeActivation.id)).where(

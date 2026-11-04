@@ -36,16 +36,6 @@ def is_valid_tag(text: str) -> bool:
     return bool(TAG_REGEX.fullmatch(text))
 
 
-def is_valid_int(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    try:
-        int(value)
-        return True
-    except (TypeError, ValueError):
-        return False
-
-
 def parse_int(value: Optional[str]) -> Optional[int]:
     if not value:
         return None

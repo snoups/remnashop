@@ -42,10 +42,6 @@ class ReferralDaoImpl(ReferralDao):
             ReferralReward,
             ReferralRewardDto,
         )
-        self._convert_to_reward_list = self.conversion_retort.get_converter(
-            list[ReferralReward],
-            list[ReferralRewardDto],
-        )
 
     async def create_referral(self, referral: ReferralDto) -> ReferralDto:
         db_referral = Referral(

@@ -105,14 +105,6 @@ class TransactionDaoImpl(TransactionDao):
         )
         return self._convert_to_dto_list(db_transactions)
 
-    async def get_by_status(self, status: TransactionStatus) -> list[TransactionDto]:
-        stmt = select(Transaction).where(Transaction.status == status)
-        result = await self.session.scalars(stmt)
-        db_transactions = cast(list, result.all())
-
-        logger.debug(f"Found '{len(db_transactions)}' transactions with status '{status}'")
-        return self._convert_to_dto_list(db_transactions)
-
     async def update_status(
         self,
         payment_id: UUID,

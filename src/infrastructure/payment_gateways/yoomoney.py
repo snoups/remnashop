@@ -6,10 +6,9 @@ from typing import Any, Final, Union
 from urllib.parse import parse_qs, quote
 from uuid import UUID
 
-import orjson
 from aiogram import Bot
 from fastapi import Request
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient
 from loguru import logger
 
 from src.application.dto import (
@@ -47,7 +46,7 @@ class YoomoneyGateway(BasePaymentGateway):
         payload = await self._create_payment_payload(str(amount), str(payment_id))
         logger.debug(f"Creating payment payload: {payload}")
 
-        try:
+        with self._handle_create_payment_errors():
             response = await self._client.post(
                 "quickpay/confirm.xml",
                 json=payload,
@@ -55,19 +54,6 @@ class YoomoneyGateway(BasePaymentGateway):
             )
             response.raise_for_status()
             return PaymentResultDto(id=payment_id, url=str(response.url))
-
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error creating payment. "
-                f"Status: '{e.response.status_code}', Body: {e.response.text}"
-            )
-            raise
-        except (KeyError, orjson.JSONDecodeError) as e:
-            logger.error(f"Failed to parse response. Error: {e}")
-            raise
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred while creating payment: {e}")
-            raise
 
     async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug("Received YooMoney webhook request")

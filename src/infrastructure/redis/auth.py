@@ -17,13 +17,6 @@ class RedisAuthRepository:
         await self.redis.sadd(user_set_key, token)  # type: ignore[misc]
         await self.redis.expire(user_set_key, ttl)
 
-    async def get_user_id_by_refresh_token(self, token: str) -> Optional[int]:
-        key = serialize_storage_key(RefreshTokenKey(token=token))
-        value = await self.redis.get(key)
-        if value is None:
-            return None
-        return int(value)
-
     async def revoke_refresh_token(self, token: str) -> None:
         token_key = serialize_storage_key(RefreshTokenKey(token=token))
         value = await self.redis.getdel(token_key)

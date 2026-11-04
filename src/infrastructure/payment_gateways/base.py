@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from decimal import Decimal
 from ipaddress import ip_address, ip_network
-from typing import Optional, Protocol, Union
+from typing import Iterator, Optional, Protocol, Union
 from uuid import UUID
 
 import orjson
 from aiogram import Bot
 from fastapi import Request, Response
-from httpx import AsyncClient, Timeout
+from httpx import AsyncClient, HTTPStatusError, Timeout
 from loguru import logger
 from starlette.datastructures import Headers
 
@@ -76,8 +77,23 @@ class BasePaymentGateway(ABC):
     ) -> AsyncClient:
         return AsyncClient(base_url=base_url, auth=auth, headers=headers, timeout=Timeout(timeout))
 
-    def _is_test_payment(self, payment_id: str) -> bool:
-        return payment_id.startswith("test:")
+    @contextmanager
+    def _handle_create_payment_errors(self) -> Iterator[None]:
+        """Log a failed payment creation request and re-raise the original error."""
+        try:
+            yield
+        except HTTPStatusError as e:
+            logger.error(
+                f"HTTP error creating payment. "
+                f"Status: '{e.response.status_code}', Body: {e.response.text}"
+            )
+            raise
+        except (KeyError, orjson.JSONDecodeError) as e:
+            logger.error(f"Failed to parse response. Error: {e}")
+            raise
+        except Exception as e:
+            logger.exception(f"An unexpected error occurred while creating payment: {e}")
+            raise
 
     def _is_ip_in_network(self, ip: str, network: str) -> bool:
         try:
