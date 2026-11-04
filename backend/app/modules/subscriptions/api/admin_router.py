@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Final, Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
@@ -15,8 +15,12 @@ from app.modules.subscriptions.api.schemas import (
     DeviceListResponse,
     DeviceResponse,
     GrantSubscriptionRequest,
+    PanelSquadListResponse,
+    PanelSquadResponse,
     PanelSyncDirectionStatusResponse,
     PanelSyncStatusResponse,
+    SubscriptionDetailResponse,
+    SubscriptionListItemResponse,
     SubscriptionPageResponse,
     SubscriptionPanelDiffResponse,
     SubscriptionResponse,
@@ -44,6 +48,7 @@ from app.modules.subscriptions.usecases import (
     GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
+    ListPanelSquadsUseCase,
     ListSubscriptionsUseCase,
     PullSubscriptionFromPanelUseCase,
     PushSubscriptionToPanelUseCase,
@@ -54,6 +59,9 @@ from app.modules.subscriptions.usecases import (
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
 )
+
+# sent as null, these are emptied
+_CLEARABLE_FIELDS: Final[frozenset[str]] = frozenset({"tag"})
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 user_router = APIRouter(prefix="/users", tags=["subscriptions"])
@@ -111,7 +119,7 @@ async def list_subscriptions(
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> SubscriptionPageResponse:
-    subscriptions, total = await use_case(
+    items, total = await use_case(
         actor,
         ListSubscriptionsDto(
             status=status_filter, search=search, user_id=user_id, page=page, page_size=page_size
@@ -119,8 +127,10 @@ async def list_subscriptions(
     )
     return SubscriptionPageResponse(
         items=[
-            SubscriptionResponse.model_validate(subscription, from_attributes=True)
-            for subscription in subscriptions
+            SubscriptionListItemResponse.model_validate(
+                item.subscription, from_attributes=True
+            ).model_copy(update={"user_name": item.user_name})
+            for item in items
         ],
         total=total,
     )
@@ -168,6 +178,11 @@ async def update_subscription(
             device_limit=payload.device_limit,
             traffic_limit_strategy=payload.traffic_limit_strategy,
             expire_at=payload.expire_at,
+            cleared=frozenset(
+                name
+                for name in _CLEARABLE_FIELDS & payload.model_fields_set
+                if getattr(payload, name) is None
+            ),
         ),
     )
     return SubscriptionResponse.model_validate(subscription, from_attributes=True)
@@ -227,17 +242,20 @@ async def delete_user_subscriptions(
 
 
 @router.get(
-    "/{subscription_id:int}", response_model=SubscriptionResponse, responses=error_responses(404)
+    "/{subscription_id:int}",
+    response_model=SubscriptionDetailResponse,
+    responses=error_responses(404),
 )
 @inject
 async def get_subscription(
     subscription_id: int,
     use_case: FromDishka[GetSubscriptionUseCase],
     actor: Actor = Depends(require_admin),
-) -> SubscriptionResponse:
-    return SubscriptionResponse.model_validate(
-        await use_case(actor, subscription_id), from_attributes=True
-    )
+) -> SubscriptionDetailResponse:
+    details = await use_case(actor, subscription_id)
+    return SubscriptionDetailResponse.model_validate(
+        details.subscription, from_attributes=True
+    ).model_copy(update={"used_traffic": details.used_traffic})
 
 
 @router.post(
@@ -374,6 +392,19 @@ async def delete_all_subscription_devices(
     actor: Actor = Depends(require_admin),
 ) -> None:
     await use_case(actor, subscription_id)
+
+
+@router.get("/squads", response_model=PanelSquadListResponse, responses=error_responses(503))
+@inject
+async def list_panel_squads(
+    use_case: FromDishka[ListPanelSquadsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PanelSquadListResponse:
+    squads = await use_case(actor)
+    return PanelSquadListResponse(
+        items=[PanelSquadResponse.model_validate(s, from_attributes=True) for s in squads],
+        total=len(squads),
+    )
 
 
 @router.get(

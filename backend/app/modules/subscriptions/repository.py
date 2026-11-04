@@ -90,6 +90,7 @@ class SubscriptionRepository:
             device_single_reset_at=row.device_single_reset_at,
             device_all_reset_at=row.device_all_reset_at,
             link_reset_at=row.link_reset_at,
+            first_connected_at=row.first_connected_at,
             paused_by_channel_leave=row.paused_by_channel_leave,
             addon_entitlements=entitlements,
             created_at=row.created_at,
@@ -364,7 +365,9 @@ class SubscriptionRepository:
         # local row only; UpdateSubscriptionUseCase pushes it to the panel
         row = await self._get_or_raise(data.subscription_id)
 
-        apply_partial_update(row, data, skip=frozenset({"subscription_id"}))
+        apply_partial_update(row, data, skip=frozenset({"subscription_id", "cleared"}))
+        for name in data.cleared:
+            setattr(row, name, None)
 
         await self.session.flush()
         await self.session.refresh(row)

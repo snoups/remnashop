@@ -7,7 +7,10 @@ from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usage import PanelTrafficUsage
-from app.modules.subscriptions.usecases import ListOwnSubscriptionsUsageUseCase
+from app.modules.subscriptions.usecases import (
+    GetSubscriptionUseCase,
+    ListOwnSubscriptionsUsageUseCase,
+)
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore, _user_payload
 from tests.modules.subscriptions.factories import create_subscription
@@ -73,3 +76,25 @@ async def test_a_panel_miss_leaves_used_traffic_empty(
 
     assert [r.subscription.id for r in result] == [first.id, second.id]
     assert [r.used_traffic for r in result] == [42, None]
+
+
+async def test_the_admin_detail_reads_used_traffic_from_the_panel(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+) -> None:
+    known = await create_subscription(
+        subscription_repository, user_repository, telegram_id=78021, remnawave_user_id=78021
+    )
+    missing = await create_subscription(
+        subscription_repository, user_repository, telegram_id=78022, remnawave_user_id=78022
+    )
+    remnawave_store[78021] = _panel_user(78021, 42)
+    use_case = GetSubscriptionUseCase(
+        subscription_repository, user_repository, PanelTrafficUsage(remnawave_sdk), uow
+    )
+
+    assert (await use_case.system(known.id)).used_traffic == 42
+    assert (await use_case.system(missing.id)).used_traffic is None

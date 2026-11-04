@@ -79,19 +79,20 @@ async def test_owner_can_list_subscriptions(
 ) -> None:
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=201))
     await subscription_repository.create(_create_dto(user.id, 6001))
-    use_case = ListSubscriptionsUseCase(subscription_repository, uow)
+    use_case = ListSubscriptionsUseCase(subscription_repository, user_repository, uow)
 
-    subscriptions, total = await use_case(OWNER, ListSubscriptionsDto())
+    items, total = await use_case(OWNER, ListSubscriptionsDto())
 
-    assert len(subscriptions) == 1
+    assert [item.user_name for item in items] == ["buyer"]
     assert total == 1
 
 
 async def test_regular_user_cannot_list_subscriptions(
     subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
     uow: UnitOfWork,
 ) -> None:
-    use_case = ListSubscriptionsUseCase(subscription_repository, uow)
+    use_case = ListSubscriptionsUseCase(subscription_repository, user_repository, uow)
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ListSubscriptionsDto())
@@ -330,21 +331,29 @@ async def test_update_keeps_db_unchanged_when_panel_fails(
     assert (await subscription_repository.get_by_id(created.id)).traffic_limit == 100
 
 
-async def test_update_tag_only_does_not_call_panel(
+async def test_update_tag_reaches_the_panel_and_null_clears_it(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
     event_publisher,
 ) -> None:
+    # the panel's webhooks carry its tag back into the row, so a local-only tag wouldn't last
     user = await user_repository.create(CreateUserDto(name="buyer", telegram_id=9503))
-    created = await subscription_repository.create(_create_dto(user.id, 9503))  # no panel user
+    _seed_panel_user(remnawave_store, 9503)
+    created = await subscription_repository.create(_create_dto(user.id, 9503))
+    use_case = _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
 
-    updated = await _update_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)(
-        OWNER, UpdateSubscriptionDto(subscription_id=created.id, tag="vip")
+    tagged = await use_case(OWNER, UpdateSubscriptionDto(subscription_id=created.id, tag="VIP"))
+    assert tagged.tag == "VIP"
+    assert remnawave_store[9503]["tag"] == "VIP"
+
+    cleared = await use_case(
+        OWNER, UpdateSubscriptionDto(subscription_id=created.id, cleared=frozenset({"tag"}))
     )
-
-    assert updated.tag == "vip"
+    assert cleared.tag is None
+    assert remnawave_store[9503]["tag"] is None
 
 
 async def test_update_unlimited_traffic_stays_unlimited_with_addon(

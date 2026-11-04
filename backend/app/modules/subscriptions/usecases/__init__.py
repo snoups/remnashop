@@ -40,6 +40,7 @@ from app.modules.subscriptions.usecases.list_own_subscriptions import ListOwnSub
 from app.modules.subscriptions.usecases.list_own_subscriptions_usage import (
     ListOwnSubscriptionsUsageUseCase,
 )
+from app.modules.subscriptions.usecases.list_panel_squads import ListPanelSquadsUseCase
 from app.modules.subscriptions.usecases.list_subscriptions import ListSubscriptionsUseCase
 from app.modules.subscriptions.usecases.prune_idempotency_keys import PruneIdempotencyKeysUseCase
 from app.modules.subscriptions.usecases.publish_panel_event import (
@@ -96,6 +97,7 @@ __all__ = [
     "ListOwnActiveSubscriptionsUseCase",
     "ListOwnSubscriptionsUsageUseCase",
     "ListOwnSubscriptionsUseCase",
+    "ListPanelSquadsUseCase",
     "ListSubscriptionsUseCase",
     "PruneIdempotencyKeysUseCase",
     "PublishPanelEventUseCase",

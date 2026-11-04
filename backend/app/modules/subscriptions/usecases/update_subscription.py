@@ -66,7 +66,9 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
             )
 
         panel_status: Optional[SubscriptionStatus] = None
-        touches_panel = any(
+        # None reaches the panel as null, which empties its tag
+        tag_change = {"tag": data.tag} if data.tag is not None or "tag" in data.cleared else {}
+        touches_panel = bool(tag_change) or any(
             value is not None
             for value in (
                 data.traffic_limit,
@@ -86,6 +88,7 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
                     hwid_device_limit=_effective(device_limit, old, AddOnType.DEVICES),
                     traffic_limit_strategy=data.traffic_limit_strategy,
                     expire_at=data.expire_at,
+                    **tag_change,
                 )
             )
             panel_status = SubscriptionStatus(panel_user.status)
@@ -106,7 +109,7 @@ class UpdateSubscriptionUseCase(UseCase[UpdateSubscriptionDto, SubscriptionDto])
                         action="update",
                         subscription_id=data.subscription_id,
                         changed_fields=changed_fields(
-                            old, subscription, set(vars(data)) - {"subscription_id"}
+                            old, subscription, set(vars(data)) - {"subscription_id", "cleared"}
                         ),
                     )
                 )

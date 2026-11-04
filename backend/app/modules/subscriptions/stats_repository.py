@@ -29,7 +29,6 @@ class SubscriptionStatsRepository:
         self, expiring_from: datetime, expiring_to: datetime
     ) -> SubscriptionOverviewCountsDto:
         status = Subscription.status
-        paying = status.in_(_PAYING_STATUSES)
         row = (
             await self.session.execute(
                 select(
@@ -45,7 +44,9 @@ class SubscriptionStatsRepository:
                     func.count().filter(
                         status == SubscriptionStatus.ACTIVE, Subscription.is_trial.is_(False)
                     ),
-                    func.count().filter(paying, Subscription.is_trial.is_(True)),
+                    func.count().filter(
+                        status == SubscriptionStatus.ACTIVE, Subscription.is_trial.is_(True)
+                    ),
                 ).where(status != SubscriptionStatus.DELETED)
             )
         ).one()
@@ -70,12 +71,29 @@ class SubscriptionStatsRepository:
             or 0
         )
 
+    async def count_paying_never_connected(self) -> int:
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(Subscription)
+                .where(
+                    Subscription.status.in_(_PAYING_STATUSES),
+                    Subscription.is_trial.is_(False),
+                    Subscription.first_connected_at.is_(None),
+                )
+            )
+            or 0
+        )
+
     async def count_active_trials(self) -> int:
         return int(
             await self.session.scalar(
                 select(func.count())
                 .select_from(Subscription)
-                .where(Subscription.status.in_(_PAYING_STATUSES), Subscription.is_trial.is_(True))
+                .where(
+                    Subscription.status == SubscriptionStatus.ACTIVE,
+                    Subscription.is_trial.is_(True),
+                )
             )
             or 0
         )

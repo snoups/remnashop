@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -151,12 +151,33 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     device_single_reset_at: Optional[datetime] = None
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
+    first_connected_at: Optional[datetime] = None
     paused_by_channel_leave: bool = False
     addon_entitlements: list[AddOnEntitlementDto] = Field(default_factory=list)
 
 
 @dataclass(frozen=True, kw_only=True)
 class OwnSubscriptionUsageDto:
+    subscription: SubscriptionDto
+    used_traffic: Optional[int]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionListItemDto:
+    subscription: SubscriptionDto
+    # None once the account is deleted
+    user_name: Optional[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PanelSquadDto:
+    uuid: UUID
+    name: str
+    kind: Literal["internal", "external"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionDetailsDto:
     subscription: SubscriptionDto
     used_traffic: Optional[int]
 
@@ -209,6 +230,8 @@ class UpdateSubscriptionDto:
     device_limit: Optional[int] = None
     traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
     expire_at: Optional[datetime] = None
+    # None above means "leave as is"; these were sent as null to empty them
+    cleared: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, kw_only=True)

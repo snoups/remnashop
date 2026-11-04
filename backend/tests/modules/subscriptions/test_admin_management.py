@@ -50,6 +50,7 @@ from app.modules.subscriptions.idempotency_repository import PurchaseIdempotency
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
+from app.modules.subscriptions.usage import PanelTrafficUsage
 from app.modules.subscriptions.usecases import (
     AdminDeleteAllDevicesUseCase,
     AdminDeleteDeviceUseCase,
@@ -954,8 +955,10 @@ async def test_an_admin_can_neither_see_nor_touch_the_owners_own_subscription(
     subscription = await grant_use_case(
         owner, GrantSubscriptionDto(user_id=owner.id, plan_id=plan.id, duration_days=30)
     )
-    get = GetSubscriptionUseCase(subscription_repository, user_repository, uow)
-    listing = ListSubscriptionsUseCase(subscription_repository, uow)
+    get = GetSubscriptionUseCase(
+        subscription_repository, user_repository, PanelTrafficUsage(remnawave_sdk), uow
+    )
+    listing = ListSubscriptionsUseCase(subscription_repository, user_repository, uow)
     delete = DeleteSubscriptionUseCase(
         subscription_repository,
         user_repository,
@@ -971,10 +974,10 @@ async def test_an_admin_can_neither_see_nor_touch_the_owners_own_subscription(
     items, total = await listing(admin, ListSubscriptionsDto())
 
     assert hidden.value.code is ErrorCode.SUBSCRIPTION_NOT_FOUND
-    assert subscription.id not in [item.id for item in items]
-    assert (await get(owner, subscription.id)).id == subscription.id
+    assert subscription.id not in [item.subscription.id for item in items]
+    assert (await get(owner, subscription.id)).subscription.id == subscription.id
     owner_items, _ = await listing(owner, ListSubscriptionsDto())
-    assert subscription.id in [item.id for item in owner_items]
+    assert subscription.id in [item.subscription.id for item in owner_items]
 
 
 async def test_grant_to_an_anonymized_account_is_not_found(

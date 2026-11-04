@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -42,6 +42,8 @@ class SubscriptionResponse(BaseModel):
     internal_squads: list[UUID]
     external_squad: Optional[UUID] = None
     expire_at: datetime
+    created_at: Optional[datetime] = None
+    first_connected_at: Optional[datetime] = None
     url: str
     plan_snapshot: dict[str, Any]
     device_single_reset_at: Optional[datetime] = None
@@ -55,8 +57,17 @@ class SubscriptionResponse(BaseModel):
         return value.to_json() if isinstance(value, PlanSnapshot) else value
 
 
+class SubscriptionDetailResponse(SubscriptionResponse):
+    used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
+
+
+class SubscriptionListItemResponse(SubscriptionResponse):
+    # None once the account is deleted
+    user_name: Optional[str] = None
+
+
 class SubscriptionPageResponse(BaseModel):
-    items: list[SubscriptionResponse]
+    items: list[SubscriptionListItemResponse]
     total: int
 
 
@@ -216,6 +227,17 @@ class PanelFieldDiffResponse(BaseModel):
     field: str
     shop: str
     panel: str
+
+
+class PanelSquadResponse(BaseModel):
+    uuid: UUID
+    name: str
+    kind: Literal["internal", "external"]
+
+
+class PanelSquadListResponse(BaseModel):
+    items: list[PanelSquadResponse]
+    total: int
 
 
 class SubscriptionPanelDiffResponse(BaseModel):
