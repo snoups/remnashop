@@ -13,6 +13,7 @@ from src.core.utils.time import datetime_now
 
 from .base import BaseDto, TimestampMixin, TrackableMixin
 from .plan import PlanSnapshotDto
+from .user import UserDto
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ class SquadInfoDto:
 
 @dataclass(kw_only=True)
 class RemnaSubscriptionDto:
-    uuid: UUID
+    remna_id: int
     status: SubscriptionStatus
     expire_at: datetime
     url: str
@@ -39,11 +40,11 @@ class RemnaSubscriptionDto:
     @classmethod
     def from_remna_user(cls, remna_user: RemnaUserDto) -> "RemnaSubscriptionDto":
         return cls(
-            uuid=remna_user.uuid,
+            remna_id=remna_user.id,
             status=SubscriptionStatus(remna_user.status),
             expire_at=remna_user.expire_at,
             url=remna_user.subscription_url,
-            traffic_limit=bytes_to_gb(remna_user.traffic_limit_bytes),
+            traffic_limit=bytes_to_gb(int(remna_user.traffic_limit_bytes)),
             device_limit=remna_user.hwid_device_limit or 0,
             traffic_limit_strategy=TrafficLimitStrategy(remna_user.traffic_limit_strategy),
             tag=remna_user.tag,
@@ -52,10 +53,17 @@ class RemnaSubscriptionDto:
         )
 
 
+@dataclass(frozen=True)
+class UnlinkedSubscriptionDto:
+    subscription_id: int
+    url: str
+    user: UserDto
+
+
 @dataclass(kw_only=True)
 class SubscriptionDto(BaseDto, TrackableMixin, TimestampMixin):
     user_id: int = 0
-    user_remna_id: UUID
+    user_remna_id: int
 
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
     is_trial: bool = False

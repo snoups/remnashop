@@ -137,23 +137,3 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao, BaseDaoImpl):
 
         logger.debug(f"Gateway '{gateway.id}' updated with keys '{list(values_to_update.keys())}'")
         return self._convert_to_dto(db_settings)
-
-    async def set_active_status(self, gateway_type: PaymentGatewayType, is_active: bool) -> None:
-        stmt = (
-            update(PaymentGateway)
-            .where(PaymentGateway.type == gateway_type)
-            .values(is_active=is_active)
-        )
-        await self.session.execute(stmt)
-        logger.debug(f"Gateway '{gateway_type}' active status set to '{is_active}'")
-
-    async def count_active(self) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(PaymentGateway)
-            .where(PaymentGateway.is_active.is_(True))
-        )
-        count = await self.session.scalar(stmt) or 0
-
-        logger.debug(f"Total active gateways count is '{count}'")
-        return count

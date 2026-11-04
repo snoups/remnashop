@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from adaptix import Retort
 from loguru import logger
@@ -43,17 +43,3 @@ class WebhookDaoImpl(WebhookDao):
 
         await self.redis.delete(*keys)
         logger.debug(f"Cleared '{len(keys)}' old webhook lock keys for bot '{bot_id}'")
-
-    async def get_current_hash(self, bot_id: int) -> Optional[str]:
-        pattern_key = WebhookLockKey(bot_id=bot_id, webhook_hash="*")
-        raw_pattern_key = self.retort.dump(pattern_key)
-        keys: list[str] = [k async for k in self.redis.scan_iter(match=raw_pattern_key)]
-
-        if not keys:
-            logger.debug(f"No webhook hash found for bot '{bot_id}'")
-            return None
-
-        current_hash: str = keys[0].split(":")[-1]
-
-        logger.debug(f"Retrieved current hash '{current_hash}' for bot '{bot_id}'")
-        return current_hash

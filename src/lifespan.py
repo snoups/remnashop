@@ -22,6 +22,7 @@ from src.application.events import (
 )
 from src.application.events.system import RemnashopWelcomeEvent
 from src.application.use_cases.gateways.commands.payment import CreateDefaultPaymentGateway
+from src.application.use_cases.remnawave.commands.relink import RelinkRemnaUsers
 from src.application.use_cases.settings.commands.defaults import CreateDefaultSettings
 from src.core.config import AppConfig
 from src.core.constants import REMNAWAVE_MAX_VERSION
@@ -135,6 +136,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     try:
         panel_version = await remnawave_service.try_connection()
+
+        async with container(scope=Scope.REQUEST) as relink_container:
+            relink_remna_users = await relink_container.get(RelinkRemnaUsers)
+            await relink_remna_users.system()
+
         if panel_version >= REMNAWAVE_MAX_VERSION:
             await event_bus.publish(
                 RemnawaveVersionWarningEvent(

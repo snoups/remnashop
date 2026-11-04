@@ -38,10 +38,6 @@ class StorageKey(ABC):
         return cls(**data)
 
 
-def build_key(prefix: str, /, *parts: Any, **kw_parts: Any) -> str:
-    return ":".join([prefix, *map(str, parts), *map(str, kw_parts.values())])
-
-
 def serialize_storage_key(key_obj: StorageKey) -> str:
     cls = key_obj.__class__
     parts = [cls.__prefix__] if cls.__prefix__ else []

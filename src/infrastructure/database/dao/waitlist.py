@@ -1,4 +1,4 @@
-from typing import Awaitable, Set, cast
+from typing import Awaitable, cast
 
 from adaptix import Retort
 from loguru import logger
@@ -31,7 +31,7 @@ class WaitlistDaoImpl(WaitlistDao):
 
     async def get_members(self) -> list[int]:
         raw_key = self.retort.dump(PaymentWaitlistKey())
-        members = await cast("Awaitable[Set[bytes]]", self.redis.smembers(raw_key))
+        members = await cast("Awaitable[set[bytes]]", self.redis.smembers(raw_key))
         logger.debug(f"Retrieved '{len(members)}' users from waitlist")
         return [int(m) for m in members]
 

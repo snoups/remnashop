@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import Request
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient
 from loguru import logger
 
 from src.application.dto import PaymentGatewayDto, PaymentResultDto
@@ -55,24 +55,11 @@ class WataGateway(BasePaymentGateway):
         payload = await self._create_payment_payload(amount, details, order_id)
         logger.debug(f"Creating payment payload: {payload}")
 
-        try:
+        with self._handle_create_payment_errors():
             response = await self._client.post("links", json=payload)
             response.raise_for_status()
             data = orjson.loads(response.content)
             return self._get_payment_data(data, order_id)
-
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error creating payment. "
-                f"Status: '{e.response.status_code}', Body: {e.response.text}"
-            )
-            raise
-        except (KeyError, orjson.JSONDecodeError) as e:
-            logger.error(f"Failed to parse response. Error: {e}")
-            raise
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred while creating payment: {e}")
-            raise
 
     async def handle_webhook(self, request: Request) -> Union[tuple[UUID, TransactionStatus], None]:
         logger.debug(f"Received {self.__class__.__name__} webhook request")

@@ -1,7 +1,4 @@
 from dataclasses import dataclass
-from typing import Union
-
-from src.core.enums import Role
 
 from .key_builder import StorageKey
 
@@ -11,16 +8,6 @@ USER_LIST_PREFIX = "user_list"
 USER_COUNT_PREFIX = "user_count"
 
 # TODO: Add version field?
-
-
-@dataclass(frozen=True)
-class UserCacheKey(StorageKey, prefix="user"):
-    telegram_id: int
-
-
-@dataclass(frozen=True)
-class RoleKey(StorageKey, prefix="user_list"):
-    role: Union[Role, tuple[Role, ...]]
 
 
 @dataclass(frozen=True)

@@ -40,7 +40,12 @@ from .statistics import (
     UserPaymentStatsDto,
     UserStatisticsDto,
 )
-from .subscription import RemnaSubscriptionDto, SquadInfoDto, SubscriptionDto
+from .subscription import (
+    RemnaSubscriptionDto,
+    SquadInfoDto,
+    SubscriptionDto,
+    UnlinkedSubscriptionDto,
+)
 from .transaction import PriceDetailsDto, TransactionDto
 from .user import TelegramUserDto, TempUserDto, UserDto, UserOAuthProviderDto
 
@@ -95,6 +100,7 @@ __all__ = [
     "RemnaSubscriptionDto",
     "SquadInfoDto",
     "SubscriptionDto",
+    "UnlinkedSubscriptionDto",
     "PriceDetailsDto",
     "TransactionDto",
     "TelegramUserDto",

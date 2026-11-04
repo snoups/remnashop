@@ -18,8 +18,6 @@ class TransactionDao(Protocol):
 
     async def get_all(self, limit: int = 100, offset: int = 0) -> list[TransactionDto]: ...
 
-    async def get_by_status(self, status: TransactionStatus) -> list[TransactionDto]: ...
-
     async def update_status(
         self,
         payment_id: UUID,
