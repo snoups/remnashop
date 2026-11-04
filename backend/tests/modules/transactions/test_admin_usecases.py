@@ -23,9 +23,11 @@ from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.transactions.dto import (
     CreateTransactionDto,
+    FulfillTransactionDto,
     GetTransactionSummaryDto,
     ListTransactionsDto,
 )
+from app.modules.transactions.events import TransactionFulfilledManuallyEvent
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import (
     FulfillTransactionUseCase,
@@ -36,6 +38,7 @@ from app.modules.transactions.usecases import (
 from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.events import RecordingEventPublisher
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
 
@@ -302,7 +305,6 @@ async def test_fulfill_transaction_marks_a_failed_order_paid_and_dispatches_it(
     transaction_repository: TransactionRepository,
     idempotency_repository: PurchaseIdempotencyRepository,
     user_repository: UserRepository,
-    event_publisher: EventPublisher,
     uow: UnitOfWork,
     admin_actor: UserDto,
     user_id: int,
@@ -317,22 +319,30 @@ async def test_fulfill_transaction_marks_a_failed_order_paid_and_dispatches_it(
             _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="fulfill-pending")
         )
     dispatch = RecordingDispatch()
+    events = RecordingEventPublisher()
     use_case = FulfillTransactionUseCase(
         transaction_repository,
         idempotency_repository,
         user_repository,
-        event_publisher,
+        events,
         uow,
         dispatch,
     )
 
-    result = await use_case(admin_actor, failed.id)
+    result = await use_case(
+        admin_actor, FulfillTransactionDto(transaction_id=failed.id, client_ip="10.0.0.1")
+    )
 
     assert result.order.status is TransactionStatus.PAID
+    (event,) = events.events
+    assert isinstance(event, TransactionFulfilledManuallyEvent)
+    assert event.ip_address == "10.0.0.1"
     assert [message["idempotency_key"] for message in dispatch.messages] == ["fulfill-failed"]
 
     with pytest.raises(ConflictError):
-        await use_case(admin_actor, pending.id)
+        await use_case(
+            admin_actor, FulfillTransactionDto(transaction_id=pending.id, client_ip="10.0.0.1")
+        )
     assert len(dispatch.messages) == 1
 
 
@@ -365,7 +375,9 @@ async def test_fulfill_response_hides_a_staff_owner_from_an_admin(
         RecordingDispatch(),
     )
 
-    result = await use_case(admin_actor, order.id)
+    result = await use_case(
+        admin_actor, FulfillTransactionDto(transaction_id=order.id, client_ip="10.0.0.1")
+    )
 
     assert result.user is None
     assert result.order.customer_email is None

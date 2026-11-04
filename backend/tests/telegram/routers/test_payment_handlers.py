@@ -57,15 +57,38 @@ async def test_pre_checkout_unserved_language_falls_back_to_root_locale() -> Non
     hub.get_translator_by_locale.assert_called_once_with("en")
 
 
-async def test_successful_payment_is_queued_for_the_worker() -> None:
+def _paid_message() -> MagicMock:
     message = MagicMock()
     message.from_user = MagicMock(id=5)
     message.successful_payment = MagicMock(
         invoice_payload="ref", currency="XTR", total_amount=50, telegram_payment_charge_id="c"
     )
+    return message
+
+
+async def test_successful_payment_is_settled_in_place() -> None:
+    confirm = AsyncMock()
     dispatch = AsyncMock()
 
-    await on_successful_payment(message, dispatch)
+    await on_successful_payment(_paid_message(), confirm, dispatch)
+
+    dto = confirm.system.await_args.args[0]
+    assert (dto.telegram_id, dto.payload, dto.currency, dto.total_amount, dto.charge_id) == (
+        5,
+        "ref",
+        "XTR",
+        50,
+        "c",
+    )
+    dispatch.kiq.assert_not_awaited()
+
+
+async def test_successful_payment_falls_back_to_the_worker() -> None:
+    confirm = AsyncMock()
+    confirm.system.side_effect = OSError("db down")
+    dispatch = AsyncMock()
+
+    await on_successful_payment(_paid_message(), confirm, dispatch)
 
     dispatch.kiq.assert_awaited_once_with(
         telegram_id=5, payload="ref", currency="XTR", total_amount=50, charge_id="c"
@@ -73,13 +96,10 @@ async def test_successful_payment_is_queued_for_the_worker() -> None:
 
 
 async def test_successful_payment_failure_propagates() -> None:
-    message = MagicMock()
-    message.from_user = MagicMock(id=5)
-    message.successful_payment = MagicMock(
-        invoice_payload="ref", currency="XTR", total_amount=50, telegram_payment_charge_id="c"
-    )
+    confirm = AsyncMock()
+    confirm.system.side_effect = OSError("db down")
     dispatch = AsyncMock()
     dispatch.kiq.side_effect = RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
-        await on_successful_payment(message, dispatch)
+        await on_successful_payment(_paid_message(), confirm, dispatch)

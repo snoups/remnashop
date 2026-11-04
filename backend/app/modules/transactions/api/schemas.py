@@ -69,17 +69,19 @@ class TransactionResponse(BaseModel):
     # None once the plan is deleted; plan_snapshot always records what was ordered
     plan_id: Optional[int]
     plan_snapshot: dict[str, Any]
+    # a CHANGE order's plan before it; None on other orders and on ones older than the field
+    previous_plan_snapshot: Optional[dict[str, Any]]
     duration_days: int
-    currency: str
-    purchase_type: str
+    currency: Currency
+    purchase_type: PurchaseType
     channel: PurchaseChannel
     target_subscription_id: Optional[int]
-    gateway_type: str
+    gateway_type: PaymentGatewayType
     external_payment_id: Optional[str]
-    status: str
+    status: TransactionStatus
     base_price: Decimal
     discount_percent: int
-    discount_source: str
+    discount_source: DiscountSource
     plan_discount_percent: int
     final_price: Decimal
     customer_email: Optional[str]
@@ -91,7 +93,7 @@ class TransactionResponse(BaseModel):
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
-    @field_validator("plan_snapshot", mode="before")
+    @field_validator("plan_snapshot", "previous_plan_snapshot", mode="before")
     @classmethod
     def _snapshot_as_json(cls, value: Any) -> Any:
         return value.to_json() if isinstance(value, PlanSnapshot) else value

@@ -38,6 +38,8 @@ class ListTransactionsUseCase(
                 created_to=data.created_to,
                 search=data.search,
                 user_id=data.user_id,
+                unfulfilled=data.unfulfilled,
+                before_id=data.before_id,
                 search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
                 page=data.page,
                 page_size=data.page_size,

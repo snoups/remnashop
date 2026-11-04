@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from app.api.dependencies.admin import require_admin, require_admin_user
 from app.api.errors import error_responses
 from app.core.actor import Actor
-from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
+from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
@@ -26,6 +26,7 @@ from app.modules.transactions.api.schemas import (
     TransactionSummaryResponse,
 )
 from app.modules.transactions.dto import (
+    FulfillTransactionDto,
     GetTransactionSummaryDto,
     ListTransactionsDto,
     RefundTransactionDto,
@@ -65,7 +66,9 @@ async def list_transactions(
     created_from: Optional[datetime] = None,
     created_to: Optional[datetime] = None,
     search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
-    user_id: Optional[int] = None,
+    user_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
+    unfulfilled: bool = False,
+    before_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> TransactionPageResponse:
@@ -79,6 +82,8 @@ async def list_transactions(
             created_to=range_end_utc(created_to),
             search=search,
             user_id=user_id,
+            unfulfilled=unfulfilled,
+            before_id=before_id,
             page=page,
             page_size=page_size,
         ),
@@ -98,7 +103,9 @@ async def get_transaction_summary(
     created_from: Optional[datetime] = None,
     created_to: Optional[datetime] = None,
     search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
-    user_id: Optional[int] = None,
+    user_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
+    subscription_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
+    unfulfilled: bool = False,
 ) -> TransactionSummaryResponse:
     summary = await use_case(
         actor,
@@ -110,6 +117,8 @@ async def get_transaction_summary(
             created_to=range_end_utc(created_to),
             search=search,
             user_id=user_id,
+            subscription_id=subscription_id,
+            unfulfilled=unfulfilled,
         ),
     )
     return TransactionSummaryResponse.model_validate(summary, from_attributes=True)
@@ -185,10 +194,14 @@ async def get_transaction(
 @inject
 async def fulfill_transaction(
     transaction_id: int,
+    request: Request,
     use_case: FromDishka[FulfillTransactionUseCase],
     actor: Actor = Depends(require_admin),
 ) -> TransactionResponse:
-    item = await use_case(actor, transaction_id)
+    item = await use_case(
+        actor,
+        FulfillTransactionDto(transaction_id=transaction_id, client_ip=resolve_client_ip(request)),
+    )
     return _to_response(item)
 
 

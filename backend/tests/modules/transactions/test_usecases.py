@@ -113,7 +113,7 @@ class _FakeFactory(PaymentGatewayFactory):
     def __init__(self, gateway: _FakeGateway) -> None:
         self._gateway = gateway
 
-    def build(self, gateway_type, settings, return_url=None):  # type: ignore[no-untyped-def]
+    def build(self, gateway_type, settings, return_url=None, customer=None):  # type: ignore[no-untyped-def]
         self.settings = settings
         return self._gateway  # type: ignore[return-value]
 
@@ -1359,6 +1359,42 @@ async def test_create_checkout_renews_an_owned_plan_its_availability_no_longer_a
     result = await create_checkout_use_case(actor, _renew_dto(plan, subscription_id))
 
     assert result.order_id > 0
+
+
+@pytest.mark.parametrize(
+    ("purchase_type", "previous_name"),
+    [(PurchaseType.CHANGE, "Checkout Test Plan"), (PurchaseType.RENEW, None)],
+)
+async def test_create_checkout_keeps_the_previous_plan_on_a_change_order_only(
+    purchase_type: PurchaseType,
+    previous_name: Optional[str],
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_105, plan_id=plan.id
+    )
+
+    result = await create_checkout_use_case(
+        actor,
+        CreateCheckoutDto(
+            channel=PurchaseChannel.BOT,
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=subscription_id,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+        ),
+    )
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    previous = order.previous_plan_snapshot
+    assert (previous.name if previous is not None else None) == previous_name
 
 
 async def test_create_checkout_refuses_to_renew_an_inactive_plan(

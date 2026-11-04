@@ -815,6 +815,8 @@ def upgrade() -> None:
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("tag", sa.String(), nullable=True),
         sa.Column("badge", sa.Enum("POPULAR", "BEST_VALUE", name="planbadge"), nullable=True),
+        sa.Column("icon_emoji_id", sa.String(), nullable=True),
+        sa.Column("icon_emoji_fallback", sa.String(), nullable=True),
         sa.Column(
             "type",
             sa.Enum("TRAFFIC", "DEVICES", "BOTH", "UNLIMITED", name="plantype"),
@@ -2262,6 +2264,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("plan_id", sa.Integer(), nullable=True),
         sa.Column("plan_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("previous_plan_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("duration_days", sa.Integer(), nullable=False),
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column(

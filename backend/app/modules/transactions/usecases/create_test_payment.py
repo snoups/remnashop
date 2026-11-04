@@ -116,7 +116,9 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
             )
 
         try:
-            intent = await self._gateway_factory.build(data, settings).create_payment(order)
+            intent = await self._gateway_factory.build(
+                data, settings, customer=actor
+            ).create_payment(order)
         except PaymentGatewayError:
             logger.exception(f"Test payment failed on gateway '{data.value}'")
             raise

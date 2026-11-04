@@ -36,6 +36,7 @@ from app.modules.subscriptions import (
     PlanSnapshot,
     PurchaseEligibility,
     PurchaseSubscriptionDispatch,
+    SubscriptionDto,
     SubscriptionRepository,
     get_owned_target,
 )
@@ -152,7 +153,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             )
             customer_email = self._resolve_customer_email(data, user, gateway_settings)
 
-        await self._validate_provisioning_preconditions(actor.id, data)
+        previous_plan = await self._validate_provisioning_preconditions(actor.id, data)
         user = await self._pricer.drop_dead_promocode_discounts(user)
         quote = await self._pricer.quote(plan, data.duration_days, data.currency, user)
         if data.expected_price is not None and quote.final_price != data.expected_price:
@@ -188,7 +189,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             # the one-shot discount is spent in the same transaction as the
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
-            order = await self._create_order(actor.id, data, plan, quote, customer_email)
+            order = await self._create_order(
+                actor.id, data, plan, quote, customer_email, previous_plan
+            )
             # paying accepts the offer on either channel; the client's locale only picks
             # the revision, the customer's language when it sends none
             await self._legal_recorder.record(
@@ -220,7 +223,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
         gateway = self._gateway_factory.build(
-            data.gateway_type, gateway_settings, self._return_url(data, order.id)
+            data.gateway_type, gateway_settings, self._return_url(data, order.id), customer=user
         )
         try:
             intent = await gateway.create_payment(order)
@@ -295,6 +298,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         plan: PlanDto,
         quote: PriceQuote,
         customer_email: Optional[str],
+        previous_plan: Optional[PlanSnapshot],
     ) -> TransactionDto:
         return await self._transaction_repository.create(
             CreateTransactionDto(
@@ -325,6 +329,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     and quote.discount_source is DiscountSource.PURCHASE
                 ),
                 customer_email=customer_email,
+                previous_plan_snapshot=previous_plan,
                 idempotency_key=uuid4().hex,
                 expires_at=datetime_now() + _ORDER_TTL,
             )
@@ -350,7 +355,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
 
     async def _validate_provisioning_preconditions(
         self, user_id: int, data: CreateCheckoutDto
-    ) -> None:
+    ) -> Optional[PlanSnapshot]:
+        """The target's plan for a CHANGE, to keep on the order; None otherwise."""
         # PurchaseSubscriptionUseCase re-checks the target subscription under
         # its own lock. A paid order is provisioned even if the cap filled up
         # meanwhile; only a free one is refused at fulfilment.
@@ -362,11 +368,14 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                         code=ErrorCode.TARGET_SUBSCRIPTION_FORBIDDEN,
                     )
                 await self._eligibility.assert_below_cap(user_id)
-                return
+                return None
 
-        await self._validate_target_subscription(user_id, data)
+        target = await self._validate_target_subscription(user_id, data)
+        return target.plan_snapshot if data.purchase_type is PurchaseType.CHANGE else None
 
-    async def _validate_target_subscription(self, user_id: int, data: CreateCheckoutDto) -> None:
+    async def _validate_target_subscription(
+        self, user_id: int, data: CreateCheckoutDto
+    ) -> SubscriptionDto:
         async with self._uow:
             if data.target_subscription_id is None:
                 raise ValidationError(
@@ -404,3 +413,4 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 raise ValidationError(
                     "duration_days must be positive", code=ErrorCode.DURATION_NOT_POSITIVE
                 )
+            return target

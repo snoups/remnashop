@@ -6,6 +6,8 @@ from loguru import logger
 
 from app.modules.transactions import (
     ConfirmStarsPaymentDispatch,
+    ConfirmStarsPaymentUseCase,
+    StarsPaymentDto,
     StarsPreCheckoutDto,
     ValidateStarsPreCheckoutUseCase,
 )
@@ -39,23 +41,41 @@ async def on_pre_checkout(
 
 @router.message(F.successful_payment)
 async def on_successful_payment(
-    message: Message, dispatch: FromDishka[ConfirmStarsPaymentDispatch]
+    message: Message,
+    confirm: FromDishka[ConfirmStarsPaymentUseCase],
+    dispatch: FromDishka[ConfirmStarsPaymentDispatch],
 ) -> None:
     payment = message.successful_payment
     if payment is None or message.from_user is None:
         return
+    data = StarsPaymentDto(
+        telegram_id=message.from_user.id,
+        payload=payment.invoice_payload,
+        currency=payment.currency,
+        total_amount=payment.total_amount,
+        charge_id=payment.telegram_payment_charge_id,
+    )
+    # settled here, not just queued: a queued message dies with Redis, while a
+    # PAID order is picked up by the reconciliation sweep
+    try:
+        await confirm.system(data)
+        return
+    except Exception:
+        logger.exception(
+            f"Stars payment '{data.charge_id}' not settled in place; queueing it for the worker"
+        )
     # the webhook is already answered, so a failure here is never redelivered by Telegram
     try:
         await dispatch.kiq(
-            telegram_id=message.from_user.id,
-            payload=payment.invoice_payload,
-            currency=payment.currency,
-            total_amount=payment.total_amount,
-            charge_id=payment.telegram_payment_charge_id,
+            telegram_id=data.telegram_id,
+            payload=data.payload,
+            currency=data.currency,
+            total_amount=data.total_amount,
+            charge_id=data.charge_id,
         )
     except Exception:
         logger.exception(
-            f"Stars payment '{payment.telegram_payment_charge_id}' for payload "
-            f"'{payment.invoice_payload}' failed to queue -- check and refund manually"
+            f"Stars payment '{data.charge_id}' for payload '{data.payload}' failed to "
+            "queue -- check and refund manually"
         )
         raise

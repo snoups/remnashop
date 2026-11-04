@@ -11,7 +11,7 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions import PurchaseIdempotencyRepository, PurchaseSubscriptionDispatch
-from app.modules.transactions.dto import TransactionWithUserDto
+from app.modules.transactions.dto import FulfillTransactionDto, TransactionWithUserDto
 from app.modules.transactions.events import TransactionFulfilledManuallyEvent
 from app.modules.transactions.fulfillment import dispatch_fulfillment
 from app.modules.transactions.repository import TransactionRepository
@@ -20,7 +20,7 @@ from app.modules.transactions.visibility import visible_transaction
 from app.modules.users import UserRepository
 
 
-class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
+class FulfillTransactionUseCase(UseCase[FulfillTransactionDto, TransactionWithUserDto]):
     required_permission = Permission.TRANSACTIONS_FULFILL
 
     def __init__(
@@ -39,10 +39,10 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
         self._uow = uow
         self._purchase_dispatch = purchase_dispatch
 
-    async def _execute(self, actor: Actor, data: int) -> TransactionWithUserDto:
+    async def _execute(self, actor: Actor, data: FulfillTransactionDto) -> TransactionWithUserDto:
         async with self._uow:
             # two admins clicking at once: the second waits here and sees the first's result
-            order = await self._transaction_repository.get_by_id_for_update(data)
+            order = await self._transaction_repository.get_by_id_for_update(data.transaction_id)
             user = await self._user_repository.find_by_id(order.user_id)
             unpaid = order.status in UNPAID_FINAL
             unfulfilled = order.status is TransactionStatus.PAID and order.fulfilled_at is None
@@ -82,6 +82,7 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
                         target=user,
                         order_id=order.id,
                         previous_status=order.status,
+                        ip_address=data.client_ip,
                     )
                 )
                 await self._uow.after_commit(
@@ -93,5 +94,5 @@ class FulfillTransactionUseCase(UseCase[int, TransactionWithUserDto]):
                 )
 
         async with self._uow:
-            order = await self._transaction_repository.get_by_id(data)
+            order = await self._transaction_repository.get_by_id(data.transaction_id)
         return visible_transaction(actor, order, user)

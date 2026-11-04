@@ -290,6 +290,74 @@ async def test_list_paginated_filters_by_status(
     assert total >= 2
 
 
+async def test_list_paginated_and_summarize_filter_unfulfilled(
+    transaction_repository: TransactionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        stuck = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-unfulfilled-stuck")
+        )
+        await transaction_repository.mark_status(stuck.id, TransactionStatus.PAID)
+        issued = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-unfulfilled-issued")
+        )
+        await transaction_repository.mark_status(issued.id, TransactionStatus.PAID)
+        await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-unfulfilled-pending")
+        )
+        subscription = await subscription_repository.create(
+            CreateSubscriptionDto(
+                user_id=user_id,
+                remnawave_user_id=555103,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=100,
+                device_limit=3,
+                expire_at=datetime_now(),
+                url="https://fake-panel.test/sub/555103",
+                plan_snapshot=make_plan_snapshot(),
+            )
+        )
+        await transaction_repository.mark_fulfilled(issued.id, subscription.id)
+
+    orders, total = await transaction_repository.list_paginated(unfulfilled=True)
+    assert [order.id for order in orders] == [stuck.id]
+    assert total == 1
+
+    rows = await transaction_repository.summarize(unfulfilled=True)
+    assert [(status, count) for status, count, _, _ in rows] == [(TransactionStatus.PAID, 1)]
+
+
+async def test_list_paginated_before_id_continues_past_new_orders(
+    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        older = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-cursor-older")
+        )
+        newer = await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-cursor-newer")
+        )
+
+    first, _ = await transaction_repository.list_paginated(user_id=user_id, page_size=1)
+    assert [order.id for order in first] == [newer.id]
+
+    # placed between "load more" clicks; offset paging would repeat `newer`
+    async with uow:
+        await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-cursor-newest")
+        )
+
+    rest, remaining = await transaction_repository.list_paginated(
+        user_id=user_id, before_id=first[-1].id, page_size=5
+    )
+    assert [order.id for order in rest] == [older.id]
+    assert remaining == 1
+
+
 async def test_summarize_groups_by_status_and_honours_filters(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
@@ -312,6 +380,57 @@ async def test_summarize_groups_by_status_and_honours_filters(
 
     rows = await transaction_repository.summarize(status=TransactionStatus.PAID)
     assert rows == [(TransactionStatus.PAID, 2, Decimal("1000"), Decimal("1000"))]
+
+
+async def test_summarize_by_subscription_takes_the_fulfilled_one_before_the_target(
+    transaction_repository: TransactionRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+    user_id: int,
+    plan_id: int,
+) -> None:
+    async with uow:
+        subscriptions = [
+            await subscription_repository.create(
+                CreateSubscriptionDto(
+                    user_id=user_id,
+                    remnawave_user_id=remnawave_user_id,
+                    status=SubscriptionStatus.ACTIVE,
+                    traffic_limit=100,
+                    device_limit=3,
+                    expire_at=datetime_now(),
+                    url=f"https://fake-panel.test/sub/{remnawave_user_id}",
+                    plan_snapshot=make_plan_snapshot(),
+                )
+            )
+            for remnawave_user_id in (555201, 555202)
+        ]
+        old, new = subscriptions
+        changed = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-sub-changed"),
+                target_subscription_id=old.id,
+            )
+        )
+        renewing = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-sub-renewing"),
+                target_subscription_id=new.id,
+            )
+        )
+        await transaction_repository.create(
+            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-sub-other")
+        )
+    for order_id in (changed.id, renewing.id):
+        await transaction_repository.mark_status(order_id, TransactionStatus.PAID)
+    async with uow:
+        await transaction_repository.mark_fulfilled(changed.id, new.id)
+
+    old_rows = await transaction_repository.summarize(subscription_id=old.id)
+    new_rows = await transaction_repository.summarize(subscription_id=new.id)
+
+    assert old_rows == []
+    assert new_rows == [(TransactionStatus.PAID, 2, Decimal("1000"), Decimal("1000"))]
 
 
 async def test_list_paginated_filters_by_gateway_purchase_type_and_created_from(
@@ -404,6 +523,28 @@ async def test_list_paginated_search_matches_id_and_user_id(
     assert huge == []
 
 
+async def test_list_paginated_search_treats_wildcards_literally(
+    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
+) -> None:
+    async with uow:
+        exact = await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-wild-exact"),
+                customer_email="a_b@example.com",
+            )
+        )
+        await transaction_repository.create(
+            replace(
+                _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="key-wild-other"),
+                customer_email="aXb@example.com",
+            )
+        )
+
+    orders, total = await transaction_repository.list_paginated(search="a_b@")
+    assert [order.id for order in orders] == [exact.id]
+    assert total == 1
+
+
 async def test_cancel_expired_pending_only_touches_expired_pending_rows(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
@@ -445,59 +586,6 @@ async def test_cancel_expired_pending_only_touches_expired_pending_rows(
     assert (await transaction_repository.get_by_id(expired_paid.id)).status == (
         TransactionStatus.PAID
     )
-
-
-async def test_sum_paid_final_price_by_user_ids_groups_by_currency(
-    transaction_repository: TransactionRepository,
-    uow: UnitOfWork,
-    user_repository: UserRepository,
-    plan_id: int,
-) -> None:
-    buyer_a = await user_repository.create(CreateUserDto(name="a", telegram_id=900_101))
-    buyer_b = await user_repository.create(CreateUserDto(name="b", telegram_id=900_102))
-
-    async with uow:
-        order_a = await transaction_repository.create(
-            _order_dto(user_id=buyer_a.id, plan_id=plan_id, idempotency_key="sum-a")
-        )
-        order_b = await transaction_repository.create(
-            _order_dto(user_id=buyer_b.id, plan_id=plan_id, idempotency_key="sum-b")
-        )
-    await transaction_repository.mark_status(order_a.id, TransactionStatus.PAID)
-    await transaction_repository.mark_status(order_b.id, TransactionStatus.PAID)
-
-    totals = await transaction_repository.sum_paid_final_price_by_user_ids([buyer_a.id, buyer_b.id])
-
-    assert totals == {Currency.RUB: Decimal("1000")}
-
-
-async def test_sum_paid_final_price_by_user_ids_ignores_unpaid_and_unlisted_users(
-    transaction_repository: TransactionRepository,
-    uow: UnitOfWork,
-    user_repository: UserRepository,
-    plan_id: int,
-) -> None:
-    buyer = await user_repository.create(CreateUserDto(name="c", telegram_id=900_103))
-    unpaid_buyer = await user_repository.create(CreateUserDto(name="d", telegram_id=900_104))
-
-    async with uow:
-        paid = await transaction_repository.create(
-            _order_dto(user_id=buyer.id, plan_id=plan_id, idempotency_key="sum-c")
-        )
-        await transaction_repository.create(
-            _order_dto(user_id=unpaid_buyer.id, plan_id=plan_id, idempotency_key="sum-d")
-        )
-    await transaction_repository.mark_status(paid.id, TransactionStatus.PAID)
-
-    totals = await transaction_repository.sum_paid_final_price_by_user_ids([buyer.id])
-
-    assert totals == {Currency.RUB: Decimal("500")}
-
-
-async def test_sum_paid_final_price_by_user_ids_empty_input_returns_empty_dict(
-    transaction_repository: TransactionRepository,
-) -> None:
-    assert await transaction_repository.sum_paid_final_price_by_user_ids([]) == {}
 
 
 async def test_list_user_ids_with_paid_order(
@@ -560,8 +648,6 @@ async def test_user_id_queries_aggregate_across_many_users(
 
     all_ids = [b.id for b in rub_buyers + usd_buyers]
 
-    totals = await transaction_repository.sum_paid_final_price_by_user_ids(all_ids)
-    assert totals == {Currency.RUB: Decimal("1500"), Currency.USD: Decimal("200")}
     anchor_total = await transaction_repository.sum_paid_anchor_amount_by_user_ids(all_ids)
     assert anchor_total == Decimal("1700")
 
@@ -605,38 +691,6 @@ async def test_count_paid_since_excludes_pending_and_old_orders(
     assert pending.status == TransactionStatus.PENDING
 
 
-async def test_sum_paid_final_price_since_groups_by_currency(
-    transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
-) -> None:
-    # a day back: now() is frozen for the test transaction
-    since = datetime_now() - timedelta(days=1)
-    async with uow:
-        rub_order = await transaction_repository.create(
-            _order_dto(user_id=user_id, plan_id=plan_id, idempotency_key="sum-rub")
-        )
-        usd_order_data = _order_dto(
-            user_id=user_id, plan_id=plan_id, idempotency_key="sum-usd"
-        ).__dict__
-        usd_order = await transaction_repository.create(
-            CreateTransactionDto(
-                **{
-                    **usd_order_data,
-                    "currency": Currency.USD,
-                    "base_price": Decimal("5"),
-                    "final_price": Decimal("5"),
-                    "anchor_base_price": Decimal("5"),
-                    "anchor_final_price": Decimal("5"),
-                },
-            )
-        )
-    await transaction_repository.mark_status(rub_order.id, TransactionStatus.PAID)
-    await transaction_repository.mark_status(usd_order.id, TransactionStatus.PAID)
-
-    totals = await transaction_repository.sum_paid_final_price_since(since)
-
-    assert totals == {Currency.RUB: Decimal("500"), Currency.USD: Decimal("5")}
-
-
 async def test_daily_paid_anchor_revenue_groups_by_day(
     transaction_repository: TransactionRepository, uow: UnitOfWork, user_id: int, plan_id: int
 ) -> None:
@@ -649,7 +703,8 @@ async def test_daily_paid_anchor_revenue_groups_by_day(
 
     daily = await transaction_repository.daily_paid_anchor_revenue(since)
 
-    assert sum(daily.values()) == Decimal("500")
+    assert sum(paid.amount for paid in daily.values()) == Decimal("500")
+    assert sum(paid.count for paid in daily.values()) == 1
 
 
 async def test_list_user_ids_with_multiple_paid_orders_requires_more_than_one(

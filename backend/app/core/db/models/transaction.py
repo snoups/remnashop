@@ -50,6 +50,8 @@ class Transaction(BaseSql, TimestampMixin):
         ForeignKey("plans.id", ondelete="SET NULL"), index=True
     )
     plan_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # a CHANGE order's plan before it, as the target subscription had it at checkout
+    previous_plan_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     duration_days: Mapped[int]
     currency: Mapped[Currency]
     purchase_type: Mapped[PurchaseType]

@@ -166,6 +166,25 @@ async def test_list_transactions_filters_by_status(
     assert body["items"][0]["id"] == paid.id
 
 
+@pytest.mark.parametrize(
+    ("path", "params"),
+    [
+        ("/transactions", {"user_id": "99999999999"}),
+        ("/transactions/summary", {"user_id": "99999999999"}),
+        ("/transactions/summary", {"subscription_id": "99999999999"}),
+    ],
+)
+async def test_out_of_range_ids_are_rejected_not_crashing(
+    client: httpx.AsyncClient,
+    admin_auth_headers: dict[str, str],
+    path: str,
+    params: dict[str, str],
+) -> None:
+    response = await client.get(f"{API_V1}{path}", params=params, headers=admin_auth_headers)
+
+    assert response.status_code == 422
+
+
 async def test_get_transaction_returns_the_order(
     client: httpx.AsyncClient,
     admin_auth_headers: dict[str, str],

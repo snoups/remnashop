@@ -22,6 +22,12 @@ _GRACE_PERIOD: Final[timedelta] = timedelta(minutes=10)
 
 
 @dataclass(frozen=True, kw_only=True)
+class DailyPaidDto:
+    amount: Decimal
+    count: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class PriceQuote:
     base_price: Decimal
     discount_percent: int
@@ -44,6 +50,7 @@ class TransactionDto(BaseDto, TimestampMixin):
     user_id: int
     plan_id: Optional[int]
     plan_snapshot: PlanSnapshot
+    previous_plan_snapshot: Optional[PlanSnapshot] = None
     duration_days: int
     currency: Currency
     purchase_type: PurchaseType
@@ -98,6 +105,7 @@ class CreateTransactionDto:
     discount_from_promocode: bool = False
     idempotency_key: str
     expires_at: datetime
+    previous_plan_snapshot: Optional[PlanSnapshot] = None
     is_test: bool = False
 
 
@@ -181,6 +189,8 @@ class GetTransactionSummaryDto:
     created_to: Optional[datetime] = None
     search: Optional[str] = None
     user_id: Optional[int] = None
+    subscription_id: Optional[int] = None
+    unfulfilled: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -205,6 +215,9 @@ class ListTransactionsDto:
     created_to: Optional[datetime] = None
     search: Optional[str] = None
     user_id: Optional[int] = None
+    unfulfilled: bool = False
+    # keyset cursor: orders listed after this one, so new orders don't shift "load more"
+    before_id: Optional[int] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE
 
@@ -284,6 +297,12 @@ class NotifyPaymentWaitlistDto:
 @dataclass(frozen=True, kw_only=True)
 class PaymentWaitlistCountDto:
     total: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class FulfillTransactionDto:
+    transaction_id: int
+    client_ip: str
 
 
 @dataclass(frozen=True, kw_only=True)

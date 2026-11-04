@@ -34,6 +34,8 @@ class GetTransactionSummaryUseCase(UseCase[GetTransactionSummaryDto, Transaction
                 created_to=data.created_to,
                 search=data.search,
                 user_id=data.user_id,
+                subscription_id=data.subscription_id,
+                unfulfilled=data.unfulfilled,
                 search_staff=PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE),
             )
             rate_table = await self._pricing_repository.get_rate_table()

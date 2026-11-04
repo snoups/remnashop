@@ -12,7 +12,6 @@ from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.db.timestamp import NOW_FUNC
 from app.core.enums import (
-    Currency,
     DiscountSource,
     PaymentGatewayType,
     PurchaseChannel,
@@ -27,7 +26,7 @@ from app.modules.subscriptions import (
     PlanSnapshot,
     SpentPurchaseDiscount,
 )
-from app.modules.transactions.dto import CreateTransactionDto, TransactionDto
+from app.modules.transactions.dto import CreateTransactionDto, DailyPaidDto, TransactionDto
 
 # Test orders never provision a subscription and must stay out of every
 # revenue/analytics/reconciliation query, and out of the admin order list.
@@ -36,6 +35,29 @@ _NOT_TEST: Final[ColumnElement[bool]] = Transaction.is_test.is_(False)
 # Must stay inside the idempotency-key retention: past it, a key-less order
 # looks unprovisioned and a redispatch would provision it a second time.
 RECONCILE_WINDOW: Final[timedelta] = timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS - 1)
+
+
+def _search_filter(search: str, *, search_staff: bool) -> ColumnElement[bool]:
+    email_match: ColumnElement[bool] = Transaction.customer_email.icontains(search, autoescape=True)
+    if not search_staff:
+        # a staff order's email is hidden from this caller; matching it would be an oracle
+        email_match = and_(
+            email_match,
+            Transaction.user_id.in_(select(User.id).where(User.role == Role.USER)),
+        )
+    search_filters: list[ColumnElement[bool]] = [
+        Transaction.external_payment_id.icontains(search, autoescape=True),
+        email_match,
+        Transaction.plan_snapshot["name"].astext.icontains(search, autoescape=True),
+    ]
+    # id/user_id are Integer; a longer digit string would overflow asyncpg
+    if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
+        search_filters += [
+            Transaction.id == int(search),
+            Transaction.user_id == int(search),
+        ]
+
+    return or_(*search_filters)
 
 
 def _order_filters(
@@ -47,6 +69,7 @@ def _order_filters(
     created_to: Optional[datetime] = None,
     search: Optional[str] = None,
     user_id: Optional[int] = None,
+    unfulfilled: bool = False,
     search_staff: bool = True,
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [_NOT_TEST]
@@ -54,6 +77,12 @@ def _order_filters(
         filters.append(Transaction.user_id == user_id)
     if status is not None:
         filters.append(Transaction.status == status)
+    if unfulfilled:
+        # paid, but no subscription recorded for it yet
+        filters += [
+            Transaction.status == TransactionStatus.PAID,
+            Transaction.fulfilled_at.is_(None),
+        ]
     if gateway_type is not None:
         filters.append(Transaction.gateway_type == gateway_type)
     if purchase_type is not None:
@@ -63,26 +92,7 @@ def _order_filters(
     if created_to is not None:
         filters.append(Transaction.created_at < created_to)
     if search:
-        pattern = f"%{search}%"
-        email_match: ColumnElement[bool] = Transaction.customer_email.ilike(pattern)
-        if not search_staff:
-            # a staff order's email is hidden from this caller; matching it would be an oracle
-            email_match = and_(
-                email_match,
-                Transaction.user_id.in_(select(User.id).where(User.role == Role.USER)),
-            )
-        search_filters: list[ColumnElement[bool]] = [
-            Transaction.external_payment_id.ilike(pattern),
-            email_match,
-            Transaction.plan_snapshot["name"].astext.ilike(pattern),
-        ]
-        # id/user_id are Integer; a longer digit string would overflow asyncpg
-        if search.isascii() and search.isdigit() and int(search) <= INT32_MAX:
-            search_filters += [
-                Transaction.id == int(search),
-                Transaction.user_id == int(search),
-            ]
-        filters.append(or_(*search_filters))
+        filters.append(_search_filter(search, search_staff=search_staff))
     return filters
 
 
@@ -96,6 +106,11 @@ class TransactionRepository:
             user_id=row.user_id,
             plan_id=row.plan_id,
             plan_snapshot=PlanSnapshot.from_json(dict(row.plan_snapshot)),
+            previous_plan_snapshot=(
+                PlanSnapshot.from_json(dict(row.previous_plan_snapshot))
+                if row.previous_plan_snapshot is not None
+                else None
+            ),
             duration_days=row.duration_days,
             currency=row.currency,
             purchase_type=row.purchase_type,
@@ -128,6 +143,11 @@ class TransactionRepository:
             user_id=data.user_id,
             plan_id=data.plan_id,
             plan_snapshot=data.plan_snapshot.to_json(),
+            previous_plan_snapshot=(
+                data.previous_plan_snapshot.to_json()
+                if data.previous_plan_snapshot is not None
+                else None
+            ),
             duration_days=data.duration_days,
             currency=data.currency,
             purchase_type=data.purchase_type,
@@ -403,6 +423,8 @@ class TransactionRepository:
         created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         user_id: Optional[int] = None,
+        unfulfilled: bool = False,
+        before_id: Optional[int] = None,
         search_staff: bool = True,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
@@ -415,8 +437,21 @@ class TransactionRepository:
             created_to=created_to,
             search=search,
             user_id=user_id,
+            unfulfilled=unfulfilled,
             search_staff=search_staff,
         )
+
+        if before_id is not None:
+            # same (created_at, id) order as the listing
+            cursor_at = (
+                select(Transaction.created_at).where(Transaction.id == before_id).scalar_subquery()
+            )
+            filters.append(
+                or_(
+                    Transaction.created_at < cursor_at,
+                    and_(Transaction.created_at == cursor_at, Transaction.id < before_id),
+                )
+            )
 
         count_stmt = select(func.count()).select_from(Transaction).where(*filters)
         total = await self.session.scalar(count_stmt)
@@ -441,6 +476,8 @@ class TransactionRepository:
         created_to: Optional[datetime] = None,
         search: Optional[str] = None,
         user_id: Optional[int] = None,
+        subscription_id: Optional[int] = None,
+        unfulfilled: bool = False,
         search_staff: bool = True,
     ) -> list[tuple[TransactionStatus, int, Decimal, Decimal]]:
         filters = _order_filters(
@@ -451,8 +488,17 @@ class TransactionRepository:
             created_to=created_to,
             search=search,
             user_id=user_id,
+            unfulfilled=unfulfilled,
             search_staff=search_staff,
         )
+        if subscription_id is not None:
+            # until it's fulfilled a RENEW or CHANGE order knows only its target
+            filters.append(
+                func.coalesce(
+                    Transaction.fulfilled_subscription_id, Transaction.target_subscription_id
+                )
+                == subscription_id
+            )
         stmt = (
             select(
                 Transaction.status,
@@ -488,26 +534,6 @@ class TransactionRepository:
         )
         return list(rows)
 
-    async def sum_paid_final_price_by_user_ids(
-        self, user_ids: list[int]
-    ) -> dict[Currency, Decimal]:
-        if not user_ids:
-            return {}
-        totals: dict[Currency, Decimal] = {}
-        stmt = (
-            select(Transaction.currency, func.sum(Transaction.final_price))
-            .where(
-                in_ids(Transaction.user_id, user_ids),
-                Transaction.status == TransactionStatus.PAID,
-                _NOT_TEST,
-            )
-            .group_by(Transaction.currency)
-        )
-        rows = (await self.session.execute(stmt)).tuples()
-        for currency, amount in rows.all():
-            totals[currency] = totals.get(currency, ZERO_AMOUNT) + amount
-        return totals
-
     async def sum_paid_anchor_amount_by_user_ids(self, user_ids: list[int]) -> Decimal:
         total = await self.session.scalar(
             select(func.sum(Transaction.anchor_final_price)).where(
@@ -535,7 +561,9 @@ class TransactionRepository:
         count, amount = (await self.session.execute(stmt)).tuples().one()
         return count, amount or ZERO_AMOUNT
 
-    async def list_user_ids_with_paid_order(self, user_ids: list[int]) -> set[int]:
+    async def list_user_ids_with_paid_order(
+        self, user_ids: list[int], *, paid_before: Optional[datetime] = None
+    ) -> set[int]:
         if not user_ids:
             return set()
         paid: set[int] = set()
@@ -544,6 +572,8 @@ class TransactionRepository:
             Transaction.status == TransactionStatus.PAID,
             _NOT_TEST,
         )
+        if paid_before is not None:
+            stmt = stmt.where(Transaction.updated_at < paid_before)
         result = await self.session.execute(stmt)
         paid.update(result.scalars().all())
         return paid
@@ -623,23 +653,10 @@ class TransactionRepository:
         )
         return dict((await self.session.execute(stmt)).tuples().all())
 
-    async def sum_paid_final_price_since(self, since: datetime) -> dict[Currency, Decimal]:
-        stmt = (
-            select(Transaction.currency, func.sum(Transaction.final_price))
-            .where(
-                Transaction.status == TransactionStatus.PAID,
-                _NOT_TEST,
-                Transaction.updated_at >= since,
-            )
-            .group_by(Transaction.currency)
-        )
-        rows = (await self.session.execute(stmt)).tuples()
-        return dict(rows.all())
-
-    async def daily_paid_anchor_revenue(self, since: datetime) -> dict[date, Decimal]:
+    async def daily_paid_anchor_revenue(self, since: datetime) -> dict[date, DailyPaidDto]:
         day_col = func.date(func.timezone("UTC", Transaction.updated_at))
         stmt = (
-            select(day_col, func.sum(Transaction.anchor_final_price))
+            select(day_col, func.sum(Transaction.anchor_final_price), func.count())
             .where(
                 Transaction.status == TransactionStatus.PAID,
                 _NOT_TEST,
@@ -648,4 +665,7 @@ class TransactionRepository:
             .group_by(day_col)
             .order_by(day_col)
         )
-        return dict((await self.session.execute(stmt)).tuples().all())
+        return {
+            day: DailyPaidDto(amount=amount, count=count)
+            for day, amount, count in (await self.session.execute(stmt)).tuples()
+        }

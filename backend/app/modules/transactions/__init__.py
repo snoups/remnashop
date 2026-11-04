@@ -7,6 +7,7 @@ from app.modules.transactions.dto import (
     PayerSummaryDto,
     PaymentAttemptDto,
     PaymentMethodDto,
+    StarsPaymentDto,
     StarsPreCheckoutDto,
     TransactionDto,
 )
@@ -21,6 +22,7 @@ from app.modules.transactions.ports import PaymentsRestoredNotifier, PromocodeLi
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
+    ConfirmStarsPaymentUseCase,
     CreateCheckoutUseCase,
     GetOwnTransactionUseCase,
     ListPaymentMethodsUseCase,
@@ -29,6 +31,7 @@ from app.modules.transactions.usecases import (
 
 __all__ = [
     "ConfirmStarsPaymentDispatch",
+    "ConfirmStarsPaymentUseCase",
     "CreateCheckoutDto",
     "CreateCheckoutUseCase",
     "GetOwnTransactionUseCase",
@@ -41,6 +44,7 @@ __all__ = [
     "PaymentMethodDto",
     "PaymentsRestoredNotifier",
     "PromocodeLiveness",
+    "StarsPaymentDto",
     "StarsPreCheckoutDto",
     "TransactionCanceledEvent",
     "TransactionDto",
