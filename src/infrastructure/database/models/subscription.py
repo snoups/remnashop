@@ -17,7 +17,10 @@ class Subscription(BaseSql, TimestampMixin):
     __tablename__ = "subscriptions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_remna_id: Mapped[UUID] = mapped_column(index=True)
+    # 0 = not linked to a Remnawave 3.x user yet (see migration 0041)
+    user_remna_id: Mapped[int] = mapped_column(index=True, server_default="0")
+    # Remnawave 2.x user UUID, kept so that migration 0041 can be rolled back
+    legacy_remna_uuid: Mapped[Optional[UUID]] = mapped_column(default=None)
     user_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),

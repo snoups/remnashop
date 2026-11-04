@@ -1,7 +1,12 @@
 from typing import Optional, Protocol, runtime_checkable
 from uuid import UUID
 
-from src.application.dto import PlanSubStatsDto, SubscriptionDto, SubscriptionStatsDto
+from src.application.dto import (
+    PlanSubStatsDto,
+    SubscriptionDto,
+    SubscriptionStatsDto,
+    UnlinkedSubscriptionDto,
+)
 from src.core.enums import SubscriptionStatus
 
 
@@ -11,7 +16,7 @@ class SubscriptionDao(Protocol):
 
     async def get_by_id(self, subscription_id: int) -> Optional[SubscriptionDto]: ...
 
-    async def get_by_remna_id(self, remna_id: UUID) -> Optional[SubscriptionDto]: ...
+    async def get_by_remna_id(self, remna_id: int) -> Optional[SubscriptionDto]: ...
 
     async def get_current(self, user_id: int) -> Optional[SubscriptionDto]: ...
 
@@ -23,7 +28,11 @@ class SubscriptionDao(Protocol):
         status: SubscriptionStatus,
     ) -> Optional[SubscriptionDto]: ...
 
-    async def exists(self, remna_id: UUID) -> bool: ...
+    async def exists(self, remna_id: int) -> bool: ...
+
+    async def get_unlinked_current(self) -> list[UnlinkedSubscriptionDto]: ...
+
+    async def set_remna_id(self, subscription_id: int, remna_id: int) -> None: ...
 
     async def count_active_by_plan(self, plan_id: int) -> int: ...
 

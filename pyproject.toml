@@ -10,7 +10,7 @@ dependencies = [
     "uvicorn>=0.38.0",
     "fastapi>=0.120.2",
     "python-multipart>=0.0.22",
-    "remnapy==2.7.0",
+    "remnapy==3.2.1",
     #
     "dishka~=1.7.2",
     "adaptix==3.0.0b11",
@@ -36,7 +36,6 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-remnapy = { git = "https://github.com/snoups/remnapy", rev = "95e15ed" }
 
 [project.urls]
 homepage = "https://t.me/@remna_shop"

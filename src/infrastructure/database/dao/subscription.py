@@ -10,7 +10,13 @@ from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import SubscriptionDao, UserDao
-from src.application.dto import PlanSubStatsDto, SubscriptionDto, SubscriptionStatsDto
+from src.application.dto import (
+    PlanSubStatsDto,
+    SubscriptionDto,
+    SubscriptionStatsDto,
+    UnlinkedSubscriptionDto,
+    UserDto,
+)
 from src.core.enums import SubscriptionStatus
 from src.core.utils.time import datetime_now
 from src.infrastructure.database.models import Subscription, User
@@ -34,6 +40,7 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
         self.user_dao = user_dao
 
         self._convert_to_dto = self.conversion_retort.get_converter(Subscription, SubscriptionDto)
+        self._convert_user_to_dto = self.conversion_retort.get_converter(User, UserDto)
 
     async def create(self, subscription: SubscriptionDto, user_id: int) -> SubscriptionDto:
         subscription_data = self.retort.dump(subscription)
@@ -63,7 +70,7 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
         logger.debug(f"Subscription '{subscription_id}' not found")
         return None
 
-    async def get_by_remna_id(self, user_remna_id: UUID) -> Optional[SubscriptionDto]:
+    async def get_by_remna_id(self, user_remna_id: int) -> Optional[SubscriptionDto]:
         stmt = select(Subscription).where(Subscription.user_remna_id == user_remna_id)
         db_subscription = await self.session.scalar(stmt)
 
@@ -141,7 +148,7 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
         logger.warning(f"Failed to update subscription '{subscription_id}': not found")
         return None
 
-    async def exists(self, user_remna_id: UUID) -> bool:
+    async def exists(self, user_remna_id: int) -> bool:
         stmt = select(
             select(Subscription).where(Subscription.user_remna_id == user_remna_id).exists()
         )
@@ -151,6 +158,35 @@ class SubscriptionDaoImpl(SubscriptionDao, BaseDaoImpl):
             f"Subscription existence status for remna ID '{user_remna_id}' is '{is_exists}'"
         )
         return is_exists
+
+    async def get_unlinked_current(self) -> list[UnlinkedSubscriptionDto]:
+        stmt = (
+            select(Subscription.id, Subscription.url, User)
+            .join(User, User.current_subscription_id == Subscription.id)
+            .where(
+                Subscription.user_remna_id == 0,
+                Subscription.legacy_remna_uuid.is_not(None),
+            )
+        )
+        rows = (await self.session.execute(stmt)).all()
+
+        logger.debug(f"Found '{len(rows)}' current subscriptions not linked to a panel user")
+        return [
+            UnlinkedSubscriptionDto(
+                subscription_id=subscription_id,
+                url=url,
+                user=self._convert_user_to_dto(db_user),
+            )
+            for subscription_id, url, db_user in rows
+        ]
+
+    async def set_remna_id(self, subscription_id: int, remna_id: int) -> None:
+        await self.session.execute(
+            update(Subscription)
+            .where(Subscription.id == subscription_id)
+            .values(user_remna_id=remna_id)
+        )
+        logger.debug(f"Subscription '{subscription_id}' linked to remna user '{remna_id}'")
 
     async def count_active_by_plan(self, plan_id: int) -> int:
         stmt = (
