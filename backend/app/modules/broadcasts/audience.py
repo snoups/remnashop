@@ -134,14 +134,20 @@ def deliverable_email() -> ColumnElement[bool]:
     return and_(User.email.is_not(None), User.email_undeliverable_at.is_(None))
 
 
+def _bot_reachable() -> ColumnElement[bool]:
+    return and_(User.telegram_id.is_not(None), User.is_bot_blocked.is_(False))
+
+
 def channel_condition(
     channel: BroadcastChannel, delivery: BroadcastDelivery, email_fallback: bool
 ) -> Optional[ColumnElement[bool]]:
-    # None: the delivery mode never sends on this channel
+    # None: the delivery mode never sends on this channel. A customer who blocked the bot is no
+    # Telegram recipient (counted or materialized); the fallback email reaches them like one
+    # without Telegram, as customer notifications do.
     if channel is BroadcastChannel.TELEGRAM:
-        return User.telegram_id.is_not(None) if sends_telegram(delivery) else None
+        return _bot_reachable() if sends_telegram(delivery) else None
     if delivery is BroadcastDelivery.TELEGRAM:
-        return and_(User.telegram_id.is_(None), deliverable_email()) if email_fallback else None
+        return and_(~_bot_reachable(), deliverable_email()) if email_fallback else None
     return deliverable_email()
 
 

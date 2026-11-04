@@ -62,7 +62,6 @@ from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.settings.dto import UpdateBotSettingsDto, UpdateEmailSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.translations.repository import TranslationRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
@@ -873,7 +872,6 @@ def _test_use_case(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
 ) -> SendTestBroadcastUseCase:
@@ -881,7 +879,6 @@ def _test_use_case(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         telegram,
         media_config,
         uow,
@@ -892,7 +889,6 @@ async def test_test_send_requires_telegram(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
     admin: UserDto,
@@ -904,7 +900,6 @@ async def test_test_send_requires_telegram(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         media_config,
         uow,
     )
@@ -920,7 +915,6 @@ async def test_test_send_renders_for_actor(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
     with_token: None,
@@ -934,7 +928,6 @@ async def test_test_send_renders_for_actor(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         media_config,
         uow,
     )
@@ -951,7 +944,6 @@ async def test_test_send_failure_is_reported(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
     with_token: None,
@@ -967,7 +959,6 @@ async def test_test_send_failure_is_reported(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         media_config,
         uow,
     )
@@ -1005,7 +996,6 @@ async def test_test_send_missing_media_is_reported(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
     with_token: None,
@@ -1019,7 +1009,6 @@ async def test_test_send_missing_media_is_reported(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         media_config,
         uow,
     )
@@ -1279,7 +1268,6 @@ async def test_test_send_rejects_email_only_broadcast(
     broadcast_repository: BroadcastRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     uow: UnitOfWork,
     with_token: None,
@@ -1293,7 +1281,6 @@ async def test_test_send_rejects_email_only_broadcast(
         broadcast_repository,
         settings_repository,
         promocode_repository,
-        translation_repository,
         media_config,
         uow,
     )
@@ -1302,6 +1289,31 @@ async def test_test_send_rejects_email_only_broadcast(
         await use_case(actor, email_only.id)
     assert caught.value.code == ErrorCode.BROADCAST_DELIVERY_INVALID
     assert telegram.requests == []
+
+
+async def test_test_send_on_email_only_names_the_delivery_not_telegram(
+    broadcast_repository: BroadcastRepository,
+    settings_repository: SettingsRepository,
+    promocode_repository: PromocodeRepository,
+    media_config: AppConfig,
+    uow: UnitOfWork,
+    admin: UserDto,
+    with_token: None,
+) -> None:
+    # admin has no Telegram: still the delivery is what's wrong, not the missing link
+    telegram = MockTelegram(ok_response)
+    use_case = _test_use_case(
+        telegram,
+        broadcast_repository,
+        settings_repository,
+        promocode_repository,
+        media_config,
+        uow,
+    )
+    email_only = await _make(broadcast_repository, delivery=BroadcastDelivery.EMAIL, contents={})
+    with pytest.raises(ValidationError) as caught:
+        await use_case(admin, email_only.id)
+    assert caught.value.code == ErrorCode.BROADCAST_DELIVERY_INVALID
 
 
 async def test_media_rejected_on_email_only_broadcast(

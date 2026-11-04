@@ -2,7 +2,7 @@ import builtins
 from datetime import datetime
 from typing import Optional, cast
 
-from sqlalchemy import ColumnElement, CursorResult, delete, func, or_, select, update
+from sqlalchemy import ColumnElement, CursorResult, and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,6 +97,7 @@ class EventLogRepository:
         search: Optional[str] = None,
         occurred_from: Optional[datetime] = None,
         occurred_to: Optional[datetime] = None,
+        before_id: Optional[int] = None,
         page: int = 1,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> tuple[list[EventLogEntryDto], int]:
@@ -110,13 +111,14 @@ class EventLogRepository:
         if event_type is not None:
             filters.append(EventLogEntry.event_type == event_type)
         if search:
-            pattern = f"%{search}%"
             search_filters: list[ColumnElement[bool]] = [
-                EventLogEntry.actor_login.ilike(pattern),
-                EventLogEntry.actor_name.ilike(pattern),
-                EventLogEntry.actor_email.ilike(pattern),
+                EventLogEntry.actor_login.icontains(search, autoescape=True),
+                EventLogEntry.actor_name.icontains(search, autoescape=True),
+                EventLogEntry.actor_email.icontains(search, autoescape=True),
                 # snapshots carry no telegram_id/username and go stale on rename
                 EventLogEntry.actor_id.in_(select(User.id).where(user_search_filter(search))),
+                # a row reads "actor → target", so the target is found too
+                EventLogEntry.target_id.in_(select(User.id).where(user_search_filter(search))),
             ]
             # actor_id is Integer, not BigInteger: a longer digit string would
             # make asyncpg raise NumericValueOutOfRange
@@ -127,6 +129,20 @@ class EventLogRepository:
             filters.append(EventLogEntry.occurred_at >= occurred_from)
         if occurred_to is not None:
             filters.append(EventLogEntry.occurred_at < occurred_to)
+        if before_id is not None:
+            # same (occurred_at, id) order as the listing: ids follow outbox processing,
+            # not occurred_at, so the id alone isn't a cursor
+            cursor_at = (
+                select(EventLogEntry.occurred_at)
+                .where(EventLogEntry.id == before_id)
+                .scalar_subquery()
+            )
+            filters.append(
+                or_(
+                    EventLogEntry.occurred_at < cursor_at,
+                    and_(EventLogEntry.occurred_at == cursor_at, EventLogEntry.id < before_id),
+                )
+            )
 
         count_stmt = select(func.count()).select_from(EventLogEntry).where(*filters)
         total = await self.session.scalar(count_stmt)

@@ -36,7 +36,7 @@ def _wanted_channels(
         return frozenset()
     if not PermissionPolicy.has_permission(user, Permission.NOTIFICATIONS_VIEW):
         return frozenset()
-    return channels_for(user, group) - {NotificationChannel.BELL}
+    return channels_for(user, group)
 
 
 def _coalescing_notes(

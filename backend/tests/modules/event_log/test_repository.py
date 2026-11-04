@@ -70,6 +70,20 @@ async def test_list_filters_by_search_name(event_log_repository: EventLogReposit
     assert items[0].actor_name == "Ivan Petrov"
 
 
+async def test_list_search_treats_wildcards_literally(
+    event_log_repository: EventLogRepository,
+) -> None:
+    await event_log_repository.create(_entry(actor_name="ivan_petrov"))
+    await event_log_repository.create(_entry(actor_name="ivanXpetrov"))
+
+    items, total = await event_log_repository.list(search="ivan_petrov")
+    assert total == 1
+    assert items[0].actor_name == "ivan_petrov"
+
+    _, total = await event_log_repository.list(search="%")
+    assert total == 0
+
+
 async def test_list_filters_by_search_actor_id(
     event_log_repository: EventLogRepository, user_repository: UserRepository
 ) -> None:
@@ -98,6 +112,22 @@ async def test_list_filters_by_search_live_user_fields(
         items, total = await event_log_repository.list(search=search)
         assert total == 1
         assert items[0].actor_id == user.id
+
+
+async def test_list_filters_by_search_target(
+    event_log_repository: EventLogRepository, user_repository: UserRepository
+) -> None:
+    admin = await user_repository.create(CreateUserDto(name="Admin", login="admin"))
+    customer = await user_repository.create(CreateUserDto(name="Ivan Petrov"))
+    await event_log_repository.create(
+        _entry(actor_id=admin.id, actor_login="admin", target_id=customer.id)
+    )
+    await event_log_repository.create(_entry(actor_id=admin.id, actor_login="admin"))
+
+    items, total = await event_log_repository.list(search="petrov")
+
+    assert total == 1
+    assert items[0].target_id == customer.id
 
 
 async def test_list_filters_by_date_range(event_log_repository: EventLogRepository) -> None:
@@ -186,3 +216,24 @@ async def test_list_filters_by_target_id_and_event_type(
 
     assert total == 1
     assert (items[0].target_id, items[0].event_type) == (first.id, "UserPointsAdjustedEvent")
+
+
+async def test_list_before_id_continues_past_new_entries(
+    event_log_repository: EventLogRepository,
+) -> None:
+    now = datetime.now(timezone.utc)
+    # created out of time order: ids don't follow occurred_at
+    oldest = await event_log_repository.create(_entry(occurred_at=now - timedelta(minutes=3)))
+    newest = await event_log_repository.create(_entry(occurred_at=now - timedelta(minutes=1)))
+    middle = await event_log_repository.create(_entry(occurred_at=now - timedelta(minutes=2)))
+    assert oldest and newest and middle
+
+    first, _ = await event_log_repository.list(page_size=1)
+    assert [i.id for i in first] == [newest.id]
+
+    # arrives between "load more" clicks; offset paging would repeat `newest`
+    await event_log_repository.create(_entry(occurred_at=now))
+
+    rest, remaining = await event_log_repository.list(before_id=first[-1].id, page_size=5)
+    assert [i.id for i in rest] == [middle.id, oldest.id]
+    assert remaining == 2

@@ -32,7 +32,7 @@ from app.modules.broadcasts.pacing import (
     MAX_FLOOD_WAIT_S,
     MAX_RETRY_AFTER_S,
 )
-from app.modules.broadcasts.render import BroadcastRenderer, load_unsubscribe_labels, outgoing_media
+from app.modules.broadcasts.render import BroadcastRenderer, outgoing_media
 from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.telegram_api import (
     OutgoingMedia,
@@ -44,7 +44,6 @@ from app.modules.broadcasts.telegram_api import (
 from app.modules.broadcasts.validation import promocode_is_usable
 from app.modules.promocodes import PromocodeRepository
 from app.modules.settings import SettingsRepository
-from app.modules.translations import TranslationRepository
 from app.modules.users import UserRepository, mark_bot_blocked
 
 _TOKEN_REJECTED: Final[str] = "Bot token was rejected"
@@ -60,7 +59,6 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         user_repository: UserRepository,
         settings_repository: SettingsRepository,
         promocode_repository: PromocodeRepository,
-        translation_repository: TranslationRepository,
         client_factory: TelegramClientFactory,
         config: AppConfig,
         deliver_dispatch: DeliverBroadcastDispatch,
@@ -73,7 +71,6 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
         self._user_repository = user_repository
         self._settings_repository = settings_repository
         self._promocode_repository = promocode_repository
-        self._translation_repository = translation_repository
         self._client_factory = client_factory
         self._config = config
         self._deliver_dispatch = deliver_dispatch
@@ -130,16 +127,12 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
                 if broadcast.promocode_id is not None
                 else None
             )
-            labels = await load_unsubscribe_labels(
-                self._translation_repository,
-                sorted({c.language for c in contexts.values()} | {broadcast.default_locale}),
-            )
         if bot.token is None:
             await self._fail(data, "Bot token is not set")
             return False
 
         token = bot.token.get_secret_value()
-        renderer = BroadcastRenderer(broadcast, promocode_code=code, unsubscribe_labels=labels)
+        renderer = BroadcastRenderer(broadcast, promocode_code=code)
         media = outgoing_media(self._config.media_dir, broadcast)
         now = datetime_now()
         queue = list(pending)

@@ -5,6 +5,7 @@ from typing import Final
 from app.core.actor import Actor
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
+from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
@@ -17,7 +18,11 @@ from app.modules.broadcasts.dto import (
 )
 from app.modules.broadcasts.email_assets import load_email_logo, read_email_images
 from app.modules.broadcasts.email_html import email_image_ids
-from app.modules.broadcasts.email_render import BroadcastEmailRenderer, unsubscribe_links
+from app.modules.broadcasts.email_render import (
+    BroadcastEmailRenderer,
+    UnsubscribeLinks,
+    unsubscribe_links,
+)
 from app.modules.broadcasts.render import load_unsubscribe_labels
 from app.modules.broadcasts.repository import BroadcastRepository
 from app.modules.broadcasts.validation import promocode_is_usable
@@ -26,8 +31,15 @@ from app.modules.promocodes import PromocodeRepository
 from app.modules.settings import GetPublicAppearanceImageUseCase, SettingsRepository
 from app.modules.translations import TranslationRepository
 
+# the dashboard's Telegram preview shows the same sample customer (TelegramPreview.tsx)
 _SAMPLE_PROMOCODE: Final[str] = "PROMO"
-_SAMPLE_DAYS: Final[int] = 30
+_SAMPLE_DAYS: Final[int] = 4
+_SAMPLE_NAME_RU: Final[str] = "Анна"
+_SAMPLE_NAME: Final[str] = "Anna"
+# no cabinet URL yet: the footer still shows; sending is refused until one is set
+_PLACEHOLDER_UNSUBSCRIBE: Final[UnsubscribeLinks] = UnsubscribeLinks(
+    page=lambda _: "#", one_click=lambda _: "#"
+)
 
 
 def _data_uri(image: InlineImageDto) -> str:
@@ -99,7 +111,7 @@ class PreviewBroadcastEmailUseCase(UseCase[PreviewBroadcastEmailDto, RenderedEma
             unsubscribe=(
                 unsubscribe_links(cabinet_url, self._config.crypt_key.get_secret_value())
                 if cabinet_url
-                else None
+                else _PLACEHOLDER_UNSUBSCRIBE
             ),
             unsubscribe_labels=labels,
             image_src=lambda i: _data_uri(images[i]) if i in images else "",
@@ -108,11 +120,11 @@ class PreviewBroadcastEmailUseCase(UseCase[PreviewBroadcastEmailDto, RenderedEma
         rendered = renderer.render(
             RecipientContextDto(
                 user_id=0,
-                name="Alex",
-                username="alex",
+                name=_SAMPLE_NAME_RU if data.locale is Locale.RU else _SAMPLE_NAME,
+                username="anna",
                 language=data.locale,
-                bonus_days=0,
-                points=0,
+                bonus_days=3,
+                points=120,
                 plan_name="Pro",
                 expire_at=now + timedelta(days=_SAMPLE_DAYS),
             ),

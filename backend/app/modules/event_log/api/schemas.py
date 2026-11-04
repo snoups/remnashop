@@ -3,10 +3,12 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from app.core.events import EventCategory
+
 
 class EventLogEntryResponse(BaseModel):
     id: int
-    category: str
+    category: EventCategory
     event_type: str
     occurred_at: datetime
     actor_id: Optional[int]

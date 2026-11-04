@@ -684,6 +684,42 @@ async def test_materialize_rows_per_mode(
     assert total == len(expected)
 
 
+@pytest.mark.parametrize(
+    ("delivery", "fallback", "expected"),
+    [
+        (BroadcastDelivery.TELEGRAM, False, set()),
+        (BroadcastDelivery.TELEGRAM, True, {"EMAIL"}),
+        (BroadcastDelivery.EMAIL, False, {"EMAIL"}),
+        (BroadcastDelivery.ALL, False, {"EMAIL"}),
+    ],
+)
+async def test_bot_blocked_customer_is_no_telegram_recipient(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    broadcast_repository: BroadcastRepository,
+    delivery: BroadcastDelivery,
+    fallback: bool,
+    expected: set[str],
+) -> None:
+    # blocked the bot, has a working email: never a Telegram row, the fallback email reaches them
+    blocked = await make_customer(
+        user_repository, session, telegram_id=9950, email="blocked@x.example", is_bot_blocked=True
+    )
+    created = await broadcast_repository.create(save_dto(), created_by=None)
+    audience = BroadcastAudienceDto(user_ids=[blocked])
+    await broadcast_repository.materialize(
+        created.id, audience, BroadcastCategory.SERVICE, delivery, fallback, datetime_now()
+    )
+    rows = await session.scalars(
+        select(BroadcastRecipient.channel).where(BroadcastRecipient.broadcast_id == created.id)
+    )
+    assert {c.value for c in rows} == expected
+    preview = await broadcast_repository.count_audience(
+        audience, BroadcastCategory.SERVICE, delivery, fallback, datetime_now()
+    )
+    assert preview.total == len(expected)
+
+
 async def test_marketing_skips_opted_out_on_email(
     session: AsyncSession,
     user_repository: UserRepository,

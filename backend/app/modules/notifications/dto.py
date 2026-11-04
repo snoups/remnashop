@@ -10,7 +10,6 @@ from app.modules.users import UserDto
 
 
 class NotificationChannel(StrEnum):
-    BELL = "bell"
     PUSH = "push"
     TELEGRAM = "telegram"
 
@@ -21,7 +20,6 @@ class NotificationGroup(StrEnum):
     INFRASTRUCTURE = auto()
     BROADCASTS = auto()
     MONEY = auto()
-    ADMINS = auto()
     CUSTOMERS = auto()
     SUBSCRIPTIONS = auto()
 
@@ -82,15 +80,6 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
             "PaidOrderNotFulfilledEvent",
         }
     ),
-    NotificationGroup.ADMINS: frozenset(
-        {
-            "AdminCreatedEvent",
-            "AdminDeletedEvent",
-            "AdminPromotedEvent",
-            "AdminDemotedEvent",
-            "AdminPermissionsUpdatedEvent",
-        }
-    ),
     NotificationGroup.CUSTOMERS: frozenset(
         {
             "TelegramUserRegisteredEvent",
@@ -118,11 +107,12 @@ PUSH_URL: Final[str] = "/dashboard?bell=open"
 _CRITICAL_GROUPS: Final[frozenset[NotificationGroup]] = frozenset(
     {NotificationGroup.SECURITY, NotificationGroup.FAILURES, NotificationGroup.INFRASTRUCTURE}
 )
-# critical groups everywhere, the rest only in the bell, until an admin chooses otherwise
+# the bell gets every group, no choice; critical groups also reach out by default
 DEFAULT_NOTIFICATION_CHANNELS: Final[dict[NotificationGroup, frozenset[NotificationChannel]]] = {
-    group: _ALL_CHANNELS if group in _CRITICAL_GROUPS else frozenset({NotificationChannel.BELL})
+    group: _ALL_CHANNELS if group in _CRITICAL_GROUPS else frozenset()
     for group in NOTIFICATION_GROUPS
 }
+BELL_EVENT_TYPES: Final[frozenset[str]] = frozenset().union(*NOTIFICATION_GROUPS.values())
 _GROUP_BY_EVENT_TYPE: Final[dict[str, NotificationGroup]] = {
     event_type: group for group, types in NOTIFICATION_GROUPS.items() for event_type in types
 }
@@ -138,16 +128,6 @@ def channels_for(user: UserDto, group: NotificationGroup) -> frozenset[Notificat
     if stored is None:
         return DEFAULT_NOTIFICATION_CHANNELS.get(group, frozenset())
     return frozenset(NotificationChannel(c) for c in stored if c in _CHANNEL_VALUES)
-
-
-def bell_event_types(user: UserDto) -> frozenset[str]:
-    return frozenset().union(
-        *(
-            types
-            for group, types in NOTIFICATION_GROUPS.items()
-            if NotificationChannel.BELL in channels_for(user, group)
-        )
-    )
 
 
 def effective_matrix(user: UserDto) -> dict[str, list[str]]:

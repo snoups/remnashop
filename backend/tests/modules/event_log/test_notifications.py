@@ -54,7 +54,7 @@ async def test_notifications_keep_listed_types_newest_first_and_skip_own_actions
     await _log(event_log_repository, "LoginFailedEvent", minutes_ago=10)
     await _log(event_log_repository, "LoginSucceededEvent", minutes_ago=5)  # not a notification
     await _log(event_log_repository, "BackupFailedEvent", minutes_ago=1)
-    await _log(event_log_repository, "AdminCreatedEvent", minutes_ago=2, actor_id=owner.id)
+    await _log(event_log_repository, "SubscriptionPurchasedEvent", minutes_ago=2, actor_id=owner.id)
 
     result = await GetNotificationsUseCase(event_log_repository, uow)(owner)
 
@@ -125,30 +125,24 @@ async def test_clear_hides_earlier_events_and_marks_them_read(
     assert result.unread_count == 1
 
 
-async def test_notifications_follow_chosen_groups(
+async def test_bell_gets_every_group_whatever_the_matrix(
     event_log_repository: EventLogRepository, uow: UnitOfWork, owner: UserDto
 ) -> None:
     await _log(event_log_repository, "LoginFailedEvent", minutes_ago=3)
     await _log(event_log_repository, "SubscriptionPurchasedEvent", minutes_ago=2)
-    money_only = owner.model_copy(
-        update={
-            "notification_channels": {group: [] for group in NOTIFICATION_GROUPS}
-            | {"money": ["bell"]}
-        }
+    silent = owner.model_copy(
+        update={"notification_channels": {group: [] for group in NOTIFICATION_GROUPS}}
     )
 
-    default = await GetNotificationsUseCase(event_log_repository, uow)(owner)
-    chosen = await GetNotificationsUseCase(event_log_repository, uow)(money_only)
+    result = await GetNotificationsUseCase(event_log_repository, uow)(silent)
 
-    # by default every group reaches the bell
-    assert [item.event_type for item in default.items] == [
+    assert [item.event_type for item in result.items] == [
         "SubscriptionPurchasedEvent",
         "LoginFailedEvent",
     ]
-    assert [item.event_type for item in chosen.items] == ["SubscriptionPurchasedEvent"]
 
 
-async def test_bell_payload_drops_contact_fields_without_detail_permission(
+async def test_bell_payload_drops_contact_fields_without_event_log_permission(
     event_log_repository: EventLogRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
@@ -181,11 +175,23 @@ async def test_bell_payload_drops_contact_fields_without_detail_permission(
                 permission_grants=["NOTIFICATIONS_VIEW"],
             )
         )
+        # the log itself shows contacts, so the bell does too
+        log_reader = await user_repository.create(
+            CreateUserDto(
+                login="log",
+                name="log",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_grants=["NOTIFICATIONS_VIEW", "EVENT_LOG_VIEW"],
+            )
+        )
 
     trimmed = (await GetNotificationsUseCase(event_log_repository, uow)(admin)).items[0]
     full = (await GetNotificationsUseCase(event_log_repository, uow)(owner)).items[0]
+    from_log = (await GetNotificationsUseCase(event_log_repository, uow)(log_reader)).items[0]
 
     assert trimmed.payload["user"] == {"login": "l", "name": "n"}
     assert trimmed.actor_email is None
     assert full.payload["user"]["email"] == "e@x.io"
     assert full.actor_email == "a@x.io"
+    assert from_log.payload["user"]["email"] == "e@x.io"

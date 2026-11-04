@@ -42,5 +42,7 @@ class ListEventLogDto:
     search: Optional[str] = None
     occurred_from: Optional[datetime] = None
     occurred_to: Optional[datetime] = None
+    # keyset cursor: entries listed after this one, so a live log doesn't shift "load more"
+    before_id: Optional[int] = None
     page: int = 1
     page_size: int = DEFAULT_PAGE_SIZE

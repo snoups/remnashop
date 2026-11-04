@@ -25,6 +25,7 @@ class ListEventLogUseCase(UseCase[ListEventLogDto, tuple[list[EventLogEntryDto],
                 search=data.search,
                 occurred_from=data.occurred_from,
                 occurred_to=data.occurred_to,
+                before_id=data.before_id,
                 page=data.page,
                 page_size=data.page_size,
             )

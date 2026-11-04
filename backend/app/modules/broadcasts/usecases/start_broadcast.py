@@ -115,7 +115,7 @@ class StartBroadcastUseCase(UseCase[int, None]):
         if bot.token is None or channel_id is None:
             logger.warning(f"Broadcast '{broadcast_id}' channel post skipped: bot not configured")
             return
-        renderer = BroadcastRenderer(broadcast, promocode_code=code, unsubscribe_labels={})
+        renderer = BroadcastRenderer(broadcast, promocode_code=code)
         token = bot.token.get_secret_value()
         try:
             async with self._client_factory.open(token, bot.proxy) as client:

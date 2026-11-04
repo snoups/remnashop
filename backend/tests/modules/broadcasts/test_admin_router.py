@@ -445,7 +445,7 @@ async def test_preview_email(client: httpx.AsyncClient, admin_headers: dict[str,
         headers=admin_headers,
     )
     assert response.status_code == 200
-    assert response.json()["subject"] == "Hi Alex"
+    assert response.json()["subject"] == "Hi Anna"
     assert "Body" in response.json()["html"]
     assert "Body" in response.json()["text"]
 

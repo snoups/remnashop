@@ -125,7 +125,7 @@ async def test_revoked_permission_and_switched_off_channel_get_nothing(
     )
     quiet = await _staff(user_repository, uow, "quiet")
     async with uow:
-        await user_repository.set_notification_channels(quiet.id, {"security": ["bell"]})
+        await user_repository.set_notification_channels(quiet.id, {"security": []})
     push = FakePush()
 
     await _use_case(user_repository, uow, push, "token").system(_login_failed())

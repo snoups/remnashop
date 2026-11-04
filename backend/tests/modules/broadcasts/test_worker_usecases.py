@@ -65,7 +65,6 @@ from app.modules.promocodes.dto import CreatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.settings.dto import UpdateBotRequirementsDto, UpdateBotSettingsDto
 from app.modules.settings.repository import SettingsRepository
-from app.modules.translations.repository import TranslationRepository
 from app.modules.users.events import BotBlockedByUserEvent
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
@@ -178,7 +177,6 @@ def make_deliver(
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
     promocode_repository: PromocodeRepository,
-    translation_repository: TranslationRepository,
     media_config: AppConfig,
     deliver_dispatch: RecordingDispatch,
     recall_dispatch: RecordingDispatch,
@@ -192,7 +190,6 @@ def make_deliver(
             user_repository,
             settings_repository,
             promocode_repository,
-            translation_repository,
             telegram,
             media_config,
             deliver_dispatch,

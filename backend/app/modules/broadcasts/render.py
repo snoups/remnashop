@@ -7,7 +7,7 @@ from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
 from app.core.constants import T_ME
-from app.core.enums import BroadcastButtonKind, BroadcastCategory, Locale
+from app.core.enums import BroadcastButtonKind, Locale
 from app.modules.broadcasts.content import render_text
 from app.modules.broadcasts.dto import BroadcastContentDto, BroadcastDto, RecipientContextDto
 from app.modules.broadcasts.storage import media_path
@@ -47,11 +47,9 @@ class BroadcastRenderer:
         broadcast: BroadcastDto,
         *,
         promocode_code: Optional[str],
-        unsubscribe_labels: dict[Locale, str],
     ) -> None:
         self._broadcast = broadcast
         self._promocode_code = promocode_code
-        self._unsubscribe_labels = unsubscribe_labels
 
     def _content(self, locale: Locale) -> tuple[Locale, BroadcastContentDto]:
         content = self._broadcast.contents.get(locale)
@@ -63,7 +61,6 @@ class BroadcastRenderer:
     def _keyboard(
         self,
         labels: list[str],
-        unsubscribe: Optional[str],
         *,
         channel: bool = False,
         bot_username: Optional[str] = None,
@@ -85,23 +82,16 @@ class BroadcastRenderer:
                     rows.append([{"text": label, "callback_data": "bc:menu"}])
                 elif link:
                     rows.append([{"text": label, "url": f"{link}?start={_MENU_START_PAYLOAD}"}])
-        if unsubscribe is not None:
-            rows.append([{"text": unsubscribe, "callback_data": "bc:unsub"}])
         return {"inline_keyboard": rows} if rows else None
 
     def render(self, context: RecipientContextDto, now: datetime) -> RenderedMessage:
-        locale, content = self._content(context.language)
+        # no unsubscribe button in Telegram for now: a marketing email carries its unsubscribe link,
+        # the bot keeps answering bc:unsub for messages sent before
+        _, content = self._content(context.language)
         values = recipient_values(context, now, self._promocode_code)
-        unsubscribe = None
-        if self._broadcast.category is BroadcastCategory.MARKETING:
-            unsubscribe = (
-                self._unsubscribe_labels.get(locale)
-                or self._unsubscribe_labels.get(self._broadcast.default_locale)
-                or FALLBACK_UNSUBSCRIBE
-            )
         return RenderedMessage(
             text=render_text(content.text, values),
-            reply_markup=self._keyboard(content.button_labels, unsubscribe),
+            reply_markup=self._keyboard(content.button_labels),
         )
 
     def render_channel(self, bot_username: Optional[str]) -> RenderedMessage:
@@ -109,7 +99,7 @@ class BroadcastRenderer:
         return RenderedMessage(
             text=render_text(content.text, {"promocode": self._promocode_code or ""}),
             reply_markup=self._keyboard(
-                content.button_labels, None, channel=True, bot_username=bot_username
+                content.button_labels, channel=True, bot_username=bot_username
             ),
         )
 

@@ -67,9 +67,7 @@ def _texts(markup: dict) -> list[str]:
 
 
 def test_renders_variables_and_buttons() -> None:
-    message = BroadcastRenderer(_broadcast(), promocode_code="SALE", unsubscribe_labels={}).render(
-        _ctx(), NOW
-    )
+    message = BroadcastRenderer(_broadcast(), promocode_code="SALE").render(_ctx(), NOW)
     assert message.text == "Hi Ann, 3 days, code SALE"
     assert message.reply_markup is not None
     rows = message.reply_markup["inline_keyboard"]
@@ -79,30 +77,25 @@ def test_renders_variables_and_buttons() -> None:
 
 
 def test_locale_variant_and_fallback() -> None:
-    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE", unsubscribe_labels={})
+    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE")
     assert renderer.render(_ctx(Locale.RU), NOW).text == "Привет, Ann"
     fallback = renderer.render(_ctx(Locale.DE), NOW)
     assert fallback.text.startswith("Hi Ann") and _texts(fallback.reply_markup or {})[0] == "Site"
 
 
 def test_dropped_promocode_removes_button_and_value() -> None:
-    message = BroadcastRenderer(_broadcast(), promocode_code=None, unsubscribe_labels={}).render(
-        _ctx(), NOW
-    )
+    message = BroadcastRenderer(_broadcast(), promocode_code=None).render(_ctx(), NOW)
     assert message.text.endswith("code —")
     assert "Get" not in _texts(message.reply_markup or {})
 
 
-def test_marketing_adds_unsubscribe_last() -> None:
+def test_marketing_has_no_unsubscribe_button_in_telegram() -> None:
+    # the unsubscribe link lives in marketing emails; Telegram gets none for now
     renderer = BroadcastRenderer(
-        _broadcast(category=BroadcastCategory.MARKETING),
-        promocode_code="SALE",
-        unsubscribe_labels={Locale.EN: "Unsubscribe", Locale.RU: "Отписаться"},
+        _broadcast(category=BroadcastCategory.MARKETING), promocode_code="SALE"
     )
     rows = (renderer.render(_ctx(Locale.RU), NOW).reply_markup or {})["inline_keyboard"]
-    assert rows[-1][0] == {"text": "Отписаться", "callback_data": "bc:unsub"}
-    channel_rows = (renderer.render_channel("shop_bot").reply_markup or {})["inline_keyboard"]
-    assert all(row[0].get("callback_data") != "bc:unsub" for row in channel_rows)
+    assert all(row[0].get("callback_data") != "bc:unsub" for row in rows)
 
 
 def test_no_buttons_means_no_markup() -> None:
@@ -110,15 +103,12 @@ def test_no_buttons_means_no_markup() -> None:
         buttons=[], contents={Locale.EN: BroadcastContentDto(text="x")}, promocode_id=None
     )
     assert (
-        BroadcastRenderer(broadcast, promocode_code=None, unsubscribe_labels={})
-        .render(_ctx(), NOW)
-        .reply_markup
-        is None
+        BroadcastRenderer(broadcast, promocode_code=None).render(_ctx(), NOW).reply_markup is None
     )
 
 
 def test_channel_post_uses_deep_links() -> None:
-    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE", unsubscribe_labels={})
+    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE")
     rows = (renderer.render_channel("shop_bot").reply_markup or {})["inline_keyboard"]
     assert rows[0][0] == {"text": "Site", "url": "https://x.y"}
     assert rows[1][0] == {"text": "Get", "url": "https://t.me/shop_bot?start=bc_7"}
@@ -126,7 +116,7 @@ def test_channel_post_uses_deep_links() -> None:
 
 
 def test_channel_post_without_username_omits_bot_buttons() -> None:
-    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE", unsubscribe_labels={})
+    renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE")
     assert _texts(renderer.render_channel(None).reply_markup or {}) == ["Site"]
 
 

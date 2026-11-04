@@ -41,6 +41,7 @@ async def list_event_log(
     search: Optional[str] = Query(None, max_length=SEARCH_MAX_LENGTH),
     occurred_from: Optional[datetime] = None,
     occurred_to: Optional[datetime] = None,
+    before_id: Optional[int] = Query(None, ge=1, le=INT32_MAX),
     page: int = Query(1, ge=1),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ) -> EventLogPageResponse:
@@ -54,6 +55,7 @@ async def list_event_log(
             search=search,
             occurred_from=range_start_utc(occurred_from),
             occurred_to=range_end_utc(occurred_to),
+            before_id=before_id,
             page=page,
             page_size=page_size,
         ),

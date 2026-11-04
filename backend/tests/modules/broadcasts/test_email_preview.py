@@ -135,10 +135,10 @@ async def test_preview_inlines_images_and_samples_variables(
         admin, PreviewBroadcastEmailDto(broadcast_id=created.id, locale=Locale.EN)
     )
 
-    assert result.subject == "Hi Alex"
+    assert result.subject == "Hi Anna"
     assert "data:image/png;base64,cG5n" in result.html
     assert "cid:" not in result.html
-    assert "Pro" in result.html and "30" in result.html
+    assert "Pro" in result.html and "4" in result.html
 
 
 async def test_preview_falls_back_to_default_locale(
@@ -150,7 +150,21 @@ async def test_preview_falls_back_to_default_locale(
     result = await make_preview()(
         admin, PreviewBroadcastEmailDto(broadcast_id=created.id, locale=Locale.RU)
     )
-    assert result.subject == "Hi Alex"
+    assert result.subject == "Hi Анна"
+
+
+async def test_preview_shows_unsubscribe_without_cabinet_url(
+    broadcast_repository: BroadcastRepository,
+    make_preview: Callable[[], PreviewBroadcastEmailUseCase],
+    media_config: AppConfig,
+    admin: UserDto,
+) -> None:
+    media_config.cabinet = media_config.cabinet.model_copy(update={"domain": None})
+    created = await _broadcast(broadcast_repository, category=BroadcastCategory.MARKETING)
+    result = await make_preview()(
+        admin, PreviewBroadcastEmailDto(broadcast_id=created.id, locale=Locale.EN)
+    )
+    assert 'href="#"' in result.html
 
 
 async def test_preview_without_email_content_is_default_locale_missing(
