@@ -169,3 +169,53 @@ def restore_event(event_type: type[E], entry: StoredEvent) -> E:
 def changed_fields(before: object, after: object, names: Iterable[str]) -> list[str]:
     """Names whose value differs between two snapshots of the same record."""
     return sorted(name for name in names if getattr(before, name) != getattr(after, name))
+
+
+MASKED_IP: Final[str] = "***"
+# no actor recorded, yet the address is a staff member's sign-in attempt
+_STAFF_SIGN_IN_EVENT_TYPES: Final[frozenset[str]] = frozenset(
+    {
+        "LoginFailedEvent",
+        "BootstrapConflictEvent",
+        "OAuthLoginFailedEvent",
+        "PasskeyLoginFailedEvent",
+        "SessionTheftDetectedEvent",
+        "PanelLoginSucceededEvent",
+        "PanelLoginFailedEvent",
+    }
+)
+
+
+def visible_ip(
+    reader: Actor, owner_id: Optional[int], owner_role: Role, ip_address: Optional[str]
+) -> Optional[str]:
+    """A staff member's address is shown only to them and to roles above theirs."""
+    if ip_address is None or reader.id == owner_id:
+        return ip_address
+    if owner_role.includes(Role.ADMIN) and not reader.role > owner_role:
+        return MASKED_IP
+    return ip_address
+
+
+def visible_event_ip(
+    reader: Actor,
+    event_type: str,
+    payload: dict[str, Any],
+    ip_address: Optional[str],
+    current_role: Optional[Role] = None,
+) -> Optional[str]:
+    """The address is the acting person's; ``current_role`` covers a customer promoted since."""
+    snapshot = payload.get("actor") or payload.get("user")
+    if isinstance(snapshot, dict):
+        owner_id = snapshot.get("id")
+        owner_role = Role.__members__.get(str(snapshot.get("role")), Role.USER)
+        # an API token is issued by the owner
+        if owner_id == 0:
+            owner_role = Role.OWNER
+    elif event_type in _STAFF_SIGN_IN_EVENT_TYPES:
+        owner_id, owner_role = None, Role.ADMIN
+    else:
+        return ip_address
+    if current_role is not None:
+        owner_role = max(owner_role, current_role)
+    return visible_ip(reader, owner_id, owner_role, ip_address)

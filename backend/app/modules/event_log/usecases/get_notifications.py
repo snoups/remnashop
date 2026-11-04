@@ -4,6 +4,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.event_log.dto import NOTIFICATIONS_LIMIT, EventLogEntryDto, NotificationsDto
+from app.modules.event_log.ip_masking import mask_staff_ips
 from app.modules.event_log.repository import EventLogRepository
 from app.modules.notifications import BELL_EVENT_TYPES
 from app.modules.users import UserDto
@@ -45,6 +46,7 @@ class GetNotificationsUseCase(UseCase[None, NotificationsDto, UserDto]):
                 exclude_actor_id=actor.id,
                 since=actor.notifications_seen_at,
             )
+            items = await mask_staff_ips(self._event_log_repository, actor, items)
         if not PermissionPolicy.has_permission(actor, Permission.EVENT_LOG_VIEW):
             items = [_trimmed(item) for item in items]
         return NotificationsDto(items=items, unread_count=unread_count)

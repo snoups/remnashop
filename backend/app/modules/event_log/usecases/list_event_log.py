@@ -3,6 +3,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.event_log.dto import EventLogEntryDto, ListEventLogDto
+from app.modules.event_log.ip_masking import mask_staff_ips
 from app.modules.event_log.repository import EventLogRepository
 
 
@@ -17,7 +18,7 @@ class ListEventLogUseCase(UseCase[ListEventLogDto, tuple[list[EventLogEntryDto],
         self, actor: Actor, data: ListEventLogDto
     ) -> tuple[list[EventLogEntryDto], int]:
         async with self._uow:
-            return await self._event_log_repository.list(
+            items, total = await self._event_log_repository.list(
                 category=data.category,
                 actor_id=data.actor_id,
                 target_id=data.target_id,
@@ -29,3 +30,4 @@ class ListEventLogUseCase(UseCase[ListEventLogDto, tuple[list[EventLogEntryDto],
                 page=data.page,
                 page_size=data.page_size,
             )
+            return await mask_staff_ips(self._event_log_repository, actor, items), total

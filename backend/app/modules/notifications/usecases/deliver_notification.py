@@ -5,6 +5,7 @@ from loguru import logger
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SessionAudience
+from app.core.events import visible_event_ip
 from app.core.exceptions import RetryableTaskError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
@@ -84,9 +85,9 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
         except Exception as error:
             # nothing sent yet, so running the whole task again is safe
             raise RetryableTaskError(f"Notification for {data.event_type} not sent") from error
-        args = notification_args(data.payload, data.ip_address)
-
         for user, channels in targets:
+            ip = visible_event_ip(user, data.event_type, data.payload, data.ip_address)
+            args = notification_args(data.payload, ip)
             title, body = renderer.render(user.language, data.event_type, args)
             if len(body) > MAX_BODY_LENGTH:
                 body = body[: MAX_BODY_LENGTH - 1] + "…"

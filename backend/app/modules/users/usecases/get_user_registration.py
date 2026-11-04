@@ -2,6 +2,7 @@ from typing import Optional
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.events import visible_ip
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.users.dto import UserRegistrationDto
@@ -20,4 +21,8 @@ class GetUserRegistrationUseCase(UseCase[int, Optional[UserRegistrationDto]]):
         async with self._uow:
             target = await get_visible_target(self._user_repository, actor, data)
             # None: signed up before snapshots were kept
-            return await self._user_repository.find_registration(target.id)
+            registration = await self._user_repository.find_registration(target.id)
+        if registration is None:
+            return None
+        ip = visible_ip(actor, target.id, target.role, registration.ip_address)
+        return registration.model_copy(update={"ip_address": ip})

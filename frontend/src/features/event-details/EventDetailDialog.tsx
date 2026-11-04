@@ -46,6 +46,9 @@ import { IconButton } from "@shared/ui/IconButton";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
+// a staff address the reader may not see
+const MASKED_IP = "***";
+
 interface EventDetailDialogProps {
   entry: EventLogEntry;
   onClose: () => void;
@@ -102,7 +105,12 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
         </InfoRow>
       )}
       {ipAddress && (
-        <InfoRow icon={Globe} label={t("eventLog.detail.ip")} copyValue={ipAddress} mono>
+        <InfoRow
+          icon={Globe}
+          label={t("eventLog.detail.ip")}
+          copyValue={ipAddress === MASKED_IP ? undefined : ipAddress}
+          mono
+        >
           {ipAddress}
         </InfoRow>
       )}

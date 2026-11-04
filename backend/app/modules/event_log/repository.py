@@ -7,10 +7,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX
+from app.core.db.filters import in_ids
 from app.core.db.models.event_log import EventLogEntry
 from app.core.db.models.user import User
 from app.core.db.user_search import user_search_filter
 from app.core.dto import SERVER_OWNED_FIELDS
+from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.events import EventCategory
 from app.core.exceptions import NotFoundError
@@ -157,6 +159,14 @@ class EventLogRepository:
         rows = (await self.session.scalars(stmt)).all()
 
         return [self._to_dto(row) for row in rows], int(total or 0)
+
+    async def roles_of(self, user_ids: builtins.set[int]) -> dict[int, Role]:
+        if not user_ids:
+            return {}
+        rows = await self.session.execute(
+            select(User.id, User.role).where(in_ids(User.id, builtins.list(user_ids)))
+        )
+        return dict(rows.tuples().all())
 
     async def list_notifications(
         self,
