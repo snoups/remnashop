@@ -464,6 +464,64 @@ class ReferralRepository:
         )
         return cast(CursorResult, result).rowcount > 0
 
+    def _referrer_rewards(
+        self, referrer_id: int, hide_staff_from: Optional[int]
+    ) -> list[ColumnElement[bool]]:
+        filters: list[ColumnElement[bool]] = [
+            ReferralReward.referrer_id == referrer_id,
+            ReferralReward.reversed_at.is_(None),
+        ]
+        if hide_staff_from is not None:
+            # a hidden staff buyer takes its rewards along, as it leaves the invited list
+            filters.append(
+                or_(
+                    Subscription.user_id.is_(None),
+                    _visible_downline(Subscription.user_id.expression, hide_staff_from),
+                )
+            )
+        return filters
+
+    async def reward_totals_by_referrer(
+        self, referrer_id: int, *, hide_staff_from: Optional[int] = None
+    ) -> ReferralRewardTotalsDto:
+        stmt = (
+            select(ReferralReward.type, func.count(), func.sum(ReferralReward.amount))
+            .outerjoin(Subscription, Subscription.id == ReferralReward.subscription_id)
+            .where(*self._referrer_rewards(referrer_id, hide_staff_from))
+            .group_by(ReferralReward.type)
+        )
+        rows = (await self.session.execute(stmt)).all()
+        return ReferralRewardTotalsDto(
+            count=sum(int(count) for _, count, _ in rows),
+            amounts={reward_type: Decimal(amount) for reward_type, _, amount in rows},
+        )
+
+    async def list_rewards_by_referrer_page(
+        self,
+        referrer_id: int,
+        *,
+        hide_staff_from: Optional[int] = None,
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> tuple[list[ReferralRewardDto], int]:
+        filters = self._referrer_rewards(referrer_id, hide_staff_from)
+        total = await self.session.scalar(
+            select(func.count())
+            .select_from(ReferralReward)
+            .outerjoin(Subscription, Subscription.id == ReferralReward.subscription_id)
+            .where(*filters)
+        )
+        stmt = (
+            select(ReferralReward, Subscription.user_id)
+            .outerjoin(Subscription, Subscription.id == ReferralReward.subscription_id)
+            .where(*filters)
+            .order_by(ReferralReward.created_at.desc(), ReferralReward.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        rows = await self.session.execute(stmt)
+        return [self._to_reward_dto(row, buyer_id) for row, buyer_id in rows.all()], int(total or 0)
+
     async def list_rewards_by_referrer(self, referrer_id: int) -> list[ReferralRewardDto]:
         # the buyer is the subscription's owner; the reward's referral edge is
         # this referrer's hop, not the purchase's

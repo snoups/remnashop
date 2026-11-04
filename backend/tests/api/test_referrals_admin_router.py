@@ -1,7 +1,7 @@
 import datetime
 from datetime import timedelta, timezone
 from decimal import Decimal
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 import httpx
 import pytest
@@ -54,28 +54,30 @@ async def user_id(user_repository: UserRepository) -> int:
     return user.id
 
 
-@pytest.fixture
-async def admin_auth_headers(
+async def _admin_headers(
     user_repository: UserRepository,
     session_repository: SessionRepository,
     uow: UnitOfWork,
     config: AppConfig,
+    login: str,
+    permission_revokes: Optional[list[str]] = None,
 ) -> dict[str, str]:
     async with uow:
         admin = await user_repository.create(
             CreateUserDto(
-                login="referralsadmin",
+                login=login,
                 password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
-                name="referralsadmin",
+                name=login,
                 role=Role.ADMIN,
                 language=Locale.EN,
+                permission_revokes=permission_revokes,
             )
         )
         await uow.commit()
     session = await session_repository.create(
         CreateSessionDto(
             user_id=admin.id,
-            refresh_token_hash=hash_refresh_token("test-refresh-token-referrals-admin"),
+            refresh_token_hash=hash_refresh_token(f"test-refresh-token-{login}"),
             ip_address="127.0.0.1",
             user_agent=None,
             expires_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
@@ -84,6 +86,16 @@ async def admin_auth_headers(
     )
     token = create_access_token(admin.id, session.id, config.jwt_secret.get_secret_value())
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def admin_auth_headers(
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> dict[str, str]:
+    return await _admin_headers(user_repository, session_repository, uow, config, "referralsadmin")
 
 
 async def test_get_referral_settings_requires_admin(client: httpx.AsyncClient) -> None:
@@ -280,3 +292,38 @@ async def test_adjust_user_points_rejects_a_delta_past_the_column(
         headers=admin_auth_headers,
     )
     assert response.status_code == 422
+
+
+async def test_balance_writes_need_no_referral_stats_permission(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    user_id: int,
+) -> None:
+    headers = await _admin_headers(
+        user_repository,
+        session_repository,
+        uow,
+        config,
+        "noreferralview",
+        permission_revokes=["REFERRALS_VIEW"],
+    )
+
+    points = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-points", json={"delta": "3"}, headers=headers
+    )
+    days = await client.post(
+        f"{API_V1}/users/{user_id}/actions/adjust-bonus-days", json={"delta": 2}, headers=headers
+    )
+    code = await client.post(
+        f"{API_V1}/users/{user_id}/referral-code/actions/reset", json={}, headers=headers
+    )
+
+    assert points.status_code == 200
+    assert points.json() == {"points": "3"}
+    assert days.status_code == 200
+    assert days.json() == {"bonus_days": 2}
+    assert code.status_code == 200
+    assert code.json()["referral_code"]

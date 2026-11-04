@@ -13,6 +13,9 @@ from app.modules.referrals.usecases.list_bonus_days_targets import ListBonusDays
 from app.modules.referrals.usecases.list_invited_users import ListInvitedUsersUseCase
 from app.modules.referrals.usecases.list_own_invited_users import ListOwnInvitedUsersUseCase
 from app.modules.referrals.usecases.list_referrals import ListReferralsUseCase
+from app.modules.referrals.usecases.list_user_referral_rewards import (
+    ListUserReferralRewardsUseCase,
+)
 from app.modules.referrals.usecases.redeem_bonus_days import RedeemBonusDaysUseCase
 from app.modules.referrals.usecases.reset_own_referral_code import ResetOwnReferralCodeUseCase
 from app.modules.referrals.usecases.reset_referral_code import ResetReferralCodeUseCase
@@ -35,6 +38,7 @@ __all__ = [
     "ListInvitedUsersUseCase",
     "ListOwnInvitedUsersUseCase",
     "ListReferralsUseCase",
+    "ListUserReferralRewardsUseCase",
     "RedeemBonusDaysUseCase",
     "ResetOwnReferralCodeUseCase",
     "ResetReferralCodeUseCase",

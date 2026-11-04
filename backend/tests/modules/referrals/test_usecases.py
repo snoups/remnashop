@@ -35,6 +35,7 @@ from app.modules.referrals.dto import (
     AdjustUserPointsDto,
     ListInvitedUsersDto,
     ListReferralsDto,
+    ListUserReferralRewardsDto,
     UpdateReferralSettingsDto,
 )
 from app.modules.referrals.events import ReferralCodeResetEvent, UserPointsAdjustedEvent
@@ -48,6 +49,7 @@ from app.modules.referrals.usecases import (
     GetUserReferralStatsUseCase,
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
+    ListUserReferralRewardsUseCase,
     ResetOwnReferralCodeUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
@@ -326,12 +328,27 @@ async def test_get_user_referral_stats_includes_reward_history(
         type=ReferralRewardType.POINTS,
         amount=Decimal("9"),
     )
-    use_case = GetUserReferralStatsUseCase(referral_repository, user_repository, uow)
+    await referral_repository.create_reward(
+        referral_id=edge.id,
+        referrer_id=referrer.id,
+        subscription_id=subscription_id,
+        payment_key="order-2",
+        type=ReferralRewardType.POINTS,
+        amount=Decimal("4"),
+    )
 
-    stats = await use_case(OWNER, referrer.id)
+    stats = await GetUserReferralStatsUseCase(referral_repository, user_repository, uow)(
+        OWNER, referrer.id
+    )
+    items, total = await ListUserReferralRewardsUseCase(referral_repository, user_repository, uow)(
+        OWNER, ListUserReferralRewardsDto(user_id=referrer.id, page_size=1)
+    )
 
-    assert len(stats.rewards) == 1
-    assert stats.rewards[0].amount == Decimal("9")
+    assert stats.rewards.count == 2
+    assert stats.rewards.amounts == {ReferralRewardType.POINTS: Decimal("13")}
+    assert total == 2
+    assert len(items) == 1
+    assert items[0].buyer is not None and items[0].level == 1
 
 
 async def test_get_user_referral_revenue_sums_downline_payments(
@@ -531,14 +548,19 @@ async def test_get_user_referral_stats_hides_staff_from_an_admin(
     use_case = GetUserReferralStatsUseCase(referral_repository, user_repository, uow)
     admin = UserDto(id=998, name="admin", role=Role.ADMIN, language=Locale.EN)
 
+    list_rewards = ListUserReferralRewardsUseCase(referral_repository, user_repository, uow)
+
     stats = await use_case(admin, target.id)
     # the staff buyer leaves the counts and the rewards, as it leaves the invited list
     assert stats.referrer is None
-    assert stats.counts_by_level == {} and stats.rewards == []
+    assert stats.counts_by_level == {} and stats.rewards.count == 0
+    assert await list_rewards(admin, ListUserReferralRewardsDto(user_id=target.id)) == ([], 0)
 
     stats = await use_case(OWNER, target.id)
-    assert stats.referrer is not None and stats.rewards[0].buyer is not None
+    assert stats.referrer is not None and stats.rewards.count == 1
     assert stats.counts_by_level == {1: 1}
+    items, _ = await list_rewards(OWNER, ListUserReferralRewardsDto(user_id=target.id))
+    assert items[0].buyer is not None
 
 
 async def test_reset_referral_code_issues_a_new_code_and_logs_it(

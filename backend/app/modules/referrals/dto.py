@@ -93,10 +93,7 @@ class ReferralStatsDto:
     bonus_days: int
     counts_by_level: dict[int, int]
     rewards: list[ReferralStatsRewardDto]
-    # admin view only
-    referrer: Optional[UserDto] = None
-    # own view only
-    program: Optional[ReferralProgramDto] = None
+    program: ReferralProgramDto
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -118,6 +115,25 @@ class ReferralRewardTotalsDto:
     count: int
     # keyed by type: reward_type can change between payouts
     amounts: dict[ReferralRewardType, Decimal]
+
+
+@dataclass(frozen=True, kw_only=True)
+class UserReferralStatsDto:
+    referral_code: Optional[str]
+    referrer_id: Optional[int]
+    points: Decimal
+    bonus_days: int
+    counts_by_level: dict[int, int]
+    # the history itself is paged: ListUserReferralRewardsUseCase
+    rewards: ReferralRewardTotalsDto
+    referrer: Optional[UserDto] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListUserReferralRewardsDto:
+    user_id: int
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
 
 
 @dataclass(frozen=True, kw_only=True)

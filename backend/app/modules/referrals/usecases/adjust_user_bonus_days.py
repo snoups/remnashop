@@ -3,15 +3,17 @@ from loguru import logger
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.dto import AdjustUserBonusDaysDto
 from app.modules.referrals.events import UserBonusDaysAdjustedEvent
-from app.modules.users import UserRepository, assert_manageable, get_visible_target
+from app.modules.users import UserDto, UserRepository, assert_manageable, get_visible_target
 
 
-class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
+class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, UserDto]):
     required_permission = Permission.REFERRALS_BONUS_DAYS_MANAGE
 
     def __init__(
@@ -21,7 +23,7 @@ class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
         self._uow = uow
         self._event_publisher = event_publisher
 
-    async def _execute(self, actor: Actor, data: AdjustUserBonusDaysDto) -> None:
+    async def _execute(self, actor: Actor, data: AdjustUserBonusDaysDto) -> UserDto:
         async with self._uow:
             target = await get_visible_target(self._user_repository, actor, data.user_id)
             # on oneself only the owner: for anyone else it's free subscription time
@@ -33,4 +35,10 @@ class AdjustUserBonusDaysUseCase(UseCase[AdjustUserBonusDaysDto, None]):
                     actor=actor, target=target, delta=data.delta, ip_address=data.client_ip
                 )
             )
+            updated = await self._user_repository.find_by_id(data.user_id)
+            if updated is None:
+                raise NotFoundError(
+                    f"User '{data.user_id}' not found", code=ErrorCode.USER_NOT_FOUND
+                )
         logger.info(f"{actor.log} Adjusted bonus days of user '{data.user_id}' by '{data.delta}'")
+        return updated

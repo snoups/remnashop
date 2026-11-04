@@ -15,11 +15,16 @@ from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.referrals.api.schemas import (
     AdjustBonusDaysRequest,
     AdjustPointsRequest,
+    BonusDaysBalanceResponse,
     InvitedUserPageResponse,
     InvitedUserResponse,
+    PointsBalanceResponse,
+    ReferralCodeResponse,
     ReferralListItemResponse,
     ReferralPageResponse,
     ReferralRevenueResponse,
+    ReferralRewardPageResponse,
+    ReferralRewardResponse,
     ReferralSettingsResponse,
     ReferralStatsResponse,
     ReferralSummaryResponse,
@@ -31,6 +36,7 @@ from app.modules.referrals.dto import (
     GetReferralSummaryDto,
     ListInvitedUsersDto,
     ListReferralsDto,
+    ListUserReferralRewardsDto,
     ReferralSettingsDto,
     UpdateReferralSettingsDto,
 )
@@ -43,6 +49,7 @@ from app.modules.referrals.usecases import (
     GetUserReferralStatsUseCase,
     ListInvitedUsersUseCase,
     ListReferralsUseCase,
+    ListUserReferralRewardsUseCase,
     ResetReferralCodeUseCase,
     ResetReferralSettingsUseCase,
     UpdateReferralSettingsUseCase,
@@ -174,9 +181,31 @@ async def get_user_referral_stats(
     return ReferralStatsResponse.model_validate(stats, from_attributes=True)
 
 
+@user_router.get(
+    "/{user_id:int}/referrals/rewards",
+    response_model=ReferralRewardPageResponse,
+    responses=error_responses(404),
+)
+@inject
+async def list_user_referral_rewards(
+    user_id: int,
+    use_case: FromDishka[ListUserReferralRewardsUseCase],
+    actor: Actor = Depends(require_admin),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> ReferralRewardPageResponse:
+    items, total = await use_case(
+        actor, ListUserReferralRewardsDto(user_id=user_id, page=page, page_size=page_size)
+    )
+    return ReferralRewardPageResponse(
+        items=[ReferralRewardResponse.model_validate(item, from_attributes=True) for item in items],
+        total=total,
+    )
+
+
 @user_router.post(
     "/{user_id:int}/actions/adjust-points",
-    response_model=ReferralStatsResponse,
+    response_model=PointsBalanceResponse,
     responses=error_responses(400, 404),
 )
 @inject
@@ -184,23 +213,21 @@ async def adjust_user_points(
     user_id: int,
     payload: AdjustPointsRequest,
     request: Request,
-    adjust_use_case: FromDishka[AdjustUserPointsUseCase],
-    stats_use_case: FromDishka[GetUserReferralStatsUseCase],
+    use_case: FromDishka[AdjustUserPointsUseCase],
     actor: Actor = Depends(require_admin),
-) -> ReferralStatsResponse:
-    await adjust_use_case(
+) -> PointsBalanceResponse:
+    updated = await use_case(
         actor,
         AdjustUserPointsDto(
             user_id=user_id, delta=payload.delta, client_ip=resolve_client_ip(request)
         ),
     )
-    stats = await stats_use_case(actor, user_id)
-    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
+    return PointsBalanceResponse.model_validate(updated, from_attributes=True)
 
 
 @user_router.post(
     "/{user_id:int}/actions/adjust-bonus-days",
-    response_model=ReferralStatsResponse,
+    response_model=BonusDaysBalanceResponse,
     responses=error_responses(400, 404),
 )
 @inject
@@ -208,18 +235,16 @@ async def adjust_user_bonus_days(
     user_id: int,
     payload: AdjustBonusDaysRequest,
     request: Request,
-    adjust_use_case: FromDishka[AdjustUserBonusDaysUseCase],
-    stats_use_case: FromDishka[GetUserReferralStatsUseCase],
+    use_case: FromDishka[AdjustUserBonusDaysUseCase],
     actor: Actor = Depends(require_admin),
-) -> ReferralStatsResponse:
-    await adjust_use_case(
+) -> BonusDaysBalanceResponse:
+    updated = await use_case(
         actor,
         AdjustUserBonusDaysDto(
             user_id=user_id, delta=payload.delta, client_ip=resolve_client_ip(request)
         ),
     )
-    stats = await stats_use_case(actor, user_id)
-    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
+    return BonusDaysBalanceResponse.model_validate(updated, from_attributes=True)
 
 
 @user_router.get(
@@ -266,16 +291,14 @@ async def list_invited_users(
 
 @user_router.post(
     "/{user_id:int}/referral-code/actions/reset",
-    response_model=ReferralStatsResponse,
+    response_model=ReferralCodeResponse,
     responses=error_responses(404),
 )
 @inject
 async def reset_user_referral_code(
     user_id: int,
-    reset_use_case: FromDishka[ResetReferralCodeUseCase],
-    stats_use_case: FromDishka[GetUserReferralStatsUseCase],
+    use_case: FromDishka[ResetReferralCodeUseCase],
     actor: Actor = Depends(require_admin),
-) -> ReferralStatsResponse:
-    await reset_use_case(actor, user_id)
-    stats = await stats_use_case(actor, user_id)
-    return ReferralStatsResponse.model_validate(stats, from_attributes=True)
+) -> ReferralCodeResponse:
+    updated = await use_case(actor, user_id)
+    return ReferralCodeResponse.model_validate(updated, from_attributes=True)
