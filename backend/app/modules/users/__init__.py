@@ -24,7 +24,7 @@ from app.modules.users.ports import (
     SessionRevoker,
     SubscriptionRevoker,
 )
-from app.modules.users.repository import UserRepository
+from app.modules.users.repository import UserRepository, generate_referral_code
 from app.modules.users.schemas import (
     CurrentUserResponse,
     UserListItemResponse,
@@ -72,6 +72,7 @@ __all__ = [
     "UserStatsRepository",
     "assert_manageable",
     "detail_roles",
+    "generate_referral_code",
     "get_users_providers",
     "get_visible_target",
     "mark_bot_blocked",

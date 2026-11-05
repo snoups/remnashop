@@ -58,6 +58,11 @@ _REFERRAL_CODE_ALPHABET: Final[str] = string.ascii_uppercase + string.digits
 _REFERRAL_CODE_LENGTH: Final[int] = 8
 _REFERRAL_CODE_MAX_ATTEMPTS: Final[int] = 5
 
+
+def generate_referral_code() -> str:
+    return "".join(secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH))
+
+
 _DISCOUNT_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "personal_discount",
@@ -146,9 +151,7 @@ class UserRepository:
         # check-then-use, not atomic, as in GeneratePromocodeCodeUseCase; with
         # 36^8 candidates a collision won't happen
         for _ in range(_REFERRAL_CODE_MAX_ATTEMPTS):
-            code = "".join(
-                secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH)
-            )
+            code = generate_referral_code()
             if await self.find_by_referral_code(code) is None:
                 return code
         raise RuntimeError("Could not generate a unique referral code")
