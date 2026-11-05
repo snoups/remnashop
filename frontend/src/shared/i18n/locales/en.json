@@ -285,6 +285,7 @@
       "paid": "Active",
       "trials": "Trials",
       "limited": "At limit",
+      "expiringSoon": "Expiring within 7 days",
       "expired": "Expired"
     },
     "online": {

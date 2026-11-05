@@ -11,6 +11,7 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
     { key: "paid", value: subscriptions.paid_active, dot: "bg-primary" },
     { key: "trials", value: subscriptions.trials, dot: "bg-success" },
     { key: "limited", value: subscriptions.limited, dot: "bg-warning" },
+    { key: "expiringSoon", value: subscriptions.expiring_soon, dot: "bg-error" },
     { key: "expired", value: subscriptions.expired, dot: "bg-muted-foreground" },
   ] as const;
 
