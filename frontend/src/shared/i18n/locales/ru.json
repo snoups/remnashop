@@ -142,10 +142,10 @@
       },
       "outboxStuck": {
         "title": "Очередь событий не обрабатывается",
-        "sub_one": "{{formatted}} событие ждёт {{duration}}",
-        "sub_few": "{{formatted}} события ждут {{duration}}",
-        "sub_many": "{{formatted}} событий ждут {{duration}}",
-        "sub_other": "{{formatted}} события ждут {{duration}}"
+        "sub_one": "{{formatted}} событие ожидает обработки более {{duration}}",
+        "sub_few": "{{formatted}} события ожидают обработки более {{duration}}",
+        "sub_many": "{{formatted}} событий ожидают обработки более {{duration}}",
+        "sub_other": "{{formatted}} события ожидают обработки более {{duration}}"
       },
       "panelUnavailable": {
         "title": "Нет связи с панелью Remnawave",

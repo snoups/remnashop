@@ -138,8 +138,8 @@
       },
       "outboxStuck": {
         "title": "The event queue is not being processed",
-        "sub_one": "{{formatted}} event waiting for {{duration}}",
-        "sub_other": "{{formatted}} events waiting for {{duration}}"
+        "sub_one": "{{formatted}} event awaiting processing for over {{duration}}",
+        "sub_other": "{{formatted}} events awaiting processing for over {{duration}}"
       },
       "panelUnavailable": {
         "title": "No connection to the Remnawave panel",
