@@ -2,6 +2,7 @@ import type { ParseKeys, TFunction } from "i18next";
 import {
   AlertTriangle,
   ArchiveX,
+  ArrowRight,
   Bot,
   CalendarClock,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   DatabaseBackup,
   DatabaseZap,
   Hourglass,
+  Info,
   KeyRound,
   MailWarning,
   MailX,
@@ -18,8 +20,9 @@ import {
   PackageX,
   ServerCrash,
   ServerOff,
+  Wrench,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -36,13 +39,23 @@ import { CellText } from "@shared/ui/CellText";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
-import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import {
+  GLASS_DIALOG_BODY_CLASS,
+  GLASS_DIALOG_FOOTER_CLASS,
+  GLASS_LIST_ROW_CLASS,
+  LIST_BODY_CLASS,
+} from "@shared/ui/classes";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { ListRow } from "@shared/ui/ListRow";
+import { Modal } from "@shared/ui/Modal";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
 import { RUNTIME_PROCESS_LABELS, formatUptime } from "@pages/dashboard/runtime";
 
 const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
+const OPEN_ROW_CLASS = "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3";
 
 const SEVERITY_TONE = {
   critical: "error",
@@ -244,26 +257,87 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
   }
 }
 
-function AttentionRow({ item }: { item: AttentionItem }) {
+// i18n key of each kind under dashboard.attention
+const KIND_KEY: Record<AttentionKind, string> = {
+  process_down: "processDown",
+  outbox_stuck: "outboxStuck",
+  panel_unavailable: "panelUnavailable",
+  node_offline: "nodeOffline",
+  gateway_failures: "gatewayFailures",
+  smtp_failed: "smtpFailed",
+  backup_failed: "backupFailed",
+  backup_overdue: "backupOverdue",
+  broadcast_failed: "broadcastFailed",
+  broadcast_stalled: "broadcastStalled",
+  paid_not_fulfilled: "paidNotFulfilled",
+  stale_pending: "stalePending",
+  email_undeliverable: "emailUndeliverable",
+  expiring_paid: "expiringPaid",
+  api_token_expiring: "apiTokenExpiring",
+  bot_webhook: "botWebhook",
+};
+
+function ExplainBlock({ icon, title, text }: { icon: ComponentType<{ className?: string }>; title: string; text: string }) {
+  return (
+    <DialogCard variant="form" title={title} icon={icon}>
+      <p className="text-[13px] leading-[1.6] text-foreground/85">{text}</p>
+    </DialogCard>
+  );
+}
+
+function AttentionDialog({ item, onClose }: { item: AttentionItem; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const permissions = usePermissions();
-  const Icon = KIND_ICON[item.kind];
   const link = KIND_LINK[item.kind];
+  const { title, sub } = itemText(item, t, i18n.language);
+  const key = `dashboard.attention.${KIND_KEY[item.kind]}`;
+  const why =
+    item.kind === "process_down"
+      ? `${key}.${item.subject === "scheduler" ? "whyScheduler" : "whyWorker"}`
+      : `${key}.why`;
+
+  return (
+    <Modal onClose={onClose} size="lg" scrollable>
+      <DialogHeader
+        icon={KIND_ICON[item.kind]}
+        title={title}
+        subtitle={sub}
+        danger={item.severity === "critical"}
+        warning={item.severity === "warning"}
+      />
+      <div className={GLASS_DIALOG_BODY_CLASS}>
+        <div className="flex flex-col gap-3">
+          <ExplainBlock icon={Info} title={t("dashboard.attention.sections.what")} text={t(`${key}.what` as ParseKeys)} />
+          <ExplainBlock icon={AlertTriangle} title={t("dashboard.attention.sections.why")} text={t(why as ParseKeys)} />
+          <ExplainBlock icon={Wrench} title={t("dashboard.attention.sections.fix")} text={t(`${key}.fix` as ParseKeys)} />
+        </div>
+      </div>
+      {link && link.allowed(permissions) && (
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0`}>
+          <Button variant="glassAccent" className="flex-1" onClick={() => navigate(link.to)}>
+            {t(link.label)}
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function AttentionRow({ item }: { item: AttentionItem }) {
+  const { t, i18n } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
   const { title, sub } = itemText(item, t, i18n.language);
 
   return (
-    <div className={ROW_CLASS}>
-      <IconCircle icon={Icon} tone={SEVERITY_TONE[item.severity]} />
-      <CellText title={title} sub={sub} />
-      {link && link.allowed(permissions) ? (
-        <Button variant="glass" size="sm" onClick={() => navigate(link.to)}>
-          {t(link.label)}
-        </Button>
-      ) : (
-        <span />
-      )}
-    </div>
+    <>
+      <ListRow glass className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
+        <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
+        <CellText title={title} sub={sub} />
+      </ListRow>
+      {isOpen && <AttentionDialog item={item} onClose={() => setIsOpen(false)} />}
+    </>
   );
 }
 
