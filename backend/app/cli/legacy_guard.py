@@ -14,11 +14,18 @@ _MESSAGE: Final[str] = (
     "The database belongs to the old version (revision {revision}). Migrate it first: run "
     '`docker compose run --rm remnashop cli` and pick "Migrate data from the old version".'
 )
+_NEWER_MESSAGE: Final[str] = (
+    "The database version is newer than this release supports (revision {revision}). "
+    "Run the release that matches the database."
+)
 
 
 def legacy_guard_message(revision: Optional[str]) -> Optional[str]:
     if revision in LEGACY_REVISIONS:
         return _MESSAGE.format(revision=revision)
+    # an unknown old-style revision would loop the pre-migration dump and alembic on every restart
+    if revision is not None and revision.isdigit():
+        return _NEWER_MESSAGE.format(revision=revision)
     return None
 
 

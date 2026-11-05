@@ -117,7 +117,9 @@ def test_anchor_without_rate_noted() -> None:
         report=report,
     )[0]
     assert item["anchor_final_price"] == Decimal("5")
-    assert any("rate" in note for note in report.notes)
+    assert "anchor amounts for 1 transactions in USD equal their nominal amounts" in " ".join(
+        report.notes
+    )
 
 
 def test_payment_id_becomes_idempotency_key() -> None:

@@ -49,7 +49,7 @@ def transform_transactions(
     plan_codes: Optional[Mapping[int, str]] = None,
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    unrated = 0
+    unrated: list[Currency] = []
     for row in sorted(rows, key=lambda r: int(r["id"])):
         pricing = row["pricing"]
         base_price = Decimal(str(pricing["original_amount"]))
@@ -62,7 +62,7 @@ def transform_transactions(
         anchor_final = _to_anchor(final_price, currency, anchor_currency, rates)
         if anchor_base is None or anchor_final is None:
             anchor_base, anchor_final = base_price, final_price
-            unrated += 1
+            unrated.append(currency)
 
         old_snapshot = row["plan_snapshot"]
         snapshot_plan_id = int(old_snapshot["id"])
@@ -103,9 +103,10 @@ def transform_transactions(
 
     report.count(_TABLE, len(rows), len(result))
     if unrated:
+        currencies = ", ".join(sorted({currency.value for currency in unrated}))
         report.notes.append(
-            f"transactions: {unrated} in a non-anchor currency without a rate, "
-            "anchor amounts equal the transaction amounts"
+            f"transactions: anchor amounts for {len(unrated)} transactions in {currencies} "
+            "equal their nominal amounts (no currency rates at migration time)"
         )
     return result
 

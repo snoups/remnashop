@@ -19,7 +19,14 @@ from app.cli.legacy.plans import transform_plans
 from app.cli.legacy.promocodes import transform_promocodes
 from app.cli.legacy.referrals import transform_referrals
 from app.cli.legacy.report import MigrationReport
-from app.cli.legacy.schema import LEGACY_HEAD, LEGACY_REVISIONS, current_revision, upgrade_legacy
+from app.cli.legacy.schema import (
+    LEGACY_HEAD,
+    LEGACY_REVISIONS,
+    current_revision,
+    record_origin,
+    recorded_origin,
+    upgrade_legacy,
+)
 from app.cli.legacy.settings import transform_settings
 from app.cli.legacy.subscriptions import migrated_subscription_ids, transform_subscriptions
 from app.cli.legacy.transactions import transform_transactions
@@ -127,14 +134,20 @@ async def preflight(engine: AsyncEngine, *, sdk: RemnawaveSDK, crypt_key: str) -
     await assert_panel_v3(sdk)
 
 
+async def legacy_origin(connection: AsyncConnection) -> Optional[str]:
+    """The revision the old image ran on: recorded by an earlier upgrade, else the current one."""
+    return await recorded_origin(connection, "public") or await current_revision(connection)
+
+
 async def upgrade_legacy_schema(engine: AsyncEngine) -> str:
-    """Brings public up to LEGACY_HEAD, a commit per migration; returns the starting revision."""
+    """Brings public up to LEGACY_HEAD, a commit per migration; returns the original revision."""
     async with engine.connect() as connection:
-        original = await current_revision(connection)
-        _check_revision(original)
-        await connection.rollback()
+        _check_revision(await current_revision(connection))
+        original = await legacy_origin(connection)
+        assert original is not None
+        await record_origin(connection, "public", original)
+        await connection.commit()
         await connection.run_sync(upgrade_legacy)
-    assert original is not None
     return original
 
 
@@ -243,6 +256,7 @@ async def migrate(
                 f"Expected an old-version database at {LEGACY_HEAD}, found {revision}"
             )
         await connection.execute(text("ALTER SCHEMA public RENAME TO legacy"))
+        await record_origin(connection, "legacy", original_revision)
         await connection.execute(text("CREATE SCHEMA public"))
         await connection.run_sync(_create_new_schema)
 

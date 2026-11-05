@@ -5,8 +5,8 @@ from typing import Final
 
 from app.cli.audit import record_rescue
 from app.cli.legacy.errors import LegacyMigrationError
-from app.cli.legacy.rollback import drop_legacy, rollback
-from app.cli.legacy.run import create_engine, rollback_advice, run_migration
+from app.cli.legacy.rollback import drop_legacy
+from app.cli.legacy.run import create_engine, run_migration, run_rollback
 from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
@@ -126,7 +126,8 @@ async def _migrate_legacy() -> None:
     if not _confirm(
         "This moves the old version's data to the new schema (the old data is kept in schema "
         "'legacy', a signed backup is made first). The panel must be Remnawave 3.x and "
-        "APP_CRYPT_KEY the old one. Continue?"
+        "APP_CRYPT_KEY the old one. Stop the shop containers first (`docker compose stop` "
+        "everything except the database). Continue?"
     ):
         print("Aborted.")
         return
@@ -146,13 +147,7 @@ async def _rollback_legacy() -> None:
     if not _confirm("This DROPS the new schema and brings the old data back. Continue?"):
         print("Aborted.")
         return
-    engine = create_engine(AppConfig.get())
-    try:
-        done = await _legacy_action(rollback(engine))
-    finally:
-        await engine.dispose()
-    if done:
-        print(rollback_advice())
+    await _legacy_action(run_rollback(AppConfig.get()))
 
 
 async def _delete_legacy() -> None:

@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 LEGACY_HEAD: Final[str] = "0046"
 LEGACY_REVISIONS: Final[frozenset[str]] = frozenset(f"{number:04d}" for number in range(1, 47))
 _MIGRATIONS_DIR: Final[Path] = Path(__file__).parent / "migrations"
+# kept on the old schema: the revision the old image ran on, before our upgrade to LEGACY_HEAD
+_ORIGIN_PREFIX: Final[str] = "remnashop-legacy-origin:"
 
 
 def upgrade_legacy(connection: Connection, revision: str = LEGACY_HEAD) -> None:
@@ -31,3 +33,22 @@ async def current_revision(connection: AsyncConnection, schema: str = "public") 
         text(f'SELECT version_num FROM "{schema}".alembic_version')
     )
     return version
+
+
+async def recorded_origin(connection: AsyncConnection, schema: str) -> Optional[str]:
+    comment: Optional[str] = await connection.scalar(
+        text("SELECT obj_description(to_regnamespace(:schema), 'pg_namespace')"),
+        {"schema": schema},
+    )
+    if comment is None or not comment.startswith(_ORIGIN_PREFIX):
+        return None
+    return comment.removeprefix(_ORIGIN_PREFIX)
+
+
+async def record_origin(connection: AsyncConnection, schema: str, revision: str) -> None:
+    if revision not in LEGACY_REVISIONS:
+        raise ValueError(f"Not an old-version revision: {revision!r}")
+    # COMMENT takes no bind parameters; the revision is checked above
+    await connection.execute(
+        text(f"COMMENT ON SCHEMA \"{schema}\" IS '{_ORIGIN_PREFIX}{revision}'")
+    )
