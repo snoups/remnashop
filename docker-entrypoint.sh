@@ -4,6 +4,7 @@ set -e
 TARGET="$1"
 
 if [ "$TARGET" = "api" ]; then
+    python -m app.cli.legacy_guard || exit 1
     if ! python -m app.cli.pre_migration_dump; then
         echo "Pre-migration backup failed, migrations not applied! Exiting container..."
         exit 1

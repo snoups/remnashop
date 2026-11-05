@@ -6,6 +6,7 @@ from typing import Any, Final, Optional, TypeVar
 
 from alembic import command
 from alembic.config import Config
+from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from sqlalchemy import Connection, insert, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -72,6 +73,11 @@ class MigrationResult:
     report: MigrationReport
     owner: Optional[OwnerCredentials]
     original_revision: str
+
+
+async def flush_shop_redis(redis: Redis) -> None:
+    # the old broker keeps `taskiq` as a stream, the new one reads it as a list
+    await redis.flushdb()
 
 
 async def _legacy_schema_exists(connection: AsyncConnection) -> bool:

@@ -1,8 +1,12 @@
 import asyncio
+from collections.abc import Awaitable
 from pathlib import Path
 from typing import Final
 
 from app.cli.audit import record_rescue
+from app.cli.legacy.errors import LegacyMigrationError
+from app.cli.legacy.rollback import drop_legacy, rollback
+from app.cli.legacy.run import create_engine, rollback_advice, run_migration
 from app.cli.reset_owner_access import reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
@@ -16,6 +20,9 @@ _MENU: Final[str] = """Remnashop Rescue CLI
     2. Restore backup
     3. Reset owner access (new password, clear IP allowlist)
     4. Reset encrypted secrets (after APP_CRYPT_KEY changed)
+    5. Migrate data from the old version
+    6. Roll back the migration
+    7. Delete old-version data
     0. Exit
 """
 
@@ -115,6 +122,48 @@ async def _restore_backup() -> None:
     )
 
 
+async def _migrate_legacy() -> None:
+    if not _confirm(
+        "This moves the old version's data to the new schema (the old data is kept in schema "
+        "'legacy', a signed backup is made first). The panel must be Remnawave 3.x and "
+        "APP_CRYPT_KEY the old one. Continue?"
+    ):
+        print("Aborted.")
+        return
+    await _legacy_action(run_migration(AppConfig.get()))
+
+
+async def _legacy_action(action: Awaitable[None]) -> None:
+    try:
+        await action
+    except LegacyMigrationError as error:
+        print(f"Stopped: {error}")
+
+
+async def _rollback_legacy() -> None:
+    if not _confirm("This DROPS the new schema and brings the old data back. Continue?"):
+        print("Aborted.")
+        return
+    engine = create_engine(AppConfig.get())
+    try:
+        await _legacy_action(rollback(engine))
+    finally:
+        await engine.dispose()
+    print(rollback_advice())
+
+
+async def _delete_legacy() -> None:
+    if not _confirm("This permanently deletes the old version's data (schema 'legacy'). Continue?"):
+        print("Aborted.")
+        return
+    engine = create_engine(AppConfig.get())
+    try:
+        await _legacy_action(drop_legacy(engine))
+    finally:
+        await engine.dispose()
+    print("Old-version data deleted.")
+
+
 async def _run() -> None:
     print(_MENU)
     choice = input("> ").strip()
@@ -127,6 +176,12 @@ async def _run() -> None:
         await _reset_owner_access()
     elif choice == "4":
         await _reset_encrypted_secrets()
+    elif choice == "5":
+        await _migrate_legacy()
+    elif choice == "6":
+        await _rollback_legacy()
+    elif choice == "7":
+        await _delete_legacy()
     elif choice == "0":
         pass
     else:
