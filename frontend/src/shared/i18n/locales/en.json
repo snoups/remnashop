@@ -350,9 +350,7 @@
       "title": "Client apps",
       "description": "What clients connect with, by platform",
       "other": "Other",
-      "empty": "No devices",
-      "devices_one": "{{formatted}} device · {{avg}} per user",
-      "devices_other": "{{formatted}} devices · {{avg}} per user"
+      "empty": "No devices"
     },
     "payments": {
       "title": "Recent payments",
