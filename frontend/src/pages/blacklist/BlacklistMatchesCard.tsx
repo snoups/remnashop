@@ -12,6 +12,7 @@ import {
   type BlacklistOrigin,
   unblockBlacklistMatches,
 } from "@entities/blacklist/api";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
 import { getErrorMessage } from "@shared/api/http";
@@ -181,9 +182,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   >
                     <td className="h-15 px-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[12px] font-semibold text-foreground">
-                          {initials(match.user.name)}
-                        </div>
+                        <IconCircle glyph={<span className="text-[11px] font-bold">{initials(match.user.name)}</span>} />
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{match.user.name}</p>
                           <p className="truncate text-[12px] text-muted-foreground">

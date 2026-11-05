@@ -23,6 +23,7 @@ import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
@@ -41,8 +42,6 @@ const ANALYTICS_ORDERS_LIMIT = 200;
 
 
 const ROW_CLASSNAME = "flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left";
-const ROW_ICON_CLASSNAME =
-  "flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[13px] font-semibold text-foreground";
 
 
 // a KPI value: loading/forbidden/failed all read as a dash
@@ -210,9 +209,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
               onClick={() => setOpenedOrder(order)}
               className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
             >
-              <span className={ROW_ICON_CLASSNAME}>
-                {symbol}
-              </span>
+              <IconCircle glyph={<span className="text-[11px] font-bold">{symbol}</span>} />
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-[13px] font-medium text-foreground/90">
@@ -284,9 +281,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
               onClick={() => openSubscription(subscription.id, { data: subscription, onChanged: reload })}
               className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
             >
-              <span className={ROW_ICON_CLASSNAME}>
-                <CreditCard className="size-3.5" />
-              </span>
+              <IconCircle icon={CreditCard} />
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-[13px] font-medium text-foreground/90">
@@ -334,9 +329,7 @@ export function PromocodesTab({ userId }: { userId: number }) {
       {state.kind === "ready" &&
         state.data.map((activation) => (
           <div key={activation.activation_id} className={ROW_CLASSNAME}>
-            <span className={ROW_ICON_CLASSNAME}>
-              <Ticket className="size-3.5" />
-            </span>
+            <IconCircle icon={Ticket} />
             <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-foreground/90">
               {activation.code}
             </span>

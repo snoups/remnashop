@@ -5,6 +5,7 @@ import { DebugSection, Specimen } from "@pages/debug/debug-ui";
 import { useKit } from "@pages/debug/use-kit";
 import { normalizeEmail } from "@shared/lib/chip-normalizers";
 import { Button } from "@shared/ui/Button";
+import { CellText } from "@shared/ui/CellText";
 import { ChipsInput } from "@shared/ui/ChipsInput";
 import { EYEBROW_CLASS, GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, GLASS_POPOVER_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ColorPickerField } from "@shared/ui/ColorPickerField";
@@ -12,6 +13,7 @@ import { DatePickerField } from "@shared/ui/DatePickerField";
 import { DateTimePickerField } from "@shared/ui/DateTimePickerField";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { Field } from "@shared/ui/glass/Field";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Input, PasswordInput, TextArea } from "@shared/ui/glass/Input";
 import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
@@ -266,6 +268,22 @@ export function TablesSection() {
                 <span className="text-right tabular-nums text-muted-foreground">{row.share}</span>
               </ListRow>
             ))}
+          </div>
+        </div>
+      </Specimen>
+      <Specimen name="ListRow · IconCircle · CellText" usage={k("u.cellText")} stage="stretch" wide>
+        <div className={PANEL}>
+          <div className={LIST_BODY_CLASS}>
+            <ListRow glass className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
+              <IconCircle icon={Globe} tone="success" />
+              <CellText title={k("s.person")} sub="SUMMER24" mono />
+              <Tag>#1042</Tag>
+            </ListRow>
+            <ListRow glass className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
+              <IconCircle glyph={<span className="text-[11px] font-bold">AN</span>} />
+              <CellText title={k("s.person")} sub="03.10.2026" />
+              <Tag>#1041</Tag>
+            </ListRow>
           </div>
         </div>
       </Specimen>

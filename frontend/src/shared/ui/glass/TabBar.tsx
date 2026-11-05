@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type ComponentType, type MouseEvent } from "r
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { ActivePill } from "@shared/ui/ActivePill";
 import { MotionLink } from "@shared/ui/MotionLink";
+import { TAB_HOVER_CLASS } from "@shared/ui/classes";
 
 export interface TabBarItem {
   key: string;
@@ -43,7 +44,7 @@ export function TabBar({ items }: { items: TabBarItem[] }) {
             {isActive ? (
               <ActivePill layoutId={pillId} />
             ) : (
-              <span className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]" />
+              <span className={TAB_HOVER_CLASS} />
             )}
             <span
               className={`relative z-10 flex items-center gap-1.5 whitespace-nowrap px-4 ${

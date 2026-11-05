@@ -11,6 +11,7 @@ import { formatMoney } from "@shared/lib/format";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
 import { CardPill } from "@shared/ui/CardPill";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { Switch } from "@shared/ui/glass/Switch";
 import { IconButton } from "@shared/ui/IconButton";
 import { Tag } from "@shared/ui/Tag";
@@ -83,7 +84,7 @@ export function LegacyPlanCard({
 
           <div className="mt-auto flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[26px] font-bold leading-[1.1] tracking-tight tabular-nums">
+              <span className={`${KPI_VALUE_CLASS} leading-[1.1]`}>
                 {cheapest && <span className="mr-1.5 text-[13px] font-medium text-muted-foreground">{t("plans.priceFrom")}</span>}
                 {cheapest
                   ? anchorCurrency

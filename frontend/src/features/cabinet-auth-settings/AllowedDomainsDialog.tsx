@@ -7,6 +7,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
 import { ChipsInput } from "@shared/ui/ChipsInput";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -62,7 +63,7 @@ function AllowedDomainsForm({ domains, canManage, onSaved }: Omit<AllowedDomains
           <span className="text-[12px] text-muted-foreground">{t("settings.cabinetAuth.allowedDomainsHint")}</span>
         </div>
         {canManage && (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+          <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
             <Button variant="glass" onClick={close}>
               {t("common.cancel")}
             </Button>

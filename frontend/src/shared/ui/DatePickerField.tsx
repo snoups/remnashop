@@ -9,6 +9,7 @@ import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { IconButton } from "@shared/ui/IconButton";
 import { MonthCalendar } from "@shared/ui/MonthCalendar";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { PICKER_ICON_CLASS } from "@shared/ui/classes";
 
 const SURFACE_CLASS = {
   glass: "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06]",
@@ -59,7 +60,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
         }}
         className={`group flex w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} ${compact ? "h-9 text-[13px]" : "py-2 text-sm"} pl-9 pr-8 ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary`}
       >
-        <Calendar className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
+        <Calendar className={PICKER_ICON_CLASS} />
         <span className={displayValue ? "text-foreground" : "text-muted-foreground"}>
           {displayValue || placeholder}
         </span>

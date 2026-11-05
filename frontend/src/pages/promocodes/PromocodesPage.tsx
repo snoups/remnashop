@@ -29,6 +29,7 @@ import { formatMoney } from "@shared/lib/format";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { dotIcon } from "@shared/ui/option-icons";
@@ -36,7 +37,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 import { ListRow } from "@shared/ui/ListRow";
 
@@ -106,8 +107,8 @@ export function PromocodesPage() {
 
   return (
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-40 flex-1 md:min-w-0">
           <SelectDropdown
             id="promocodes-status"
@@ -150,7 +151,7 @@ export function PromocodesPage() {
         )}
       </div>
 
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
       <LoadGate>
       <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
       <div className="flex flex-col gap-5">
@@ -220,13 +221,7 @@ export function PromocodesPage() {
                     onClick={() => setDetailsPromocode(promo)}
                     className={ROW_GRID_CLASSNAME}
                   >
-                    <span
-                      className={`flex size-8 items-center justify-center rounded-full ${
-                        promoStatus === "ACTIVE" ? "bg-success/10 text-success" : "bg-white/[0.06] text-muted-foreground"
-                      }`}
-                    >
-                      <Ticket className="size-4" />
-                    </span>
+                    <IconCircle icon={Ticket} tone={promoStatus === "ACTIVE" ? "success" : "neutral"} />
                     <span className="min-w-0">
                       <span className="block truncate font-mono text-[13px] font-medium text-foreground">{promo.code}</span>
                       <span className="block truncate text-[12px] text-muted-foreground">

@@ -35,6 +35,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { toast } from "@shared/lib/toast";
 import type { ActionMenuItem } from "@shared/ui/ActionMenu";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
@@ -146,8 +147,8 @@ export function PlansPage() {
 
   return (
     // as the broadcasts page: the filter bar floats over a scroller of its own, whose fade clears the bar
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-0 flex-1 md:max-w-md">
           <PillTabs
             items={(["all", "active", "inactive"] as const).map((key) => ({ key, label: filterLabel(key) }))}
@@ -163,7 +164,7 @@ export function PlansPage() {
         )}
       </div>
 
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={PAGE_SCROLL_UNDER_BAR_CLASS}>
       <LoadGate>
       <LoadGateHold isLoading={state.kind === "loading"} />
       {state.kind === "loading" && <Spinner size="page" />}

@@ -11,7 +11,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
@@ -84,7 +84,7 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center justify-end`}>
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>

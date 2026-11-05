@@ -410,7 +410,7 @@ export function ReferralSettingsPage() {
               return (
                 <div key={level} className="flex flex-col">
                   <div className="ml-[29px] h-3.5 w-0.5 bg-white/[0.12]" />
-                  <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+                  <div className={`${GLASS_INNER_CARD_CLASS} flex items-center gap-3 p-3.5`}>
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-accent text-[13px] font-semibold text-primary">
                       {level}
                     </div>

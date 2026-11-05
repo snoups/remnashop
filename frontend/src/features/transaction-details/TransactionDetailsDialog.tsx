@@ -48,7 +48,7 @@ import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { KpiTile } from "@shared/ui/KpiTile";
-import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, SECTION_TITLE_CLASS } from "@shared/ui/classes";
 
 interface TransactionDetailsDialogProps {
   order: TransactionItem;
@@ -158,7 +158,7 @@ function TransactionDetailsDialogBody({
         actions={<Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{statusLabel}</Badge>}
       />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <KpiTile

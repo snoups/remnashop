@@ -15,7 +15,7 @@ import { BrandMark } from "@entities/appearance/BrandMark";
 import { DASHBOARD_INTRO_STATE } from "@shared/lib/dashboard-intro";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
-import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_STANDALONE_CARD_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { Spinner } from "@shared/ui/Spinner";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -72,7 +72,7 @@ export function LoginPage() {
             {/* faded one by one: backdrop-filter sees nothing through a translucent parent */}
             <motion.div variants={CARD_VARIANTS} className="flex items-center gap-3">
               <BrandMark className="size-9 shrink-0 text-primary" />
-              <h1 className="text-[21px] font-bold tracking-tight text-foreground">{brandName}</h1>
+              <h1 className={SCREEN_TITLE_CLASS}>{brandName}</h1>
             </motion.div>
 
             <motion.div variants={CARD_VARIANTS} className={`flex w-full flex-col gap-6 ${GLASS_STANDALONE_CARD_CLASS}`}>

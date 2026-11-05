@@ -11,7 +11,7 @@ import { toast } from "@shared/lib/toast";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
@@ -85,7 +85,7 @@ function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCrea
       <DialogHeader icon={ShieldPlus} title={t("admins.create.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+        <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
           <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field
               label={t("admins.create.loginLabel")}
@@ -118,7 +118,7 @@ function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCrea
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>

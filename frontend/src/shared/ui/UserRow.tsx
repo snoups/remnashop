@@ -1,9 +1,9 @@
-import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { initials } from "@shared/lib/initials";
-import { Ripple } from "@shared/ui/Ripple";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Pressable } from "@shared/ui/Pressable";
 
 interface UserRowProps {
   /** empty for a deleted account: shown as users.deleted.name */
@@ -20,16 +20,13 @@ interface UserRowProps {
 export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
   const { t } = useTranslation();
   return (
-    <motion.button
+    <Pressable
       type="button"
       disabled={!onClick}
       onClick={onClick}
-      className="relative flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
+      className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
     >
-      <Ripple />
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
-        {initials(name)}
-      </span>
+      <IconCircle glyph={<span className="text-[11px] font-bold">{initials(name)}</span>} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium leading-tight text-foreground/90">
           {name || t("users.deleted.name")}
@@ -37,6 +34,6 @@ export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
         <p className="truncate text-[12px] leading-tight text-muted-foreground">{subtitle}</p>
       </div>
       {aside}
-    </motion.button>
+    </Pressable>
   );
 }

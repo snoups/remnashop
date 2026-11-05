@@ -19,7 +19,7 @@ import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { Input, TextArea } from "@shared/ui/glass/Input";
@@ -96,7 +96,7 @@ function AdLinkCreateDialogBody({
     <>
       <DialogHeader icon={Link2} title={t("advertising.create.title")} />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-3">
           <div className={GLASS_DIALOG_CARD_CLASS}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -188,7 +188,7 @@ function AdLinkCreateDialogBody({
         </form>
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
         <Button variant="glass" onClick={close}>
           {t("common.cancel")}
         </Button>

@@ -9,6 +9,7 @@ import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { CardPill } from "@shared/ui/CardPill";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DialogTabs } from "@shared/ui/DialogTabs";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { TabBar } from "@shared/ui/glass/TabBar";
 import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
@@ -178,6 +179,14 @@ export function BadgesSection() {
             <span className="font-mono text-[11px] text-muted-foreground">{tone}</span>
           </div>
         ))}
+      </Specimen>
+      <Specimen name='IconCircle tone="…" · glyph' usage={k("u.iconCircle")} wide>
+        <IconCircle icon={Smartphone} />
+        {TONES.map((tone) => (
+          <IconCircle key={tone} icon={ShieldCheck} tone={tone} />
+        ))}
+        <IconCircle glyph={<span className="text-[11px] font-bold">AN</span>} />
+        <IconCircle tone="violet" glyph={<span className="text-[11px] font-bold">R</span>} />
       </Specimen>
       <Specimen name="Tag" usage={k("u.tag")}>
         <Tag>128</Tag>

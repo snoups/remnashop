@@ -5,6 +5,7 @@ import { RECALL_WINDOW_MS } from "@entities/broadcasts/api";
 import type { Broadcast } from "@entities/broadcasts/api";
 import { canRecall, processedCount } from "@entities/broadcasts/display";
 import { formatDateTime } from "@shared/lib/relative-time";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
@@ -56,7 +57,7 @@ export function DeliveryProgress({ broadcast: b, now, children }: DeliveryProgre
   return (
     <div className="glass-panel flex flex-col gap-2.5 rounded-3xl p-4">
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">
+        <span className={`${KPI_VALUE_CLASS} text-foreground`}>
           {processed.toLocaleString(i18n.language)}{" "}
           <span className="text-[15px] font-medium text-muted-foreground">
             {t("broadcasts.details.of", { total: b.total_count.toLocaleString(i18n.language) })}

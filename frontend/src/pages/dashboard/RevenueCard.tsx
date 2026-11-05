@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { getRevenueChart } from "@entities/overview/api";
 import { formatMoney } from "@shared/lib/format";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { Section } from "@shared/ui/glass/Section";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
@@ -47,7 +48,7 @@ export function RevenueCard({ refreshKey }: { refreshKey: number }) {
       {report && (
         <div className="flex flex-col gap-3 pt-4">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">
+            <span className={`${KPI_VALUE_CLASS} text-foreground`}>
               {formatMoney(total, report.report_currency, i18n.language)}
             </span>
             <Tag>

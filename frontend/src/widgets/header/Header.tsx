@@ -1,5 +1,6 @@
 import { ChevronDown, Menu, LogOut, RefreshCw, Sparkles, User as UserIcon, Wrench } from "lucide-react";
 import { createPortal } from "react-dom";
+import { TAB_HOVER_CLASS } from "@shared/ui/classes";
 import { MobileMenu } from "@widgets/sidebar/MobileMenu";
 
 import { AnimatePresence } from "motion/react";
@@ -168,7 +169,7 @@ export function Header({ onLogout }: HeaderProps) {
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1 md:pl-0.5 md:pr-2.5"
           >
             <span
-              className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+              className={TAB_HOVER_CLASS}
             />
             <div className="glass-control relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-foreground md:size-8">
               {login ? initials(login) : <UserIcon className="size-4" />}

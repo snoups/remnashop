@@ -9,6 +9,7 @@ import { formatMoney, formatPercent } from "@shared/lib/format";
 import { formatDate } from "@shared/lib/relative-time";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { CellText } from "@shared/ui/CellText";
 import { Section } from "@shared/ui/glass/Section";
 import { LIST_BODY_CLASS, GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
@@ -204,12 +205,7 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
                     >
                       {index + 1}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-foreground">{payer.name}</span>
-                      {payer.username && (
-                        <span className="block truncate font-mono text-[12px] text-muted-foreground">@{payer.username}</span>
-                      )}
-                    </span>
+                    <CellText title={payer.name} sub={payer.username && `@${payer.username}`} mono />
                     <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
                       <span className="truncate">{payer.current_plans[0] ?? t("common.none")}</span>
                       {payer.current_plans.length > 1 && <Tag>+{payer.current_plans.length - 1}</Tag>}

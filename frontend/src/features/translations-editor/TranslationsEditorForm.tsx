@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
-import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_INNER_CARD_CLASS, TAB_HOVER_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
@@ -252,7 +252,7 @@ export function TranslationsEditorForm() {
                     className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
                   >
                     <motion.span
-                      className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+                      className={TAB_HOVER_CLASS}
                     />
                     <ChevronRight
                       className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}

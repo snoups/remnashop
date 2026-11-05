@@ -1,3 +1,4 @@
+import { TEXT_TOOLBAR_CLASS, TEXT_TOOLBAR_DIVIDER_CLASS } from "@shared/ui/classes";
 import Image from "@tiptap/extension-image";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ChainedCommands, Editor } from "@tiptap/react";
@@ -157,7 +158,7 @@ function EmailBody({ initialHtml, urls, broadcastId, canAddImage, disabled, onIm
 
   return (
     <div className="glass-well overflow-hidden rounded-[18px] ring-inset focus-within:ring-1 focus-within:ring-primary">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5">
+      <div className={TEXT_TOOLBAR_CLASS}>
         {ACTIONS.map(({ key, icon: Icon, run }) => (
           <IconButton
             key={key}
@@ -169,7 +170,7 @@ function EmailBody({ initialHtml, urls, broadcastId, canAddImage, disabled, onIm
             <Icon className="size-4" />
           </IconButton>
         ))}
-        <span className="mx-1.5 h-4 w-px bg-border" />
+        <span className={TEXT_TOOLBAR_DIVIDER_CLASS} />
         <UrlPopoverButton
           icon={Link}
           pattern={EMAIL_URL_RE}
@@ -209,7 +210,7 @@ function EmailBody({ initialHtml, urls, broadcastId, canAddImage, disabled, onIm
             />
           )}
         </span>
-        <span className="mx-1.5 h-4 w-px bg-border" />
+        <span className={TEXT_TOOLBAR_DIVIDER_CLASS} />
         <VariablePicker
           variables={BROADCAST_VARIABLES}
           format={formatVariable}

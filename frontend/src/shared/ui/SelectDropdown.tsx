@@ -6,6 +6,7 @@ import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Ripple } from "@shared/ui/Ripple";
+import { PICKER_ICON_CLASS } from "@shared/ui/classes";
 
 const POPOVER_MAX_HEIGHT = 288;
 const SURFACE_CLASS = {
@@ -133,7 +134,7 @@ export function SelectDropdown({
         className={`relative group flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <Ripple />
-        <TriggerIcon className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
+        <TriggerIcon className={PICKER_ICON_CLASS} />
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown
           className={`pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors transition-transform group-not-focus:group-hover:text-foreground group-focus:text-primary ${isOpen ? "rotate-180" : ""}`}

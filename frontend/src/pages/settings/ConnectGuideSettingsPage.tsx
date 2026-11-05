@@ -48,10 +48,11 @@ import { randomId } from "@shared/lib/random-string";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_INNER_CARD_CLASS, GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Field } from "@shared/ui/glass/Field";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Input, TextArea } from "@shared/ui/glass/Input";
 import { Row } from "@shared/ui/glass/Row";
 import { Section, SectionRows } from "@shared/ui/glass/Section";
@@ -285,9 +286,7 @@ function AddRow({ label, disabled, onClick }: { label: ReactNode; disabled: bool
       disabled={disabled}
       className="flex min-h-11 items-center gap-3 rounded-full px-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-        <Plus className="size-4" />
-      </span>
+      <IconCircle icon={Plus} />
       {label}
     </Pressable>
   );
@@ -363,7 +362,7 @@ function StepEditor({
 
       <span className="text-[13px] font-medium text-foreground">{t("connectGuide.buttons")}</span>
       {step.buttons.map((button, at) => (
-        <div key={button.key} className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+        <div key={button.key} className={`${GLASS_PLATE_CLASS} flex flex-col gap-2 p-3`}>
           <div className="flex flex-wrap items-center gap-2">
             <div className="w-48">
               <SelectDropdown

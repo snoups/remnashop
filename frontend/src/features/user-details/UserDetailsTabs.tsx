@@ -36,6 +36,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
@@ -237,11 +238,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
             onClick={() => setOpenedEntry(entry)}
             className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors hover:bg-white/[0.04]"
           >
-            <span
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
-            >
-              <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
-            </span>
+            <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
               {eventTitle(entry, t)}
             </span>

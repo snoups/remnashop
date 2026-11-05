@@ -11,7 +11,7 @@ import { consumeOAuthFlow } from "@shared/lib/oauth-flow";
 import { toast } from "@shared/lib/toast";
 import { saveAccessToken } from "@shared/lib/token-storage";
 import { useDocumentTitle } from "@shared/lib/use-document-title";
-import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_STANDALONE_CARD_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
 function isOAuthProvider(value: string | undefined): value is OAuthProvider {
@@ -79,7 +79,7 @@ export function OAuthCallbackScreen() {
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex items-center gap-3">
           <BrandMark className="size-9 shrink-0 text-primary" />
-          <h1 className="text-[21px] font-bold tracking-tight text-foreground">{brandName}</h1>
+          <h1 className={SCREEN_TITLE_CLASS}>{brandName}</h1>
         </div>
         <div className={`flex w-full flex-col items-center gap-3 text-center ${GLASS_STANDALONE_CARD_CLASS}`}>
           <Loader2 className="size-6 animate-spin text-primary" />

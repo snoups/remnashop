@@ -13,6 +13,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { initials } from "@shared/lib/initials";
 import { Badge } from "@shared/ui/Badge";
+import { GLASS_DIALOG_BODY_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
@@ -86,7 +87,7 @@ function UserReferralsDialogBody({
         <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
       </div>
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}

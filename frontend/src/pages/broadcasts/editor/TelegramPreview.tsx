@@ -5,6 +5,7 @@ import type { BroadcastMediaType } from "@entities/broadcasts/api";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
 import { DAY_MS } from "@shared/lib/period";
 import { Button } from "@shared/ui/Button";
+import { GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
 
 import type { EditorForm } from "@pages/broadcasts/editor/form";
@@ -53,7 +54,7 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
       {!isSaved ? (
         <EmptyState icon={Save} text={t("broadcasts.editor.preview.saveFirst")} />
       ) : (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
+      <div className={`${GLASS_PLATE_CLASS} p-2.5`}>
         <div className="flex flex-col gap-1.5">
           {mediaType && (
             <div className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-white/[0.12] bg-white/[0.02] text-[12px] text-muted-foreground">

@@ -9,7 +9,7 @@ import { generatePassword, PASSWORD_PATTERN } from "@shared/lib/password-validat
 import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { Button } from "@shared/ui/Button";
-import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_STANDALONE_CARD_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { Field } from "@shared/ui/glass/Field";
 import { PasswordInput } from "@shared/ui/glass/Input";
 
@@ -67,7 +67,7 @@ export function PasswordChangeRequired() {
         className={`flex w-full max-w-sm flex-col gap-3 ${GLASS_STANDALONE_CARD_CLASS}`}
       >
         <div className="mb-3 flex flex-col gap-2">
-          <h1 className="text-[21px] font-bold tracking-tight text-foreground">{t("auth.passwordChange.title")}</h1>
+          <h1 className={SCREEN_TITLE_CLASS}>{t("auth.passwordChange.title")}</h1>
           <p className="text-[13px] text-muted-foreground">{t("auth.passwordChange.description")}</p>
         </div>
 

@@ -14,6 +14,7 @@ import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 import { setText } from "@pages/broadcasts/editor/form";
 import type { EditorForm } from "@pages/broadcasts/editor/form";
 import { LocaleTabs } from "@pages/broadcasts/editor/LocaleTabs";
+import { TEXT_TOOLBAR_CLASS, TEXT_TOOLBAR_DIVIDER_CLASS } from "@shared/ui/classes";
 
 const formatVariable = (name: string) => `{ $${name} }`;
 
@@ -62,9 +63,9 @@ export function ContentEditor({
       />
 
       <div className="glass-well relative overflow-hidden rounded-[18px] ring-inset focus-within:ring-1 focus-within:ring-primary">
-        <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5">
+        <div className={TEXT_TOOLBAR_CLASS}>
           <FormatToolbar fieldRef={fieldRef} disabled={disabled} />
-          <span className="mx-1.5 h-4 w-px bg-border" />
+          <span className={TEXT_TOOLBAR_DIVIDER_CLASS} />
           <VariablePicker
             variables={BROADCAST_VARIABLES}
             format={formatVariable}

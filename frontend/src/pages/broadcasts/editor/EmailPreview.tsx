@@ -7,6 +7,7 @@ import type { BroadcastEmailPreview } from "@entities/broadcasts/api";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
+import { GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { Input } from "@shared/ui/glass/Input";
 
@@ -96,7 +97,7 @@ export function EmailPreview({ visible, broadcastId, savedAt, dirty, locale, can
       {error && <ErrorState text={error} />}
       {preview && (
         // an inbox's view of it: the subject on a header strip, the letter under it
-        <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
+        <div className={`${GLASS_PLATE_CLASS} overflow-hidden`}>
           <div className="border-b border-white/[0.08] px-3.5 py-2.5">
             <p className="truncate text-[13px]">
               <span className="text-muted-foreground">{t("broadcasts.editor.emailPreview.subjectLabel")} </span>

@@ -4,6 +4,7 @@ import { matchPath, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { usePermissions } from "@entities/user/use-current-user";
 import { LoadGate } from "@shared/lib/load-gate";
+import { PAGE_BAR_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS } from "@shared/ui/classes";
 import { TabBar } from "@shared/ui/glass/TabBar";
 import { SETTINGS_TABS, type SettingsTab } from "@widgets/sidebar/nav-items";
 
@@ -44,8 +45,8 @@ export function SettingsPage() {
     // over the scroller's top. Under it a 20px gap, as between cards, where the top fade sits
     // (scroll-fade-gap from 48px); content starts at 68px at rest; scroll-pt lands a linked card
     // (#access) there too
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_BAR_CLASS}>
         <TabBar
           items={tabs.map((tab) => ({
             key: tab.key,
@@ -58,7 +59,7 @@ export function SettingsPage() {
       </div>
       <div
         ref={scrollerRef}
-        className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+        className={PAGE_SCROLL_UNDER_BAR_CLASS}
       >
         <LoadGate key={pathname}>
           <Outlet />

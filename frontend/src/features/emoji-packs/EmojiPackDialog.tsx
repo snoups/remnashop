@@ -5,6 +5,7 @@ import type { EmojiPack } from "@entities/emoji-packs/api";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { Modal } from "@shared/ui/Modal";
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
+import { GLASS_DIALOG_BODY_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Tag } from "@shared/ui/Tag";
 import { Pressable } from "@shared/ui/Pressable";
@@ -47,7 +48,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
         actions={<Tag>{pack.items.length}</Tag>}
       />
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <div className="grid grid-cols-8 gap-2">
           {pack.items.map((item) => (
             <Pressable

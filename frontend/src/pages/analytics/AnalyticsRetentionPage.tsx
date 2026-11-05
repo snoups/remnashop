@@ -14,6 +14,7 @@ import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
+import { CellText } from "@shared/ui/CellText";
 import { CHART_CURSOR, ChartTooltip, MIN_CHART_POINTS, useChartAnimation, useChartEntered } from "@shared/ui/chart";
 import { Section } from "@shared/ui/glass/Section";
 import { EYEBROW_CLASS, LIST_BODY_CLASS, GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
@@ -220,12 +221,7 @@ function ExpiringCard({ data }: { data: Retention }) {
                     <span className="flex size-8 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-primary">
                       {initials(row.name)}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-foreground">{row.name}</span>
-                      {row.username && (
-                        <span className="block truncate font-mono text-[12px] text-muted-foreground">@{row.username}</span>
-                      )}
-                    </span>
+                    <CellText title={row.name} sub={row.username && `@${row.username}`} mono />
                     <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
                       <span className="truncate">{row.plan_names[0]}</span>
                       {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}

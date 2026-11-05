@@ -6,7 +6,7 @@ import { formatBytes, formatPercent } from "@shared/lib/format";
 import { Section } from "@shared/ui/glass/Section";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
-import { EYEBROW_CLASS, GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_INNER_CARD_CLASS, GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { Tag } from "@shared/ui/Tag";
 import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dashboard/runtime";
 
@@ -40,7 +40,7 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
       </div>
       <Kv label={t("dashboard.runtime.memory")} value={formatBytes(process.rss_bytes, i18n.language)} />
       <Kv label={t("dashboard.runtime.uptime")} value={formatUptime(t, process.uptime_seconds)} />
-      <div className="mt-1 flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
+      <div className={`${GLASS_PLATE_CLASS} mt-1 flex flex-col gap-1.5 p-2.5`}>
         <span className={EYEBROW_CLASS}>{t("dashboard.runtime.eventLoop")}</span>
         <Kv label={t("dashboard.runtime.eventLoopDelay")} value={`${decimals.format(process.event_loop_delay_ms)} ${ms}`} />
         <Kv label={t("dashboard.runtime.eventLoopP99")} value={`${decimals.format(process.event_loop_p99_ms)} ${ms}`} />

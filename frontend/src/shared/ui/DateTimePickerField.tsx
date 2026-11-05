@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
+import { PICKER_ICON_CLASS } from "@shared/ui/classes";
 import { Input } from "@shared/ui/glass/Input";
 import { IconButton } from "@shared/ui/IconButton";
 import { MonthCalendar } from "@shared/ui/MonthCalendar";
@@ -77,7 +78,7 @@ export function DateTimePickerField({
         }}
         className="group flex h-9 w-full cursor-pointer items-center rounded-full border border-glass-border bg-white/[0.03] pl-9 pr-8 text-[13px] font-medium backdrop-blur-md outline-none transition-colors hover:bg-white/[0.06] focus:border-primary"
       >
-        <CalendarClock className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors group-not-focus:group-hover:text-foreground group-focus:text-primary" />
+        <CalendarClock className={PICKER_ICON_CLASS} />
         <span className={`truncate ${display ? "text-foreground" : "text-muted-foreground"}`}>{display || placeholder}</span>
         {value && (
           <IconButton

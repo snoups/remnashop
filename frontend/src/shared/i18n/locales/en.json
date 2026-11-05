@@ -3616,7 +3616,9 @@
         "dateTime": "A date and time on the app's calendar: a broadcast's send time.",
         "fullScreen": "Standalone screens without the dashboard: app crash, 404, server error and server unreachable, the OAuth sign-in wait. Open over the window, the cross at the top left closes.",
         "pageRouteError": "One dashboard page crashed: the sidebar and header stay.",
-        "editorFields": "The dialog editor’s own field, kept in its editor styling."
+        "editorFields": "The dialog editor’s own field, kept in its editor styling.",
+        "iconCircle": "32px circle of a list or settings row: plain, in a status badge’s tone (subscriptions, broadcasts, ad links, promocodes, API tokens, attention), or with initials and numbers in 11px bold.",
+        "cellText": "A list row’s text cell: title over a muted subtitle, mono for codes and @usernames. Ad links, referrals, analytics, attention, recent payments, notifications."
       },
       "s": {
         "openCarousel": "Open carousel",

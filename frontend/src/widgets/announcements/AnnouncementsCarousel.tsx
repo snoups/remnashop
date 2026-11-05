@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { localized } from "@entities/announcements/api";
 import type { Announcement } from "@entities/announcements/api";
 import { BrandLogo } from "@shared/ui/BrandLogo";
-import { GLASS_SOLID_LINK_BUTTON_CLASS } from "@shared/ui/classes";
+import { GLASS_SOLID_LINK_BUTTON_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { IconButton } from "@shared/ui/IconButton";
 
@@ -197,7 +197,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
               {/* keeps the text readable over a photo; a plain tint doesn't need it */}
               {slide.image_url && <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 to-transparent" />}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 p-4">
-                <span className="text-[21px] font-bold leading-tight tracking-tight text-foreground">{title}</span>
+                <span className={`${SCREEN_TITLE_CLASS} leading-tight`}>{title}</span>
                 <span className="whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
                   {localized(slide.text, i18n.language)}
                 </span>

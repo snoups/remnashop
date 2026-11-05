@@ -14,6 +14,7 @@ import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
@@ -135,7 +136,7 @@ function AdLinkDetailsDialogBody({
         </div>
       )}
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -169,7 +170,7 @@ function AdLinkDetailsDialogBody({
       </div>
 
       {tab === "settings" ? (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center justify-between`}>
           <div className="flex gap-2">
             {deleteButton}
             <Button variant="glass" onClick={() => void handleToggleActive()} isLoading={isToggling}>
@@ -190,7 +191,7 @@ function AdLinkDetailsDialogBody({
       ) : (
         // without the settings tab, delete has nowhere else to live
         (canShare || (canDelete && !canUpdate)) && (
-          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/[0.08] p-4">
+          <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center justify-between`}>
             <div>{!canUpdate && deleteButton}</div>
             {canShare && (
               <AdLinkShareMenu key={`${adLink.id}-${adLink.allow_bot}-${adLink.allow_webcabinet}`} adLink={adLink} />

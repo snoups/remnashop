@@ -12,6 +12,7 @@ import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { initials } from "@shared/lib/initials";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { PAGE_CLASS, PAGE_SCROLL_CLASS } from "@shared/ui/classes";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
@@ -94,9 +95,9 @@ export function AdminsPage() {
   return (
     // its own scroller: main's fade would dim the card at rest. data-under-header: the header's 20px
     // padding moves into this one, where the fade (scroll-fade-gap) sits
-    <div data-fills-main data-under-header className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
+    <div data-fills-main data-under-header className={PAGE_CLASS}>
       <div
-        className="scroll-fade-y scroll-fade-gap page-scroll md:min-h-0 md:pt-5 md:scroll-pt-5 md:flex-1 md:overflow-y-auto [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+        className={PAGE_SCROLL_CLASS}
       >
         <LoadGate>
         <LoadGateHold isLoading={state.kind === "loading"} />

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OverviewSubscriptions } from "@entities/overview/api";
 import { Section } from "@shared/ui/glass/Section";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, KPI_VALUE_CLASS } from "@shared/ui/classes";
 
 export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSubscriptions }) {
   const { t, i18n } = useTranslation();
@@ -22,7 +22,7 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
     >
       <div className="flex flex-col gap-4 pt-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{subscriptions.total.toLocaleString(i18n.language)}</span>
+          <span className={`${KPI_VALUE_CLASS} text-foreground`}>{subscriptions.total.toLocaleString(i18n.language)}</span>
           <span className={EYEBROW_CLASS}>{t("dashboard.subscriptions.total")}</span>
         </div>
         <div className="flex flex-col gap-2.5">

@@ -7,6 +7,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { ANALYTICS_TAB_PERMISSIONS } from "@entities/analytics/api";
 import type { AnalyticsPeriod } from "@entities/analytics/api";
 import { LoadGate } from "@shared/lib/load-gate";
+import { PAGE_BAR_CLASS, PAGE_CLASS } from "@shared/ui/classes";
 import { TabBar, type TabBarItem } from "@shared/ui/glass/TabBar";
 import type { AnalyticsOutletContext } from "@pages/analytics/period";
 import { PeriodPicker } from "@pages/analytics/PeriodPicker";
@@ -63,8 +64,8 @@ export function AnalyticsPage() {
 
   return (
     // as the settings page: the 48px bar floats over a scroller of its own, content starts at 68px
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="flex flex-wrap items-center gap-2 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={`${PAGE_BAR_CLASS} flex flex-wrap items-center gap-2 md:flex-nowrap`}>
         <div className="min-w-0">
           <TabBar items={items} />
         </div>

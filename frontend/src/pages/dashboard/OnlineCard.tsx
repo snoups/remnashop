@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { getOnlineChart } from "@entities/overview/api";
 import type { HourlyOnline } from "@entities/overview/api";
 import type { AsyncState } from "@shared/lib/use-async-resource";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { Section } from "@shared/ui/glass/Section";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
@@ -34,7 +35,7 @@ function OnlineView({
   return (
     <div className="flex flex-col gap-3 pt-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{current.toLocaleString(i18n.language)}</span>
+        <span className={`${KPI_VALUE_CLASS} text-foreground`}>{current.toLocaleString(i18n.language)}</span>
         {peakTag && <Tag>{peakTag}</Tag>}
       </div>
       <TrendChart

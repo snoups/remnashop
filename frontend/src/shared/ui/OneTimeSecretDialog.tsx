@@ -3,6 +3,7 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { CopyInput } from "@shared/ui/glass/Input";
 import { Modal } from "@shared/ui/Modal";
@@ -40,7 +41,7 @@ function OneTimeSecretDialogBody({ title, value }: Omit<OneTimeSecretDialogProps
         <CopyInput id={id} value={value} />
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
         <Button variant="glassAccent" onClick={close}>
           {t("app.done")}
         </Button>

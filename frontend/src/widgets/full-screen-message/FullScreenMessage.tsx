@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_STANDALONE_CARD_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
 // Button's glassSolid, full width: the card's one action
@@ -39,7 +39,7 @@ export function FullScreenMessage({ icon: Icon, tone, code, title, description, 
         </span>
         <div className="flex flex-col gap-2">
           {code && <span className="font-mono text-[28px] font-bold tracking-tight text-foreground">{code}</span>}
-          <h1 className="text-[21px] font-bold tracking-tight text-foreground">{title}</h1>
+          <h1 className={SCREEN_TITLE_CLASS}>{title}</h1>
           <p className="text-[13px] text-muted-foreground">{description}</p>
         </div>
         {action}

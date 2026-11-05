@@ -23,6 +23,8 @@ import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { Button } from "@shared/ui/Button";
+import { CellText } from "@shared/ui/CellText";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
@@ -32,9 +34,9 @@ import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav
 
 const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
 
-const SEVERITY_ICON_CLASS = {
-  critical: "bg-error/12 text-error",
-  warning: "bg-warning/12 text-warning",
+const SEVERITY_TONE = {
+  critical: "error",
+  warning: "warning",
 } as const;
 
 const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = {
@@ -144,13 +146,8 @@ function AttentionRow({ item }: { item: AttentionItem }) {
 
   return (
     <div className={ROW_CLASS}>
-      <span className={`flex size-8 items-center justify-center rounded-full ${SEVERITY_ICON_CLASS[item.severity]}`}>
-        <Icon className="size-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
-        {sub && <span className="block truncate text-[12px] text-muted-foreground">{sub}</span>}
-      </span>
+      <IconCircle icon={Icon} tone={SEVERITY_TONE[item.severity]} />
+      <CellText title={title} sub={sub} />
       {link && link.allowed(permissions) ? (
         <Button variant="glass" size="sm" onClick={() => navigate(link.to)}>
           {t(link.label)}
@@ -195,17 +192,8 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
         <div className={`${LIST_BODY_CLASS} pt-4`}>
           {sorted.length === 0 ? (
             <div className={ROW_CLASS}>
-              <span className="flex size-8 items-center justify-center rounded-full bg-success/12 text-success">
-                <CheckCircle2 className="size-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[13px] font-medium text-foreground">
-                  {t("dashboard.attention.allClear.title")}
-                </span>
-                <span className="block truncate text-[12px] text-muted-foreground">
-                  {t("dashboard.attention.allClear.sub")}
-                </span>
-              </span>
+              <IconCircle icon={CheckCircle2} tone="success" />
+              <CellText title={t("dashboard.attention.allClear.title")} sub={t("dashboard.attention.allClear.sub")} />
               <span />
             </div>
           ) : (

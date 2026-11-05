@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BOOSTY_URL, TELEGRAM_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { TelegramIcon } from "@shared/ui/BrandIcons";
-import { GLASS_LINK_BUTTON_CLASS, GLASS_STANDALONE_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_LINK_BUTTON_CLASS, GLASS_STANDALONE_CARD_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
 import { DialogPortal } from "@shared/ui/DialogPortal";
 import { Button } from "@shared/ui/Button";
 import { LabeledDivider } from "@shared/ui/LabeledDivider";
@@ -83,7 +83,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
           </div>
 
           <motion.div className="flex flex-col gap-2" {...riseIn(0.5)}>
-            <h1 className="text-[21px] font-bold tracking-tight text-foreground">{t("auth.welcome.title")}</h1>
+            <h1 className={SCREEN_TITLE_CLASS}>{t("auth.welcome.title")}</h1>
             <p className="text-[13px] text-muted-foreground">{t("auth.welcome.description")}</p>
           </motion.div>
 

@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import type { HTMLMotionProps } from "motion/react";
 import type { ReactNode } from "react";
 
@@ -32,6 +33,8 @@ interface IconButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   tone?: keyof typeof TONE_CLASS;
   /** layout and positioning only (absolute, -mr-1, cursor-grab...) */
   className?: string;
+  /** a 16px spinner in place of the icon, disabled meanwhile */
+  isLoading?: boolean;
 }
 
 export function IconButton({
@@ -39,6 +42,8 @@ export function IconButton({
   tone = "default",
   className = "",
   type = "button",
+  isLoading = false,
+  disabled,
   children,
   ...props
 }: IconButtonProps) {
@@ -46,9 +51,10 @@ export function IconButton({
     <Pressable
       type={type}
       className={`flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${TONE_CLASS[tone]} ${className}`}
+      disabled={disabled || isLoading}
       {...props}
     >
-      {children}
+      {isLoading ? <Loader2 className="size-4 animate-spin" /> : children}
     </Pressable>
   );
 }

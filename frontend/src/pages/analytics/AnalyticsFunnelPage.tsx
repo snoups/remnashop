@@ -8,6 +8,7 @@ import { formatPercent } from "@shared/lib/format";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
@@ -126,9 +127,7 @@ function FunnelStepRow({
         </div>
       )}
       <div className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 rounded-3xl px-3.5 py-2.5 sm:grid-cols-[32px_minmax(0,200px)_minmax(0,1fr)_72px_56px]">
-        <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
-          {index + 1}
-        </span>
+        <IconCircle glyph={<span className="text-[11px] font-bold">{index + 1}</span>} />
         <span className="truncate text-[13px] font-medium text-foreground">
           {t(`analytics.funnel.steps.${step.key}` as ParseKeys)}
         </span>

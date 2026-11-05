@@ -3,6 +3,7 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ActivePill } from "@shared/ui/ActivePill";
+import { TAB_HOVER_CLASS } from "@shared/ui/classes";
 
 export type PeriodDays = 0 | 7 | 30 | 90;
 
@@ -35,7 +36,7 @@ export function PeriodPills({
             <ActivePill layoutId={pillId} />
           ) : (
             <motion.span
-              className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+              className={TAB_HOVER_CLASS}
             />
           )}
           <span

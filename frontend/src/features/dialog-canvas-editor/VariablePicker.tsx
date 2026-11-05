@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { VariableOption } from "@entities/dialogs/api";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
-import { POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { SearchClearButton } from "@shared/ui/SearchField";
 import { Pressable } from "@shared/ui/Pressable";
@@ -100,7 +100,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
           )}
           {groups.map(({ category, items }) => (
             <div key={category} className="mb-1 last:mb-0">
-              <span className="block px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className={`${EYEBROW_CLASS} block px-2.5 pb-1 pt-1.5`}>
                 {t(`dialogs.variableCategories.${category}`, { defaultValue: category })}
               </span>
               {items.map(({ name }) => (

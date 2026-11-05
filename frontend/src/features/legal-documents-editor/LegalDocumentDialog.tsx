@@ -24,6 +24,7 @@ import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { Button } from "@shared/ui/Button";
 import { DialogTabs } from "@shared/ui/DialogTabs";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
@@ -201,7 +202,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
         </motion.div>
       </div>
       {(canSet || canRemove || canUpdate) && (
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <div className="min-w-0 flex-1">
             {(pending.length > 0 || visibilityChanged) && (
               <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">

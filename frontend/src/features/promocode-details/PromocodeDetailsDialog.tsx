@@ -26,6 +26,7 @@ import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Modal } from "@shared/ui/Modal";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
@@ -167,7 +168,7 @@ function PromocodeDetailsDialogBody({
         </div>
       )}
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -221,7 +222,7 @@ function PromocodeDetailsDialogBody({
       </div>
 
       {(canUpdate || canDelete) && (
-        <div className="flex items-center justify-between gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center justify-between`}>
           <div className="flex gap-2">
             {canDelete && (
               <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>

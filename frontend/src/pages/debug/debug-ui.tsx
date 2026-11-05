@@ -5,7 +5,7 @@ import { useMatch } from "react-router-dom";
 
 import { useKit } from "@pages/debug/use-kit";
 import { ActivePill } from "@shared/ui/ActivePill";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, PAGE_BAR_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, TAB_HOVER_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 import { TabBar } from "@shared/ui/glass/TabBar";
 
@@ -15,8 +15,8 @@ export function DebugShell({ bar, children }: { bar?: ReactNode; children: React
   const { t } = useTranslation();
   const isKit = useMatch({ path: "/dashboard/debug", end: true }) !== null;
   return (
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="flex gap-3 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={`${PAGE_BAR_CLASS} flex gap-3`}>
         <TabBar
           items={[
             { key: "kit", to: "/dashboard/debug", icon: LayoutGrid, label: t("debugPage.tabs.kit"), isActive: isKit },
@@ -25,7 +25,7 @@ export function DebugShell({ bar, children }: { bar?: ReactNode; children: React
         />
         {bar && <div className="min-w-0 flex-1">{bar}</div>}
       </div>
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-6 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-6`}>
         {children}
       </div>
     </div>
@@ -79,7 +79,7 @@ export function DebugNav({ links }: { links: DebugSectionLink[] }) {
           {active === id ? (
             <ActivePill layoutId={pillId} />
           ) : (
-            <span className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]" />
+            <span className={TAB_HOVER_CLASS} />
           )}
           <span className={`relative z-10 px-4 ${active === id ? "text-primary" : "text-foreground"}`}>{label}</span>
         </Pressable>

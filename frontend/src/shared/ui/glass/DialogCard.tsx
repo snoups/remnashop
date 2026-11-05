@@ -2,7 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
-import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
+import { GLASS_PLATE_CLASS, SECTION_TITLE_CLASS } from "@shared/ui/classes";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -37,7 +37,7 @@ export function DialogCard({
     </>
   );
   return (
-    <div className={`rounded-xl border border-white/[0.08] bg-white/[0.03] ${PADDING[variant]} ${top}`}>
+    <div className={`${GLASS_PLATE_CLASS} ${PADDING[variant]} ${top}`}>
       {collapsible && title ? (
         <>
           {/* the list title's type at a full row's height, so the folded card is a tappable strip */}

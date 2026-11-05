@@ -26,6 +26,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Input } from "@shared/ui/glass/Input";
 import { Section, SectionRows } from "@shared/ui/glass/Section";
@@ -279,8 +280,8 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   return (
     // as the settings pages: the title bar, the actions in it, floats over a scroller of its own,
     // whose fade clears it
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>
           <ChevronLeft className="size-4 text-foreground" />
         </IconButton>
@@ -313,7 +314,7 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
         />
       </div>
 
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
       {/* full width: the rows read better long, and both columns follow from them */}
       <Section
         icon={Settings2}

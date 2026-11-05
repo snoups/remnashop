@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { parseIsoDate, toIsoDate } from "@shared/lib/iso-date";
 import { IconButton } from "@shared/ui/IconButton";
+import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 export interface MonthCalendarProps {
   /** YYYY-MM-DD; with rangeEnd set, the start of a range */
@@ -57,7 +58,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
         {weekdayLabels.map((label, index) => (
           <span
             key={`${label}-${index}`}
-            className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            className={EYEBROW_CLASS}
           >
             {label}
           </span>

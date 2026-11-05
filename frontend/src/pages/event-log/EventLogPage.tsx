@@ -39,6 +39,7 @@ import { lastDayToIso, startToIso } from "@shared/lib/iso-date";
 import { formatDayLabel, groupByDay } from "@shared/lib/day-groups";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { Collapse } from "@shared/ui/Collapse";
 import { DatePickerField } from "@shared/ui/DatePickerField";
@@ -47,7 +48,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
-import { EYEBROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 // Mirrors `EventCategory` (backend/app/core/events.py), in sidebar order.
@@ -137,8 +138,8 @@ export function EventLogPage() {
   return (
     // as settings: the filter bar floats over a scroller of its own, whose fade clears the bar.
     // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <SearchField
           id="event-log-actor"
           label={t("eventLog.filters.actor")}
@@ -190,7 +191,7 @@ export function EventLogPage() {
         </div>
       </div>
 
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={PAGE_SCROLL_UNDER_BAR_CLASS}>
       <LoadGate>
       <LoadGateHold isLoading={state.kind === "loading"} />
       <div className="glass-panel relative rounded-3xl p-4">
@@ -241,11 +242,7 @@ export function EventLogPage() {
                               className="grid grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4"
                             >
                               <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
-                                <span
-                                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground"
-                                >
-                                  <EventTypeIcon eventType={entry.event_type} className="size-4" />
-                                </span>
+                                <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
                                 <span className="truncate">{eventTitle(entry, t)}</span>
                               </span>
                               <span className="-ml-3 text-[13px] tabular-nums text-foreground">

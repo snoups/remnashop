@@ -16,6 +16,7 @@ import { Button } from "@shared/ui/Button";
 import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { Tag } from "@shared/ui/Tag";
 import { IconButton } from "@shared/ui/IconButton";
@@ -160,11 +161,7 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
         className={`grid grid-cols-[minmax(0,1fr)_36px] items-start min-h-15 gap-3 rounded-full p-3.5 transition-colors hover:bg-white/[0.04] ${ROW_GRID}`}
       >
         <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={`flex size-8 shrink-0 items-center justify-center rounded-full ${isExpired ? "bg-error/10 text-error" : isExpiringSoon ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}
-          >
-            <KeyRound className="size-4" />
-          </div>
+          <IconCircle icon={KeyRound} tone={isExpired ? "error" : isExpiringSoon ? "warning" : "success"} />
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <p className="min-w-0 truncate text-[13px] font-medium leading-8 text-foreground">{token.name}</p>
             {preset && <Tag>{t(`apiTokens.${preset}`)}</Tag>}

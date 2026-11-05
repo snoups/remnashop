@@ -14,6 +14,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
@@ -105,7 +106,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
         )}
       </div>
 
-      <div className="flex gap-2 border-t border-white/[0.08] p-4">
+      <div className={GLASS_DIALOG_FOOTER_CLASS}>
         {canPull && (
           <Button
             variant="glass"

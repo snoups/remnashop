@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { RefundPreview, TransactionItem } from "@entities/transactions/api";
 import { Modal } from "@shared/ui/Modal";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
@@ -68,7 +69,7 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
         )}
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
         <Button variant="glass" type="button" onClick={close}>
           {t("common.cancel")}
         </Button>

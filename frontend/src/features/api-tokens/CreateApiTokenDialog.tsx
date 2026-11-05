@@ -13,7 +13,7 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { PermissionPicker } from "@entities/admin/PermissionPicker";
 import type { Permission } from "@shared/types/rbac";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { Input, TextArea } from "@shared/ui/glass/Input";
@@ -121,7 +121,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
       <DialogHeader icon={KeyRound} title={t("apiTokens.createTitle")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+        <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
           <div className="flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
             <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
@@ -201,7 +201,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" onClick={close}>
             {t("common.cancel")}
           </Button>

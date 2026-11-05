@@ -40,6 +40,7 @@ import { initials } from "@shared/lib/initials";
 import type { Permission } from "@shared/types/rbac";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
@@ -166,7 +167,7 @@ function UserDetailsDialogBody({
         </div>
       )}
 
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         <motion.div
           animate={{ height: contentHeight }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -186,7 +187,7 @@ function UserDetailsDialogBody({
       </div>
 
       {available.length > 0 && (
-        <div className="flex items-center gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center`}>
           <div className="ml-auto">
             <ActionMenu
               glass

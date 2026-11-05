@@ -15,7 +15,7 @@ import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
 import { Tag } from "@shared/ui/Tag";
 import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
-import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_CLASS, GLASS_LINK_BUTTON_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_CLASS, GLASS_DIALOG_FOOTER_CLASS, GLASS_LINK_BUTTON_CLASS, GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
 interface GithubRelease {
@@ -171,7 +171,7 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
               </div>
 
               {git.is_official_build && (git.branch || git.commit_sha) && (
-                <div className="flex flex-col rounded-xl border border-white/[0.08] bg-white/[0.03] px-1 py-1.5">
+                <div className={`${GLASS_PLATE_CLASS} flex flex-col px-1 py-1.5`}>
                 {git.branch && (
                   <InfoRow icon={GitBranch} label={t("buildInfo.branch")} copyValue={git.branch} mono>
                     {git.branch}
@@ -213,7 +213,7 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
               )}
             </div>
 
-            <div className="flex gap-2 border-t border-white/[0.08] p-4">
+            <div className={GLASS_DIALOG_FOOTER_CLASS}>
               <Pressable as="a" href={TELEGRAM_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
                 <TelegramIcon className="size-4" />
                 {t("buildInfo.telegramButton")}

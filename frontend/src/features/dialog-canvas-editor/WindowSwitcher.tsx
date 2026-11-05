@@ -8,6 +8,7 @@ import { Collapse } from "@shared/ui/Collapse";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
 import { Pressable } from "@shared/ui/Pressable";
+import { TAB_HOVER_CLASS } from "@shared/ui/classes";
 
 interface WindowSwitcherProps {
   windows: DialogWindow[];
@@ -147,7 +148,7 @@ export function WindowSwitcher({
               className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
             >
               <motion.span
-                className="absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]"
+                className={TAB_HOVER_CLASS}
               />
               <ChevronRight
                 className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}

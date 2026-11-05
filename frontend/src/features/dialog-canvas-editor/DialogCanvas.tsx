@@ -4,6 +4,7 @@ import type { DialogButtonItem, DialogWindow } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 import { ButtonGrid } from "@features/dialog-canvas-editor/ButtonGrid";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
+import { EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { Pressable } from "@shared/ui/Pressable";
 
 interface DialogCanvasProps {
@@ -33,7 +34,7 @@ export function DialogCanvas({
   const { t } = useTranslation();
 
   return (
-    <div className={`w-full ${wide ? "max-w-md" : "max-w-sm"} rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-2.5`}>
+    <div className={`w-full ${wide ? "max-w-md" : "max-w-sm"} ${EDITOR_PANEL_CLASSNAME} p-2.5`}>
       <div className="flex flex-col gap-1.5">
         {/* Preview only; the banner is picked on the inspector's window tab.
             No fixed height and no object-cover: whatever was uploaded shows

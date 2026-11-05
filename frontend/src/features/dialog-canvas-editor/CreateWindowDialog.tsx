@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
@@ -63,7 +64,7 @@ function CreateWindowDialogBody({ onCreate }: Pick<CreateWindowDialogProps, "onC
             />
           </Field>
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" onClick={close}>
             {t("common.cancel")}
           </Button>

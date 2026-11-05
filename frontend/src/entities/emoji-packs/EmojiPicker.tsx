@@ -13,7 +13,7 @@ import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scrol
 import { PremiumEmoji } from "@entities/emoji-packs/PremiumEmoji";
 import { STANDARD_EMOJI } from "@shared/ui/standard-emoji";
 import { IconButton } from "@shared/ui/IconButton";
-import { POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, POPOVER_SCROLL_CLASS } from "@shared/ui/classes";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -209,7 +209,7 @@ export function EmojiPicker({
           ) : (
             STANDARD_EMOJI.map((group) => (
               <div key={group.key} className="mb-2">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className={`${EYEBROW_CLASS} mb-1 block`}>
                   {t(`dialogs.inspector.emojiGroup.${group.key}` as ParseKeys)}
                 </span>
                 <div className="grid grid-cols-8 gap-1">

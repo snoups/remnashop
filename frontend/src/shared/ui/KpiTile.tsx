@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { FieldHint } from "@shared/ui/FieldHint";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 
 export interface KpiTrend {
@@ -148,7 +149,7 @@ export function KpiTile({
         {info && <FieldHint text={info} />}
       </div>
       <div className="flex items-center gap-2">
-        <span className={`text-[26px] font-bold tabular-nums tracking-tight ${valueClassName}`}>
+        <span className={`${KPI_VALUE_CLASS} ${valueClassName}`}>
           <CountUp text={value} />
         </span>
         {valueSuffix && <span className="text-[13px] font-medium text-muted-foreground">{valueSuffix}</span>}

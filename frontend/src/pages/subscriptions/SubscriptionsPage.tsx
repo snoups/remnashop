@@ -20,6 +20,7 @@ import { PanelSyncButtons } from "@features/panel-sync/PanelSyncButtons";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { GroupToggle } from "@shared/ui/GroupToggle";
 import { ListRow } from "@shared/ui/ListRow";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
@@ -34,7 +35,7 @@ import { SearchField } from "@shared/ui/SearchField";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Collapse } from "@shared/ui/Collapse";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 
@@ -50,15 +51,6 @@ const STATUS_DOTS: Record<SubscriptionStatus, ComponentType<{ className?: string
   EXPIRED: dotIcon("bg-error"),
   DISABLED: dotIcon("bg-muted-foreground"),
   DELETED: dotIcon("bg-muted-foreground"),
-};
-
-// the status badge's tones
-const STATUS_ICON_CLASSNAME: Record<SubscriptionStatus, string> = {
-  ACTIVE: "bg-success/10 text-success",
-  LIMITED: "bg-warning/10 text-warning",
-  EXPIRED: "bg-error/10 text-error",
-  DISABLED: "bg-white/[0.06] text-muted-foreground",
-  DELETED: "bg-white/[0.06] text-muted-foreground",
 };
 
 type ExpiryGroup = "soon" | "active" | "inactive";
@@ -148,8 +140,8 @@ export function SubscriptionsPage() {
 
   return (
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
-    <div data-fills-main className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10 md:flex-nowrap">
+    <div data-fills-main className={PAGE_CLASS}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <SearchField
           id="subscriptions-search"
           label={t("subscriptions.filters.search")}
@@ -181,7 +173,7 @@ export function SubscriptionsPage() {
         <PanelSyncButtons onFinished={reload} />
       </div>
 
-      <div className="scroll-fade-y scroll-fade-gap page-scroll mt-1 flex flex-col gap-5 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] md:scroll-pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+      <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
       <LoadGate>
       <LoadGateHold isLoading={state.kind === "loading"} />
       <div className="glass-panel relative shrink-0 rounded-3xl p-4">
@@ -230,11 +222,7 @@ export function SubscriptionsPage() {
                           onClick={() => setEditingSubscription(subscription)}
                           className={ROW_GRID_CLASSNAME}
                         >
-                          <span
-                            className={`flex size-8 items-center justify-center rounded-full ${STATUS_ICON_CLASSNAME[subscription.status]}`}
-                          >
-                            <Captions className="size-4" />
-                          </span>
+                          <IconCircle icon={Captions} tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]} />
                           <span className="min-w-0">
                             <span className="flex min-w-0 items-center gap-1.5">
                               <span className="truncate text-[13px] font-medium text-foreground">

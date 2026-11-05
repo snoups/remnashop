@@ -45,6 +45,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
+import { EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
@@ -378,7 +379,7 @@ export function DialogCanvasEditor() {
     if (previewLocale === null || entriesState.kind !== "ready") return null;
     if (selection.kind === "text") {
       return (
-        <div className="w-full rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
+        <div className={`${EDITOR_PANEL_CLASSNAME} w-full p-4`}>
           <h3 className="mb-3 text-[13px] font-semibold text-foreground">
             {t("dialogs.inspector.textTitle")}
           </h3>

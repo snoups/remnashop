@@ -63,7 +63,7 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Button } from "@shared/ui/Button";
 import { CardPill } from "@shared/ui/CardPill";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DateTimePickerField } from "@shared/ui/DateTimePickerField";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -203,7 +203,7 @@ function SubscriptionEditDialogBody({
             <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
           </div>
 
-          <div className="scroll-fade-y max-h-[440px] min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+          <div className={`${GLASS_DIALOG_BODY_CLASS} max-h-[440px]`}>
             <AnimatedHeight>
               {tab === "params" && <SubscriptionParamsView subscription={current} />}
               {tab === "plan" && <SubscriptionPlanTab subscription={current} onChanged={apply} />}
@@ -212,7 +212,7 @@ function SubscriptionEditDialogBody({
           </div>
 
           {(canDelete || canOpenUsers) && (
-            <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
+            <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
               {canDelete && (
                 <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>
                   <Trash2 className="size-4" />
@@ -515,7 +515,7 @@ function SubscriptionParamsForm({
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
         <div className={GLASS_DIALOG_CARD_CLASS}>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t("subscriptions.edit.trafficLabel")} htmlFor="sub-edit-traffic" hint={withAddons(t("subscriptions.edit.trafficHint"), addonTraffic && `${addonTraffic} GB`)}>
@@ -591,7 +591,7 @@ function SubscriptionParamsForm({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center justify-end`}>
         <Button variant="glass" type="button" onClick={onCancel}>
           {t("common.cancel")}
         </Button>

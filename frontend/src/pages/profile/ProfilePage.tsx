@@ -12,6 +12,7 @@ import { toast } from "@shared/lib/toast";
 import { clearAccessToken } from "@shared/lib/token-storage";
 import { initials } from "@shared/lib/initials";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
+import { PAGE_CLASS, PAGE_SCROLL_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { disablePushOnSignOut } from "@entities/notifications/push-api";
@@ -35,8 +36,8 @@ export function ProfilePage() {
   return (
     // its own scroller: main's fade would dim the header card at rest. data-under-header: the header's
     // 20px padding moves into this one, where the fade (scroll-fade-gap) sits
-    <div data-fills-main data-under-header className="relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5">
-      <div className="scroll-fade-y scroll-fade-gap page-scroll md:min-h-0 md:pt-5 md:scroll-pt-5 md:flex-1 md:overflow-y-auto [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]">
+    <div data-fills-main data-under-header className={PAGE_CLASS}>
+      <div className={PAGE_SCROLL_CLASS}>
         <LoadGate>
           <LoadGateHold isLoading={state.kind === "loading"} />
           <div className="flex flex-col gap-5">

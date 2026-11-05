@@ -12,7 +12,7 @@ import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
 import { normalizeEmail, normalizePositiveInt } from "@shared/lib/chip-normalizers";
 import { ChipsInput } from "@shared/ui/ChipsInput";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { Tag } from "@shared/ui/Tag";
@@ -67,11 +67,11 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
       />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+        <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
           <PlanAccessFields value={value} onChange={setValue} isTrial={plan.is_trial} />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
             {availability === "ALLOWED" ? (
               <span className="font-semibold text-violet-300">

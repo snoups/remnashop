@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { TEXT_LIMIT, TITLE_LIMIT, textLength, type TextDraft } from "@features/legal-documents-editor/legal-drafts";
 import { formatDate } from "@shared/lib/relative-time";
 import { FieldHint } from "@shared/ui/FieldHint";
+import { TEXT_TOOLBAR_CLASS, TEXT_TOOLBAR_DIVIDER_CLASS } from "@shared/ui/classes";
 import { Field } from "@shared/ui/glass/Field";
 import { UrlPopoverButton } from "@features/dialog-canvas-editor/UrlPopoverButton";
 import { Input } from "@shared/ui/glass/Input";
@@ -110,7 +111,7 @@ export function LegalTextEditor({
       >
         {/* the broadcast text editor's look: a toolbar over the field, the length in its corner */}
         <div className="glass-well relative overflow-hidden rounded-[18px] ring-inset focus-within:ring-1 focus-within:ring-primary">
-          <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5">
+          <div className={TEXT_TOOLBAR_CLASS}>
             {INLINE.map((format) => tool(format, () => wrap(format.mark, format.mark)))}
             <UrlPopoverButton
               icon={Link}
@@ -118,7 +119,7 @@ export function LegalTextEditor({
               disabled={!canSet}
               onInsert={(url) => wrap("[", `](${url})`)}
             />
-            <span className="mx-1.5 h-4 w-px bg-border" />
+            <span className={TEXT_TOOLBAR_DIVIDER_CLASS} />
             {BLOCKS.map((format) => tool(format, () => prefixLines(format.mark)))}
           </div>
           <textarea

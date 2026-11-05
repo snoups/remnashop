@@ -10,6 +10,7 @@ import { toast } from "@shared/lib/toast";
 import { initials } from "@shared/lib/initials";
 import { useReloadCurrentUser } from "@entities/user/use-current-user";
 import { Modal } from "@shared/ui/Modal";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -170,7 +171,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
             />
           </DialogCard>
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>

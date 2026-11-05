@@ -10,6 +10,7 @@ import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
@@ -153,7 +154,7 @@ function RecapBody() {
           </div>
         )}
       </div>
-      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
         <Button variant="glass" type="button" disabled={!ready || busy !== null} icon={Copy} isLoading={busy === "copy"} onClick={() => void run("copy")}>
           {t("recap.controls.copy")}
         </Button>

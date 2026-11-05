@@ -9,7 +9,7 @@ import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
-import { EYEBROW_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { Button } from "@shared/ui/Button";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -81,7 +81,7 @@ function MergePicker({
       : [];
 
   return (
-    <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+    <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
       <SearchField
         id="merge-search"
         label={t("users.merge.search")}
@@ -196,7 +196,7 @@ function MergePreviewStep({
 
   return (
     <>
-      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
         <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <AccountColumn label={t("users.merge.keeps")} user={target} />
           <IconButton
@@ -277,7 +277,7 @@ function MergePreviewStep({
           </>
         )}
       </div>
-      <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+      <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
         <Button variant="glass" onClick={close}>
           {t("common.cancel")}
         </Button>

@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import type { AudiencePreview, BroadcastCategory, BroadcastChannel } from "@entities/broadcasts/api";
 import type { AsyncState } from "@shared/lib/use-async-resource";
+import { KPI_VALUE_CLASS } from "@shared/ui/classes";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -63,7 +65,7 @@ export function RecipientsPreview({ state, category, defaultLocale, contentLocal
       {state.kind === "ready" && (
         <>
           <div className="flex items-baseline gap-2">
-            <span className="text-[26px] font-bold tabular-nums tracking-tight text-foreground">{format(total)}</span>
+            <span className={`${KPI_VALUE_CLASS} text-foreground`}>{format(total)}</span>
             <span className="text-[13px] text-muted-foreground">{t("broadcasts.editor.recipients.title").toLowerCase()}</span>
           </div>
           {/* a share bar each, of the total: one customer can be counted on both channels */}
@@ -119,9 +121,7 @@ function ShareLine({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-        <Icon className="size-4" />
-      </span>
+      <IconCircle icon={Icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center justify-between gap-3 text-[13px]">
           <span className={`truncate ${muted ? "text-muted-foreground" : "text-foreground"}`}>{label}</span>

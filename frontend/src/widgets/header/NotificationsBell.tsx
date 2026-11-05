@@ -15,6 +15,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { pollWhileVisible } from "@shared/lib/poll-while-visible";
 import { onServiceWorkerMessage } from "@shared/lib/push";
 import { formatRelative } from "@shared/lib/relative-time";
+import { CellText } from "@shared/ui/CellText";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Spinner } from "@shared/ui/Spinner";
@@ -270,7 +271,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
             <EmptyState text={t("header.notificationsEmpty")} icon={Bell} />
           ) : activeTab === "events" ? (
             events.map((entry, index) => (
-              <button
+              <Pressable
                 key={entry.id}
                 type="button"
                 disabled={!canOpenLog}
@@ -280,16 +281,13 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
                   <EventTypeIcon eventType={entry.event_type} className="size-3.5" />
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-foreground">
-                    {eventTitle(entry, t)}
-                  </span>
-                  <span className="block truncate text-[12px] text-muted-foreground">
-                    {describeEntry(entry, t)} · {formatRelative(entry.occurred_at, i18n.language)}
-                  </span>
-                </span>
+                <CellText
+                  title={eventTitle(entry, t)}
+                  sub={`${describeEntry(entry, t)} · ${formatRelative(entry.occurred_at, i18n.language)}`}
+                  className="flex-1"
+                />
                 {index < highlighted && <span className="size-1.5 shrink-0 self-center rounded-full bg-primary" />}
-              </button>
+              </Pressable>
             ))
           ) : (
             announcements.map((a) => {
@@ -328,7 +326,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 </>
               );
               return (
-                <button
+                <Pressable
                   key={a.id}
                   type="button"
                   onClick={() => {
@@ -342,19 +340,19 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                   className={`${ROW_CLASS} hover:bg-white/[0.06]`}
                 >
                   {content}
-                </button>
+                </Pressable>
               );
             })
           )}
         </div>
         {canOpenLog && activeTab === "events" && (
-          <button
+          <Pressable
             type="button"
             onClick={() => openEntry()}
             className="mt-1 flex h-9 w-full shrink-0 items-center justify-center rounded-popover-item text-[13px] font-medium text-primary transition-colors hover:bg-white/[0.07]"
           >
             {t("header.openEventLog")}
-          </button>
+          </Pressable>
         )}
       </PortalPopover>
 

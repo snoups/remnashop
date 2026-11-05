@@ -1,4 +1,4 @@
-import { Ban, Globe, Loader2, Mail, Plus, RefreshCw, SearchX, Trash2, X } from "lucide-react";
+import { Ban, Globe, Mail, Plus, RefreshCw, SearchX, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -263,12 +263,9 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
                     tone="danger"
                     onClick={() => void handleRemoveEntry(row)}
                     disabled={removingKey !== null}
+                    isLoading={removingKey === `${row.kind}:${row.value}`}
                   >
-                    {removingKey === `${row.kind}:${row.value}` ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <X className="size-4" />
-                    )}
+                    <X className="size-4" />
                   </IconButton>
                 )}
               </Row>

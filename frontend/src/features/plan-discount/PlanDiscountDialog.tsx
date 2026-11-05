@@ -10,7 +10,7 @@ import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
@@ -121,7 +121,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <div className="min-w-0 flex-1">
             {status && (
               <Badge borderless tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>

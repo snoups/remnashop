@@ -1,5 +1,6 @@
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { startRegistration } from "@simplewebauthn/browser";
-import { Fingerprint, KeyRound, Link2, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Fingerprint, KeyRound, Link2, Pencil, Trash2 } from "lucide-react";
 import { useState, type ComponentType, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -274,7 +275,7 @@ function PasskeyAddDialogBody({ onAdded }: { onAdded: () => void }) {
             />
           </Field>
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
@@ -351,12 +352,9 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
                 tone="danger"
                 onClick={() => setDeleteTarget(passkey)}
                 disabled={pendingAction !== null}
+                isLoading={pendingAction === `delete:${passkey.id}`}
               >
-                {pendingAction === `delete:${passkey.id}` ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" />
-                )}
+                <Trash2 className="size-4" />
               </IconButton>
             </Row>
           ))}
@@ -430,7 +428,7 @@ function PasskeyRenameDialogBody({ name, onRename }: Omit<PasskeyRenameDialogPro
             <Input id="passkey-rename" value={value} onChange={(event) => setValue(event.target.value)} autoFocus />
           </Field>
         </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>

@@ -6,6 +6,7 @@ import type { Session } from "@entities/auth/sessions";
 import { parseUserAgent } from "@shared/lib/parse-user-agent";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { Badge } from "@shared/ui/Badge";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Pressable } from "@shared/ui/Pressable";
 
 interface SessionListProps {
@@ -39,9 +40,7 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke, size 
             className={`group flex w-full items-center justify-between gap-3 rounded-full text-left transition-colors hover:bg-white/[0.04] ${compact ? "p-2" : "min-h-15 px-3.5 py-2"}`}
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-foreground">
-                <DeviceIcon className="size-4" />
-              </div>
+              <IconCircle icon={DeviceIcon} />
               <div className="min-w-0">
                 <p className={`flex items-center gap-2 text-[13px] font-medium text-foreground ${compact ? "h-4 leading-tight" : "flex-wrap leading-5"}`}>
                   {browser} · {os}

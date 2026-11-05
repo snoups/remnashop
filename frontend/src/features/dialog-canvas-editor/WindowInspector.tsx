@@ -13,7 +13,7 @@ import { PillTabs } from "@shared/ui/PillTabs";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/glass/Switch";
 import { Button } from "@shared/ui/Button";
-import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { EDITOR_FIELD_CLASSNAME, EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { Pressable } from "@shared/ui/Pressable";
 
 const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
@@ -149,7 +149,7 @@ export function WindowInspector({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4 rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
+    <div className={`${EDITOR_PANEL_CLASSNAME} flex w-full flex-col gap-4 p-4`}>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{label}</span>

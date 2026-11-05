@@ -13,6 +13,8 @@ import { initials } from "@shared/lib/initials";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
+import { CellText } from "@shared/ui/CellText";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import {
   EYEBROW_CLASS,
@@ -40,10 +42,10 @@ const KIND_BG = {
   ad_link: "bg-primary",
   referral: "bg-violet-400",
 } as const;
-const KIND_IC = {
-  organic: "bg-success/10 text-success",
-  ad_link: "bg-primary/10 text-primary",
-  referral: "bg-violet-400/10 text-violet-300",
+const KIND_TONE = {
+  organic: "success",
+  ad_link: "accent",
+  referral: "violet",
 } as const;
 const TABLE_GRID =
   "grid grid-cols-[32px_minmax(180px,1fr)_100px_90px_170px_120px_90px] items-center gap-3";
@@ -203,27 +205,18 @@ function Overview({ data }: { data: Sources }) {
               >
                 <span>
                   {top && (
-                    <span
-                      className={`flex size-8 items-center justify-center rounded-full text-[11px] font-bold ${KIND_IC[row.source]}`}
-                    >
-                      {kindLabel(row.source).charAt(0).toUpperCase()}
-                    </span>
+                    <IconCircle
+                      tone={KIND_TONE[row.source]}
+                      glyph={<span className="text-[11px] font-bold">{kindLabel(row.source).charAt(0).toUpperCase()}</span>}
+                    />
                   )}
                 </span>
-                <span
-                  className={`min-w-0 ${top ? "" : "border-l-2 border-border pl-4"}`}
-                >
-                  <span className="block truncate text-[13px] font-medium text-foreground">
-                    {top
-                      ? kindLabel(row.source)
-                      : (row.name ?? `#${row.ad_link_id}`)}
-                  </span>
-                  {!top && row.name && (
-                    <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                      #{row.ad_link_id}
-                    </span>
-                  )}
-                </span>
+                <CellText
+                  title={top ? kindLabel(row.source) : (row.name ?? `#${row.ad_link_id}`)}
+                  sub={!top && row.name && `#${row.ad_link_id}`}
+                  mono
+                  className={top ? "" : "border-l-2 border-border pl-4"}
+                />
                 <span className="text-right text-[13px] font-semibold tabular-nums">
                   {row.registrations.toLocaleString(language)}
                 </span>
@@ -370,20 +363,15 @@ function TopReferrers({ data }: { data: Sources }) {
             onClick={() => openUser(row.user_id)}
             className={`grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3`}
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-violet-400/10 text-[11px] font-bold text-violet-300">
-              {initials(row.name)}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[13px] font-medium text-foreground">
-                {row.name}
-              </span>
-              <span className="block truncate text-[12px] tabular-nums text-muted-foreground">
-                {t("analytics.sources.invitedPaid", {
-                  invited: row.invited.toLocaleString(language),
-                  paid: row.paid.toLocaleString(language),
-                })}
-              </span>
-            </span>
+            <IconCircle tone="violet" glyph={<span className="text-[11px] font-bold">{initials(row.name)}</span>} />
+            <CellText
+              title={row.name}
+              sub={t("analytics.sources.invitedPaid", {
+                invited: row.invited.toLocaleString(language),
+                paid: row.paid.toLocaleString(language),
+              })}
+              tabular
+            />
             <span className="text-right text-[13px] font-semibold tabular-nums">
               {formatMoney(row.revenue, data.report_currency, language)}
             </span>

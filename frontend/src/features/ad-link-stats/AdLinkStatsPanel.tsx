@@ -5,6 +5,7 @@ import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
 import { roiClassName } from "@entities/advertising/format";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { KpiTile } from "@shared/ui/KpiTile";
@@ -98,7 +99,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
         />
       </div>
 
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+      <div className={`${GLASS_PLATE_CLASS} p-3.5`}>
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
             <BarChart3 className="size-3.5" />

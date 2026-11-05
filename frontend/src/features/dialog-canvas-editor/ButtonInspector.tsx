@@ -21,7 +21,7 @@ import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Switch } from "@shared/ui/glass/Switch";
-import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { EDITOR_FIELD_CLASSNAME, EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 import { Button } from "@shared/ui/Button";
@@ -126,7 +126,7 @@ export function ButtonInspector({
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="rounded-2xl max-md:rounded-card border border-white/[0.08] bg-white/[0.03] p-4">
+      <div className={`${EDITOR_PANEL_CLASSNAME} p-4`}>
         <div className="mb-4 min-w-0">
           <span className="block truncate text-sm font-semibold text-foreground">
             {t("dialogs.inspector.buttonTitle")}

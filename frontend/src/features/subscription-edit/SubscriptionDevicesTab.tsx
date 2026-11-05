@@ -16,6 +16,7 @@ import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { IconButton } from "@shared/ui/IconButton";
 import { Spinner } from "@shared/ui/Spinner";
 
@@ -61,9 +62,7 @@ export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: num
         {state.kind === "ready" &&
           state.data.items.map((device) => (
             <div key={device.hwid} className="flex w-full items-center gap-3 rounded-full px-2.5 py-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground">
-                <Smartphone className="size-3.5" />
-              </span>
+              <IconCircle icon={Smartphone} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium text-foreground/90">
                   {[device.device_model, device.platform].filter(Boolean).join(" · ") || t("common.none")}
