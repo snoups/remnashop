@@ -227,11 +227,21 @@ def _handle_revoke_subscription(path: str, store: FakeUserStore) -> httpx.Respon
     return httpx.Response(200, json={"response": payload})
 
 
-def _handle_users_stream(store: FakeUserStore) -> httpx.Response:
-    # one page: the fake never holds more than a test's handful of users
-    users = [store[user_id] for user_id in sorted(store)]
+def _handle_users_stream(request: httpx.Request, store: FakeUserStore) -> httpx.Response:
+    size = int(request.url.params.get("size", 1000))
+    start = int(request.url.params.get("cursor", 0))
+    ids = sorted(store)
+    page = ids[start : start + size]
+    has_more = start + size < len(ids)
     return httpx.Response(
-        200, json={"response": {"users": users, "nextCursor": None, "hasMore": False}}
+        200,
+        json={
+            "response": {
+                "users": [store[user_id] for user_id in page],
+                "nextCursor": str(start + size) if has_more else None,
+                "hasMore": has_more,
+            }
+        },
     )
 
 
@@ -274,6 +284,7 @@ def _route_hwid(
 def make_fake_remnawave_transport(
     store: Optional[FakeUserStore] = None,
     hwid_store: Optional[FakeHwidStore] = None,
+    panel_version: str = "3.0.0",
 ) -> tuple[httpx.MockTransport, FakeUserStore, FakeHwidStore]:
     """Fakes the /users and /hwid/devices endpoints. Any other path 404s, so a
     usecase reaching for an unknown endpoint fails loudly."""
@@ -287,7 +298,21 @@ def make_fake_remnawave_transport(
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
         if path == "/api/users/stream" and request.method == "GET":
-            return _handle_users_stream(store)
+            return _handle_users_stream(request, store)
+        if path == "/api/system/metadata" and request.method == "GET":
+            return httpx.Response(
+                200,
+                json={
+                    "response": {
+                        "version": panel_version,
+                        "build": {"time": "2026-01-01T00:00:00Z", "number": "1"},
+                        "git": {
+                            "backend": {"commitSha": "x", "branch": "main", "commitUrl": "x"},
+                            "frontend": {"commitSha": "x", "commitUrl": "x"},
+                        },
+                    }
+                },
+            )
         response = _route_users(request, path, store, next_id) or _route_hwid(
             request, path, hwid_store
         )
