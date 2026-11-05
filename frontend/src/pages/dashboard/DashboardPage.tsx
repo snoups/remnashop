@@ -71,7 +71,7 @@ function KpiRow({
           panel
           icon={Layers}
           label={t("dashboard.kpi.activePaid")}
-          value={subscriptions.paid_active.toLocaleString(language)}
+          value={(subscriptions.paid_active + subscriptions.trials).toLocaleString(language)}
           hint={t("dashboard.kpi.trials", {
             count: subscriptions.trials,
             formatted: subscriptions.trials.toLocaleString(language),
