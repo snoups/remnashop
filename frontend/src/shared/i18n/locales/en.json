@@ -142,8 +142,8 @@
         "sub_other": "{{formatted}} events waiting since {{since}}"
       },
       "panelUnavailable": {
-        "title": "No data from the Remnawave panel",
-        "sub": "The panel is not responding or sent a response that could not be parsed"
+        "title": "No connection to the Remnawave panel",
+        "sub": "The panel is unavailable or responds in an unknown format"
       },
       "nodeOffline": {
         "title": "Node “{{node}}” is offline",
