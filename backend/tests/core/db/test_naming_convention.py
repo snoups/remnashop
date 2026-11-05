@@ -81,3 +81,9 @@ def test_every_constraint_named() -> None:
             if isinstance(c, (PrimaryKeyConstraint, ForeignKeyConstraint, UniqueConstraint)):
                 assert c.name is not None, f"{table.name}: unnamed {type(c).__name__}"
                 assert len(str(c.name)) <= _POSTGRES_NAME_LIMIT, c.name
+
+
+def test_composite_unique_name_lists_every_column() -> None:
+    names = _names(UniqueConstraint)
+    assert "ux_customer_notifications_user_id_outbox_id" in names
+    assert "ux_customer_notifications_user_id" not in names

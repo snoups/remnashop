@@ -1639,7 +1639,9 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_customer_notifications")),
-        sa.UniqueConstraint("user_id", "outbox_id", name=op.f("ux_customer_notifications_user_id")),
+        sa.UniqueConstraint(
+            "user_id", "outbox_id", name=op.f("ux_customer_notifications_user_id_outbox_id")
+        ),
     )
     op.create_index(
         op.f("ix_customer_notifications_user_id"),
