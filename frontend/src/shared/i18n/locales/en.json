@@ -133,7 +133,7 @@
       },
       "processDown": {
         "title": "{{process}} is not responding",
-        "worker": "Background jobs are stalled: subscription delivery, events, broadcasts and email",
+        "worker": "Background jobs are not running",
         "scheduler": "Scheduled jobs are not starting"
       },
       "outboxStuck": {
