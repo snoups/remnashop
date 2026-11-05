@@ -73,7 +73,12 @@ async def run_migrations_online() -> None:
     await connectable.dispose()
 
 
+external_connection: Optional[Connection] = config.attributes.get("connection")
+
 if context.is_offline_mode():
     run_migrations_offline()
+elif external_connection is not None:
+    # the caller's open transaction stays uncommitted
+    do_run_migrations(external_connection)
 else:
     asyncio.run(run_migrations_online())
