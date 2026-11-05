@@ -442,26 +442,25 @@ async def test_failed_and_stalled_broadcasts(
 ) -> None:
     repo = BroadcastRepository(session)
     now = datetime_now()
-    # failed today, failed two days ago, sending without progress, sending fine
+    # two failed today, one two days ago, sending without progress, sending fine
     cases = (
-        (BroadcastStatus.FAILED, timedelta(hours=1)),
-        (BroadcastStatus.FAILED, timedelta(days=2)),
-        (BroadcastStatus.SENDING, timedelta(minutes=20)),
-        (BroadcastStatus.SENDING, timedelta(minutes=1)),
+        ("recent-1", BroadcastStatus.FAILED, timedelta(hours=3)),
+        ("recent-2", BroadcastStatus.FAILED, timedelta(hours=1)),
+        ("old", BroadcastStatus.FAILED, timedelta(days=2)),
+        (None, BroadcastStatus.SENDING, timedelta(minutes=20)),
+        (None, BroadcastStatus.SENDING, timedelta(minutes=1)),
     )
-    for status, age in cases:
+    for title, status, age in cases:
         created = await repo.create(save_dto(), created_by=None)
         await session.execute(
             update(Broadcast)
             .where(Broadcast.id == created.id)
-            .values(status=status, updated_at=now - age)
+            .values(title=title, status=status, updated_at=now - age)
         )
 
     items = await _kinds(session, settings_repository, uow, redis_alive)
 
-    failed = items["broadcast_failed"][0]
-    assert failed.count == 1
-    assert failed.since is not None and now - failed.since < timedelta(hours=2)
+    assert [i.subject for i in items["broadcast_failed"]] == ["recent-2", "recent-1"]
     assert items["broadcast_stalled"][0].count == 1
 
 

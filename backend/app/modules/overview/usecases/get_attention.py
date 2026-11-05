@@ -310,16 +310,18 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         if Permission.BROADCASTS_VIEW not in perms:
             return []
         now = datetime_now()
-        failed, latest_failure = await self._broadcast_repository.get_failed_since(
-            now - _BROADCAST_FAILED_WINDOW
-        )
+        failed = await self._broadcast_repository.list_failed_since(now - _BROADCAST_FAILED_WINDOW)
         stalled = await self._broadcast_repository.list_stalled(now - _BROADCAST_STALLED_AFTER)
         return [
-            AttentionItemDto(
-                kind=AttentionKind.BROADCAST_FAILED,
-                severity="critical",
-                count=failed,
-                since=latest_failure,
+            *(
+                AttentionItemDto(
+                    kind=AttentionKind.BROADCAST_FAILED,
+                    severity="critical",
+                    count=1,
+                    subject=b.title or f"#{b.id}",
+                    since=b.updated_at,
+                )
+                for b in failed
             ),
             AttentionItemDto(
                 kind=AttentionKind.BROADCAST_STALLED, severity="warning", count=len(stalled)

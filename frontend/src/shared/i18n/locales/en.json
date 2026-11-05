@@ -169,8 +169,8 @@
         "never": "No successful backup yet"
       },
       "broadcastFailed": {
-        "title": "Broadcast stopped with an error",
-        "sub": "Latest: {{since}} · {{formatted}} in the last day"
+        "title": "Broadcast “{{name}}” stopped with an error",
+        "sub": "Stopped on {{since}}"
       },
       "broadcastStalled": {
         "title": "Broadcast is stuck",

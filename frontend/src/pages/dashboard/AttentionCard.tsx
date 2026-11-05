@@ -194,8 +194,8 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
       };
     case "broadcast_failed":
       return {
-        title: t("dashboard.attention.broadcastFailed.title"),
-        sub: t("dashboard.attention.broadcastFailed.sub", { formatted, since }),
+        title: t("dashboard.attention.broadcastFailed.title", { name: item.subject ?? "" }),
+        sub: since ? t("dashboard.attention.broadcastFailed.sub", { since }) : null,
       };
     case "broadcast_stalled":
       return {

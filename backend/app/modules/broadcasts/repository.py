@@ -642,16 +642,13 @@ class BroadcastRepository:
         )
         return due
 
-    async def get_failed_since(self, since: datetime) -> tuple[int, Optional[datetime]]:
-        """How many broadcasts failed since `since`, and when the latest did."""
-        count, latest = (
-            await self.session.execute(
-                select(func.count(), func.max(Broadcast.updated_at)).where(
-                    Broadcast.status == BroadcastStatus.FAILED, Broadcast.updated_at >= since
-                )
-            )
-        ).one()
-        return count, latest
+    async def list_failed_since(self, since: datetime) -> builtins.list[BroadcastDto]:
+        rows = await self.session.scalars(
+            select(Broadcast)
+            .where(Broadcast.status == BroadcastStatus.FAILED, Broadcast.updated_at >= since)
+            .order_by(Broadcast.updated_at.desc())
+        )
+        return [self._to_dto(row) for row in rows]
 
     async def list_stalled(self, before: datetime) -> builtins.list[int]:
         rows = await self.session.scalars(
