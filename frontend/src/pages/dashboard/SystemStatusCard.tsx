@@ -16,8 +16,8 @@ const KV_CLASS = "flex items-center justify-between gap-2 text-[13px]";
 function Kv({ label, value }: { label: string; value: string }) {
   return (
     <div className={KV_CLASS}>
-      <span className="text-muted-foreground">{label}</span>
-      <b className="font-semibold tabular-nums text-foreground">{value}</b>
+      <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+      <b className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-foreground">{value}</b>
     </div>
   );
 }
