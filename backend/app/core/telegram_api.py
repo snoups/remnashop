@@ -9,7 +9,9 @@ import aiohttp
 from aiohttp_socks import ProxyConnector
 from python_socks import ProxyError
 
-_API_URL: Final[str] = "https://api.telegram.org"
+from app.core.config.bot import BotConfig
+
+_API_URL: Final[str] = BotConfig().api_url.rstrip("/")
 _DEFAULT_TIMEOUT_S: Final[float] = 10.0
 
 
