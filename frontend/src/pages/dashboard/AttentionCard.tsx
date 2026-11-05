@@ -228,7 +228,13 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
     case "api_token_expiring":
       return {
         title: t("dashboard.attention.apiTokenExpiring.title", { name: item.subject ?? "" }),
-        sub: since ? t("dashboard.attention.apiTokenExpiring.sub", { since }) : null,
+        sub:
+          item.since && since
+            ? t("dashboard.attention.apiTokenExpiring.sub", {
+                duration: formatUptime(t, Math.max(0, Date.parse(item.since) - Date.now()) / 1000, "in"),
+                since,
+              })
+            : null,
       };
     case "bot_webhook":
       return {

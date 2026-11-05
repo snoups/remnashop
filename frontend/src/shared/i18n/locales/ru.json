@@ -215,7 +215,7 @@
       },
       "apiTokenExpiring": {
         "title": "API-токен «{{name}}» скоро истечёт",
-        "sub": "Перестанет работать {{since}}"
+        "sub": "Истекает через {{duration}} · {{since}}"
       },
       "botWebhook": {
         "title": "Вебхук Telegram-бота не работает",
@@ -305,7 +305,19 @@
       "durationMinutesAfter_one": "{{count}} минуты",
       "durationMinutesAfter_few": "{{count}} минут",
       "durationMinutesAfter_many": "{{count}} минут",
-      "durationMinutesAfter_other": "{{count}} минуты"
+      "durationMinutesAfter_other": "{{count}} минуты",
+      "durationDaysIn_one": "{{count}} день",
+      "durationDaysIn_few": "{{count}} дня",
+      "durationDaysIn_many": "{{count}} дней",
+      "durationDaysIn_other": "{{count}} дня",
+      "durationHoursIn_one": "{{count}} час",
+      "durationHoursIn_few": "{{count}} часа",
+      "durationHoursIn_many": "{{count}} часов",
+      "durationHoursIn_other": "{{count}} часа",
+      "durationMinutesIn_one": "{{count}} минуту",
+      "durationMinutesIn_few": "{{count}} минуты",
+      "durationMinutesIn_many": "{{count}} минут",
+      "durationMinutesIn_other": "{{count}} минуты"
     },
     "remnawaveUnavailable": "Remnawave недоступна\nДанные появятся, когда панель ответит",
     "nodes": {

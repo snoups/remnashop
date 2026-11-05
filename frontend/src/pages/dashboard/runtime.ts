@@ -1,8 +1,8 @@
 import type { TFunction } from "i18next";
 
-// "after" is the form that follows a preposition: «более 41 минуты»
-export function formatUptime(t: TFunction, seconds: number, form: "plain" | "after" = "plain"): string {
-  const suffix = form === "after" ? "After" : "";
+// "after" follows «более» (41 минуты), "in" follows «через» (21 минуту)
+export function formatUptime(t: TFunction, seconds: number, form: "plain" | "after" | "in" = "plain"): string {
+  const suffix = ({ plain: "", after: "After", in: "In" } as const)[form];
   const unit = (name: "Days" | "Hours" | "Minutes", count: number) =>
     t(`dashboard.runtime.duration${name}${suffix}` as const, { count });
   const days = Math.floor(seconds / 86400);

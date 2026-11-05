@@ -199,7 +199,7 @@
       },
       "apiTokenExpiring": {
         "title": "API token “{{name}}” expires soon",
-        "sub": "Stops working on {{since}}"
+        "sub": "Expires in {{duration}} · {{since}}"
       },
       "botWebhook": {
         "title": "Telegram bot webhook is not working",
@@ -273,7 +273,13 @@
       "durationHoursAfter_one": "{{count}} hour",
       "durationHoursAfter_other": "{{count}} hours",
       "durationMinutesAfter_one": "{{count}} minute",
-      "durationMinutesAfter_other": "{{count}} minutes"
+      "durationMinutesAfter_other": "{{count}} minutes",
+      "durationDaysIn_one": "{{count}} day",
+      "durationDaysIn_other": "{{count}} days",
+      "durationHoursIn_one": "{{count}} hour",
+      "durationHoursIn_other": "{{count}} hours",
+      "durationMinutesIn_one": "{{count}} minute",
+      "durationMinutesIn_other": "{{count}} minutes"
     },
     "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
     "nodes": {
