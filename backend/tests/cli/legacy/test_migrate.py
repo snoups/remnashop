@@ -1,13 +1,14 @@
+import asyncio
 import json
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, cast
+from typing import Any, Awaitable, Callable, Optional, cast
 
 import pytest
 from cryptography.fernet import Fernet
 from remnapy import RemnawaveSDK
 from sqlalchemy import insert, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.cli.legacy import migrate as migrate_module
 from app.cli.legacy.errors import LegacyMigrationError
@@ -16,8 +17,19 @@ from app.cli.legacy.panel import PanelIndex
 from app.cli.legacy.schema import LEGACY_HEAD, current_revision
 from app.core.config import AppConfig
 from app.core.db.models import User
+from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ConflictError
+from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.security import verify_password
+from app.modules.auth.repository import SessionRepository
+from app.modules.auth.session_issuer import SessionIssuer
+from app.modules.auth.usecases import BootstrapOwnerUseCase
+from app.modules.settings.repository import SettingsRepository
+from app.modules.users.dto import UserDto
+from app.modules.users.repository import UserRepository
+from tests.fakes.dispatch import RecordingDispatch
 
 LegacyAt = Callable[[AsyncEngine, str], Awaitable[None]]
 
@@ -35,6 +47,7 @@ _SNAPSHOT: dict[str, Any] = {
     "traffic_limit_strategy": "NO_RESET",
 }
 _JSON_DEFAULTS: str = "'{}'::jsonb"
+_OWNER_PASSWORD: str = "Sup3rSecretPassw0rd1234567890"
 _INDEX = PanelIndex(
     by_short_uuid={"short1": 501, "short2": 502, "short3": 502, "short4": 503},
 )
@@ -291,14 +304,38 @@ async def test_failure_rolls_back_everything(
         assert await _ids(connection, "users") == [1, 2, 3]
 
 
-async def test_owner_credentials_work(
+async def _claim_pending(connection: AsyncConnection) -> Optional[bool]:
+    pending = await connection.scalar(text("SELECT owner_claim_pending FROM oauth_settings"))
+    return cast(Optional[bool], pending)
+
+
+def _bootstrap(session: AsyncSession, config: AppConfig) -> BootstrapOwnerUseCase:
+    uow = UnitOfWork(session)
+    return BootstrapOwnerUseCase(
+        UserRepository(session),
+        SettingsRepository(session),
+        uow,
+        config,
+        OutboxEventPublisher(uow, RecordingDispatch()),
+        SessionIssuer(SessionRepository(session), uow, config),
+    )
+
+
+async def _claim(engine: AsyncEngine, config: AppConfig, login: str) -> UserDto:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        owner, _ = await _bootstrap(session, config).execute(
+            login=login, password=_OWNER_PASSWORD, client_ip="203.0.113.1", user_agent=None
+        )
+    return owner
+
+
+async def test_owner_migrated_without_credentials_and_claim_pending(
     legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
 ) -> None:
     await _prepare(legacy_engine, legacy_at, _crypt_key(config))
     result = await _run(legacy_engine, config)
 
-    assert result.owner is not None
-    assert result.owner.login == "boss"
+    assert result.owner_migrated
     async with legacy_engine.connect() as connection:
         row = (
             await connection.execute(
@@ -308,22 +345,65 @@ async def test_owner_credentials_work(
                 )
             )
         ).one()
+        assert await _claim_pending(connection) is True
     assert row.role == Role.OWNER.name
-    assert row.login == "boss"
-    assert row.password_change_required is True
-    assert await verify_password(result.owner.password, row.password_hash, _crypt_key(config))
-    assert result.owner.password not in repr(result)
+    assert row.login is None
+    assert row.password_hash is None
+    assert row.password_change_required is False
 
 
-async def test_owner_login_falls_back_when_username_invalid(
+async def test_no_owner_leaves_no_claim(
     legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
 ) -> None:
     await _prepare(legacy_engine, legacy_at, _crypt_key(config))
     async with legacy_engine.begin() as connection:
-        await _exec(connection, "UPDATE users SET username = 'имя босса' WHERE id = 1")
+        await _exec(connection, "UPDATE users SET role = 'USER' WHERE id = 1")
     result = await _run(legacy_engine, config)
 
-    assert result.owner is not None and result.owner.login == "owner"
+    assert not result.owner_migrated
+    async with legacy_engine.connect() as connection:
+        assert not await _claim_pending(connection)
+
+
+async def test_migrated_owner_claims_through_bootstrap(
+    legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
+) -> None:
+    await _prepare(legacy_engine, legacy_at, _crypt_key(config))
+    await _run(legacy_engine, config)
+
+    owner = await _claim(legacy_engine, config, "boss")
+
+    assert owner.id == 1
+    assert owner.telegram_id == 1001
+    assert owner.password_hash is not None
+    assert await verify_password(_OWNER_PASSWORD, owner.password_hash, _crypt_key(config))
+    async with legacy_engine.connect() as connection:
+        assert await _claim_pending(connection) is False
+        assert await connection.scalar(text("SELECT user_id FROM subscriptions WHERE id = 1")) == 1
+    with pytest.raises(ConflictError) as exc_info:
+        await _claim(legacy_engine, config, "intruder")
+    assert exc_info.value.code is ErrorCode.OWNER_ALREADY_EXISTS
+
+
+async def test_concurrent_claims_have_one_winner(
+    legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
+) -> None:
+    await _prepare(legacy_engine, legacy_at, _crypt_key(config))
+    await _run(legacy_engine, config)
+
+    results = await asyncio.gather(
+        _claim(legacy_engine, config, "first"),
+        _claim(legacy_engine, config, "second"),
+        return_exceptions=True,
+    )
+
+    winners = [r for r in results if isinstance(r, UserDto)]
+    losers = [r for r in results if isinstance(r, ConflictError)]
+    assert len(winners) == 1 and winners[0].id == 1
+    assert len(losers) == 1 and losers[0].code is ErrorCode.OWNER_ALREADY_EXISTS
+    async with legacy_engine.connect() as connection:
+        login = await connection.scalar(text("SELECT login FROM users WHERE id = 1"))
+    assert login == winners[0].login
 
 
 async def test_migrate_refuses_schema_below_head(

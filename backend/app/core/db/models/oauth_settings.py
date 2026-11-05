@@ -30,6 +30,10 @@ class OAuthSettings(BaseSql, TimestampMixin):
     password_login_enabled: Mapped[bool] = mapped_column(
         Boolean(), default=True, server_default="true"
     )
+    # a migrated owner without credentials: the next bootstrap sets them on that row
+    owner_claim_pending: Mapped[bool] = mapped_column(
+        Boolean(), default=False, server_default="false"
+    )
 
     passkey_enabled: Mapped[bool] = mapped_column(Boolean(), default=False, server_default="false")
     # not secrets, like oidc_issuer_url/oidc_display_name above

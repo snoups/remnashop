@@ -37,7 +37,8 @@ _CHECKLIST: Final[str] = """Next steps:
     container (port BOT_PORT, 5001), not by remnashop:5000. Payment and panel webhook paths
     are unchanged. Port 5001 was the database in the old compose: do not keep it alongside.
   - Grants of extra database roles on the old public schema are not carried over.
-  - Sign in to the dashboard with the owner login above, then set the bot token and restart the bot.
+  - Open the dashboard and register the owner account (login + password), then set the bot token
+    and restart the bot.
   - Once everything works, run "Delete old-version data"."""
 
 
@@ -82,19 +83,18 @@ def oldest_pre_migration_backup(revision: str, directory: Path) -> Optional[Path
     return min(found, key=lambda p: p.stat().st_mtime, default=None)
 
 
-def render_report(result: MigrationResult, backup: Path, *, with_password: bool) -> str:
+def render_report(result: MigrationResult, backup: Path) -> str:
     lines = [
         result.report.render(),
         "",
         f"Original revision: {result.original_revision}",
         f"Pre-migration backup: {backup}",
     ]
-    if result.owner is not None:
-        lines.append(f"Owner login: {result.owner.login}")
-        if with_password:
-            lines.append(
-                f"Owner password (shown once, change it at first sign-in): {result.owner.password}"
-            )
+    if result.owner_migrated:
+        lines.append(
+            "Open the dashboard and register the owner account (login + password); "
+            "the migrated owner's data is kept."
+        )
     else:
         lines.append("No owner was migrated: create one from the dashboard (bootstrap).")
     lines += ["", _CHECKLIST]
@@ -167,10 +167,11 @@ async def _flush_redis(config: AppConfig) -> None:
 
 
 def deliver_report(result: MigrationResult, backup: Path) -> None:
-    print(render_report(result, backup, with_password=True))
+    report = render_report(result, backup)
+    print(report)
     path = backup.with_suffix(".report.txt")
     try:
-        path.write_text(render_report(result, backup, with_password=False))
+        path.write_text(report)
     except OSError as error:
         print(f"Warning: writing the report to {path} failed ({error}).")
 

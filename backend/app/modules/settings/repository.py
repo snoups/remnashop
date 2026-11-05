@@ -1,6 +1,6 @@
 from typing import Final, Optional, TypeVar
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.access_settings import AccessSettings
@@ -241,6 +241,13 @@ class SettingsRepository:
             stmt.with_for_update() if exclusive else stmt.with_for_update(read=True)
         )
         return self._to_oauth_dto(row)
+
+    async def clear_owner_claim(self) -> None:
+        await self.session.execute(
+            update(OAuthSettings)
+            .where(OAuthSettings.id == SINGLETON_ID)
+            .values(owner_claim_pending=False)
+        )
 
     async def update_oauth_settings(self, data: UpdateOAuthSettingsDto) -> OAuthSettingsDto:
         row = await self._get_or_create_singleton(OAuthSettings)

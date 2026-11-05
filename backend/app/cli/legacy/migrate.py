@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final, Optional, TypeVar
@@ -31,7 +31,6 @@ from app.cli.legacy.settings import transform_settings
 from app.cli.legacy.subscriptions import migrated_subscription_ids, transform_subscriptions
 from app.cli.legacy.transactions import transform_transactions
 from app.cli.legacy.users import transform_users
-from app.core.constants import LOGIN_PATTERN
 from app.core.db.base import BaseSql
 from app.core.db.models import (
     AccessSettings,
@@ -39,6 +38,7 @@ from app.core.db.models import (
     AdLinkAttribution,
     BotRequirements,
     OAuthIdentity,
+    OAuthSettings,
     PaymentGateway,
     Plan,
     PlanDuration,
@@ -55,12 +55,9 @@ from app.core.db.models import (
 )
 from app.core.db.singleton import SINGLETON_ID
 from app.core.enums import Currency, Locale, ReferralLevel, Role, SubscriptionStatus
-from app.core.security import generate_password, hash_password
 
 _NEW_MIGRATIONS_DIR: Final[Path] = Path(__file__).parents[2] / "core" / "db" / "migrations"
 _NEW_REVISION: Final[str] = "current"
-_FALLBACK_LOGIN: Final[str] = "owner"
-_LOGIN_MAX_LENGTH: Final[int] = 64
 _DEFAULT_LOCALE: Final[Locale] = Locale.EN
 _DEFAULT_ANCHOR: Final[Currency] = Currency.USD
 _ENCRYPTED_PREFIX: Final[str] = "enc_"
@@ -70,15 +67,9 @@ _Row = TypeVar("_Row", bound=Mapping[str, Any])
 
 
 @dataclass(frozen=True, kw_only=True)
-class OwnerCredentials:
-    login: str
-    password: str = field(repr=False)
-
-
-@dataclass(frozen=True, kw_only=True)
 class MigrationResult:
     report: MigrationReport
-    owner: Optional[OwnerCredentials]
+    owner_migrated: bool
     original_revision: str
 
 
@@ -219,24 +210,6 @@ def _set_locales(users: list[dict[str, Any]], report: MigrationReport) -> None:
             )
 
 
-async def _grant_owner_login(
-    users: list[dict[str, Any]], crypt_key: str
-) -> Optional[OwnerCredentials]:
-    owner = next((user for user in users if user["role"] is Role.OWNER), None)
-    if owner is None:
-        return None
-    username = owner.get("username") or ""
-    valid = len(username) <= _LOGIN_MAX_LENGTH and LOGIN_PATTERN.fullmatch(username)
-    login = username if valid else _FALLBACK_LOGIN
-    password = generate_password()
-    owner.update(
-        login=login,
-        password_hash=await hash_password(password, crypt_key),
-        password_change_required=True,
-    )
-    return OwnerCredentials(login=login, password=password)
-
-
 async def migrate(
     engine: AsyncEngine,
     *,
@@ -260,7 +233,7 @@ async def migrate(
         await connection.execute(text("CREATE SCHEMA public"))
         await connection.run_sync(_create_new_schema)
 
-        owner = await _transfer(
+        owner_migrated = await _transfer(
             connection,
             panel_index=panel_index,
             crypt_key=crypt_key,
@@ -268,7 +241,9 @@ async def migrate(
             report=report,
         )
 
-    return MigrationResult(report=report, owner=owner, original_revision=original_revision)
+    return MigrationResult(
+        report=report, owner_migrated=owner_migrated, original_revision=original_revision
+    )
 
 
 async def _transfer(
@@ -278,7 +253,7 @@ async def _transfer(
     crypt_key: str,
     bot_owner_id: Optional[int],
     report: MigrationReport,
-) -> Optional[OwnerCredentials]:
+) -> bool:
     settings_rows = await _read(connection, "settings")
     settings = transform_settings(settings_rows[0], report) if settings_rows else None
     if settings is None:
@@ -324,7 +299,7 @@ async def _transfer(
     )
     report.count("users", len(legacy_users), len(users))
     _set_locales(users, report)
-    owner = await _grant_owner_login(users, crypt_key)
+    owner_migrated = any(user["role"] is Role.OWNER for user in users)
     user_ids = {int(user["id"]) for user in users}
 
     source_subscriptions = report.counts["subscriptions"].source
@@ -408,9 +383,12 @@ async def _transfer(
             (ReferralSettings, [settings.referral]),
             (PricingSettings, [{"id": SINGLETON_ID, "anchor_currency": anchor}]),
         ]
+    if owner_migrated:
+        # the owner sets a login and password through the dashboard's bootstrap
+        batches.append((OAuthSettings, [{"id": SINGLETON_ID, "owner_claim_pending": True}]))
     for model, rows in batches:
         await _insert(connection, model, rows)
     await _set_sequences(
         connection, (model.__tablename__ for model, rows in batches if rows and "id" in rows[0])
     )
-    return owner
+    return owner_migrated

@@ -547,6 +547,24 @@ class UserRepository:
         await self.session.refresh(db_user)
         return self._to_dto(db_user)
 
+    async def claim_owner(self, login: str, password_hash: str) -> Optional[UserDto]:
+        db_user = await self.session.scalar(
+            select(User)
+            .where(User.role == Role.OWNER)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if db_user is None:
+            return None
+
+        db_user.login = login
+        db_user.password_hash = password_hash
+        db_user.password_change_required = False
+
+        await self._flush_unique()
+        await self.session.refresh(db_user)
+        return self._to_dto(db_user)
+
     async def demote_from_admin(self, user_id: int) -> Optional[UserDto]:
         db_user = await self.session.get(User, user_id)
 

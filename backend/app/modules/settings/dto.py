@@ -154,6 +154,7 @@ class OAuthSettingsDto(BaseDto, TimestampMixin):
     passkey_enabled: bool = False
     passkey_rp_id: Optional[str] = None
     passkey_origin: Optional[str] = None
+    owner_claim_pending: bool = False
 
     @property
     def is_github_configured(self) -> bool:

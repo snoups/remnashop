@@ -21,7 +21,8 @@ class GetAuthStatusUseCase:
             owner_exists = await self._user_repository.exists_with_role(Role.OWNER)
             oauth_settings = await self._settings_repository.get_oauth_settings()
             return AuthStatusDto(
-                owner_exists=owner_exists,
+                # a migrated owner without credentials registers through bootstrap
+                owner_exists=owner_exists and not oauth_settings.owner_claim_pending,
                 oauth_providers={
                     OAuthProvider.GITHUB: oauth_settings.is_github_usable,
                     OAuthProvider.TELEGRAM: oauth_settings.is_telegram_usable,

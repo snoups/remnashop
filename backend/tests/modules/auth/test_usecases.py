@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.actor import SyntheticActor
 from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
+from app.core.db.models.oauth_settings import OAuthSettings
 from app.core.db.models.user_session import UserSession
+from app.core.db.singleton import get_or_create_singleton
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, OAuthProvider, Role
 from app.core.error_codes import ErrorCode
@@ -19,7 +21,7 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.core.ports import EventPublisher
-from app.core.security import hash_password, hash_refresh_token
+from app.core.security import hash_password, hash_refresh_token, verify_password
 from app.core.security.permissions import Permission
 from app.modules.auth.api.schemas import BootstrapRequest
 from app.modules.auth.dto import RevokeSessionDto, RevokeUserSessionDto
@@ -80,6 +82,7 @@ def _bootstrap_use_case(
 ) -> BootstrapOwnerUseCase:
     return BootstrapOwnerUseCase(
         user_repository,
+        SettingsRepository(user_repository.session),
         uow,
         config,
         event_publisher,
@@ -901,3 +904,111 @@ async def test_login_with_trailing_newline_is_invalid_credentials(
         await use_case.execute("owner\n", "Secret-password-1", "203.0.113.1", None)
 
     assert error.value.code is ErrorCode.INVALID_CREDENTIALS
+
+
+async def _pending_claim_owner(session: AsyncSession, user_repository: UserRepository) -> UserDto:
+    owner = await user_repository.create(
+        CreateUserDto(name="boss", role=Role.OWNER, language=Locale.EN, telegram_id=777001)
+    )
+    settings = await get_or_create_singleton(session, OAuthSettings)
+    settings.owner_claim_pending = True
+    await session.flush()
+    return owner
+
+
+async def test_status_allows_registration_while_owner_claim_pending(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+) -> None:
+    await _pending_claim_owner(session, user_repository)
+
+    result = await GetAuthStatusUseCase(user_repository, settings_repository, uow).execute()
+
+    assert not result.owner_exists
+
+
+async def test_bootstrap_claims_the_migrated_owner(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+) -> None:
+    migrated = await _pending_claim_owner(session, user_repository)
+    use_case = _bootstrap_use_case(
+        user_repository, uow, config, event_publisher, session_repository
+    )
+
+    owner, issued = await use_case.execute(
+        login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT
+    )
+
+    assert owner.id == migrated.id
+    assert owner.telegram_id == migrated.telegram_id
+    assert owner.login == "admin"
+    assert issued.access_token
+    assert owner.password_hash is not None
+    assert await verify_password(PASSWORD, owner.password_hash, config.crypt_key.get_secret_value())
+    assert not (await settings_repository.get_oauth_settings()).owner_claim_pending
+    row = await _newest_outbox_row(session, OwnerBootstrappedEvent.__name__)
+    assert row.payload["user"]["id"] == migrated.id
+    status = await GetAuthStatusUseCase(user_repository, settings_repository, uow).execute()
+    assert status.owner_exists
+    with pytest.raises(ConflictError) as exc_info:
+        await use_case.execute(
+            login="intruder", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT
+        )
+    assert exc_info.value.code is ErrorCode.OWNER_ALREADY_EXISTS
+
+
+async def test_bootstrap_claim_with_taken_login_keeps_the_claim_pending(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+) -> None:
+    await _pending_claim_owner(session, user_repository)
+    await user_repository.create(
+        CreateUserDto(login="admin", name="admin", role=Role.ADMIN, language=Locale.EN)
+    )
+    await session.flush()
+
+    with pytest.raises(ConflictError) as exc_info:
+        await _bootstrap_use_case(
+            user_repository, uow, config, event_publisher, session_repository
+        ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
+
+    assert exc_info.value.code is ErrorCode.LOGIN_TAKEN
+    assert (await settings_repository.get_oauth_settings()).owner_claim_pending
+
+
+async def test_passwordless_owner_is_not_claimable_without_the_marker(
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+    session_repository: SessionRepository,
+) -> None:
+    # a passkey/OAuth-only owner has no password either
+    async with uow:
+        owner = await user_repository.create(
+            CreateUserDto(name="boss", role=Role.OWNER, language=Locale.EN)
+        )
+
+    status = await GetAuthStatusUseCase(user_repository, settings_repository, uow).execute()
+    assert status.owner_exists
+    with pytest.raises(ConflictError) as exc_info:
+        await _bootstrap_use_case(
+            user_repository, uow, config, event_publisher, session_repository
+        ).execute(login="admin", password=PASSWORD, client_ip=CLIENT_IP, user_agent=USER_AGENT)
+    assert exc_info.value.code is ErrorCode.OWNER_ALREADY_EXISTS
+    unchanged = await user_repository.find_by_id(owner.id)
+    assert unchanged is not None and unchanged.login is None and unchanged.password_hash is None

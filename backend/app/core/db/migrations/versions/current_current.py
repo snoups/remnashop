@@ -754,6 +754,7 @@ def upgrade() -> None:
         sa.Column("telegram_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("oidc_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("password_login_enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("owner_claim_pending", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("passkey_enabled", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("passkey_rp_id", sa.String(length=255), nullable=True),
         sa.Column("passkey_origin", sa.String(length=512), nullable=True),

@@ -66,6 +66,7 @@ def _bootstrap_use_case(
 ) -> BootstrapOwnerUseCase:
     return BootstrapOwnerUseCase(
         user_repository,
+        SettingsRepository(user_repository.session),
         uow,
         config,
         event_publisher,

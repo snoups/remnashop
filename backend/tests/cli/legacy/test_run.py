@@ -12,7 +12,6 @@ from app.cli.legacy import run as run_module
 from app.cli.legacy.errors import LegacyMigrationError
 from app.cli.legacy.migrate import (
     MigrationResult,
-    OwnerCredentials,
     migrate,
     upgrade_legacy_schema,
 )
@@ -30,31 +29,28 @@ from app.cli.legacy.schema import LEGACY_HEAD, current_revision
 from app.core.config import AppConfig
 
 LegacyAt = Callable[[AsyncEngine, str], Awaitable[None]]
-_PASSWORD = "s3cret-pass-word"
 
 
 def _result(owner: bool = True) -> MigrationResult:
-    return MigrationResult(
-        report=MigrationReport(),
-        owner=OwnerCredentials(login="boss", password=_PASSWORD) if owner else None,
-        original_revision="0039",
-    )
+    return MigrationResult(report=MigrationReport(), owner_migrated=owner, original_revision="0039")
 
 
-def test_render_report_password_only_when_asked(tmp_path: Path) -> None:
+def test_render_report_asks_to_register_the_owner(tmp_path: Path) -> None:
     backup = tmp_path / "b.dump"
-    assert _PASSWORD not in render_report(_result(), backup, with_password=False)
-    assert _PASSWORD in render_report(_result(), backup, with_password=True)
-    assert "boss" in render_report(_result(), backup, with_password=False)
+    migrated = render_report(_result(), backup)
+    assert "register the owner account" in migrated
+    assert "data is kept" in migrated
+    assert "password (" not in migrated.lower()
+    assert "Owner login" not in migrated
+    assert "No owner was migrated" in render_report(_result(owner=False), backup)
 
 
-def test_deliver_report_file_has_no_password(
+def test_deliver_report_prints_and_writes_the_same_report(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     backup = tmp_path / "b.dump"
     deliver_report(_result(), backup)
-    assert _PASSWORD not in (tmp_path / "b.report.txt").read_text()
-    assert _PASSWORD in capsys.readouterr().out
+    assert (tmp_path / "b.report.txt").read_text() in capsys.readouterr().out
 
 
 def test_deliver_report_prints_even_if_the_file_fails(
@@ -62,7 +58,7 @@ def test_deliver_report_prints_even_if_the_file_fails(
 ) -> None:
     deliver_report(_result(), tmp_path / "missing" / "b.dump")
     out = capsys.readouterr().out
-    assert _PASSWORD in out
+    assert "register the owner account" in out
     assert "Warning: writing the report" in out
 
 
