@@ -161,12 +161,59 @@
       "botWebhook": {
         "title": "Telegram bot webhook reports an error"
       },
+      "processDown": {
+        "title": "The {{process}} process is not responding",
+        "sub": "No heartbeat for over 45 seconds"
+      },
+      "outboxStuck": {
+        "title": "Events are not being processed",
+        "sub_one": "{{formatted}} event waiting since {{since}}",
+        "sub_other": "{{formatted}} events waiting since {{since}}"
+      },
+      "panelUnavailable": {
+        "title": "Remnawave panel is unavailable",
+        "sub": "Node status is unknown"
+      },
+      "smtpFailed": {
+        "title": "Email is not being sent",
+        "main": "Main SMTP",
+        "bulk": "Broadcast SMTP"
+      },
+      "backupOverdue": {
+        "title": "Backup is overdue",
+        "sub": "Last successful: {{since}}",
+        "never": "No successful backup yet"
+      },
+      "broadcastFailed": {
+        "title": "Broadcast failed",
+        "sub_one": "{{formatted}} broadcast in the last 24 hours",
+        "sub_other": "{{formatted}} broadcasts in the last 24 hours"
+      },
+      "broadcastStalled": {
+        "title": "Broadcast is stuck",
+        "sub_one": "{{formatted}} broadcast without progress for over 15 minutes",
+        "sub_other": "{{formatted}} broadcasts without progress for over 15 minutes"
+      },
+      "emailUndeliverable": {
+        "title": "Emails are bouncing",
+        "sub_one": "{{formatted}} address refused in the last 24 hours",
+        "sub_other": "{{formatted}} addresses refused in the last 24 hours"
+      },
+      "apiTokenExpiring": {
+        "title": "API tokens are expiring",
+        "single": "“{{name}}” expires on {{since}}",
+        "sub_one": "{{formatted}} token, the first one on {{since}}",
+        "sub_other": "{{formatted}} tokens, the first one on {{since}}"
+      },
       "actions": {
         "gateways": "Gateways",
         "backups": "Backups",
         "transactions": "Transactions",
         "retention": "Retention",
-        "bot": "Telegram bot"
+        "bot": "Telegram bot",
+        "broadcasts": "Broadcasts",
+        "email": "Email",
+        "apiTokens": "API tokens"
       }
     },
     "revenue": {

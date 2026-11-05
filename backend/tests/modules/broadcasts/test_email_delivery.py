@@ -39,6 +39,7 @@ from app.modules.email import (
     EmailSendError,
     InlineImageDto,
     OutgoingEmailDto,
+    read_smtp_failure,
     smtp_pause_key,
 )
 from app.modules.promocodes.repository import PromocodeRepository
@@ -303,6 +304,7 @@ async def test_connection_error_pauses_without_spending_attempts(
         assert row.claimed_until is None
     ttl = await redis.ttl(smtp_pause_key(bulk=False))
     assert 0 < ttl <= 60
+    assert await read_smtp_failure(redis, bulk=False) is not None
     assert email_dispatch.messages == [{"broadcast_id": broadcast.id}]
 
     healthy = FakeBatchSender()
@@ -352,6 +354,7 @@ async def test_auth_error_fails_broadcast(
         assert row.status is BroadcastRecipientStatus.FAILED
         assert row.claimed_until is None
     assert not await redis.exists(smtp_pause_key(bulk=False))
+    assert await read_smtp_failure(redis, bulk=False) is not None
     assert email_dispatch.messages == []
 
 

@@ -601,6 +601,12 @@ class UserRepository:
         )
         return result.scalar_one_or_none() is not None
 
+    async def count_email_undeliverable_since(self, since: datetime) -> int:
+        count = await self.session.scalar(
+            select(func.count()).select_from(User).where(User.email_undeliverable_at >= since)
+        )
+        return count or 0
+
     async def set_email_undeliverable(self, user_id: int, at: Optional[datetime]) -> None:
         db_user = await self.session.get(User, user_id)
         if db_user is None:

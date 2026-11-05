@@ -173,12 +173,69 @@
       "botWebhook": {
         "title": "Вебхук Telegram-бота сообщает об ошибке"
       },
+      "processDown": {
+        "title": "Процесс {{process}} не отвечает",
+        "sub": "Нет сигнала дольше 45 секунд"
+      },
+      "outboxStuck": {
+        "title": "События не обрабатываются",
+        "sub_one": "{{formatted}} событие ждёт с {{since}}",
+        "sub_few": "{{formatted}} события ждут с {{since}}",
+        "sub_many": "{{formatted}} событий ждут с {{since}}",
+        "sub_other": "{{formatted}} события ждут с {{since}}"
+      },
+      "panelUnavailable": {
+        "title": "Панель Remnawave недоступна",
+        "sub": "Состояние нод неизвестно"
+      },
+      "smtpFailed": {
+        "title": "Почта не отправляется",
+        "main": "Основной SMTP",
+        "bulk": "SMTP для рассылок"
+      },
+      "backupOverdue": {
+        "title": "Резервная копия просрочена",
+        "sub": "Последняя успешная: {{since}}",
+        "never": "Успешных копий ещё не было"
+      },
+      "broadcastFailed": {
+        "title": "Рассылка завершилась ошибкой",
+        "sub_one": "{{formatted}} рассылка за последние 24 часа",
+        "sub_few": "{{formatted}} рассылки за последние 24 часа",
+        "sub_many": "{{formatted}} рассылок за последние 24 часа",
+        "sub_other": "{{formatted}} рассылки за последние 24 часа"
+      },
+      "broadcastStalled": {
+        "title": "Рассылка зависла",
+        "sub_one": "{{formatted}} рассылка без движения дольше 15 минут",
+        "sub_few": "{{formatted}} рассылки без движения дольше 15 минут",
+        "sub_many": "{{formatted}} рассылок без движения дольше 15 минут",
+        "sub_other": "{{formatted}} рассылки без движения дольше 15 минут"
+      },
+      "emailUndeliverable": {
+        "title": "Письма не доходят",
+        "sub_one": "{{formatted}} адрес отклонён за последние 24 часа",
+        "sub_few": "{{formatted}} адреса отклонены за последние 24 часа",
+        "sub_many": "{{formatted}} адресов отклонены за последние 24 часа",
+        "sub_other": "{{formatted}} адреса отклонены за последние 24 часа"
+      },
+      "apiTokenExpiring": {
+        "title": "Истекают API-токены",
+        "single": "«{{name}}» истекает {{since}}",
+        "sub_one": "{{formatted}} токен, первый — {{since}}",
+        "sub_few": "{{formatted}} токена, первый — {{since}}",
+        "sub_many": "{{formatted}} токенов, первый — {{since}}",
+        "sub_other": "{{formatted}} токена, первый — {{since}}"
+      },
       "actions": {
         "gateways": "Шлюзы",
         "backups": "Резервные копии",
         "transactions": "Транзакции",
         "retention": "Удержание",
-        "bot": "Telegram-бот"
+        "bot": "Telegram-бот",
+        "broadcasts": "Рассылки",
+        "email": "Почта",
+        "apiTokens": "API-токены"
       }
     },
     "revenue": {

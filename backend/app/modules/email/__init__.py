@@ -4,6 +4,9 @@ from app.modules.email.batch import (
     InlineImageDto,
     OutgoingEmailDto,
     SmtpBatchSender,
+    clear_smtp_failure,
+    read_smtp_failure,
+    record_smtp_failure,
     smtp_pause_key,
 )
 from app.modules.email.di import get_email_providers
@@ -29,9 +32,12 @@ __all__ = [
     "SendEmailDispatch",
     "SmtpBatchSender",
     "brand_accent",
+    "clear_smtp_failure",
     "get_email_providers",
     "load_email_brand",
     "load_email_logo_image",
+    "read_smtp_failure",
+    "record_smtp_failure",
     "render_email",
     "render_email_html",
     "render_link_code",

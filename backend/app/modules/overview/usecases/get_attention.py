@@ -5,6 +5,7 @@ from typing import Final, Optional
 import httpx
 from loguru import logger
 from pydantic import ValidationError
+from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from remnapy.exceptions import ApiError
 
@@ -12,10 +13,15 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.exceptions import RemnawavePanelUnavailableError
+from app.core.runtime_heartbeat import read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
+from app.modules.api_tokens import ApiTokenRepository
 from app.modules.backups import BackupRepository
+from app.modules.broadcasts import BroadcastRepository
+from app.modules.email import read_smtp_failure
+from app.modules.event_log import EventOutboxRepository
 from app.modules.overview.dto import AttentionDto, AttentionItemDto, AttentionKind
 from app.modules.settings import (
     BotSettingsDto,
@@ -25,6 +31,7 @@ from app.modules.settings import (
 )
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionRepository, TransactionStatsRepository
+from app.modules.users import UserRepository
 
 _FAILED_SPIKE: Final[int] = 5
 _FAILED_WINDOW: Final[timedelta] = timedelta(hours=1)
@@ -35,16 +42,20 @@ _STALE_PENDING_AFTER: Final[timedelta] = timedelta(minutes=15)
 _BOT_ERROR_WINDOW: Final[timedelta] = timedelta(hours=1)
 _EXPIRING_WITHIN: Final[timedelta] = timedelta(days=7)
 _EXPIRING_URGENT: Final[timedelta] = timedelta(hours=24)
+_WATCHED_PROCESSES: Final[tuple[str, ...]] = ("worker", "scheduler")
+# the sweep runs every minute
+_OUTBOX_STUCK_AFTER: Final[timedelta] = timedelta(minutes=5)
+# the scheduled check runs hourly
+_BACKUP_GRACE: Final[timedelta] = timedelta(hours=2)
+_BROADCAST_FAILED_WINDOW: Final[timedelta] = timedelta(days=1)
+# the watchdog re-kicks after 5 minutes; still stuck after that means it didn't help
+_BROADCAST_STALLED_AFTER: Final[timedelta] = timedelta(minutes=15)
+_UNDELIVERABLE_SPIKE: Final[int] = 10
+_UNDELIVERABLE_WINDOW: Final[timedelta] = timedelta(days=1)
+_TOKEN_EXPIRING_WITHIN: Final[timedelta] = timedelta(days=7)
 
-_ORDER: Final[tuple[AttentionKind, ...]] = (
-    AttentionKind.NODE_OFFLINE,
-    AttentionKind.GATEWAY_FAILURES,
-    AttentionKind.BACKUP_FAILED,
-    AttentionKind.PAID_NOT_FULFILLED,
-    AttentionKind.STALE_PENDING,
-    AttentionKind.EXPIRING_PAID,
-    AttentionKind.BOT_WEBHOOK,
-)
+# enum order is the display order within one severity
+_ORDER: Final[tuple[AttentionKind, ...]] = tuple(AttentionKind)
 
 
 def _bot_needs_attention(status: BotStatusDto) -> bool:
@@ -68,6 +79,11 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         backup_repository: BackupRepository,
         subscription_stats: SubscriptionStatsRepository,
         settings_repository: SettingsRepository,
+        broadcast_repository: BroadcastRepository,
+        outbox_repository: EventOutboxRepository,
+        api_token_repository: ApiTokenRepository,
+        user_repository: UserRepository,
+        redis: Redis,
         uow: UnitOfWork,
     ) -> None:
         self._remnawave_sdk = remnawave_sdk
@@ -76,14 +92,25 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         self._backup_repository = backup_repository
         self._subscription_stats = subscription_stats
         self._settings_repository = settings_repository
+        self._broadcast_repository = broadcast_repository
+        self._outbox_repository = outbox_repository
+        self._api_token_repository = api_token_repository
+        self._user_repository = user_repository
+        self._redis = redis
         self._uow = uow
 
     async def _execute(self, actor: Actor, data: None) -> AttentionDto:
         perms = PermissionPolicy.effective_permissions(actor)
-        items: list[AttentionItemDto] = []
+        items: list[AttentionItemDto] = await self._processes_down()
+        items += await self._smtp_failed(perms)
         async with self._uow:
+            items += await self._outbox_stuck()
             items += await self._gateway_failures(perms)
             items += await self._backup_failed(perms)
+            items += await self._backup_overdue(perms)
+            items += await self._broadcasts(perms)
+            items += await self._email_undeliverable(perms)
+            items += await self._api_tokens_expiring(perms)
             items += await self._paid_not_fulfilled(perms)
             items += await self._stale_pending(perms)
             items += await self._expiring_paid(perms)
@@ -110,7 +137,9 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             httpx.HTTPError,
         ) as error:
             logger.warning(f"Remnawave response unusable: {type(error).__name__}")
-            return []
+            return [
+                AttentionItemDto(kind=AttentionKind.PANEL_UNAVAILABLE, severity="critical", count=1)
+            ]
         return [
             AttentionItemDto(
                 kind=AttentionKind.NODE_OFFLINE,
@@ -208,5 +237,122 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
                 severity="warning",
                 count=count,
                 subject=str(urgent),
+            )
+        ]
+
+    async def _processes_down(self) -> list[AttentionItemDto]:
+        alive = {hb.process for hb in await read_runtime_heartbeats(self._redis)}
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.PROCESS_DOWN, severity="critical", count=1, subject=process
+            )
+            for process in _WATCHED_PROCESSES
+            if process not in alive
+        ]
+
+    async def _outbox_stuck(self) -> list[AttentionItemDto]:
+        stats = await self._outbox_repository.get_stuck_stats(datetime_now() - _OUTBOX_STUCK_AFTER)
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.OUTBOX_STUCK,
+                severity="critical",
+                count=stats.unprocessed_count,
+                since=stats.oldest_occurred_at,
+            )
+        ]
+
+    async def _smtp_failed(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.EMAIL_SETTINGS_VIEW not in perms:
+            return []
+        items = []
+        for bulk in (False, True):
+            failed_at = await read_smtp_failure(self._redis, bulk=bulk)
+            if failed_at is not None:
+                items.append(
+                    AttentionItemDto(
+                        kind=AttentionKind.SMTP_FAILED,
+                        severity="critical",
+                        count=1,
+                        subject="bulk" if bulk else "main",
+                        since=failed_at,
+                    )
+                )
+        return items
+
+    async def _backup_overdue(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.BACKUPS_VIEW not in perms:
+            return []
+        settings = await self._backup_repository.get_settings()
+        if not settings.enabled:
+            return []
+        runs, _ = await self._backup_repository.list_runs(kind=BackupKind.DATABASE, page_size=1)
+        if runs and runs[0].status == BackupRunStatus.FAILED:
+            return []  # backup_failed already says it
+        latest = await self._backup_repository.find_latest_completed(BackupKind.DATABASE)
+        last_success = latest.finished_at if latest is not None else None
+        # never succeeded: counted from when the schedule was switched on
+        base = last_success or settings.updated_at
+        if (
+            base is None
+            or datetime_now() - base < timedelta(hours=settings.interval_hours) + _BACKUP_GRACE
+        ):
+            return []
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.BACKUP_OVERDUE,
+                severity="warning",
+                count=1,
+                since=last_success,
+            )
+        ]
+
+    async def _broadcasts(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.BROADCASTS_VIEW not in perms:
+            return []
+        now = datetime_now()
+        failed = await self._broadcast_repository.count_failed_since(now - _BROADCAST_FAILED_WINDOW)
+        stalled = await self._broadcast_repository.list_stalled(now - _BROADCAST_STALLED_AFTER)
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.BROADCAST_FAILED, severity="critical", count=failed
+            ),
+            AttentionItemDto(
+                kind=AttentionKind.BROADCAST_STALLED, severity="warning", count=len(stalled)
+            ),
+        ]
+
+    async def _email_undeliverable(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.USERS_VIEW not in perms:
+            return []
+        count = await self._user_repository.count_email_undeliverable_since(
+            datetime_now() - _UNDELIVERABLE_WINDOW
+        )
+        if count < _UNDELIVERABLE_SPIKE:
+            return []
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.EMAIL_UNDELIVERABLE, severity="warning", count=count
+            )
+        ]
+
+    async def _api_tokens_expiring(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.API_TOKENS_MANAGE not in perms:
+            return []
+        now = datetime_now()
+        expiring = [
+            t
+            for t in await self._api_token_repository.list_not_revoked()
+            if t.expires_at is not None and now < t.expires_at <= now + _TOKEN_EXPIRING_WITHIN
+        ]
+        if not expiring:
+            return []
+        soonest = min(expiring, key=lambda t: t.expires_at or now)
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.API_TOKEN_EXPIRING,
+                severity="warning",
+                count=len(expiring),
+                subject=soonest.name if len(expiring) == 1 else None,
+                since=soonest.expires_at,
             )
         ]

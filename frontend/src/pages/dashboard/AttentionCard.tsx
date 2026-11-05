@@ -1,13 +1,22 @@
 import type { ParseKeys, TFunction } from "i18next";
 import {
   AlertTriangle,
+  ArchiveX,
   Bot,
   CalendarClock,
   CheckCircle2,
   Clock,
+  CloudOff,
   CreditCard,
+  DatabaseBackup,
   DatabaseZap,
+  Hourglass,
+  KeyRound,
+  MailWarning,
+  MailX,
+  MegaphoneOff,
   PackageX,
+  ServerCrash,
   ServerOff,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -40,12 +49,21 @@ const SEVERITY_TONE = {
 } as const;
 
 const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = {
+  process_down: ServerCrash,
+  outbox_stuck: ArchiveX,
+  panel_unavailable: CloudOff,
   node_offline: ServerOff,
   gateway_failures: CreditCard,
+  smtp_failed: MailX,
   backup_failed: DatabaseZap,
+  backup_overdue: DatabaseBackup,
+  broadcast_failed: MegaphoneOff,
   paid_not_fulfilled: PackageX,
   stale_pending: Clock,
+  broadcast_stalled: Hourglass,
+  email_undeliverable: MailWarning,
   expiring_paid: CalendarClock,
+  api_token_expiring: KeyRound,
   bot_webhook: Bot,
 };
 
@@ -67,24 +85,46 @@ const transactionsLink = (status: string): AttentionLink => ({
   allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "transactions" && isNavItemVisible(item, permissions)),
 });
 
-// node_offline has none: nodes are managed in Remnawave
+const broadcastsLink: AttentionLink = {
+  to: "/dashboard/broadcasts",
+  label: "dashboard.attention.actions.broadcasts",
+  allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "broadcasts" && isNavItemVisible(item, permissions)),
+};
+
+const backupsLink: AttentionLink = {
+  to: "/dashboard/settings/backups",
+  label: "dashboard.attention.actions.backups",
+  allowed: settingsTabAllowed("backups"),
+};
+
+// node and panel items have none: those are managed in Remnawave; processes and
+// the event queue are fixed on the server
 const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
   gateway_failures: {
     to: "/dashboard/settings/gateways",
     label: "dashboard.attention.actions.gateways",
     allowed: settingsTabAllowed("gateways"),
   },
-  backup_failed: {
-    to: "/dashboard/settings/backups",
-    label: "dashboard.attention.actions.backups",
-    allowed: settingsTabAllowed("backups"),
+  smtp_failed: {
+    to: "/dashboard/settings/cabinet",
+    label: "dashboard.attention.actions.email",
+    allowed: settingsTabAllowed("cabinet"),
   },
+  backup_failed: backupsLink,
+  backup_overdue: backupsLink,
+  broadcast_failed: broadcastsLink,
+  broadcast_stalled: broadcastsLink,
   paid_not_fulfilled: transactionsLink(UNFULFILLED_STATUS),
   stale_pending: transactionsLink("PENDING"),
   expiring_paid: {
     to: "/dashboard/analytics/retention",
     label: "dashboard.attention.actions.retention",
     allowed: (permissions) => permissions.includes("ANALYTICS_RETENTION_VIEW"),
+  },
+  api_token_expiring: {
+    to: "/dashboard/settings/api-tokens",
+    label: "dashboard.attention.actions.apiTokens",
+    allowed: settingsTabAllowed("apiTokens"),
   },
   bot_webhook: {
     to: "/dashboard/settings/bot",
@@ -97,6 +137,54 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
   const formatted = item.count.toLocaleString(language);
   const since = item.since && formatDateTime(item.since, language);
   switch (item.kind) {
+    case "process_down":
+      return {
+        title: t("dashboard.attention.processDown.title", { process: item.subject ?? "" }),
+        sub: t("dashboard.attention.processDown.sub"),
+      };
+    case "outbox_stuck":
+      return {
+        title: t("dashboard.attention.outboxStuck.title"),
+        sub: t("dashboard.attention.outboxStuck.sub", { count: item.count, formatted, since: since ?? "" }),
+      };
+    case "panel_unavailable":
+      return {
+        title: t("dashboard.attention.panelUnavailable.title"),
+        sub: t("dashboard.attention.panelUnavailable.sub"),
+      };
+    case "smtp_failed": {
+      const profile = t(
+        item.subject === "bulk" ? "dashboard.attention.smtpFailed.bulk" : "dashboard.attention.smtpFailed.main",
+      );
+      return { title: t("dashboard.attention.smtpFailed.title"), sub: [profile, since].filter(Boolean).join(" · ") };
+    }
+    case "backup_overdue":
+      return {
+        title: t("dashboard.attention.backupOverdue.title"),
+        sub: since ? t("dashboard.attention.backupOverdue.sub", { since }) : t("dashboard.attention.backupOverdue.never"),
+      };
+    case "broadcast_failed":
+      return {
+        title: t("dashboard.attention.broadcastFailed.title"),
+        sub: t("dashboard.attention.broadcastFailed.sub", { count: item.count, formatted }),
+      };
+    case "broadcast_stalled":
+      return {
+        title: t("dashboard.attention.broadcastStalled.title"),
+        sub: t("dashboard.attention.broadcastStalled.sub", { count: item.count, formatted }),
+      };
+    case "email_undeliverable":
+      return {
+        title: t("dashboard.attention.emailUndeliverable.title"),
+        sub: t("dashboard.attention.emailUndeliverable.sub", { count: item.count, formatted }),
+      };
+    case "api_token_expiring":
+      return {
+        title: t("dashboard.attention.apiTokenExpiring.title"),
+        sub: item.subject
+          ? t("dashboard.attention.apiTokenExpiring.single", { name: item.subject, since: since ?? "" })
+          : t("dashboard.attention.apiTokenExpiring.sub", { count: item.count, formatted, since: since ?? "" }),
+      };
     case "node_offline":
       return {
         title: t("dashboard.attention.nodeOffline.title", { node: item.subject ?? "" }),

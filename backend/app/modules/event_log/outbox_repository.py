@@ -82,6 +82,16 @@ class EventOutboxRepository:
         )
         return await self.session.scalar(stmt) or 0
 
+    async def get_stuck_stats(self, before: datetime) -> OutboxLagStats:
+        # poisoned rows are left out: the sweep no longer retries them
+        stmt = select(func.count(), func.min(EventOutboxEntry.occurred_at)).where(
+            EventOutboxEntry.processed_at.is_(None),
+            EventOutboxEntry.attempts < _MAX_ATTEMPTS,
+            EventOutboxEntry.occurred_at < before,
+        )
+        count, oldest = (await self.session.execute(stmt)).one()
+        return OutboxLagStats(unprocessed_count=count, oldest_occurred_at=oldest)
+
     async def record_failure(self, entry_id: int, *, error: str) -> None:
         row = await self.session.get(EventOutboxEntry, entry_id)
         if row is not None:

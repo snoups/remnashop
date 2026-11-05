@@ -8,7 +8,12 @@ from app.core.db.uow import UnitOfWork
 from app.core.exceptions import RetryableTaskError
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.email.batch import SMTP_PAUSE_SECONDS, smtp_pause_key
+from app.modules.email.batch import (
+    SMTP_PAUSE_SECONDS,
+    clear_smtp_failure,
+    record_smtp_failure,
+    smtp_pause_key,
+)
 from app.modules.email.dto import EmailMessageDto
 from app.modules.email.layout import load_email_logo_image
 from app.modules.email.sender import EmailSendError, SmtpSender
@@ -57,10 +62,12 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
                 await self._mark_undeliverable(data.to)
                 logger.warning(f"Email refused for good, not retrying: {error}")
                 return
+            await record_smtp_failure(self._redis, bulk=False, at=datetime_now())
             if error.connection:
                 await self._redis.set(smtp_pause_key(bulk=False), "1", ex=SMTP_PAUSE_SECONDS)
             logger.warning(f"Email delivery failed, will retry: {error}")
             raise RetryableTaskError(str(error)) from error
+        await clear_smtp_failure(self._redis, bulk=False)
 
     async def _mark_undeliverable(self, address: str) -> None:
         # same flag a refused broadcast sets: later mail skips the address until it's proven again

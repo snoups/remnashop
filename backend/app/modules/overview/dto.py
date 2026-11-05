@@ -199,12 +199,21 @@ class ClientAppsDto:
 
 
 class AttentionKind(StrEnum):
+    PROCESS_DOWN = "process_down"
+    OUTBOX_STUCK = "outbox_stuck"
+    PANEL_UNAVAILABLE = "panel_unavailable"
     NODE_OFFLINE = "node_offline"
     GATEWAY_FAILURES = "gateway_failures"
+    SMTP_FAILED = "smtp_failed"
     BACKUP_FAILED = "backup_failed"
+    BACKUP_OVERDUE = "backup_overdue"
+    BROADCAST_FAILED = "broadcast_failed"
     PAID_NOT_FULFILLED = "paid_not_fulfilled"
     STALE_PENDING = "stale_pending"
+    BROADCAST_STALLED = "broadcast_stalled"
+    EMAIL_UNDELIVERABLE = "email_undeliverable"
     EXPIRING_PAID = "expiring_paid"
+    API_TOKEN_EXPIRING = "api_token_expiring"
     BOT_WEBHOOK = "bot_webhook"
 
 

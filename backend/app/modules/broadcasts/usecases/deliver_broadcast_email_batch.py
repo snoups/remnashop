@@ -50,7 +50,9 @@ from app.modules.email import (
     InlineImageDto,
     OutgoingEmailDto,
     SmtpBatchSender,
+    clear_smtp_failure,
     load_email_brand,
+    record_smtp_failure,
     smtp_pause_key,
 )
 from app.modules.promocodes import PromocodeRepository
@@ -231,6 +233,7 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
             # letters that went out before the failure are recorded first, so
             # failing or releasing the rest can't touch them
             await self._record(broadcast_id, unrecorded)
+            await record_smtp_failure(self._redis, bulk=profile.is_bulk, at=datetime_now())
             if error.auth:
                 async with self._uow:
                     # fail_pending also fails the rows this batch still holds
@@ -251,6 +254,7 @@ class DeliverBroadcastEmailBatchUseCase(UseCase[int, None]):
             logger.warning(f"Broadcast '{broadcast_id}' email paused: {error}")
             return True
 
+        await clear_smtp_failure(self._redis, bulk=profile.is_bulk)
         async with self._uow:
             await self._broadcast_repository.refresh_counts(broadcast_id)
         return True

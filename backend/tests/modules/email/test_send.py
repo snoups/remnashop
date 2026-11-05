@@ -9,7 +9,7 @@ from app.core.constants import REDIS_KEY_PREFIX
 from app.core.enums import Locale, Role, SmtpSecurity
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, RetryableTaskError, ValidationError
-from app.modules.email import EmailBrandDto
+from app.modules.email import EmailBrandDto, read_smtp_failure
 from app.modules.email.dto import EmailMessageDto, SendTestEmailDto
 from app.modules.email.sender import EmailSendError, SmtpSender
 from app.modules.email.templates import render_link_code, render_login_code
@@ -239,6 +239,20 @@ async def test_other_send_failure_does_not_pause_smtp(redis: Redis) -> None:
     with pytest.raises(RetryableTaskError):
         await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
     assert await redis.get(f"{REDIS_KEY_PREFIX}smtp_unavailable") is None
+
+
+async def test_failure_is_remembered_until_the_next_send_succeeds(redis: Redis) -> None:
+    sender = _Sender(EmailSendError("x"))
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]
+    message = EmailMessageDto(to="a@b.c", subject="s", text="t", html="h")
+    with pytest.raises(RetryableTaskError):
+        await use_case.system(message)
+    assert await read_smtp_failure(redis, bulk=False) is not None
+
+    sender.error = None
+    await use_case.system(message)
+
+    assert await read_smtp_failure(redis, bulk=False) is None
 
 
 async def test_logo_is_read_only_when_html_references_it(redis: Redis) -> None:

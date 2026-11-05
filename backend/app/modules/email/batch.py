@@ -2,24 +2,45 @@ import email.policy
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from email.message import EmailMessage
 from email.utils import formataddr
 from typing import Final, Optional
 
 import aiosmtplib
+from redis.asyncio import Redis
 
-from app.core.constants import REDIS_KEY_PREFIX, TIME_1M
+from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TIME_1M
 from app.core.enums import EmailOutcome, SmtpSecurity
 from app.modules.email.sender import SMTP_TIMEOUT_S, EmailSendError, mailbox_refused
 from app.modules.settings import SmtpProfileDto
 
 SMTP_PAUSE_SECONDS: Final[int] = TIME_1M
+# a failure nobody retries fades out after a day
+_SMTP_FAILURE_TTL_S: Final[int] = TIME_1D
 # the default SMTP policy wraps at 78 and RFC 2047-encodes a long List-Unsubscribe
 _WIRE_POLICY: Final[email.policy.Policy] = email.policy.SMTP.clone(max_line_length=998)
 
 
 def smtp_pause_key(*, bulk: bool) -> str:
     return f"{REDIS_KEY_PREFIX}{'smtp_bulk_unavailable' if bulk else 'smtp_unavailable'}"
+
+
+def _smtp_failure_key(*, bulk: bool) -> str:
+    return f"{REDIS_KEY_PREFIX}{'smtp_bulk_failed_at' if bulk else 'smtp_failed_at'}"
+
+
+async def record_smtp_failure(redis: Redis, *, bulk: bool, at: datetime) -> None:
+    await redis.set(_smtp_failure_key(bulk=bulk), at.isoformat(), ex=_SMTP_FAILURE_TTL_S)
+
+
+async def clear_smtp_failure(redis: Redis, *, bulk: bool) -> None:
+    await redis.delete(_smtp_failure_key(bulk=bulk))
+
+
+async def read_smtp_failure(redis: Redis, *, bulk: bool) -> Optional[datetime]:
+    raw = await redis.get(_smtp_failure_key(bulk=bulk))
+    return datetime.fromisoformat(raw) if raw else None
 
 
 @dataclass(frozen=True, kw_only=True)

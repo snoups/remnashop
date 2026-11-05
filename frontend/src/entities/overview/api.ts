@@ -138,12 +138,21 @@ export interface ClientApps {
 }
 
 export type AttentionKind =
+  | "process_down"
+  | "outbox_stuck"
+  | "panel_unavailable"
   | "node_offline"
   | "gateway_failures"
+  | "smtp_failed"
   | "backup_failed"
+  | "backup_overdue"
+  | "broadcast_failed"
   | "paid_not_fulfilled"
   | "stale_pending"
+  | "broadcast_stalled"
+  | "email_undeliverable"
   | "expiring_paid"
+  | "api_token_expiring"
   | "bot_webhook";
 
 export interface AttentionItem {
