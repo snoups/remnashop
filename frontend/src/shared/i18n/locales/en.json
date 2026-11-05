@@ -291,7 +291,6 @@
       "title": "Online",
       "description": "Peak online by hour and by day",
       "hours24": "24h",
-      "current": "online now",
       "valueName": "Online",
       "peak": "Peak — {{peak}} at {{time}}"
     },
