@@ -122,7 +122,7 @@ class AddOnRepository:
             await self.session.execute(delete(AddOn).where(AddOn.id == addon_id))
             await self.session.flush()
         except IntegrityError as error:
-            if constraint_name(error) != "promocodes_reward_addon_id_fkey":
+            if constraint_name(error) != "fk_promocodes_reward_addon_id_addons":
                 raise
             raise ConflictError(
                 f"AddOn '{addon_id}' is still referenced by a promocode",

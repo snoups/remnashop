@@ -39,20 +39,14 @@ class User(BaseSql, TimestampMixin):
         # covers rows the API didn't write
         CheckConstraint(
             "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'",
-            name="ck_users_login_charset",
+            name="login_charset",
         ),
-        CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
-        CheckConstraint(
-            "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
-        ),
-        CheckConstraint(
-            "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
-        ),
-        CheckConstraint(
-            "loyalty_discount BETWEEN 0 AND 100", name="ck_users_loyalty_discount_range"
-        ),
-        CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
-        CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
+        CheckConstraint("personal_discount BETWEEN 0 AND 100", name="personal_discount_range"),
+        CheckConstraint("purchase_discount BETWEEN 0 AND 100", name="purchase_discount_range"),
+        CheckConstraint("loyalty_discount BETWEEN 0 AND 100", name="loyalty_discount_range"),
+        CheckConstraint("points >= 0", name="points_non_negative"),
+        CheckConstraint("bonus_days >= 0", name="bonus_days_non_negative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

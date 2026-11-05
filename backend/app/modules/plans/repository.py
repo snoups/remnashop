@@ -269,7 +269,7 @@ class PlanRepository:
             await self.session.flush()
         except IntegrityError as error:
             constraint = constraint_name(error)
-            if constraint == "promocodes_reward_plan_id_fkey":
+            if constraint == "fk_promocodes_reward_plan_id_plans":
                 raise ConflictError(
                     f"Plan '{plan_id}' is still referenced by a promocode",
                     code=ErrorCode.PLAN_USED_BY_PROMOCODE,

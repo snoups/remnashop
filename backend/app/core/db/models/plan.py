@@ -14,9 +14,7 @@ from app.core.enums import PlanAvailability, PlanBadge, PlanType
 class Plan(BaseSql, TimestampMixin):
     __tablename__ = "plans"
     __table_args__ = (
-        CheckConstraint(
-            "discount_percent BETWEEN 0 AND 100", name="ck_plans_discount_percent_range"
-        ),
+        CheckConstraint("discount_percent BETWEEN 0 AND 100", name="discount_percent_range"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

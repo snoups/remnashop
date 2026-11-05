@@ -11,7 +11,7 @@ class Referral(BaseSql, TimestampMixin):
     __tablename__ = "referrals"
     __table_args__ = (
         UniqueConstraint("referred_id", name="uq_referrals_referred_id"),
-        CheckConstraint("level BETWEEN 1 AND 3", name="ck_referrals_level_range"),
+        CheckConstraint("level BETWEEN 1 AND 3", name="level_range"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

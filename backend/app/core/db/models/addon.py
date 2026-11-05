@@ -10,7 +10,7 @@ from app.core.enums import AddOnType
 
 class AddOn(BaseSql, TimestampMixin):
     __tablename__ = "addons"
-    __table_args__ = (CheckConstraint("base_price > 0", name="ck_addons_base_price_positive"),)
+    __table_args__ = (CheckConstraint("base_price > 0", name="base_price_positive"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

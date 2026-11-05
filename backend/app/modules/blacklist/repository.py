@@ -108,7 +108,7 @@ class BlacklistRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            if constraint_name(error) != "blacklist_sources_url_key":
+            if constraint_name(error) != "ux_blacklist_sources_url":
                 raise
             raise ConflictError(
                 f"Blacklist source '{data.url}' already exists",

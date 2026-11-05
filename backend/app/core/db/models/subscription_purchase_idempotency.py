@@ -13,7 +13,12 @@ class SubscriptionPurchaseIdempotency(BaseSql, TimestampMixin):
 
     key: Mapped[str] = mapped_column(primary_key=True)
     subscription_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True
+        ForeignKey(
+            "subscriptions.id",
+            ondelete="CASCADE",
+            name="fk_subscription_purchase_idempotency_subscription_id",
+        ),
+        index=True,
     )
     # RENEW only: the absolute expiry this purchase writes to the panel, pinned
     # before the panel call so a retry re-applies the same value instead of

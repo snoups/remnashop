@@ -19,10 +19,10 @@ class CurrencyRate(BaseSql, TimestampMixin):
     min_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
 
     __table_args__ = (
-        CheckConstraint("rate > 0", name="ck_currency_rates_rate_positive"),
-        CheckConstraint("min_amount >= 0", name="ck_currency_rates_min_amount_nonneg"),
+        CheckConstraint("rate > 0", name="rate_positive"),
+        CheckConstraint("min_amount >= 0", name="min_amount_nonneg"),
         CheckConstraint(
             "charm_ending IS NULL OR (charm_ending >= 0 AND charm_ending <= 99)",
-            name="ck_currency_rates_charm_ending_range",
+            name="charm_ending_range",
         ),
     )

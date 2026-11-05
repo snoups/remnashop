@@ -163,7 +163,7 @@ class AdLinkRepository:
         try:
             await self.session.flush()
         except IntegrityError as error:
-            if constraint_name(error) != "ad_link_attributions_user_id_key":
+            if constraint_name(error) != "ux_ad_link_attributions_user_id":
                 raise
             raise ConflictError(
                 f"User '{user_id}' is already attributed to an ad link",

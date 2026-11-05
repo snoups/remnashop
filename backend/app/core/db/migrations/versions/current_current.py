@@ -37,7 +37,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_access_settings")),
     )
     op.create_table(
         "active_locales",
@@ -99,7 +99,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_active_locales")),
         sa.UniqueConstraint("locale", name="ux_active_locales_locale"),
     )
     op.create_index(
@@ -108,6 +108,23 @@ def upgrade() -> None:
         ["is_default"],
         unique=True,
         postgresql_where=sa.text("is_default"),
+    )
+    op.create_table(
+        "addon_grant_idempotency",
+        sa.Column("key", sa.String(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("key", name=op.f("pk_addon_grant_idempotency")),
     )
     op.create_table(
         "addons",
@@ -130,8 +147,8 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.CheckConstraint("base_price > 0", name="ck_addons_base_price_positive"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint("base_price > 0", name=op.f("ck_addons_base_price_positive")),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_addons")),
     )
     op.create_index(op.f("ix_addons_name"), "addons", ["name"], unique=True)
     op.create_index(op.f("ix_addons_order_index"), "addons", ["order_index"], unique=False)
@@ -155,7 +172,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_announcements")),
     )
     op.create_index(
         op.f("ix_announcements_notify_at"), "announcements", ["notify_at"], unique=False
@@ -183,7 +200,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_appearance_settings")),
     )
     op.create_table(
         "backup_settings",
@@ -203,7 +220,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_backup_settings")),
     )
     op.create_table(
         "banners",
@@ -268,7 +285,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_banners")),
         sa.UniqueConstraint("name", "locale", name="ux_banners_name_locale"),
     )
     op.create_table(
@@ -290,7 +307,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_blacklist")),
     )
     op.create_table(
         "blacklist_sources",
@@ -317,8 +334,8 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("url"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_blacklist_sources")),
+        sa.UniqueConstraint("url", name=op.f("ux_blacklist_sources_url")),
     )
     op.create_table(
         "bot_commands",
@@ -338,7 +355,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_bot_commands")),
     )
     op.create_table(
         "bot_requirements",
@@ -359,7 +376,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_bot_requirements")),
     )
     op.create_table(
         "bot_settings",
@@ -380,7 +397,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_bot_settings")),
     )
     op.create_table(
         "bot_translations",
@@ -445,7 +462,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_bot_translations")),
         sa.UniqueConstraint(
             "locale",
             "message_id",
@@ -494,7 +511,26 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_cabinet_auth_settings")),
+    )
+    op.create_table(
+        "connect_guide_settings",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), server_default="true", nullable=False),
+        sa.Column("catalog", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_connect_guide_settings")),
     )
     op.create_table(
         "currency_rates",
@@ -519,11 +555,11 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint(
             "charm_ending IS NULL OR (charm_ending >= 0 AND charm_ending <= 99)",
-            name="ck_currency_rates_charm_ending_range",
+            name=op.f("ck_currency_rates_charm_ending_range"),
         ),
-        sa.CheckConstraint("min_amount >= 0", name="ck_currency_rates_min_amount_nonneg"),
-        sa.CheckConstraint("rate > 0", name="ck_currency_rates_rate_positive"),
-        sa.PrimaryKeyConstraint("currency"),
+        sa.CheckConstraint("min_amount >= 0", name=op.f("ck_currency_rates_min_amount_nonneg")),
+        sa.CheckConstraint("rate > 0", name=op.f("ck_currency_rates_rate_positive")),
+        sa.PrimaryKeyConstraint("currency", name=op.f("pk_currency_rates")),
     )
     op.create_table(
         "dialog_windows",
@@ -549,7 +585,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_dialog_windows")),
         sa.UniqueConstraint("key", name="ux_dialog_windows_key"),
         sa.UniqueConstraint("slot", name="ux_dialog_windows_slot"),
     )
@@ -594,7 +630,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_email_settings")),
     )
     op.create_table(
         "emoji_packs",
@@ -613,7 +649,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_emoji_packs")),
         sa.UniqueConstraint("set_name", name="ux_emoji_packs_set_name"),
     )
     op.create_table(
@@ -638,27 +674,8 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("kind"),
-    )
-    op.create_table(
-        "connect_guide_settings",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("enabled", sa.Boolean(), server_default="true", nullable=False),
-        sa.Column("catalog", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_legal_documents")),
+        sa.UniqueConstraint("kind", name=op.f("ux_legal_documents_kind")),
     )
     op.create_table(
         "loyalty_settings",
@@ -678,7 +695,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_loyalty_settings")),
     )
     op.create_table(
         "notification_settings",
@@ -700,7 +717,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_notification_settings")),
     )
     op.create_table(
         "oauth_settings",
@@ -754,7 +771,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_oauth_settings")),
     )
     op.create_table(
         "payment_gateways",
@@ -804,8 +821,8 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("type"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_payment_gateways")),
+        sa.UniqueConstraint("type", name=op.f("ux_payment_gateways_type")),
     )
     op.create_table(
         "plans",
@@ -865,9 +882,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "discount_percent BETWEEN 0 AND 100", name="ck_plans_discount_percent_range"
+            "discount_percent BETWEEN 0 AND 100", name=op.f("ck_plans_discount_percent_range")
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_plans")),
     )
     op.create_index(op.f("ix_plans_name"), "plans", ["name"], unique=True)
     op.create_index(op.f("ix_plans_order_index"), "plans", ["order_index"], unique=False)
@@ -895,7 +912,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_pricing_settings")),
     )
     op.create_table(
         "referral_settings",
@@ -939,7 +956,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_referral_settings")),
     )
     op.create_table(
         "shop_settings",
@@ -975,7 +992,7 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_shop_settings")),
     )
     op.create_table(
         "addon_price_overrides",
@@ -983,8 +1000,13 @@ def upgrade() -> None:
         sa.Column("addon_id", sa.Integer(), nullable=False),
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.ForeignKeyConstraint(["addon_id"], ["addons.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["addon_id"],
+            ["addons.id"],
+            name=op.f("fk_addon_price_overrides_addon_id_addons"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_addon_price_overrides")),
         sa.UniqueConstraint("addon_id", "currency", name="uq_addon_price_override"),
     )
     op.create_index(
@@ -1019,8 +1041,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["window_id"], ["dialog_windows.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["window_id"],
+            ["dialog_windows.id"],
+            name=op.f("fk_dialog_buttons_window_id_dialog_windows"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_dialog_buttons")),
         sa.UniqueConstraint(
             "window_id", "row", "column", name="ux_dialog_buttons_window_row_column"
         ),
@@ -1050,8 +1077,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["pack_id"], ["emoji_packs.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["pack_id"],
+            ["emoji_packs.id"],
+            name=op.f("fk_emoji_pack_items_pack_id_emoji_packs"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_emoji_pack_items")),
         sa.UniqueConstraint("custom_emoji_id", name="ux_emoji_pack_items_custom_emoji_id"),
     )
     op.create_index(
@@ -1064,9 +1096,16 @@ def upgrade() -> None:
         sa.Column("days", sa.Integer(), nullable=False),
         sa.Column("order_index", sa.Integer(), nullable=False),
         sa.Column("base_price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.CheckConstraint("base_price >= 0", name="ck_plan_durations_base_price_non_negative"),
-        sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "base_price >= 0", name=op.f("ck_plan_durations_base_price_non_negative")
+        ),
+        sa.ForeignKeyConstraint(
+            ["plan_id"],
+            ["plans.id"],
+            name=op.f("fk_plan_durations_plan_id_plans"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_plan_durations")),
     )
     op.create_index(
         op.f("ix_plan_durations_order_index"), "plan_durations", ["order_index"], unique=False
@@ -1119,14 +1158,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["reward_addon_id"],
-            ["addons.id"],
+            ["reward_addon_id"], ["addons.id"], name=op.f("fk_promocodes_reward_addon_id_addons")
         ),
         sa.ForeignKeyConstraint(
-            ["reward_plan_id"],
-            ["plans.id"],
+            ["reward_plan_id"], ["plans.id"], name=op.f("fk_promocodes_reward_plan_id_plans")
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_promocodes")),
     )
     op.create_index(op.f("ix_promocodes_code"), "promocodes", ["code"], unique=True)
     op.create_table(
@@ -1135,8 +1172,13 @@ def upgrade() -> None:
         sa.Column("plan_duration_id", sa.Integer(), nullable=False),
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
         sa.Column("price", sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.ForeignKeyConstraint(["plan_duration_id"], ["plan_durations.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["plan_duration_id"],
+            ["plan_durations.id"],
+            name=op.f("fk_plan_price_overrides_plan_duration_id_plan_durations"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_plan_price_overrides")),
         sa.UniqueConstraint("plan_duration_id", "currency", name="uq_plan_price_override"),
     )
     op.create_index(
@@ -1238,27 +1280,33 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'", name="ck_users_login_charset"
+            "login IS NULL OR login ~ '^[A-Za-z0-9._-]+$'", name=op.f("ck_users_login_charset")
         ),
-        sa.CheckConstraint("bonus_days >= 0", name="ck_users_bonus_days_non_negative"),
-        sa.CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+        sa.CheckConstraint("bonus_days >= 0", name=op.f("ck_users_bonus_days_non_negative")),
+        sa.CheckConstraint("email = lower(email)", name=op.f("ck_users_email_lowercase")),
         sa.CheckConstraint(
-            "loyalty_discount BETWEEN 0 AND 100", name="ck_users_loyalty_discount_range"
+            "loyalty_discount BETWEEN 0 AND 100", name=op.f("ck_users_loyalty_discount_range")
         ),
         sa.CheckConstraint(
-            "personal_discount BETWEEN 0 AND 100", name="ck_users_personal_discount_range"
+            "personal_discount BETWEEN 0 AND 100", name=op.f("ck_users_personal_discount_range")
         ),
-        sa.CheckConstraint("points >= 0", name="ck_users_points_non_negative"),
+        sa.CheckConstraint("points >= 0", name=op.f("ck_users_points_non_negative")),
         sa.CheckConstraint(
-            "purchase_discount BETWEEN 0 AND 100", name="ck_users_purchase_discount_range"
+            "purchase_discount BETWEEN 0 AND 100", name=op.f("ck_users_purchase_discount_range")
         ),
         sa.ForeignKeyConstraint(
-            ["personal_discount_promocode_id"], ["promocodes.id"], ondelete="SET NULL"
+            ["personal_discount_promocode_id"],
+            ["promocodes.id"],
+            name=op.f("fk_users_personal_discount_promocode_id_promocodes"),
+            ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
-            ["purchase_discount_promocode_id"], ["promocodes.id"], ondelete="SET NULL"
+            ["purchase_discount_promocode_id"],
+            ["promocodes.id"],
+            name=op.f("fk_users_purchase_discount_promocode_id_promocodes"),
+            ondelete="SET NULL",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
     )
     op.create_index(
         "ix_users_created_at_id",
@@ -1321,8 +1369,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["created_by"],
+            ["users.id"],
+            name=op.f("fk_ad_links_created_by_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_ad_links")),
     )
     op.create_index(op.f("ix_ad_links_code"), "ad_links", ["code"], unique=True)
     op.create_table(
@@ -1331,9 +1384,19 @@ def upgrade() -> None:
         sa.Column("announcement_id", sa.String(length=100), nullable=False),
         sa.Column("seen_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("dismissed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["announcement_id"], ["announcements.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("user_id", "announcement_id"),
+        sa.ForeignKeyConstraint(
+            ["announcement_id"],
+            ["announcements.id"],
+            name=op.f("fk_announcement_views_announcement_id_announcements"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_announcement_views_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("user_id", "announcement_id", name=op.f("pk_announcement_views")),
     )
     op.create_table(
         "api_tokens",
@@ -1363,8 +1426,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"],
+            ["users.id"],
+            name=op.f("fk_api_tokens_created_by_user_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_api_tokens")),
     )
     op.create_index(op.f("ix_api_tokens_token_hash"), "api_tokens", ["token_hash"], unique=True)
     op.create_table(
@@ -1396,8 +1464,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["triggered_by"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["triggered_by"],
+            ["users.id"],
+            name=op.f("fk_backup_runs_triggered_by_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_backup_runs")),
     )
     op.create_index(op.f("ix_backup_runs_kind"), "backup_runs", ["kind"], unique=False)
     op.create_index(op.f("ix_backup_runs_status"), "backup_runs", ["status"], unique=False)
@@ -1517,9 +1590,19 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["promocode_id"], ["promocodes.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["created_by"],
+            ["users.id"],
+            name=op.f("fk_broadcasts_created_by_users"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["promocode_id"],
+            ["promocodes.id"],
+            name=op.f("fk_broadcasts_promocode_id_promocodes"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_broadcasts")),
     )
     op.create_index(
         op.f("ix_broadcasts_promocode_id"), "broadcasts", ["promocode_id"], unique=False
@@ -1549,9 +1632,14 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id", "outbox_id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_customer_notifications_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_customer_notifications")),
+        sa.UniqueConstraint("user_id", "outbox_id", name=op.f("ux_customer_notifications_user_id")),
     )
     op.create_index(
         op.f("ix_customer_notifications_user_id"),
@@ -1592,8 +1680,13 @@ def upgrade() -> None:
         sa.Column("processed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("attempts", sa.Integer(), nullable=False),
         sa.Column("last_error", sa.String(), nullable=True),
-        sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["actor_id"],
+            ["users.id"],
+            name=op.f("fk_event_outbox_actor_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_event_outbox")),
     )
     op.create_index(op.f("ix_event_outbox_actor_id"), "event_outbox", ["actor_id"], unique=False)
     op.create_index(op.f("ix_event_outbox_category"), "event_outbox", ["category"], unique=False)
@@ -1666,8 +1759,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["created_by"],
+            ["users.id"],
+            name=op.f("fk_legal_document_revisions_created_by_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_legal_document_revisions")),
     )
     op.create_index(
         "ix_legal_revisions_key",
@@ -1698,8 +1796,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_oauth_identities_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_oauth_identities")),
         sa.UniqueConstraint(
             "provider", "external_id", name="ux_oauth_identities_provider_external_id"
         ),
@@ -1732,8 +1835,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_passkey_credentials_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_passkey_credentials")),
     )
     op.create_index(
         op.f("ix_passkey_credentials_credential_id"),
@@ -1753,8 +1861,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("user_id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_payment_waitlist_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("user_id", name=op.f("pk_payment_waitlist")),
     )
     op.create_table(
         "referrals",
@@ -1774,10 +1887,20 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.CheckConstraint("level BETWEEN 1 AND 3", name="ck_referrals_level_range"),
-        sa.ForeignKeyConstraint(["referred_id"], ["users.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["referrer_id"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint("level BETWEEN 1 AND 3", name=op.f("ck_referrals_level_range")),
+        sa.ForeignKeyConstraint(
+            ["referred_id"],
+            ["users.id"],
+            name=op.f("fk_referrals_referred_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["referrer_id"],
+            ["users.id"],
+            name=op.f("fk_referrals_referrer_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_referrals")),
         sa.UniqueConstraint("referred_id", name="uq_referrals_referred_id"),
     )
     op.create_index(op.f("ix_referrals_referrer_id"), "referrals", ["referrer_id"], unique=False)
@@ -1826,8 +1949,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_subscriptions_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_subscriptions")),
     )
     op.create_index(
         op.f("ix_subscriptions_expire_at"), "subscriptions", ["expire_at"], unique=False
@@ -1875,8 +2003,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("user_id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_user_registrations_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("user_id", name=op.f("pk_user_registrations")),
     )
     op.create_table(
         "user_sessions",
@@ -1908,8 +2041,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_user_sessions_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_user_sessions")),
     )
     op.create_index(
         op.f("ix_user_sessions_expires_at"), "user_sessions", ["expires_at"], unique=False
@@ -1947,10 +2085,20 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["ad_link_id"], ["ad_links.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id"),
+        sa.ForeignKeyConstraint(
+            ["ad_link_id"],
+            ["ad_links.id"],
+            name=op.f("fk_ad_link_attributions_ad_link_id_ad_links"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_ad_link_attributions_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_ad_link_attributions")),
+        sa.UniqueConstraint("user_id", name=op.f("ux_ad_link_attributions_user_id")),
     )
     op.create_index(
         op.f("ix_ad_link_attributions_ad_link_id"),
@@ -1978,9 +2126,19 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["addon_id"], ["addons.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["addon_id"],
+            ["addons.id"],
+            name=op.f("fk_addon_entitlements_addon_id_addons"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["subscription_id"],
+            ["subscriptions.id"],
+            name=op.f("fk_addon_entitlements_subscription_id_subscriptions"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_addon_entitlements")),
     )
     op.create_index(
         op.f("ix_addon_entitlements_subscription_id"),
@@ -2007,8 +2165,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["broadcast_id"],
+            ["broadcasts.id"],
+            name=op.f("fk_broadcast_email_images_broadcast_id_broadcasts"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_broadcast_email_images")),
     )
     op.create_index(
         op.f("ix_broadcast_email_images_broadcast_id"),
@@ -2045,9 +2208,19 @@ def upgrade() -> None:
         sa.Column("error", sa.String(length=255), nullable=True),
         sa.Column("sent_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("claimed_until", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["broadcast_id"],
+            ["broadcasts.id"],
+            name=op.f("fk_broadcast_recipients_broadcast_id_broadcasts"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_broadcast_recipients_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_broadcast_recipients")),
         sa.UniqueConstraint(
             "broadcast_id", "user_id", "channel", name="uq_broadcast_recipients_user_channel"
         ),
@@ -2093,11 +2266,26 @@ def upgrade() -> None:
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("outbox_id", sa.Integer(), nullable=True),
         sa.Column("target_id", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(["actor_id"], ["users.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["outbox_id"], ["event_outbox.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["target_id"], ["users.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("outbox_id"),
+        sa.ForeignKeyConstraint(
+            ["actor_id"],
+            ["users.id"],
+            name=op.f("fk_event_log_entries_actor_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["outbox_id"],
+            ["event_outbox.id"],
+            name=op.f("fk_event_log_entries_outbox_id_event_outbox"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["target_id"],
+            ["users.id"],
+            name=op.f("fk_event_log_entries_target_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_event_log_entries")),
+        sa.UniqueConstraint("outbox_id", name=op.f("ux_event_log_entries_outbox_id")),
     )
     op.create_index(
         op.f("ix_event_log_entries_actor_id"), "event_log_entries", ["actor_id"], unique=False
@@ -2129,10 +2317,25 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["promocode_id"], ["promocodes.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["promocode_id"],
+            ["promocodes.id"],
+            name=op.f("fk_promocode_activations_promocode_id_promocodes"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["subscription_id"],
+            ["subscriptions.id"],
+            name=op.f("fk_promocode_activations_subscription_id_subscriptions"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_promocode_activations_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_promocode_activations")),
     )
     op.create_index(
         op.f("ix_promocode_activations_promocode_id"),
@@ -2177,10 +2380,20 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["session_id"], ["user_sessions.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("endpoint"),
+        sa.ForeignKeyConstraint(
+            ["session_id"],
+            ["user_sessions.id"],
+            name=op.f("fk_push_subscriptions_session_id_user_sessions"),
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_push_subscriptions_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_push_subscriptions")),
+        sa.UniqueConstraint("endpoint", name=op.f("ux_push_subscriptions_endpoint")),
     )
     op.create_index(
         op.f("ix_push_subscriptions_session_id"), "push_subscriptions", ["session_id"], unique=False
@@ -2212,10 +2425,25 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["referral_id"], ["referrals.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["referrer_id"], ["users.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="SET NULL"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["referral_id"],
+            ["referrals.id"],
+            name=op.f("fk_referral_rewards_referral_id_referrals"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["referrer_id"],
+            ["users.id"],
+            name=op.f("fk_referral_rewards_referrer_id_users"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["subscription_id"],
+            ["subscriptions.id"],
+            name=op.f("fk_referral_rewards_subscription_id_subscriptions"),
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_referral_rewards")),
         sa.UniqueConstraint(
             "payment_key", "referral_id", name="uq_referral_rewards_payment_referral"
         ),
@@ -2249,8 +2477,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["subscription_id"], ["subscriptions.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("key"),
+        sa.ForeignKeyConstraint(
+            ["subscription_id"],
+            ["subscriptions.id"],
+            name="fk_subscription_purchase_idempotency_subscription_id",
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("key", name=op.f("pk_subscription_purchase_idempotency")),
     )
     op.create_index(
         op.f("ix_subscription_purchase_idempotency_subscription_id"),
@@ -2341,21 +2574,40 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["discount_promocode_id"], ["promocodes.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(
-            ["fulfilled_subscription_id"], ["subscriptions.id"], ondelete="SET NULL"
+            ["discount_promocode_id"],
+            ["promocodes.id"],
+            name=op.f("fk_transactions_discount_promocode_id_promocodes"),
+            ondelete="SET NULL",
         ),
-        sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(
+            ["fulfilled_subscription_id"],
+            ["subscriptions.id"],
+            name=op.f("fk_transactions_fulfilled_subscription_id_subscriptions"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["plan_id"],
+            ["plans.id"],
+            name=op.f("fk_transactions_plan_id_plans"),
+            ondelete="SET NULL",
+        ),
         sa.ForeignKeyConstraint(
             ["target_subscription_id"],
             ["subscriptions.id"],
+            name=op.f("fk_transactions_target_subscription_id_subscriptions"),
         ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_transactions_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_transactions")),
         sa.UniqueConstraint(
             "gateway_type", "external_payment_id", name="ux_transactions_gateway_external_id"
         ),
-        sa.UniqueConstraint("idempotency_key"),
+        sa.UniqueConstraint("idempotency_key", name=op.f("ux_transactions_idempotency_key")),
     )
     op.create_index(
         "ix_transactions_created_at_id",
@@ -2394,23 +2646,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_transactions_user_id"), "transactions", ["user_id"], unique=False)
     op.create_table(
-        "addon_grant_idempotency",
-        sa.Column("key", sa.String(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("timezone('UTC', now())"),
-            nullable=False,
-        ),
-        sa.PrimaryKeyConstraint("key"),
-    )
-    op.create_table(
         "legal_acceptances",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
@@ -2428,11 +2663,24 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["revision_id"], ["legal_document_revisions.id"], ondelete="RESTRICT"
+            ["revision_id"],
+            ["legal_document_revisions.id"],
+            name=op.f("fk_legal_acceptances_revision_id_legal_document_revisions"),
+            ondelete="RESTRICT",
         ),
-        sa.ForeignKeyConstraint(["transaction_id"], ["transactions.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(
+            ["transaction_id"],
+            ["transactions.id"],
+            name=op.f("fk_legal_acceptances_transaction_id_transactions"),
+            ondelete="SET NULL",
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_legal_acceptances_user_id_users"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_legal_acceptances")),
     )
     op.create_index(
         "ix_legal_acceptances_user_channel_trigger",
@@ -2451,7 +2699,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_legal_acceptances_user_id"), table_name="legal_acceptances")
     op.drop_index("ix_legal_acceptances_user_channel_trigger", table_name="legal_acceptances")
     op.drop_table("legal_acceptances")
-    op.drop_table("addon_grant_idempotency")
     op.drop_index(op.f("ix_transactions_user_id"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_target_subscription_id"), table_name="transactions")
     op.drop_index("ix_transactions_status_expires_at", table_name="transactions")
@@ -2586,12 +2833,12 @@ def downgrade() -> None:
     op.drop_table("oauth_settings")
     op.drop_table("notification_settings")
     op.drop_table("loyalty_settings")
-    op.drop_table("connect_guide_settings")
     op.drop_table("legal_documents")
     op.drop_table("emoji_packs")
     op.drop_table("email_settings")
     op.drop_table("dialog_windows")
     op.drop_table("currency_rates")
+    op.drop_table("connect_guide_settings")
     op.drop_table("cabinet_auth_settings")
     op.drop_table("bot_translations")
     op.drop_table("bot_settings")
@@ -2607,6 +2854,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_addons_order_index"), table_name="addons")
     op.drop_index(op.f("ix_addons_name"), table_name="addons")
     op.drop_table("addons")
+    op.drop_table("addon_grant_idempotency")
     op.drop_index(
         "ux_active_locales_default",
         table_name="active_locales",
