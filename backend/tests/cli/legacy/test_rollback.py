@@ -1,4 +1,4 @@
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Optional
 
 import pytest
 from redis.asyncio import Redis
@@ -26,7 +26,7 @@ async def _migrated(engine: AsyncEngine, config: AppConfig, legacy_at: LegacyAt)
     )
 
 
-async def _revision(engine: AsyncEngine) -> str | None:
+async def _revision(engine: AsyncEngine) -> Optional[str]:
     async with engine.connect() as connection:
         return await current_revision(connection)
 

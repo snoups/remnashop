@@ -138,18 +138,23 @@ async def run_migration(config: AppConfig) -> None:
     finally:
         await engine.dispose()
 
+    deliver_report(result, backup)
     redis = Redis.from_url(config.redis.dsn)
     try:
         await flush_shop_redis(redis)
+    except Exception as error:
+        print(f"Warning: flushing the shop Redis failed ({error}). Run FLUSHDB on it manually.")
     finally:
         await redis.aclose()
 
+
+def deliver_report(result: MigrationResult, backup: Path) -> None:
     backup.with_suffix(".report.txt").write_text(render_report(result, backup, with_password=False))
     print(render_report(result, backup, with_password=True))
 
 
-def rollback_advice() -> str:
-    backup = newest_pre_migration_backup()
+def rollback_advice(directory: Path = BACKUP_DIR) -> str:
+    backup = newest_pre_migration_backup(directory)
     if backup is None:
         return "No pre-migration backup found in the backup directory."
     original = backup_revision(backup)

@@ -133,11 +133,13 @@ async def _migrate_legacy() -> None:
     await _legacy_action(run_migration(AppConfig.get()))
 
 
-async def _legacy_action(action: Awaitable[None]) -> None:
+async def _legacy_action(action: Awaitable[None]) -> bool:
     try:
         await action
     except LegacyMigrationError as error:
         print(f"Stopped: {error}")
+        return False
+    return True
 
 
 async def _rollback_legacy() -> None:
@@ -146,10 +148,11 @@ async def _rollback_legacy() -> None:
         return
     engine = create_engine(AppConfig.get())
     try:
-        await _legacy_action(rollback(engine))
+        done = await _legacy_action(rollback(engine))
     finally:
         await engine.dispose()
-    print(rollback_advice())
+    if done:
+        print(rollback_advice())
 
 
 async def _delete_legacy() -> None:
@@ -158,10 +161,11 @@ async def _delete_legacy() -> None:
         return
     engine = create_engine(AppConfig.get())
     try:
-        await _legacy_action(drop_legacy(engine))
+        done = await _legacy_action(drop_legacy(engine))
     finally:
         await engine.dispose()
-    print("Old-version data deleted.")
+    if done:
+        print("Old-version data deleted.")
 
 
 async def _run() -> None:
