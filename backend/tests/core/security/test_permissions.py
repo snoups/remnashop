@@ -302,6 +302,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.TRANSACTIONS_FULFILL,
         Permission.REFERRALS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,
+        Permission.REFERRALS_REWARDS_VIEW,
         Permission.REFERRALS_REVENUE_VIEW,
         Permission.REFERRALS_LIST,
         Permission.REFERRALS_SUMMARY_VIEW,

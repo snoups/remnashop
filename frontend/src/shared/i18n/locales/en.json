@@ -2015,6 +2015,7 @@
     "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
     "REFERRALS_VIEW": "View referrals",
     "REFERRALS_INVITED_VIEW": "View a user’s invited users",
+    "REFERRALS_REWARDS_VIEW": "View a user’s referral rewards",
     "REFERRALS_REVENUE_VIEW": "View revenue from invited users",
     "REFERRALS_LIST": "View referral list",
     "REFERRALS_SUMMARY_VIEW": "View referral summary",

@@ -10,7 +10,7 @@ from app.modules.users import UserRepository, get_visible_target, visible_user
 class ListUserReferralRewardsUseCase(
     UseCase[ListUserReferralRewardsDto, tuple[list[ReferralStatsRewardDto], int]]
 ):
-    required_permission = Permission.REFERRALS_VIEW
+    required_permission = Permission.REFERRALS_REWARDS_VIEW
 
     def __init__(
         self,

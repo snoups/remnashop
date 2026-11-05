@@ -44,6 +44,7 @@ function UserReferralsDialogBody({
   const { t } = useTranslation();
   const permissions = usePermissions();
   const canViewInvited = permissions.includes("REFERRALS_INVITED_VIEW");
+  const canViewRewards = permissions.includes("REFERRALS_REWARDS_VIEW");
   const [state] = useAsyncResource((signal) => getUserReferralStats(userId, signal));
   const [tab, setTab] = useState<ReferralsTab>("overview");
   const [contentRef, contentHeight] = useMeasuredHeight();
@@ -51,7 +52,7 @@ function UserReferralsDialogBody({
   const tabs: DialogTabItem<ReferralsTab>[] = [
     { key: "overview", label: t("referrals.dialog.tabs.overview"), icon: BarChart3 },
     ...(canViewInvited ? [{ key: "invited" as const, label: t("referrals.dialog.tabs.invited"), icon: Users }] : []),
-    { key: "rewards", label: t("referrals.dialog.tabs.rewards"), icon: Coins },
+    ...(canViewRewards ? [{ key: "rewards" as const, label: t("referrals.dialog.tabs.rewards"), icon: Coins }] : []),
   ];
 
   const stats = state.kind === "ready" ? state.data : null;

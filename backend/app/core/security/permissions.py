@@ -202,6 +202,7 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_REFUND_PREVIEW = auto()
     REFERRALS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
+    REFERRALS_REWARDS_VIEW = auto()
     REFERRALS_REVENUE_VIEW = auto()
     REFERRALS_LIST = auto()
     REFERRALS_SUMMARY_VIEW = auto()
@@ -451,6 +452,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_REFUND_PREVIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
+    Permission.REFERRALS_REWARDS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_REVENUE_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_LIST: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_SUMMARY_VIEW: PermissionMeta(resource="referrals", kind="read"),
@@ -765,6 +767,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.TRANSACTIONS_FULFILL,
             Permission.REFERRALS_VIEW,
             Permission.REFERRALS_INVITED_VIEW,
+            Permission.REFERRALS_REWARDS_VIEW,
             Permission.REFERRALS_REVENUE_VIEW,
             Permission.REFERRALS_LIST,
             Permission.REFERRALS_SUMMARY_VIEW,

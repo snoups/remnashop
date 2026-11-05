@@ -26,7 +26,8 @@ def _event_names() -> set[str]:
     while pending:
         cls = pending.pop()
         pending.extend(cls.__subclasses__())
-        if hasattr(cls, "category"):
+        # events declared inside tests aren't shown in the dashboard
+        if hasattr(cls, "category") and cls.__module__.startswith("app."):
             names.add(cls.__name__)
     return names
 
