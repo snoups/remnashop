@@ -265,7 +265,6 @@
       "usage": "{{used}} of {{total}}",
       "cores_one": "{{count}} core",
       "cores_other": "{{count}} cores",
-      "notResponding": "Not responding",
       "down": "Not responding · {{n}}"
     },
     "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",

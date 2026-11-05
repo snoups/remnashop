@@ -7,7 +7,6 @@ import { Section } from "@shared/ui/glass/Section";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { EYEBROW_CLASS, GLASS_INNER_CARD_CLASS, GLASS_PLATE_CLASS } from "@shared/ui/classes";
-import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
 import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dashboard/runtime";
 
@@ -40,11 +39,7 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
           </span>
           <span className="truncate">{RUNTIME_PROCESS_LABELS[process.process] ?? process.process}</span>
         </span>
-        {running ? (
-          <Tag className="font-mono">{t("dashboard.runtime.pid", { pid: process.pid })}</Tag>
-        ) : (
-          <Badge tone="error">{t("dashboard.runtime.notResponding")}</Badge>
-        )}
+        {running && <Tag className="font-mono">{t("dashboard.runtime.pid", { pid: process.pid })}</Tag>}
       </div>
       <Kv
         label={t("dashboard.runtime.memory")}
