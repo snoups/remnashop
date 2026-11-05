@@ -347,7 +347,7 @@
       "offlineSince": "offline {{time}}"
     },
     "clientApps": {
-      "title": "Client apps",
+      "title": "Apps and platforms",
       "description": "What clients connect with, by platform",
       "other": "Other",
       "empty": "No devices"
