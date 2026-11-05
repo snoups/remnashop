@@ -166,7 +166,7 @@
       "backupOverdue": {
         "title": "Backups are not being created on schedule",
         "sub": "Last successful backup: {{since}}",
-        "never": "No successful backup yet"
+        "never": "No backups since it was enabled"
       },
       "broadcastFailed": {
         "title": "Broadcast “{{name}}” stopped with an error",
