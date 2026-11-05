@@ -1,8 +1,10 @@
 from app.modules.gateways.di import get_gateways_providers
 from app.modules.gateways.field_catalog import (
+    GATEWAY_FIELD_CATALOG,
     REQUIRE_PAID_PURCHASE_FIELD_KEY,
     VERIFY_IP_FIELD_KEY,
     gateway_flags,
+    is_gateway_configured,
 )
 from app.modules.gateways.gateway_settings import (
     AntilopaySettings,
@@ -33,6 +35,7 @@ from app.modules.gateways.gateway_settings import (
 from app.modules.gateways.repository import GatewayRepository
 
 __all__ = [
+    "GATEWAY_FIELD_CATALOG",
     "REQUIRE_PAID_PURCHASE_FIELD_KEY",
     "VERIFY_IP_FIELD_KEY",
     "AntilopaySettings",
@@ -62,4 +65,5 @@ __all__ = [
     "YooMoneySettings",
     "gateway_flags",
     "get_gateways_providers",
+    "is_gateway_configured",
 ]
