@@ -155,7 +155,7 @@
         "sub_other": "{{formatted}} failed payments in the last hour"
       },
       "smtpFailed": {
-        "title": "Emails are not being sent",
+        "title": "Email sending failure",
         "sub": "{{profile}} · last error {{since}}",
         "main": "Main SMTP",
         "bulk": "Broadcast SMTP"
