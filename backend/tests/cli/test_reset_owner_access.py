@@ -1,11 +1,12 @@
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cli.reset_owner_access import reset_owner_access
+from app.cli.reset_owner_access import OwnerNotRegisteredError, reset_owner_access
 from app.core.config import AppConfig
-from app.core.db.models import EventOutboxEntry
+from app.core.db.models import EventOutboxEntry, OAuthSettings
 from app.core.enums import Locale, OAuthProvider, Role, SessionAudience
 from app.core.security import verify_password
 from app.core.utils.time import datetime_now
@@ -132,3 +133,42 @@ async def test_reset_owner_access_leaves_an_audit_trail(
     )
     assert entry is not None
     assert entry.payload == {"action": "reset_owner_access", "user_id": owner.id}
+
+
+async def test_reset_owner_access_refuses_while_owner_claim_pending(
+    session: AsyncSession,
+    config: AppConfig,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+) -> None:
+    owner = await user_repository.create(
+        CreateUserDto(
+            login=None,
+            password_hash=None,
+            name="owner",
+            role=Role.OWNER,
+            language=Locale.EN,
+            telegram_id=1001,
+        )
+    )
+    await session_repository.create(
+        CreateSessionDto(
+            user_id=owner.id,
+            refresh_token_hash="h",
+            ip_address="10.0.0.1",
+            user_agent=None,
+            expires_at=datetime_now() + timedelta(days=1),
+            audience=SessionAudience.DASHBOARD,
+        )
+    )
+    await session.merge(OAuthSettings(id=1, owner_claim_pending=True))
+    await session.flush()
+
+    with pytest.raises(OwnerNotRegisteredError):
+        await reset_owner_access(session, config.crypt_key.get_secret_value())
+
+    unchanged = await user_repository.find_by_id(owner.id)
+    assert unchanged is not None
+    assert unchanged.password_hash is None
+    assert unchanged.telegram_id == 1001
+    assert len(await session_repository.list_active_by_user(owner.id)) == 1

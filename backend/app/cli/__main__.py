@@ -7,7 +7,7 @@ from app.cli.audit import record_rescue
 from app.cli.legacy.errors import LegacyMigrationError
 from app.cli.legacy.rollback import drop_legacy
 from app.cli.legacy.run import create_engine, run_migration, run_rollback
-from app.cli.reset_owner_access import reset_owner_access
+from app.cli.reset_owner_access import OwnerNotRegisteredError, reset_owner_access
 from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
 from app.core.db.crypt_key import reset_encrypted_secrets
@@ -47,7 +47,14 @@ async def _reset_owner_access() -> None:
 
     config = AppConfig.get()
     async with standalone_session(config) as session:
-        result = await reset_owner_access(session, config.crypt_key.get_secret_value())
+        try:
+            result = await reset_owner_access(session, config.crypt_key.get_secret_value())
+        except OwnerNotRegisteredError:
+            print(
+                "The owner hasn't registered yet: open the dashboard and "
+                "register the owner account."
+            )
+            return
 
     if result is None:
         print("No owner exists yet -- bootstrap one from the dashboard.")

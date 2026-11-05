@@ -20,8 +20,18 @@ from app.modules.banners import BannerRepository, ensure_default_banner_seeded
 from app.modules.blacklist import BlacklistRepository, ensure_blacklist_sources_seeded
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded, register_all_flow_metadata
 from app.modules.emoji_packs import EmojiPackRepository, ensure_builtin_emoji_packs_seeded
+from app.modules.settings import SettingsRepository
 from app.modules.translations import TranslationRepository, ensure_translations_seeded
 from app.modules.users import UserRepository
+
+
+async def is_first_run(
+    user_repository: UserRepository, settings_repository: SettingsRepository
+) -> bool:
+    # a migrated owner who hasn't registered yet still gets the seeds
+    if not await user_repository.exists_with_role(Role.OWNER):
+        return True
+    return (await settings_repository.get_oauth_settings()).owner_claim_pending
 
 
 @asynccontextmanager
@@ -43,10 +53,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 register_all_flow_metadata()
                 await ensure_translations_seeded(config, translation_repository)
 
-                # fresh install only: once an owner exists the list is theirs, and
+                # until the owner has registered: after that the list is theirs, and
                 # a source they removed must stay removed
                 user_repository = await startup_container.get(UserRepository)
-                if not await user_repository.exists_with_role(Role.OWNER):
+                settings_repository = await startup_container.get(SettingsRepository)
+                if await is_first_run(user_repository, settings_repository):
                     blacklist_repository = await startup_container.get(BlacklistRepository)
                     await ensure_blacklist_sources_seeded(blacklist_repository)
                     emoji_pack_repository = await startup_container.get(EmojiPackRepository)
