@@ -459,7 +459,9 @@ async def test_failed_and_stalled_broadcasts(
 
     items = await _kinds(session, settings_repository, uow, redis_alive)
 
-    assert items["broadcast_failed"][0].count == 1
+    failed = items["broadcast_failed"][0]
+    assert failed.count == 1
+    assert failed.since is not None and now - failed.since < timedelta(hours=2)
     assert items["broadcast_stalled"][0].count == 1
 
 

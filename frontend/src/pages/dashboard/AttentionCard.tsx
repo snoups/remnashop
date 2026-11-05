@@ -195,7 +195,7 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
     case "broadcast_failed":
       return {
         title: t("dashboard.attention.broadcastFailed.title"),
-        sub: counted("dashboard.attention.broadcastFailed.sub"),
+        sub: t("dashboard.attention.broadcastFailed.sub", { formatted, since }),
       };
     case "broadcast_stalled":
       return {

@@ -178,10 +178,7 @@
       },
       "broadcastFailed": {
         "title": "Рассылка прервалась с ошибкой",
-        "sub_one": "{{formatted}} рассылка за последние сутки",
-        "sub_few": "{{formatted}} рассылки за последние сутки",
-        "sub_many": "{{formatted}} рассылок за последние сутки",
-        "sub_other": "{{formatted}} рассылки за последние сутки"
+        "sub": "Последняя — {{since}} · всего {{formatted}} за сутки"
       },
       "broadcastStalled": {
         "title": "Рассылка зависла",

@@ -170,8 +170,7 @@
       },
       "broadcastFailed": {
         "title": "Broadcast stopped with an error",
-        "sub_one": "{{formatted}} broadcast in the last 24 hours",
-        "sub_other": "{{formatted}} broadcasts in the last 24 hours"
+        "sub": "Latest: {{since}} · {{formatted}} in the last day"
       },
       "broadcastStalled": {
         "title": "Broadcast is stuck",
