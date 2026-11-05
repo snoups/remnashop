@@ -1,7 +1,7 @@
 import re
 from contextlib import suppress
 from datetime import datetime
-from typing import Any, Final, Optional
+from typing import Any, Final, Literal, Optional
 from uuid import uuid4
 
 from loguru import logger
@@ -9,7 +9,7 @@ from remnapy import RemnawaveSDK
 from remnapy.enums import UserStatus
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
-from app.core.constants import GB_TO_BYTES
+from app.core.constants import GB_TO_BYTES, REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
@@ -23,10 +23,9 @@ from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
-_PANEL_USERNAME_PREFIX: Final[str] = "rs_"
-_PANEL_USERNAME: Final[re.Pattern[str]] = re.compile(
-    rf"^{_PANEL_USERNAME_PREFIX}(\d+)_[0-9a-f]{{8}}$"
-)
+_PANEL_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}(\d+)_[0-9a-f]{{8}}$")
+_LEGACY_TELEGRAM_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}(\d+)$")
+_LEGACY_WEB_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}{WEB_PREFIX}(\d+)$")
 # null clears these in the panel; the SDK sends every field it was given, and
 # the panel refuses null in the others with a 400
 _PANEL_NULLABLE: Final[frozenset[str]] = frozenset({"tag", "external_squad_uuid"})
@@ -46,13 +45,23 @@ def panel_update(**fields: Any) -> UpdateUserRequestDto:
 
 
 def _panel_username(user_id: int) -> str:
-    return f"{_PANEL_USERNAME_PREFIX}{user_id}_{uuid4().hex[:8]}"
+    return f"{REMNASHOP_PREFIX}{user_id}_{uuid4().hex[:8]}"
 
 
-def shop_user_id_from_username(username: str) -> Optional[int]:
-    """The shop user a panel user was created for, if the shop named it."""
-    match = _PANEL_USERNAME.match(username)
-    return int(match.group(1)) if match else None
+def shop_user_key_from_username(
+    username: str,
+) -> Optional[tuple[Literal["id", "telegram_id"], int]]:
+    """The shop user a panel user was named for: by id in the current format
+    and the legacy web one, by Telegram id in the legacy `rs_<telegram_id>`."""
+    keys: tuple[tuple[re.Pattern[str], Literal["id", "telegram_id"]], ...] = (
+        (_PANEL_USERNAME, "id"),
+        (_LEGACY_WEB_USERNAME, "id"),
+        (_LEGACY_TELEGRAM_USERNAME, "telegram_id"),
+    )
+    for pattern, key in keys:
+        if match := pattern.match(username):
+            return key, int(match.group(1))
+    return None
 
 
 def new_panel_user(user: UserDto, plan: PlanSnapshot, expire_at: datetime) -> CreateUserRequestDto:

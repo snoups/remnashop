@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
+from remnapy.models import UserResponseDto
 
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
@@ -19,6 +20,7 @@ from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.panel_sync import (
     claim_panel_sync,
     holding_panel_sync,
+    match_shop_user,
     release_panel_sync,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -431,3 +433,77 @@ async def test_pull_marks_a_subscription_gone_from_the_panel_deleted(
     )(OWNER, created.id)
 
     assert pulled.status is SubscriptionStatus.DELETED
+
+
+def _named(username: str, **overrides: object) -> UserResponseDto:
+    return UserResponseDto.model_validate(_panel_user(1, username=username, **overrides))
+
+
+async def test_match_shop_user_reads_legacy_and_current_names(
+    user_repository: UserRepository,
+) -> None:
+    by_telegram = await user_repository.create(CreateUserDto(name="tg", telegram_id=89_071))
+    web = await user_repository.create(CreateUserDto(name="web"))
+
+    legacy = await match_shop_user(user_repository, _named("rs_89071"))
+    legacy_web = await match_shop_user(user_repository, _named(f"rs_web_{web.id}"))
+    current = await match_shop_user(user_repository, _named(f"rs_{web.id}_0123abcd"))
+
+    assert legacy is not None and legacy.id == by_telegram.id
+    assert legacy_web is not None and legacy_web.id == web.id
+    assert current is not None and current.id == web.id
+
+
+async def test_match_shop_user_refuses_keys_pointing_at_different_users(
+    user_repository: UserRepository,
+) -> None:
+    await user_repository.create(CreateUserDto(name="tg", telegram_id=89_072))
+    other = await user_repository.create(CreateUserDto(name="mail", email="other@example.com"))
+
+    assert await match_shop_user(user_repository, _named("rs_89072", email=other.email)) is None
+
+
+@pytest.mark.parametrize("username", ["rs_abc", "rs_", "rs_web_", "rs_web_x", "someone"])
+async def test_match_shop_user_ignores_other_names(
+    user_repository: UserRepository, username: str
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="tg", telegram_id=89_073))
+
+    assert await match_shop_user(user_repository, _named(username)) is None
+    by_telegram = await match_shop_user(user_repository, _named(username, telegramId=89_073))
+    assert by_telegram is not None and by_telegram.id == owner.id
+
+
+async def test_orphans_are_deleted_only_when_the_shop_named_them(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    current = await user_repository.create(CreateUserDto(name="cur"))
+    web = await user_repository.create(CreateUserDto(name="web"))
+    await user_repository.create(CreateUserDto(name="tg", telegram_id=89_081))
+    await user_repository.create(CreateUserDto(name="hand", telegram_id=89_082))
+    await user_repository.create(CreateUserDto(name="mail", email="hand@example.com"))
+    names = {
+        89_091: f"rs_{current.id}_0123abcd",
+        89_092: "rs_89081",
+        89_093: f"rs_web_{web.id}",
+        89_094: "made_by_hand",
+        89_095: "made_by_mail",
+    }
+    for panel_id, username in names.items():
+        remnawave_store[panel_id] = _panel_user(panel_id, username=username, createdAt=_old())
+    remnawave_store[89_094]["telegramId"] = 89_082
+    remnawave_store[89_095]["email"] = "hand@example.com"
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
+    ).system()
+
+    assert not {89_091, 89_092, 89_093} & set(remnawave_store)
+    assert {89_094, 89_095} <= set(remnawave_store)
+    assert (result.deleted, result.failed) == (3, 0)

@@ -35,7 +35,7 @@ from app.modules.subscriptions.events import PanelSyncStartedEvent, StatusSyncSo
 from app.modules.subscriptions.panel import (
     panel_user_from_row,
     restore,
-    shop_user_id_from_username,
+    shop_user_key_from_username,
 )
 from app.modules.subscriptions.panel_config import (
     changed_config_fields,
@@ -79,14 +79,22 @@ def is_orphan(user: UserResponseDto, linked_ids: set[int], now: datetime) -> boo
     return user.id not in linked_ids and user.created_at < now - _ORPHAN_MIN_AGE
 
 
+async def named_shop_user(user_repository: UserRepository, username: str) -> Optional[UserDto]:
+    """The shop user a shop-format panel username (current or legacy) names."""
+    if (named := shop_user_key_from_username(username)) is None:
+        return None
+    key, value = named
+    if key == "id":
+        return await user_repository.find_by_id(value)
+    return await user_repository.find_by_telegram_id(value)
+
+
 async def match_shop_user(
     user_repository: UserRepository, user: UserResponseDto
 ) -> Optional[UserDto]:
     """The shop user a panel user belongs to: by the shop's own username, its
     Telegram or email. Keys pointing at different users match nobody."""
-    found: list[Optional[UserDto]] = []
-    if (user_id := shop_user_id_from_username(user.username)) is not None:
-        found.append(await user_repository.find_by_id(user_id))
+    found = [await named_shop_user(user_repository, user.username)]
     if user.telegram_id is not None:
         found.append(await user_repository.find_by_telegram_id(user.telegram_id))
     if user.email:

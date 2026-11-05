@@ -17,6 +17,7 @@ from app.modules.subscriptions.panel_sync import (
     holding_panel_sync,
     is_orphan,
     match_shop_user,
+    named_shop_user,
     panel_lags_behind,
     panel_users,
     push_to_panel,
@@ -137,7 +138,7 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         self, actor: Actor, snapshot: dict[int, UserResponseDto], linked: set[int]
     ) -> tuple[int, int]:
         """(deleted, failed) for the shop users' panel users no subscription
-        stands for; a panel user the shop can't place is someone else's."""
+        stands for; a panel user the shop didn't name is someone else's."""
         now = datetime_now()
         orphans = [user for user in snapshot.values() if is_orphan(user, linked, now)]
         deleted = failed = 0
@@ -146,6 +147,14 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
                 async with self._uow:
                     owner = await match_shop_user(self._user_repository, user)
                     if owner is None:
+                        continue
+                    named = await named_shop_user(self._user_repository, user.username)
+                    if named is None or named.id != owner.id:
+                        # a hand-made panel user the shop only matched by contact
+                        logger.warning(
+                            f"{actor.log} Kept panel user {user.id} '{user.username}': "
+                            f"not named by the shop"
+                        )
                         continue
                     # linked while the sync ran
                     existing = await self._subscription_repository.find_by_remnawave_user_id(
