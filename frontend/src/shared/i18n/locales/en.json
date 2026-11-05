@@ -192,9 +192,10 @@
         "sub_other": "Mail servers rejected {{formatted}} addresses in the last day, sending to them has stopped"
       },
       "expiringPaid": {
-        "title": "Paid subscriptions are ending",
+        "title": "Expiring subscriptions",
         "sub_one": "{{formatted}} subscription in the next 7 days",
-        "sub_other": "{{formatted}} subscriptions in the next 7 days"
+        "sub_other": "{{formatted}} subscriptions in the next 7 days",
+        "urgent": "{{base}}, {{urgent}} of them within the next day"
       },
       "apiTokenExpiring": {
         "title": "API token “{{name}}” expires soon",
