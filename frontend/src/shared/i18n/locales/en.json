@@ -187,9 +187,9 @@
         "sub_other": "{{formatted}} payments without a gateway reply for over 15 minutes"
       },
       "emailUndeliverable": {
-        "title": "Mailboxes are rejecting emails",
-        "sub_one": "{{formatted}} address rejected mail in the last 24 hours",
-        "sub_other": "{{formatted}} addresses rejected mail in the last 24 hours"
+        "title": "Emails are not reaching recipients",
+        "sub_one": "Mail servers rejected {{formatted}} address in the last day, sending to it has stopped",
+        "sub_other": "Mail servers rejected {{formatted}} addresses in the last day, sending to them has stopped"
       },
       "expiringPaid": {
         "title": "Paid subscriptions are ending",
