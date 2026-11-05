@@ -52,6 +52,12 @@ def test_oauth_vk_skipped() -> None:
     assert report.skips[0].table == "user_oauth_providers"
 
 
+def test_oauth_telegram_skipped() -> None:
+    report = MigrationReport()
+    assert transform_oauth([_oauth("telegram")], report) == []
+    assert report.skips[0].reason == "unsupported telegram"
+
+
 def test_oauth_provider_uppercased() -> None:
     (row,) = transform_oauth([_oauth("google")], MigrationReport())
     assert row["provider"] is OAuthProvider.GOOGLE

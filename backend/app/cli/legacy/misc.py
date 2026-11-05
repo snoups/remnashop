@@ -1,10 +1,13 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, Final
+from typing import Any, Final, Optional
 
 from app.cli.legacy.report import MigrationReport
 from app.core.enums import AdLinkChannel, Currency, OAuthProvider
 
+_OAUTH_PROVIDERS: Final[frozenset[OAuthProvider]] = frozenset(
+    {OAuthProvider.GOOGLE, OAuthProvider.YANDEX}
+)
 _COPIED: Final[tuple[str, ...]] = ("id", "name", "code", "is_active", "created_at", "updated_at")
 
 
@@ -41,9 +44,12 @@ def transform_oauth(
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for row in sorted(rows, key=lambda r: int(r["id"])):
+        provider: Optional[OAuthProvider]
         try:
             provider = OAuthProvider(str(row["provider"]).upper())
         except ValueError:
+            provider = None
+        if provider not in _OAUTH_PROVIDERS:
             report.skip("user_oauth_providers", str(row["id"]), f"unsupported {row['provider']}")
             continue
         result.append(
