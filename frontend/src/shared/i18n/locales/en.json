@@ -248,9 +248,12 @@
       "eventLoop": "Event loop",
       "eventLoopDelay": "Delay",
       "eventLoopP99": "P99",
-      "durationDays": "{{count}}d",
-      "durationHours": "{{count}}h",
-      "durationMinutes": "{{count}}m",
+      "durationDays_one": "{{count}} day",
+      "durationDays_other": "{{count}} days",
+      "durationHours_one": "{{count}} hour",
+      "durationHours_other": "{{count}} hours",
+      "durationMinutes_one": "{{count}} minute",
+      "durationMinutes_other": "{{count}} minutes",
       "units": {
         "millisecond": "ms"
       },
