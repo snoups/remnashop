@@ -152,7 +152,7 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         sub: t("dashboard.attention.outboxStuck.sub", {
           count: item.count,
           formatted,
-          duration: item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000) : "",
+          duration: item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000, "after") : "",
         }),
       };
     case "panel_unavailable":

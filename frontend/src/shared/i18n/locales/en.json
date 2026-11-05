@@ -138,8 +138,8 @@
       },
       "outboxStuck": {
         "title": "The event queue is not being processed",
-        "sub_one": "{{formatted}} event awaiting processing for over {{duration}}",
-        "sub_other": "{{formatted}} events awaiting processing for over {{duration}}"
+        "sub_one": "{{formatted}} event waiting in the queue for over {{duration}}",
+        "sub_other": "{{formatted}} events waiting in the queue for over {{duration}}"
       },
       "panelUnavailable": {
         "title": "No connection to the Remnawave panel",
@@ -268,7 +268,13 @@
       "usage": "{{used}} of {{total}}",
       "cores_one": "{{count}} core",
       "cores_other": "{{count}} cores",
-      "down": "Not responding · {{n}}"
+      "down": "Not responding · {{n}}",
+      "durationDaysAfter_one": "{{count}} day",
+      "durationDaysAfter_other": "{{count}} days",
+      "durationHoursAfter_one": "{{count}} hour",
+      "durationHoursAfter_other": "{{count}} hours",
+      "durationMinutesAfter_one": "{{count}} minute",
+      "durationMinutesAfter_other": "{{count}} minutes"
     },
     "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
     "nodes": {

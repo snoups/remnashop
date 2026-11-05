@@ -142,10 +142,10 @@
       },
       "outboxStuck": {
         "title": "Очередь событий не обрабатывается",
-        "sub_one": "{{formatted}} событие ожидает обработки более {{duration}}",
-        "sub_few": "{{formatted}} события ожидают обработки более {{duration}}",
-        "sub_many": "{{formatted}} событий ожидают обработки более {{duration}}",
-        "sub_other": "{{formatted}} события ожидают обработки более {{duration}}"
+        "sub_one": "{{formatted}} событие ожидает в очереди более {{duration}}",
+        "sub_few": "{{formatted}} события ожидают в очереди более {{duration}}",
+        "sub_many": "{{formatted}} событий ожидают в очереди более {{duration}}",
+        "sub_other": "{{formatted}} события ожидают в очереди более {{duration}}"
       },
       "panelUnavailable": {
         "title": "Нет связи с панелью Remnawave",
@@ -298,7 +298,19 @@
       "cores_few": "{{count}} ядра",
       "cores_many": "{{count}} ядер",
       "cores_other": "{{count}} ядра",
-      "down": "Не отвечают · {{n}}"
+      "down": "Не отвечают · {{n}}",
+      "durationDaysAfter_one": "{{count}} дня",
+      "durationDaysAfter_few": "{{count}} дней",
+      "durationDaysAfter_many": "{{count}} дней",
+      "durationDaysAfter_other": "{{count}} дня",
+      "durationHoursAfter_one": "{{count}} часа",
+      "durationHoursAfter_few": "{{count}} часов",
+      "durationHoursAfter_many": "{{count}} часов",
+      "durationHoursAfter_other": "{{count}} часа",
+      "durationMinutesAfter_one": "{{count}} минуты",
+      "durationMinutesAfter_few": "{{count}} минут",
+      "durationMinutesAfter_many": "{{count}} минут",
+      "durationMinutesAfter_other": "{{count}} минуты"
     },
     "remnawaveUnavailable": "Remnawave недоступна\nДанные появятся, когда панель ответит",
     "nodes": {
