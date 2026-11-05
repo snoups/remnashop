@@ -1,4 +1,5 @@
 import { Layers } from "lucide-react";
+import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { OverviewSubscriptions } from "@entities/overview/api";
@@ -28,15 +29,18 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
         </div>
         <div className="flex flex-col gap-2.5">
           {rows.map((row) => (
-            <div key={row.key} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <span className={`size-2.5 rounded-full ${row.dot}`} />
-                {t(`dashboard.subscriptions.${row.key}`)}
-              </span>
-              <span className="font-semibold tabular-nums text-foreground">
-                {row.value.toLocaleString(i18n.language)}
-              </span>
-            </div>
+            <Fragment key={row.key}>
+              {row.key === "limited" && <div className="h-px bg-border" />}
+              <div className="flex items-center justify-between gap-3 text-[13px]">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <span className={`size-2.5 rounded-full ${row.dot}`} />
+                  {t(`dashboard.subscriptions.${row.key}`)}
+                </span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {row.value.toLocaleString(i18n.language)}
+                </span>
+              </div>
+            </Fragment>
           ))}
         </div>
       </div>
