@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Final, Optional
 
 from httpx import AsyncClient, AsyncHTTPTransport, Timeout
+from loguru import logger
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.cli.legacy.errors import LegacyMigrationError
@@ -132,8 +132,12 @@ async def run_migration(config: AppConfig) -> None:
                 bot_owner_id=read_bot_owner_id(),
                 original_revision=original,
             )
-        except (LegacyMigrationError, SQLAlchemyError) as error:
-            raise LegacyMigrationError(failure_message(error, original, backup)) from error
+        except Exception as error:
+            if not isinstance(error, LegacyMigrationError):
+                logger.exception("Legacy migration failed")
+            # the schema was already moved: whatever broke, the way back must be named
+            advised = oldest_pre_migration_backup(original, BACKUP_DIR) or backup
+            raise LegacyMigrationError(failure_message(error, original, advised)) from error
     finally:
         await engine.dispose()
 

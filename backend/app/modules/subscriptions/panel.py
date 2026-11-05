@@ -9,7 +9,7 @@ from remnapy import RemnawaveSDK
 from remnapy.enums import UserStatus
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
-from app.core.constants import GB_TO_BYTES, REMNASHOP_PREFIX, WEB_PREFIX
+from app.core.constants import GB_TO_BYTES, INT32_MAX, INT64_MAX, REMNASHOP_PREFIX, WEB_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
@@ -53,14 +53,16 @@ def shop_user_key_from_username(
 ) -> Optional[tuple[Literal["id", "telegram_id"], int]]:
     """The shop user a panel user was named for: by id in the current format
     and the legacy web one, by Telegram id in the legacy `rs_<telegram_id>`."""
-    keys: tuple[tuple[re.Pattern[str], Literal["id", "telegram_id"]], ...] = (
-        (_PANEL_USERNAME, "id"),
-        (_LEGACY_WEB_USERNAME, "id"),
-        (_LEGACY_TELEGRAM_USERNAME, "telegram_id"),
+    keys: tuple[tuple[re.Pattern[str], Literal["id", "telegram_id"], int], ...] = (
+        (_PANEL_USERNAME, "id", INT32_MAX),
+        (_LEGACY_WEB_USERNAME, "id", INT32_MAX),
+        (_LEGACY_TELEGRAM_USERNAME, "telegram_id", INT64_MAX),
     )
-    for pattern, key in keys:
+    for pattern, key, limit in keys:
         if match := pattern.match(username):
-            return key, int(match.group(1))
+            # usernames are panel-side input; a number past the column is no match
+            value = int(match.group(1))
+            return (key, value) if value <= limit else None
     return None
 
 

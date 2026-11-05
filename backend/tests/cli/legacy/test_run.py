@@ -207,6 +207,52 @@ async def test_failed_migrate_names_the_original_revision_and_backup(
     assert str(dumps[0]) in message
 
 
+async def test_failed_rerun_names_the_original_revision_backup(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+    original = tmp_path / "DATABASE_pre-legacy-migration_0039_2026.dump"
+    original.touch()
+    assert await upgrade_legacy_schema(legacy_engine) == "0039"
+
+    async def failing(*args: object, **kwargs: object) -> None:
+        raise SQLAlchemyError("boom")
+
+    dumps: list[Path] = []
+    _stub_run(monkeypatch, tmp_path, dumps, migrate=failing)
+    with pytest.raises(LegacyMigrationError) as error:
+        await run_migration(_pointed(config, legacy_engine))
+    message = str(error.value)
+    assert str(original) in message
+    assert str(dumps[0]) not in message
+
+
+async def test_unexpected_transform_error_gets_the_failure_message(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+
+    async def failing(*args: object, **kwargs: object) -> None:
+        raise ValueError("'XXX' is not a valid Currency")
+
+    dumps: list[Path] = []
+    _stub_run(monkeypatch, tmp_path, dumps, migrate=failing)
+    with pytest.raises(LegacyMigrationError) as error:
+        await run_migration(_pointed(config, legacy_engine))
+    message = str(error.value)
+    assert "not a valid Currency" in message
+    assert "revision 0039" in message
+    assert str(dumps[0]) in message
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"), [("123", 123), ("abc", None), ("", None), (None, None)]
 )

@@ -1,10 +1,17 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import pytest
+
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import SubscriptionDto
-from app.modules.subscriptions.panel import configure_for_plan, new_panel_user, restore
+from app.modules.subscriptions.panel import (
+    configure_for_plan,
+    new_panel_user,
+    restore,
+    shop_user_key_from_username,
+)
 from app.modules.users import UserDto
 from tests.modules.subscriptions.factories import make_plan_snapshot
 
@@ -78,3 +85,16 @@ def test_restore_leaves_out_a_past_expiry_the_panel_would_refuse() -> None:
 
     assert "expire_at" not in restore(expired).model_dump(exclude_unset=True)
     assert restore(live).expire_at == live.expire_at
+
+
+@pytest.mark.parametrize(
+    "username",
+    ["rs_99999999999999999999", "rs_web_9999999999", "rs_9999999999_abcdef12"],
+)
+def test_out_of_range_panel_username_matches_no_shop_user(username: str) -> None:
+    assert shop_user_key_from_username(username) is None
+
+
+def test_in_range_panel_usernames_still_match() -> None:
+    assert shop_user_key_from_username("rs_9999999999") == ("telegram_id", 9999999999)
+    assert shop_user_key_from_username("rs_web_2147483647") == ("id", 2147483647)
