@@ -24,7 +24,7 @@ from app.telegram.routers.legal.handlers import (
     on_terms_command,
 )
 from app.telegram.routers.purchase.getters import confirm_getter
-from tests.fakes.telegram_bot import FakeBotSession
+from tests.fakes.aiogram_bot import FakeAiogramSession
 from tests.seeded_translations import seeded_fluent_source
 
 _USER: Any = SimpleNamespace(id=1, telegram_id=9, language=Locale.EN, log="[user 1]")
@@ -52,7 +52,7 @@ def _visible(documents: list[LegalRevisionDto]) -> Any:
     return MagicMock(execute=AsyncMock(return_value=documents))
 
 
-def _bot(session: FakeBotSession) -> Bot:
+def _bot(session: FakeAiogramSession) -> Bot:
     return Bot("42:TEST", session=session)
 
 
@@ -80,7 +80,7 @@ def test_terms_is_a_bot_command() -> None:
 
 
 async def test_terms_lists_visible_documents() -> None:
-    session = FakeBotSession({"SendMessage": True})
+    session = FakeAiogramSession({"SendMessage": True})
     visible = _visible(
         [_revision(LegalDocumentKind.OFFER), _revision(LegalDocumentKind.PRIVACY_POLICY)]
     )
@@ -101,7 +101,7 @@ async def test_terms_lists_visible_documents() -> None:
 
 
 async def test_terms_without_documents_says_so() -> None:
-    session = FakeBotSession({"SendMessage": True})
+    session = FakeAiogramSession({"SendMessage": True})
     hub = _hub()
 
     await on_terms_command(_message(_bot(session)), _USER, _visible([]), hub)
@@ -112,7 +112,7 @@ async def test_terms_without_documents_says_so() -> None:
 
 
 async def test_document_callback_sends_rich_message() -> None:
-    session = FakeBotSession({"SendRichMessage": True, "AnswerCallbackQuery": True})
+    session = FakeAiogramSession({"SendRichMessage": True, "AnswerCallbackQuery": True})
     visible = _visible(
         [_revision(LegalDocumentKind.OFFER, title="Public offer", body="**1.** Terms")]
     )
@@ -131,7 +131,7 @@ async def test_document_callback_sends_rich_message() -> None:
 
 
 async def test_document_gone_by_the_tap_says_so() -> None:
-    session = FakeBotSession({"AnswerCallbackQuery": True})
+    session = FakeAiogramSession({"AnswerCallbackQuery": True})
     hub = _hub()
 
     await on_legal_document(

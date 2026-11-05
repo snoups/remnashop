@@ -1,15 +1,14 @@
-from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from itertools import count
+from pathlib import Path
 from typing import Any, Final, Optional
 from uuid import uuid4
 
 import httpx
-from aiogram import Bot
-from aiogram.client.session.base import BaseSession
-from aiogram.methods import DeleteMessage, GetMe, TelegramMethod
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +24,7 @@ from app.core.enums import (
     SubscriptionStatus,
     TransactionStatus,
 )
+from app.core.telegram_api import BotApi, BotSession, unwrap_reply
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.telegram_api import TelegramClientFactory
 from app.modules.users.dto import CreateUserDto
@@ -111,42 +111,52 @@ async def add_paid_transaction(session: AsyncSession, user_id: int) -> None:
     await session.flush()
 
 
-class _ResponderSession(BaseSession):
-    """Answers each call with the responder's raw Bot API reply, which aiogram
-    then parses (or turns into its exception) exactly as for a real response."""
+@dataclass(frozen=True)
+class BotRequest:
+    method: str
+    # an upload's file is here as a Path, under its field
+    params: dict[str, Any]
+
+
+class _ResponderSession(BotSession):
+    """Answers each call with the responder's raw Bot API reply, parsed (or
+    turned into a refusal) exactly as a real response is."""
 
     def __init__(self, telegram: "MockTelegram") -> None:
-        super().__init__()
+        super().__init__(None, 0)
         self._telegram = telegram
 
-    async def make_request(
-        self, bot: Bot, method: TelegramMethod[Any], timeout: Optional[int] = None
+    async def request(
+        self,
+        token: str,
+        method: str,
+        params: dict[str, Any],
+        upload: Optional[tuple[str, Path]] = None,
     ) -> Any:
-        self._telegram.requests.append(method)
-        reply = self._telegram.responder(method)
-        response = self.check_response(
-            bot=bot, method=method, status_code=reply.status_code, content=reply.text
-        )
-        return response.result
+        if upload is not None:
+            params = {**params, upload[0]: upload[1]}
+        request = BotRequest(method, params)
+        self._telegram.requests.append(request)
+        reply = self._telegram.responder(request)
+        return unwrap_reply(method, reply.json(), reply.status_code)
 
-    async def stream_content(self, *args: Any, **kwargs: Any) -> AsyncGenerator[bytes, None]:
+    async def fetch(self, token: str, file_path: str) -> bytes:
         raise AssertionError("broadcasts never download")
-        yield b""
 
     async def close(self) -> None:
         pass
 
 
 class MockTelegram(TelegramClientFactory):
-    def __init__(self, responder: Callable[[TelegramMethod[Any]], httpx.Response]) -> None:
-        self.requests: list[TelegramMethod[Any]] = []
+    def __init__(self, responder: Callable[[BotRequest], httpx.Response]) -> None:
+        self.requests: list[BotRequest] = []
         self.responder = responder
 
     @asynccontextmanager
-    async def _bot(self, token: str) -> AsyncIterator[Bot]:
-        yield Bot(token=token, session=_ResponderSession(self))
+    async def _bot(self, token: str) -> AsyncIterator[BotApi]:
+        yield BotApi(token, _ResponderSession(self))
 
-    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[Bot]:
+    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[BotApi]:
         return self._bot(token)
 
 
@@ -162,10 +172,10 @@ BOT_USER: Final[dict[str, Any]] = {
 }
 
 
-def ok_response(method: TelegramMethod[Any]) -> httpx.Response:
+def ok_response(request: BotRequest) -> httpx.Response:
     result: object = message_result()
-    if isinstance(method, DeleteMessage):
+    if request.method == "deleteMessage":
         result = True
-    elif isinstance(method, GetMe):
+    elif request.method == "getMe":
         result = BOT_USER
     return httpx.Response(200, json={"ok": True, "result": result})

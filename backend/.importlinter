@@ -41,6 +41,7 @@ source_modules =
     app.worker
     app.cli
 forbidden_modules =
+    aiogram
     aiogram_dialog
     fluentogram
     segno

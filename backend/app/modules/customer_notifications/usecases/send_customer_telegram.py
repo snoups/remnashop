@@ -1,6 +1,5 @@
 from dataclasses import asdict, replace
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from loguru import logger
 
 from app.core.actor import Actor
@@ -49,12 +48,11 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
         ):
             return
         markup = (
-            InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text=b["text"], callback_data=b["callback_data"])]
-                    for b in data.buttons
+            {
+                "inline_keyboard": [
+                    [{"text": b["text"], "callback_data": b["callback_data"]}] for b in data.buttons
                 ]
-            )
+            }
             if data.buttons
             else None
         )

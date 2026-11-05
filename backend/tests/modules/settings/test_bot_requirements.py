@@ -1,10 +1,6 @@
 from typing import Callable
 
 import pytest
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.methods import GetMe
-from aiogram.types import ChatMemberAdministrator, ChatMemberMember, ChatMemberOwner
-from aiogram.types import User as TelegramUser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +16,7 @@ from app.modules.settings.dto import UpdateBotRequirementsDto, UpdateBotSettings
 from app.modules.settings.repository import SettingsRepository
 from app.modules.settings.usecases import UpdateBotRequirementsUseCase
 from app.modules.users.dto import UserDto
-from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
+from tests.fakes.telegram_bot import FakeBotSession, refusal, use_fake_bot
 
 _OWNER = UserDto(id=1, name="owner", role=Role.OWNER)
 
@@ -139,27 +135,7 @@ async def test_only_values_that_differ_are_recorded_as_changed(
 
 
 def _member(status: str) -> object:
-    user = TelegramUser(id=123, is_bot=True, first_name="bot")
-    if status == "administrator":
-        return ChatMemberAdministrator(
-            user=user,
-            can_be_edited=False,
-            is_anonymous=False,
-            can_manage_chat=True,
-            can_delete_messages=True,
-            can_manage_video_chats=True,
-            can_restrict_members=True,
-            can_promote_members=False,
-            can_change_info=True,
-            can_invite_users=True,
-            can_post_stories=False,
-            can_edit_stories=False,
-            can_delete_stories=False,
-            can_send_welcome_messages=False,
-        )
-    if status == "creator":
-        return ChatMemberOwner(user=user, is_anonymous=False)
-    return ChatMemberMember(user=user)
+    return {"status": status, "user": {"id": 123, "is_bot": True, "first_name": "bot"}}
 
 
 @pytest.mark.parametrize(
@@ -168,15 +144,15 @@ def _member(status: str) -> object:
         (lambda: _member("administrator"), True),
         (lambda: _member("creator"), True),
         (lambda: _member("member"), False),
-        (lambda: TelegramBadRequest(method=GetMe(), message="chat not found"), False),
+        (lambda: refusal(400, "Bad Request: chat not found"), False),
     ],
     ids=["administrator", "creator", "member", "chat-not-found"],
 )
 async def test_is_bot_channel_admin(
     monkeypatch: pytest.MonkeyPatch, reply: Callable[[], object], expected: bool
 ) -> None:
-    session = use_fake_bot(monkeypatch, FakeBotSession({"GetChatMember": reply()}))
+    session = use_fake_bot(monkeypatch, FakeBotSession({"getChatMember": reply()}))
 
     assert await telegram_status.is_bot_channel_admin("123:abc", None, -100) is expected
-    [call] = session.called("GetChatMember")
-    assert (call.chat_id, call.user_id) == (-100, 123)
+    [call] = session.called("getChatMember")
+    assert (call["chat_id"], call["user_id"]) == (-100, 123)

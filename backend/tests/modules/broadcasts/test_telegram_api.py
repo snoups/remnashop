@@ -3,18 +3,16 @@ from typing import Any
 
 import httpx
 import pytest
-from aiogram.exceptions import TelegramNetworkError
-from aiogram.methods import DeleteMessage, SendMessage, SendPhoto, SendVideo, TelegramMethod
-from aiogram.types import FSInputFile
 
 from app.core.enums import BroadcastMediaType
+from app.core.telegram_api import BotApiError
 from app.modules.broadcasts.telegram_api import (
     OutgoingMedia,
     SendOutcome,
     delete_telegram_message,
     send_broadcast_message,
 )
-from tests.modules.broadcasts.factories import MockTelegram, message_result
+from tests.modules.broadcasts.factories import BotRequest, MockTelegram, message_result
 
 _TOKEN = "123:abc"
 
@@ -50,15 +48,15 @@ async def test_send_text_outcomes(status: int, body: dict, outcome: SendOutcome)
 
     assert result.outcome is outcome
     [sent] = telegram.requests
-    assert isinstance(sent, SendMessage)
-    assert (sent.chat_id, sent.parse_mode) == (42, "HTML")
+    assert sent.method == "sendMessage"
+    assert (sent.params["chat_id"], sent.params["parse_mode"]) == (42, "HTML")
     if status == 429:
         assert result.retry_after == 3
 
 
 async def test_network_error_is_retry() -> None:
-    def _down(method: TelegramMethod[Any]) -> httpx.Response:
-        raise TelegramNetworkError(method=method, message="slow")
+    def _down(request: BotRequest) -> httpx.Response:
+        raise BotApiError("sendMessage: ServerTimeoutError")
 
     async with MockTelegram(_down).open(_TOKEN, None) as bot:
         result = await send_broadcast_message(bot, 1, "x", None, None)
@@ -102,7 +100,7 @@ async def test_first_photo_upload_returns_file_id(tmp_path: Path) -> None:
 
     assert (result.outcome, result.message_id, result.file_id) == (SendOutcome.SENT, 9, "big")
     [sent] = telegram.requests
-    assert isinstance(sent, SendPhoto) and isinstance(sent.photo, FSInputFile)
+    assert sent.method == "sendPhoto" and sent.params["photo"] == file
 
 
 async def test_a_missing_media_file_is_not_a_network_failure(tmp_path: Path) -> None:
@@ -130,7 +128,8 @@ async def test_send_by_file_id_reuses_the_upload() -> None:
 
     assert (result.outcome, result.file_id) == (SendOutcome.SENT, "F")
     [sent] = telegram.requests
-    assert isinstance(sent, SendVideo) and (sent.video, sent.caption) == ("F", "c")
+    assert sent.method == "sendVideo"
+    assert (sent.params["video"], sent.params["caption"]) == ("F", "c")
 
 
 async def test_delete_message() -> None:
@@ -140,4 +139,5 @@ async def test_delete_message() -> None:
         assert (await delete_telegram_message(bot, 1, 2)).outcome is SendOutcome.SENT
 
     [sent] = telegram.requests
-    assert isinstance(sent, DeleteMessage) and (sent.chat_id, sent.message_id) == (1, 2)
+    assert sent.method == "deleteMessage"
+    assert (sent.params["chat_id"], sent.params["message_id"]) == (1, 2)

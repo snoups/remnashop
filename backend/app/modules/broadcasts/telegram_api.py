@@ -1,28 +1,30 @@
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from enum import auto
+from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Final, Optional, Union
+from typing import Any, Final, Optional
 
-from aiogram import Bot
-from aiogram.enums import ParseMode
-from aiogram.exceptions import (
-    TelegramAPIError,
-    TelegramEntityTooLarge,
-    TelegramForbiddenError,
-    TelegramNetworkError,
-    TelegramRetryAfter,
-    TelegramServerError,
-    TelegramUnauthorizedError,
-)
-from aiogram.methods import SendAnimation, SendDocument, SendPhoto, SendVideo, TelegramMethod
-from aiogram.types import FSInputFile, InlineKeyboardMarkup, Message
 from loguru import logger
 
 from app.core.enums import BroadcastMediaType, UpperStrEnum
-from app.core.telegram_api import BOT_API_ERRORS, bot_api_error_text, bot_client
+from app.core.telegram_api import (
+    BOT_API_ERRORS,
+    BotApi,
+    BotApiRefusedError,
+    bot_api_error_text,
+    bot_client,
+)
 
 _TIMEOUT_SECONDS: Final[float] = 30.0
+_HTML: Final[str] = "HTML"
+# media type -> (Bot API method, its file field)
+_MEDIA_METHODS: Final[dict[BroadcastMediaType, tuple[str, str]]] = {
+    BroadcastMediaType.PHOTO: ("sendPhoto", "photo"),
+    BroadcastMediaType.VIDEO: ("sendVideo", "video"),
+    BroadcastMediaType.ANIMATION: ("sendAnimation", "animation"),
+    BroadcastMediaType.DOCUMENT: ("sendDocument", "document"),
+}
 
 
 class SendOutcome(UpperStrEnum):
@@ -51,122 +53,87 @@ class SendResult:
 
 
 class TelegramClientFactory:
-    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[Bot]:
+    def open(self, token: str, proxy: Optional[str]) -> AbstractAsyncContextManager[BotApi]:
         return bot_client(token, proxy, timeout=_TIMEOUT_SECONDS)
 
 
 def _failure(error: Exception) -> SendResult:
     text = bot_api_error_text(error)
-    if isinstance(error, TelegramRetryAfter):
+    if not isinstance(error, BotApiRefusedError):
+        # a dropped connection, a garbled reply: worth another attempt
+        return SendResult(outcome=SendOutcome.RETRY, error=text)
+    if error.error_code == HTTPStatus.TOO_MANY_REQUESTS:
         return SendResult(outcome=SendOutcome.RETRY, error=text, retry_after=error.retry_after)
-    if isinstance(error, TelegramUnauthorizedError):
+    if error.error_code == HTTPStatus.UNAUTHORIZED:
         return SendResult(outcome=SendOutcome.UNAUTHORIZED, error=text)
-    if isinstance(error, TelegramForbiddenError):
+    if error.error_code == HTTPStatus.FORBIDDEN:
         return SendResult(outcome=SendOutcome.BLOCKED, error=text)
-    if isinstance(error, TelegramEntityTooLarge):
-        return SendResult(outcome=SendOutcome.FAILED, error=text)
-    if isinstance(error, (TelegramServerError, TelegramNetworkError)) or not isinstance(
-        error, TelegramAPIError
-    ):
-        # a 5xx, a dropped connection, a garbled reply: worth another attempt
+    if error.error_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
         return SendResult(outcome=SendOutcome.RETRY, error=text)
     return SendResult(outcome=SendOutcome.FAILED, error=text)
 
 
-def _media_method(
-    media_type: BroadcastMediaType,
-    chat_id: int,
-    file: Union[str, FSInputFile],
-    caption: str,
-    markup: Optional[InlineKeyboardMarkup],
-) -> TelegramMethod[Message]:
+def _media_file_id(message: dict[str, Any], media_type: BroadcastMediaType) -> Optional[str]:
+    _, field = _MEDIA_METHODS[media_type]
+    media = message.get(field)
     if media_type is BroadcastMediaType.PHOTO:
-        return SendPhoto(
-            chat_id=chat_id,
-            photo=file,
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-            reply_markup=markup,
-        )
-    if media_type is BroadcastMediaType.VIDEO:
-        return SendVideo(
-            chat_id=chat_id,
-            video=file,
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-            reply_markup=markup,
-        )
-    if media_type is BroadcastMediaType.ANIMATION:
-        return SendAnimation(
-            chat_id=chat_id,
-            animation=file,
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-            reply_markup=markup,
-        )
-    return SendDocument(
-        chat_id=chat_id,
-        document=file,
-        caption=caption,
-        parse_mode=ParseMode.HTML,
-        reply_markup=markup,
-    )
-
-
-def _media_file_id(message: Message, media_type: BroadcastMediaType) -> Optional[str]:
-    if media_type is BroadcastMediaType.PHOTO:
-        return message.photo[-1].file_id if message.photo else None  # largest last
-    if media_type is BroadcastMediaType.VIDEO:
-        return message.video.file_id if message.video else None
-    if media_type is BroadcastMediaType.ANIMATION:
-        return message.animation.file_id if message.animation else None
-    return message.document.file_id if message.document else None
+        return media[-1]["file_id"] if media else None  # largest last
+    return media.get("file_id") if media else None
 
 
 async def send_broadcast_message(
-    bot: Bot,
+    bot: BotApi,
     chat_id: int,
     text: str,
     reply_markup: Optional[dict[str, Any]],
     media: Optional[OutgoingMedia],
 ) -> SendResult:
-    markup = InlineKeyboardMarkup.model_validate(reply_markup) if reply_markup else None
     if media is not None and media.file_id is None and not (media.path and media.path.is_file()):
         # the caller skips the post; inside the send it would read as a network failure
         raise FileNotFoundError(media.path)
     try:
         if media is None:
-            message = await bot.send_message(
-                chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=markup
+            message = await bot.call(
+                "sendMessage",
+                chat_id=chat_id,
+                text=text,
+                parse_mode=_HTML,
+                reply_markup=reply_markup,
             )
-            return SendResult(outcome=SendOutcome.SENT, message_id=message.message_id)
+            return SendResult(outcome=SendOutcome.SENT, message_id=message["message_id"])
+        method, field = _MEDIA_METHODS[media.media_type]
+        params: dict[str, Any] = {
+            "chat_id": chat_id,
+            "caption": text,
+            "parse_mode": _HTML,
+            "reply_markup": reply_markup,
+        }
         if media.file_id is not None:
-            file: Union[str, FSInputFile] = media.file_id
+            message = await bot.call(method, **params, **{field: media.file_id})
         else:
             assert media.path is not None
-            file = FSInputFile(media.path, filename=media.path.name)
-        message = await bot(_media_method(media.media_type, chat_id, file, text, markup))
+            message = await bot.upload(method, field, media.path, **params)
     except BOT_API_ERRORS as error:
         return _failure(error)
     return SendResult(
         outcome=SendOutcome.SENT,
-        message_id=message.message_id,
+        message_id=message["message_id"],
         file_id=_media_file_id(message, media.media_type),
     )
 
 
-async def get_bot_username(bot: Bot) -> Optional[str]:
+async def get_bot_username(bot: BotApi) -> Optional[str]:
     try:
-        username = (await bot.get_me()).username
+        username = (await bot.call("getMe")).get("username")
     except BOT_API_ERRORS as error:
         logger.info(f"getMe failed: {bot_api_error_text(error)}")
         return None
-    return username or None
+    return username if isinstance(username, str) and username else None
 
 
-async def delete_telegram_message(bot: Bot, chat_id: int, message_id: int) -> SendResult:
+async def delete_telegram_message(bot: BotApi, chat_id: int, message_id: int) -> SendResult:
     try:
-        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+        await bot.call("deleteMessage", chat_id=chat_id, message_id=message_id)
     except BOT_API_ERRORS as error:
         logger.info(f"deleteMessage {chat_id}/{message_id} failed: {bot_api_error_text(error)}")
         return _failure(error)

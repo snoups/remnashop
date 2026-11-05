@@ -1,8 +1,6 @@
 from decimal import ROUND_CEILING
-from typing import Final, Optional, TypeVar
+from typing import Any, Final, Optional
 
-from aiogram.methods import CreateInvoiceLink, RefundStarPayment, TelegramMethod
-from aiogram.types import LabeledPrice
 from pydantic import SecretStr
 
 from app.core.enums import Currency
@@ -20,7 +18,6 @@ from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S
 
 BOT_TOKEN_SETTING: Final[str] = "bot_token"
 BOT_PROXY_SETTING: Final[str] = "bot_proxy"
-T = TypeVar("T")
 # Telegram caps invoice titles at 32 characters
 _TITLE_MAX: Final[int] = 32
 _NO_WEBHOOK: Final[str] = "Telegram Stars has no HTTP webhook"
@@ -46,24 +43,22 @@ class TelegramStarsGateway(PaymentGateway[StarsRuntimeSettings]):
     settings_model = StarsRuntimeSettings
     currency = Currency.XTR
 
-    async def _call(self, method: TelegramMethod[T]) -> T:
+    async def _call(self, method: str, **params: Any) -> Any:
         try:
             async with bot_client(
                 self.settings.bot_token.get_secret_value(),
                 self.settings.bot_proxy,
                 timeout=PROVIDER_API_TIMEOUT_S,
             ) as bot:
-                return await bot(method)
+                return await bot.call(method, **params)
         except BOT_API_ERRORS as error:
             # from None: the chained network error can carry the request URL, token included
-            raise PaymentGatewayError(
-                f"{type(method).__name__} refused: {bot_api_error_text(error)}"
-            ) from None
+            raise PaymentGatewayError(f"{method} refused: {bot_api_error_text(error)}") from None
 
     async def refund(self, charge_id: str, telegram_id: int) -> None:
         try:
             await self._call(
-                RefundStarPayment(user_id=telegram_id, telegram_payment_charge_id=charge_id)
+                "refundStarPayment", user_id=telegram_id, telegram_payment_charge_id=charge_id
             )
         except PaymentGatewayError as error:
             # a retry after a lost answer or a failed DB write must still complete
@@ -73,15 +68,14 @@ class TelegramStarsGateway(PaymentGateway[StarsRuntimeSettings]):
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         name = order.plan_snapshot.name
         link = await self._call(
-            CreateInvoiceLink(
-                title=name[:_TITLE_MAX],
-                description=f"{name}, {order.duration_days}d",
-                payload=order.idempotency_key,
-                currency=Currency.XTR.value,
-                prices=[LabeledPrice(label=Currency.XTR.value, amount=stars_amount(order))],
-            )
+            "createInvoiceLink",
+            title=name[:_TITLE_MAX],
+            description=f"{name}, {order.duration_days}d",
+            payload=order.idempotency_key,
+            currency=Currency.XTR.value,
+            prices=[{"label": Currency.XTR.value, "amount": stars_amount(order)}],
         )
-        return PaymentIntent(confirmation_url=link)
+        return PaymentIntent(confirmation_url=str(link))
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         # paid inside Telegram: successful_payment reaches the bot, not this endpoint

@@ -1,16 +1,14 @@
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
-from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
-from aiogram.methods import GetFile, GetStickerSet
-from aiogram.types import File, PhotoSize, Sticker, StickerSet
 
+from app.core.telegram_api import BotApiError
 from app.modules.emoji_packs.telegram_api import (
     custom_emoji_stickers,
     fetch_emoji_pack,
     parse_set_name,
 )
-from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
+from tests.fakes.telegram_bot import FakeBotSession, refusal, use_fake_bot
 
 
 @pytest.mark.parametrize(
@@ -40,27 +38,36 @@ def _sticker(
     thumb_id: Optional[str] = None,
     *,
     is_animated: bool = True,
-) -> Sticker:
-    return Sticker(
-        file_id=file_id,
-        file_unique_id=f"u{file_id}",
-        type="custom_emoji" if emoji_id else "regular",
-        width=100,
-        height=100,
-        is_animated=is_animated,
-        is_video=False,
-        emoji="\U0001f604",
-        custom_emoji_id=emoji_id,
-        thumbnail=PhotoSize(file_id=thumb_id, file_unique_id=f"u{thumb_id}", width=1, height=1)
-        if thumb_id
-        else None,
-    )
+) -> dict[str, Any]:
+    sticker: dict[str, Any] = {
+        "file_id": file_id,
+        "file_unique_id": f"u{file_id}",
+        "type": "custom_emoji" if emoji_id else "regular",
+        "width": 100,
+        "height": 100,
+        "is_animated": is_animated,
+        "is_video": False,
+        "emoji": "\U0001f604",
+    }
+    if emoji_id:
+        sticker["custom_emoji_id"] = emoji_id
+    if thumb_id:
+        sticker["thumbnail"] = {
+            "file_id": thumb_id,
+            "file_unique_id": f"u{thumb_id}",
+            "width": 1,
+            "height": 1,
+        }
+    return sticker
 
 
-def _set(sticker_type: str, stickers: list[Sticker]) -> StickerSet:
-    return StickerSet(
-        name="MemeEmoji", title="Meme Emoji", sticker_type=sticker_type, stickers=stickers
-    )
+def _set(sticker_type: str, stickers: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "name": "MemeEmoji",
+        "title": "Meme Emoji",
+        "sticker_type": sticker_type,
+        "stickers": stickers,
+    }
 
 
 def test_only_stickers_with_an_emoji_id_are_kept() -> None:
@@ -78,17 +85,18 @@ def test_a_plain_sticker_set_is_refused() -> None:
         custom_emoji_stickers(_set("regular", []), "X")
 
 
-def _file(method: GetFile) -> File:
-    return File(file_id=method.file_id, file_unique_id="u", file_path=f"files/{method.file_id}")
+def _file(params: dict[str, Any]) -> dict[str, Any]:
+    file_id = params["file_id"]
+    return {"file_id": file_id, "file_unique_id": "u", "file_path": f"files/{file_id}"}
 
 
 async def test_fetch_keeps_artwork_and_survives_a_failed_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _get_file(method: GetFile) -> object:
-        if method.file_id == "broken":
-            return TelegramBadRequest(method=method, message="file is too big")
-        return _file(method)
+    def _get_file(params: dict[str, Any]) -> object:
+        if params["file_id"] == "broken":
+            return refusal(400, "Bad Request: file is too big")
+        return _file(params)
 
     sticker_set = _set(
         "custom_emoji", [_sticker("1", "anim1", "thumb1"), _sticker("2", "broken", "thumb2")]
@@ -96,7 +104,7 @@ async def test_fetch_keeps_artwork_and_survives_a_failed_file(
     use_fake_bot(
         monkeypatch,
         FakeBotSession(
-            {"GetStickerSet": sticker_set, "GetFile": _get_file},
+            {"getStickerSet": sticker_set, "getFile": _get_file},
             files={
                 "files/anim1": b"\x1f\x8bgz",
                 "files/thumb1": b"webp1",
@@ -123,7 +131,7 @@ async def test_a_static_emoji_is_stored_as_its_own_thumbnail(
     use_fake_bot(
         monkeypatch,
         FakeBotSession(
-            {"GetStickerSet": sticker_set, "GetFile": _file},
+            {"getStickerSet": sticker_set, "getFile": _file},
             files={"files/static1": b"webp-full", "files/thumb1": b"webp-small"},
         ),
     )
@@ -134,8 +142,8 @@ async def test_a_static_emoji_is_stored_as_its_own_thumbnail(
 
 
 async def test_an_unreachable_telegram_is_a_value_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    down = TelegramNetworkError(method=GetStickerSet(name="X"), message="timeout")
-    use_fake_bot(monkeypatch, FakeBotSession({"GetStickerSet": down}))
+    down = BotApiError("getStickerSet: timeout")
+    use_fake_bot(monkeypatch, FakeBotSession({"getStickerSet": down}))
 
     with pytest.raises(ValueError, match="timeout"):
         await fetch_emoji_pack("123:abc", None, "X")
