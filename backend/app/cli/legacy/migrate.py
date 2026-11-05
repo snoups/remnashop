@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Final, Optional, TypeVar
@@ -64,7 +64,7 @@ _Row = TypeVar("_Row", bound=Mapping[str, Any])
 @dataclass(frozen=True, kw_only=True)
 class OwnerCredentials:
     login: str
-    password: str
+    password: str = field(repr=False)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -169,7 +169,9 @@ def _last_payments(
     transactions: Sequence[Mapping[str, Any]],
 ) -> dict[tuple[int, int], tuple[Decimal, Currency]]:
     result: dict[tuple[int, int], tuple[Decimal, Currency]] = {}
-    completed = (row for row in transactions if str(row["status"]) == _COMPLETED)
+    completed = (
+        row for row in transactions if str(row["status"]) == _COMPLETED and not row["is_test"]
+    )
     for row in sorted(completed, key=lambda r: (r["created_at"], int(r["id"]))):
         key = (int(row["user_id"]), int(row["plan_snapshot"]["id"]))
         result[key] = (Decimal(str(row["pricing"]["final_amount"])), Currency(row["currency"]))

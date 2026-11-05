@@ -312,6 +312,7 @@ async def test_owner_credentials_work(
     assert row.login == "boss"
     assert row.password_change_required is True
     assert await verify_password(result.owner.password, row.password_hash, _crypt_key(config))
+    assert result.owner.password not in repr(result)
 
 
 async def test_owner_login_falls_back_when_username_invalid(
@@ -398,3 +399,44 @@ async def test_works_from_0039(
     async with legacy_engine.connect() as connection:
         assert await current_revision(connection) == "current"
         assert await _ids(connection, "users") == [1, 2, 3]
+
+
+async def test_subscription_price_comes_from_latest_completed_payment(
+    legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
+) -> None:
+    await _prepare(legacy_engine, legacy_at, _crypt_key(config))
+    async with legacy_engine.begin() as connection:
+        await _exec(connection, "UPDATE transactions SET created_at = now() - interval '10 days'")
+        rows = (
+            # id, status, is_test, amount, currency, days ago
+            (11, "COMPLETED", False, "77", "USD", 5),
+            (12, "COMPLETED", False, "55", "RUB", 8),
+            (13, "PENDING", False, "999", "RUB", 1),
+            (14, "COMPLETED", True, "1", "XTR", 1),
+        )
+        for tx_id, status, is_test, amount, currency, days in rows:
+            pricing = json.dumps(
+                {"original_amount": amount, "final_amount": amount, "discount_percent": 0}
+            )
+            await _exec(
+                connection,
+                "INSERT INTO transactions (id, payment_id, status, is_test, purchase_type, "
+                "gateway_type, pricing, currency, plan_snapshot, user_id, created_at) VALUES "
+                "(:id, gen_random_uuid(), CAST(:status AS transaction_status), :is_test, 'NEW', "
+                "'YOOKASSA', CAST(:pricing AS jsonb), CAST(:currency AS currency), "
+                "CAST(:snapshot AS jsonb), 3, now() - make_interval(days => :days))",
+                id=tx_id,
+                status=status,
+                is_test=is_test,
+                pricing=pricing,
+                currency=currency,
+                snapshot=json.dumps(_SNAPSHOT),
+                days=days,
+            )
+    await _run(legacy_engine, config)
+
+    async with legacy_engine.connect() as connection:
+        snapshot = await connection.scalar(
+            text("SELECT plan_snapshot FROM subscriptions WHERE id = 4")
+        )
+    assert (snapshot["price_paid"], snapshot["currency"]) == ("77", "USD")
