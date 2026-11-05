@@ -349,14 +349,14 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     )
     overview = await use_case(OWNER)
 
-    assert len(overview.runtime) == 1
+    assert [p.process for p in overview.runtime] == ["api", "telegram", "worker", "scheduler"]
     process = overview.runtime[0]
-    assert process.process == "api"
     assert process.pid == 999
-    assert process.uptime_seconds >= 300
-    assert process.rss_bytes > 0
+    assert process.uptime_seconds is not None and process.uptime_seconds >= 300
+    assert process.rss_bytes is not None and process.rss_bytes > 0
     assert process.event_loop_delay_ms == 1.5
     assert process.event_loop_p99_ms == 6.25
+    assert overview.runtime[1].pid is None
 
     await redis.delete(*keys)
 

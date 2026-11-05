@@ -40,6 +40,7 @@ import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
+import { RUNTIME_PROCESS_LABELS } from "@pages/dashboard/runtime";
 
 const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
 
@@ -135,55 +136,22 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
 
 function itemText(item: AttentionItem, t: TFunction, language: string): { title: string; sub: string | null } {
   const formatted = item.count.toLocaleString(language);
-  const since = item.since && formatDateTime(item.since, language);
+  const since = item.since ? formatDateTime(item.since, language) : "";
+  const counted = (key: ParseKeys) => t(key, { count: item.count, formatted, since });
   switch (item.kind) {
-    case "process_down":
+    case "process_down": {
+      const process = item.subject ?? "";
       return {
-        title: t("dashboard.attention.processDown.title", { process: item.subject ?? "" }),
-        sub: t("dashboard.attention.processDown.sub"),
+        title: t("dashboard.attention.processDown.title", { process: RUNTIME_PROCESS_LABELS[process] ?? process }),
+        sub: process === "worker" || process === "scheduler" ? t(`dashboard.attention.processDown.${process}`) : null,
       };
+    }
     case "outbox_stuck":
-      return {
-        title: t("dashboard.attention.outboxStuck.title"),
-        sub: t("dashboard.attention.outboxStuck.sub", { count: item.count, formatted, since: since ?? "" }),
-      };
+      return { title: t("dashboard.attention.outboxStuck.title"), sub: counted("dashboard.attention.outboxStuck.sub") };
     case "panel_unavailable":
       return {
         title: t("dashboard.attention.panelUnavailable.title"),
         sub: t("dashboard.attention.panelUnavailable.sub"),
-      };
-    case "smtp_failed": {
-      const profile = t(
-        item.subject === "bulk" ? "dashboard.attention.smtpFailed.bulk" : "dashboard.attention.smtpFailed.main",
-      );
-      return { title: t("dashboard.attention.smtpFailed.title"), sub: [profile, since].filter(Boolean).join(" · ") };
-    }
-    case "backup_overdue":
-      return {
-        title: t("dashboard.attention.backupOverdue.title"),
-        sub: since ? t("dashboard.attention.backupOverdue.sub", { since }) : t("dashboard.attention.backupOverdue.never"),
-      };
-    case "broadcast_failed":
-      return {
-        title: t("dashboard.attention.broadcastFailed.title"),
-        sub: t("dashboard.attention.broadcastFailed.sub", { count: item.count, formatted }),
-      };
-    case "broadcast_stalled":
-      return {
-        title: t("dashboard.attention.broadcastStalled.title"),
-        sub: t("dashboard.attention.broadcastStalled.sub", { count: item.count, formatted }),
-      };
-    case "email_undeliverable":
-      return {
-        title: t("dashboard.attention.emailUndeliverable.title"),
-        sub: t("dashboard.attention.emailUndeliverable.sub", { count: item.count, formatted }),
-      };
-    case "api_token_expiring":
-      return {
-        title: t("dashboard.attention.apiTokenExpiring.title"),
-        sub: item.subject
-          ? t("dashboard.attention.apiTokenExpiring.single", { name: item.subject, since: since ?? "" })
-          : t("dashboard.attention.apiTokenExpiring.sub", { count: item.count, formatted, since: since ?? "" }),
       };
     case "node_offline":
       return {
@@ -195,7 +163,15 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         title: t("dashboard.attention.gatewayFailures.title", {
           gateway: t(`settings.gateways.types.${item.subject}` as ParseKeys, { defaultValue: item.subject ?? "" }),
         }),
-        sub: t("dashboard.attention.gatewayFailures.sub", { count: item.count, formatted }),
+        sub: counted("dashboard.attention.gatewayFailures.sub"),
+      };
+    case "smtp_failed":
+      return {
+        title: t("dashboard.attention.smtpFailed.title"),
+        sub: t("dashboard.attention.smtpFailed.sub", {
+          profile: t(item.subject === "bulk" ? "dashboard.attention.smtpFailed.bulk" : "dashboard.attention.smtpFailed.main"),
+          since,
+        }),
       };
     case "backup_failed": {
       const kind = item.subject ? t(`backups.kind.${item.subject as BackupKind}`) : null;
@@ -204,23 +180,45 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         sub: [kind, since].filter(Boolean).join(" · ") || null,
       };
     }
+    case "backup_overdue":
+      return {
+        title: t("dashboard.attention.backupOverdue.title"),
+        sub: since ? t("dashboard.attention.backupOverdue.sub", { since }) : t("dashboard.attention.backupOverdue.never"),
+      };
+    case "broadcast_failed":
+      return {
+        title: t("dashboard.attention.broadcastFailed.title"),
+        sub: counted("dashboard.attention.broadcastFailed.sub"),
+      };
+    case "broadcast_stalled":
+      return {
+        title: t("dashboard.attention.broadcastStalled.title"),
+        sub: counted("dashboard.attention.broadcastStalled.sub"),
+      };
     case "paid_not_fulfilled":
       return {
         title: t("dashboard.attention.paidNotFulfilled.title"),
-        sub: t("dashboard.attention.paidNotFulfilled.sub", { count: item.count, formatted }),
+        sub: counted("dashboard.attention.paidNotFulfilled.sub"),
       };
     case "stale_pending":
+      return { title: t("dashboard.attention.stalePending.title"), sub: counted("dashboard.attention.stalePending.sub") };
+    case "email_undeliverable":
       return {
-        title: t("dashboard.attention.stalePending.title"),
-        sub: t("dashboard.attention.stalePending.sub", { count: item.count, formatted }),
+        title: t("dashboard.attention.emailUndeliverable.title"),
+        sub: counted("dashboard.attention.emailUndeliverable.sub"),
       };
     case "expiring_paid":
+      return { title: t("dashboard.attention.expiringPaid.title"), sub: counted("dashboard.attention.expiringPaid.sub") };
+    case "api_token_expiring":
       return {
-        title: t("dashboard.attention.expiringPaid.title"),
-        sub: t("dashboard.attention.expiringPaid.sub", { count: item.count, formatted }),
+        title: t("dashboard.attention.apiTokenExpiring.title", { name: item.subject ?? "" }),
+        sub: since ? t("dashboard.attention.apiTokenExpiring.sub", { since }) : null,
       };
     case "bot_webhook":
-      return { title: t("dashboard.attention.botWebhook.title"), sub: item.subject };
+      return {
+        title: t("dashboard.attention.botWebhook.title"),
+        sub: item.subject ?? t("dashboard.attention.botWebhook.noWebhook"),
+      };
   }
 }
 

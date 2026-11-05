@@ -339,20 +339,18 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         if Permission.API_TOKENS_MANAGE not in perms:
             return []
         now = datetime_now()
-        expiring = [
-            t
-            for t in await self._api_token_repository.list_not_revoked()
-            if t.expires_at is not None and now < t.expires_at <= now + _TOKEN_EXPIRING_WITHIN
-        ]
-        if not expiring:
-            return []
-        soonest = min(expiring, key=lambda t: t.expires_at or now)
-        return [
-            AttentionItemDto(
-                kind=AttentionKind.API_TOKEN_EXPIRING,
-                severity="warning",
-                count=len(expiring),
-                subject=soonest.name if len(expiring) == 1 else None,
-                since=soonest.expires_at,
-            )
-        ]
+        tokens = await self._api_token_repository.list_not_revoked()
+        return sorted(
+            (
+                AttentionItemDto(
+                    kind=AttentionKind.API_TOKEN_EXPIRING,
+                    severity="warning",
+                    count=1,
+                    subject=t.name,
+                    since=t.expires_at,
+                )
+                for t in tokens
+                if t.expires_at is not None and now < t.expires_at <= now + _TOKEN_EXPIRING_WITHIN
+            ),
+            key=lambda i: i.since or now,
+        )

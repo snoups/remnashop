@@ -122,7 +122,7 @@ async def test_get_overview_summary(
     response = await client.get(f"{API_V1}/overview", headers=headers)
 
     assert response.status_code == 200
-    assert response.json()["runtime"] == []
+    assert [p["pid"] for p in response.json()["runtime"]] == [None] * 4
     assert "disabled" in response.json()["subscriptions"]
 
 

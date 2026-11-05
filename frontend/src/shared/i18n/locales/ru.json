@@ -129,103 +129,102 @@
     },
     "attention": {
       "title": "Требует внимания",
-      "description": "Срочное сверху; пункт пропадает, когда проблема решена",
+      "description": "Срочное — сверху; пункт исчезает сам, когда проблема решена",
       "critical": "Срочно · {{value}}",
       "allClear": {
         "title": "Всё в порядке",
         "sub": "Ничего не требует внимания"
       },
-      "nodeOffline": {
-        "title": "Нода {{node}} не на связи",
-        "sub": "с {{since}}"
-      },
-      "gatewayFailures": {
-        "title": "Ошибки оплаты через {{gateway}}",
-        "sub_one": "{{formatted}} ошибка за последний час",
-        "sub_few": "{{formatted}} ошибки за последний час",
-        "sub_many": "{{formatted}} ошибок за последний час",
-        "sub_other": "{{formatted}} ошибки за последний час"
-      },
-      "backupFailed": {
-        "title": "Резервная копия не создана"
-      },
-      "paidNotFulfilled": {
-        "title": "Оплачено, но не выдано",
-        "sub_one": "{{formatted}} заказ ждёт дольше 10 минут",
-        "sub_few": "{{formatted}} заказа ждут дольше 10 минут",
-        "sub_many": "{{formatted}} заказов ждут дольше 10 минут",
-        "sub_other": "{{formatted}} заказа ждут дольше 10 минут"
-      },
-      "stalePending": {
-        "title": "Платежи зависли в ожидании",
-        "sub_one": "{{formatted}} платёж ждёт дольше 15 минут",
-        "sub_few": "{{formatted}} платежа ждут дольше 15 минут",
-        "sub_many": "{{formatted}} платежей ждут дольше 15 минут",
-        "sub_other": "{{formatted}} платежа ждут дольше 15 минут"
-      },
-      "expiringPaid": {
-        "title": "Истекают платные подписки",
-        "sub_one": "{{formatted}} подписка в ближайшие 7 дней",
-        "sub_few": "{{formatted}} подписки в ближайшие 7 дней",
-        "sub_many": "{{formatted}} подписок в ближайшие 7 дней",
-        "sub_other": "{{formatted}} подписки в ближайшие 7 дней"
-      },
-      "botWebhook": {
-        "title": "Вебхук Telegram-бота сообщает об ошибке"
-      },
       "processDown": {
-        "title": "Процесс {{process}} не отвечает",
-        "sub": "Нет сигнала дольше 45 секунд"
+        "title": "{{process}} не отвечает",
+        "worker": "Фоновые задачи стоят: выдача подписок, события, рассылки и почта",
+        "scheduler": "Задачи по расписанию не запускаются"
       },
       "outboxStuck": {
-        "title": "События не обрабатываются",
+        "title": "Очередь событий не разбирается",
         "sub_one": "{{formatted}} событие ждёт с {{since}}",
         "sub_few": "{{formatted}} события ждут с {{since}}",
         "sub_many": "{{formatted}} событий ждут с {{since}}",
         "sub_other": "{{formatted}} события ждут с {{since}}"
       },
       "panelUnavailable": {
-        "title": "Панель Remnawave недоступна",
-        "sub": "Состояние нод неизвестно"
+        "title": "Нет данных от панели Remnawave",
+        "sub": "Панель не отвечает или прислала ответ, который не удалось разобрать"
+      },
+      "nodeOffline": {
+        "title": "Нода «{{node}}» не на связи",
+        "sub": "С {{since}}"
+      },
+      "gatewayFailures": {
+        "title": "Сбои оплаты через {{gateway}}",
+        "sub_one": "{{formatted}} неудачная оплата за час",
+        "sub_few": "{{formatted}} неудачные оплаты за час",
+        "sub_many": "{{formatted}} неудачных оплат за час",
+        "sub_other": "{{formatted}} неудачные оплаты за час"
       },
       "smtpFailed": {
-        "title": "Почта не отправляется",
+        "title": "Письма не отправляются",
+        "sub": "{{profile}} · последняя ошибка {{since}}",
         "main": "Основной SMTP",
         "bulk": "SMTP для рассылок"
       },
+      "backupFailed": {
+        "title": "Резервная копия не создалась"
+      },
       "backupOverdue": {
-        "title": "Резервная копия просрочена",
-        "sub": "Последняя успешная: {{since}}",
+        "title": "Автокопия не создаётся по расписанию",
+        "sub": "Последняя успешная — {{since}}",
         "never": "Успешных копий ещё не было"
       },
       "broadcastFailed": {
-        "title": "Рассылка завершилась ошибкой",
-        "sub_one": "{{formatted}} рассылка за последние 24 часа",
-        "sub_few": "{{formatted}} рассылки за последние 24 часа",
-        "sub_many": "{{formatted}} рассылок за последние 24 часа",
-        "sub_other": "{{formatted}} рассылки за последние 24 часа"
+        "title": "Рассылка прервалась с ошибкой",
+        "sub_one": "{{formatted}} рассылка за сутки",
+        "sub_few": "{{formatted}} рассылки за сутки",
+        "sub_many": "{{formatted}} рассылок за сутки",
+        "sub_other": "{{formatted}} рассылки за сутки"
       },
       "broadcastStalled": {
         "title": "Рассылка зависла",
-        "sub_one": "{{formatted}} рассылка без движения дольше 15 минут",
-        "sub_few": "{{formatted}} рассылки без движения дольше 15 минут",
-        "sub_many": "{{formatted}} рассылок без движения дольше 15 минут",
-        "sub_other": "{{formatted}} рассылки без движения дольше 15 минут"
+        "sub_one": "{{formatted}} рассылка без движения больше 15 минут",
+        "sub_few": "{{formatted}} рассылки без движения больше 15 минут",
+        "sub_many": "{{formatted}} рассылок без движения больше 15 минут",
+        "sub_other": "{{formatted}} рассылки без движения больше 15 минут"
+      },
+      "paidNotFulfilled": {
+        "title": "Оплачено, но не выдано",
+        "sub_one": "{{formatted}} заказ ждёт выдачи больше 10 минут",
+        "sub_few": "{{formatted}} заказа ждут выдачи больше 10 минут",
+        "sub_many": "{{formatted}} заказов ждут выдачи больше 10 минут",
+        "sub_other": "{{formatted}} заказа ждут выдачи больше 10 минут"
+      },
+      "stalePending": {
+        "title": "Оплаты зависли",
+        "sub_one": "{{formatted}} платёж без ответа шлюза больше 15 минут",
+        "sub_few": "{{formatted}} платежа без ответа шлюза больше 15 минут",
+        "sub_many": "{{formatted}} платежей без ответа шлюза больше 15 минут",
+        "sub_other": "{{formatted}} платежа без ответа шлюза больше 15 минут"
       },
       "emailUndeliverable": {
-        "title": "Письма не доходят",
-        "sub_one": "{{formatted}} адрес отклонён за последние 24 часа",
-        "sub_few": "{{formatted}} адреса отклонены за последние 24 часа",
-        "sub_many": "{{formatted}} адресов отклонены за последние 24 часа",
-        "sub_other": "{{formatted}} адреса отклонены за последние 24 часа"
+        "title": "Почтовые ящики отклоняют письма",
+        "sub_one": "{{formatted}} адрес отклонил письмо за сутки",
+        "sub_few": "{{formatted}} адреса отклонили письма за сутки",
+        "sub_many": "{{formatted}} адресов отклонили письма за сутки",
+        "sub_other": "{{formatted}} адреса отклонили письма за сутки"
+      },
+      "expiringPaid": {
+        "title": "Заканчиваются платные подписки",
+        "sub_one": "{{formatted}} подписка в ближайшие 7 дней",
+        "sub_few": "{{formatted}} подписки в ближайшие 7 дней",
+        "sub_many": "{{formatted}} подписок в ближайшие 7 дней",
+        "sub_other": "{{formatted}} подписки в ближайшие 7 дней"
       },
       "apiTokenExpiring": {
-        "title": "Истекают API-токены",
-        "single": "«{{name}}» истекает {{since}}",
-        "sub_one": "{{formatted}} токен, первый — {{since}}",
-        "sub_few": "{{formatted}} токена, первый — {{since}}",
-        "sub_many": "{{formatted}} токенов, первый — {{since}}",
-        "sub_other": "{{formatted}} токена, первый — {{since}}"
+        "title": "API-токен «{{name}}» скоро истечёт",
+        "sub": "Перестанет работать {{since}}"
+      },
+      "botWebhook": {
+        "title": "Вебхук Telegram-бота не работает",
+        "noWebhook": "Вебхук не установлен"
       },
       "actions": {
         "gateways": "Шлюзы",
@@ -289,7 +288,9 @@
       "cores_one": "{{count}} ядро",
       "cores_few": "{{count}} ядра",
       "cores_many": "{{count}} ядер",
-      "cores_other": "{{count}} ядра"
+      "cores_other": "{{count}} ядра",
+      "notResponding": "Не отвечает",
+      "down": "Не отвечают · {{n}}"
     },
     "remnawaveUnavailable": "Remnawave недоступна\nДанные появятся, когда панель ответит",
     "nodes": {

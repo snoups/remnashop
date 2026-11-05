@@ -70,11 +70,12 @@ class RecentPaymentDto:
 @dataclass(frozen=True, kw_only=True)
 class RuntimeProcessDto:
     process: str
-    pid: int
-    uptime_seconds: float
-    rss_bytes: int
-    event_loop_delay_ms: float
-    event_loop_p99_ms: float
+    # all None: no heartbeat, the process isn't answering
+    pid: Optional[int] = None
+    uptime_seconds: Optional[float] = None
+    rss_bytes: Optional[int] = None
+    event_loop_delay_ms: Optional[float] = None
+    event_loop_p99_ms: Optional[float] = None
 
 
 @dataclass(frozen=True, kw_only=True)

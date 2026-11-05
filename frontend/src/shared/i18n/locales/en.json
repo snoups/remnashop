@@ -125,67 +125,51 @@
     },
     "attention": {
       "title": "Needs attention",
-      "description": "Urgent first; an item disappears once the problem is resolved",
+      "description": "Urgent first; an item clears itself once the problem is fixed",
       "critical": "Urgent · {{value}}",
       "allClear": {
         "title": "All good",
         "sub": "Nothing needs attention"
       },
-      "nodeOffline": {
-        "title": "Node {{node}} is offline",
-        "sub": "since {{since}}"
-      },
-      "gatewayFailures": {
-        "title": "Payment failures via {{gateway}}",
-        "sub_one": "{{formatted}} failure in the last hour",
-        "sub_other": "{{formatted}} failures in the last hour"
-      },
-      "backupFailed": {
-        "title": "Backup failed"
-      },
-      "paidNotFulfilled": {
-        "title": "Paid but not delivered",
-        "sub_one": "{{formatted}} order waiting over 10 minutes",
-        "sub_other": "{{formatted}} orders waiting over 10 minutes"
-      },
-      "stalePending": {
-        "title": "Payments stuck in pending",
-        "sub_one": "{{formatted}} payment waiting over 15 minutes",
-        "sub_other": "{{formatted}} payments waiting over 15 minutes"
-      },
-      "expiringPaid": {
-        "title": "Paid subscriptions expiring",
-        "sub_one": "{{formatted}} subscription in the next 7 days",
-        "sub_other": "{{formatted}} subscriptions in the next 7 days"
-      },
-      "botWebhook": {
-        "title": "Telegram bot webhook reports an error"
-      },
       "processDown": {
-        "title": "The {{process}} process is not responding",
-        "sub": "No heartbeat for over 45 seconds"
+        "title": "{{process}} is not responding",
+        "worker": "Background jobs are stalled: subscription delivery, events, broadcasts and email",
+        "scheduler": "Scheduled jobs are not starting"
       },
       "outboxStuck": {
-        "title": "Events are not being processed",
+        "title": "The event queue is not draining",
         "sub_one": "{{formatted}} event waiting since {{since}}",
         "sub_other": "{{formatted}} events waiting since {{since}}"
       },
       "panelUnavailable": {
-        "title": "Remnawave panel is unavailable",
-        "sub": "Node status is unknown"
+        "title": "No data from the Remnawave panel",
+        "sub": "The panel is not responding or sent a response that could not be parsed"
+      },
+      "nodeOffline": {
+        "title": "Node “{{node}}” is offline",
+        "sub": "Since {{since}}"
+      },
+      "gatewayFailures": {
+        "title": "Payment failures via {{gateway}}",
+        "sub_one": "{{formatted}} failed payment in the last hour",
+        "sub_other": "{{formatted}} failed payments in the last hour"
       },
       "smtpFailed": {
-        "title": "Email is not being sent",
+        "title": "Emails are not being sent",
+        "sub": "{{profile}} · last error {{since}}",
         "main": "Main SMTP",
         "bulk": "Broadcast SMTP"
       },
+      "backupFailed": {
+        "title": "Backup failed"
+      },
       "backupOverdue": {
-        "title": "Backup is overdue",
+        "title": "Scheduled backup is overdue",
         "sub": "Last successful: {{since}}",
         "never": "No successful backup yet"
       },
       "broadcastFailed": {
-        "title": "Broadcast failed",
+        "title": "Broadcast stopped with an error",
         "sub_one": "{{formatted}} broadcast in the last 24 hours",
         "sub_other": "{{formatted}} broadcasts in the last 24 hours"
       },
@@ -194,16 +178,33 @@
         "sub_one": "{{formatted}} broadcast without progress for over 15 minutes",
         "sub_other": "{{formatted}} broadcasts without progress for over 15 minutes"
       },
+      "paidNotFulfilled": {
+        "title": "Paid but not delivered",
+        "sub_one": "{{formatted}} order waiting for delivery over 10 minutes",
+        "sub_other": "{{formatted}} orders waiting for delivery over 10 minutes"
+      },
+      "stalePending": {
+        "title": "Payments are stuck",
+        "sub_one": "{{formatted}} payment without a gateway reply for over 15 minutes",
+        "sub_other": "{{formatted}} payments without a gateway reply for over 15 minutes"
+      },
       "emailUndeliverable": {
-        "title": "Emails are bouncing",
-        "sub_one": "{{formatted}} address refused in the last 24 hours",
-        "sub_other": "{{formatted}} addresses refused in the last 24 hours"
+        "title": "Mailboxes are rejecting emails",
+        "sub_one": "{{formatted}} address rejected mail in the last 24 hours",
+        "sub_other": "{{formatted}} addresses rejected mail in the last 24 hours"
+      },
+      "expiringPaid": {
+        "title": "Paid subscriptions are ending",
+        "sub_one": "{{formatted}} subscription in the next 7 days",
+        "sub_other": "{{formatted}} subscriptions in the next 7 days"
       },
       "apiTokenExpiring": {
-        "title": "API tokens are expiring",
-        "single": "“{{name}}” expires on {{since}}",
-        "sub_one": "{{formatted}} token, the first one on {{since}}",
-        "sub_other": "{{formatted}} tokens, the first one on {{since}}"
+        "title": "API token “{{name}}” expires soon",
+        "sub": "Stops working on {{since}}"
+      },
+      "botWebhook": {
+        "title": "Telegram bot webhook is not working",
+        "noWebhook": "Webhook is not set"
       },
       "actions": {
         "gateways": "Gateways",
@@ -263,7 +264,9 @@
       "disk": "Disk",
       "usage": "{{used}} of {{total}}",
       "cores_one": "{{count}} core",
-      "cores_other": "{{count}} cores"
+      "cores_other": "{{count}} cores",
+      "notResponding": "Not responding",
+      "down": "Not responding · {{n}}"
     },
     "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
     "nodes": {

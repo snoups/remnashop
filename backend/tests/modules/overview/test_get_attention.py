@@ -494,7 +494,8 @@ async def test_api_token_expiring_within_a_week(
     redis_alive: Redis,
 ) -> None:
     now = datetime_now()
-    for name, expires_in in (("soon", timedelta(days=2)), ("later", timedelta(days=30))):
+    cases = (("later", timedelta(days=5)), ("soon", timedelta(days=2)), ("far", timedelta(days=30)))
+    for name, expires_in in cases:
         await api_token_repository.create(
             CreateApiTokenDto(
                 name=name,
@@ -516,5 +517,4 @@ async def test_api_token_expiring_within_a_week(
 
     items = await _kinds(session, settings_repository, uow, redis_alive)
 
-    token = items["api_token_expiring"][0]
-    assert (token.count, token.subject) == (1, "soon")
+    assert [i.subject for i in items["api_token_expiring"]] == ["soon", "later"]
