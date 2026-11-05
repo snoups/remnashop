@@ -49,7 +49,7 @@ export function TrendChart({
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis dataKey="x" tickFormatter={xFormatter} tick={CHART_TICK} axisLine={false} tickLine={false} />
-        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width={40} />
+        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} width="auto" />
         <Tooltip
           cursor={CHART_CURSOR}
           content={({ active, payload, label }) => {
