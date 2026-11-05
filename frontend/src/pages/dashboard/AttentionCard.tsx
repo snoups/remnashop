@@ -138,6 +138,8 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
   const formatted = item.count.toLocaleString(language);
   const since = item.since ? formatDateTime(item.since, language) : "";
   const counted = (key: ParseKeys) => t(key, { count: item.count, formatted, since });
+  // how long ago `since` was, in the form that follows «более»
+  const waited = item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000, "after") : "";
   switch (item.kind) {
     case "process_down": {
       const process = item.subject ?? "";
@@ -152,7 +154,7 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         sub: t("dashboard.attention.outboxStuck.sub", {
           count: item.count,
           formatted,
-          duration: item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000, "after") : "",
+          duration: waited,
         }),
       };
     case "panel_unavailable":
@@ -199,8 +201,8 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
       };
     case "broadcast_stalled":
       return {
-        title: t("dashboard.attention.broadcastStalled.title"),
-        sub: counted("dashboard.attention.broadcastStalled.sub"),
+        title: t("dashboard.attention.broadcastStalled.title", { name: item.subject ?? "" }),
+        sub: waited ? t("dashboard.attention.broadcastStalled.sub", { duration: waited }) : null,
       };
     case "paid_not_fulfilled":
       return {

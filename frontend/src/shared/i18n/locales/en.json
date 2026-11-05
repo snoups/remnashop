@@ -173,9 +173,8 @@
         "sub": "Stopped on {{since}}"
       },
       "broadcastStalled": {
-        "title": "Broadcast is stuck",
-        "sub_one": "{{formatted}} broadcast without progress for over 15 minutes",
-        "sub_other": "{{formatted}} broadcasts without progress for over 15 minutes"
+        "title": "Broadcast “{{name}}” is stuck",
+        "sub": "No progress for over {{duration}}"
       },
       "paidNotFulfilled": {
         "title": "Paid but not delivered",

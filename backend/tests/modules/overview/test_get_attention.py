@@ -447,7 +447,7 @@ async def test_failed_and_stalled_broadcasts(
         ("recent-1", BroadcastStatus.FAILED, timedelta(hours=3)),
         ("recent-2", BroadcastStatus.FAILED, timedelta(hours=1)),
         ("old", BroadcastStatus.FAILED, timedelta(days=2)),
-        (None, BroadcastStatus.SENDING, timedelta(minutes=20)),
+        ("stuck", BroadcastStatus.SENDING, timedelta(minutes=20)),
         (None, BroadcastStatus.SENDING, timedelta(minutes=1)),
     )
     for title, status, age in cases:
@@ -461,7 +461,7 @@ async def test_failed_and_stalled_broadcasts(
     items = await _kinds(session, settings_repository, uow, redis_alive)
 
     assert [i.subject for i in items["broadcast_failed"]] == ["recent-2", "recent-1"]
-    assert items["broadcast_stalled"][0].count == 1
+    assert [i.subject for i in items["broadcast_stalled"]] == ["stuck"]
 
 
 @pytest.mark.parametrize(("refused", "expected"), [(10, True), (9, False)])

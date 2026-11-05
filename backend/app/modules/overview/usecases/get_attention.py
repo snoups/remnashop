@@ -311,7 +311,9 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             return []
         now = datetime_now()
         failed = await self._broadcast_repository.list_failed_since(now - _BROADCAST_FAILED_WINDOW)
-        stalled = await self._broadcast_repository.list_stalled(now - _BROADCAST_STALLED_AFTER)
+        stalled = await self._broadcast_repository.list_stalled_broadcasts(
+            now - _BROADCAST_STALLED_AFTER
+        )
         return [
             *(
                 AttentionItemDto(
@@ -323,8 +325,15 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
                 )
                 for b in failed
             ),
-            AttentionItemDto(
-                kind=AttentionKind.BROADCAST_STALLED, severity="warning", count=len(stalled)
+            *(
+                AttentionItemDto(
+                    kind=AttentionKind.BROADCAST_STALLED,
+                    severity="warning",
+                    count=1,
+                    subject=b.title or f"#{b.id}",
+                    since=b.updated_at,
+                )
+                for b in stalled
             ),
         ]
 
