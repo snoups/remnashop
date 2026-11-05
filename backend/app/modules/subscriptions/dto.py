@@ -327,6 +327,12 @@ class RemnawaveWebhookDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ProcessRemnawaveWebhookDto:
+    # the body as the panel signed it, already verified by the api
+    body: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class PanelConfigDto:
     """What the panel holds for a user, in the subscription row's terms; the
     limits are the effective ones, add-ons included."""

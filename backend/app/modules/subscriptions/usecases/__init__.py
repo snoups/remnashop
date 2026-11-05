@@ -42,6 +42,9 @@ from app.modules.subscriptions.usecases.list_own_subscriptions_usage import (
 )
 from app.modules.subscriptions.usecases.list_panel_squads import ListPanelSquadsUseCase
 from app.modules.subscriptions.usecases.list_subscriptions import ListSubscriptionsUseCase
+from app.modules.subscriptions.usecases.process_remnawave_webhook import (
+    ProcessRemnawaveWebhookUseCase,
+)
 from app.modules.subscriptions.usecases.prune_idempotency_keys import PruneIdempotencyKeysUseCase
 from app.modules.subscriptions.usecases.publish_panel_event import (
     PublishPanelEventUseCase,
@@ -99,6 +102,7 @@ __all__ = [
     "ListOwnSubscriptionsUseCase",
     "ListPanelSquadsUseCase",
     "ListSubscriptionsUseCase",
+    "ProcessRemnawaveWebhookUseCase",
     "PruneIdempotencyKeysUseCase",
     "PublishPanelEventUseCase",
     "PullSubscriptionFromPanelUseCase",
