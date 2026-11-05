@@ -289,10 +289,11 @@
     },
     "online": {
       "title": "Online",
-      "description": "Peak per hour, sampled every 5 minutes",
+      "description": "Peak online by hour and by day",
       "hours24": "24h",
-      "valueName": "Users",
-      "peak": "peak in 24h · {{peak}} at {{time}}"
+      "current": "online now",
+      "valueName": "Online",
+      "peak": "Peak — {{peak}} at {{time}}"
     },
     "runtime": {
       "title": "System status",

@@ -36,6 +36,7 @@ function OnlineView({
     <div className="flex flex-col gap-3 pt-4">
       <div className="flex flex-wrap items-center gap-2.5">
         <span className={`${KPI_VALUE_CLASS} text-foreground`}>{current.toLocaleString(i18n.language)}</span>
+        <span className="text-[13px] text-muted-foreground">{t("dashboard.online.current")}</span>
         {peakTag && <Tag>{peakTag}</Tag>}
       </div>
       <TrendChart
