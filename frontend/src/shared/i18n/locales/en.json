@@ -137,9 +137,9 @@
         "scheduler": "Scheduled jobs are not starting"
       },
       "outboxStuck": {
-        "title": "The event queue is not draining",
-        "sub_one": "{{formatted}} event waiting since {{since}}",
-        "sub_other": "{{formatted}} events waiting since {{since}}"
+        "title": "The event queue is not being processed",
+        "sub_one": "{{formatted}} event waiting for {{duration}}",
+        "sub_other": "{{formatted}} events waiting for {{duration}}"
       },
       "panelUnavailable": {
         "title": "No connection to the Remnawave panel",

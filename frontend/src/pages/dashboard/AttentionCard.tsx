@@ -40,7 +40,7 @@ import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
-import { RUNTIME_PROCESS_LABELS } from "@pages/dashboard/runtime";
+import { RUNTIME_PROCESS_LABELS, formatUptime } from "@pages/dashboard/runtime";
 
 const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
 
@@ -147,7 +147,14 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
       };
     }
     case "outbox_stuck":
-      return { title: t("dashboard.attention.outboxStuck.title"), sub: counted("dashboard.attention.outboxStuck.sub") };
+      return {
+        title: t("dashboard.attention.outboxStuck.title"),
+        sub: t("dashboard.attention.outboxStuck.sub", {
+          count: item.count,
+          formatted,
+          duration: item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000) : "",
+        }),
+      };
     case "panel_unavailable":
       return {
         title: t("dashboard.attention.panelUnavailable.title"),

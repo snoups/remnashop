@@ -141,11 +141,11 @@
         "scheduler": "Задачи по расписанию не запускаются"
       },
       "outboxStuck": {
-        "title": "Очередь событий не разбирается",
-        "sub_one": "{{formatted}} событие ждёт с {{since}}",
-        "sub_few": "{{formatted}} события ждут с {{since}}",
-        "sub_many": "{{formatted}} событий ждут с {{since}}",
-        "sub_other": "{{formatted}} события ждут с {{since}}"
+        "title": "Очередь событий не обрабатывается",
+        "sub_one": "{{formatted}} событие ждёт {{duration}}",
+        "sub_few": "{{formatted}} события ждут {{duration}}",
+        "sub_many": "{{formatted}} событий ждут {{duration}}",
+        "sub_other": "{{formatted}} события ждут {{duration}}"
       },
       "panelUnavailable": {
         "title": "Нет связи с панелью Remnawave",
