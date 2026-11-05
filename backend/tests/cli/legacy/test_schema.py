@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -34,3 +35,10 @@ async def test_upgrade_from_0039_reaches_head(legacy_engine: AsyncEngine, legacy
         assert await connection.scalar(
             text(_COLUMN_SQL), {"table": "subscriptions", "column": "grace_until"}
         )
+
+
+async def test_upgrade_inside_open_transaction_raises(legacy_engine: AsyncEngine) -> None:
+    async with legacy_engine.connect() as connection:
+        await current_revision(connection)
+        with pytest.raises(RuntimeError, match="no open transaction"):
+            await connection.run_sync(upgrade_legacy)

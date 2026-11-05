@@ -12,6 +12,9 @@ _MIGRATIONS_DIR: Final[Path] = Path(__file__).parent / "migrations"
 
 
 def upgrade_legacy(connection: Connection, revision: str = LEGACY_HEAD) -> None:
+    """Commits after each migration, so the connection must have no open transaction."""
+    if connection.in_transaction():
+        raise RuntimeError("upgrade_legacy needs a connection with no open transaction")
     config = Config()
     config.set_main_option("script_location", str(_MIGRATIONS_DIR))
     config.attributes["connection"] = connection
