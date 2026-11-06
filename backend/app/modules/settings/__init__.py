@@ -6,6 +6,7 @@ from app.modules.settings.dto import (
     AccessSettingsDto,
     AppearanceImageDto,
     AppearanceSettingsDto,
+    BotCommandDto,
     BotRequirementsDto,
     BotSettingsDto,
     BotStatusDto,
@@ -14,6 +15,7 @@ from app.modules.settings.dto import (
     GetBotCommandsDto,
     OAuthSettingsDto,
     ReportBotStatusDto,
+    ShopSettingsDto,
     SmtpProfileDto,
 )
 from app.modules.settings.events import AccessSettingsChangedEvent
@@ -36,6 +38,7 @@ __all__ = [
     "AppearanceImageDto",
     "AppearanceSettingsDto",
     "AudienceSessionRevoker",
+    "BotCommandDto",
     "BotRequirementsDto",
     "BotSettingsDto",
     "BotStatusDto",
@@ -52,6 +55,7 @@ __all__ = [
     "ReportBotStatusDto",
     "ReportBotStatusUseCase",
     "SettingsRepository",
+    "ShopSettingsDto",
     "SmtpProfileDto",
     "enable_password_login",
     "fetch_bot_status",
