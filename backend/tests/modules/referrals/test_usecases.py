@@ -896,3 +896,23 @@ async def test_own_referral_code_reset_can_be_turned_off(
 
     with pytest.raises(ValidationError):
         await use_case(user)
+
+
+async def test_own_referral_counts_leave_out_staff_invitees(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    referrer = await _create_user(user_repository, 6101)
+    customer = await _create_user(user_repository, 6102)
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", telegram_id=6103, role=Role.ADMIN)
+    )
+    for invited in (customer, staff):
+        await referral_repository.create_referral(
+            referrer_id=referrer.id, referred_id=invited.id, level=1
+        )
+
+    stats = await GetOwnReferralStatsUseCase(referral_repository, user_repository, uow)(referrer)
+
+    assert stats.counts_by_level == {1: 1}

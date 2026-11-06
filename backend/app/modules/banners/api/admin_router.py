@@ -1,9 +1,10 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
+from app.api.uploads import MULTIPART_FILE_BODY, read_form_file
 from app.core.actor import Actor
 from app.core.enums import Locale
 from app.modules.banners.api.schemas import BannerMetaResponse
@@ -19,21 +20,25 @@ from app.modules.banners.usecases import (
 router = APIRouter(prefix="/banners", tags=["banners"])
 
 
-@router.put("/{name}/{locale}", response_model=BannerMetaResponse, responses=error_responses(400))
+@router.put(
+    "/{name}/{locale}",
+    response_model=BannerMetaResponse,
+    responses=error_responses(400),
+    openapi_extra=MULTIPART_FILE_BODY,
+)
 @inject
 async def upload_banner(
     name: str,
     locale: Locale,
+    request: Request,
     use_case: FromDishka[UploadBannerUseCase],
-    file: UploadFile = File(...),
     actor: Actor = Depends(require_admin),
 ) -> BannerMetaResponse:
-    # bounded read: an oversized upload is rejected before it's buffered
-    data = await file.read(MAX_BANNER_SIZE_BYTES + 1)
+    file = await read_form_file(request, MAX_BANNER_SIZE_BYTES)
     banner = await use_case(
         actor,
         UploadBannerFileDto(
-            name=name, locale=locale, content_type=file.content_type or "", data=data
+            name=name, locale=locale, content_type=file.content_type, data=file.data
         ),
     )
     return BannerMetaResponse.model_validate(banner, from_attributes=True)

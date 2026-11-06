@@ -7,7 +7,7 @@ import { initiatorLabel } from "@entities/event-log/describe-entry";
 import { getUserLoyalty, setUserLoyaltyExcluded } from "@entities/loyalty/api";
 import { adjustUserBonusDays, adjustUserPoints } from "@entities/referrals/api";
 import { setUserDiscount, type UserListItem } from "@entities/user/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions } from "@entities/user/use-current-user";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
@@ -41,7 +41,7 @@ const DISCOUNT_EVENT: Record<DiscountKind, string> = {
 
 export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
   const { t } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(user.id);
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);
   const canEditPoints = Boolean(onChanged) && permissions.includes("REFERRALS_POINTS_MANAGE");
   const canEditBonusDays = Boolean(onChanged) && permissions.includes("REFERRALS_BONUS_DAYS_MANAGE");

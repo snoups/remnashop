@@ -4,8 +4,8 @@ from typing import Optional
 from app.core.actor import Actor
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
-from app.core.security.permissions import PermissionPolicy
+from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanDto, is_plan_purchasable_by
 from app.modules.settings import SettingsRepository
@@ -170,14 +170,21 @@ async def get_manageable_subscription(
     user_repository: UserRepository,
     actor: Actor,
     subscription_id: int,
+    *,
+    for_read: bool = False,
 ) -> SubscriptionDto:
     """A live subscription the actor may change: staff ones only from a higher
-    role, or the actor's own."""
+    role, the actor's own with STAFF_SELF_MANAGE unless it is only read."""
     subscription = await get_visible_subscription(
         repository, user_repository, actor, subscription_id
     )
     owner = await user_repository.find_by_id(subscription.user_id)
-    if owner is not None and owner.id != actor.id and not PermissionPolicy.can_manage(actor, owner):
+    if owner is not None and owner.id == actor.id:
+        if not for_read and not PermissionPolicy.has_permission(
+            actor, Permission.STAFF_SELF_MANAGE
+        ):
+            raise PermissionDeniedError
+    elif owner is not None and not PermissionPolicy.can_manage(actor, owner):
         raise _hidden(subscription_id)
     if subscription.status is SubscriptionStatus.DELETED:
         raise ValidationError(

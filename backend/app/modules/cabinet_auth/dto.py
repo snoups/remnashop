@@ -70,6 +70,8 @@ class TelegramWebAppDataDto:
 class EmailCodeGrantDto:
     codes: InviteCodesDto
     locale: Locale
+    # the mailbox the code was sent to: the entered address or its canonical owner's
+    recipient: str
 
 
 @dataclass(frozen=True, kw_only=True)

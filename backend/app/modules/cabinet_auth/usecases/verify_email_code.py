@@ -8,12 +8,13 @@ from app.core.ports import EventPublisher
 from app.modules.auth import IssuedSession
 from app.modules.cabinet_auth.email_codes import (
     EmailCodeStore,
+    assert_code_reached_owner,
     require_email_sign_in,
     verify_email_code,
 )
 from app.modules.cabinet_auth.sign_in import CabinetSignIn
 from app.modules.settings import SettingsRepository
-from app.modules.users import UserDto
+from app.modules.users import UserDto, UserRepository
 
 
 class VerifyEmailCodeUseCase:
@@ -24,6 +25,7 @@ class VerifyEmailCodeUseCase:
         redis: Redis,
         sign_in: CabinetSignIn,
         event_publisher: EventPublisher,
+        user_repository: UserRepository,
         uow: UnitOfWork,
     ) -> None:
         self._settings_repository = settings_repository
@@ -31,6 +33,7 @@ class VerifyEmailCodeUseCase:
         self._redis = redis
         self._sign_in = sign_in
         self._event_publisher = event_publisher
+        self._user_repository = user_repository
         self._uow = uow
 
     async def execute(
@@ -46,6 +49,7 @@ class VerifyEmailCodeUseCase:
         grant = await verify_email_code(
             self._store, self._redis, self._event_publisher, self._uow, email, code, client_ip
         )
+        await assert_code_reached_owner(self._user_repository, self._uow, email, grant)
         return await self._sign_in.email(
             email, grant.locale, grant.codes, client_ip, user_agent, legal_locale
         )

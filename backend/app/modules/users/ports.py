@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from typing import Optional, Protocol
 
 from app.core.enums import OAuthProvider
+from app.modules.users.dto import UserDto
 
 
 class SessionRevoker(Protocol):
@@ -22,6 +23,16 @@ class OAuthIdentityLookup(Protocol):
     async def user_ids_with_identities(
         self, user_ids: list[int], providers: Iterable[OAuthProvider]
     ) -> set[int]: ...
+
+
+class SignInMethodCheck(Protocol):
+    async def assert_one_left(
+        self,
+        user: UserDto,
+        *,
+        without_provider: Optional[OAuthProvider] = None,
+        without_passkey: bool = False,
+    ) -> None: ...
 
 
 class PromocodeLiveness(Protocol):

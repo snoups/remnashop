@@ -171,8 +171,12 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         for row in sorted(expiring, key=lambda r: r.expire_at):
             nearest.setdefault(row.user_id, row)
             plan_names.setdefault(row.user_id, []).append(row.plan_name)
+        # a customer ranking: staff subscriptions are not shown to anyone
+        staff = await self._user_repository.list_staff_ids()
         top = sorted(
-            nearest.values(), key=lambda r: spent.get(r.user_id, ZERO_AMOUNT), reverse=True
+            (row for row in nearest.values() if row.user_id not in staff),
+            key=lambda r: spent.get(r.user_id, ZERO_AMOUNT),
+            reverse=True,
         )
         top = top[:_TOP_LIMIT]
         users = {u.id: u for u in await self._user_repository.list_by_ids([r.user_id for r in top])}

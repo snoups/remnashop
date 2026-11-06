@@ -18,7 +18,9 @@ def store(redis: Redis) -> EmailCodeStore:
 
 
 async def test_code_roundtrip_keeps_invite_codes(store: EmailCodeStore) -> None:
-    code = await store.issue("Ann@Mail.ru", InviteCodesDto(referral_code="abc"), Locale.RU)
+    code = await store.issue(
+        "Ann@Mail.ru", InviteCodesDto(referral_code="abc"), Locale.RU, recipient="Ann@Mail.ru"
+    )
     assert len(code) == 6 and code.isdigit()
     grant = await store.verify(" ann@mail.ru", code)
     assert grant is not None and grant.codes.referral_code == "abc" and grant.locale is Locale.RU
@@ -27,15 +29,15 @@ async def test_code_roundtrip_keeps_invite_codes(store: EmailCodeStore) -> None:
 
 
 async def test_new_request_replaces_code(store: EmailCodeStore) -> None:
-    first = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
-    second = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    first = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
+    second = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
     if first != second:
         assert await store.verify("a@b.c", first) is None
     assert await store.verify("a@b.c", second) is not None
 
 
 async def test_five_wrong_attempts_burn_the_code(store: EmailCodeStore) -> None:
-    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
     wrong = "000000" if code != "000000" else "111111"
     for _ in range(4):
         assert await store.verify("a@b.c", wrong) is None
@@ -46,7 +48,7 @@ async def test_five_wrong_attempts_burn_the_code(store: EmailCodeStore) -> None:
 
 
 async def test_wrong_attempt_keeps_ttl(store: EmailCodeStore, redis: Redis) -> None:
-    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
     wrong = "000000" if code != "000000" else "111111"
     await store.verify("a@b.c", wrong)
     keys = [key async for key in redis.scan_iter("*cabinet:email_code:*")]
@@ -56,7 +58,7 @@ async def test_wrong_attempt_keeps_ttl(store: EmailCodeStore, redis: Redis) -> N
 async def test_wrong_attempt_does_not_resurrect_consumed_code(
     store: EmailCodeStore, redis: Redis, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
     wrong = "000000" if code != "000000" else "111111"
     real_get = redis.get
 
@@ -72,7 +74,7 @@ async def test_wrong_attempt_does_not_resurrect_consumed_code(
 
 
 async def test_parallel_wrong_guesses_get_five_attempts_in_total(store: EmailCodeStore) -> None:
-    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN)
+    code = await store.issue("a@b.c", InviteCodesDto(), Locale.EN, recipient="a@b.c")
     wrong = [f"{n:06d}" for n in range(30) if f"{n:06d}" != code][:20]
 
     results = await asyncio.gather(
@@ -91,6 +93,8 @@ async def test_parallel_wrong_guesses_get_five_attempts_in_total(store: EmailCod
 
 
 async def test_code_is_bound_to_the_address_it_was_issued_for(store: EmailCodeStore) -> None:
-    code = await store.issue("ivan+x@mail.ru", InviteCodesDto(), Locale.EN)
+    code = await store.issue(
+        "ivan+x@mail.ru", InviteCodesDto(), Locale.EN, recipient="ivan+x@mail.ru"
+    )
     assert await store.verify("ivan@mail.ru", code) is None
     assert await store.verify("ivan+x@mail.ru", code) is not None

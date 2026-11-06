@@ -8,7 +8,7 @@ import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listT
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions, usePermissions } from "@entities/user/use-current-user";
 import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import { PaidTimeline } from "@features/user-details/PaidTimeline";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
@@ -247,7 +247,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
 
 export function SubscriptionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(userId);
   const canGrant = permissions.includes("SUBSCRIPTIONS_GRANT") && permissions.includes("PLANS_VIEW");
   const canOpen = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
   const { openSubscription } = useOpenEntity();

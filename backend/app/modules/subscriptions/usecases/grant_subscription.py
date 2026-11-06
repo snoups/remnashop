@@ -16,7 +16,7 @@ from app.modules.subscriptions.dto import (
 )
 from app.modules.subscriptions.events import SubscriptionGrantedEvent
 from app.modules.subscriptions.usecases.purchase_subscription import PurchaseSubscriptionUseCase
-from app.modules.users import UserRepository, assert_manageable, get_visible_target
+from app.modules.users import UserRepository, assert_own_or_manageable, get_visible_target
 
 
 class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
@@ -42,7 +42,7 @@ class GrantSubscriptionUseCase(UseCase[GrantSubscriptionDto, SubscriptionDto]):
             recipient = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
-            assert_manageable(actor, recipient, allow_self=True)
+            assert_own_or_manageable(actor, recipient)
             plan = await self._plan_repository.get_by_id(data.plan_id)
 
         subscription = await self._purchase_subscription_use_case(

@@ -22,3 +22,9 @@ def test_render_converts_premium_emoji() -> None:
 def test_render_escapes_emoji_like_names() -> None:
     result = render_text("{ $name }", {"name": "[🔥](emoji:1)"})
     assert result == "[🔥](emoji:1)"
+
+
+def test_a_long_value_is_cut_to_its_reserved_length() -> None:
+    out = render_text("Hi { $name }", {"name": "a" * 200})
+
+    assert out == "Hi " + "a" * 63 + "…"

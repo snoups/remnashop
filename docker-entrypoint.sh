@@ -36,10 +36,9 @@ case "$TARGET" in
     worker)
         # A new tasks.py isn't picked up until it's listed here;
         # tests/worker/test_container.py checks every one is.
-        # -w 1: WORKER_STARTUP binds a single metrics HTTP server port and
-        # starts a single worker-gauges poller (see app/worker/lifespan.py) --
-        # a second child process would collide on the port and double-sample
-        # the gauges.
+        # With metrics on, only the first worker process serves the metrics port
+        # and polls the queue gauges (app/worker/lifespan.py); the task counters
+        # of the other processes aren't exported.
         exec taskiq worker -w "${WORKER_PROCESSES:-1}" --max-async-tasks "${WORKER_MAX_ASYNC_TASKS:-25}" app.core.broker:broker app.worker.lifespan app.modules.event_log.tasks app.modules.subscriptions.tasks app.modules.transactions.tasks app.modules.auth.tasks app.modules.referrals.tasks app.modules.backups.tasks app.modules.blacklist.tasks app.modules.users.tasks app.modules.advertising.tasks app.modules.overview.tasks app.modules.announcements.tasks app.modules.loyalty.tasks app.modules.notifications.tasks app.modules.broadcasts.tasks app.modules.email.tasks app.modules.customer_notifications.tasks app.modules.promocodes.tasks
         ;;
     scheduler)

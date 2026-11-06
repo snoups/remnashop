@@ -1893,7 +1893,7 @@ async def test_set_user_discount_publishes_an_event_per_changed_discount(
     assert (row.payload["old_percent"], row.payload["new_percent"]) == (0, 20)
 
 
-async def test_an_admin_cannot_give_themselves_a_discount(
+async def test_an_admin_gives_themselves_a_discount_only_with_staff_self_manage(
     user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
 ) -> None:
     async with uow:
@@ -1903,11 +1903,13 @@ async def test_an_admin_cannot_give_themselves_a_discount(
         await uow.commit()
 
     use_case = SetUserDiscountUseCase(user_repository, uow, event_publisher)
-    with pytest.raises(NotFoundError):
-        await use_case(
-            admin,
-            SetUserDiscountDto(user_id=admin.id, personal_discount=100, client_ip="127.0.0.1"),
-        )
+    data = SetUserDiscountDto(user_id=admin.id, personal_discount=100, client_ip="127.0.0.1")
+    with pytest.raises(PermissionDeniedError):
+        await use_case(admin, data)
+
+    granted = admin.model_copy(update={"permission_grants": [Permission.STAFF_SELF_MANAGE.value]})
+    updated = await use_case(granted, data)
+    assert updated.personal_discount == 100
 
 
 async def test_the_owner_can_give_themselves_a_discount(

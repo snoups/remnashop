@@ -34,11 +34,11 @@ async def _captcha_on(settings_repository: SettingsRepository, uow: UnitOfWork) 
 def siteverify(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict[str, str]]]:
     calls: list[tuple[str, dict[str, str]]] = []
 
-    async def fake(url: str, form: dict[str, str]) -> bool:
+    async def fake(url: str, form: dict[str, str]) -> object:
         calls.append((url, form))
         if form["response"] == "down":
             raise httpx.ConnectTimeout("down")
-        return form["response"] == "good"
+        return {"success": form["response"] == "good"}
 
     monkeypatch.setattr(captcha, "_siteverify", fake)
     return calls
@@ -76,3 +76,21 @@ async def test_methods_hand_the_widget_its_public_key_only(client: httpx.AsyncCl
     methods = (await client.get(f"{API_V1}/auth/methods")).json()
 
     assert methods["captcha"] == {"provider": "HCAPTCHA", "site_key": "site"}
+
+
+@pytest.mark.parametrize(
+    ("reply", "hostname", "passed"),
+    [
+        ({"success": True}, "cab.example.com", True),
+        ({"success": True, "hostname": "cab.example.com"}, "cab.example.com", True),
+        ({"success": True, "hostname": "other.example.com"}, "cab.example.com", False),
+        ({"success": True, "hostname": "other.example.com"}, None, True),
+        ({"success": False}, None, False),
+        (["success"], None, False),
+        (True, None, False),
+    ],
+)
+def test_a_reply_passes_only_as_a_successful_object_from_the_cabinet(
+    reply: object, hostname: str, passed: bool
+) -> None:
+    assert captcha._passed(reply, hostname) is passed

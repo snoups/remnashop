@@ -30,7 +30,7 @@ class GetSubscriptionPanelDiffUseCase(UseCase[int, SubscriptionPanelDiffDto]):
     async def _execute(self, actor: Actor, data: int) -> SubscriptionPanelDiffDto:
         async with self._uow:
             subscription = await get_manageable_subscription(
-                self._subscription_repository, self._user_repository, actor, data
+                self._subscription_repository, self._user_repository, actor, data, for_read=True
             )
             owner = await subscription_owner(self._user_repository, subscription)
         try:

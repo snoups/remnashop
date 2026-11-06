@@ -335,14 +335,20 @@ async def _multipart_chunks(total: int):
 
 
 @pytest.mark.parametrize(
-    ("method", "path", "too_big"),
+    ("method", "path", "too_big", "streamed_status"),
     [
-        ("POST", "/api/v1/auth/login", 2 * 1024 * 1024),
-        ("PUT", "/api/v1/banners/menu/ru", 7 * 1024 * 1024),
+        ("POST", "/api/v1/auth/login", 2 * 1024 * 1024, 413),
+        # an upload is read only after auth: a streamed one is refused unread
+        ("PUT", "/api/v1/banners/menu/ru", 7 * 1024 * 1024, 401),
     ],
 )
 async def test_oversized_body_is_rejected_before_authentication(
-    readyz_container: AsyncContainer, method: str, path: str, too_big: int, api_app: FastAPI
+    readyz_container: AsyncContainer,
+    method: str,
+    path: str,
+    too_big: int,
+    streamed_status: int,
+    api_app: FastAPI,
 ) -> None:
     app = api_app
     app.state.dishka_container = readyz_container
@@ -357,9 +363,9 @@ async def test_oversized_body_is_rejected_before_authentication(
             headers={"Content-Type": "multipart/form-data; boundary=b"},
         )
 
-    for response in (declared, streamed):
-        assert response.status_code == 413
-        assert response.json()["code"] == "PAYLOAD_TOO_LARGE"
+    assert declared.status_code == 413
+    assert declared.json()["code"] == "PAYLOAD_TOO_LARGE"
+    assert streamed.status_code == streamed_status
 
 
 async def test_upload_route_allows_bodies_above_the_default_limit() -> None:

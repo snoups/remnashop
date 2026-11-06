@@ -14,6 +14,7 @@ from sqlalchemy import (
     cast,
     func,
     literal,
+    or_,
     select,
 )
 from sqlalchemy.dialects.postgresql import aggregate_order_by
@@ -22,7 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import TIME_1D
 from app.core.db.filters import in_ids
 from app.core.db.models.transaction import Transaction
-from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
+from app.core.db.models.user import User
+from app.core.enums import Currency, PaymentGatewayType, PurchaseType, Role, TransactionStatus
 from app.modules.transactions.dto import (
     PaidTotalsDto,
     PaidTransactionDto,
@@ -88,12 +90,19 @@ class TransactionStatsRepository:
         rows = await self.session.execute(stmt.order_by(Transaction.updated_at, Transaction.id))
         return [self._to_paid(row) for row in rows.all()]
 
-    async def list_recent_paid(self, limit: int) -> list[PaidTransactionDto]:
-        stmt = (
-            self._paid_select()
-            .order_by(Transaction.updated_at.desc(), Transaction.id.desc())
-            .limit(limit)
-        )
+    async def list_recent_paid(
+        self, limit: int, *, hide_staff_from: Optional[int] = None
+    ) -> list[PaidTransactionDto]:
+        stmt = self._paid_select()
+        if hide_staff_from is not None:
+            # same rule as visible_user: staff rows are hidden, the viewer's own are not
+            stmt = stmt.where(
+                or_(
+                    Transaction.user_id.in_(select(User.id).where(User.role == Role.USER)),
+                    Transaction.user_id == hide_staff_from,
+                )
+            )
+        stmt = stmt.order_by(Transaction.updated_at.desc(), Transaction.id.desc()).limit(limit)
         return [self._to_paid(row) for row in (await self.session.execute(stmt)).all()]
 
     async def list_paid_by_users(

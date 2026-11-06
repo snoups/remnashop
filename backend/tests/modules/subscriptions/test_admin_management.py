@@ -22,6 +22,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.core.ports import EventPublisher
+from app.core.security.permissions import Permission
 from app.core.utils.time import datetime_now
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import (
@@ -1191,3 +1192,42 @@ async def test_an_admin_cannot_delete_the_owners_subscriptions(
         await _delete_all(subscription_repository, remnawave_sdk, event_publisher, uow)(
             admin, owner.id
         )
+
+
+async def test_an_admin_changes_their_own_subscription_only_with_staff_self_manage(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(name="self", telegram_id=9150, role=Role.ADMIN)
+        )
+        plan = await _plan(plan_repository, "selfvpn")
+        # a refused call rolls back, the account must outlive it
+        await uow.commit()
+    grant = GrantSubscriptionDto(user_id=admin.id, plan_id=plan.id, duration_days=30)
+    update = UpdateSubscriptionUseCase(
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        event_publisher,
+        uow,
+        SubscriptionLifecycleService(subscription_repository),
+    )
+
+    with pytest.raises(PermissionDeniedError):
+        await grant_use_case(admin, grant)
+
+    allowed = admin.model_copy(update={"permission_grants": [Permission.STAFF_SELF_MANAGE.value]})
+    subscription = await grant_use_case(allowed, grant)
+    change = UpdateSubscriptionDto(subscription_id=subscription.id, device_limit=7)
+    with pytest.raises(PermissionDeniedError):
+        await update(admin, change)
+    updated = await update(allowed, change)
+
+    assert updated.device_limit == 7

@@ -34,9 +34,9 @@ ALLOWED_ROLES: Final[list[Role]] = [Role.USER]
 STAFF_ROLES: Final[list[Role]] = [Role.USER, Role.ADMIN, Role.OWNER]
 
 
-def detail_roles(actor: Actor) -> list[Role]:
-    # one user by id: staff rows only for ADMINS_MANAGE, as in the list
-    if PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
+def detail_roles(actor: Actor, user_id: Optional[int] = None) -> list[Role]:
+    # one user by id: staff rows only for ADMINS_MANAGE, as in the list, or one's own
+    if user_id == actor.id or PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE):
         return STAFF_ROLES
     return ALLOWED_ROLES
 

@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.modules.users import UserDto, UserRepository
 
@@ -24,6 +24,11 @@ async def load_pair(
             and (side.id == actor.id or PermissionPolicy.can_manage(actor, side))
         ):
             raise NotFoundError("User not found", code=ErrorCode.USER_NOT_FOUND)
+    # moves subscriptions and balance onto or off one's own account
+    if actor.id in (source.id, target.id) and not PermissionPolicy.has_permission(
+        actor, Permission.STAFF_SELF_MANAGE
+    ):
+        raise PermissionDeniedError
     if source.is_privileged and target.is_privileged:
         raise ValidationError(
             "Two staff accounts can't be merged", code=ErrorCode.MERGE_BOTH_PRIVILEGED

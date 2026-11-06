@@ -37,12 +37,15 @@ class EmailSendError(Exception):
         connection: bool = False,
         auth: bool = False,
         refused: bool = False,
+        unbuildable: bool = False,
     ) -> None:
         super().__init__(message)
         self.connection = connection
         self.auth = auth
         # the mailbox itself is refused for good: retrying won't help
         self.refused = refused
+        # the message itself can't be built (a header with a line break): neither will a retry
+        self.unbuildable = unbuildable
 
 
 class SmtpSender:
@@ -55,9 +58,12 @@ class SmtpSender:
         if profile.host is None or profile.from_address is None:
             raise EmailSendError("SMTP is not configured")
         mime = EmailMessage()
-        mime["From"] = formataddr((profile.from_name or "", profile.from_address))
-        mime["To"] = message.to
-        mime["Subject"] = message.subject
+        try:
+            mime["From"] = formataddr((profile.from_name or "", profile.from_address))
+            mime["To"] = message.to
+            mime["Subject"] = message.subject
+        except (ValueError, TypeError) as error:
+            raise EmailSendError(f"Unbuildable: {error}", unbuildable=True) from error
         mime.set_content(message.text)
         mime.add_alternative(message.html, subtype="html")
         if logo is not None and "cid:logo" in message.html:

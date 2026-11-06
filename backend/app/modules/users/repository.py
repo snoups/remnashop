@@ -385,6 +385,10 @@ class UserRepository:
         stmt = select(exists().where(User.role == role))
         return bool(await self.session.scalar(stmt))
 
+    async def list_staff_ids(self) -> set[int]:
+        stmt = select(User.id).where(User.role != Role.USER)
+        return set((await self.session.scalars(stmt)).all())
+
     async def list_by_roles(self, roles: Sequence[Role]) -> list[UserDto]:
         stmt = select(User).where(User.role.in_(roles)).order_by(User.created_at.desc())
         rows = (await self.session.scalars(stmt)).all()

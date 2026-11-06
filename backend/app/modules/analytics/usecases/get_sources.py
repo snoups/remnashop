@@ -113,7 +113,10 @@ class GetSourcesUseCase(UseCase[AnalyticsPeriodQueryDto, SourcesDto]):
             referrer: sum((totals.get(u, ZERO_AMOUNT) for u in ids), start=ZERO_AMOUNT)
             for referrer, ids in referred.items()
         }
-        top = sorted(referred, key=lambda referrer: (-revenue[referrer], referrer))[:_TOP_LIMIT]
+        # a customer ranking: staff referrers are not shown to anyone
+        staff = await self._user_repository.list_staff_ids()
+        customers = [referrer for referrer in referred if referrer not in staff]
+        top = sorted(customers, key=lambda referrer: (-revenue[referrer], referrer))[:_TOP_LIMIT]
         users = {u.id: u for u in await self._user_repository.list_by_ids(top)}
         return [
             TopReferrerDto(

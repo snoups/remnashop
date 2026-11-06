@@ -69,14 +69,14 @@ class RequestLinkEmailCodeUseCase:
         ) or await send_limit_hit(self._redis, digest):
             return
 
-        code = await self._store.issue(email, InviteCodesDto(), locale)
-        subject, text, html = render_link_code(
-            code, locale, brand, self._config.cabinet.url or None
-        )
         # an address that canonically belongs to another account gets proven at
         # that account's own mailbox, as sign-in does: an alias the claimant owns
         # (a "+" that is part of the name on some hosts) must not stand in for it
         recipient = owner.email if owner is not None and owner.email else email
+        code = await self._store.issue(email, InviteCodesDto(), locale, recipient=recipient)
+        subject, text, html = render_link_code(
+            code, locale, brand, self._config.cabinet.url or None
+        )
         await self._send_email.kiq(
             to=normalize_email(recipient), subject=subject, text=text, html=html
         )

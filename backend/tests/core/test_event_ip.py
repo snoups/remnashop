@@ -38,9 +38,18 @@ def test_own_ip_stays_visible() -> None:
     assert visible_event_ip(_reader(Role.ADMIN), "X", payload, IP) == IP
 
 
-def test_api_token_ip_counts_as_the_owner() -> None:
+@pytest.mark.parametrize(
+    ("reader", "expected"),
+    [
+        (_reader(Role.ADMIN), MASKED_IP),
+        (_reader(Role.OWNER), IP),
+        # another token: every token has id 0, which must not read as "its own"
+        (_reader(Role.USER, user_id=0), MASKED_IP),
+    ],
+)
+def test_api_token_ip_is_for_the_owner_only(reader: SyntheticActor, expected: str) -> None:
     payload = _acted_by(Role.USER, user_id=0)
-    assert visible_event_ip(_reader(Role.ADMIN), "X", payload, IP) == MASKED_IP
+    assert visible_event_ip(reader, "X", payload, IP) == expected
 
 
 def test_customer_promoted_since_is_masked() -> None:

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Any
@@ -299,6 +300,7 @@ async def test_accept_replays_the_stopped_message(redis: Redis) -> None:
     message, start, _ = await _press_accept(
         _ACCEPTED, BotRequirementsDto(), "member", redis, dispatcher
     )
+    await asyncio.sleep(0)
 
     start.assert_not_awaited()
     message.delete.assert_awaited_once()

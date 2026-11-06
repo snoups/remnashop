@@ -140,7 +140,7 @@ async def cabinet_email_code(
 @router.post(
     "/email/verify",
     response_model=CabinetAuthResponse,
-    responses=error_responses(401, 403),
+    responses=error_responses(401, 403, 409),
 )
 @inject
 async def cabinet_email_verify(

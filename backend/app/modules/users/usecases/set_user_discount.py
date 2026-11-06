@@ -4,7 +4,6 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.ports import EventPublisher
@@ -17,7 +16,7 @@ from app.modules.users.events import (
 )
 from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
-from app.modules.users.visibility import assert_manageable, get_visible_target
+from app.modules.users.visibility import assert_own_or_manageable, get_visible_target
 
 
 def _changed(new: Optional[int], old: int) -> bool:
@@ -46,12 +45,14 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserListItemDto]):
                 self._user_repository, actor, data.user_id, for_update=True
             )
             # on oneself only the owner: for anyone else a discount is money they hand themselves
-            assert_manageable(actor, target, allow_self=actor.role is Role.OWNER)
+            assert_own_or_manageable(actor, target)
 
             personal_changed = _changed(data.personal_discount, target.personal_discount)
             purchase_changed = _changed(data.purchase_discount, target.purchase_discount)
             if not (personal_changed or purchase_changed):
-                return await self._user_repository.get_list_item(target.id, detail_roles(actor))
+                return await self._user_repository.get_list_item(
+                    target.id, detail_roles(actor, target.id)
+                )
 
             # a manual value clears the promocode the old one came from
             updated = await self._user_repository.update_fields(
@@ -86,7 +87,9 @@ class SetUserDiscountUseCase(UseCase[SetUserDiscountDto, UserListItemDto]):
                         ip_address=data.client_ip,
                     )
                 )
-            item = await self._user_repository.get_list_item(updated.id, detail_roles(actor))
+            item = await self._user_repository.get_list_item(
+                updated.id, detail_roles(actor, updated.id)
+            )
 
         logger.info(
             f"{actor.log} Set discounts of user '{data.user_id}': "

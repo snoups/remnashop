@@ -8,6 +8,7 @@ from app.modules.cabinet_auth.di import get_cabinet_auth_providers
 from app.modules.cabinet_auth.dto import DeeplinkTicketDto, InviteCodesDto, TelegramProfileDto
 from app.modules.cabinet_auth.email_codes import (
     EmailCodeStore,
+    assert_code_reached_owner,
     email_key,
     fail_budget_exhausted,
     require_email_sign_in,
@@ -40,6 +41,7 @@ __all__ = [
     "IssueBotSignInLinkUseCase",
     "RequestDeeplinkUseCase",
     "TelegramProfileDto",
+    "assert_code_reached_owner",
     "email_key",
     "fail_budget_exhausted",
     "get_cabinet_auth_providers",

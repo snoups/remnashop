@@ -15,7 +15,7 @@ from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.referrals.bonus_targets import BonusDaysTargets
 from app.modules.referrals.dispatch import BonusRenewalDispatch
-from app.modules.referrals.dto import BonusDaysRedemptionDto, RedeemBonusDaysDto
+from app.modules.referrals.dto import MAX_BONUS_DAYS, BonusDaysRedemptionDto, RedeemBonusDaysDto
 from app.modules.referrals.events import BonusDaysRedeemedEvent, BonusDaysRenewalStuckEvent
 from app.modules.referrals.failures import is_infrastructure_error
 from app.modules.subscriptions import (
@@ -58,6 +58,11 @@ class RedeemBonusDaysUseCase(UseCase[RedeemBonusDaysDto, BonusDaysRedemptionDto,
                 self._subscription_repository, data.subscription_id, actor.id
             )
         await self._targets.assert_accepts(target)
+        if data.days > MAX_BONUS_DAYS:
+            raise ValidationError(
+                f"At most {MAX_BONUS_DAYS} bonus days at once",
+                code=ErrorCode.BONUS_DAYS_ABOVE_LIMIT,
+            )
         if data.days > actor.bonus_days:
             raise ValidationError("Not enough bonus days", code=ErrorCode.BONUS_DAYS_INSUFFICIENT)
 

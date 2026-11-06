@@ -1,8 +1,11 @@
+from typing import Optional
+
 import pytest
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Role
-from app.core.exceptions import NotFoundError
+from app.core.enums import OAuthProvider, Role
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.ports import EventPublisher
 from app.modules.users.dto import CreateUserDto, UnbindTelegramDto, UserDto
 from app.modules.users.repository import UserRepository
@@ -16,11 +19,37 @@ async def owner(user_repository: UserRepository) -> UserDto:
     )
 
 
+class _LastMethod:
+    """A staff account whose Telegram is its only way into the dashboard."""
+
+    def __init__(self) -> None:
+        self.checked: list[int] = []
+
+    async def assert_one_left(
+        self,
+        user: UserDto,
+        *,
+        without_provider: Optional[OAuthProvider] = None,
+        without_passkey: bool = False,
+    ) -> None:
+        self.checked.append(user.id)
+        if without_provider is OAuthProvider.TELEGRAM:
+            raise ConflictError("No way left", code=ErrorCode.LAST_SIGN_IN_METHOD)
+
+
+@pytest.fixture
+def check() -> _LastMethod:
+    return _LastMethod()
+
+
 @pytest.fixture
 def use_case(
-    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    check: _LastMethod,
 ) -> UnbindTelegramIdUseCase:
-    return UnbindTelegramIdUseCase(user_repository, uow, event_publisher)
+    return UnbindTelegramIdUseCase(user_repository, uow, event_publisher, check)
 
 
 async def test_unbind_clears_id_and_username(use_case, user_repository, owner) -> None:
@@ -52,3 +81,32 @@ async def test_unbind_staff_of_equal_rank_is_out_of_reach(use_case, user_reposit
 
     with pytest.raises(NotFoundError):
         await use_case(granted, UnbindTelegramDto(user_id=other.id, client_ip="127.0.0.1"))
+
+
+async def test_unbind_keeps_a_staff_accounts_last_sign_in_method(
+    use_case, user_repository, uow, owner, check
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(name="a", login="unbind-last", role=Role.ADMIN, telegram_id=502)
+        )
+        # a refused call rolls back, the account must outlive it
+        await uow.commit()
+
+    with pytest.raises(ConflictError) as error:
+        await use_case(owner, UnbindTelegramDto(user_id=admin.id, client_ip="127.0.0.1"))
+
+    assert error.value.code is ErrorCode.LAST_SIGN_IN_METHOD
+    assert check.checked == [admin.id]
+    kept = await user_repository.find_by_id(admin.id)
+    assert kept is not None and kept.telegram_id == 502
+
+
+async def test_unbind_does_not_check_a_customers_sign_in(
+    use_case, user_repository, owner, check
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="u", telegram_id=503))
+
+    await use_case(owner, UnbindTelegramDto(user_id=user.id, client_ip="127.0.0.1"))
+
+    assert check.checked == []

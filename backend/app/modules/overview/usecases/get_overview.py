@@ -32,7 +32,7 @@ from app.modules.overview.dto import (
 from app.modules.pricing import PricingRepository
 from app.modules.subscriptions import SubscriptionStatsRepository
 from app.modules.transactions import TransactionStatsRepository
-from app.modules.users import UserRepository, UserStatsRepository, visible_user
+from app.modules.users import UserRepository, UserStatsRepository
 
 _RECENT_PAYMENTS: Final[int] = 8
 
@@ -126,16 +126,18 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
         )
 
     async def _recent_payments(self, actor: Actor) -> list[RecentPaymentDto]:
-        rows = await self._transaction_stats.list_recent_paid(_RECENT_PAYMENTS)
+        # a staff payer the caller may not see is left out, as in the order list
+        sees_staff = PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
+        rows = await self._transaction_stats.list_recent_paid(
+            _RECENT_PAYMENTS, hide_staff_from=None if sees_staff else actor.id
+        )
         users = {
             u.id: u for u in await self._user_repository.list_by_ids([r.user_id for r in rows])
         }
-        # a staff payer the caller may not see stays nameless, as in the order list
-        shown = {user_id: visible_user(actor, user) for user_id, user in users.items()}
         return [
             RecentPaymentDto(
                 user_id=row.user_id,
-                name=payer.name if (payer := shown.get(row.user_id)) else "",
+                name=payer.name if (payer := users.get(row.user_id)) else "",
                 plan_name=row.plan_name,
                 gateway_type=row.gateway_type,
                 purchase_type=row.purchase_type,

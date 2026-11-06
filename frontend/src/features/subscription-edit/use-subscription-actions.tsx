@@ -9,7 +9,7 @@ import {
   reissueSubscriptionLink,
   resetSubscriptionTraffic,
 } from "@entities/subscriptions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import type { ActionMenuItem } from "@shared/ui/ActionMenu";
@@ -21,7 +21,7 @@ export function useSubscriptionActions(
   apply: (updated: SubscriptionListItem) => void,
 ) {
   const { t } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(subscription.user_id);
   const [isConfirmingReissue, setIsConfirmingReissue] = useState(false);
   const [isSyncingWithPanel, setIsSyncingWithPanel] = useState(false);
 

@@ -6,6 +6,7 @@ import pytest
 from app.core.enums import BroadcastButtonKind, BroadcastCategory, BroadcastDelivery, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
+from app.core.utils.telegram_text import TELEGRAM_TEXT_LIMIT
 from app.modules.broadcasts.dto import (
     BroadcastAudienceDto,
     BroadcastButtonDto,
@@ -13,7 +14,11 @@ from app.modules.broadcasts.dto import (
     BroadcastEmailContentDto,
     SaveBroadcastDto,
 )
-from app.modules.broadcasts.validation import validate_audience, validate_broadcast
+from app.modules.broadcasts.validation import (
+    validate_audience,
+    validate_broadcast,
+    validate_text_lengths,
+)
 
 
 def _data(**overrides: object) -> SaveBroadcastDto:
@@ -259,3 +264,13 @@ def test_telegram_delivery_needs_default_locale_text() -> None:
     with pytest.raises(ValidationError) as caught:
         validate_broadcast(save_dto(contents={}), has_media=False, images={})
     assert caught.value.code is ErrorCode.BROADCAST_DEFAULT_LOCALE_MISSING
+
+
+def test_text_length_counts_each_variable_at_its_longest() -> None:
+    # fits as written, but not once a 64-character name is in
+    text = "x" * (TELEGRAM_TEXT_LIMIT - 20) + "{ $name }"
+
+    with pytest.raises(ValidationError) as error:
+        validate_text_lengths({Locale.EN: BroadcastContentDto(text=text)}, has_media=False)
+
+    assert error.value.code is ErrorCode.BROADCAST_TEXT_TOO_LONG

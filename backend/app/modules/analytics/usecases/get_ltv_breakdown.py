@@ -83,7 +83,10 @@ class GetLtvBreakdownUseCase(UseCase[None, LtvBreakdownDto]):
     async def _top_payers(
         self, totals: dict[int, Decimal], payers: dict[int, PayerSummaryDto]
     ) -> list[TopPayerDto]:
-        top = sorted(totals, key=lambda user_id: (-totals[user_id], user_id))[:_TOP_LIMIT]
+        # a customer ranking: staff purchases are not shown to anyone
+        staff = await self._user_repository.list_staff_ids()
+        customers = [user_id for user_id in totals if user_id not in staff]
+        top = sorted(customers, key=lambda user_id: (-totals[user_id], user_id))[:_TOP_LIMIT]
         users = {u.id: u for u in await self._user_repository.list_by_ids(top)}
         plans = _current_plans(await self._subscription_stats.list_live())
         return [

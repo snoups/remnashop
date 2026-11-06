@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.errors import constraint_name
 from app.core.db.filters import in_ids
 from app.core.db.models.promocode import Promocode, PromocodeActivation
+from app.core.db.models.user import User
 from app.core.db.partial_update import apply_partial_update
-from app.core.enums import PromocodeRewardType, PromocodeStatus
+from app.core.enums import PromocodeRewardType, PromocodeStatus, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
@@ -331,9 +332,23 @@ class PromocodeRepository:
         }
 
     async def list_activations_paginated(
-        self, promocode_id: int, *, page: int = 1, page_size: int = 50
+        self,
+        promocode_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 50,
+        hide_staff_from: Optional[int] = None,
     ) -> tuple[list[PromocodeActivationDto], int]:
         condition = PromocodeActivation.promocode_id == promocode_id
+        if hide_staff_from is not None:
+            # same rule as visible_user: staff rows are hidden, the viewer's own is not
+            condition = and_(
+                condition,
+                or_(
+                    PromocodeActivation.user_id.in_(select(User.id).where(User.role == Role.USER)),
+                    PromocodeActivation.user_id == hide_staff_from,
+                ),
+            )
         total = await self.session.scalar(
             select(func.count()).select_from(PromocodeActivation).where(condition)
         )

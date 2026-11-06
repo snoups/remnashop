@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.transaction import Transaction
+from app.core.db.models.user import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PurchaseType, Role, SubscriptionStatus, TransactionStatus
 from app.core.exceptions import PermissionDeniedError
@@ -192,3 +193,34 @@ async def test_retention_expiring_blocks(
     assert result.expiring_top[0].spent > result.expiring_top[1].spent
     assert result.active_by_plan[0].plan_name == "Basic" and result.active_by_plan[0].active >= 2
     assert len(result.points) == 3 and len(result.monthly_churn) == 12
+
+
+async def test_expiring_top_leaves_out_staff(
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    now = datetime_now()
+    customer, staff = [
+        await create_subscription(
+            subscription_repository,
+            user_repository,
+            telegram_id=telegram_id,
+            remnawave_user_id=telegram_id,
+            expire_at=now + timedelta(days=3, hours=1),
+        )
+        for telegram_id in (870_101, 870_102)
+    ]
+    await session.execute(update(User).where(User.id == staff.user_id).values(role=Role.ADMIN))
+    for user_id, key in ((customer.user_id, "st-1"), (staff.user_id, "st-2")):
+        await _pay(
+            transaction_repository, session, uow, user_id, plan_id, key, now - timedelta(days=60)
+        )
+
+    result = await _use_case(session, pricing_repository, uow)(OWNER)
+
+    assert [c.user_id for c in result.expiring_top] == [customer.user_id]

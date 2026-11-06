@@ -2,7 +2,7 @@ from typing import Optional
 
 from app.core.actor import Actor
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, PermissionDeniedError
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
@@ -29,6 +29,16 @@ async def get_visible_target(
     if target is None:
         raise NotFoundError(f"User '{user_id}' not found", code=ErrorCode.USER_NOT_FOUND)
     return target
+
+
+def assert_own_or_manageable(actor: Actor, target: UserDto) -> None:
+    """For a write to a user's subscriptions or balance: one's own account takes
+    a permission of its own, another one the usual reach."""
+    if target.id == actor.id:
+        if not PermissionPolicy.has_permission(actor, Permission.STAFF_SELF_MANAGE):
+            raise PermissionDeniedError
+        return
+    assert_manageable(actor, target)
 
 
 def assert_manageable(actor: Actor, target: UserDto, *, allow_self: bool = False) -> None:

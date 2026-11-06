@@ -7,7 +7,7 @@ import {
   deleteSubscriptionDevice,
   listSubscriptionDevices,
 } from "@entities/subscriptions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { formatDate } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
@@ -20,9 +20,9 @@ import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { IconButton } from "@shared/ui/IconButton";
 import { Spinner } from "@shared/ui/Spinner";
 
-export function SubscriptionDevicesTab({ subscriptionId }: { subscriptionId: number }) {
+export function SubscriptionDevicesTab({ subscriptionId, userId }: { subscriptionId: number; userId: number }) {
   const { t, i18n } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(userId);
   const canDelete = permissions.includes("SUBSCRIPTIONS_DEVICES_DELETE");
   const canDeleteAll = permissions.includes("SUBSCRIPTIONS_DEVICES_DELETE_ALL");
   const [state, reload, setData] = useAsyncResource((signal) => listSubscriptionDevices(subscriptionId, signal));

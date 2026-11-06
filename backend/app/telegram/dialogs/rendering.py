@@ -1,6 +1,7 @@
 import html
 import re
 from typing import Any, Final, Optional, TypeVar
+from urllib.parse import quote
 
 from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
@@ -37,7 +38,10 @@ def _prepare_value(value: Any) -> Any:
     if isinstance(value, TrustedHtml):
         return value.replace("\n", _VALUE_NEWLINE)
     if isinstance(value, str):
-        return html.escape(value, quote=False).replace("\n", _VALUE_NEWLINE)
+        # quotes for a value inside an attribute; "[" keeps a value from forming
+        # premium-emoji markup, which only the template may use
+        escaped = html.escape(value, quote=False).replace('"', "&quot;").replace("'", "&#39;")
+        return escaped.replace("[", "&#91;").replace("\n", _VALUE_NEWLINE)
     return value
 
 
@@ -107,7 +111,9 @@ def _resolve_variables(value: Optional[str], getter_data: dict[str, Any]) -> Opt
         if key not in catalog.variable_keys():
             logger.warning(f"Unknown dialog variable token: {key}")
             return ""
-        return str(catalog.get_variable(key)(getter_data))
+        resolved = str(catalog.get_variable(key)(getter_data))
+        # a variable opening the URL is the URL itself; inside one it's a part of it
+        return resolved if match.start() == 0 else quote(resolved, safe="")
 
     return catalog.URL_VARIABLE_RE.sub(_sub, value)
 

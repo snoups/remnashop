@@ -244,6 +244,37 @@ async def test_cabinet_logo_is_separate_from_dashboard(
     assert dashboard.json()["has_logo"] is False
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/banners/menu/ru",
+        "/settings/appearance/dashboard/logo",
+        "/settings/appearance/dashboard/favicon",
+    ],
+)
+async def test_upload_is_not_parsed_before_auth(client: httpx.AsyncClient, path: str) -> None:
+    # a malformed form answers 400 once parsed; without a session it must not get that far
+    response = await client.put(
+        f"{API_V1}{path}",
+        content=b"--x\r\ngarbage",
+        headers={"content-type": "multipart/form-data; boundary=x"},
+    )
+
+    assert response.status_code == 401
+
+
+async def test_upload_without_a_file_part_is_refused(
+    client: httpx.AsyncClient, owner_headers: dict[str, str]
+) -> None:
+    response = await client.put(
+        f"{API_V1}/settings/appearance/dashboard/logo",
+        files={"other": ("logo.svg", _SVG_LOGO, "image/svg+xml")},
+        headers=owner_headers,
+    )
+
+    assert response.status_code == 400
+
+
 @pytest.mark.parametrize("kind", ["thumbnails", "animations"])
 async def test_emoji_media_404_for_unknown_id_without_session(
     client: httpx.AsyncClient, kind: str

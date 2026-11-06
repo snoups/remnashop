@@ -12,6 +12,7 @@ from fluentogram import TranslatorHub
 from app.core.constants import USER_KEY
 from app.core.exceptions import CooldownError, NotFoundError, ValidationError
 from app.modules.referrals import (
+    MAX_BONUS_DAYS,
     GetOwnReferralStatsUseCase,
     ListBonusDaysTargetsUseCase,
     RedeemBonusDaysDto,
@@ -82,7 +83,8 @@ async def _redeem(
     # the middleware loads the user on every update, so this balance is current
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    days = user.bonus_days
+    # one renewal takes at most MAX_BONUS_DAYS, the rest stays on the balance
+    days = min(user.bonus_days, MAX_BONUS_DAYS)
     # a button left on an old screen; the usecase would renew by zero days
     if days <= 0:
         await callback.answer(runner.get("ntf-referrals.redeem-failed"), show_alert=True)

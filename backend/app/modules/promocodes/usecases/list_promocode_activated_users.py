@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.promocodes.dto import ListPromocodeActivatedUsersDto, PromocodeActivatedUserDto
 from app.modules.promocodes.repository import PromocodeRepository
@@ -29,7 +29,12 @@ class ListPromocodeActivatedUsersUseCase(
             # NotFoundError (404) for an unknown id, not an empty page
             await self._promocode_repository.get_by_id(data.promocode_id)
             activations, total = await self._promocode_repository.list_activations_paginated(
-                data.promocode_id, page=data.page, page_size=data.page_size
+                data.promocode_id,
+                page=data.page,
+                page_size=data.page_size,
+                hide_staff_from=None
+                if PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
+                else actor.id,
             )
             users_by_id = {
                 user.id: user

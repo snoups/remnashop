@@ -46,7 +46,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.get(
     "/status",
     response_model=StatusResponse,
-    dependencies=[Depends(rate_limit(key="status", limit=30, window_seconds=TIME_1M))],
+    dependencies=[
+        Depends(forbid_cabinet_proxy),
+        Depends(rate_limit(key="status", limit=30, window_seconds=TIME_1M)),
+    ],
+    responses=error_responses(403),
 )
 @inject
 async def get_auth_status(use_case: FromDishka[GetAuthStatusUseCase]) -> StatusResponse:

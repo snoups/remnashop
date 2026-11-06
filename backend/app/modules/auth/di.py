@@ -18,7 +18,7 @@ from app.modules.auth.usecases import (
     RevokeUserSessionUseCase,
 )
 from app.modules.settings import AudienceSessionRevoker
-from app.modules.users import SessionRevoker
+from app.modules.users import SessionRevoker, SignInMethodCheck
 
 
 class AuthProvider(Provider):
@@ -44,6 +44,7 @@ class AuthProvider(Provider):
         PruneStaleSessionsUseCase,
     )
     session_revoker = alias(source=SessionRepository, provides=SessionRevoker)
+    sign_in_method_check = alias(source=SignInMethodGuard, provides=SignInMethodCheck)
     audience_session_revoker = alias(source=SessionRepository, provides=AudienceSessionRevoker)
 
 

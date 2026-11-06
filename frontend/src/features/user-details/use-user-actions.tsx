@@ -110,8 +110,9 @@ export function useUserActions({
       ...(user.role === "USER" && permissions.includes("ADMINS_MANAGE")
         ? ["promote" as const]
         : []),
-      // bound: only unbinding is offered; a new id goes on after that
-      ...(user.telegram_id === null && canTouchStaff && permissions.includes("USERS_TELEGRAM_BIND")
+      // bound: only unbinding is offered; a new id goes on after that. Staff link
+      // Telegram from their profile by signing in with it, never by a typed id
+      ...(user.telegram_id === null && user.role === "USER" && permissions.includes("USERS_TELEGRAM_BIND")
         ? ["bindTelegram" as const]
         : []),
       ...(user.telegram_id !== null && canTouchStaff && permissions.includes("USERS_TELEGRAM_UNBIND")

@@ -101,6 +101,7 @@ class Permission(UpperStrEnum):
     USERS_STATS_VIEW = auto()
     USERS_DELETE = auto()
     USERS_DISCOUNT_MANAGE = auto()
+    STAFF_SELF_MANAGE = auto()
     USERS_LOYALTY_VIEW = auto()
     USERS_LOYALTY_MANAGE = auto()
     USER_SESSIONS_VIEW = auto()
@@ -343,6 +344,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.USERS_STATS_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_DELETE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_DISCOUNT_MANAGE: PermissionMeta(resource="users", kind="write"),
+    Permission.STAFF_SELF_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_LOYALTY_VIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_LOYALTY_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USER_SESSIONS_VIEW: PermissionMeta(resource="user_sessions", kind="read"),
@@ -554,6 +556,8 @@ _TOKEN_EXCLUDED_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.USERS_DELETE,
         Permission.USERS_MERGE,
         Permission.USERS_MERGE_PREVIEW,
+        # a token has no account of its own
+        Permission.STAFF_SELF_MANAGE,
         # a Telegram id is how a customer logs into the bot
         Permission.USERS_TELEGRAM_BIND,
         Permission.USERS_TELEGRAM_UNBIND,

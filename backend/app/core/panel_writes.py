@@ -13,7 +13,7 @@ from app.core.utils.time import datetime_now
 
 _KEY_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}panel_write:"
 # outlives the webhook freshness window: an older event is refused anyway
-_MARK_TTL_S: Final[int] = TTL_10M
+WRITE_MARK_TTL_S: Final[int] = TTL_10M
 _WRITE_METHODS: Final[frozenset[str]] = frozenset({"POST", "PATCH", "DELETE"})
 # /users/{id}, /users/{id}/actions/<verb>; PATCH /users carries the id in its body
 _USER_PATH: Final[re.Pattern[str]] = re.compile(r"/users/(\d+)(?:/actions/[\w-]+)?$")
@@ -58,7 +58,7 @@ class PanelWriteRecorder(httpx.AsyncBaseTransport):
             # the write itself went through: a lost mark must not turn it into an error
             try:
                 await self._redis.set(
-                    f"{_KEY_PREFIX}{user_id}", sent_at.isoformat(), ex=_MARK_TTL_S
+                    f"{_KEY_PREFIX}{user_id}", sent_at.isoformat(), ex=WRITE_MARK_TTL_S
                 )
             except RedisError:
                 logger.exception(f"Failed to mark a write to panel user {user_id}")

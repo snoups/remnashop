@@ -209,9 +209,12 @@ def visible_event_ip(
     if isinstance(snapshot, dict):
         owner_id = snapshot.get("id")
         owner_role = Role.__members__.get(str(snapshot.get("role")), Role.USER)
-        # an API token is issued by the owner
+        # an API token is issued by the owner: its address is for the owner's eyes,
+        # never another token's, though every token shares id 0
         if owner_id == 0:
-            owner_role = Role.OWNER
+            if ip_address is None or reader.role >= Role.OWNER:
+                return ip_address
+            return MASKED_IP
     elif event_type in _STAFF_SIGN_IN_EVENT_TYPES:
         owner_id, owner_role = None, Role.ADMIN
     else:

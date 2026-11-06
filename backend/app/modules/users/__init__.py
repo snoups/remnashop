@@ -22,6 +22,7 @@ from app.modules.users.ports import (
     PasskeyRevoker,
     PromocodeLiveness,
     SessionRevoker,
+    SignInMethodCheck,
     SubscriptionRevoker,
 )
 from app.modules.users.repository import UserRepository, generate_referral_code
@@ -40,7 +41,12 @@ from app.modules.users.usecases import (
     SetBotBlockedUseCase,
     SetMarketingOptOutUseCase,
 )
-from app.modules.users.visibility import assert_manageable, get_visible_target, visible_user
+from app.modules.users.visibility import (
+    assert_manageable,
+    assert_own_or_manageable,
+    get_visible_target,
+    visible_user,
+)
 
 __all__ = [
     "CabinetUserRegisteredEvent",
@@ -60,6 +66,7 @@ __all__ = [
     "SetBotBlockedUseCase",
     "SetMarketingOptOutDto",
     "SetMarketingOptOutUseCase",
+    "SignInMethodCheck",
     "SubscriptionRevoker",
     "TelegramUserRegisteredEvent",
     "UpdateUserDto",
@@ -71,6 +78,7 @@ __all__ = [
     "UserResponse",
     "UserStatsRepository",
     "assert_manageable",
+    "assert_own_or_manageable",
     "detail_roles",
     "generate_referral_code",
     "get_users_providers",

@@ -109,11 +109,15 @@ async def test_bind_on_deleted_target_is_404(use_case, user_repository, owner) -
         )
 
 
-async def test_owner_binds_telegram_on_lower_ranked_admin(use_case, user_repository, owner) -> None:
+async def test_a_typed_telegram_id_is_never_bound_to_staff(
+    use_case, user_repository, owner
+) -> None:
+    # signing in by Telegram opens the dashboard: the id must be proven, not typed
     admin = await user_repository.create(CreateUserDto(name="a", login="bindc", role=Role.ADMIN))
 
-    result = await use_case(
-        owner, BindTelegramDto(user_id=admin.id, telegram_id=700, client_ip="127.0.0.1")
-    )
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            owner, BindTelegramDto(user_id=admin.id, telegram_id=700, client_ip="127.0.0.1")
+        )
 
-    assert result.telegram_id == 700
+    assert error.value.code is ErrorCode.STAFF_TELEGRAM_BIND_REFUSED

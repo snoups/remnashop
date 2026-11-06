@@ -165,3 +165,25 @@ async def test_failed_links_leave_the_mailbox_sign_in_budget_alone(
 
     sign_in_budget = f"{REDIS_KEY_PREFIX}cabinet:email_code_fail:{email_key('victim@gmail.com')}"
     assert await redis.get(sign_in_budget) is None
+
+
+@pytest.mark.usefixtures("email_enabled")
+async def test_alias_link_code_does_not_reach_an_owner_registered_since(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    headers: dict[str, str],
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    await client.post(LINK_CODE, json={"email": "ivan+x@mail.ru"}, headers=headers)
+    assert email_dispatch.messages[-1]["to"] == "ivan+x@mail.ru"
+    async with uow:
+        await user_repository.create(CreateUserDto(name="Ivan", email="ivan@mail.ru"))
+
+    response = await client.post(
+        LINK_VERIFY,
+        json={"email": "ivan+x@mail.ru", "code": _code_of(email_dispatch)},
+        headers=headers,
+    )
+
+    assert (response.status_code, response.json()["code"]) == (409, "EMAIL_TAKEN")

@@ -1,9 +1,10 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, Request, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
+from app.api.uploads import MULTIPART_FILE_BODY, read_form_file
 from app.core.actor import Actor
 from app.core.enums import AppearanceTarget
 from app.modules.settings.api.schemas import (
@@ -458,19 +459,22 @@ async def reset_appearance_settings(
 
 
 @router.put(
-    "/appearance/{target}/logo", response_model=AppearanceResponse, responses=error_responses(400)
+    "/appearance/{target}/logo",
+    response_model=AppearanceResponse,
+    responses=error_responses(400),
+    openapi_extra=MULTIPART_FILE_BODY,
 )
 @inject
 async def upload_appearance_logo(
     target: AppearanceTarget,
     use_case: FromDishka[UploadAppearanceLogoUseCase],
-    file: UploadFile = File(...),
+    request: Request,
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
-    data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
+    file = await read_form_file(request, MAX_APPEARANCE_IMAGE_SIZE_BYTES)
     settings = await use_case(
         actor,
-        UploadAppearanceImageDto(target=target, content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(target=target, content_type=file.content_type, data=file.data),
     )
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 
@@ -491,18 +495,19 @@ async def delete_appearance_logo(
     "/appearance/{target}/favicon",
     response_model=AppearanceResponse,
     responses=error_responses(400),
+    openapi_extra=MULTIPART_FILE_BODY,
 )
 @inject
 async def upload_appearance_favicon(
     target: AppearanceTarget,
     use_case: FromDishka[UploadAppearanceFaviconUseCase],
-    file: UploadFile = File(...),
+    request: Request,
     actor: Actor = Depends(require_admin),
 ) -> AppearanceResponse:
-    data = await file.read(MAX_APPEARANCE_IMAGE_SIZE_BYTES + 1)
+    file = await read_form_file(request, MAX_APPEARANCE_IMAGE_SIZE_BYTES)
     settings = await use_case(
         actor,
-        UploadAppearanceImageDto(target=target, content_type=file.content_type or "", data=data),
+        UploadAppearanceImageDto(target=target, content_type=file.content_type, data=file.data),
     )
     return AppearanceResponse.model_validate(settings, from_attributes=True)
 

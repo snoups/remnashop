@@ -30,9 +30,15 @@ class TelegramLinkSignInUseCase:
             raise AuthenticationError(
                 "Telegram sign-in is disabled", code=ErrorCode.CABINET_TELEGRAM_DISABLED
             )
-        grant = await self._store.take_signin(token)
-        # a sign-in grant or someone else's link grant never links anything
+        # a sign-in grant or someone else's link grant never links anything, and
+        # isn't used up by the attempt: its own account can still take it
+        grant = await self._store.peek_signin(token)
         if grant is None or grant.link_user_id != user.id:
+            raise AuthenticationError(
+                "The sign-in link has expired", code=ErrorCode.DEEPLINK_EXPIRED
+            )
+        # taken once: two parallel submissions don't both link
+        if await self._store.take_signin(token) is None:
             raise AuthenticationError(
                 "The sign-in link has expired", code=ErrorCode.DEEPLINK_EXPIRED
             )

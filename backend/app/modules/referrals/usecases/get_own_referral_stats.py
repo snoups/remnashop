@@ -26,7 +26,9 @@ class GetOwnReferralStatsUseCase(UseCase[None, ReferralStatsDto, UserDto]):
     async def _execute(self, actor: UserDto, data: None) -> ReferralStatsDto:
         async with self._uow:
             edge = await self._referral_repository.find_by_referred_id(actor.id)
-            counts = await self._referral_repository.count_by_level(actor.id)
+            counts = await self._referral_repository.count_by_level(
+                actor.id, hide_staff_from=actor.id
+            )
             rewards = await self._referral_repository.list_rewards_by_referrer(actor.id)
             settings = await self._referral_repository.get_settings()
             # a staff referrer stays hidden from the customer, as elsewhere

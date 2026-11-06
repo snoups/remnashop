@@ -58,6 +58,9 @@ class SendEmailUseCase(UseCase[EmailMessageDto, None]):
         try:
             await self._sender.send(settings.profile(bulk=False), data, logo)
         except EmailSendError as error:
+            if error.unbuildable:
+                logger.warning(f"Email not sent, not retrying: {error}")
+                return
             if error.refused:
                 await self._mark_undeliverable(data.to)
                 logger.warning(f"Email refused for good, not retrying: {error}")

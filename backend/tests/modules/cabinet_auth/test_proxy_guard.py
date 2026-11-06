@@ -81,6 +81,7 @@ async def test_dashboard_sign_in_is_refused_through_the_proxy(
     for method, path, body in (
         ("POST", f"{API_V1}/auth/login", {"login": "owner", "password": _PASSWORD}),
         ("POST", f"{API_V1}/auth/bootstrap", {"login": "owner", "password": _PASSWORD}),
+        ("GET", f"{API_V1}/auth/status", None),
     ):
         response = await proxied_client.request(method, path, json=body, headers=_PROXIED)
         assert response.status_code == 403, path

@@ -4,6 +4,7 @@ from typing import Optional
 
 from dishka import AsyncContainer
 from dishka.integrations.taskiq import setup_dishka
+from loguru import logger
 from prometheus_client import GCCollector, PlatformCollector, ProcessCollector, start_http_server
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -34,8 +35,7 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     ProcessCollector(registry=WORKER_METRICS_REGISTRY)
     PlatformCollector(registry=WORKER_METRICS_REGISTRY)
     GCCollector(registry=WORKER_METRICS_REGISTRY)
-    if config.metrics_enabled:
-        start_http_server(config.metrics_port, registry=WORKER_METRICS_REGISTRY)
+    serves_metrics = config.metrics_enabled and _start_metrics_server(config.metrics_port)
     container = create_worker_container(config)
     state.worker_container = container
     setup_dishka(container, broker)
@@ -43,14 +43,24 @@ async def _setup_worker_container(state: TaskiqState) -> None:
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=WORKER_METRICS_REGISTRY)
     redis = await container.get(Redis)
-    if config.metrics_enabled:
-        # the retry gauge SCANs the whole keyspace; nothing reads it with metrics off
+    if serves_metrics:
+        # the retry gauge SCANs the whole keyspace; one process polls it for the port's reader
         state.worker_gauges_task = asyncio.create_task(
             poll_worker_gauges(redis, broker.queue_name, RETRY_SCHEDULE_PREFIX)
         )
     state.runtime_heartbeat_task = asyncio.create_task(
         poll_runtime_heartbeat(redis, "worker", config.instance_name)
     )
+
+
+def _start_metrics_server(port: int) -> bool:
+    # with WORKER_PROCESSES > 1 the first process takes the port, the rest go without
+    try:
+        start_http_server(port, registry=WORKER_METRICS_REGISTRY)
+    except OSError as error:
+        logger.info(f"Metrics port {port} is served by another worker process: {error}")
+        return False
+    return True
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)

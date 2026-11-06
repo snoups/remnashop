@@ -28,7 +28,7 @@ class AdminListDevicesUseCase(UseCase[int, list[DeviceDto]]):
     async def _execute(self, actor: Actor, data: int) -> list[DeviceDto]:
         async with self._uow:
             subscription = await get_manageable_subscription(
-                self._subscription_repository, self._user_repository, actor, data
+                self._subscription_repository, self._user_repository, actor, data, for_read=True
             )
         response = await self._remnawave_sdk.hwid.get_hwid_user(subscription.remnawave_user_id)
         return [

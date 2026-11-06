@@ -30,7 +30,7 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.referrals.bonus_targets import BonusDaysTargets
-from app.modules.referrals.dto import RedeemBonusDaysDto, ResumeBonusRenewalDto
+from app.modules.referrals.dto import MAX_BONUS_DAYS, RedeemBonusDaysDto, ResumeBonusRenewalDto
 from app.modules.referrals.usecases import (
     ListBonusDaysTargetsUseCase,
     RedeemBonusDaysUseCase,
@@ -701,3 +701,21 @@ async def test_bonus_days_targets_keep_a_spent_subscription_whose_traffic_resets
         .values(traffic_limit_strategy=TrafficLimitStrategy.NO_RESET)
     )
     assert await list_targets(user) == []
+
+
+async def test_redeem_refuses_more_than_one_renewal_takes(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+) -> None:
+    plan = await _plan(plan_repository)
+    user = await _user_with_days(user_repository, 940_101, MAX_BONUS_DAYS + 10)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+
+    with pytest.raises(ValidationError) as error:
+        await redeem(
+            user, RedeemBonusDaysDto(subscription_id=subscription.id, days=MAX_BONUS_DAYS + 1)
+        )
+
+    assert error.value.code is ErrorCode.BONUS_DAYS_ABOVE_LIMIT

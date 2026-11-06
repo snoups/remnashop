@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 
 import { listPlans } from "@entities/plans/api";
 import { changeSubscriptionPlan, formatLimit, formatTraffic, type SubscriptionListItem } from "@entities/subscriptions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions } from "@entities/user/use-current-user";
 import { SubscriptionField } from "@features/subscription-edit/SubscriptionField";
 import { useSquadName } from "@features/subscription-edit/use-squad-name";
 import { durationDays } from "@features/subscription-grant/duration";
@@ -41,7 +41,7 @@ interface SubscriptionPlanTabProps {
 
 export function SubscriptionPlanTab({ subscription, onChanged }: SubscriptionPlanTabProps) {
   const { t, i18n } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(subscription.user_id);
   const canChange =
     permissions.includes("SUBSCRIPTIONS_PLAN_CHANGE") && permissions.includes("PLANS_VIEW") && subscription.status !== "DELETED";
   const [isEditing, setIsEditing] = useState(false);

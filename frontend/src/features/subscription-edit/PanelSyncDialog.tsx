@@ -10,7 +10,7 @@ import {
   type SubscriptionListItem,
   type SubscriptionPanelDiff,
 } from "@entities/subscriptions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
@@ -42,7 +42,7 @@ export function PanelSyncDialog({ subscription, onApplied, onClose }: PanelSyncD
 
 function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "onClose">) {
   const { t } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(subscription.user_id);
   const close = useModalClose();
   const [state, setState] = useState<DiffState>({ kind: "loading" });
   const [busy, setBusy] = useState(false);

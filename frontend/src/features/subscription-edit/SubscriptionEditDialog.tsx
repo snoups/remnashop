@@ -42,7 +42,7 @@ import { BrandMark } from "@entities/appearance/BrandMark";
 import { listPlans, NO_PLAN_ICON } from "@entities/plans/api";
 import { PlanIcon } from "@entities/plans/PlanIcon";
 import { getTransactionSummary } from "@entities/transactions/api";
-import { usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions, usePermissions } from "@entities/user/use-current-user";
 import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { OpenUserButton } from "@features/open-user/OpenUserButton";
 import { PlanSquadsField } from "@features/plan-edit/PlanSquadsField";
@@ -120,7 +120,7 @@ function SubscriptionEditDialogBody({
 }: Omit<SubscriptionEditDialogProps, "onClose">) {
   const { t } = useTranslation();
   const close = useModalClose();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(subscription.user_id);
   const canOpenUsers = useCanOpenUsers();
   const [current, setCurrent] = useState(subscription);
   const [tab, setTab] = useState<Tab>("params");
@@ -207,7 +207,7 @@ function SubscriptionEditDialogBody({
             <AnimatedHeight>
               {tab === "params" && <SubscriptionParamsView subscription={current} />}
               {tab === "plan" && <SubscriptionPlanTab subscription={current} onChanged={apply} />}
-              {tab === "devices" && <SubscriptionDevicesTab subscriptionId={current.id} />}
+              {tab === "devices" && <SubscriptionDevicesTab subscriptionId={current.id} userId={current.user_id} />}
             </AnimatedHeight>
           </div>
 
@@ -437,7 +437,7 @@ function SubscriptionParamsForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const permissions = usePermissions();
+  const permissions = useAccountPermissions(subscription.user_id);
   const canManageSquads =
     permissions.includes("SUBSCRIPTIONS_SQUADS_MANAGE") && permissions.includes("SUBSCRIPTIONS_PANEL_SQUADS_VIEW");
   const [isSubmitting, setIsSubmitting] = useState(false);

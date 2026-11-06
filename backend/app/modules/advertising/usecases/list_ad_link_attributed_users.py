@@ -1,6 +1,6 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.security.permissions import Permission
+from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.advertising.dto import AttributedUserDto, ListAdLinkAttributedUsersDto
 from app.modules.advertising.repository import AdLinkRepository
@@ -33,7 +33,12 @@ class ListAdLinkAttributedUsersUseCase(
             await self._ad_link_repository.get_by_id(data.ad_link_id)
 
             attributions, total = await self._ad_link_repository.list_attributions_paginated(
-                data.ad_link_id, page=data.page, page_size=data.page_size
+                data.ad_link_id,
+                page=data.page,
+                page_size=data.page_size,
+                hide_staff_from=None
+                if PermissionPolicy.has_permission(actor, Permission.ADMINS_MANAGE)
+                else actor.id,
             )
             user_ids = [attribution.user_id for attribution in attributions]
             users_by_id = {

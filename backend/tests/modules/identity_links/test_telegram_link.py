@@ -102,6 +102,8 @@ async def test_link_signin_other_user_rejected(
     response = await client.post(LINK_SIGNIN, json={"token": token}, headers=headers)
     assert response.status_code == 400
     assert response.json()["code"] == "DEEPLINK_EXPIRED"
+    # the wrong account's attempt leaves the link for its own account
+    assert await store.peek_signin(token) is not None
 
 
 async def test_link_routes_need_a_session(client: httpx.AsyncClient) -> None:

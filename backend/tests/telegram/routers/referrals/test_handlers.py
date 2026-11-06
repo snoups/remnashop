@@ -8,7 +8,7 @@ from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.dialogs import catalog
-from app.modules.referrals import RedeemBonusDaysDto
+from app.modules.referrals import MAX_BONUS_DAYS, RedeemBonusDaysDto
 from app.telegram.dialogs import state_pool
 from app.telegram.routers.menu.catalog import register_menu_catalog
 from app.telegram.routers.purchase.catalog import register_purchase_catalog
@@ -164,3 +164,15 @@ async def test_qr_sends_the_referral_link_as_a_png() -> None:
     photo = callback.message.answer_photo.await_args.args[0]
     assert photo.data.startswith(b"\x89PNG")
     callback.answer.assert_awaited_once()
+
+
+async def test_redeem_takes_at_most_one_renewals_worth_of_days() -> None:
+    manager = _manager(user_bonus_days=MAX_BONUS_DAYS + 5)
+    redeem = AsyncMock()
+    list_own = AsyncMock(return_value=[MagicMock(id=4)])
+
+    await on_redeem_days.__dishka_orig_func__(
+        AsyncMock(), MagicMock(), manager, redeem, list_own, _i18n()
+    )
+
+    assert redeem.await_args.args[1] == RedeemBonusDaysDto(subscription_id=4, days=MAX_BONUS_DAYS)

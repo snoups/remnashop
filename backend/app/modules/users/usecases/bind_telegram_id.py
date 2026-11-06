@@ -34,8 +34,17 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserListItemDto]):
                 self._user_repository, actor, data.user_id, for_update=True
             )
             assert_manageable(actor, target, allow_self=True)
+            # a staff Telegram signs into the dashboard: it is linked by proving it,
+            # through the OAuth connect flow, not typed in
+            if target.is_privileged:
+                raise ValidationError(
+                    "A staff account links Telegram by signing in with it",
+                    code=ErrorCode.STAFF_TELEGRAM_BIND_REFUSED,
+                )
             if target.telegram_id == data.telegram_id:
-                return await self._user_repository.get_list_item(target.id, detail_roles(actor))
+                return await self._user_repository.get_list_item(
+                    target.id, detail_roles(actor, target.id)
+                )
             if await self._blacklist_repository.is_blacklisted_telegram_id(data.telegram_id):
                 raise ValidationError(
                     "Telegram ID is blacklisted", code=ErrorCode.TELEGRAM_ID_BLACKLISTED
@@ -49,4 +58,6 @@ class BindTelegramIdUseCase(UseCase[BindTelegramDto, UserListItemDto]):
                     ip_address=data.client_ip,
                 )
             )
-            return await self._user_repository.get_list_item(updated.id, detail_roles(actor))
+            return await self._user_repository.get_list_item(
+                updated.id, detail_roles(actor, updated.id)
+            )

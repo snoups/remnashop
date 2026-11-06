@@ -543,7 +543,7 @@ async def test_revenue_today_compares_with_yesterday_same_time(
     assert newest.currency == Currency.RUB
 
 
-async def test_a_hidden_staff_payer_stays_nameless_in_recent_payments(
+async def test_a_hidden_staff_payer_is_left_out_of_recent_payments(
     user_repository: UserRepository,
     transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
@@ -575,8 +575,7 @@ async def test_a_hidden_staff_payer_stays_nameless_in_recent_payments(
     )(admin)
 
     assert overview.recent_payments is not None
-    [payment] = [p for p in overview.recent_payments if p.user_id == staff.id]
-    assert payment.name == ""
+    assert all(p.user_id != staff.id for p in overview.recent_payments)
 
 
 async def test_revenue_sections_hidden_without_transactions_view(

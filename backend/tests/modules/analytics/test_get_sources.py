@@ -343,3 +343,33 @@ async def test_referral_payback_counts_all_referred_users_paying_in_period(
     assert sources.referral.referrers == 1
     top = next(row for row in sources.top_referrers if row.user_id == referrer.id)
     assert (top.invited, top.paid, top.revenue) == (0, 1, Decimal("100"))
+
+
+async def test_top_referrers_leave_out_staff(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    now = datetime_now()
+    staff = await user_repository.create(
+        CreateUserDto(name="Staff", telegram_id=893_101, role=Role.ADMIN)
+    )
+    invited = await user_repository.create(CreateUserDto(name="Inv", telegram_id=893_102))
+    await ReferralRepository(session).create_referral(
+        referrer_id=staff.id, referred_id=invited.id, level=1
+    )
+    await _pay(
+        transaction_repository, session, uow, user_id=invited.id, plan_id=plan_id,
+        plan_name="Basic", price="100", key="staff-ref-1", at=now - timedelta(hours=1),
+    )  # fmt: skip
+
+    sources = await _use_case(session, pricing_repository, uow)(
+        OWNER,
+        AnalyticsPeriodQueryDto(period_from=now - timedelta(days=2), period_to=now),
+    )
+
+    assert sources.referral.referred_revenue == Decimal("100")
+    assert sources.top_referrers == []

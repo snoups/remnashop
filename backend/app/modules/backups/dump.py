@@ -13,6 +13,19 @@ BACKUP_FILE_MODE: Final[int] = 0o600
 
 
 async def create_database_dump(config: AppConfig, dest: Path) -> None:
+    # created owner-only up front: pg_dump keeps the mode, so the file is never
+    # readable by others while it is being written
+    os.close(os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, BACKUP_FILE_MODE))
+    os.chmod(dest, BACKUP_FILE_MODE)
+    try:
+        await _run_pg_dump(config, dest)
+    except BaseException:
+        # a half-written dump must not be offered for a restore
+        dest.unlink(missing_ok=True)
+        raise
+
+
+async def _run_pg_dump(config: AppConfig, dest: Path) -> None:
     db = config.database
     proc = await asyncio.create_subprocess_exec(
         "pg_dump",
@@ -44,7 +57,6 @@ async def create_database_dump(config: AppConfig, dest: Path) -> None:
 
 async def create_signed_database_dump(config: AppConfig, dest: Path) -> None:
     await create_database_dump(config, dest)
-    os.chmod(dest, BACKUP_FILE_MODE)
     sign_backup_file(dest, config.crypt_key.get_secret_value())
 
 

@@ -242,3 +242,27 @@ async def test_ad_link_named_like_a_source_stays_a_separate_group(
         ("organic", SourceKind.AD_LINK, 1, Decimal("300.00")),
         ("organic", SourceKind.ORGANIC, 1, Decimal("100.00")),
     ]
+
+
+async def test_top_payers_leave_out_staff(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    now = datetime_now()
+    customer = await user_repository.create(CreateUserDto(name="Cust", telegram_id=880_201))
+    staff = await user_repository.create(
+        CreateUserDto(name="Staff", telegram_id=880_202, role=Role.ADMIN)
+    )
+    for user_id, price, key in ((customer.id, "100", "s-1"), (staff.id, "900", "s-2")):
+        await _pay(
+            transaction_repository, session, uow, user_id=user_id, plan_id=plan_id,
+            plan_name="Pro", price=price, key=key, at=now - timedelta(days=1),
+        )  # fmt: skip
+
+    result = await _use_case(session, pricing_repository, uow)(OWNER)
+
+    assert [p.user_id for p in result.top_payers] == [customer.id]

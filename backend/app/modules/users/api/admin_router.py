@@ -297,7 +297,9 @@ async def bind_user_telegram(
 
 
 @router.delete(
-    "/{user_id:int}/telegram", response_model=UserListItemResponse, responses=error_responses(404)
+    "/{user_id:int}/telegram",
+    response_model=UserListItemResponse,
+    responses=error_responses(404, 409),
 )
 @inject
 async def unbind_user_telegram(

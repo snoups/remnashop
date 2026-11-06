@@ -13,6 +13,7 @@ from app.modules.broadcasts.channels import sends_email, sends_telegram
 from app.modules.broadcasts.content import (
     BROADCAST_VARIABLES,
     CHANNEL_VARIABLES,
+    longest_text,
     used_variables,
 )
 from app.modules.broadcasts.dto import (
@@ -39,7 +40,8 @@ _URL_SCHEMES: Final[tuple[str, ...]] = ("https://", "http://", "tg://")
 def validate_text_lengths(contents: dict[Locale, BroadcastContentDto], *, has_media: bool) -> None:
     limit = TELEGRAM_CAPTION_LIMIT if has_media else TELEGRAM_TEXT_LIMIT
     for locale, content in contents.items():
-        length = telegram_length(content.text)
+        # a recipient's long name must not push the message past the limit
+        length = telegram_length(longest_text(content.text))
         if length > limit:
             raise ValidationError(
                 f"Text ({locale}) is {length} characters long, the limit is {limit}",

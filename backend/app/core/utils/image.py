@@ -79,8 +79,15 @@ def _svg_dimensions(root: ET.Element) -> Optional[tuple[float, float]]:
 # no script-capable elements, event handlers or javascript: links. Size comes
 # from viewBox, falling back to width/height.
 def read_svg_size(data: bytes) -> Optional[tuple[float, float]]:
-    lowered = data.lower()
-    if b"<!doctype" in lowered or b"<!entity" in lowered:
+    # UTF-8 only: in UTF-16 the DOCTYPE/ENTITY check below would read past the markup;
+    # NUL bytes are how UTF-16 without a byte-order mark still decodes as UTF-8
+    if b"\x00" in data:
+        return None
+    try:
+        lowered = data.decode("utf-8").lower()
+    except UnicodeDecodeError:
+        return None
+    if "<!doctype" in lowered or "<!entity" in lowered:
         return None
     try:
         root = ET.fromstring(data)

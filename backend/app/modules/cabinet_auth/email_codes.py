@@ -11,13 +11,14 @@ from app.core.constants import REDIS_KEY_PREFIX, TIME_1D, TIME_1H, TIME_1M, TTL_
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.ports import EventPublisher
 from app.core.utils.email import canonical_email, normalize_email
 from app.core.utils.rate_counter import hit_counter, release_counter
 from app.modules.cabinet_auth.dto import EmailCodeGrantDto, InviteCodesDto
 from app.modules.cabinet_auth.events import EmailCodeAttemptsExhaustedEvent
 from app.modules.settings import CabinetAuthSettingsDto, SettingsRepository
+from app.modules.users import UserRepository
 
 _MAX_ATTEMPTS: Final[int] = 5
 _FAIL_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}cabinet:email_code_fail:"
@@ -30,6 +31,7 @@ _PER_HOUR: Final[int] = 10
 class _EmailCodeRecord:
     code_hash: str
     email: str
+    recipient: str
     referral_code: Optional[str]
     ad_link_code: Optional[str]
     locale: Locale
@@ -82,12 +84,15 @@ class EmailCodeStore:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
-    async def issue(self, email: str, codes: InviteCodesDto, locale: Locale) -> str:
+    async def issue(
+        self, email: str, codes: InviteCodesDto, locale: Locale, *, recipient: str
+    ) -> str:
         email_hash = email_key(email)
         code = f"{secrets.randbelow(1_000_000):06d}"
         record = _EmailCodeRecord(
             code_hash=_hash_code(email_hash, code),
             email=normalize_email(email),
+            recipient=normalize_email(recipient),
             referral_code=codes.referral_code,
             ad_link_code=codes.ad_link_code,
             locale=locale,
@@ -122,11 +127,23 @@ class EmailCodeStore:
                     referral_code=record.referral_code, ad_link_code=record.ad_link_code
                 ),
                 locale=record.locale,
+                recipient=record.recipient,
             )
         if attempt == _MAX_ATTEMPTS:
             await self._redis.delete(key)
             raise EmailCodeAttemptsExhausted
         return None
+
+
+async def assert_code_reached_owner(
+    user_repository: UserRepository, uow: UnitOfWork, email: str, grant: EmailCodeGrantDto
+) -> None:
+    """A code sent to an alias proves only that mailbox: an account that has taken
+    the canonical address since must not be reached through it."""
+    async with uow:
+        owner = await user_repository.find_by_email(email)
+    if owner is not None and normalize_email(owner.email or "") != grant.recipient:
+        raise ConflictError("Email already in use", code=ErrorCode.EMAIL_TAKEN)
 
 
 async def require_email_sign_in(settings_repository: SettingsRepository) -> CabinetAuthSettingsDto:

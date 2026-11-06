@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from typing import AsyncIterator, Optional
 
@@ -12,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.app import get_app
 from app.core.config import AppConfig
-from app.core.constants import API_V1, REMNAWAVE_WEBHOOK_PATH
+from app.core.constants import API_V1, REDIS_KEY_PREFIX, REMNAWAVE_WEBHOOK_PATH
 from app.core.db.models.subscription import Subscription
 from app.core.di.providers import get_core_providers
 from app.core.enums import SubscriptionStatus
+from app.core.exceptions import RetryableTaskError
 from app.core.panel_writes import PanelWriteRecorder
 from app.core.utils.time import datetime_now
 from app.modules.providers import get_module_providers
@@ -413,3 +415,57 @@ async def test_event_built_before_our_own_write_does_not_roll_the_subscription_b
     assert response.status_code == 200
     refreshed = await subscription_repository.get_by_id(subscription_id)
     assert refreshed.status is SubscriptionStatus.ACTIVE
+
+
+async def _process(container: AsyncContainer, payload: dict[str, object]) -> None:
+    async with container() as request:
+        use_case = await request.get(ProcessRemnawaveWebhookUseCase)
+        await use_case.system(ProcessRemnawaveWebhookDto(body=json.dumps(payload)))
+
+
+async def test_a_long_queued_event_does_not_roll_the_subscription_back(
+    webhook_container: AsyncContainer,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+) -> None:
+    # older than the shop's write marks: a renewal in between could not be seen
+    subscription_id = await _subscription_for_webhook(
+        subscription_repository, user_repository, 81021
+    )
+    payload = user_event_payload(event="user.expired", remnawave_user_id=81021, status="EXPIRED")
+    payload["timestamp"] = (datetime_now() - timedelta(minutes=15)).isoformat()
+
+    await _process(webhook_container, payload)
+
+    refreshed = await subscription_repository.get_by_id(subscription_id)
+    assert refreshed.status is SubscriptionStatus.ACTIVE
+
+
+async def test_an_event_waits_for_another_one_of_the_same_user(
+    webhook_container: AsyncContainer,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    redis: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.modules.subscriptions.usecases.process_remnawave_webhook._LOCK_WAIT_S", 0.1
+    )
+    subscription_id = await _subscription_for_webhook(
+        subscription_repository, user_repository, 81031
+    )
+    held = redis.lock(f"{REDIS_KEY_PREFIX}remnawave_webhook_lock:81031", timeout=5)
+    await held.acquire()
+    payload = user_event_payload(event="user.expired", remnawave_user_id=81031, status="EXPIRED")
+
+    try:
+        with pytest.raises(RetryableTaskError):
+            await _process(webhook_container, payload)
+    finally:
+        await held.release()
+
+    refreshed = await subscription_repository.get_by_id(subscription_id)
+    assert refreshed.status is SubscriptionStatus.ACTIVE
+    await _process(webhook_container, payload)
+    refreshed = await subscription_repository.get_by_id(subscription_id)
+    assert refreshed.status is SubscriptionStatus.EXPIRED

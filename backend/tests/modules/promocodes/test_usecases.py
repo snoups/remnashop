@@ -1760,3 +1760,28 @@ async def test_subscription_reward_counts_an_open_order_as_purchase_history(
         await use_case(actor, ActivatePromocodeDto(code="NEWONLY"))
 
     assert error.value.code is ErrorCode.PLAN_NOT_AVAILABLE
+
+
+async def test_list_promocode_activated_users_hides_staff_without_admins_manage(
+    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+) -> None:
+    promo = await promocode_repository.create(
+        CreatePromocodeDto(code="STAFFHIDE", reward_type=PromocodeRewardType.DURATION, reward=5)
+    )
+    customer = await user_repository.create(
+        CreateUserDto(name="customer", telegram_id=uuid4().int % 10**9)
+    )
+    staff = await user_repository.create(
+        CreateUserDto(name="staff", telegram_id=uuid4().int % 10**9, role=Role.ADMIN)
+    )
+    await promocode_repository.claim_activation(promo.id, customer.id, None)
+    await promocode_repository.claim_activation(promo.id, staff.id, None)
+    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+    query = ListPromocodeActivatedUsersDto(promocode_id=promo.id, page=1, page_size=10)
+    admin = UserDto(id=customer.id + staff.id, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    hidden, hidden_total = await use_case(admin, query)
+    shown, shown_total = await use_case(OWNER, query)
+
+    assert ([u.user_id for u in hidden], hidden_total) == ([customer.id], 1)
+    assert shown_total == 2 and {u.user_id for u in shown} == {customer.id, staff.id}

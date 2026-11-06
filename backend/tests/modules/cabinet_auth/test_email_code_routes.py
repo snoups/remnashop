@@ -234,3 +234,36 @@ async def test_code_for_an_alias_goes_to_the_accounts_own_address(
     assert (await client.post(_CODE_URL, json={"email": "victim+x@mail.ru"})).status_code == 204
     [message] = email_dispatch.messages
     assert message["to"] == "victim@mail.ru"
+
+
+async def test_alias_code_does_not_reach_an_owner_registered_since(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    # no account yet: the code goes to the alias itself
+    code = await _request_code(client, email_dispatch, "ivan+x@mail.ru")
+    assert email_dispatch.messages[-1]["to"] == "ivan+x@mail.ru"
+    async with uow:
+        await user_repository.create(CreateUserDto(name="Ivan", email="ivan@mail.ru"))
+
+    response = await client.post(_VERIFY_URL, json={"email": "ivan+x@mail.ru", "code": code})
+
+    assert (response.status_code, response.json()["code"]) == (409, "EMAIL_TAKEN")
+
+
+async def test_alias_code_signs_in_its_owner(
+    client: httpx.AsyncClient,
+    email_dispatch: RecordingDispatch,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        await user_repository.create(CreateUserDto(name="Ivan", email="ivan@mail.ru"))
+    code = await _request_code(client, email_dispatch, "ivan+x@mail.ru")
+    assert email_dispatch.messages[-1]["to"] == "ivan@mail.ru"
+
+    response = await client.post(_VERIFY_URL, json={"email": "ivan+x@mail.ru", "code": code})
+
+    assert response.status_code == 200

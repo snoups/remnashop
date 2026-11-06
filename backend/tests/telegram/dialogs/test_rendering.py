@@ -8,6 +8,7 @@ from app.modules.dialogs.repository import DialogRepository
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.rendering import (
     TrustedHtml,
+    _resolve_variables,
     banner_within_caption,
     fits_caption,
     render_dialog_buttons,
@@ -338,3 +339,27 @@ def test_text_without_any_visible_line_left_keeps_its_lines() -> None:
 def test_quote_without_any_visible_line_left_keeps_its_lines() -> None:
     tpl = "<blockquote>{ $a }\n{ $b }</blockquote>"
     assert render_window_text(_runner(tpl), "k", a="", b=None) == "<blockquote>\n</blockquote>"
+
+
+def test_a_value_cannot_form_premium_emoji_markup() -> None:
+    out = render_window_text(_runner("Hi { $name }"), "k", name="[x](emoji:123)")
+
+    assert "tg-emoji" not in out
+    assert out == "Hi &#91;x](emoji:123)"
+
+
+def test_quotes_in_a_value_cannot_close_an_attribute() -> None:
+    out = render_window_text(_runner('<a href="tg://x?n={ $name }">x</a>'), "k", name='a" b')
+
+    assert out == '<a href="tg://x?n=a&quot; b">x</a>'
+
+
+def test_a_variable_inside_a_url_is_encoded() -> None:
+    catalog.register_variable("user_name", lambda data: data.get("name", ""), category="user")
+    data = {"name": "a&b=c d", "subscription_url": "https://example.com/sub"}
+
+    assert _resolve_variables("https://t.me/x?text=${user_name}", data) == (
+        "https://t.me/x?text=a%26b%3Dc%20d"
+    )
+    # a variable that is the whole URL stays as it is
+    assert _resolve_variables("${subscription.url}", data) == "https://example.com/sub"

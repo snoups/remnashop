@@ -1,4 +1,4 @@
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
 import httpx
 from loguru import logger
@@ -16,15 +16,26 @@ _VERIFY_URLS: Final[dict[CaptchaProvider, str]] = {
 _TIMEOUT_S: Final[float] = 5.0
 
 
-async def _siteverify(url: str, form: dict[str, str]) -> bool:
+async def _siteverify(url: str, form: dict[str, str]) -> Any:
     async with httpx.AsyncClient(timeout=_TIMEOUT_S, follow_redirects=False) as client:
         response = await client.post(url, data=form)
     response.raise_for_status()
-    return response.json().get("success") is True
+    return response.json()
+
+
+def _passed(reply: Any, hostname: Optional[str]) -> bool:
+    if not isinstance(reply, dict) or reply.get("success") is not True:
+        return False
+    # solved on another site under the same keys doesn't count
+    solved_on = reply.get("hostname")
+    return hostname is None or solved_on is None or solved_on == hostname
 
 
 async def verify_captcha(
-    cabinet: CabinetAuthSettingsDto, token: Optional[str], client_ip: Optional[str]
+    cabinet: CabinetAuthSettingsDto,
+    token: Optional[str],
+    client_ip: Optional[str],
+    hostname: Optional[str],
 ) -> None:
     if not cabinet.captcha_enabled or cabinet.captcha_secret_key is None:
         return
@@ -33,7 +44,8 @@ async def verify_captcha(
         if client_ip:
             form["remoteip"] = client_ip
         try:
-            if await _siteverify(_VERIFY_URLS[cabinet.captcha_provider], form):
+            reply = await _siteverify(_VERIFY_URLS[cabinet.captcha_provider], form)
+            if _passed(reply, hostname):
                 return
         # an unreachable provider fails closed: the other sign-in methods don't depend on it
         except (httpx.HTTPError, ValueError) as error:

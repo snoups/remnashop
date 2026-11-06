@@ -542,3 +542,32 @@ async def test_get_advertising_summary_created_to_is_a_snapshot(
     assert snapshot.revenue == Decimal("0")
     assert live.attributions_count == 2
     assert live.paid_count == 1
+
+
+async def test_list_ad_link_attributed_users_hides_staff_without_admins_manage(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    transaction_repository: TransactionRepository,
+    user_repository: UserRepository,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    ad_link = await create(OWNER, CreateAdLinkDto(name="Hide", code="hide-staff"))
+    customer = await user_repository.create(CreateUserDto(name="Cust", telegram_id=940_101))
+    staff = await user_repository.create(
+        CreateUserDto(name="Staff", telegram_id=940_102, role=Role.ADMIN)
+    )
+    for user in (customer, staff):
+        await ad_link_repository.create_attribution(
+            ad_link_id=ad_link.id, user_id=user.id, channel=AdLinkChannel.BOT
+        )
+    use_case = ListAdLinkAttributedUsersUseCase(
+        ad_link_repository, user_repository, transaction_repository, uow
+    )
+    query = ListAdLinkAttributedUsersDto(ad_link_id=ad_link.id)
+    admin = UserDto(id=customer.id + staff.id, name="admin", role=Role.ADMIN, language=Locale.EN)
+
+    hidden, hidden_total = await use_case(admin, query)
+    shown, shown_total = await use_case(OWNER, query)
+
+    assert ([u.user_id for u in hidden], hidden_total) == ([customer.id], 1)
+    assert shown_total == 2 and {u.user_id for u in shown} == {customer.id, staff.id}

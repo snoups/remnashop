@@ -354,3 +354,21 @@ async def test_sender_tells_a_refused_mailbox_from_other_refusals(
             EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"),
         )
     assert raised.value.refused is refused
+
+
+async def test_a_header_with_a_line_break_is_unbuildable() -> None:
+    with pytest.raises(EmailSendError) as raised:
+        await SmtpSender().send(
+            _CONFIGURED.profile(bulk=False),
+            EmailMessageDto(to="a@b.c", subject="line\nbreak", text="t", html="h"),
+        )
+    assert raised.value.unbuildable is True
+
+
+async def test_an_unbuildable_email_is_not_retried(redis: Redis) -> None:
+    sender = _Sender(EmailSendError("Unbuildable: x", unbuildable=True))
+    use_case = SendEmailUseCase(_Repo(_CONFIGURED), sender, redis, _Logo(), _Users(), _Uow())  # type: ignore[arg-type]
+
+    await use_case.system(EmailMessageDto(to="a@b.c", subject="s", text="t", html="h"))
+
+    assert await read_smtp_failure(redis, bulk=False) is None

@@ -51,7 +51,7 @@ class RequestEmailCodeUseCase:
         async with self._uow:
             cabinet = await require_email_sign_in(self._settings_repository)
             brand = await load_email_brand(self._settings_repository)
-        await verify_captcha(cabinet, captcha_token, client_ip)
+        await verify_captcha(cabinet, captcha_token, client_ip, self._config.cabinet.domain)
 
         async with self._uow:
             existing = await self._user_repository.find_by_email(email)
@@ -65,11 +65,11 @@ class RequestEmailCodeUseCase:
         if await send_limit_hit(self._redis, digest):
             return
 
-        code = await self._store.issue(email, codes, locale)
+        recipient = existing.email if existing is not None and existing.email else email
+        code = await self._store.issue(email, codes, locale, recipient=recipient)
         subject, text, html = render_login_code(
             code, locale, brand, self._config.cabinet.url or None
         )
-        recipient = existing.email if existing is not None and existing.email else email
         await self._send_email.kiq(
             to=normalize_email(recipient), subject=subject, text=text, html=html
         )

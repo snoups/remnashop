@@ -1,9 +1,13 @@
+import asyncio
+from typing import Any, Final
+
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import JOIN_TRANSITION, LEAVE_TRANSITION, ChatMemberUpdatedFilter
 from aiogram.types import CallbackQuery, ChatMemberUpdated, Message, Update
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
 from fluentogram import TranslatorHub
+from loguru import logger
 from redis.asyncio import Redis
 
 from app.modules.settings import (
@@ -26,6 +30,16 @@ from app.telegram.states import MainMenu
 
 router = Router(name=__name__)
 
+# keeps the replay tasks referenced until they finish
+_replays: Final[set[asyncio.Task[Any]]] = set()
+
+
+async def _replay(dispatcher: Dispatcher, bot: Bot, message: Message) -> None:
+    try:
+        await dispatcher.feed_update(bot, Update(update_id=0, message=message))
+    except Exception:
+        logger.exception(f"Failed to replay the stopped message for chat {message.chat.id}")
+
 
 async def _resume(
     callback: CallbackQuery,
@@ -39,10 +53,13 @@ async def _resume(
     # the message a requirement stopped (a /start deep link) goes on where it was headed
     stopped = await redis.getdel(gate_message_key(user.id))
     if stopped is not None and callback.bot is not None:
-        # the next requirement, if any, stops it again
-        await dispatcher.feed_update(
-            callback.bot, Update(update_id=0, message=Message.model_validate_json(stopped))
+        # the next requirement, if any, stops it again. A separate task: this
+        # callback holds the user's event-isolation lock, the replay waits for it
+        task = asyncio.create_task(
+            _replay(dispatcher, callback.bot, Message.model_validate_json(stopped))
         )
+        _replays.add(task)
+        task.add_done_callback(_replays.discard)
         return
     await dialog_manager.start(
         state=MainMenu.MAIN, mode=StartMode.RESET_STACK, show_mode=ShowMode.SEND
