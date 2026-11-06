@@ -298,7 +298,7 @@ async def test_run_migration_refuses_current_database(
         await run_migration(pointed)
 
     async with legacy_engine.connect() as connection:
-        assert await current_revision(connection) == "current"
+        assert await current_revision(connection) == "1000"
         assert await connection.scalar(text("SELECT count(*) FROM legacy.users")) == 0
 
 

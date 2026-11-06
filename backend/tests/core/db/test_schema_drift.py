@@ -1,9 +1,9 @@
-import re
 from enum import Enum
-from pathlib import Path
 from typing import Final
 
 from remnapy.enums import TrafficLimitStrategy
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import (
     AccessMode,
@@ -37,6 +37,7 @@ from app.core.enums import (
     ReferralRewardType,
     RegistrationSource,
     Role,
+    RoundingMode,
     SessionAudience,
     SmtpSecurity,
     SubscriptionStatus,
@@ -44,17 +45,7 @@ from app.core.enums import (
 )
 from app.core.events import EventCategory
 
-_MIGRATION: Final[Path] = (
-    Path(__file__).parents[3]
-    / "app"
-    / "core"
-    / "db"
-    / "migrations"
-    / "versions"
-    / "current_current.py"
-)
-
-# Every native Postgres ENUM type the committed migration declares, mapped to
+# Every native Postgres ENUM type the migrations create, mapped to
 # the Python enum it must stay in sync with. A persisted enum missing from
 # this map fails test_every_migration_enum_is_mapped.
 _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
@@ -91,49 +82,54 @@ _ENUM_BY_PG_NAME: Final[dict[str, type[Enum]]] = {
     "referralaccrualstrategy": ReferralAccrualStrategy,
     "referralrewardtype": ReferralRewardType,
     "referralrewardstrategy": ReferralRewardStrategy,
+    "roundingmode": RoundingMode,
     "smtpsecurity": SmtpSecurity,
     "subscriptionstatus": SubscriptionStatus,
     "trafficlimitstrategy": TrafficLimitStrategy,
     "user_role": Role,
 }
 
-_SA_ENUM_RE: Final[re.Pattern[str]] = re.compile(
-    r"sa\.Enum\(\s*((?:\"[A-Z_]+\",?\s*)+)name=\"([a-z_]+)\"", re.MULTILINE
-)
+# the test database is built by `alembic upgrade head`, so its enums are what the
+# whole chain produces, later `ALTER TYPE ... ADD VALUE` revisions included
+_ENUM_LABELS_SQL: Final[str] = """
+    SELECT t.typname, e.enumlabel
+    FROM pg_type t
+    JOIN pg_enum e ON e.enumtypid = t.oid
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public'
+"""
 
 
-def _migration_enums() -> dict[str, set[str]]:
-    text = _MIGRATION.read_text()
+async def _migration_enums(session: AsyncSession) -> dict[str, set[str]]:
     result: dict[str, set[str]] = {}
-    for values_blob, pg_name in _SA_ENUM_RE.findall(text):
-        result[pg_name] = set(re.findall(r"\"([A-Z_]+)\"", values_blob))
+    for pg_name, label in (await session.execute(text(_ENUM_LABELS_SQL))).all():
+        result.setdefault(pg_name, set()).add(label)
     return result
 
 
-def test_migration_file_has_enum_declarations() -> None:
-    # if current_current.py's formatting changed and nothing matched, every
-    # other assertion here would pass vacuously
-    assert len(_migration_enums()) >= 10
+async def test_migrations_create_enums(session: AsyncSession) -> None:
+    # an empty result would make every other assertion here pass vacuously
+    assert len(await _migration_enums(session)) >= 10
 
 
-def test_every_migration_enum_is_mapped() -> None:
-    unmapped = set(_migration_enums()) - set(_ENUM_BY_PG_NAME)
+async def test_every_migration_enum_is_mapped(session: AsyncSession) -> None:
+    unmapped = set(await _migration_enums(session)) - set(_ENUM_BY_PG_NAME)
     assert not unmapped, (
         f"persisted enum(s) {sorted(unmapped)} are in the migration but not in "
         f"_ENUM_BY_PG_NAME -- add the mapping so drift on them is checked too"
     )
 
 
-def test_every_mapped_enum_is_still_in_the_migration() -> None:
-    missing = set(_ENUM_BY_PG_NAME) - set(_migration_enums())
+async def test_every_mapped_enum_is_still_in_the_migration(session: AsyncSession) -> None:
+    missing = set(_ENUM_BY_PG_NAME) - set(await _migration_enums(session))
     assert not missing, (
         f"_ENUM_BY_PG_NAME maps {sorted(missing)} but the migration no longer "
         f"declares them -- the mapping is stale, or the migration is"
     )
 
 
-def test_python_enums_match_the_migration() -> None:
-    migration = _migration_enums()
+async def test_python_enums_match_the_migration(session: AsyncSession) -> None:
+    migration = await _migration_enums(session)
     drift: dict[str, dict[str, list[str]]] = {}
     for pg_name, enum_cls in _ENUM_BY_PG_NAME.items():
         if pg_name not in migration:
@@ -147,7 +143,7 @@ def test_python_enums_match_the_migration() -> None:
                 "migration_only": sorted(migration[pg_name] - python_names),
             }
     assert not drift, (
-        f"enum drift between Python and current_current.py: {drift}. "
-        f"Run `cd backend && uv run alembic revision --autogenerate -m current` "
-        f"and commit the regenerated migration."
+        f"enum drift between Python and the migrations: {drift}. Add a revision "
+        f"(`uv run alembic revision -m ...`) with `ALTER TYPE ... ADD VALUE` for new "
+        f"labels -- autogenerate doesn't detect them."
     )

@@ -1,7 +1,7 @@
 from app.cli.legacy.schema import new_chain_revisions
 from app.cli.legacy_guard import StartAction, start_action
 
-_NEW: frozenset[str] = frozenset({"current", "123456789012"})
+_NEW: frozenset[str] = frozenset({"1000", "123456789012"})
 
 
 def test_legacy_revision_is_migrated() -> None:
@@ -12,7 +12,7 @@ def test_legacy_revision_is_migrated() -> None:
 
 def test_fresh_and_new_chain_revisions_start() -> None:
     assert start_action(None, _NEW) is StartAction.START
-    assert start_action("current", _NEW) is StartAction.START
+    assert start_action("1000", _NEW) is StartAction.START
     assert start_action("123456789012", _NEW) is StartAction.START
 
 
@@ -22,4 +22,4 @@ def test_unknown_revision_is_refused() -> None:
 
 
 def test_new_chain_contains_the_shipped_revision() -> None:
-    assert "current" in new_chain_revisions()
+    assert "1000" in new_chain_revisions()

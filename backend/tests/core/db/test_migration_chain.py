@@ -5,7 +5,7 @@ from alembic.script import ScriptDirectory
 
 from app.core.constants import ALEMBIC_INI
 
-_BASE_REVISION: Final[str] = "current"
+_BASE_REVISION: Final[str] = "1000"
 
 
 def _scripts() -> ScriptDirectory:

@@ -22,7 +22,7 @@ def _patch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, current: Optional[st
     return dumped
 
 
-@pytest.mark.parametrize("current", [None, "current"])
+@pytest.mark.parametrize("current", [None, "1000"])
 async def test_skips_fresh_or_up_to_date_database(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, current: Optional[str]
 ) -> None:
@@ -46,4 +46,4 @@ async def test_dumps_before_pending_migrations(
 
 
 async def test_reads_the_migrated_test_database(config: AppConfig) -> None:
-    assert await pre_migration_dump._current_revision(config) == "current"
+    assert await pre_migration_dump._current_revision(config) == "1000"
