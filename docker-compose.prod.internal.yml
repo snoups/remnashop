@@ -78,7 +78,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      # a first start on an old-version database migrates it before serving
+      start_period: 600s
     depends_on:
       remnashop-db:
         condition: service_healthy

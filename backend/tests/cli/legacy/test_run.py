@@ -18,10 +18,12 @@ from app.cli.legacy.migrate import (
 from app.cli.legacy.panel import PanelIndex
 from app.cli.legacy.report import MigrationReport
 from app.cli.legacy.run import (
+    FAILED_MARKER,
     deliver_report,
     read_bot_owner_id,
     render_report,
     rollback_advice,
+    run_auto_migration,
     run_migration,
     run_rollback,
 )
@@ -201,6 +203,7 @@ async def test_failed_migrate_names_the_original_revision_and_backup(
     assert "revision 0039" in message
     assert "Restore backup" in message
     assert str(dumps[0]) in message
+    assert message in (tmp_path / FAILED_MARKER).read_text()
 
 
 async def test_failed_rerun_names_the_original_revision_backup(
@@ -287,3 +290,90 @@ async def test_run_migration_refuses_current_database(
     async with legacy_engine.connect() as connection:
         assert await current_revision(connection) == "current"
         assert await connection.scalar(text("SELECT count(*) FROM legacy.users")) == 0
+
+
+async def test_failed_panel_index_after_the_dump_leaves_the_marker(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+
+    async def failing(sdk: object) -> PanelIndex:
+        raise LegacyMigrationError("panel unreachable")
+
+    _stub_run(monkeypatch, tmp_path, [], fetch_panel_index=failing)
+    with pytest.raises(LegacyMigrationError):
+        await run_migration(_pointed(config, legacy_engine))
+    assert "panel unreachable" in (tmp_path / FAILED_MARKER).read_text()
+
+
+async def test_failed_preflight_leaves_no_marker(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+
+    async def failing(*args: object, **kwargs: object) -> None:
+        raise LegacyMigrationError("panel is not 3.x")
+
+    _stub_run(monkeypatch, tmp_path, [], preflight=failing)
+    with pytest.raises(LegacyMigrationError):
+        await run_auto_migration(_pointed(config, legacy_engine))
+    assert not (tmp_path / FAILED_MARKER).exists()
+
+
+async def test_auto_migration_stops_after_a_failure_past_the_dump(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+    (tmp_path / FAILED_MARKER).write_text("Migration failed: boom.")
+    dumps: list[Path] = []
+    _stub_run(monkeypatch, tmp_path, dumps)
+    with pytest.raises(LegacyMigrationError) as error:
+        await run_auto_migration(_pointed(config, legacy_engine))
+    assert "Migration failed: boom." in str(error.value)
+    assert str(tmp_path / FAILED_MARKER) in str(error.value)
+    assert dumps == []
+
+
+async def test_successful_migration_clears_the_marker(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+    (tmp_path / FAILED_MARKER).write_text("Migration failed: boom.")
+
+    async def upgraded(engine: AsyncEngine) -> str:
+        return "0039"
+
+    async def migrated(*args: object, **kwargs: object) -> MigrationResult:
+        return _result()
+
+    async def no_flush(config: AppConfig) -> None:
+        return None
+
+    _stub_run(
+        monkeypatch,
+        tmp_path,
+        [],
+        upgrade_legacy_schema=upgraded,
+        migrate=migrated,
+        _flush_redis=no_flush,
+    )
+    await run_migration(_pointed(config, legacy_engine))
+    assert not (tmp_path / FAILED_MARKER).exists()
+    assert "register the owner account" in capsys.readouterr().out

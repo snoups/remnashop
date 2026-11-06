@@ -29,6 +29,8 @@ from app.modules.backups import create_signed_database_dump
 
 _BACKUP_PREFIX: Final[str] = "DATABASE_pre-legacy-migration_"
 _OWNER_ID_ENV: Final[str] = "BOT_OWNER_ID"
+# left in BACKUP_DIR by a failure after the dump: the api's restarts don't dump again and again
+FAILED_MARKER: Final[str] = "legacy-migration-failed.txt"
 _CHECKLIST: Final[str] = """Next steps:
   - Keep APP_CRYPT_KEY in .env exactly as it was; take the new required variables from .env.example.
     The old BOT_TOKEN / BOT_SECRET_TOKEN are ignored: enter the bot token in the dashboard.
@@ -121,7 +123,11 @@ async def run_migration(config: AppConfig) -> None:
             await create_signed_database_dump(config, backup)
             print(f"Database saved to {backup}")
 
-            panel_index = await fetch_panel_index(sdk)
+            try:
+                panel_index = await fetch_panel_index(sdk)
+            except Exception as error:
+                _mark_failed(f"Reading the panel failed: {error}. The old data is untouched.")
+                raise
 
         try:
             await upgrade_legacy_schema(engine)
@@ -137,12 +143,34 @@ async def run_migration(config: AppConfig) -> None:
                 logger.exception("Legacy migration failed")
             # the schema was already moved: whatever broke, the way back must be named
             advised = oldest_pre_migration_backup(original, BACKUP_DIR) or backup
-            raise LegacyMigrationError(failure_message(error, original, advised)) from error
+            message = failure_message(error, original, advised)
+            _mark_failed(message)
+            raise LegacyMigrationError(message) from error
     finally:
         await engine.dispose()
 
+    (BACKUP_DIR / FAILED_MARKER).unlink(missing_ok=True)
     deliver_report(result, backup)
     await _flush_redis(config)
+
+
+def _mark_failed(message: str) -> None:
+    path = BACKUP_DIR / FAILED_MARKER
+    try:
+        path.write_text(message)
+    except OSError as error:
+        print(f"Warning: writing {path} failed ({error}).")
+
+
+async def run_auto_migration(config: AppConfig) -> None:
+    marker = BACKUP_DIR / FAILED_MARKER
+    if marker.exists():
+        raise LegacyMigrationError(
+            f"{marker.read_text()} Automatic migration is paused after that failure: fix the "
+            f"cause, then delete {marker} and start again, or run "
+            '"Migrate data from the old version" in `docker compose run --rm remnashop cli`.'
+        )
+    await run_migration(config)
 
 
 def failure_message(error: Exception, original: str, backup: Path) -> str:

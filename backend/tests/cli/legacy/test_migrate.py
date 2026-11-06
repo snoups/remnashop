@@ -424,6 +424,22 @@ async def test_preflight_rejects_unknown_revision(
         await preflight(legacy_engine, sdk=_panel(), crypt_key=_crypt_key(config))
 
 
+async def test_preflight_treats_any_new_chain_revision_as_migrated(
+    legacy_engine: AsyncEngine,
+    legacy_at: LegacyAt,
+    config: AppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, LEGACY_HEAD)
+    async with legacy_engine.begin() as connection:
+        await _exec(connection, "UPDATE alembic_version SET version_num = '1a2b3c4d5e6f'")
+    monkeypatch.setattr(
+        migrate_module, "new_chain_revisions", lambda: frozenset({"current", "1a2b3c4d5e6f"})
+    )
+    with pytest.raises(LegacyMigrationError, match="already on the new schema"):
+        await preflight(legacy_engine, sdk=_panel(), crypt_key=_crypt_key(config))
+
+
 async def test_preflight_rejects_wrong_crypt_key(
     legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
 ) -> None:

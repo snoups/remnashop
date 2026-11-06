@@ -1,32 +1,40 @@
 import asyncio
 import sys
+from enum import StrEnum
 from typing import Final, Optional
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.cli.legacy.schema import LEGACY_REVISIONS, current_revision
+from app.cli.legacy.errors import LegacyMigrationError
+from app.cli.legacy.run import run_auto_migration
+from app.cli.legacy.schema import LEGACY_REVISIONS, current_revision, new_chain_revisions
 from app.core.config import AppConfig
 from app.core.db.standalone import connect_args
 
 # Run first by docker-entrypoint.sh's api branch, ahead of the pre-migration dump.
 
-_MESSAGE: Final[str] = (
-    "The database belongs to the old version (revision {revision}). Migrate it first: run "
-    '`docker compose run --rm remnashop cli` and pick "Migrate data from the old version".'
-)
 _NEWER_MESSAGE: Final[str] = (
     "The database version is newer than this release supports (revision {revision}). "
     "Run the release that matches the database."
 )
+_LEGACY_REVISION_LENGTH: Final[int] = 4
 
 
-def legacy_guard_message(revision: Optional[str]) -> Optional[str]:
+class StartAction(StrEnum):
+    START = "START"
+    MIGRATE = "MIGRATE"
+    REFUSE = "REFUSE"
+
+
+def start_action(revision: Optional[str], new_revisions: frozenset[str]) -> StartAction:
+    if revision is None or revision in new_revisions:
+        return StartAction.START
     if revision in LEGACY_REVISIONS:
-        return _MESSAGE.format(revision=revision)
+        return StartAction.MIGRATE
     # an unknown old-style revision would loop the pre-migration dump and alembic on every restart
-    if revision is not None and revision.isdigit():
-        return _NEWER_MESSAGE.format(revision=revision)
-    return None
+    if len(revision) == _LEGACY_REVISION_LENGTH and revision.isdigit():
+        return StartAction.REFUSE
+    return StartAction.START
 
 
 async def _revision(config: AppConfig) -> Optional[str]:
@@ -38,10 +46,21 @@ async def _revision(config: AppConfig) -> Optional[str]:
         await engine.dispose()
 
 
+async def _guard(config: AppConfig) -> None:
+    revision = await _revision(config)
+    action = start_action(revision, new_chain_revisions())
+    if action is StartAction.REFUSE:
+        raise LegacyMigrationError(_NEWER_MESSAGE.format(revision=revision))
+    if action is StartAction.MIGRATE:
+        print(f"The database belongs to the old version (revision {revision}): migrating it")
+        await run_auto_migration(config)
+
+
 def main() -> None:
-    message = legacy_guard_message(asyncio.run(_revision(AppConfig.get())))
-    if message is not None:
-        print(message, file=sys.stderr)
+    try:
+        asyncio.run(_guard(AppConfig.get()))
+    except LegacyMigrationError as error:
+        print(f"Stopped: {error}", file=sys.stderr)
         sys.exit(1)
 
 
