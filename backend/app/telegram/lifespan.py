@@ -13,8 +13,10 @@ from fastapi import FastAPI
 from fluentogram import TranslatorHub
 from loguru import logger
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
+from app.core.db.startup_lock import lock_startup_seeding
 from app.core.db.uow import UnitOfWork
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
 from app.core.utils.time import datetime_now
@@ -56,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         translation_repository = await startup_container.get(TranslationRepository)
         uow = await startup_container.get(UnitOfWork)
         async with uow:
+            await lock_startup_seeding(await startup_container.get(AsyncSession))
             await ensure_dialogs_seeded(dialog_repository, translation_repository)
         await (await startup_container.get(BotCommandsSync)).push()
 
@@ -103,7 +106,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         **payment_outcome_handlers(app.state.bot, await container.get(BgManagerFactory)),
     }
     bot_signals_task = asyncio.create_task(listen_for_bot_signals(redis, handlers))
-    runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "telegram"))
+    runtime_heartbeat_task = asyncio.create_task(
+        poll_runtime_heartbeat(redis, "telegram", config.instance_name)
+    )
 
     await endpoint.startup()
 

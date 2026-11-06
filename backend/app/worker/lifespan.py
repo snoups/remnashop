@@ -48,7 +48,9 @@ async def _setup_worker_container(state: TaskiqState) -> None:
         state.worker_gauges_task = asyncio.create_task(
             poll_worker_gauges(redis, broker.queue_name, RETRY_SCHEDULE_PREFIX)
         )
-    state.runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "worker"))
+    state.runtime_heartbeat_task = asyncio.create_task(
+        poll_runtime_heartbeat(redis, "worker", config.instance_name)
+    )
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)

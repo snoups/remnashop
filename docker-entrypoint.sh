@@ -24,6 +24,8 @@ case "$TARGET" in
             UVICORN_RELOAD_ARGS="--reload --reload-dir /opt/remnashop/app"
         else
             echo "Uvicorn will run without reload"
+            # --reload runs a single process, so APP_WORKERS applies without it only
+            UVICORN_RELOAD_ARGS="--workers ${APP_WORKERS:-1}"
         fi
         exec uvicorn app.api.__main__:create_app --factory --host "${APP_HOST:-0.0.0.0}" --port "${APP_PORT:-5000}" --use-colors $UVICORN_RELOAD_ARGS
         ;;

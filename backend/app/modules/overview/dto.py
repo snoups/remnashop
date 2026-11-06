@@ -70,6 +70,7 @@ class RecentPaymentDto:
 @dataclass(frozen=True, kw_only=True)
 class RuntimeProcessDto:
     process: str
+    instance: Optional[str] = None
     # all None: no heartbeat, the process isn't answering
     pid: Optional[int] = None
     uptime_seconds: Optional[float] = None

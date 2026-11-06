@@ -18,7 +18,9 @@ def get_idle_app(config: AppConfig) -> FastAPI:
         # standalone client, the idle app has no DI container
         redis = Redis.from_url(config.redis.dsn, decode_responses=True, **REDIS_CONNECTION_KWARGS)
         restart_task = asyncio.create_task(listen_for_bot_signals(redis, restart_handlers()))
-        runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "telegram"))
+        runtime_heartbeat_task = asyncio.create_task(
+            poll_runtime_heartbeat(redis, "telegram", config.instance_name)
+        )
         yield
         runtime_heartbeat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):

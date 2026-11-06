@@ -7,11 +7,12 @@ from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from prometheus_client import REGISTRY
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.broker import broker
 from app.core.config import AppConfig
 from app.core.db.crypt_key import assert_crypt_key_matches
+from app.core.db.startup_lock import lock_startup_seeding
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.metrics import register_db_pool_metrics
@@ -27,12 +28,15 @@ from app.modules.users import UserRepository
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container: AsyncContainer = app.state.dishka_container
-    await assert_crypt_key_matches(await container.get(AppConfig))
+    app_config = await container.get(AppConfig)
+    await assert_crypt_key_matches(app_config)
     engine = await container.get(AsyncEngine)
     register_db_pool_metrics(engine, registry=REGISTRY)
 
     redis = await container.get(Redis)
-    runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "api"))
+    runtime_heartbeat_task = asyncio.create_task(
+        poll_runtime_heartbeat(redis, "api", app_config.instance_name)
+    )
 
     try:
         async with container(scope=Scope.REQUEST) as startup_container:
@@ -40,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             translation_repository = await startup_container.get(TranslationRepository)
             uow = await startup_container.get(UnitOfWork)
             async with uow:
+                await lock_startup_seeding(await startup_container.get(AsyncSession))
                 register_all_flow_metadata()
                 await ensure_translations_seeded(config, translation_repository)
 

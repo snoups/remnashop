@@ -3,6 +3,7 @@ import contextlib
 import json
 import os
 import resource
+import socket
 import statistics
 import sys
 import time
@@ -23,6 +24,8 @@ EVENT_LOOP_SAMPLE_INTERVAL_S: Final[float] = 0.01
 @dataclass(frozen=True, kw_only=True)
 class RuntimeHeartbeat:
     process: str
+    # APP_INSTANCE_NAME of the container, when set
+    instance: Optional[str]
     pid: int
     started_at: float
     rss_bytes: int
@@ -56,8 +59,13 @@ def read_host_memory() -> Optional[HostMemory]:
     )
 
 
-def _heartbeat_key(process: str) -> str:
-    return f"{REDIS_KEY_PREFIX}runtime:heartbeat:{process}"
+_KEY_PREFIX: Final[str] = f"{REDIS_KEY_PREFIX}runtime:heartbeat:"
+
+
+def _heartbeat_key(process: str, pid: int) -> str:
+    # one key per process: a role may run in several containers (a second api)
+    # and several processes (WORKER_PROCESSES, APP_WORKERS)
+    return f"{_KEY_PREFIX}{process}:{socket.gethostname()}:{pid}"
 
 
 def _current_rss_bytes() -> int:
@@ -73,29 +81,33 @@ async def publish_runtime_heartbeat(
     *,
     pid: int,
     started_at: float,
+    instance: Optional[str] = None,
     event_loop_delay_ms: float = 0.0,
     event_loop_p99_ms: float = 0.0,
 ) -> None:
     payload = {
+        "instance": instance,
         "pid": pid,
         "started_at": started_at,
         "rss_bytes": _current_rss_bytes(),
         "event_loop_delay_ms": event_loop_delay_ms,
         "event_loop_p99_ms": event_loop_p99_ms,
     }
-    await redis.set(_heartbeat_key(process), json.dumps(payload), ex=RUNTIME_HEARTBEAT_TTL_S)
+    await redis.set(_heartbeat_key(process, pid), json.dumps(payload), ex=RUNTIME_HEARTBEAT_TTL_S)
 
 
 async def read_runtime_heartbeats(redis: Redis) -> list[RuntimeHeartbeat]:
     heartbeats = []
-    for process in RUNTIME_PROCESSES:
-        raw = await redis.get(_heartbeat_key(process))
-        if raw is None:
+    async for key in redis.scan_iter(match=f"{_KEY_PREFIX}*", count=100):
+        process = key.removeprefix(_KEY_PREFIX).split(":", 1)[0]
+        raw = await redis.get(key)
+        if process not in RUNTIME_PROCESSES or raw is None:
             continue
         data = json.loads(raw)
         heartbeats.append(
             RuntimeHeartbeat(
                 process=process,
+                instance=data.get("instance"),
                 pid=data["pid"],
                 started_at=data["started_at"],
                 rss_bytes=data["rss_bytes"],
@@ -104,7 +116,7 @@ async def read_runtime_heartbeats(redis: Redis) -> list[RuntimeHeartbeat]:
                 event_loop_p99_ms=data.get("event_loop_p99_ms", 0.0),
             )
         )
-    return heartbeats
+    return sorted(heartbeats, key=lambda hb: (hb.instance or "", hb.started_at))
 
 
 async def _sample_event_loop_delay(samples: list[float]) -> None:
@@ -129,7 +141,9 @@ def _event_loop_stats_ms(samples: list[float]) -> tuple[float, float]:
     return mean_ms, p99_ms
 
 
-async def poll_runtime_heartbeat(redis: Redis, process: str) -> None:
+async def poll_runtime_heartbeat(
+    redis: Redis, process: str, instance: Optional[str] = None
+) -> None:
     pid = os.getpid()
     started_at = time.time()
     samples: list[float] = []
@@ -143,6 +157,7 @@ async def poll_runtime_heartbeat(redis: Redis, process: str) -> None:
                     process,
                     pid=pid,
                     started_at=started_at,
+                    instance=instance,
                     event_loop_delay_ms=delay_ms,
                     event_loop_p99_ms=p99_ms,
                 )

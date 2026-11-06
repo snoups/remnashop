@@ -148,20 +148,23 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
 
     async def _runtime(self) -> list[RuntimeProcessDto]:
         now = time.time()
-        alive = {hb.process: hb for hb in await read_runtime_heartbeats(self._redis)}
-        return [
-            RuntimeProcessDto(
-                process=hb.process,
-                pid=hb.pid,
-                uptime_seconds=now - hb.started_at,
-                rss_bytes=hb.rss_bytes,
-                event_loop_delay_ms=hb.event_loop_delay_ms,
-                event_loop_p99_ms=hb.event_loop_p99_ms,
-            )
-            if (hb := alive.get(process)) is not None
-            else RuntimeProcessDto(process=process)
-            for process in RUNTIME_PROCESSES
-        ]
+        heartbeats = await read_runtime_heartbeats(self._redis)
+        processes: list[RuntimeProcessDto] = []
+        for process in RUNTIME_PROCESSES:
+            alive = [hb for hb in heartbeats if hb.process == process]
+            processes += [
+                RuntimeProcessDto(
+                    process=hb.process,
+                    instance=hb.instance,
+                    pid=hb.pid,
+                    uptime_seconds=now - hb.started_at,
+                    rss_bytes=hb.rss_bytes,
+                    event_loop_delay_ms=hb.event_loop_delay_ms,
+                    event_loop_p99_ms=hb.event_loop_p99_ms,
+                )
+                for hb in alive
+            ] or [RuntimeProcessDto(process=process)]
+        return processes
 
     async def _host_stats(self) -> Optional[HostStatsDto]:
         cpu_percent = await read_host_cpu_percent()

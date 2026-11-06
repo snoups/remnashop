@@ -36,6 +36,7 @@ export interface OverviewSubscriptions {
 /** Every field but `process` is null while the process sends no heartbeat. */
 export interface RuntimeProcess {
   process: string;
+  instance: string | null;
   pid: number | null;
   uptime_seconds: number | null;
   rss_bytes: number | null;

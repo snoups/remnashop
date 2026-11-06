@@ -22,7 +22,15 @@ function Kv({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ProcessCard({ process }: { process: RuntimeProcess }) {
+// "Worker #2" when a role runs several processes, "API · admin" for a named instance
+function processLabel(runtime: RuntimeProcess[], index: number): string {
+  const { process, instance } = runtime[index];
+  const siblings = runtime.filter((other) => other.process === process && other.instance === instance);
+  const base = [RUNTIME_PROCESS_LABELS[process] ?? process, instance].filter(Boolean).join(" · ");
+  return siblings.length > 1 ? `${base} #${siblings.indexOf(runtime[index]) + 1}` : base;
+}
+
+function ProcessCard({ process, label }: { process: RuntimeProcess; label: string }) {
   const { t, i18n } = useTranslation();
   const ms = t("dashboard.runtime.units.millisecond");
   const decimals = new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,7 +45,7 @@ function ProcessCard({ process }: { process: RuntimeProcess }) {
             <IconCircle icon={Cpu} />
             <i className={`absolute -bottom-px -right-px size-2.5 rounded-full ${running ? "bg-success" : "bg-error"}`} />
           </span>
-          <span className="truncate">{RUNTIME_PROCESS_LABELS[process.process] ?? process.process}</span>
+          <span className="truncate">{label}</span>
         </span>
         {running && <Tag className="font-mono">{t("dashboard.runtime.pid", { pid: process.pid })}</Tag>}
       </div>
@@ -161,8 +169,8 @@ export function SystemStatusCard({
       <div className="flex flex-col gap-3 pt-4">
         {runtime.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {runtime.map((process) => (
-              <ProcessCard key={process.process} process={process} />
+            {runtime.map((process, index) => (
+              <ProcessCard key={`${process.process}-${process.instance}-${process.pid ?? index}`} process={process} label={processLabel(runtime, index)} />
             ))}
           </div>
         )}

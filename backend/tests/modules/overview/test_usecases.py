@@ -322,12 +322,7 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     uow: UnitOfWork,
     subscription_stats_repository: SubscriptionStatsRepository,
 ) -> None:
-    keys = (
-        "remnashop:runtime:heartbeat:api",
-        "remnashop:runtime:heartbeat:telegram",
-        "remnashop:runtime:heartbeat:worker",
-    )
-    await redis.delete(*keys)
+    await _clear_heartbeats(redis)
     started_at = time.time() - 300
     await publish_runtime_heartbeat(
         redis,
@@ -358,7 +353,47 @@ async def test_runtime_lists_only_processes_with_a_live_heartbeat(
     assert process.event_loop_p99_ms == 6.25
     assert overview.runtime[1].pid is None
 
-    await redis.delete(*keys)
+    await _clear_heartbeats(redis)
+
+
+async def _clear_heartbeats(redis: Redis) -> None:
+    keys = [key async for key in redis.scan_iter(match="remnashop:runtime:heartbeat:*")]
+    if keys:
+        await redis.delete(*keys)
+
+
+async def test_runtime_shows_each_process_of_a_role(
+    user_repository: UserRepository,
+    pricing_repository: PricingRepository,
+    redis: Redis,
+    uow: UnitOfWork,
+    subscription_stats_repository: SubscriptionStatsRepository,
+) -> None:
+    await _clear_heartbeats(redis)
+    for pid in (20, 21):
+        await publish_runtime_heartbeat(redis, "worker", pid=pid, started_at=float(pid))
+    await publish_runtime_heartbeat(redis, "api", pid=30, started_at=1.0, instance="admin")
+
+    use_case = GetOverviewUseCase(
+        UserStatsRepository(user_repository.session),
+        subscription_stats_repository,
+        TransactionStatsRepository(user_repository.session),
+        user_repository,
+        pricing_repository,
+        redis,
+        uow,
+    )
+    overview = await use_case(OWNER)
+
+    assert [(p.process, p.instance, p.pid) for p in overview.runtime] == [
+        ("api", "admin", 30),
+        ("telegram", None, None),
+        ("worker", None, 20),
+        ("worker", None, 21),
+        ("scheduler", None, None),
+    ]
+
+    await _clear_heartbeats(redis)
 
 
 async def test_overview_includes_host_memory_when_available(

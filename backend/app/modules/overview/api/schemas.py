@@ -56,6 +56,7 @@ class RecentPaymentResponse(BaseModel):
 
 class RuntimeProcessResponse(BaseModel):
     process: str
+    instance: Optional[str]
     pid: Optional[int]
     uptime_seconds: Optional[float]
     rss_bytes: Optional[int]
