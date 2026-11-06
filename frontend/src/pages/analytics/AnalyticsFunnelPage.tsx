@@ -10,7 +10,7 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
-import { GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, STAT_VALUE_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
@@ -137,7 +137,7 @@ function FunnelStepRow({
             <span className="h-full bg-primary/50 transition-[width] duration-200 ease-out" style={{ width: `${startShare * (1 - viaShare)}%` }} />
           )}
         </span>
-        <span className="text-right text-[15px] font-bold tabular-nums text-foreground">
+        <span className={`text-right text-foreground ${STAT_VALUE_CLASS}`}>
           {step.count.toLocaleString(language)}
         </span>
         <span className="text-right text-[12px] tabular-nums text-muted-foreground">

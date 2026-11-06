@@ -37,7 +37,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 import { ListRow } from "@shared/ui/ListRow";
 
@@ -144,7 +144,7 @@ export function PromocodesPage() {
           />
         </div>
         {canCreate && (
-          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)}>
+          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)} className="ml-auto">
             <Plus className="size-4" />
             {t("promocodes.create.button")}
           </Button>
@@ -202,58 +202,62 @@ export function PromocodesPage() {
         )}
         {state.kind === "ready" && visibleItems.length > 0 && (
           <>
-            <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
-              <span className="col-span-2">{t("promocodes.columns.code")}</span>
-              <span>{t("promocodes.columns.availability")}</span>
-              <span>{t("promocodes.columns.used")}</span>
-              <span>{t("promocodes.details.expires")}</span>
-              <span>{t("promocodes.columns.status")}</span>
-              <span />
-            </div>
-            <div className={LIST_BODY_CLASS}>
-              {visibleItems.map((promo) => {
-                const promoStatus = getPromocodeStatus(promo);
-                return (
-                  <ListRow
-                    glass
-                    key={promo.id}
-                    type="button"
-                    onClick={() => setDetailsPromocode(promo)}
-                    className={ROW_GRID_CLASSNAME}
-                  >
-                    <IconCircle icon={Ticket} tone={promoStatus === "ACTIVE" ? "success" : "neutral"} />
-                    <span className="min-w-0">
-                      <span className="block truncate font-mono text-[13px] font-medium text-foreground">{promo.code}</span>
-                      <span className="block truncate text-[12px] text-muted-foreground">
-                        {t(`promocodes.rewardType.${promo.reward_type}`)}
-                        {" · "}
-                        <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
-                      </span>
-                    </span>
-                    <span className="truncate text-[13px] text-foreground">
-                      {t(`promocodes.availability.${promo.availability}`)}
-                    </span>
-                    <span className="text-[13px] tabular-nums text-foreground">
-                      {promo.activations_count}
-                      <span className="text-muted-foreground">
-                        {" / "}
-                        {promo.max_activations ?? "∞"}
-                      </span>
-                    </span>
-                    <span className="text-[13px] tabular-nums text-foreground">
-                      {promo.expires_at
-                        ? formatDate(promo.expires_at, i18n.language)
-                        : t("promocodes.noExpiry")}
-                    </span>
-                    <span>
-                      <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
-                    </span>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </ListRow>
-                );
-              })}
-            </div>
+            <div className={LIST_SCROLL_X_CLASS}>
+              <div className="min-w-[800px]">
+                <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
+                  <span className="col-span-2">{t("promocodes.columns.code")}</span>
+                  <span>{t("promocodes.columns.availability")}</span>
+                  <span>{t("promocodes.columns.used")}</span>
+                  <span>{t("promocodes.details.expires")}</span>
+                  <span>{t("promocodes.columns.status")}</span>
+                  <span />
+                </div>
+                <div className={LIST_BODY_CLASS}>
+                  {visibleItems.map((promo) => {
+                    const promoStatus = getPromocodeStatus(promo);
+                    return (
+                      <ListRow
+                        glass
+                        key={promo.id}
+                        type="button"
+                        onClick={() => setDetailsPromocode(promo)}
+                        className={ROW_GRID_CLASSNAME}
+                      >
+                        <IconCircle icon={Ticket} tone={promoStatus === "ACTIVE" ? "success" : "neutral"} />
+                        <span className="min-w-0">
+                          <span className="block truncate font-mono text-[13px] font-medium text-foreground">{promo.code}</span>
+                          <span className="block truncate text-[12px] text-muted-foreground">
+                            {t(`promocodes.rewardType.${promo.reward_type}`)}
+                            {" · "}
+                            <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
+                          </span>
+                        </span>
+                        <span className="truncate text-[13px] text-foreground">
+                          {t(`promocodes.availability.${promo.availability}`)}
+                        </span>
+                        <span className="text-[13px] tabular-nums text-foreground">
+                          {promo.activations_count}
+                          <span className="text-muted-foreground">
+                            {" / "}
+                            {promo.max_activations ?? "∞"}
+                          </span>
+                        </span>
+                        <span className="text-[13px] tabular-nums text-foreground">
+                          {promo.expires_at
+                            ? formatDate(promo.expires_at, i18n.language)
+                            : t("promocodes.noExpiry")}
+                        </span>
+                        <span>
+                          <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      </ListRow>
+                    );
+                  })}
+                </div>
 
+              </div>
+            </div>
             {state.kind === "ready" && hasMore && (
               <div className="mx-3 mt-4">
                 <LoadMoreButton

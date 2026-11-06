@@ -131,10 +131,6 @@
       "title": "Требует внимания",
       "description": "Ошибки и предупреждения по работе магазина",
       "critical": "Срочно · {{value}}",
-      "allClear": {
-        "title": "Всё в порядке",
-        "sub": "Ничего не требует внимания"
-      },
       "processDown": {
         "title": "{{process}} не отвечает",
         "worker": "Фоновые задачи не выполняются",
@@ -374,7 +370,7 @@
       "durationMinutesIn_many": "{{count}} минут",
       "durationMinutesIn_other": "{{count}} минуты"
     },
-    "remnawaveUnavailable": "Remnawave недоступна\nДанные появятся, когда панель ответит",
+    "remnawaveUnavailable": "Remnawave недоступна",
     "nodes": {
       "title": "Ноды и страны",
       "description": "Подключения и трафик за сегодня, по данным Remnawave",
@@ -2636,6 +2632,7 @@
   "advertising": {
     "title": "Рекламные ссылки",
     "empty": "Нет рекламных ссылок",
+    "noMatches": "Ничего не найдено",
     "filters": {
       "statusAll": "Все статусы",
       "statusActive": "Активные",
@@ -3070,6 +3067,7 @@
       "rewardCount_other": "{{count}} начисления",
       "noRewards": "нет начислений",
       "empty": "Нет рефералов",
+      "noMatches": "Ничего не найдено",
       "noPermission": "Нет прав на просмотр списка рефералов."
     },
     "summary": {

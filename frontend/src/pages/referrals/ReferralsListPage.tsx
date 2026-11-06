@@ -39,7 +39,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const FILTER_DEBOUNCE_MS = 200;
@@ -68,6 +68,7 @@ export function ReferralsListPage() {
   const [searchInput, setSearchInput] = useUrlSearch();
   const debouncedSearch = useDebouncedValue(searchInput, FILTER_DEBOUNCE_MS);
   const [period, setPeriod] = useState<PeriodDays>(0);
+  const hasFilters = Boolean(level || rewardStatus || rewardType || debouncedSearch || period);
   const [statsUser, setStatsUser] = useState<ReferralUser | null>(null);
 
   const permissions = usePermissions();
@@ -132,16 +133,18 @@ export function ReferralsListPage() {
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
-        <SearchField
-          id="referrals-search"
-          label={t("referrals.list.search")}
-          hideLabel
-          compact
-          placeholder={t("referrals.list.searchPlaceholder")}
-          value={searchInput}
-          onChange={setSearchInput}
-        />
-        <div className="w-40 min-w-0">
+        <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
+          <SearchField
+            id="referrals-search"
+            label={t("referrals.list.search")}
+            hideLabel
+            compact
+            placeholder={t("referrals.list.searchPlaceholder")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
+        <div className="w-44 min-w-0">
           <SelectDropdown
             id="referrals-level"
             value={level}
@@ -160,7 +163,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="w-40 min-w-0">
+        <div className="w-44 min-w-0">
           <SelectDropdown
             id="referrals-reward-status"
             value={rewardStatus}
@@ -176,7 +179,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="w-40 min-w-0">
+        <div className="w-44 min-w-0">
           <SelectDropdown
             id="referrals-reward-type"
             value={rewardType}
@@ -195,7 +198,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="w-40 min-w-0">
+        <div className="w-44 min-w-0">
           <SelectDropdown
             id="referrals-period"
             value={String(period)}
@@ -264,92 +267,96 @@ export function ReferralsListPage() {
           <ErrorState text={permissions.includes("REFERRALS_LIST") ? t("common.loadError") : t("referrals.list.noPermission")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
-          <EmptyState text={t("referrals.list.empty")} size="page" />
+          <EmptyState text={t(hasFilters ? "referrals.list.noMatches" : "referrals.list.empty")} size="page" />
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <>
-            <div
-              className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
-            >
-              <span className="col-span-2">{t("referrals.list.columns.referred")}</span>
-              <span>{t("referrals.list.columns.referrer")}</span>
-              <span>{t("referrals.list.columns.level")}</span>
-              <span>{t("referrals.list.columns.rewards")}</span>
-              <span>{t("referrals.list.columns.time")}</span>
-              <span />
-            </div>
-            <div className="flex flex-col gap-3">
-              {groups.map((group) => (
-                <section key={group.key} className="flex flex-col">
-                  <h3>
-                    <GroupToggle
-                      glass
-                      open={!collapsedDays.has(group.key)}
-                      onToggle={() => toggleDay(group.key)}
-                      label={formatDayLabel(group.date, t, i18n.language)}
-                      count={group.items.length}
-                    />
-                  </h3>
-                  <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
-                    {group.items.map((item) => {
-                      const referred = item.referred;
-                      const canOpen = canViewStats && referred !== null;
-                      const rewards = formatRewards(item);
-                      return (
-                        <ListRow
+            <div className={LIST_SCROLL_X_CLASS}>
+              <div className="min-w-[800px]">
+                <div
+                  className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
+                >
+                  <span className="col-span-2">{t("referrals.list.columns.referred")}</span>
+                  <span>{t("referrals.list.columns.referrer")}</span>
+                  <span>{t("referrals.list.columns.level")}</span>
+                  <span>{t("referrals.list.columns.rewards")}</span>
+                  <span>{t("referrals.list.columns.time")}</span>
+                  <span />
+                </div>
+                <div className="flex flex-col gap-3">
+                  {groups.map((group) => (
+                    <section key={group.key} className="flex flex-col">
+                      <h3>
+                        <GroupToggle
                           glass
-                          key={item.id}
-                          type="button"
-                          disabled={!canOpen}
-                          onClick={() => setStatsUser(referred)}
-                          className={ROW_GRID_CLASSNAME}
-                        >
-                          <IconCircle glyph={<span className="text-[11px] font-bold">{initials(referred?.name)}</span>} />
-                          <CellText
-                            title={referred?.name || t("users.deleted.name")}
-                            sub={referred && userHandle(referred)}
-                            mono
-                          />
-                          <span className="flex min-w-0 items-center gap-2">
-                            <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
-                            <span
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground"
+                          open={!collapsedDays.has(group.key)}
+                          onToggle={() => toggleDay(group.key)}
+                          label={formatDayLabel(group.date, t, i18n.language)}
+                          count={group.items.length}
+                        />
+                      </h3>
+                      <Collapse open={!collapsedDays.has(group.key)} className={LIST_BODY_CLASS}>
+                        {group.items.map((item) => {
+                          const referred = item.referred;
+                          const canOpen = canViewStats && referred !== null;
+                          const rewards = formatRewards(item);
+                          return (
+                            <ListRow
+                              glass
+                              key={item.id}
+                              type="button"
+                              disabled={!canOpen}
+                              onClick={() => setStatsUser(referred)}
+                              className={ROW_GRID_CLASSNAME}
                             >
-                              {initials(item.referrer?.name)}
-                            </span>
-                            <span className="truncate text-[13px] text-foreground">
-                              {item.referrer?.name || t("users.deleted.name")}
-                            </span>
-                          </span>
-                          <span>
-                            <Badge borderless tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
-                              {t("referrals.list.levelBadge", { level: item.level })}
-                            </Badge>
-                          </span>
-                          <span className="min-w-0 tabular-nums">
-                            <span
-                              className={`block truncate text-[13px] ${
-                                rewards ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
-                              }`}
-                            >
-                              {rewards ?? "—"}
-                            </span>
-                            <span className="block truncate text-[12px] text-muted-foreground">
-                              {item.reward_count
-                                ? t("referrals.list.rewardCount", { count: item.reward_count })
-                                : t("referrals.list.noRewards")}
-                            </span>
-                          </span>
-                          <span className="text-[13px] tabular-nums text-foreground">
-                            {formatTime(item.created_at, i18n.language)}
-                          </span>
-                          {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                        </ListRow>
-                      );
-                    })}
-                  </Collapse>
-                </section>
-              ))}
+                              <IconCircle glyph={<span className="text-[11px] font-bold">{initials(referred?.name)}</span>} />
+                              <CellText
+                                title={referred?.name || t("users.deleted.name")}
+                                sub={referred && userHandle(referred)}
+                                mono
+                              />
+                              <span className="flex min-w-0 items-center gap-2">
+                                <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
+                                <span
+                                  className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground"
+                                >
+                                  {initials(item.referrer?.name)}
+                                </span>
+                                <span className="truncate text-[13px] text-foreground">
+                                  {item.referrer?.name || t("users.deleted.name")}
+                                </span>
+                              </span>
+                              <span>
+                                <Badge borderless tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
+                                  {t("referrals.list.levelBadge", { level: item.level })}
+                                </Badge>
+                              </span>
+                              <span className="min-w-0 tabular-nums">
+                                <span
+                                  className={`block truncate text-[13px] ${
+                                    rewards ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
+                                  }`}
+                                >
+                                  {rewards ?? "—"}
+                                </span>
+                                <span className="block truncate text-[12px] text-muted-foreground">
+                                  {item.reward_count
+                                    ? t("referrals.list.rewardCount", { count: item.reward_count })
+                                    : t("referrals.list.noRewards")}
+                                </span>
+                              </span>
+                              <span className="text-[13px] tabular-nums text-foreground">
+                                {formatTime(item.created_at, i18n.language)}
+                              </span>
+                              {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
+                            </ListRow>
+                          );
+                        })}
+                      </Collapse>
+                    </section>
+                  ))}
+                </div>
+              </div>
             </div>
             {state.kind === "ready" && hasMore && (
               <div className="mx-3 mt-4">

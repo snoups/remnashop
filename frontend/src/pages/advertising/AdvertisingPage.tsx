@@ -30,7 +30,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
 import { Badge } from "@shared/ui/Badge";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const STATS_GRID_CLASSNAME =
@@ -185,7 +185,7 @@ export function AdvertisingPage() {
           </div>
         )}
         {canCreate && (
-          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)}>
+          <Button variant="glassAccent" type="button" onClick={() => setIsCreateOpen(true)} className="ml-auto">
             <Plus className="size-4" />
             {t("advertising.create.button")}
           </Button>
@@ -263,84 +263,88 @@ export function AdvertisingPage() {
           <ErrorState text={t("common.loadError")} size="page" />
         )}
         {state.kind === "ready" && state.items.length === 0 && (
-          <EmptyState text={t("advertising.empty")} size="page" />
+          <EmptyState text={t(statusFilter ? "advertising.noMatches" : "advertising.empty")} size="page" />
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <>
-            <div className={`${gridClassName} ${GLASS_LIST_HEAD_CLASS}`}>
-              <span className="col-span-2">{t("advertising.columns.link")}</span>
-              {canViewSummary && (
-                <>
-                  <span className="text-right">{t("advertising.stats.attributions")}</span>
-                  <span className="text-right">{t("advertising.columns.paid")}</span>
-                  <span className="text-right">{t("advertising.stats.conversionRate")}</span>
-                </>
-              )}
-              <span className="text-right">{t("advertising.stats.cost")}</span>
-              {canViewSummary && <span className="text-right">{t("advertising.stats.roi")}</span>}
-              <span>{t("advertising.columns.status")}</span>
-              <span />
-            </div>
+            <div className={LIST_SCROLL_X_CLASS}>
+              <div className={canViewSummary ? "min-w-[900px]" : "min-w-[560px]"}>
+                <div className={`${gridClassName} ${GLASS_LIST_HEAD_CLASS}`}>
+                  <span className="col-span-2">{t("advertising.columns.link")}</span>
+                  {canViewSummary && (
+                    <>
+                      <span className="text-right">{t("advertising.stats.attributions")}</span>
+                      <span className="text-right">{t("advertising.columns.paid")}</span>
+                      <span className="text-right">{t("advertising.stats.conversionRate")}</span>
+                    </>
+                  )}
+                  <span className="text-right">{t("advertising.stats.cost")}</span>
+                  {canViewSummary && <span className="text-right">{t("advertising.stats.roi")}</span>}
+                  <span>{t("advertising.columns.status")}</span>
+                  <span />
+                </div>
 
-            <div className={`${LIST_BODY_CLASS}`}>
-              {state.items.map((link) => {
-                const metrics = metricsById.get(link.id);
-                const conversion =
-                  metrics && metrics.attributions_count > 0 ? metrics.paid_count / metrics.attributions_count : null;
+                <div className={LIST_BODY_CLASS}>
+                  {state.items.map((link) => {
+                    const metrics = metricsById.get(link.id);
+                    const conversion =
+                      metrics && metrics.attributions_count > 0 ? metrics.paid_count / metrics.attributions_count : null;
 
-                return (
-                  <ListRow
-                    glass
-                    key={link.id}
-                    type="button"
-                    onClick={() => setDetailsId(link.id)}
-                    className={gridClassName}
-                  >
-                    <IconCircle icon={Link2} tone={link.is_active ? "success" : "neutral"} />
-                    <CellText title={link.name} sub={link.code} mono />
-                    {canViewSummary && (
-                      <>
-                        <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
-                          {metrics?.attributions_count ?? none}
-                        </span>
-                        <span className="text-right text-[13px] tabular-nums text-foreground">
-                          {metrics?.paid_count ?? none}
-                        </span>
-                        <span className="flex flex-col items-end gap-1">
-                          <span className="text-[13px] tabular-nums text-foreground">
-                            {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
-                          </span>
-                          <span className="h-[3px] w-14 overflow-hidden rounded-full glass-track">
-                            <span
-                              className="block h-full rounded-full bg-primary"
-                              style={{ width: `${(conversion ?? 0) * 100}%` }}
-                            />
-                          </span>
-                        </span>
-                      </>
-                    )}
-                    <span className="text-right text-[13px] tabular-nums text-foreground">
-                      {formatMoney(link.cost, link.cost_currency, i18n.language)}
-                    </span>
-                    {canViewSummary && (
-                      <span
-                        className={`text-right text-[13px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
+                    return (
+                      <ListRow
+                        glass
+                        key={link.id}
+                        type="button"
+                        onClick={() => setDetailsId(link.id)}
+                        className={gridClassName}
                       >
-                        {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
-                      </span>
-                    )}
-                    <span>
-                      <Badge borderless tone={link.is_active ? "success" : "neutral"}>
-                        {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
-                      </Badge>
-                    </span>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </ListRow>
+                        <IconCircle icon={Link2} tone={link.is_active ? "success" : "neutral"} />
+                        <CellText title={link.name} sub={link.code} mono />
+                        {canViewSummary && (
+                          <>
+                            <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+                              {metrics?.attributions_count ?? none}
+                            </span>
+                            <span className="text-right text-[13px] tabular-nums text-foreground">
+                              {metrics?.paid_count ?? none}
+                            </span>
+                            <span className="flex flex-col items-end gap-1">
+                              <span className="text-[13px] tabular-nums text-foreground">
+                                {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
+                              </span>
+                              <span className="h-[3px] w-14 overflow-hidden rounded-full glass-track">
+                                <span
+                                  className="block h-full rounded-full bg-primary"
+                                  style={{ width: `${(conversion ?? 0) * 100}%` }}
+                                />
+                              </span>
+                            </span>
+                          </>
+                        )}
+                        <span className="text-right text-[13px] tabular-nums text-foreground">
+                          {formatMoney(link.cost, link.cost_currency, i18n.language)}
+                        </span>
+                        {canViewSummary && (
+                          <span
+                            className={`text-right text-[13px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
+                          >
+                            {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
+                          </span>
+                        )}
+                        <span>
+                          <Badge borderless tone={link.is_active ? "success" : "neutral"}>
+                            {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
+                          </Badge>
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      </ListRow>
 
-                );
-              })}
+                    );
+                  })}
+                </div>
+
+              </div>
             </div>
-
             {state.kind === "ready" && hasMore && (
               <div className="mx-3 mt-4">
                 <LoadMoreButton

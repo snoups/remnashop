@@ -35,7 +35,7 @@ import { SearchField } from "@shared/ui/SearchField";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Collapse } from "@shared/ui/Collapse";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
 import { useCollapsedSet } from "@shared/lib/use-collapsed-set";
 
@@ -142,16 +142,18 @@ export function SubscriptionsPage() {
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
-        <SearchField
-          id="subscriptions-search"
-          label={t("subscriptions.filters.search")}
-          hideLabel
-          compact
-          placeholder={t("subscriptions.filters.searchPlaceholder")}
-          value={searchInput}
-          onChange={setSearchInput}
-        />
-        <div className="w-44 min-w-0">
+        <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
+          <SearchField
+            id="subscriptions-search"
+            label={t("subscriptions.filters.search")}
+            hideLabel
+            compact
+            placeholder={t("subscriptions.filters.searchPlaceholder")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
+        <div className="w-56 min-w-0">
           <SelectDropdown
             id="subscriptions-status"
             value={status}
@@ -188,87 +190,91 @@ export function SubscriptionsPage() {
         )}
         {state.kind === "ready" && state.items.length > 0 && (
           <>
-            <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
-              <span className="col-span-2">{t("subscriptions.columns.subscription")}</span>
-              <span>{t("subscriptions.fields.traffic")}</span>
-              <span>{t("subscriptions.fields.devices")}</span>
-              <span>{t("subscriptions.fields.expires")}</span>
-              <span>{t("subscriptions.columns.status")}</span>
-              <span />
-            </div>
-            <div className="flex flex-col gap-3">
-              {groups.map((group) => (
-                <section key={group.key} className="flex flex-col">
-                  <h3>
-                    <GroupToggle
-                      glass
-                      open={!collapsedGroups.has(group.key)}
-                      onToggle={() => toggleGroup(group.key)}
-                      leading={<span className={`-ml-1 size-1.5 rounded-full ${GROUP_DOT_CLASSNAME[group.key]}`} />}
-                      label={t(`subscriptions.groups.${group.key}`)}
-                      count={group.items.length}
-                    />
-                  </h3>
-                  <Collapse open={!collapsedGroups.has(group.key)} className={LIST_BODY_CLASS}>
-                    {group.items.map((subscription) => {
-                      const days = daysUntil(subscription.expire_at);
-
-                      return (
-                        <ListRow
+            <div className={LIST_SCROLL_X_CLASS}>
+              <div className="min-w-[840px]">
+                <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
+                  <span className="col-span-2">{t("subscriptions.columns.subscription")}</span>
+                  <span>{t("subscriptions.fields.traffic")}</span>
+                  <span>{t("subscriptions.fields.devices")}</span>
+                  <span>{t("subscriptions.fields.expires")}</span>
+                  <span>{t("subscriptions.columns.status")}</span>
+                  <span />
+                </div>
+                <div className="flex flex-col gap-3">
+                  {groups.map((group) => (
+                    <section key={group.key} className="flex flex-col">
+                      <h3>
+                        <GroupToggle
                           glass
-                          key={subscription.id}
-                          type="button"
-                          disabled={!canViewDetails}
-                          onClick={() => setEditingSubscription(subscription)}
-                          className={ROW_GRID_CLASSNAME}
-                        >
-                          <IconCircle icon={Captions} tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]} />
-                          <span className="min-w-0">
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-[13px] font-medium text-foreground">
-                                {subscription.plan_snapshot.name} #{subscription.id}
+                          open={!collapsedGroups.has(group.key)}
+                          onToggle={() => toggleGroup(group.key)}
+                          leading={<span className={`-ml-1 size-1.5 rounded-full ${GROUP_DOT_CLASSNAME[group.key]}`} />}
+                          label={t(`subscriptions.groups.${group.key}`)}
+                          count={group.items.length}
+                        />
+                      </h3>
+                      <Collapse open={!collapsedGroups.has(group.key)} className={LIST_BODY_CLASS}>
+                        {group.items.map((subscription) => {
+                          const days = daysUntil(subscription.expire_at);
+
+                          return (
+                            <ListRow
+                              glass
+                              key={subscription.id}
+                              type="button"
+                              disabled={!canViewDetails}
+                              onClick={() => setEditingSubscription(subscription)}
+                              className={ROW_GRID_CLASSNAME}
+                            >
+                              <IconCircle icon={Captions} tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]} />
+                              <span className="min-w-0">
+                                <span className="flex min-w-0 items-center gap-1.5">
+                                  <span className="truncate text-[13px] font-medium text-foreground">
+                                    {subscription.plan_snapshot.name} #{subscription.id}
+                                  </span>
+                                  {subscription.is_trial && (
+                                    <Badge borderless tone="warning">
+                                      {t("subscriptions.trial")}
+                                    </Badge>
+                                  )}
+                                </span>
+                                <span className="block truncate text-[12px] text-muted-foreground">
+                                  {subscription.user_name ?? t("subscriptions.userLabel", { id: subscription.user_id })}
+                                </span>
                               </span>
-                              {subscription.is_trial && (
-                                <Badge borderless tone="warning">
-                                  {t("subscriptions.trial")}
+                              <span className="min-w-0">
+                                <span className="block text-[13px] font-medium text-foreground">
+                                  {formatTraffic(subscription.effective_traffic_limit, unlimitedLabel)}
+                                </span>
+                                <span className="block truncate text-[12px] text-muted-foreground">
+                                  {t(`subscriptions.edit.strategy.${subscription.traffic_limit_strategy}`)}
+                                </span>
+                              </span>
+                              <span className="text-[13px] font-medium tabular-nums text-foreground">
+                                {formatLimit(subscription.effective_device_limit, unlimitedLabel)}
+                              </span>
+                              <span className="tabular-nums">
+                                <span className="block text-[13px] text-foreground">
+                                  {formatDate(subscription.expire_at, i18n.language)}
+                                </span>
+                                <span className={`block text-[12px] ${expiryToneClassName(days)}`}>
+                                  {relativeTime.format(days, "day")}
+                                </span>
+                              </span>
+                              <span>
+                                <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+                                  {t(`subscriptions.status.${subscription.status}`)}
                                 </Badge>
-                              )}
-                            </span>
-                            <span className="block truncate text-[12px] text-muted-foreground">
-                              {subscription.user_name ?? t("subscriptions.userLabel", { id: subscription.user_id })}
-                            </span>
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-[13px] font-medium text-foreground">
-                              {formatTraffic(subscription.effective_traffic_limit, unlimitedLabel)}
-                            </span>
-                            <span className="block truncate text-[12px] text-muted-foreground">
-                              {t(`subscriptions.edit.strategy.${subscription.traffic_limit_strategy}`)}
-                            </span>
-                          </span>
-                          <span className="text-[13px] font-medium tabular-nums text-foreground">
-                            {formatLimit(subscription.effective_device_limit, unlimitedLabel)}
-                          </span>
-                          <span className="tabular-nums">
-                            <span className="block text-[13px] text-foreground">
-                              {formatDate(subscription.expire_at, i18n.language)}
-                            </span>
-                            <span className={`block text-[12px] ${expiryToneClassName(days)}`}>
-                              {relativeTime.format(days, "day")}
-                            </span>
-                          </span>
-                          <span>
-                            <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
-                              {t(`subscriptions.status.${subscription.status}`)}
-                            </Badge>
-                          </span>
-                          {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                        </ListRow>
-                      );
-                    })}
-                  </Collapse>
-                </section>
-              ))}
+                              </span>
+                              {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
+                            </ListRow>
+                          );
+                        })}
+                      </Collapse>
+                    </section>
+                  ))}
+                </div>
+              </div>
             </div>
             {hasMore && (
               <div className="mx-3 mt-4">

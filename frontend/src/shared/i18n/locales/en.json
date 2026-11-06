@@ -127,10 +127,6 @@
       "title": "Needs attention",
       "description": "Errors and warnings about the shop’s operation",
       "critical": "Urgent · {{value}}",
-      "allClear": {
-        "title": "All good",
-        "sub": "Nothing needs attention"
-      },
       "processDown": {
         "title": "{{process}} is not responding",
         "worker": "Background jobs are not running",
@@ -336,7 +332,7 @@
       "durationMinutesIn_one": "{{count}} minute",
       "durationMinutesIn_other": "{{count}} minutes"
     },
-    "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
+    "remnawaveUnavailable": "Remnawave is unavailable",
     "nodes": {
       "title": "Nodes and countries",
       "description": "Connections and traffic today, from Remnawave",
@@ -2552,6 +2548,7 @@
   "advertising": {
     "title": "Advertising links",
     "empty": "No advertising links",
+    "noMatches": "Nothing found",
     "filters": {
       "statusAll": "All statuses",
       "statusActive": "Active",
@@ -2982,6 +2979,7 @@
       "rewardCount_other": "{{count}} payouts",
       "noRewards": "no rewards",
       "empty": "No referrals",
+      "noMatches": "Nothing found",
       "noPermission": "You don’t have permission to view the referral list."
     },
     "summary": {

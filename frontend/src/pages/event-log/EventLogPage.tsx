@@ -48,8 +48,10 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
+
+const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,2fr)_64px_minmax(0,1fr)_140px_16px] items-center gap-3";
 
 // Mirrors `EventCategory` (backend/app/core/events.py), in sidebar order.
 const CATEGORIES = [
@@ -140,17 +142,19 @@ export function EventLogPage() {
     // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
-        <SearchField
-          id="event-log-actor"
-          label={t("eventLog.filters.actor")}
-          hideLabel
-          compact
-          placeholder={t("eventLog.filters.actorPlaceholder")}
-          value={searchInput}
-          onChange={setSearchInput}
-        />
+        <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
+          <SearchField
+            id="event-log-actor"
+            label={t("eventLog.filters.actor")}
+            hideLabel
+            compact
+            placeholder={t("eventLog.filters.actorPlaceholder")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
 
-        <div className="w-44 min-w-0">
+        <div className="w-48 min-w-0">
           <SelectDropdown
             id="event-log-category"
             value={category}
@@ -208,20 +212,15 @@ export function EventLogPage() {
             )}
             {state.items.length > 0 && (
               <>
-                {/* overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar */}
-                <div className="overflow-x-auto overflow-y-hidden">
+                <div className={LIST_SCROLL_X_CLASS}>
                   <div className="min-w-[640px]">
-                    <div className="grid grid-cols-[2fr_64px_1fr_140px_16px] gap-4 border-b border-border px-3.5 pb-2.5">
-                      <span className={EYEBROW_CLASS}>
-                        {t("eventLog.columns.eventType")}
-                      </span>
-                      <span className={`-ml-3 ${EYEBROW_CLASS}`}>
-                        {t("eventLog.columns.occurredAt")}
-                      </span>
-                      <span className={EYEBROW_CLASS}>{t("eventLog.columns.actor")}</span>
-                      <span className={EYEBROW_CLASS}>{t("eventLog.detail.ip")}</span>
+                    <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
+                      <span className="col-span-2">{t("eventLog.columns.eventType")}</span>
+                      <span>{t("eventLog.columns.occurredAt")}</span>
+                      <span>{t("eventLog.columns.actor")}</span>
+                      <span>{t("eventLog.detail.ip")}</span>
                     </div>
-                    <div className="mt-1 flex flex-col gap-3">
+                    <div className="flex flex-col gap-3">
                       {groups.map((group) => (
                         <section key={group.key} className="flex flex-col">
                           <h3>
@@ -233,19 +232,17 @@ export function EventLogPage() {
                               count={group.items.length}
                             />
                           </h3>
-                          <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
+                          <Collapse open={!collapsedDays.has(group.key)} className={LIST_BODY_CLASS}>
                           {group.items.map((entry) => (
                             <ListRow
                     glass
                               key={entry.id}
                               onClick={() => setSelectedEntry(entry)}
-                              className="grid grid-cols-[2fr_64px_1fr_140px_16px] items-center gap-4"
+                              className={ROW_GRID_CLASSNAME}
                             >
-                              <span className="flex min-w-0 items-center gap-3 text-[13px] font-medium text-foreground/90">
-                                <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
-                                <span className="truncate">{eventTitle(entry, t)}</span>
-                              </span>
-                              <span className="-ml-3 text-[13px] tabular-nums text-foreground">
+                              <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
+                              <span className="truncate text-[13px] font-medium text-foreground/90">{eventTitle(entry, t)}</span>
+                              <span className="text-[13px] tabular-nums text-foreground">
                                 {formatTime(entry.occurred_at, i18n.language)}
                               </span>
                               <span className="truncate text-[13px] text-foreground">
