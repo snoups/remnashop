@@ -64,6 +64,11 @@ def test_deliver_report_prints_even_if_the_file_fails(
     assert "Warning: writing the report" in out
 
 
+def test_rollback_advice_says_to_stop_the_new_stack(tmp_path: Path) -> None:
+    for original in (LEGACY_HEAD, None, "0039"):
+        assert "migrate the database again" in rollback_advice(original, tmp_path)
+
+
 def test_rollback_advice_by_original_revision(tmp_path: Path) -> None:
     assert "start the old image" in rollback_advice(LEGACY_HEAD, tmp_path)
     assert "Restore backup" not in rollback_advice(LEGACY_HEAD, tmp_path)
@@ -204,6 +209,11 @@ async def test_failed_migrate_names_the_original_revision_and_backup(
     assert "Restore backup" in message
     assert str(dumps[0]) in message
     assert message in (tmp_path / FAILED_MARKER).read_text()
+    assert message.count("Fix the cause") == 1
+    assert "backups/legacy-migration-failed.txt" in message
+    assert message.index("docker compose run --rm remnashop cli") < message.index(
+        "legacy-migration-failed.txt"
+    )
 
 
 async def test_failed_rerun_names_the_original_revision_backup(
@@ -342,7 +352,7 @@ async def test_auto_migration_stops_after_a_failure_past_the_dump(
     with pytest.raises(LegacyMigrationError) as error:
         await run_auto_migration(_pointed(config, legacy_engine))
     assert "Migration failed: boom." in str(error.value)
-    assert str(tmp_path / FAILED_MARKER) in str(error.value)
+    assert "paused" in str(error.value)
     assert dumps == []
 
 
@@ -377,3 +387,47 @@ async def test_successful_migration_clears_the_marker(
     await run_migration(_pointed(config, legacy_engine))
     assert not (tmp_path / FAILED_MARKER).exists()
     assert "register the owner account" in capsys.readouterr().out
+
+
+async def test_failed_dump_leaves_no_partial_file(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+
+    async def broken_dump(config: AppConfig, path: Path) -> None:
+        path.write_bytes(b"partial")
+        raise RuntimeError("pg_dump failed: disk full")
+
+    _stub_run(monkeypatch, tmp_path, [], create_signed_database_dump=broken_dump)
+    with pytest.raises(RuntimeError, match="disk full"):
+        await run_migration(_pointed(config, legacy_engine))
+    assert list(tmp_path.glob("*.dump")) == []
+
+
+async def test_concurrent_migration_is_refused(
+    legacy_engine: AsyncEngine,
+    config: AppConfig,
+    legacy_at: LegacyAt,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await legacy_at(legacy_engine, "0039")
+    dumps: list[Path] = []
+    _stub_run(monkeypatch, tmp_path, dumps)
+    async with legacy_engine.connect() as other:
+        await other.execute(
+            text("SELECT pg_advisory_lock(:key)"), {"key": run_module.MIGRATION_LOCK_KEY}
+        )
+        with pytest.raises(LegacyMigrationError, match="already running"):
+            await run_migration(_pointed(config, legacy_engine))
+    assert dumps == []
+
+
+def test_checklist_fits_a_migration_done_by_up(tmp_path: Path) -> None:
+    report = render_report(_result(), tmp_path / "b.dump")
+    assert "Replace compose" not in report
+    assert "run `up` again" in report

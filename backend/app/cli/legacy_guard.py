@@ -10,14 +10,14 @@ from app.cli.legacy.run import run_auto_migration
 from app.cli.legacy.schema import LEGACY_REVISIONS, current_revision, new_chain_revisions
 from app.core.config import AppConfig
 from app.core.db.standalone import connect_args
+from app.core.logger import setup_logger
 
 # Run first by docker-entrypoint.sh's api branch, ahead of the pre-migration dump.
 
 _NEWER_MESSAGE: Final[str] = (
-    "The database version is newer than this release supports (revision {revision}). "
-    "Run the release that matches the database."
+    "The database belongs to a newer release than this image (revision {revision}): "
+    "run that release or restore a backup."
 )
-_LEGACY_REVISION_LENGTH: Final[int] = 4
 
 
 class StartAction(StrEnum):
@@ -31,10 +31,8 @@ def start_action(revision: Optional[str], new_revisions: frozenset[str]) -> Star
         return StartAction.START
     if revision in LEGACY_REVISIONS:
         return StartAction.MIGRATE
-    # an unknown old-style revision would loop the pre-migration dump and alembic on every restart
-    if len(revision) == _LEGACY_REVISION_LENGTH and revision.isdigit():
-        return StartAction.REFUSE
-    return StartAction.START
+    # an unknown revision would loop the pre-migration dump and alembic on every restart
+    return StartAction.REFUSE
 
 
 async def _revision(config: AppConfig) -> Optional[str]:
@@ -57,8 +55,11 @@ async def _guard(config: AppConfig) -> None:
 
 
 def main() -> None:
+    config = AppConfig.get()
+    # loguru's default sink prints frame locals: the crypt key and decrypted secrets
+    setup_logger(config, "api")
     try:
-        asyncio.run(_guard(AppConfig.get()))
+        asyncio.run(_guard(config))
     except LegacyMigrationError as error:
         print(f"Stopped: {error}", file=sys.stderr)
         sys.exit(1)

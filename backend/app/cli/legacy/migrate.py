@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Final, Optional, TypeVar
 
 from alembic import command
@@ -21,7 +22,6 @@ from app.cli.legacy.report import MigrationReport
 from app.cli.legacy.schema import (
     LEGACY_HEAD,
     LEGACY_REVISIONS,
-    NEW_MIGRATIONS_DIR,
     current_revision,
     new_chain_revisions,
     record_origin,
@@ -57,6 +57,7 @@ from app.core.db.models import (
 from app.core.db.singleton import SINGLETON_ID
 from app.core.enums import Currency, Locale, ReferralLevel, Role, SubscriptionStatus
 
+_NEW_MIGRATIONS_DIR: Final[Path] = Path(__file__).parents[2] / "core" / "db" / "migrations"
 _DEFAULT_LOCALE: Final[Locale] = Locale.EN
 _DEFAULT_ANCHOR: Final[Currency] = Currency.USD
 _ENCRYPTED_PREFIX: Final[str] = "enc_"
@@ -143,7 +144,7 @@ async def upgrade_legacy_schema(engine: AsyncEngine) -> str:
 
 def _create_new_schema(connection: Connection) -> None:
     config = Config()
-    config.set_main_option("script_location", str(NEW_MIGRATIONS_DIR))
+    config.set_main_option("script_location", str(_NEW_MIGRATIONS_DIR))
     config.attributes["connection"] = connection
     command.upgrade(config, "head")
 

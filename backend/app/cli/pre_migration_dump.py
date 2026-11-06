@@ -1,20 +1,17 @@
 import asyncio
-from pathlib import Path
-from typing import Final, Optional
+from typing import Optional
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 from app.core.config import AppConfig
-from app.core.constants import BACKUP_DIR, BASE_DIR, DATETIME_FILE_FORMAT
+from app.core.constants import ALEMBIC_INI, BACKUP_DIR, DATETIME_FILE_FORMAT
 from app.core.db.standalone import standalone_session
 from app.core.utils.time import datetime_now
 from app.modules.backups import create_signed_database_dump
 
 # Run by docker-entrypoint.sh before `alembic upgrade head`; a failure stops the migration.
-
-_ALEMBIC_INI: Final[Path] = BASE_DIR / "alembic.ini"
 
 
 async def _current_revision(config: AppConfig) -> Optional[str]:
@@ -29,7 +26,7 @@ async def _current_revision(config: AppConfig) -> Optional[str]:
 
 async def main() -> None:
     config = AppConfig.get()
-    head = ScriptDirectory.from_config(Config(str(_ALEMBIC_INI))).get_current_head()
+    head = ScriptDirectory.from_config(Config(str(ALEMBIC_INI))).get_current_head()
     current = await _current_revision(config)
     # a fresh database has nothing to lose, an up-to-date one nothing to migrate
     if current is None or current == head:

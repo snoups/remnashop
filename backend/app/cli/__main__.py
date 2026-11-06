@@ -12,6 +12,7 @@ from app.cli.restore_backup import list_database_backups, run_restore
 from app.core.config import AppConfig
 from app.core.db.crypt_key import reset_encrypted_secrets
 from app.core.db.standalone import standalone_session
+from app.core.logger import setup_logger
 from app.modules.settings import enable_password_login
 
 # Break-glass tool, run via `docker compose run --rm remnashop cli`.
@@ -195,4 +196,5 @@ async def _run() -> None:
 
 
 if __name__ == "__main__":
+    setup_logger(AppConfig.get(), "cli")
     asyncio.run(_run())

@@ -7,17 +7,18 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from app.core.constants import ALEMBIC_INI
+
 LEGACY_HEAD: Final[str] = "0046"
 LEGACY_REVISIONS: Final[frozenset[str]] = frozenset(f"{number:04d}" for number in range(1, 47))
 _MIGRATIONS_DIR: Final[Path] = Path(__file__).parent / "migrations"
-NEW_MIGRATIONS_DIR: Final[Path] = Path(__file__).parents[2] / "core" / "db" / "migrations"
 # kept on the old schema: the revision the old image ran on, before our upgrade to LEGACY_HEAD
 _ORIGIN_PREFIX: Final[str] = "remnashop-legacy-origin:"
 
 
 def new_chain_revisions() -> frozenset[str]:
     """Every revision of this image's own chain, the head and those before it."""
-    script = ScriptDirectory(str(NEW_MIGRATIONS_DIR))
+    script = ScriptDirectory.from_config(Config(str(ALEMBIC_INI)))
     return frozenset(revision.revision for revision in script.walk_revisions())
 
 

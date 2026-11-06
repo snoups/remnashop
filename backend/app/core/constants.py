@@ -18,6 +18,7 @@ ONE_CENT: Final[Decimal] = Decimal("0.01")
 ZERO_AMOUNT: Final[Decimal] = Decimal(0)
 BACKUP_DIR: Final[Path] = MEDIA_DIR / "backups"
 LOG_DIR: Final[Path] = BASE_DIR / "logs"
+ALEMBIC_INI: Final[Path] = BASE_DIR / "alembic.ini"
 
 DOMAIN_REGEX: Final[Pattern[str]] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
 LOGIN_PATTERN: Final[Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
