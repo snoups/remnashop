@@ -6,6 +6,7 @@ from typing import Final, Optional
 from remnapy import RemnawaveSDK
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PurchaseType
 from app.core.error_codes import ErrorCode
@@ -41,6 +42,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         pricing_repository: PricingRepository,
         idempotency_repository: PurchaseIdempotencyRepository,
         user_repository: UserRepository,
+        config: AppConfig,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -54,6 +56,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             uow,
             event_publisher,
             user_repository,
+            config,
         )
         self._renew = RenewPurchase(
             subscription_repository,

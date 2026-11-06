@@ -13,6 +13,7 @@ from remnapy import RemnawaveSDK
 from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.core.config import AppConfig
 from app.core.db.models import SubscriptionPurchaseIdempotency, User
 from app.core.db.models.bot_settings import BotSettings
 from app.core.db.models.transaction import Transaction
@@ -694,6 +695,7 @@ async def race(
                     PricingRepository(purchase_session),
                     PurchaseIdempotencyRepository(purchase_session),
                     UserRepository(subscriptions.session),
+                    AppConfig.get(),
                 ),
                 purchase_session=purchase_session,
             )

@@ -212,6 +212,15 @@ class PanelSyncResultResponse(BaseModel):
     finished_at: datetime
 
 
+class PanelSyncPullRequest(BaseModel):
+    adopt_unnamed: bool = True
+
+
+class PanelSyncPushRequest(BaseModel):
+    recreate_missing: bool = True
+    delete_orphans: bool = True
+
+
 class PanelSyncDirectionStatusResponse(BaseModel):
     direction: PanelSyncDirection
     running: bool

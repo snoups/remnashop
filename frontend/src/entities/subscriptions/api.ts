@@ -270,9 +270,15 @@ export async function getPanelSyncStatus(signal?: AbortSignal): Promise<PanelSyn
   return apiGet<PanelSyncStatus>("/subscriptions/panel-sync", signal);
 }
 
-export async function startPanelSync(direction: PanelSyncDirection): Promise<PanelSyncDirectionStatus> {
+/** each direction reads its own: pull adopt_unnamed, push recreate_missing and delete_orphans */
+export type PanelSyncOptions = Record<"adopt_unnamed" | "recreate_missing" | "delete_orphans", boolean>;
+
+export async function startPanelSync(
+  direction: PanelSyncDirection,
+  options: PanelSyncOptions,
+): Promise<PanelSyncDirectionStatus> {
   const action = direction === "FROM_PANEL" ? "pull" : "push";
-  return apiPost<PanelSyncDirectionStatus, Record<string, never>>(`/subscriptions/panel-sync/actions/${action}`, {});
+  return apiPost<PanelSyncDirectionStatus, PanelSyncOptions>(`/subscriptions/panel-sync/actions/${action}`, options);
 }
 
 export async function getSubscriptionPanelDiff(

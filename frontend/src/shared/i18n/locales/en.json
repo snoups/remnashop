@@ -3553,10 +3553,24 @@
         "push": "To panel",
         "pullAction": "Update from panel",
         "pullTitle": "Update subscriptions from the panel?",
-        "pullConfirm": "The shop takes the status, expiry, limits, squads, tag and link from the panel for subscriptions that differ.\n\nA subscription with no panel user is deleted from the shop.\n\nA panel user with no subscription is imported if they belong to a shop user.",
+        "pullConfirm": "The shop takes the status, expiry, limits, squads, tag and link from the panel for subscriptions that differ.\n\nA subscription with no panel user is deleted from the shop.\n\nA panel user this shop created that has no subscription is imported.",
         "pushAction": "Send to panel",
         "pushTitle": "Send subscriptions to the panel?",
-        "pushConfirm": "The panel takes the expiry, limits, squads, on/off state and the owner’s contacts from the shop for subscriptions that differ.\n\nIf a subscription has no panel user, a new one is created and the subscription link changes.\n\nA panel user with no subscription is deleted from the panel if they belong to a shop user. This cannot be undone.",
+        "pushConfirm": "The panel takes the expiry, limits, squads, on/off state and the owner’s contacts from the shop for subscriptions that differ.",
+        "options": {
+          "adopt_unnamed": {
+            "label": "Also import panel users the shop didn’t create",
+            "hint": "They are matched to a shop user by Telegram ID or email. Turn it off when the panel is shared with another shop or bot."
+          },
+          "recreate_missing": {
+            "label": "Recreate missing panel users",
+            "hint": "If a subscription has no panel user, a new one is created and the subscription link changes."
+          },
+          "delete_orphans": {
+            "label": "Delete panel users without a subscription",
+            "hint": "Only panel users this shop created. This cannot be undone."
+          }
+        },
         "started": "Sync started.",
         "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{missing}} deleted, {{failed}} failed.",
         "finishedToPanel": "Sync finished: {{updated}} updated, {{recreated}} recreated in the panel, {{deleted}} deleted from the panel, {{failed}} failed.",

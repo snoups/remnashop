@@ -27,3 +27,13 @@ def test_rejects_empty_webhook_secret() -> None:
 def test_accepts_a_real_token_and_webhook_secret() -> None:
     config = RemnawaveConfig(token="real-token", webhook_secret="real-secret")
     assert config.token.get_secret_value() == "real-token"
+
+
+@pytest.mark.parametrize("prefix", ["", "RS_", "rs-", "rs.", "a" * 17])
+def test_rejects_a_username_prefix_the_panel_or_parser_cannot_take(prefix: str) -> None:
+    with pytest.raises(ValueError, match="USERNAME_PREFIX"):
+        RemnawaveConfig(token="real-token", username_prefix=prefix)
+
+
+def test_username_prefix_defaults_to_rs() -> None:
+    assert RemnawaveConfig(token="real-token").username_prefix == "rs_"

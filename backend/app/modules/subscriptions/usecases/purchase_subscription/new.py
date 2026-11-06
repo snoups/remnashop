@@ -5,6 +5,7 @@ from loguru import logger
 from remnapy import RemnawaveSDK
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
@@ -44,6 +45,7 @@ class NewPurchase:
         uow: UnitOfWork,
         event_publisher: EventPublisher,
         user_repository: UserRepository,
+        config: AppConfig,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -52,6 +54,7 @@ class NewPurchase:
         self._uow = uow
         self._event_publisher = event_publisher
         self._user_repository = user_repository
+        self._prefix = config.remnawave.username_prefix
 
     async def run(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         async with self._uow:
@@ -88,7 +91,7 @@ class NewPurchase:
         plan = data.plan_snapshot
         expire_at = datetime_now() + timedelta(days=data.duration_days)
         panel_user = await self._remnawave_sdk.users.create_user(
-            new_panel_user(buyer, plan, expire_at)
+            new_panel_user(buyer, plan, expire_at, self._prefix)
         )
 
         late_trials: list[SubscriptionDto] = []

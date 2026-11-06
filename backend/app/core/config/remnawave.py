@@ -1,11 +1,16 @@
-from typing import Optional
+import re
+from typing import Final, Optional
 
 from httpx import Cookies
 from pydantic import SecretStr, ValidationInfo, field_validator
 
 from app.core.config.base import BaseConfig
 from app.core.config.validators import validate_not_change_me
+from app.core.constants import REMNASHOP_PREFIX
 from app.core.utils.validators import is_valid_domain
+
+# the panel caps usernames at 36: prefix + int32 id + "_" + 8 hex
+_USERNAME_PREFIX: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,16}$")
 
 
 class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
@@ -16,6 +21,7 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     cf_client_secret: SecretStr = SecretStr("")
     webhook_secret: Optional[SecretStr] = None
     cookie: SecretStr = SecretStr("")
+    username_prefix: str = REMNASHOP_PREFIX
 
     @property
     def is_external(self) -> bool:
@@ -63,6 +69,13 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
         if field is None:
             return field
         validate_not_change_me(field, info)
+        return field
+
+    @field_validator("username_prefix")
+    @classmethod
+    def validate_username_prefix(cls, field: str) -> str:
+        if not _USERNAME_PREFIX.match(field):
+            raise ValueError("REMNAWAVE_USERNAME_PREFIX must be 1-16 of a-z, 0-9 and _")
         return field
 
     @field_validator("cookie")

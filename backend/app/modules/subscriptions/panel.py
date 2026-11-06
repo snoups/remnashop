@@ -9,7 +9,7 @@ from remnapy import RemnawaveSDK
 from remnapy.enums import UserStatus
 from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserResponseDto
 
-from app.core.constants import GB_TO_BYTES, INT32_MAX, INT64_MAX, REMNASHOP_PREFIX, WEB_PREFIX
+from app.core.constants import GB_TO_BYTES, INT32_MAX, INT64_MAX, WEB_PREFIX
 from app.core.db.uow import UnitOfWork
 from app.core.enums import SubscriptionStatus
 from app.core.utils.time import datetime_now
@@ -23,9 +23,6 @@ from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
-_PANEL_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}(\d+)_[0-9a-f]{{8}}$")
-_LEGACY_TELEGRAM_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}(\d+)$")
-_LEGACY_WEB_USERNAME: Final[re.Pattern[str]] = re.compile(rf"^{REMNASHOP_PREFIX}{WEB_PREFIX}(\d+)$")
 # null clears these in the panel; the SDK sends every field it was given, and
 # the panel refuses null in the others with a 400
 _PANEL_NULLABLE: Final[frozenset[str]] = frozenset({"tag", "external_squad_uuid"})
@@ -44,33 +41,35 @@ def panel_update(**fields: Any) -> UpdateUserRequestDto:
     return UpdateUserRequestDto(**_sent(fields))
 
 
-def _panel_username(user_id: int) -> str:
-    return f"{REMNASHOP_PREFIX}{user_id}_{uuid4().hex[:8]}"
+def _panel_username(prefix: str, user_id: int) -> str:
+    return f"{prefix}{user_id}_{uuid4().hex[:8]}"
 
 
 def shop_user_key_from_username(
-    username: str,
+    username: str, prefix: str
 ) -> Optional[tuple[Literal["id", "telegram_id"], int]]:
     """The shop user a panel user was named for: by id in the current format
-    and the legacy web one, by Telegram id in the legacy `rs_<telegram_id>`."""
-    keys: tuple[tuple[re.Pattern[str], Literal["id", "telegram_id"], int], ...] = (
-        (_PANEL_USERNAME, "id", INT32_MAX),
-        (_LEGACY_WEB_USERNAME, "id", INT32_MAX),
-        (_LEGACY_TELEGRAM_USERNAME, "telegram_id", INT64_MAX),
+    and the legacy web one, by Telegram id in the legacy `<prefix><telegram_id>`."""
+    keys: tuple[tuple[str, Literal["id", "telegram_id"], int], ...] = (
+        (r"(\d+)_[0-9a-f]{8}", "id", INT32_MAX),
+        (rf"{WEB_PREFIX}(\d+)", "id", INT32_MAX),
+        (r"(\d+)", "telegram_id", INT64_MAX),
     )
     for pattern, key, limit in keys:
-        if match := pattern.match(username):
+        if match := re.fullmatch(re.escape(prefix) + pattern, username):
             # usernames are panel-side input; a number past the column is no match
             value = int(match.group(1))
             return (key, value) if value <= limit else None
     return None
 
 
-def new_panel_user(user: UserDto, plan: PlanSnapshot, expire_at: datetime) -> CreateUserRequestDto:
+def new_panel_user(
+    user: UserDto, plan: PlanSnapshot, expire_at: datetime, prefix: str
+) -> CreateUserRequestDto:
     return CreateUserRequestDto(
         **_sent(
             {
-                "username": _panel_username(user.id),
+                "username": _panel_username(prefix, user.id),
                 "telegram_id": user.telegram_id,
                 "email": user.email,
                 "expire_at": expire_at,
@@ -85,12 +84,14 @@ def new_panel_user(user: UserDto, plan: PlanSnapshot, expire_at: datetime) -> Cr
     )
 
 
-def panel_user_from_row(subscription: SubscriptionDto, user: UserDto) -> CreateUserRequestDto:
+def panel_user_from_row(
+    subscription: SubscriptionDto, user: UserDto, prefix: str
+) -> CreateUserRequestDto:
     """A new panel user for a row whose own one is gone."""
     return CreateUserRequestDto(
         **_sent(
             {
-                "username": _panel_username(user.id),
+                "username": _panel_username(prefix, user.id),
                 "telegram_id": user.telegram_id,
                 "email": user.email,
                 # the panel takes a past date on create, unlike on update

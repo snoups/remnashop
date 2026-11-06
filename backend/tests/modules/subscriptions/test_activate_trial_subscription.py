@@ -5,6 +5,7 @@ import pytest
 from remnapy import RemnawaveSDK
 from sqlalchemy import select
 
+from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PlanType
@@ -77,6 +78,7 @@ async def test_activates_a_trial_and_spends_the_flag(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     use_case = ActivateTrialSubscriptionUseCase(
         user_repository,
@@ -124,6 +126,7 @@ async def test_rejects_when_the_flag_is_already_spent(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     use_case = ActivateTrialSubscriptionUseCase(
         user_repository,
@@ -161,6 +164,7 @@ async def test_a_second_activation_with_a_stale_actor_is_rejected(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     use_case = ActivateTrialSubscriptionUseCase(
         user_repository,
@@ -201,6 +205,7 @@ async def test_a_failed_activation_gives_the_trial_back(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
 
     async def _panel_down(*_args: object, **_kwargs: object) -> None:
@@ -243,6 +248,7 @@ async def test_a_paid_trial_is_not_activated_for_free(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     use_case = ActivateTrialSubscriptionUseCase(
         user_repository,

@@ -8,6 +8,7 @@ from remnapy import RemnawaveSDK
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.subscription import Subscription
 from app.core.db.uow import UnitOfWork
@@ -58,6 +59,7 @@ def purchase(
         pricing_repository,
         idempotency_repository,
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
 
 

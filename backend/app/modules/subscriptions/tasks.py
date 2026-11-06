@@ -10,6 +10,8 @@ from app.modules.subscriptions.dto import (
     PlanSnapshot,
     ProcessRemnawaveWebhookDto,
     PurchaseSubscriptionDto,
+    SyncFromPanelOptionsDto,
+    SyncToPanelOptionsDto,
 )
 from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
@@ -82,11 +84,17 @@ async def run_panel_sync_task(
     direction: str,
     from_panel: FromDishka[SyncAllFromPanelUseCase],
     to_panel: FromDishka[SyncAllToPanelUseCase],
+    # defaults for a message queued before the options existed
+    adopt_unnamed: bool = True,
+    recreate_missing: bool = True,
+    delete_orphans: bool = True,
 ) -> None:
     if PanelSyncDirection(direction) is PanelSyncDirection.FROM_PANEL:
-        await from_panel.system()
+        await from_panel.system(SyncFromPanelOptionsDto(adopt_unnamed=adopt_unnamed))
     else:
-        await to_panel.system()
+        await to_panel.system(
+            SyncToPanelOptionsDto(recreate_missing=recreate_missing, delete_orphans=delete_orphans)
+        )
 
 
 @broker.task(schedule=[{"cron": "15 3 * * *"}])

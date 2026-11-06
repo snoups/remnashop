@@ -373,6 +373,18 @@ class PanelSyncResultDto(BaseDto):
     finished_at: datetime
 
 
+@dataclass(frozen=True, kw_only=True)
+class SyncFromPanelOptionsDto:
+    # import panel users the shop didn't name, matched by Telegram id or email
+    adopt_unnamed: bool
+
+
+@dataclass(frozen=True, kw_only=True)
+class SyncToPanelOptionsDto:
+    recreate_missing: bool
+    delete_orphans: bool
+
+
 class PanelSyncStatusDto(BaseDto):
     direction: PanelSyncDirection
     running: bool

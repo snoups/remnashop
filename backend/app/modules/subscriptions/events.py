@@ -97,6 +97,7 @@ class PanelSyncStartedEvent(ActorEvent):
 
     category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
     direction: PanelSyncDirection
+    options: dict[str, bool] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)

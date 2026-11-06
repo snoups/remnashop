@@ -7,11 +7,11 @@ from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.subscriptions.dispatch import PanelSyncDispatch
-from app.modules.subscriptions.dto import PanelSyncStatusDto
+from app.modules.subscriptions.dto import PanelSyncStatusDto, SyncToPanelOptionsDto
 from app.modules.subscriptions.panel_sync import start_panel_sync
 
 
-class StartPanelSyncToUseCase(UseCase[None, PanelSyncStatusDto]):
+class StartPanelSyncToUseCase(UseCase[SyncToPanelOptionsDto, PanelSyncStatusDto]):
     required_permission = Permission.SUBSCRIPTIONS_PANEL_SYNC_TO
 
     def __init__(
@@ -26,7 +26,7 @@ class StartPanelSyncToUseCase(UseCase[None, PanelSyncStatusDto]):
         self._event_publisher = event_publisher
         self._panel_sync_dispatch = panel_sync_dispatch
 
-    async def _execute(self, actor: Actor, data: None) -> PanelSyncStatusDto:
+    async def _execute(self, actor: Actor, data: SyncToPanelOptionsDto) -> PanelSyncStatusDto:
         return await start_panel_sync(
             self._redis,
             self._uow,
@@ -34,4 +34,5 @@ class StartPanelSyncToUseCase(UseCase[None, PanelSyncStatusDto]):
             self._panel_sync_dispatch,
             actor,
             PanelSyncDirection.TO_PANEL,
+            data,
         )

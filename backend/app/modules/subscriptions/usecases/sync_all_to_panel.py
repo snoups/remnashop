@@ -4,13 +4,14 @@ from remnapy import RemnawaveSDK
 from remnapy.models import UserResponseDto
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PanelSyncDirection, SubscriptionStatus
 from app.core.exceptions import RemnawavePanelUnavailableError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.dto import PanelSyncResultDto
+from app.modules.subscriptions.dto import PanelSyncResultDto, SyncToPanelOptionsDto
 from app.modules.subscriptions.events import PanelSyncCompletedEvent
 from app.modules.subscriptions.panel_sync import (
     finish_panel_sync,
@@ -27,10 +28,11 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
 
-class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
+class SyncAllToPanelUseCase(UseCase[SyncToPanelOptionsDto, PanelSyncResultDto]):
     """Puts every live subscription's configuration into the panel where it
     differs; a subscription whose panel user is gone gets a new one, and a shop
-    user's panel user that no subscription stands for is deleted."""
+    user's panel user that no subscription stands for is deleted, each unless
+    the options turn it off."""
 
     required_permission = None
 
@@ -42,6 +44,7 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         uow: UnitOfWork,
         redis: Redis,
         event_publisher: EventPublisher,
+        config: AppConfig,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._user_repository = user_repository
@@ -49,12 +52,13 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         self._uow = uow
         self._redis = redis
         self._event_publisher = event_publisher
+        self._prefix = config.remnawave.username_prefix
 
-    async def _execute(self, actor: Actor, data: None) -> PanelSyncResultDto:
+    async def _execute(self, actor: Actor, data: SyncToPanelOptionsDto) -> PanelSyncResultDto:
         async with holding_panel_sync(self._redis, PanelSyncDirection.TO_PANEL):
-            return await self._sync(actor)
+            return await self._sync(actor, data)
 
-    async def _sync(self, actor: Actor) -> PanelSyncResultDto:
+    async def _sync(self, actor: Actor, options: SyncToPanelOptionsDto) -> PanelSyncResultDto:
         async with self._uow:
             subscriptions = await self._subscription_repository.list_non_terminal()
             linked = await self._subscription_repository.list_linked_remnawave_user_ids()
@@ -79,12 +83,15 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
                     if current.status is SubscriptionStatus.DELETED:
                         continue  # deleted while the sync ran
                     if user is None:
+                        if not options.recreate_missing:
+                            continue
                         await recreate_in_panel(
                             self._remnawave_sdk,
                             self._subscription_repository,
                             self._user_repository,
                             self._uow,
                             current,
+                            self._prefix,
                         )
                         recreated += 1
                         continue
@@ -103,7 +110,9 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
                     continue
                 updated += 1
             else:
-                deleted, delete_failed = await self._delete_orphans(actor, snapshot, linked)
+                deleted, delete_failed = await self._delete_orphans(
+                    actor, snapshot, linked, options.delete_orphans
+                )
                 failed += delete_failed
         except Exception:
             logger.exception(f"{actor.log} Panel sync to the panel failed")
@@ -135,20 +144,28 @@ class SyncAllToPanelUseCase(UseCase[None, PanelSyncResultDto]):
         return result
 
     async def _delete_orphans(
-        self, actor: Actor, snapshot: dict[int, UserResponseDto], linked: set[int]
+        self,
+        actor: Actor,
+        snapshot: dict[int, UserResponseDto],
+        linked: set[int],
+        enabled: bool,
     ) -> tuple[int, int]:
         """(deleted, failed) for the shop users' panel users no subscription
         stands for; a panel user the shop didn't name is someone else's."""
+        if not enabled:
+            return 0, 0
         now = datetime_now()
         orphans = [user for user in snapshot.values() if is_orphan(user, linked, now)]
         deleted = failed = 0
         for position, user in enumerate(orphans):
             try:
                 async with self._uow:
-                    owner = await match_shop_user(self._user_repository, user)
+                    owner = await match_shop_user(self._user_repository, user, self._prefix)
                     if owner is None:
                         continue
-                    named = await named_shop_user(self._user_repository, user.username)
+                    named = await named_shop_user(
+                        self._user_repository, user.username, self._prefix
+                    )
                     if named is None or named.id != owner.id:
                         # a hand-made panel user the shop only matched by contact
                         logger.warning(

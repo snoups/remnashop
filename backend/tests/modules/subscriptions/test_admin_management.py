@@ -9,6 +9,7 @@ from remnapy.models import UpdateUserRequestDto
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import AppConfig
 from app.core.db.models import EventOutboxEntry
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.user import User
@@ -118,6 +119,7 @@ def purchase_use_case(
         PricingRepository(subscription_repository.session),
         idempotency_repository,
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
 
 

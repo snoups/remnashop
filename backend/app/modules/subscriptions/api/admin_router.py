@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, status
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
@@ -18,6 +18,8 @@ from app.modules.subscriptions.api.schemas import (
     PanelSquadListResponse,
     PanelSquadResponse,
     PanelSyncDirectionStatusResponse,
+    PanelSyncPullRequest,
+    PanelSyncPushRequest,
     PanelSyncStatusResponse,
     SubscriptionDetailResponse,
     SubscriptionListItemResponse,
@@ -33,6 +35,8 @@ from app.modules.subscriptions.dto import (
     GrantSubscriptionDto,
     ListSubscriptionsDto,
     SetSubscriptionEnabledDto,
+    SyncFromPanelOptionsDto,
+    SyncToPanelOptionsDto,
     UpdateSubscriptionDto,
     UpdateSubscriptionSquadsDto,
 )
@@ -86,10 +90,13 @@ async def get_panel_sync_status(
 async def start_panel_sync_from_panel(
     use_case: FromDishka[StartPanelSyncFromUseCase],
     actor: Actor = Depends(require_admin),
+    body: PanelSyncPullRequest = Body(default_factory=PanelSyncPullRequest),
 ) -> PanelSyncDirectionStatusResponse:
-    return PanelSyncDirectionStatusResponse.model_validate(
-        await use_case(actor), from_attributes=True
+    result = await use_case(
+        actor,
+        SyncFromPanelOptionsDto(adopt_unnamed=body.adopt_unnamed),
     )
+    return PanelSyncDirectionStatusResponse.model_validate(result, from_attributes=True)
 
 
 @router.post(
@@ -102,10 +109,15 @@ async def start_panel_sync_from_panel(
 async def start_panel_sync_to_panel(
     use_case: FromDishka[StartPanelSyncToUseCase],
     actor: Actor = Depends(require_admin),
+    body: PanelSyncPushRequest = Body(default_factory=PanelSyncPushRequest),
 ) -> PanelSyncDirectionStatusResponse:
-    return PanelSyncDirectionStatusResponse.model_validate(
-        await use_case(actor), from_attributes=True
+    result = await use_case(
+        actor,
+        SyncToPanelOptionsDto(
+            recreate_missing=body.recreate_missing, delete_orphans=body.delete_orphans
+        ),
     )
+    return PanelSyncDirectionStatusResponse.model_validate(result, from_attributes=True)
 
 
 @router.get("", response_model=SubscriptionPageResponse)

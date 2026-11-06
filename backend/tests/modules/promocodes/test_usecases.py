@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import delete
 
+from app.core.config import AppConfig
 from app.core.db.models.plan import Plan
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
@@ -428,6 +429,7 @@ def _activate_use_case(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     return ActivatePromocodeUseCase(
         promocode_repository,
@@ -932,6 +934,7 @@ async def test_activate_duration_reward_extends_subscription_expiry(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     subscription = await purchase_use_case(
         actor,
@@ -1006,6 +1009,7 @@ async def test_activate_traffic_reward_dispatches_the_addon_grant(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     subscription = await purchase_use_case(
         actor,

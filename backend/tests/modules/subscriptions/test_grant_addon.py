@@ -5,6 +5,7 @@ import pytest
 from remnapy import RemnawaveSDK
 from sqlalchemy import select
 
+from app.core.config import AppConfig
 from app.core.constants import GB_TO_BYTES
 from app.core.db.models import EventOutboxEntry
 from app.core.db.uow import UnitOfWork
@@ -92,6 +93,7 @@ async def _create_subscription(
         PricingRepository(subscription_repository.session),
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
+        AppConfig.get(),
     )
     subscription = await use_case(
         buyer,
