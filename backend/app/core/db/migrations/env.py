@@ -1,10 +1,8 @@
 import asyncio
 from logging.config import fileConfig
-from typing import Iterable, Optional, Union
+from typing import Optional
 
 from alembic import context
-from alembic.operations import MigrationScript
-from alembic.runtime.migration import MigrationContext
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -22,17 +20,6 @@ if config.config_file_name is not None:
 target_metadata = BaseSql.metadata
 
 
-def process_revision_directives(
-    context: MigrationContext,
-    revision: Union[str, Iterable[Optional[str]], Iterable[str]],
-    directives: list[MigrationScript],
-) -> None:
-    # Always overwrite the one revision file instead of chaining new versions.
-    migration_script = directives[0]
-    migration_script.rev_id = "current"
-    migration_script.down_revision = None  # type: ignore[attr-defined]
-
-
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -42,7 +29,6 @@ def run_migrations_offline() -> None:
         compare_server_default=True,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        process_revision_directives=process_revision_directives,
         transaction_per_migration=True,
     )
 
@@ -56,7 +42,6 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
-        process_revision_directives=process_revision_directives,
         transaction_per_migration=True,
     )
 
