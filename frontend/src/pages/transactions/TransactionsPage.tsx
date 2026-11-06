@@ -40,7 +40,7 @@ import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
 import { Tag } from "@shared/ui/Tag";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
@@ -162,10 +162,9 @@ export function TransactionsPage() {
 
   return (
     // as the event log: the filter bar floats over a scroller of its own, whose fade clears the bar.
-    // Desktop keeps the bar on one line, the 68px under it assumes its 48px. lg: 32px between filters
-    // (the tiles' 20px plus 6px either side) puts each one over its tile, inset as the bar's padding.
+    // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
     <div data-fills-main className={PAGE_CLASS}>
-      <div className={`${PAGE_TOOLBAR_CLASS} lg:gap-8`}>
+      <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-40 flex-1 md:min-w-0">
           <SelectDropdown
             id="transactions-status"
@@ -308,89 +307,93 @@ export function TransactionsPage() {
             )}
             {state.items.length > 0 && (
               <>
-                <div
-                  className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
-                >
-                  <span className="col-span-2">{t("transactions.columns.order")}</span>
-                  <span>{t("transactions.columns.amount")}</span>
-                  <span>{t("transactions.columns.created")}</span>
-                  <span>{t("transactions.columns.status")}</span>
-                  <span />
-                </div>
-                <div className="flex flex-col gap-3">
-                  {groups.map((group) => (
-                    <section key={group.key} className="flex flex-col">
-                      <h3>
-                        <GroupToggle
-                              glass
-                          open={!collapsedDays.has(group.key)}
-                          onToggle={() => toggleDay(group.key)}
-                          label={formatDayLabel(group.date, t, i18n.language)}
-                          count={group.items.length}
-                        />
-                      </h3>
-                      <Collapse open={!collapsedDays.has(group.key)} className={`${LIST_BODY_CLASS}`}>
-                        {group.items.map((order) => {
-                          const symbol = currencySymbol(order.currency);
-                          const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
+                <div className={LIST_SCROLL_X_CLASS}>
+                  <div className="min-w-[700px]">
+                    <div
+                      className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
+                    >
+                      <span className="col-span-2">{t("transactions.columns.order")}</span>
+                      <span>{t("transactions.columns.amount")}</span>
+                      <span>{t("transactions.columns.created")}</span>
+                      <span>{t("transactions.columns.status")}</span>
+                      <span />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {groups.map((group) => (
+                        <section key={group.key} className="flex flex-col">
+                          <h3>
+                            <GroupToggle
+                                  glass
+                              open={!collapsedDays.has(group.key)}
+                              onToggle={() => toggleDay(group.key)}
+                              label={formatDayLabel(group.date, t, i18n.language)}
+                              count={group.items.length}
+                            />
+                          </h3>
+                          <Collapse open={!collapsedDays.has(group.key)} className={LIST_BODY_CLASS}>
+                            {group.items.map((order) => {
+                              const symbol = currencySymbol(order.currency);
+                              const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
 
-                          return (
-                            <ListRow
-                    glass
-                              key={order.id}
-                              type="button"
-                              disabled={!canViewDetails}
-                              onClick={() => setDetailsOrder(order)}
-                              className={ROW_GRID_CLASSNAME}
-                            >
-                              <span
-                                className={`flex size-8 items-center justify-center rounded-full text-[13px] font-bold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
-                              >
-                                {symbol}
-                              </span>
-                              <span className="min-w-0">
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <span className="truncate text-[13px] font-medium text-foreground">
-                                    {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
-                                    {" · "}
-                                    {t("plans.daysShort", { count: order.duration_days })}
+                              return (
+                                <ListRow
+                        glass
+                                  key={order.id}
+                                  type="button"
+                                  disabled={!canViewDetails}
+                                  onClick={() => setDetailsOrder(order)}
+                                  className={ROW_GRID_CLASSNAME}
+                                >
+                                  <span
+                                    className={`flex size-8 items-center justify-center rounded-full text-[13px] font-bold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
+                                  >
+                                    {symbol}
                                   </span>
-                                  <Tag>
-                                    {t(`transactions.purchaseType.${order.purchase_type}`)}
-                                  </Tag>
-                                </span>
-                                <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                                  #{order.id} &middot; {gatewayLabel}
-                                </span>
-                              </span>
-                              <span className="tabular-nums">
-                                <span className="block text-[13px] font-semibold text-foreground">
-                                  {formatMoney(order.final_price, order.currency, i18n.language, true)}
-                                </span>
-                                {hasDiscount(order) && (
-                                  <span className="block text-[12px] text-muted-foreground">
-                                    <span className="line-through">
-                                      {formatMoney(order.base_price, order.currency, i18n.language, true)}
-                                    </span>{" "}
-                                    <span className="text-primary">−{totalDiscountPercent(order)}%</span>
+                                  <span className="min-w-0">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <span className="truncate text-[13px] font-medium text-foreground">
+                                        {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
+                                        {" · "}
+                                        {t("plans.daysShort", { count: order.duration_days })}
+                                      </span>
+                                      <Tag>
+                                        {t(`transactions.purchaseType.${order.purchase_type}`)}
+                                      </Tag>
+                                    </span>
+                                    <span className="block truncate font-mono text-[12px] text-muted-foreground">
+                                      #{order.id} &middot; {gatewayLabel}
+                                    </span>
                                   </span>
-                                )}
-                              </span>
-                              <span className="text-[13px] tabular-nums text-foreground">
-                                {formatTime(order.created_at, i18n.language)}
-                              </span>
-                              <span>
-                                <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
-                                  {t(`transactions.status.${order.status}`)}
-                                </Badge>
-                              </span>
-                              {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
-                            </ListRow>
-                          );
-                        })}
-                      </Collapse>
-                    </section>
-                  ))}
+                                  <span className="tabular-nums">
+                                    <span className="block text-[13px] font-semibold text-foreground">
+                                      {formatMoney(order.final_price, order.currency, i18n.language, true)}
+                                    </span>
+                                    {hasDiscount(order) && (
+                                      <span className="block text-[12px] text-muted-foreground">
+                                        <span className="line-through">
+                                          {formatMoney(order.base_price, order.currency, i18n.language, true)}
+                                        </span>{" "}
+                                        <span className="text-primary">−{totalDiscountPercent(order)}%</span>
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-[13px] tabular-nums text-foreground">
+                                    {formatTime(order.created_at, i18n.language)}
+                                  </span>
+                                  <span>
+                                    <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
+                                      {t(`transactions.status.${order.status}`)}
+                                    </Badge>
+                                  </span>
+                                  {canViewDetails ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
+                                </ListRow>
+                              );
+                            })}
+                          </Collapse>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 {state.kind === "ready" && hasMore && (
                   <div className="mx-3 mt-4">

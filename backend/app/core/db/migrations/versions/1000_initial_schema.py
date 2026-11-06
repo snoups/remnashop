@@ -6,7 +6,7 @@ from sqlalchemy.dialects import postgresql
 
 import app.core.db.encrypted_string
 
-revision: str = "current"
+revision: str = "1000"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

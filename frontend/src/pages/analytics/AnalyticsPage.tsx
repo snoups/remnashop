@@ -7,7 +7,7 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { ANALYTICS_TAB_PERMISSIONS } from "@entities/analytics/api";
 import type { AnalyticsPeriod } from "@entities/analytics/api";
 import { LoadGate } from "@shared/lib/load-gate";
-import { PAGE_BAR_CLASS, PAGE_CLASS } from "@shared/ui/classes";
+import { PAGE_BAR_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS } from "@shared/ui/classes";
 import { TabBar, type TabBarItem } from "@shared/ui/glass/TabBar";
 import type { AnalyticsOutletContext } from "@pages/analytics/period";
 import { PeriodPicker } from "@pages/analytics/PeriodPicker";
@@ -81,7 +81,7 @@ export function AnalyticsPage() {
       </div>
       <div
         ref={scrollerRef}
-        className="scroll-fade-y scroll-fade-gap page-scroll mt-1 pt-2 md:mt-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:pt-[68px] [--fade-rest-start:48px] [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]"
+        className={PAGE_SCROLL_UNDER_BAR_CLASS}
       >
         <LoadGate key={pathname}>
           <Outlet context={{ period, setPeriod } satisfies AnalyticsOutletContext} />

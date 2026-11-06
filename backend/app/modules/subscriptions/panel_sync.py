@@ -1,9 +1,10 @@
 import asyncio
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager, suppress
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
@@ -28,7 +29,9 @@ from app.modules.subscriptions.dto import (
     PanelSyncStatusDto,
     PlanSnapshot,
     SubscriptionDto,
+    SyncFromPanelOptionsDto,
     SyncSubscriptionStatusDto,
+    SyncToPanelOptionsDto,
 )
 from app.modules.subscriptions.eligibility import subscription_owner
 from app.modules.subscriptions.events import PanelSyncStartedEvent, StatusSyncSource
@@ -79,9 +82,11 @@ def is_orphan(user: UserResponseDto, linked_ids: set[int], now: datetime) -> boo
     return user.id not in linked_ids and user.created_at < now - _ORPHAN_MIN_AGE
 
 
-async def named_shop_user(user_repository: UserRepository, username: str) -> Optional[UserDto]:
+async def named_shop_user(
+    user_repository: UserRepository, username: str, prefix: str
+) -> Optional[UserDto]:
     """The shop user a shop-format panel username (current or legacy) names."""
-    if (named := shop_user_key_from_username(username)) is None:
+    if (named := shop_user_key_from_username(username, prefix)) is None:
         return None
     key, value = named
     if key == "id":
@@ -90,11 +95,11 @@ async def named_shop_user(user_repository: UserRepository, username: str) -> Opt
 
 
 async def match_shop_user(
-    user_repository: UserRepository, user: UserResponseDto
+    user_repository: UserRepository, user: UserResponseDto, prefix: str
 ) -> Optional[UserDto]:
     """The shop user a panel user belongs to: by the shop's own username, its
     Telegram or email. Keys pointing at different users match nobody."""
-    found = [await named_shop_user(user_repository, user.username)]
+    found = [await named_shop_user(user_repository, user.username, prefix)]
     if user.telegram_id is not None:
         found.append(await user_repository.find_by_telegram_id(user.telegram_id))
     if user.email:
@@ -283,11 +288,12 @@ async def recreate_in_panel(
     user_repository: UserRepository,
     uow: UnitOfWork,
     subscription: SubscriptionDto,
+    prefix: str,
 ) -> SubscriptionDto:
     """Gives a row whose panel user is gone a new one built from the row."""
     async with uow:
         owner = await subscription_owner(user_repository, subscription)
-    created = await sdk.users.create_user(panel_user_from_row(subscription, owner))
+    created = await sdk.users.create_user(panel_user_from_row(subscription, owner, prefix))
     try:
         async with uow:
             locked = await subscription_repository.get_by_id_for_update(subscription.id)
@@ -367,12 +373,17 @@ async def start_panel_sync(
     dispatch: PanelSyncDispatch,
     actor: Actor,
     direction: PanelSyncDirection,
+    options: Union[SyncFromPanelOptionsDto, SyncToPanelOptionsDto],
 ) -> PanelSyncStatusDto:
     await claim_panel_sync(redis, direction)
     try:
         async with uow:
-            await event_publisher.publish(PanelSyncStartedEvent(actor=actor, direction=direction))
-            await uow.after_commit(partial(dispatch.kiq, direction=direction.value))
+            await event_publisher.publish(
+                PanelSyncStartedEvent(actor=actor, direction=direction, options=asdict(options))
+            )
+            await uow.after_commit(
+                partial(dispatch.kiq, direction=direction.value, **asdict(options))
+            )
     except BaseException:
         await release_panel_sync(redis, direction)
         raise

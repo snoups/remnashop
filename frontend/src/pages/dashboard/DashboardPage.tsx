@@ -162,7 +162,7 @@ export function DashboardPage() {
           })}
         </span>
       )}
-      {kpiState.kind === "loading" && <Spinner className="py-4" />}
+      {kpiState.kind === "loading" && <Spinner size="card" />}
       {kpiState.kind === "error" && (
         <div className="glass-panel rounded-3xl p-4">
           <ErrorState text={t("common.loadError")} />

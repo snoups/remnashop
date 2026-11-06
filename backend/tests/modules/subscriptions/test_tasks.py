@@ -6,6 +6,7 @@ import pytest
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AddOnType,
@@ -36,6 +37,7 @@ from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
     GrantAddOnDto,
     PurchaseSubscriptionDto,
+    SyncFromPanelOptionsDto,
     SyncSubscriptionStatusDto,
 )
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
@@ -98,6 +100,7 @@ def _reconcile_use_case(
         uow,
         redis,
         event_publisher,
+        AppConfig.get(),
     )
 
 
@@ -381,7 +384,7 @@ async def test_sync_from_panel_syncs_status_that_drifted_on_the_panel(
 
     await _reconcile_use_case(
         subscription_repository, remnawave_sdk, uow, event_publisher, redis
-    ).system()
+    ).system(SyncFromPanelOptionsDto(adopt_unnamed=True))
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.LIMITED
@@ -413,7 +416,7 @@ async def test_sync_from_panel_marks_deleted_when_panel_identity_is_gone(
 
     await _reconcile_use_case(
         subscription_repository, remnawave_sdk, uow, event_publisher, redis
-    ).system()
+    ).system(SyncFromPanelOptionsDto(adopt_unnamed=True))
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.DELETED
@@ -448,7 +451,7 @@ async def test_sync_from_panel_skips_subscriptions_already_in_sync(
 
     await _reconcile_use_case(
         subscription_repository, remnawave_sdk, uow, event_publisher, redis
-    ).system()
+    ).system(SyncFromPanelOptionsDto(adopt_unnamed=True))
 
     refreshed = await subscription_repository.get_by_id(created.id)
     assert refreshed.status == SubscriptionStatus.ACTIVE

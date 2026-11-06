@@ -51,6 +51,9 @@ export const GLASS_LIST_HEAD_CLASS = `mb-1 border-b border-border px-3.5 pb-2.5 
 const LIST_DIVIDER_CLASS =
   "[&>*:not(:last-child)]:shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--color-border)_50%,transparent)]";
 // list-rows: rows fade in on mount (app/styles.css)
+/** A row table's horizontal scroller, its min-w child set by the table. overflow-y-hidden: overflow-x-auto alone makes y
+ *  scrollable too, and the rows' rise-in would flash a scrollbar; the 8px/4px bleed keeps row edges and focus rings unclipped. */
+export const LIST_SCROLL_X_CLASS = "-mx-2 -my-1 overflow-x-auto overflow-y-hidden px-2 py-1";
 export const LIST_BODY_CLASS = `list-rows flex flex-col ${LIST_DIVIDER_CLASS}`;
 // 36px icon + 12px inset on every side = concentric pill; taller content overflows instead of growing the row.
 const LIST_ROW_SHAPE = "h-15 rounded-full [transition-property:background-color] duration-150";
@@ -64,6 +67,8 @@ export const PAGE_CLASS = "relative flex flex-1 flex-col md:min-h-0 md:pr-[var(-
 export const PAGE_BAR_CLASS = "md:absolute md:left-0 md:right-[var(--scrollbar-size)] md:top-0 md:z-10";
 /** The bar as a glass filter strip. */
 export const PAGE_TOOLBAR_CLASS = `glass-panel flex shrink-0 flex-wrap items-center gap-2 rounded-3xl p-1.5 md:flex-nowrap ${PAGE_BAR_CLASS}`;
+/** The search in a toolbar: takes the free space, never narrower than 256px on desktop so it outweighs a filter. */
+export const PAGE_TOOLBAR_SEARCH_CLASS = "flex min-w-40 flex-1 md:min-w-64";
 const PAGE_SCROLL_BASE_CLASS =
   "scroll-fade-y scroll-fade-gap page-scroll md:min-h-0 md:flex-1 md:overflow-y-auto [--fade-bottom-size:0px] [scrollbar-gutter:stable] max-md:[scrollbar-gutter:auto] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden md:-mr-5 md:pb-5 md:pr-[calc(1.25rem-var(--scrollbar-size))]";
 /** Scroller under PAGE_BAR_CLASS: a 20px gap under the bar, where the top fade sits (from 48px); content starts at 68px. */
@@ -81,6 +86,9 @@ export const TAB_HOVER_CLASS = "absolute inset-0 rounded-full transition-colors 
 
 /** A headline number: a KPI tile's value and the dashboard cards' totals; color is the caller's. */
 export const KPI_VALUE_CLASS = "text-[26px] font-bold tabular-nums tracking-tight";
+
+/** A row's number between body text and a KPI: funnel steps, retention weeks; color is the caller's. */
+export const STAT_VALUE_CLASS = "text-[15px] font-bold tabular-nums";
 
 /** The title of a full-screen card or story: sign-in, welcome, password change, error screens, announcements. */
 export const SCREEN_TITLE_CLASS = "text-[21px] font-bold tracking-tight text-foreground";

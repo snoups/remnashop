@@ -59,7 +59,7 @@ import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { dotIcon } from "@shared/ui/option-icons";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
-import { GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
 type Kpi = "all" | "new" | "subscribed" | "blocked";
@@ -220,17 +220,19 @@ export function UsersPage() {
   return (
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
-      <div className={`${PAGE_TOOLBAR_CLASS} lg:gap-8`}>
-        <SearchField
-          id="users-search"
-          label={t("users.filters.search")}
-          hideLabel
-          compact
-          placeholder={t("users.filters.searchPlaceholder")}
-          value={searchInput}
-          onChange={setSearchInput}
-        />
-        <div className="min-w-40 flex-1 md:min-w-0">
+      <div className={PAGE_TOOLBAR_CLASS}>
+        <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
+          <SearchField
+            id="users-search"
+            label={t("users.filters.search")}
+            hideLabel
+            compact
+            placeholder={t("users.filters.searchPlaceholder")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
+        <div className="w-56 min-w-0">
           <SelectDropdown
             id="users-blocked-by"
             value={blockedBy}
@@ -247,7 +249,7 @@ export function UsersPage() {
             ]}
           />
         </div>
-        <div className="min-w-40 flex-1 md:min-w-0">
+        <div className="w-56 min-w-0">
           <SelectDropdown
             id="users-subscription"
             value={subscription}
@@ -263,7 +265,7 @@ export function UsersPage() {
             ]}
           />
         </div>
-        <div className="min-w-40 flex-1 md:min-w-0">
+        <div className="w-56 min-w-0">
           <SelectDropdown
             id="users-trial"
             value={trial}
@@ -322,8 +324,7 @@ export function UsersPage() {
         )}
         {state.kind === "ready" && state.items.length === 0 && <EmptyState text={t(hasFilters ? "users.noMatches" : "users.empty")} size="page" />}
         {state.kind === "ready" && state.items.length > 0 && (
-          // overflow-y-hidden: overflow-x-auto alone makes y scrollable too, and the rows' rise-in (list-rows) would flash a scrollbar
-          <div className="-mx-2 -my-1 overflow-x-auto overflow-y-hidden px-2 py-1">
+          <div className={LIST_SCROLL_X_CLASS}>
             <div className="min-w-[720px]">
               <div
                 className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}

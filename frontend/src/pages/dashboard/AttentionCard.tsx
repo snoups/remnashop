@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Bot,
   CalendarClock,
-  CheckCircle2,
   Clock,
   CloudOff,
   CreditCard,
@@ -42,7 +41,6 @@ import { StatusPill } from "@shared/ui/glass/StatusPill";
 import {
   GLASS_DIALOG_BODY_CLASS,
   GLASS_DIALOG_FOOTER_CLASS,
-  GLASS_LIST_ROW_CLASS,
   LIST_BODY_CLASS,
 } from "@shared/ui/classes";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -50,11 +48,9 @@ import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ListRow } from "@shared/ui/ListRow";
 import { Modal } from "@shared/ui/Modal";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
-import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
 import { RUNTIME_PROCESS_LABELS, formatUptime } from "@pages/dashboard/runtime";
 
-const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
 const OPEN_ROW_CLASS = "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3";
 
 const SEVERITY_TONE = {
@@ -350,6 +346,9 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
   const critical = items.filter((item) => item.severity === "critical").length;
   const warning = items.length - critical;
 
+  // only when something needs a look: nothing while loading or when the list comes back empty
+  if (state.kind === "loading" || (state.kind === "ready" && items.length === 0)) return null;
+
   return (
     <Section
       icon={AlertTriangle}
@@ -368,19 +367,10 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
         )
       }
     >
-      {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <div className={`${LIST_BODY_CLASS} pt-4`}>
-          {sorted.length === 0 ? (
-            <div className={ROW_CLASS}>
-              <IconCircle icon={CheckCircle2} tone="success" />
-              <CellText title={t("dashboard.attention.allClear.title")} sub={t("dashboard.attention.allClear.sub")} />
-              <span />
-            </div>
-          ) : (
-            sorted.map((item, index) => <AttentionRow key={`${item.kind}-${item.subject ?? index}`} item={item} />)
-          )}
+          {sorted.map((item, index) => <AttentionRow key={`${item.kind}-${item.subject ?? index}`} item={item} />)}
         </div>
       )}
     </Section>

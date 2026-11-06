@@ -30,7 +30,7 @@ import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { Badge, type BadgeTone } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
+import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
@@ -44,7 +44,7 @@ import { ListRow } from "@shared/ui/ListRow";
 const FILTER_DEBOUNCE_MS = 300;
 
 const ROW_GRID_CLASSNAME =
-  "grid grid-cols-[32px_minmax(0,2.6fr)_140px_minmax(0,1.6fr)_minmax(0,1.6fr)_110px_16px] items-center gap-4";
+  "grid grid-cols-[32px_minmax(0,2.6fr)_140px_minmax(0,1.6fr)_minmax(0,1.6fr)_110px_16px] items-center gap-3";
 
 // what the broadcast goes out on: Telegram, email, or both
 const DELIVERY_ICON: Record<Broadcast["delivery"], LucideIcon> = { TELEGRAM: Send, EMAIL: Mail, ALL: Megaphone };
@@ -150,15 +150,17 @@ export function BroadcastsPage() {
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
-        <SearchField
-          id="broadcasts-search"
-          label={t("broadcasts.search")}
-          hideLabel
-          compact
-          placeholder={t("broadcasts.search")}
-          value={searchInput}
-          onChange={setSearchInput}
-        />
+        <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
+          <SearchField
+            id="broadcasts-search"
+            label={t("broadcasts.search")}
+            hideLabel
+            compact
+            placeholder={t("broadcasts.search")}
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
         <div className="w-56 min-w-0">
           <SelectDropdown
             id="broadcasts-status"
@@ -176,7 +178,7 @@ export function BroadcastsPage() {
           />
         </div>
         {canCreate && (
-          <Button variant="glassAccent" type="button" onClick={() => navigate("/dashboard/broadcasts/new")}>
+          <Button variant="glassAccent" type="button" onClick={() => navigate("/dashboard/broadcasts/new")} className="ml-auto">
             <Plus className="size-4" />
             {t("broadcasts.create")}
           </Button>
@@ -248,7 +250,7 @@ export function BroadcastsPage() {
           <EmptyState text={t(hasFilters ? "broadcasts.noMatches" : "broadcasts.empty")} size="page" />
         )}
         {state.kind === "ready" && visibleItems.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className={LIST_SCROLL_X_CLASS}>
             <div className="min-w-[900px]">
               <div className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}>
                 <span className="col-span-2">{t("broadcasts.columns.broadcast")}</span>

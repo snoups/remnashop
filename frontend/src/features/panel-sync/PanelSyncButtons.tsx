@@ -6,6 +6,7 @@ import {
   getPanelSyncStatus,
   startPanelSync,
   type PanelSyncDirection,
+  type PanelSyncOptions,
   type PanelSyncResult,
   type PanelSyncStatus,
 } from "@entities/subscriptions/api";
@@ -14,8 +15,16 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Switch } from "@shared/ui/glass/Switch";
 
 const POLL_INTERVAL_MS = 5_000;
+
+const DEFAULT_OPTIONS: PanelSyncOptions = { adopt_unnamed: true, recreate_missing: true, delete_orphans: true };
+
+const OPTIONS: Record<PanelSyncDirection, (keyof PanelSyncOptions)[]> = {
+  FROM_PANEL: ["adopt_unnamed"],
+  TO_PANEL: ["recreate_missing", "delete_orphans"],
+};
 
 const DIRECTIONS: { direction: PanelSyncDirection; permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM" | "SUBSCRIPTIONS_PANEL_SYNC_TO"; key: "pull" | "push"; icon: LucideIcon }[] = [
   { direction: "FROM_PANEL", permission: "SUBSCRIPTIONS_PANEL_SYNC_FROM", key: "pull", icon: Download },
@@ -33,6 +42,7 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
   const permissions = usePermissions();
   const [status, setStatus] = useState<PanelSyncStatus | null>(null);
   const [confirming, setConfirming] = useState<PanelSyncDirection | null>(null);
+  const [options, setOptions] = useState<PanelSyncOptions>(DEFAULT_OPTIONS);
   const previous = useRef<PanelSyncStatus | null>(null);
 
   const canView = permissions.includes("SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW");
@@ -81,7 +91,7 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
   const start = async (direction: PanelSyncDirection) => {
     setConfirming(null);
     try {
-      await startPanelSync(direction);
+      await startPanelSync(direction, options);
       toast.success(t("subscriptions.panelSync.bulk.started"));
       load();
     } catch (err) {
@@ -99,7 +109,10 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
           variant="glass"
           icon={icon}
           isLoading={isRunning(status, direction)}
-          onClick={() => setConfirming(direction)}
+          onClick={() => {
+            setOptions(DEFAULT_OPTIONS);
+            setConfirming(direction);
+          }}
         >
           {t(`subscriptions.panelSync.bulk.${key}`)}
         </Button>
@@ -113,7 +126,22 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
           danger={confirming === "TO_PANEL"}
           onConfirm={() => void start(confirming)}
           onCancel={() => setConfirming(null)}
-        />
+        >
+          {OPTIONS[confirming].map((option) => (
+            <div key={option} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3 text-[13px] text-foreground/80">
+                <span>{t(`subscriptions.panelSync.bulk.options.${option}.label`)}</span>
+                <Switch
+                  checked={options[option]}
+                  onChange={(on) => setOptions((current) => ({ ...current, [option]: on }))}
+                />
+              </div>
+              <p className="text-[12px] text-muted-foreground">
+                {t(`subscriptions.panelSync.bulk.options.${option}.hint`)}
+              </p>
+            </div>
+          ))}
+        </ConfirmDialog>
       )}
     </div>
   );

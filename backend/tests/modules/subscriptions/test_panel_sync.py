@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
 from remnapy.models import UserResponseDto
 
+from app.core.config import AppConfig
 from app.core.constants import GB_TO_BYTES
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, PanelSyncDirection, PlanType, Role, SubscriptionStatus
@@ -16,6 +17,7 @@ from app.core.utils.time import datetime_now
 from app.modules.plans.dto import CreatePlanDto
 from app.modules.plans.repository import PlanRepository
 from app.modules.subscriptions import panel_sync
+from app.modules.subscriptions.dto import SyncFromPanelOptionsDto, SyncToPanelOptionsDto
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.panel_sync import (
     claim_panel_sync,
@@ -40,6 +42,9 @@ from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.remnawave import FakeUserStore, _user_payload
 from tests.modules.subscriptions.factories import create_subscription
 
+_FROM = SyncFromPanelOptionsDto(adopt_unnamed=True)
+_TO = SyncToPanelOptionsDto(recreate_missing=True, delete_orphans=True)
+PREFIX = AppConfig.get().remnawave.username_prefix
 OWNER = UserDto(login="owner", name="owner", role=Role.OWNER, language=Locale.EN)
 
 
@@ -80,11 +85,11 @@ async def test_a_second_start_while_running_is_refused(
     start = StartPanelSyncFromUseCase(redis, uow, event_publisher, dispatch)
     await release_panel_sync(redis, PanelSyncDirection.FROM_PANEL)
     try:
-        started = await start(OWNER)
+        started = await start(OWNER, _FROM)
         assert started.running is True
         with pytest.raises(ConflictError):
-            await start(OWNER)
-        assert dispatch.messages == [{"direction": "FROM_PANEL"}]
+            await start(OWNER, _FROM)
+        assert dispatch.messages == [{"direction": "FROM_PANEL", "adopt_unnamed": True}]
         status = await GetPanelSyncStatusUseCase(redis)(OWNER)
         assert status.from_panel.running is True
     finally:
@@ -135,8 +140,14 @@ async def test_sync_to_panel_skips_a_row_deleted_while_it_ran(
     monkeypatch.setattr(subscription_repository, "get_by_id", _deleted)
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
-    ).system()
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(_TO)
 
     assert remnawave_store[89_011]["trafficLimitBytes"] == 10 * GB_TO_BYTES
     assert result.updated == 0 and result.failed == 0
@@ -166,8 +177,14 @@ async def test_sync_to_panel_pushes_rows_that_differ_and_recreates_missing(
     remnawave_store[89_002] = _panel_user(89_002, expireAt=in_sync.expire_at.isoformat())
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
-    ).system()
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(_TO)
 
     assert remnawave_store[89_001]["trafficLimitBytes"] == 100 * GB_TO_BYTES
     assert result.updated >= 1 and result.recreated >= 1 and result.missing == 0
@@ -197,7 +214,12 @@ async def test_push_disables_the_panel_user_of_a_disabled_row(
     remnawave_store[89_011] = _panel_user(89_011)
 
     await PushSubscriptionToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        event_publisher,
+        uow,
+        AppConfig.get(),
     )(OWNER, created.id)
 
     assert remnawave_store[89_011]["status"] == "DISABLED"
@@ -221,8 +243,14 @@ async def test_sync_to_panel_fills_the_owners_contacts_and_keeps_unknown_ones(
     )
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
-    ).system()
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(_TO)
 
     assert result.updated >= 1
     assert remnawave_store[89_031]["telegramId"] == 89_031
@@ -290,7 +318,8 @@ async def test_sync_from_panel_imports_a_shop_users_panel_user(
         uow,
         redis,
         event_publisher,
-    ).system()
+        AppConfig.get(),
+    ).system(_FROM)
 
     imported = await subscription_repository.find_by_remnawave_user_id(89_051)
     assert imported is not None
@@ -331,8 +360,14 @@ async def test_sync_to_panel_deletes_a_shop_users_panel_user_without_a_subscript
     )
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
-    ).system()
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(_TO)
 
     assert 89_061 not in remnawave_store
     # someone else's, and one an expired subscription still stands for
@@ -357,7 +392,12 @@ async def test_push_without_a_panel_user_creates_one_from_the_row(
     )
 
     pushed = await PushSubscriptionToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, event_publisher, uow
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        event_publisher,
+        uow,
+        AppConfig.get(),
     )(OWNER, created.id)
 
     panel_user = remnawave_store[pushed.remnawave_user_id]
@@ -445,9 +485,9 @@ async def test_match_shop_user_reads_legacy_and_current_names(
     by_telegram = await user_repository.create(CreateUserDto(name="tg", telegram_id=89_071))
     web = await user_repository.create(CreateUserDto(name="web"))
 
-    legacy = await match_shop_user(user_repository, _named("rs_89071"))
-    legacy_web = await match_shop_user(user_repository, _named(f"rs_web_{web.id}"))
-    current = await match_shop_user(user_repository, _named(f"rs_{web.id}_0123abcd"))
+    legacy = await match_shop_user(user_repository, _named("rs_89071"), PREFIX)
+    legacy_web = await match_shop_user(user_repository, _named(f"rs_web_{web.id}"), PREFIX)
+    current = await match_shop_user(user_repository, _named(f"rs_{web.id}_0123abcd"), PREFIX)
 
     assert legacy is not None and legacy.id == by_telegram.id
     assert legacy_web is not None and legacy_web.id == web.id
@@ -460,7 +500,10 @@ async def test_match_shop_user_refuses_keys_pointing_at_different_users(
     await user_repository.create(CreateUserDto(name="tg", telegram_id=89_072))
     other = await user_repository.create(CreateUserDto(name="mail", email="other@example.com"))
 
-    assert await match_shop_user(user_repository, _named("rs_89072", email=other.email)) is None
+    assert (
+        await match_shop_user(user_repository, _named("rs_89072", email=other.email), PREFIX)
+        is None
+    )
 
 
 @pytest.mark.parametrize("username", ["rs_abc", "rs_", "rs_web_", "rs_web_x", "someone"])
@@ -469,8 +512,10 @@ async def test_match_shop_user_ignores_other_names(
 ) -> None:
     owner = await user_repository.create(CreateUserDto(name="tg", telegram_id=89_073))
 
-    assert await match_shop_user(user_repository, _named(username)) is None
-    by_telegram = await match_shop_user(user_repository, _named(username, telegramId=89_073))
+    assert await match_shop_user(user_repository, _named(username), PREFIX) is None
+    by_telegram = await match_shop_user(
+        user_repository, _named(username, telegramId=89_073), PREFIX
+    )
     assert by_telegram is not None and by_telegram.id == owner.id
 
 
@@ -501,9 +546,122 @@ async def test_orphans_are_deleted_only_when_the_shop_named_them(
     remnawave_store[89_095]["email"] = "hand@example.com"
 
     result = await SyncAllToPanelUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow, redis, event_publisher
-    ).system()
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(_TO)
 
     assert not {89_091, 89_092, 89_093} & set(remnawave_store)
     assert {89_094, 89_095} <= set(remnawave_store)
     assert (result.deleted, result.failed) == (3, 0)
+
+
+@pytest.mark.parametrize("adopt_unnamed", [True, False])
+async def test_sync_from_panel_adopts_unnamed_panel_users_only_when_asked(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+    adopt_unnamed: bool,
+) -> None:
+    named = await user_repository.create(CreateUserDto(name="named", telegram_id=89_101))
+    await user_repository.create(CreateUserDto(name="hand", telegram_id=89_102))
+    remnawave_store[89_111] = _panel_user(
+        89_111, username=f"rs_{named.id}_0123abcd", createdAt=_old()
+    )
+    remnawave_store[89_112] = _panel_user(
+        89_112, username="made_by_hand", telegramId=89_102, createdAt=_old()
+    )
+
+    await SyncAllFromPanelUseCase(
+        subscription_repository,
+        user_repository,
+        plan_repository,
+        remnawave_sdk,
+        _sync(subscription_repository, uow, event_publisher),
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(SyncFromPanelOptionsDto(adopt_unnamed=adopt_unnamed))
+
+    assert await subscription_repository.find_by_remnawave_user_id(89_111) is not None
+    adopted = await subscription_repository.find_by_remnawave_user_id(89_112)
+    assert (adopted is not None) is adopt_unnamed
+
+
+async def test_sync_to_panel_can_skip_recreating_and_deleting(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    gone = await create_subscription(
+        subscription_repository, user_repository, telegram_id=89_121, remnawave_user_id=89_121
+    )
+    orphan_owner = await user_repository.create(CreateUserDto(name="orphan"))
+    remnawave_store[89_122] = _panel_user(
+        89_122, username=f"rs_{orphan_owner.id}_0123abcd", createdAt=_old()
+    )
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        AppConfig.get(),
+    ).system(SyncToPanelOptionsDto(recreate_missing=False, delete_orphans=False))
+
+    assert (result.recreated, result.deleted) == (0, 0)
+    assert (await subscription_repository.get_by_id(gone.id)).remnawave_user_id == 89_121
+    assert 89_121 not in remnawave_store
+    assert 89_122 in remnawave_store
+
+
+async def test_sync_to_panel_leaves_another_prefixs_panel_users_alone(
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    redis: Redis,
+) -> None:
+    owner = await user_repository.create(CreateUserDto(name="shared", telegram_id=89_131))
+    remnawave_store[89_131] = _panel_user(
+        89_131, username=f"rs_{owner.id}_0123abcd", telegramId=89_131, createdAt=_old()
+    )
+    remnawave_store[89_132] = _panel_user(
+        89_132, username=f"shopb_{owner.id}_0123abcd", createdAt=_old()
+    )
+    config = AppConfig.get()
+    shop_b = config.model_copy(
+        update={"remnawave": config.remnawave.model_copy(update={"username_prefix": "shopb_"})}
+    )
+
+    result = await SyncAllToPanelUseCase(
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        redis,
+        event_publisher,
+        shop_b,
+    ).system(_TO)
+
+    assert 89_131 in remnawave_store
+    assert 89_132 not in remnawave_store
+    assert result.deleted == 1

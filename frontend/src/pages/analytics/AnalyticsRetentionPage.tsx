@@ -17,7 +17,7 @@ import { Badge } from "@shared/ui/Badge";
 import { CellText } from "@shared/ui/CellText";
 import { CHART_CURSOR, ChartTooltip, MIN_CHART_POINTS, useChartAnimation, useChartEntered } from "@shared/ui/chart";
 import { Section } from "@shared/ui/glass/Section";
-import { EYEBROW_CLASS, LIST_BODY_CLASS, GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, STAT_VALUE_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
@@ -181,7 +181,7 @@ function ExpiringCard({ data }: { data: Retention }) {
           <div key={week.key} className="flex min-w-0 flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2">
               <span className={EYEBROW_CLASS}>{t(`analytics.retention.weeks.${week.key}` as ParseKeys)}</span>
-              <span className="text-[15px] font-bold tabular-nums text-foreground">{week.count.toLocaleString(language)}</span>
+              <span className={`text-foreground ${STAT_VALUE_CLASS}`}>{week.count.toLocaleString(language)}</span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full glass-track">
               <div className="h-full rounded-full bg-warning transition-[width] duration-200 ease-out" style={{ width: `${weekMax > 0 ? (week.count / weekMax) * 100 : 0}%` }} />

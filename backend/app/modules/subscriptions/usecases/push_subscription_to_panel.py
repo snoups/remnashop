@@ -3,6 +3,7 @@ from remnapy import RemnawaveSDK
 from remnapy.exceptions import NotFoundError as RemnawaveNotFoundError
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
@@ -28,12 +29,14 @@ class PushSubscriptionToPanelUseCase(UseCase[int, SubscriptionDto]):
         remnawave_sdk: RemnawaveSDK,
         event_publisher: EventPublisher,
         uow: UnitOfWork,
+        config: AppConfig,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._user_repository = user_repository
         self._remnawave_sdk = remnawave_sdk
         self._event_publisher = event_publisher
         self._uow = uow
+        self._prefix = config.remnawave.username_prefix
 
     async def _execute(self, actor: Actor, data: int) -> SubscriptionDto:
         async with self._uow:
@@ -50,6 +53,7 @@ class PushSubscriptionToPanelUseCase(UseCase[int, SubscriptionDto]):
                 self._user_repository,
                 self._uow,
                 subscription,
+                self._prefix,
             )
         else:
             await push_to_panel(self._remnawave_sdk, subscription, owner)

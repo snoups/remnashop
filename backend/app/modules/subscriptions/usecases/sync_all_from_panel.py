@@ -7,6 +7,7 @@ from remnapy.exceptions import NotFoundError as RemnawaveNotFoundError
 from remnapy.models import UserResponseDto
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import PanelSyncDirection, SubscriptionStatus
 from app.core.exceptions import RemnawavePanelUnavailableError
@@ -14,7 +15,7 @@ from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.plans import PlanRepository
-from app.modules.subscriptions.dto import PanelSyncResultDto
+from app.modules.subscriptions.dto import PanelSyncResultDto, SyncFromPanelOptionsDto
 from app.modules.subscriptions.events import PanelSyncCompletedEvent, StatusSyncSource
 from app.modules.subscriptions.panel_sync import (
     differs_from_panel,
@@ -24,6 +25,7 @@ from app.modules.subscriptions.panel_sync import (
     imported_row,
     is_orphan,
     match_shop_user,
+    named_shop_user,
     panel_users,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -35,13 +37,14 @@ from app.modules.users import UserRepository
 _SOURCE: Final[StatusSyncSource] = "panel_sync"
 
 
-class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
+class SyncAllFromPanelUseCase(UseCase[SyncFromPanelOptionsDto, PanelSyncResultDto]):
     """Takes the panel's state into every live subscription that differs.
 
     One stream of the whole panel finds the candidates; each one is read again
     on its own before it is written, so a row changed while the stream ran is
     judged by the panel's current state, not the minutes-old snapshot.
-    A shop user's panel user that no subscription stands for is imported.
+    A shop user's panel user that no subscription stands for is imported;
+    one the shop didn't name only with `adopt_unnamed`.
     """
 
     required_permission = None
@@ -56,6 +59,7 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         uow: UnitOfWork,
         redis: Redis,
         event_publisher: EventPublisher,
+        config: AppConfig,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._user_repository = user_repository
@@ -65,12 +69,13 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         self._uow = uow
         self._redis = redis
         self._event_publisher = event_publisher
+        self._prefix = config.remnawave.username_prefix
 
-    async def _execute(self, actor: Actor, data: None) -> PanelSyncResultDto:
+    async def _execute(self, actor: Actor, data: SyncFromPanelOptionsDto) -> PanelSyncResultDto:
         async with holding_panel_sync(self._redis, PanelSyncDirection.FROM_PANEL):
-            return await self._sync(actor)
+            return await self._sync(actor, data)
 
-    async def _sync(self, actor: Actor) -> PanelSyncResultDto:
+    async def _sync(self, actor: Actor, options: SyncFromPanelOptionsDto) -> PanelSyncResultDto:
         async with self._uow:
             subscriptions = await self._subscription_repository.list_non_terminal()
             linked = await self._subscription_repository.list_linked_remnawave_user_ids()
@@ -106,7 +111,9 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
                 else:
                     updated += 1
             else:
-                imported, import_failed = await self._import_orphans(actor, snapshot, linked)
+                imported, import_failed = await self._import_orphans(
+                    actor, snapshot, linked, options.adopt_unnamed
+                )
                 failed += import_failed
         except Exception:
             logger.exception(f"{actor.log} Panel sync from the panel failed")
@@ -136,7 +143,11 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         return result
 
     async def _import_orphans(
-        self, actor: Actor, snapshot: dict[int, UserResponseDto], linked: set[int]
+        self,
+        actor: Actor,
+        snapshot: dict[int, UserResponseDto],
+        linked: set[int],
+        adopt_unnamed: bool,
     ) -> tuple[int, int]:
         """(imported, failed) for the panel users no subscription stands for."""
         now = datetime_now()
@@ -149,7 +160,13 @@ class SyncAllFromPanelUseCase(UseCase[None, PanelSyncResultDto]):
         for user in orphans:
             try:
                 async with self._uow:
-                    owner = await match_shop_user(self._user_repository, user)
+                    owner = (
+                        await match_shop_user(self._user_repository, user, self._prefix)
+                        if adopt_unnamed
+                        else await named_shop_user(
+                            self._user_repository, user.username, self._prefix
+                        )
+                    )
                     if owner is None or owner.deleted_at is not None:
                         continue
                     # linked while the sync ran

@@ -16,7 +16,6 @@ import {
   Power,
   PowerOff,
   ShieldCheck,
-  SquarePlus,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -40,19 +39,10 @@ import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
-import { Pressable } from "@shared/ui/Pressable";
 
 import { PlanCard } from "./PlanCard";
 
 type Filter = "all" | "active" | "inactive";
-
-// On the grid wrapper so longer content can grow the card without clipping.
-const CARD_HEIGHT_CLASSNAME = "aspect-[1.4]";
-
-// the create card turns primary on hover, its icon too
-function CreatePlanIcon({ className = "" }: { className?: string }) {
-  return <SquarePlus className={`${className} transition-colors group-hover:text-primary`} />;
-}
 
 export function PlansPage() {
   const { t } = useTranslation();
@@ -157,7 +147,7 @@ export function PlansPage() {
           />
         </div>
         {canCreate && (
-          <Button variant="glassAccent" type="button" onClick={() => setEditingPlan("new")} className="md:ml-auto">
+          <Button variant="glassAccent" type="button" onClick={() => setEditingPlan("new")} className="ml-auto">
             <Plus className="size-4" />
             {t("plans.create.button")}
           </Button>
@@ -173,12 +163,12 @@ export function PlansPage() {
           <ErrorState text={t("common.loadError")} size="page" />
         </div>
       )}
-      {state.kind === "ready" && visibleItems.length === 0 && !canCreate && (
+      {state.kind === "ready" && visibleItems.length === 0 && (
         <div className="glass-panel rounded-3xl p-4">
           <EmptyState text={t(state.data.length === 0 ? "plans.empty" : "plans.noMatches")} size="page" />
         </div>
       )}
-      {state.kind === "ready" && (visibleItems.length > 0 || canCreate) && (
+      {state.kind === "ready" && visibleItems.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void handleDragEnd(e)}>
           <SortableContext items={visibleItems.map((plan) => plan.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -226,16 +216,6 @@ export function PlansPage() {
                   />
                 );
               })}
-              {canCreate && (
-                <Pressable
-                  type="button"
-                  onClick={() => setEditingPlan("new")}
-                  className={`group flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-glass-border p-4 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary ${CARD_HEIGHT_CLASSNAME}`}
-                >
-                  <CreatePlanIcon className="size-5" />
-                  {t("plans.create.button")}
-                </Pressable>
-              )}
             </div>
           </SortableContext>
         </DndContext>
