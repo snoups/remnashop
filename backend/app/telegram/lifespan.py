@@ -23,12 +23,9 @@ from app.core.utils.time import datetime_now
 from app.modules.dialogs import DialogRepository, ensure_dialogs_seeded
 from app.modules.settings import BotStatusKind, ReportBotStatusDto, ReportBotStatusUseCase
 from app.modules.translations import BotCommandsSync, TranslationRepository
-from app.telegram.bot_signals import (
-    listen_for_bot_signals,
-    live_update_handlers,
-    payment_outcome_handlers,
-)
+from app.telegram.bot_signals import live_update_handlers, payment_outcome_handlers
 from app.telegram.dialogs.config_cache import DialogConfigCache
+from app.telegram.signal_listener import listen_for_bot_signals
 from app.telegram.webhook import TelegramWebhookEndpoint
 
 # Telegram keeps the last error indefinitely; only one this recent is news on startup

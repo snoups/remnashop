@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from app.core.config import AppConfig
 from app.core.constants import REDIS_CONNECTION_KWARGS
 from app.core.runtime_heartbeat import poll_runtime_heartbeat
-from app.telegram.bot_signals import listen_for_bot_signals, restart_handlers
+from app.telegram.signal_listener import listen_for_bot_signals, restart_handlers
 
 
 def get_idle_app(config: AppConfig) -> FastAPI:

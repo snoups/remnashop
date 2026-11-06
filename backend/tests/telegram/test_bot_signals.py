@@ -18,13 +18,10 @@ from app.core.constants import (
 )
 from app.core.enums import Locale, PaymentOutcome
 from app.modules.translations import strip_serializer_escapes
-from app.telegram import bot_signals
-from app.telegram.bot_signals import (
-    listen_for_bot_signals,
-    live_update_handlers,
-    payment_outcome_handlers,
-)
+from app.telegram import signal_listener
+from app.telegram.bot_signals import live_update_handlers, payment_outcome_handlers
 from app.telegram.i18n import build_translator_hub
+from app.telegram.signal_listener import listen_for_bot_signals
 from app.telegram.states import PaymentResult
 
 
@@ -96,7 +93,7 @@ class _RedisDownOnce:
 async def test_listener_subscribes_again_after_losing_redis(
     redis: Redis, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(bot_signals, "_RECONNECT_MIN_DELAY_S", 0.01)
+    monkeypatch.setattr(signal_listener, "_RECONNECT_MIN_DELAY_S", 0.01)
     cache = _SpyCache()
     flaky = _RedisDownOnce(redis)
     task = asyncio.create_task(
