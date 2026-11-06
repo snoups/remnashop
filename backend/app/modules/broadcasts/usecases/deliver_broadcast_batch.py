@@ -6,7 +6,6 @@ from datetime import datetime
 from functools import partial
 from typing import Final, Optional
 
-from aiogram import Bot
 from redis.asyncio import Redis
 from redis.asyncio.lock import Lock
 from redis.exceptions import LockNotOwnedError
@@ -18,6 +17,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.enums import BroadcastCategory, BroadcastRecipientStatus, BroadcastStatus
 from app.core.exceptions import NotFoundError
 from app.core.ports import EventPublisher
+from app.core.telegram_api import BotApi
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.completion import complete_broadcast, fail_broadcast
@@ -214,7 +214,7 @@ class DeliverBroadcastBatchUseCase(UseCase[int, None]):
 
     async def _send(
         self,
-        client: Bot,
+        client: BotApi,
         renderer: BroadcastRenderer,
         contexts: dict[int, RecipientContextDto],
         now: datetime,

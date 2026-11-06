@@ -8,6 +8,7 @@ from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
 from app.modules.providers import get_module_providers
 from app.telegram.dialogs.di import DialogConfigProvider
+from app.telegram.settings_cache import SettingsCacheProvider
 
 
 def create_aiogram_container(
@@ -27,5 +28,6 @@ def create_aiogram_container(
         *get_core_providers(),
         *get_module_providers(),
         DialogConfigProvider(),
+        SettingsCacheProvider(),
         context=context,
     )

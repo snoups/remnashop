@@ -2,6 +2,7 @@ import type { ParseKeys, TFunction } from "i18next";
 import {
   AlertTriangle,
   ArchiveX,
+  ArrowRight,
   Bot,
   CalendarClock,
   CheckCircle2,
@@ -11,6 +12,7 @@ import {
   DatabaseBackup,
   DatabaseZap,
   Hourglass,
+  Info,
   KeyRound,
   MailWarning,
   MailX,
@@ -18,8 +20,9 @@ import {
   PackageX,
   ServerCrash,
   ServerOff,
+  Wrench,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -36,12 +39,23 @@ import { CellText } from "@shared/ui/CellText";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
-import { GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS } from "@shared/ui/classes";
+import {
+  GLASS_DIALOG_BODY_CLASS,
+  GLASS_DIALOG_FOOTER_CLASS,
+  GLASS_LIST_ROW_CLASS,
+  LIST_BODY_CLASS,
+} from "@shared/ui/classes";
+import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { ListRow } from "@shared/ui/ListRow";
+import { Modal } from "@shared/ui/Modal";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
+import { RUNTIME_PROCESS_LABELS, formatUptime } from "@pages/dashboard/runtime";
 
 const ROW_CLASS = `grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 ${GLASS_LIST_ROW_CLASS}`;
+const OPEN_ROW_CLASS = "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3";
 
 const SEVERITY_TONE = {
   critical: "error",
@@ -135,55 +149,31 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
 
 function itemText(item: AttentionItem, t: TFunction, language: string): { title: string; sub: string | null } {
   const formatted = item.count.toLocaleString(language);
-  const since = item.since && formatDateTime(item.since, language);
+  const since = item.since ? formatDateTime(item.since, language) : "";
+  const counted = (key: ParseKeys) => t(key, { count: item.count, formatted, since });
+  // how long ago `since` was, in the form that follows «более»
+  const waited = item.since ? formatUptime(t, (Date.now() - Date.parse(item.since)) / 1000, "after") : "";
   switch (item.kind) {
-    case "process_down":
+    case "process_down": {
+      const process = item.subject ?? "";
       return {
-        title: t("dashboard.attention.processDown.title", { process: item.subject ?? "" }),
-        sub: t("dashboard.attention.processDown.sub"),
+        title: t("dashboard.attention.processDown.title", { process: RUNTIME_PROCESS_LABELS[process] ?? process }),
+        sub: process === "worker" || process === "scheduler" ? t(`dashboard.attention.processDown.${process}`) : null,
       };
+    }
     case "outbox_stuck":
       return {
         title: t("dashboard.attention.outboxStuck.title"),
-        sub: t("dashboard.attention.outboxStuck.sub", { count: item.count, formatted, since: since ?? "" }),
+        sub: t("dashboard.attention.outboxStuck.sub", {
+          count: item.count,
+          formatted,
+          duration: waited,
+        }),
       };
     case "panel_unavailable":
       return {
         title: t("dashboard.attention.panelUnavailable.title"),
         sub: t("dashboard.attention.panelUnavailable.sub"),
-      };
-    case "smtp_failed": {
-      const profile = t(
-        item.subject === "bulk" ? "dashboard.attention.smtpFailed.bulk" : "dashboard.attention.smtpFailed.main",
-      );
-      return { title: t("dashboard.attention.smtpFailed.title"), sub: [profile, since].filter(Boolean).join(" · ") };
-    }
-    case "backup_overdue":
-      return {
-        title: t("dashboard.attention.backupOverdue.title"),
-        sub: since ? t("dashboard.attention.backupOverdue.sub", { since }) : t("dashboard.attention.backupOverdue.never"),
-      };
-    case "broadcast_failed":
-      return {
-        title: t("dashboard.attention.broadcastFailed.title"),
-        sub: t("dashboard.attention.broadcastFailed.sub", { count: item.count, formatted }),
-      };
-    case "broadcast_stalled":
-      return {
-        title: t("dashboard.attention.broadcastStalled.title"),
-        sub: t("dashboard.attention.broadcastStalled.sub", { count: item.count, formatted }),
-      };
-    case "email_undeliverable":
-      return {
-        title: t("dashboard.attention.emailUndeliverable.title"),
-        sub: t("dashboard.attention.emailUndeliverable.sub", { count: item.count, formatted }),
-      };
-    case "api_token_expiring":
-      return {
-        title: t("dashboard.attention.apiTokenExpiring.title"),
-        sub: item.subject
-          ? t("dashboard.attention.apiTokenExpiring.single", { name: item.subject, since: since ?? "" })
-          : t("dashboard.attention.apiTokenExpiring.sub", { count: item.count, formatted, since: since ?? "" }),
       };
     case "node_offline":
       return {
@@ -195,7 +185,15 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         title: t("dashboard.attention.gatewayFailures.title", {
           gateway: t(`settings.gateways.types.${item.subject}` as ParseKeys, { defaultValue: item.subject ?? "" }),
         }),
-        sub: t("dashboard.attention.gatewayFailures.sub", { count: item.count, formatted }),
+        sub: counted("dashboard.attention.gatewayFailures.sub"),
+      };
+    case "smtp_failed":
+      return {
+        title: t("dashboard.attention.smtpFailed.title"),
+        sub: t("dashboard.attention.smtpFailed.sub", {
+          profile: t(item.subject === "bulk" ? "dashboard.attention.smtpFailed.bulk" : "dashboard.attention.smtpFailed.main"),
+          since,
+        }),
       };
     case "backup_failed": {
       const kind = item.subject ? t(`backups.kind.${item.subject as BackupKind}`) : null;
@@ -204,46 +202,142 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         sub: [kind, since].filter(Boolean).join(" · ") || null,
       };
     }
+    case "backup_overdue":
+      return {
+        title: t("dashboard.attention.backupOverdue.title"),
+        sub: since ? t("dashboard.attention.backupOverdue.sub", { since }) : t("dashboard.attention.backupOverdue.never"),
+      };
+    case "broadcast_failed":
+      return {
+        title: t("dashboard.attention.broadcastFailed.title", { name: item.subject ?? "" }),
+        sub: since ? t("dashboard.attention.broadcastFailed.sub", { since }) : null,
+      };
+    case "broadcast_stalled":
+      return {
+        title: t("dashboard.attention.broadcastStalled.title", { name: item.subject ?? "" }),
+        sub: waited ? t("dashboard.attention.broadcastStalled.sub", { duration: waited }) : null,
+      };
     case "paid_not_fulfilled":
       return {
         title: t("dashboard.attention.paidNotFulfilled.title"),
-        sub: t("dashboard.attention.paidNotFulfilled.sub", { count: item.count, formatted }),
+        sub: counted("dashboard.attention.paidNotFulfilled.sub"),
       };
     case "stale_pending":
+      return { title: t("dashboard.attention.stalePending.title"), sub: counted("dashboard.attention.stalePending.sub") };
+    case "email_undeliverable":
       return {
-        title: t("dashboard.attention.stalePending.title"),
-        sub: t("dashboard.attention.stalePending.sub", { count: item.count, formatted }),
+        title: t("dashboard.attention.emailUndeliverable.title"),
+        sub: counted("dashboard.attention.emailUndeliverable.sub"),
       };
-    case "expiring_paid":
+    case "expiring_paid": {
+      // subject: how many of them end within a day
+      const urgent = Number(item.subject ?? 0);
+      const base = counted("dashboard.attention.expiringPaid.sub");
       return {
         title: t("dashboard.attention.expiringPaid.title"),
-        sub: t("dashboard.attention.expiringPaid.sub", { count: item.count, formatted }),
+        sub: urgent > 0 ? t("dashboard.attention.expiringPaid.urgent", { base, urgent: urgent.toLocaleString(language) }) : base,
+      };
+    }
+    case "api_token_expiring":
+      return {
+        title: t("dashboard.attention.apiTokenExpiring.title", { name: item.subject ?? "" }),
+        sub:
+          item.since && since
+            ? t("dashboard.attention.apiTokenExpiring.sub", {
+                duration: formatUptime(t, Math.max(0, Date.parse(item.since) - Date.now()) / 1000, "in"),
+                since,
+              })
+            : null,
       };
     case "bot_webhook":
-      return { title: t("dashboard.attention.botWebhook.title"), sub: item.subject };
+      return {
+        title: t("dashboard.attention.botWebhook.title"),
+        sub: item.subject ?? t("dashboard.attention.botWebhook.noWebhook"),
+      };
   }
+}
+
+// i18n key of each kind under dashboard.attention
+const KIND_KEY: Record<AttentionKind, string> = {
+  process_down: "processDown",
+  outbox_stuck: "outboxStuck",
+  panel_unavailable: "panelUnavailable",
+  node_offline: "nodeOffline",
+  gateway_failures: "gatewayFailures",
+  smtp_failed: "smtpFailed",
+  backup_failed: "backupFailed",
+  backup_overdue: "backupOverdue",
+  broadcast_failed: "broadcastFailed",
+  broadcast_stalled: "broadcastStalled",
+  paid_not_fulfilled: "paidNotFulfilled",
+  stale_pending: "stalePending",
+  email_undeliverable: "emailUndeliverable",
+  expiring_paid: "expiringPaid",
+  api_token_expiring: "apiTokenExpiring",
+  bot_webhook: "botWebhook",
+};
+
+function ExplainBlock({ icon, title, text }: { icon: ComponentType<{ className?: string }>; title: string; text: string }) {
+  return (
+    <DialogCard variant="form" title={title} icon={icon}>
+      <p className="text-[13px] leading-[1.6] text-foreground/85">{text}</p>
+    </DialogCard>
+  );
+}
+
+function AttentionDialog({ item, onClose }: { item: AttentionItem; onClose: () => void }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const permissions = usePermissions();
+  const link = KIND_LINK[item.kind];
+  const { title, sub } = itemText(item, t, i18n.language);
+  const key = `dashboard.attention.${KIND_KEY[item.kind]}`;
+  const why =
+    item.kind === "process_down"
+      ? `${key}.${item.subject === "scheduler" ? "whyScheduler" : "whyWorker"}`
+      : `${key}.why`;
+
+  return (
+    <Modal onClose={onClose} size="lg" scrollable>
+      <DialogHeader
+        icon={KIND_ICON[item.kind]}
+        title={title}
+        subtitle={sub}
+        danger={item.severity === "critical"}
+        warning={item.severity === "warning"}
+      />
+      <div className={GLASS_DIALOG_BODY_CLASS}>
+        <div className="flex flex-col gap-3">
+          <ExplainBlock icon={Info} title={t("dashboard.attention.sections.what")} text={t(`${key}.what` as ParseKeys)} />
+          <ExplainBlock icon={AlertTriangle} title={t("dashboard.attention.sections.why")} text={t(why as ParseKeys)} />
+          <ExplainBlock icon={Wrench} title={t("dashboard.attention.sections.fix")} text={t(`${key}.fix` as ParseKeys)} />
+        </div>
+      </div>
+      {link && link.allowed(permissions) && (
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0`}>
+          <Button variant="glassAccent" className="flex-1" onClick={() => navigate(link.to)}>
+            {t(link.label)}
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
 }
 
 function AttentionRow({ item }: { item: AttentionItem }) {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const permissions = usePermissions();
-  const Icon = KIND_ICON[item.kind];
-  const link = KIND_LINK[item.kind];
+  const [isOpen, setIsOpen] = useState(false);
   const { title, sub } = itemText(item, t, i18n.language);
 
   return (
-    <div className={ROW_CLASS}>
-      <IconCircle icon={Icon} tone={SEVERITY_TONE[item.severity]} />
-      <CellText title={title} sub={sub} />
-      {link && link.allowed(permissions) ? (
-        <Button variant="glass" size="sm" onClick={() => navigate(link.to)}>
-          {t(link.label)}
-        </Button>
-      ) : (
-        <span />
-      )}
-    </div>
+    <>
+      <ListRow glass className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
+        <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
+        <CellText title={title} sub={sub} />
+      </ListRow>
+      {isOpen && <AttentionDialog item={item} onClose={() => setIsOpen(false)} />}
+    </>
   );
 }
 

@@ -74,5 +74,5 @@ def test_dialog_enum_values_are_lowercase_names() -> None:
 
 
 def test_button_style_kind_matches_telegram_style_names() -> None:
-    # aiogram InlineKeyboardButton.style accepts exactly these strings
+    # InlineKeyboardButton.style accepts exactly these strings
     assert {s.value for s in ButtonStyleKind} == {"primary", "success", "danger"}

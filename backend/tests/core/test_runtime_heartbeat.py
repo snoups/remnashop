@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import os
 import time
 
@@ -6,17 +8,19 @@ import pytest
 from app.core.runtime_heartbeat import (
     RUNTIME_PROCESSES,
     _event_loop_stats_ms,
+    poll_runtime_heartbeat,
     publish_runtime_heartbeat,
     read_host_memory,
     read_runtime_heartbeats,
 )
 
-_KEYS = (
-    "remnashop:runtime:heartbeat:api",
-    "remnashop:runtime:heartbeat:telegram",
-    "remnashop:runtime:heartbeat:worker",
-    "remnashop:runtime:heartbeat:scheduler",
-)
+_PATTERN = "remnashop:runtime:heartbeat:*"
+
+
+async def _clear(redis) -> None:
+    keys = [key async for key in redis.scan_iter(match=_PATTERN)]
+    if keys:
+        await redis.delete(*keys)
 
 
 def test_runtime_processes_covers_every_long_running_process() -> None:
@@ -26,7 +30,7 @@ def test_runtime_processes_covers_every_long_running_process() -> None:
 
 
 async def test_read_runtime_heartbeats_returns_a_published_heartbeat(redis) -> None:
-    await redis.delete(*_KEYS)
+    await _clear(redis)
     started_at = time.time() - 120
 
     await publish_runtime_heartbeat(redis, "api", pid=4242, started_at=started_at)
@@ -37,33 +41,34 @@ async def test_read_runtime_heartbeats_returns_a_published_heartbeat(redis) -> N
     assert api.started_at == started_at
     assert api.rss_bytes > 0
 
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
 
 async def test_read_runtime_heartbeats_skips_processes_that_never_reported(redis) -> None:
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
     await publish_runtime_heartbeat(redis, "worker", pid=1, started_at=time.time())
     heartbeats = await read_runtime_heartbeats(redis)
 
     assert {hb.process for hb in heartbeats} == {"worker"}
 
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
 
 async def test_publish_runtime_heartbeat_expires_on_its_own(redis) -> None:
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
     await publish_runtime_heartbeat(redis, "api", pid=1, started_at=time.time())
-    ttl = await redis.ttl("remnashop:runtime:heartbeat:api")
+    [key] = [key async for key in redis.scan_iter(match=_PATTERN)]
+    ttl = await redis.ttl(key)
 
     assert 0 < ttl <= 45
 
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
 
 async def test_publish_runtime_heartbeat_defaults_event_loop_stats_to_zero(redis) -> None:
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
     await publish_runtime_heartbeat(redis, "api", pid=1, started_at=time.time())
     heartbeats = await read_runtime_heartbeats(redis)
@@ -72,11 +77,11 @@ async def test_publish_runtime_heartbeat_defaults_event_loop_stats_to_zero(redis
     assert api.event_loop_delay_ms == 0.0
     assert api.event_loop_p99_ms == 0.0
 
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
 
 async def test_read_runtime_heartbeats_roundtrips_event_loop_stats(redis) -> None:
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
     await publish_runtime_heartbeat(
         redis,
@@ -92,7 +97,7 @@ async def test_read_runtime_heartbeats_roundtrips_event_loop_stats(redis) -> Non
     assert api.event_loop_delay_ms == 2.5
     assert api.event_loop_p99_ms == 9.1
 
-    await redis.delete(*_KEYS)
+    await _clear(redis)
 
 
 def test_event_loop_stats_ms_computes_mean_and_p99_then_clears_samples() -> None:
@@ -117,3 +122,28 @@ def test_read_host_memory_returns_sane_values_or_none_off_linux() -> None:
     else:
         assert result.total_bytes > 0
         assert 0 <= result.used_bytes <= result.total_bytes
+
+
+async def test_every_process_of_a_role_keeps_its_own_heartbeat(redis) -> None:
+    await _clear(redis)
+
+    await publish_runtime_heartbeat(redis, "api", pid=10, started_at=1.0)
+    await publish_runtime_heartbeat(redis, "api", pid=11, started_at=2.0, instance="admin")
+    heartbeats = await read_runtime_heartbeats(redis)
+
+    assert [(hb.pid, hb.instance) for hb in heartbeats] == [(10, None), (11, "admin")]
+
+    await _clear(redis)
+
+
+async def test_a_stopped_process_removes_its_heartbeat(redis) -> None:
+    await _clear(redis)
+
+    task = asyncio.create_task(poll_runtime_heartbeat(redis, "api"))
+    while not [key async for key in redis.scan_iter(match=_PATTERN)]:
+        await asyncio.sleep(0.01)
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+    assert [key async for key in redis.scan_iter(match=_PATTERN)] == []

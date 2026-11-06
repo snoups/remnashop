@@ -14,7 +14,7 @@ from app.modules.settings.dto import BotSettingsDto, SetBotProxyDto
 from app.modules.settings.events import BotSettingsChangedEvent
 from app.modules.settings.repository import SettingsRepository
 
-# What aiogram's session (aiohttp-socks) accepts in every process. python-socks
+# What aiohttp-socks accepts: the bot's aiogram session and core.telegram_api. python-socks
 # has no https and doesn't know socks5h, but it resolves DNS on the proxy side
 # for socks5 anyway, so it's the same thing.
 _PROXY_SCHEMES: Final[dict[str, str]] = {

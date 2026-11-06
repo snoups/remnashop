@@ -8,6 +8,8 @@ class BotConfig(BaseConfig, env_prefix="BOT_"):
     # token/secret_token are set in the dashboard (modules/settings/), not in env
     host: str = "0.0.0.0"
     port: int = 5001
+    # a self-hosted telegram-bot-api server, if any
+    api_url: str = "https://api.telegram.org"
 
     @property
     def webhook_path(self) -> str:

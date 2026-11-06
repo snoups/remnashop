@@ -10,7 +10,11 @@ from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role
 from app.core.host_metrics import read_host_cpu_percent, read_host_disk, read_host_load
-from app.core.runtime_heartbeat import read_host_memory, read_runtime_heartbeats
+from app.core.runtime_heartbeat import (
+    RUNTIME_PROCESSES,
+    read_host_memory,
+    read_runtime_heartbeats,
+)
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.core.utils.money import round_cents
@@ -144,17 +148,23 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
 
     async def _runtime(self) -> list[RuntimeProcessDto]:
         now = time.time()
-        return [
-            RuntimeProcessDto(
-                process=hb.process,
-                pid=hb.pid,
-                uptime_seconds=now - hb.started_at,
-                rss_bytes=hb.rss_bytes,
-                event_loop_delay_ms=hb.event_loop_delay_ms,
-                event_loop_p99_ms=hb.event_loop_p99_ms,
-            )
-            for hb in await read_runtime_heartbeats(self._redis)
-        ]
+        heartbeats = await read_runtime_heartbeats(self._redis)
+        processes: list[RuntimeProcessDto] = []
+        for process in RUNTIME_PROCESSES:
+            alive = [hb for hb in heartbeats if hb.process == process]
+            processes += [
+                RuntimeProcessDto(
+                    process=hb.process,
+                    instance=hb.instance,
+                    pid=hb.pid,
+                    uptime_seconds=now - hb.started_at,
+                    rss_bytes=hb.rss_bytes,
+                    event_loop_delay_ms=hb.event_loop_delay_ms,
+                    event_loop_p99_ms=hb.event_loop_p99_ms,
+                )
+                for hb in alive
+            ] or [RuntimeProcessDto(process=process)]
+        return processes
 
     async def _host_stats(self) -> Optional[HostStatsDto]:
         cpu_percent = await read_host_cpu_percent()

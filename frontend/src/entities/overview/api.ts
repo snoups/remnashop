@@ -33,13 +33,15 @@ export interface OverviewSubscriptions {
   trials: number;
 }
 
+/** Every field but `process` is null while the process sends no heartbeat. */
 export interface RuntimeProcess {
   process: string;
-  pid: number;
-  uptime_seconds: number;
-  rss_bytes: number;
-  event_loop_delay_ms: number;
-  event_loop_p99_ms: number;
+  instance: string | null;
+  pid: number | null;
+  uptime_seconds: number | null;
+  rss_bytes: number | null;
+  event_loop_delay_ms: number | null;
+  event_loop_p99_ms: number | null;
 }
 
 export interface HostMemory {

@@ -935,8 +935,8 @@ async def test_test_send_renders_for_actor(
     await use_case(actor, draft.id)
     assert len(telegram.requests) == 1
     [sent] = telegram.requests
-    assert sent.chat_id == 9450
-    assert "Alice" in sent.text
+    assert sent.params["chat_id"] == 9450
+    assert "Alice" in sent.params["text"]
 
 
 async def test_test_send_failure_is_reported(

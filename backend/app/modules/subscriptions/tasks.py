@@ -5,10 +5,16 @@ from dishka.integrations.taskiq import FromDishka, inject
 
 from app.core.broker import broker
 from app.core.enums import Currency, PanelSyncDirection, PurchaseType
-from app.modules.subscriptions.dto import GrantAddOnDto, PlanSnapshot, PurchaseSubscriptionDto
+from app.modules.subscriptions.dto import (
+    GrantAddOnDto,
+    PlanSnapshot,
+    ProcessRemnawaveWebhookDto,
+    PurchaseSubscriptionDto,
+)
 from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
     GrantAddOnUseCase,
+    ProcessRemnawaveWebhookUseCase,
     PruneIdempotencyKeysUseCase,
     SyncAllFromPanelUseCase,
     SyncAllToPanelUseCase,
@@ -60,6 +66,14 @@ async def grant_addon_task(
             subscription_id=subscription_id, addon_id=addon_id, idempotency_key=idempotency_key
         )
     )
+
+
+@broker.task(retry_on_error=True, max_retries=3)
+@inject(patch_module=True)
+async def process_remnawave_webhook_task(
+    body: str, use_case: FromDishka[ProcessRemnawaveWebhookUseCase]
+) -> None:
+    await use_case.system(ProcessRemnawaveWebhookDto(body=body))
 
 
 @broker.task

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Self
+from typing import Optional, Self
 
 from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
@@ -25,6 +25,8 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     port: int = 5000
     metrics_enabled: bool = False
     metrics_port: int = 9110
+    # tells this container's processes apart on the dashboard (a second api)
+    instance_name: Optional[str] = None
 
     crypt_key: SecretStr
     jwt_secret: SecretStr

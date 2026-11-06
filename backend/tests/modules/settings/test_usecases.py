@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
-from aiogram.methods import SetMyCommands
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -715,11 +714,11 @@ async def test_update_bot_commands_does_not_push_to_telegram_when_bot_unconfigur
 def _capture_command_pushes(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     pushed: list[dict] = []
 
-    def _set(method: SetMyCommands) -> bool:
-        pushed.append(method.model_dump(mode="json", exclude_none=True))
+    def _set(params: dict) -> bool:
+        pushed.append(params)
         return True
 
-    use_fake_bot(monkeypatch, FakeBotSession({"SetMyCommands": _set, "DeleteMyCommands": True}))
+    use_fake_bot(monkeypatch, FakeBotSession({"setMyCommands": _set, "deleteMyCommands": True}))
     return pushed
 
 

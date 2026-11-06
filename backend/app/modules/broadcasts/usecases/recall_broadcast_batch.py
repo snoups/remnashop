@@ -2,12 +2,12 @@ import asyncio
 from functools import partial
 from typing import Final
 
-from aiogram import Bot
 from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BroadcastRecipientStatus
+from app.core.telegram_api import BotApi
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.broadcasts.dispatch import RecallBroadcastDispatch
@@ -28,7 +28,7 @@ _DONE: Final[frozenset[SendOutcome]] = frozenset(
 )
 
 
-async def _delete(client: Bot, chat_id: int, message_id: int) -> SendResult:
+async def _delete(client: BotApi, chat_id: int, message_id: int) -> SendResult:
     result = await delete_telegram_message(client, chat_id, message_id)
     if result.outcome is SendOutcome.RETRY and result.retry_after is not None:
         await asyncio.sleep(min(result.retry_after, MAX_RETRY_AFTER_S))
@@ -53,7 +53,7 @@ class RecallBroadcastBatchUseCase(UseCase[int, None]):
         self._recall_dispatch = recall_dispatch
         self._uow = uow
 
-    async def _recall_rows(self, client: Bot, rows: list[SentRecipientDto]) -> bool:
+    async def _recall_rows(self, client: BotApi, rows: list[SentRecipientDto]) -> bool:
         # False: the bot token was rejected, nothing further can be deleted
         for start in range(0, len(rows), GROUP_SIZE):
             group = rows[start : start + GROUP_SIZE]

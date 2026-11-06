@@ -642,13 +642,21 @@ class BroadcastRepository:
         )
         return due
 
-    async def count_failed_since(self, since: datetime) -> int:
-        count = await self.session.scalar(
-            select(func.count())
-            .select_from(Broadcast)
+    async def list_failed_since(self, since: datetime) -> builtins.list[BroadcastDto]:
+        rows = await self.session.scalars(
+            select(Broadcast)
             .where(Broadcast.status == BroadcastStatus.FAILED, Broadcast.updated_at >= since)
+            .order_by(Broadcast.updated_at.desc())
         )
-        return count or 0
+        return [self._to_dto(row) for row in rows]
+
+    async def list_stalled_broadcasts(self, before: datetime) -> builtins.list[BroadcastDto]:
+        rows = await self.session.scalars(
+            select(Broadcast)
+            .where(Broadcast.status == BroadcastStatus.SENDING, Broadcast.updated_at < before)
+            .order_by(Broadcast.updated_at)
+        )
+        return [self._to_dto(row) for row in rows]
 
     async def list_stalled(self, before: datetime) -> builtins.list[int]:
         rows = await self.session.scalars(

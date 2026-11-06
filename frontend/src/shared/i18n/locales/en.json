@@ -114,8 +114,8 @@
       "users": "Users",
       "today": "today",
       "activePaid": "Active subscriptions",
-      "trials_one": "Plus {{formatted}} trial",
-      "trials_other": "Plus {{formatted}} trials",
+      "trials_one": "Including {{formatted}} trial",
+      "trials_other": "Including {{formatted}} trials",
       "online": "Online",
       "onlineNodes_one": "On {{connected}} of {{total}} node",
       "onlineNodes_other": "On {{connected}} of {{total}} nodes",
@@ -125,95 +125,149 @@
     },
     "attention": {
       "title": "Needs attention",
-      "description": "Urgent first; an item disappears once the problem is resolved",
+      "description": "Errors and warnings about the shop’s operation",
       "critical": "Urgent · {{value}}",
       "allClear": {
         "title": "All good",
         "sub": "Nothing needs attention"
       },
+      "processDown": {
+        "title": "{{process}} is not responding",
+        "worker": "Background jobs are not running",
+        "scheduler": "Scheduled jobs are not starting",
+        "what": "The process has not reported it is alive for over 45 seconds: it is stopped, crashed or cannot reach Redis.",
+        "whyWorker": "The worker runs background jobs: delivering paid subscriptions, processing events, notifications, broadcasts, emails and backups. While it is down, all of this piles up in the queue.",
+        "whyScheduler": "The scheduler starts scheduled jobs: payment checks, automatic backups, scheduled broadcasts, cleanup of old data. While it is down, they do not start.",
+        "fix": "Check the container and its logs. A restart usually helps; queued jobs run on their own once the process is back."
+      },
+      "outboxStuck": {
+        "title": "The event queue is not being processed",
+        "sub_one": "{{formatted}} event waiting in the queue for over {{duration}}",
+        "sub_other": "{{formatted}} events waiting in the queue for over {{duration}}",
+        "what": "Events, the records of what happens in the shop, have been waiting for over 5 minutes.",
+        "why": "While the queue is stuck, the event log is not updated, admin and customer notifications are not sent, referral rewards are not granted and loyalty discounts are not recalculated.",
+        "fix": "Most often the worker is down, so check it first. If it is running, look for event processing errors in its logs. Nothing is lost: events are processed once the queue moves again."
+      },
+      "panelUnavailable": {
+        "title": "No connection to the Remnawave panel",
+        "sub": "The panel is unavailable or responds in an unknown format",
+        "what": "The shop could not get the node list from the Remnawave panel: the panel did not respond or sent a response in an unknown format.",
+        "why": "If the panel is unavailable, subscriptions are not issued or renewed, and sync and device management stop working. If the response format changed, individual features may break.",
+        "fix": "Check that the panel opens and that the URL and token in the settings are correct. If the panel was updated recently, make sure this shop version supports it; details are in the api logs."
+      },
       "nodeOffline": {
-        "title": "Node {{node}} is offline",
-        "sub": "since {{since}}"
+        "title": "Node “{{node}}” is offline",
+        "sub": "Since {{since}}",
+        "what": "The node is enabled in the Remnawave panel but is offline.",
+        "why": "Customers connected to this node cannot use the VPN, and new connections to it fail.",
+        "fix": "Check the node server and its status in the Remnawave panel."
       },
       "gatewayFailures": {
         "title": "Payment failures via {{gateway}}",
-        "sub_one": "{{formatted}} failure in the last hour",
-        "sub_other": "{{formatted}} failures in the last hour"
+        "sub_one": "{{formatted}} failed payment in the last hour",
+        "sub_other": "{{formatted}} failed payments in the last hour",
+        "what": "5 or more payments through this gateway failed in the last hour.",
+        "why": "Customers cannot pay this way; they leave or contact support.",
+        "fix": "Check the gateway settings and its merchant dashboard: keys, shop status, limits. If the problem is on the gateway’s side, disable it for now."
+      },
+      "smtpFailed": {
+        "title": "Email sending failure",
+        "sub": "{{profile}} · last error {{since}}",
+        "main": "Main SMTP",
+        "bulk": "Broadcast SMTP",
+        "what": "The last attempt to send an email through this SMTP server failed. The item clears after the first successful send.",
+        "why": "While emails are not sent, customers do not get cabinet sign-in codes, subscription notifications or broadcast emails.",
+        "fix": "Send a test email from the email settings; it shows the error. Common causes: a wrong password, a closed port, the provider’s sending limit."
       },
       "backupFailed": {
-        "title": "Backup failed"
+        "title": "Backup failed",
+        "what": "The last backup run of this type failed.",
+        "why": "Without a fresh backup, data since the last one cannot be restored after a server or database failure.",
+        "fix": "Open backups; the run shows the error. Common causes: no disk space and folder permissions. Once fixed, start a backup manually."
+      },
+      "backupOverdue": {
+        "title": "Backups are not being created on schedule",
+        "sub": "Last successful backup: {{since}}",
+        "never": "No backups since it was enabled",
+        "what": "Automatic backups are on, but there has been no successful backup for longer than the set interval.",
+        "why": "Without a fresh backup, data since the last one cannot be restored after a server or database failure.",
+        "fix": "Check that the worker and scheduler are running; they create backups. Then start a backup manually and see whether it succeeds."
+      },
+      "broadcastFailed": {
+        "title": "Broadcast “{{name}}” stopped with an error",
+        "sub": "Stopped on {{since}}",
+        "what": "The broadcast stopped with an error; some recipients did not get the message.",
+        "why": "Customers the broadcast did not reach will not hear about the news or offer.",
+        "fix": "Open the broadcast: it shows the cause and how many messages went out. Once fixed, sending can be retried for the rest."
+      },
+      "broadcastStalled": {
+        "title": "Broadcast “{{name}}” is stuck",
+        "sub": "No progress for over {{duration}}",
+        "what": "The broadcast is sending but has not moved for over 15 minutes, and the automatic restart did not help.",
+        "why": "While it is stuck, the remaining recipients will not get the message.",
+        "fix": "Check the worker and scheduler; they move broadcasts forward. If they are running, look at the worker logs; the broadcast can be canceled if needed."
       },
       "paidNotFulfilled": {
         "title": "Paid but not delivered",
-        "sub_one": "{{formatted}} order waiting over 10 minutes",
-        "sub_other": "{{formatted}} orders waiting over 10 minutes"
+        "sub_one": "{{formatted}} order waiting for delivery over 10 minutes",
+        "sub_other": "{{formatted}} orders waiting for delivery over 10 minutes",
+        "what": "The payment went through, but the subscription has not been issued for over 10 minutes.",
+        "why": "The customer paid and got no access; this is how complaints and refunds happen.",
+        "fix": "The shop retries delivery on its own. If the item does not clear, check the panel connection and the worker, then fulfill the order manually in transactions."
       },
       "stalePending": {
-        "title": "Payments stuck in pending",
-        "sub_one": "{{formatted}} payment waiting over 15 minutes",
-        "sub_other": "{{formatted}} payments waiting over 15 minutes"
-      },
-      "expiringPaid": {
-        "title": "Paid subscriptions expiring",
-        "sub_one": "{{formatted}} subscription in the next 7 days",
-        "sub_other": "{{formatted}} subscriptions in the next 7 days"
-      },
-      "botWebhook": {
-        "title": "Telegram bot webhook reports an error"
-      },
-      "processDown": {
-        "title": "The {{process}} process is not responding",
-        "sub": "No heartbeat for over 45 seconds"
-      },
-      "outboxStuck": {
-        "title": "Events are not being processed",
-        "sub_one": "{{formatted}} event waiting since {{since}}",
-        "sub_other": "{{formatted}} events waiting since {{since}}"
-      },
-      "panelUnavailable": {
-        "title": "Remnawave panel is unavailable",
-        "sub": "Node status is unknown"
-      },
-      "smtpFailed": {
-        "title": "Email is not being sent",
-        "main": "Main SMTP",
-        "bulk": "Broadcast SMTP"
-      },
-      "backupOverdue": {
-        "title": "Backup is overdue",
-        "sub": "Last successful: {{since}}",
-        "never": "No successful backup yet"
-      },
-      "broadcastFailed": {
-        "title": "Broadcast failed",
-        "sub_one": "{{formatted}} broadcast in the last 24 hours",
-        "sub_other": "{{formatted}} broadcasts in the last 24 hours"
-      },
-      "broadcastStalled": {
-        "title": "Broadcast is stuck",
-        "sub_one": "{{formatted}} broadcast without progress for over 15 minutes",
-        "sub_other": "{{formatted}} broadcasts without progress for over 15 minutes"
+        "title": "Payments are stuck",
+        "sub_one": "{{formatted}} payment without a gateway reply for over 15 minutes",
+        "sub_other": "{{formatted}} payments without a gateway reply for over 15 minutes",
+        "what": "Payments have been pending for over 15 minutes: the gateway sent neither a confirmation nor a refusal.",
+        "why": "These are usually abandoned payments. But if there are many, the gateway may not be delivering payment notifications, and paid orders will not be fulfilled.",
+        "fix": "Check in the gateway dashboard whether these payments went through and that the notification (webhook) URL is correct."
       },
       "emailUndeliverable": {
-        "title": "Emails are bouncing",
-        "sub_one": "{{formatted}} address refused in the last 24 hours",
-        "sub_other": "{{formatted}} addresses refused in the last 24 hours"
+        "title": "Emails are not reaching recipients",
+        "sub_one": "Mail servers rejected {{formatted}} address in the last day, sending to it has stopped",
+        "sub_other": "Mail servers rejected {{formatted}} addresses in the last day, sending to them has stopped",
+        "what": "In the last day, mail servers permanently rejected emails to 10 or more addresses, usually because the mailbox does not exist or was deleted.",
+        "why": "The shop stops writing to such addresses until the customer signs in with an email code again or links the email anew. A spike often means junk sign-ups or a broadcast to an old list.",
+        "fix": "See where these users came from. If an address actually works, the mark can be cleared manually in the user’s card."
+      },
+      "expiringPaid": {
+        "title": "Expiring subscriptions",
+        "sub_one": "{{formatted}} subscription in the next 7 days",
+        "sub_other": "{{formatted}} subscriptions in the next 7 days",
+        "urgent": "{{base}}, {{urgent}} of them within the next day",
+        "what": "Paid subscriptions that end in the next 7 days.",
+        "why": "Some customers will not renew unless reminded. This is revenue you can still keep.",
+        "fix": "Check retention and, if needed, send a broadcast with a reminder or a renewal promo code."
       },
       "apiTokenExpiring": {
-        "title": "API tokens are expiring",
-        "single": "“{{name}}” expires on {{since}}",
-        "sub_one": "{{formatted}} token, the first one on {{since}}",
-        "sub_other": "{{formatted}} tokens, the first one on {{since}}"
+        "title": "API token “{{name}}” expires soon",
+        "sub": "Expires in {{duration}} · {{since}}",
+        "what": "The API token expires in the next 7 days.",
+        "why": "Once it expires, integrations using it stop working.",
+        "fix": "Issue a new token with the same permissions, replace it in the integration and revoke the old one."
+      },
+      "botWebhook": {
+        "title": "Telegram bot webhook is not working",
+        "noWebhook": "Webhook is not set",
+        "what": "Telegram reports an error delivering updates to the bot, or the webhook is not set.",
+        "why": "The bot does not receive messages or button presses, so customers cannot use it.",
+        "fix": "Check the webhook URL in the bot settings and that the server is reachable from the internet over HTTPS. Restarting the bot usually helps."
+      },
+      "sections": {
+        "what": "What happened",
+        "why": "Why it matters",
+        "fix": "What to do"
       },
       "actions": {
-        "gateways": "Gateways",
-        "backups": "Backups",
-        "transactions": "Transactions",
-        "retention": "Retention",
-        "bot": "Telegram bot",
-        "broadcasts": "Broadcasts",
-        "email": "Email",
-        "apiTokens": "API tokens"
+        "gateways": "Go to gateways",
+        "backups": "Go to backups",
+        "transactions": "Go to transactions",
+        "retention": "Go to retention",
+        "bot": "Go to bot settings",
+        "broadcasts": "Go to broadcasts",
+        "email": "Go to email settings",
+        "apiTokens": "Go to API tokens"
       }
     },
     "revenue": {
@@ -231,14 +285,15 @@
       "paid": "Active",
       "trials": "Trials",
       "limited": "At limit",
+      "expiringSoon": "Expiring within 7 days",
       "expired": "Expired"
     },
     "online": {
       "title": "Online",
-      "description": "Peak per hour, sampled every 5 minutes",
+      "description": "Peak online by hour and by day",
       "hours24": "24h",
-      "valueName": "Users",
-      "peak": "peak in 24h · {{peak}} at {{time}}"
+      "valueName": "Online",
+      "peak": "Peak — {{peak}} at {{time}}"
     },
     "runtime": {
       "title": "System status",
@@ -247,9 +302,12 @@
       "eventLoop": "Event loop",
       "eventLoopDelay": "Delay",
       "eventLoopP99": "P99",
-      "durationDays": "{{count}}d",
-      "durationHours": "{{count}}h",
-      "durationMinutes": "{{count}}m",
+      "durationDays_one": "{{count}} day",
+      "durationDays_other": "{{count}} days",
+      "durationHours_one": "{{count}} hour",
+      "durationHours_other": "{{count}} hours",
+      "durationMinutes_one": "{{count}} minute",
+      "durationMinutes_other": "{{count}} minutes",
       "units": {
         "millisecond": "ms"
       },
@@ -263,7 +321,20 @@
       "disk": "Disk",
       "usage": "{{used}} of {{total}}",
       "cores_one": "{{count}} core",
-      "cores_other": "{{count}} cores"
+      "cores_other": "{{count}} cores",
+      "down": "Not responding · {{n}}",
+      "durationDaysAfter_one": "{{count}} day",
+      "durationDaysAfter_other": "{{count}} days",
+      "durationHoursAfter_one": "{{count}} hour",
+      "durationHoursAfter_other": "{{count}} hours",
+      "durationMinutesAfter_one": "{{count}} minute",
+      "durationMinutesAfter_other": "{{count}} minutes",
+      "durationDaysIn_one": "{{count}} day",
+      "durationDaysIn_other": "{{count}} days",
+      "durationHoursIn_one": "{{count}} hour",
+      "durationHoursIn_other": "{{count}} hours",
+      "durationMinutesIn_one": "{{count}} minute",
+      "durationMinutesIn_other": "{{count}} minutes"
     },
     "remnawaveUnavailable": "Remnawave is unavailable\nData will appear once the panel responds",
     "nodes": {
@@ -277,12 +348,10 @@
       "offlineSince": "offline {{time}}"
     },
     "clientApps": {
-      "title": "Client apps",
+      "title": "Apps and platforms",
       "description": "What clients connect with, by platform",
       "other": "Other",
-      "empty": "No devices",
-      "devices_one": "{{formatted}} device · {{avg}} per user",
-      "devices_other": "{{formatted}} devices · {{avg}} per user"
+      "empty": "No devices"
     },
     "payments": {
       "title": "Recent payments",

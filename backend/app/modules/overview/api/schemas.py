@@ -56,11 +56,12 @@ class RecentPaymentResponse(BaseModel):
 
 class RuntimeProcessResponse(BaseModel):
     process: str
-    pid: int
-    uptime_seconds: float
-    rss_bytes: int
-    event_loop_delay_ms: float
-    event_loop_p99_ms: float
+    instance: Optional[str]
+    pid: Optional[int]
+    uptime_seconds: Optional[float]
+    rss_bytes: Optional[int]
+    event_loop_delay_ms: Optional[float]
+    event_loop_p99_ms: Optional[float]
 
 
 class HostMemoryResponse(BaseModel):

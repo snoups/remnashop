@@ -310,14 +310,30 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         if Permission.BROADCASTS_VIEW not in perms:
             return []
         now = datetime_now()
-        failed = await self._broadcast_repository.count_failed_since(now - _BROADCAST_FAILED_WINDOW)
-        stalled = await self._broadcast_repository.list_stalled(now - _BROADCAST_STALLED_AFTER)
+        failed = await self._broadcast_repository.list_failed_since(now - _BROADCAST_FAILED_WINDOW)
+        stalled = await self._broadcast_repository.list_stalled_broadcasts(
+            now - _BROADCAST_STALLED_AFTER
+        )
         return [
-            AttentionItemDto(
-                kind=AttentionKind.BROADCAST_FAILED, severity="critical", count=failed
+            *(
+                AttentionItemDto(
+                    kind=AttentionKind.BROADCAST_FAILED,
+                    severity="critical",
+                    count=1,
+                    subject=b.title or f"#{b.id}",
+                    since=b.updated_at,
+                )
+                for b in failed
             ),
-            AttentionItemDto(
-                kind=AttentionKind.BROADCAST_STALLED, severity="warning", count=len(stalled)
+            *(
+                AttentionItemDto(
+                    kind=AttentionKind.BROADCAST_STALLED,
+                    severity="warning",
+                    count=1,
+                    subject=b.title or f"#{b.id}",
+                    since=b.updated_at,
+                )
+                for b in stalled
             ),
         ]
 
@@ -339,20 +355,18 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         if Permission.API_TOKENS_MANAGE not in perms:
             return []
         now = datetime_now()
-        expiring = [
-            t
-            for t in await self._api_token_repository.list_not_revoked()
-            if t.expires_at is not None and now < t.expires_at <= now + _TOKEN_EXPIRING_WITHIN
-        ]
-        if not expiring:
-            return []
-        soonest = min(expiring, key=lambda t: t.expires_at or now)
-        return [
-            AttentionItemDto(
-                kind=AttentionKind.API_TOKEN_EXPIRING,
-                severity="warning",
-                count=len(expiring),
-                subject=soonest.name if len(expiring) == 1 else None,
-                since=soonest.expires_at,
-            )
-        ]
+        tokens = await self._api_token_repository.list_not_revoked()
+        return sorted(
+            (
+                AttentionItemDto(
+                    kind=AttentionKind.API_TOKEN_EXPIRING,
+                    severity="warning",
+                    count=1,
+                    subject=t.name,
+                    since=t.expires_at,
+                )
+                for t in tokens
+                if t.expires_at is not None and now < t.expires_at <= now + _TOKEN_EXPIRING_WITHIN
+            ),
+            key=lambda i: i.since or now,
+        )

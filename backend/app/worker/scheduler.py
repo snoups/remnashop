@@ -31,7 +31,9 @@ async def _start_runtime_heartbeat(state: TaskiqState) -> None:
         AppConfig.get().redis.dsn, decode_responses=True, **REDIS_CONNECTION_KWARGS
     )
     state.scheduler_redis = redis
-    state.runtime_heartbeat_task = asyncio.create_task(poll_runtime_heartbeat(redis, "scheduler"))
+    state.runtime_heartbeat_task = asyncio.create_task(
+        poll_runtime_heartbeat(redis, "scheduler", AppConfig.get().instance_name)
+    )
 
 
 @broker.on_event(TaskiqEvents.CLIENT_SHUTDOWN)

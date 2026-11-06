@@ -1,20 +1,18 @@
 from collections.abc import Awaitable
-from typing import Final, Optional
+from typing import Any, Final, Optional
 
-from aiogram.exceptions import TelegramAPIError, TelegramNetworkError
-from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
 from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
 from app.core.enums import Locale
-from app.core.telegram_api import bot_client
+from app.core.telegram_api import BotApiRefusedError, bot_client
 from app.modules.settings.bot_commands import BOT_COMMANDS
 from app.modules.settings.dto import BotCommandDto
 
 _TIMEOUT_SECONDS: Final[float] = 10.0
 # outranks the default scope in private chats, so commands set there earlier
 # would otherwise shadow ours
-_PRIVATE_CHATS_SCOPE: Final[BotCommandScopeAllPrivateChats] = BotCommandScopeAllPrivateChats()
+_PRIVATE_CHATS_SCOPE: Final[dict[str, str]] = {"type": "all_private_chats"}
 
 
 async def push_bot_commands_to_telegram(
@@ -51,17 +49,20 @@ async def push_bot_commands_to_telegram(
         async with bot_client(token, proxy, timeout=_TIMEOUT_SECONDS) as bot:
             for lang in locales:
                 bot_commands = [
-                    BotCommand(
-                        command=item.command,
-                        description=describe(
+                    {
+                        "command": item.command,
+                        "description": describe(
                             lang or default_locale.value, by_command[item.command].description_key
                         ),
-                    )
+                    }
                     for item in commands
                 ]
                 ok &= await _accepted(
-                    bot.set_my_commands(
-                        commands=bot_commands, scope=_PRIVATE_CHATS_SCOPE, language_code=lang
+                    bot.call(
+                        "setMyCommands",
+                        commands=bot_commands,
+                        scope=_PRIVATE_CHATS_SCOPE,
+                        language_code=lang,
                     ),
                     "setMyCommands",
                     lang,
@@ -69,7 +70,7 @@ async def push_bot_commands_to_telegram(
                 # clears commands an older push left in the default scope,
                 # which also shows them in groups
                 ok &= await _accepted(
-                    bot.delete_my_commands(language_code=lang), "deleteMyCommands", lang
+                    bot.call("deleteMyCommands", language_code=lang), "deleteMyCommands", lang
                 )
     except Exception:
         logger.exception("Failed to push bot commands to Telegram")
@@ -81,7 +82,9 @@ async def delete_bot_commands_for_locale(token: str, proxy: Optional[str], local
     try:
         async with bot_client(token, proxy, timeout=_TIMEOUT_SECONDS) as bot:
             return await _accepted(
-                bot.delete_my_commands(scope=_PRIVATE_CHATS_SCOPE, language_code=locale.value),
+                bot.call(
+                    "deleteMyCommands", scope=_PRIVATE_CHATS_SCOPE, language_code=locale.value
+                ),
                 "deleteMyCommands",
                 locale.value,
             )
@@ -90,14 +93,12 @@ async def delete_bot_commands_for_locale(token: str, proxy: Optional[str], local
         return False
 
 
-async def _accepted(call: Awaitable[bool], method: str, lang: Optional[str]) -> bool:
+async def _accepted(call: Awaitable[Any], method: str, lang: Optional[str]) -> bool:
     # Telegram refusing one language doesn't stop the others; a network failure does
     try:
-        return await call
-    except TelegramNetworkError:
-        raise
-    except TelegramAPIError as error:
+        return bool(await call)
+    except BotApiRefusedError as error:
         logger.error(
-            f"Telegram '{method}' failed for language '{lang or 'default'}': {error.message}"
+            f"Telegram '{method}' failed for language '{lang or 'default'}': {error.description}"
         )
         return False

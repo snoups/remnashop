@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 import httpx
 import pytest
@@ -19,9 +19,10 @@ from app.core.enums import SubscriptionStatus
 from app.core.panel_writes import PanelWriteRecorder
 from app.core.utils.time import datetime_now
 from app.modules.providers import get_module_providers
-from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.dispatch import ProcessRemnawaveWebhookDispatch
+from app.modules.subscriptions.dto import CreateSubscriptionDto, ProcessRemnawaveWebhookDto
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.usecases import SyncSubscriptionStatusUseCase
+from app.modules.subscriptions.usecases import ProcessRemnawaveWebhookUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave_webhook import sign_webhook, user_event_payload
@@ -40,6 +41,27 @@ class _TestSessionProvider(Provider):
         return self._session
 
 
+class _InlineProcessDispatch:
+    """Runs the worker's half at once, so a test sees the webhook's effect."""
+
+    def __init__(self, container: AsyncContainer) -> None:
+        self._container = container
+        self.fail_with: Optional[Exception] = None
+
+    async def kiq(self, *, body: str) -> None:
+        if self.fail_with is not None:
+            raise self.fail_with
+        async with self._container() as request:
+            use_case = await request.get(ProcessRemnawaveWebhookUseCase)
+            await use_case.system(ProcessRemnawaveWebhookDto(body=body))
+
+
+class _InlineDispatchProvider(Provider):
+    @provide(scope=Scope.APP)
+    def dispatch(self, container: AsyncContainer) -> ProcessRemnawaveWebhookDispatch:
+        return _InlineProcessDispatch(container)
+
+
 @pytest.fixture
 async def webhook_container(
     session: AsyncSession, config: AppConfig
@@ -55,6 +77,7 @@ async def webhook_container(
         *get_module_providers(),
         _TestSessionProvider(session),
         user_repository_provider,
+        _InlineDispatchProvider(),
     ]
     container = make_async_container(*providers, context={AppConfig: config})
     yield container
@@ -230,6 +253,7 @@ async def test_missing_webhook_secret_returns_503(config: AppConfig, session: As
         *get_module_providers(),
         _TestSessionProvider(session),
         user_repository_provider,
+        _InlineDispatchProvider(),
     ]
     container = make_async_container(*providers, context={AppConfig: unconfigured})
     app = get_app(unconfigured)
@@ -297,12 +321,12 @@ async def test_redelivery_of_a_processed_webhook_is_acknowledged_without_reapply
     assert refreshed.status is SubscriptionStatus.ACTIVE
 
 
-async def test_a_failed_webhook_can_be_redelivered(
+async def test_a_webhook_that_could_not_be_queued_can_be_redelivered(
     webhook_client: httpx.AsyncClient,
+    webhook_container: AsyncContainer,
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     config: AppConfig,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # The panel retries what it couldn't deliver; the replay guard must not
     # turn a failed attempt into a silently dropped event.
@@ -314,14 +338,13 @@ async def test_a_failed_webhook_can_be_redelivered(
         user_event_payload(event="user.limited", remnawave_user_id=81011, status="LIMITED"), secret
     )
     url = f"{API_V1}{REMNAWAVE_WEBHOOK_PATH}"
+    dispatch = await webhook_container.get(ProcessRemnawaveWebhookDispatch)
+    assert isinstance(dispatch, _InlineProcessDispatch)
 
-    async def _boom(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("database is down")
-
-    monkeypatch.setattr(SyncSubscriptionStatusUseCase, "_execute", _boom)
-    with pytest.raises(RuntimeError):
+    dispatch.fail_with = ConnectionError("redis is down")
+    with pytest.raises(ConnectionError):
         await webhook_client.post(url, content=body, headers=headers)
-    monkeypatch.undo()
+    dispatch.fail_with = None
 
     assert (await webhook_client.post(url, content=body, headers=headers)).status_code == 200
     refreshed = await subscription_repository.get_by_id(subscription_id)

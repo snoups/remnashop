@@ -1,64 +1,15 @@
 import asyncio
 import sys
-from typing import Optional
 
 import uvicorn
-from aiogram import Bot
-from aiogram.client.session.aiohttp import AiohttpSession
-from dishka.integrations.aiogram import setup_dishka as setup_aiogram_dishka
-from dishka.integrations.fastapi import setup_dishka as setup_fastapi_dishka
-from fastapi import FastAPI
-from fluentogram import TranslatorHub
 from loguru import logger
 
 from app.core.config import AppConfig
 from app.core.constants import TELEGRAM_LOGS_KEY
 from app.core.db.crypt_key import assert_crypt_key_matches
 from app.core.logger import add_redis_sink, setup_logger
-from app.modules.settings import BotSettingsDto, read_bot_settings
-from app.telegram.app import get_app
-from app.telegram.container import create_aiogram_container
-from app.telegram.dispatcher import get_bg_manager_factory, get_dispatcher, setup_dispatcher
-from app.telegram.i18n import read_translator_hub
+from app.modules.settings import read_bot_settings
 from app.telegram.idle_app import get_idle_app
-
-
-def build_app(
-    config: AppConfig, bot_settings: BotSettingsDto, translator_hub: Optional[TranslatorHub]
-) -> FastAPI:
-    if bot_settings.token is None or bot_settings.secret_token is None:
-        logger.warning(
-            "Bot token not set, telegram service is idle. "
-            "Set it in Dashboard -> Settings -> Telegram Bot, then press Restart."
-        )
-        return get_idle_app(config)
-
-    assert translator_hub is not None  # guaranteed by the __main__ block below
-    dispatcher = get_dispatcher(config)
-    bg_manager_factory = get_bg_manager_factory(dispatcher)
-    proxy = bot_settings.proxy
-    bot = Bot(
-        token=bot_settings.token.get_secret_value(),
-        session=AiohttpSession(proxy=proxy) if proxy is not None else None,
-    )
-
-    container = create_aiogram_container(config, bg_manager_factory, bot, translator_hub)
-    # Must run before setup_dispatcher(): outer middlewares run in registration
-    # order, and UserMiddleware (registered there) reads data[CONTAINER_KEY],
-    # which only exists once dishka's outer middleware has populated it.
-    setup_aiogram_dishka(container, dispatcher, auto_inject=True)
-    setup_dispatcher(dispatcher)
-
-    app = get_app(
-        config,
-        dispatcher,
-        bot,
-        bot_settings.secret_token.get_secret_value(),
-        bot_settings.drop_pending_updates,
-    )
-    setup_fastapi_dishka(container, app)
-    return app
-
 
 if __name__ == "__main__":
     _config = AppConfig.get()
@@ -73,14 +24,20 @@ if __name__ == "__main__":
         # No hot-reload.
         asyncio.run(assert_crypt_key_matches(_config))
         _bot_settings = asyncio.run(read_bot_settings(_config))
-        # without a token build_app serves the idle app, and on a fresh deploy
-        # read_translator_hub raises (no active locale yet)
-        _translator_hub = (
-            asyncio.run(read_translator_hub(_config))
-            if _bot_settings.token is not None and _bot_settings.secret_token is not None
-            else None
-        )
-        _app = build_app(_config, _bot_settings, _translator_hub)
+        if _bot_settings.token is None or _bot_settings.secret_token is None:
+            logger.warning(
+                "Bot token not set, telegram service is idle. "
+                "Set it in Dashboard -> Settings -> Telegram Bot, then press Restart."
+            )
+            _app = get_idle_app(_config)
+        else:
+            # aiogram and the bot's graph load only with a token: an idle process
+            # stays small, and on a fresh deploy read_translator_hub raises (no
+            # active locale yet)
+            from app.telegram.i18n import read_translator_hub
+            from app.telegram.live_app import build_live_app
+
+            _app = build_live_app(_config, _bot_settings, asyncio.run(read_translator_hub(_config)))
 
         uvicorn.run(
             app=_app,

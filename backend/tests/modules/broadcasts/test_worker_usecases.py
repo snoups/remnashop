@@ -6,8 +6,6 @@ from typing import Any
 
 import httpx
 import pytest
-from aiogram.methods import DeleteMessage, GetMe, SendMessage, SendPhoto
-from aiogram.types import FSInputFile
 from redis.asyncio import Redis
 from redis.asyncio.lock import Lock
 from redis.exceptions import LockNotOwnedError
@@ -70,6 +68,7 @@ from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
 from tests.modules.broadcasts.factories import (
     BOT_USER,
+    BotRequest,
     MockTelegram,
     make_customer,
     message_result,
@@ -77,7 +76,7 @@ from tests.modules.broadcasts.factories import (
 )
 from tests.modules.broadcasts.test_repository import save_dto
 
-Responder = Callable[[Any], httpx.Response]
+Responder = Callable[[BotRequest], httpx.Response]
 
 
 def _store_jpeg(media_dir: Path, broadcast_id: int) -> None:
@@ -270,8 +269,8 @@ async def _statuses(session: AsyncSession, broadcast_id: int) -> list[BroadcastR
     return [r.status for r in await _recipients(session, broadcast_id)]
 
 
-def _chat_id(method: Any) -> int:
-    return int(method.chat_id)
+def _chat_id(request: BotRequest) -> int:
+    return int(request.params["chat_id"])
 
 
 def _by_chat(responses: dict[int, httpx.Response]) -> Responder:
@@ -421,7 +420,7 @@ async def test_start_posts_to_channel(
     await make_start(telegram).system(broadcast.id)
 
     assert len(telegram.requests) == 1
-    assert isinstance(telegram.requests[0], SendMessage)
+    assert telegram.requests[0].method == "sendMessage"
     assert _chat_id(telegram.requests[0]) == -100500
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert (after.channel_chat_id, after.channel_message_id) == (-100500, 100)
@@ -617,20 +616,20 @@ async def test_deliver_uploads_media_once(
     def _size(file_id: str) -> dict[str, object]:
         return {"file_id": file_id, "file_unique_id": file_id, "width": 1, "height": 1}
 
-    def respond(method: Any) -> httpx.Response:
-        if isinstance(method.photo, FSInputFile):
+    def respond(request: BotRequest) -> httpx.Response:
+        if isinstance(request.params["photo"], Path):
             photo = [_size("small"), _size("F")]
         else:
-            assert method.photo == "F"
+            assert request.params["photo"] == "F"
             photo = [_size("F")]
         return httpx.Response(200, json={"ok": True, "result": message_result(1, photo=photo)})
 
     telegram = MockTelegram(respond)
     await make_deliver(telegram).system(broadcast.id)
 
-    uploads = [isinstance(r.photo, FSInputFile) for r in telegram.requests]
+    uploads = [isinstance(r.params["photo"], Path) for r in telegram.requests]
     assert uploads == [True, False, False]
-    assert all(isinstance(r, SendPhoto) for r in telegram.requests)
+    assert all(r.method == "sendPhoto" for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.SENT] * 3
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.media_file_id == "F"
@@ -789,9 +788,9 @@ async def test_recall_deletes_and_marks(
         broadcast_repository, settings_repository, telegram, recall_dispatch, uow
     ).system(broadcast.id)
 
-    deleted = sorted((r.chat_id, r.message_id) for r in telegram.requests)
+    deleted = sorted((r.params["chat_id"], r.params["message_id"]) for r in telegram.requests)
     assert deleted == [(-100500, 77), (9730, 11), (9731, 12)]
-    assert all(isinstance(r, DeleteMessage) for r in telegram.requests)
+    assert all(r.method == "deleteMessage" for r in telegram.requests)
     assert await _statuses(session, broadcast.id) == [BroadcastRecipientStatus.RECALLED] * 2
     after = await broadcast_repository.get_by_id(broadcast.id)
     assert after.recalled_count == 2
@@ -1069,13 +1068,13 @@ async def test_prune_keeps_counts(
     assert after.total_count == 2
 
 
-def _getme(username: object) -> Callable[[Any], httpx.Response]:
-    def respond(method: Any) -> httpx.Response:
-        if isinstance(method, GetMe):
+def _getme(username: object) -> Callable[[BotRequest], httpx.Response]:
+    def respond(request: BotRequest) -> httpx.Response:
+        if request.method == "getMe":
             return httpx.Response(
                 200, json={"ok": True, "result": {**BOT_USER, "username": username}}
             )
-        return ok_response(method)
+        return ok_response(request)
 
     return respond
 
@@ -1114,10 +1113,9 @@ async def _channel_post_markup(
     )
     telegram = MockTelegram(_getme(username))
     await make_start(telegram).system(broadcast.id)
-    sent = next(r for r in telegram.requests if isinstance(r, SendMessage))
-    if sent.reply_markup is None:
-        return []
-    return sent.reply_markup.model_dump(exclude_none=True)["inline_keyboard"]
+    sent = next(r for r in telegram.requests if r.method == "sendMessage")
+    markup = sent.params.get("reply_markup")
+    return markup["inline_keyboard"] if markup else []
 
 
 async def test_channel_post_links_menu_to_the_bot(

@@ -16,34 +16,51 @@ const KV_CLASS = "flex items-center justify-between gap-2 text-[13px]";
 function Kv({ label, value }: { label: string; value: string }) {
   return (
     <div className={KV_CLASS}>
-      <span className="text-muted-foreground">{label}</span>
-      <b className="font-semibold tabular-nums text-foreground">{value}</b>
+      <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+      <b className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-foreground">{value}</b>
     </div>
   );
 }
 
-function ProcessCard({ process }: { process: RuntimeProcess }) {
+// "Worker #2" when a role runs several processes, "API · admin" for a named instance
+function processLabel(runtime: RuntimeProcess[], index: number): string {
+  const { process, instance } = runtime[index];
+  const siblings = runtime.filter((other) => other.process === process && other.instance === instance);
+  const base = [RUNTIME_PROCESS_LABELS[process] ?? process, instance].filter(Boolean).join(" · ");
+  return siblings.length > 1 ? `${base} #${siblings.indexOf(runtime[index]) + 1}` : base;
+}
+
+function ProcessCard({ process, label }: { process: RuntimeProcess; label: string }) {
   const { t, i18n } = useTranslation();
   const ms = t("dashboard.runtime.units.millisecond");
   const decimals = new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const none = t("common.none");
+  const running = process.pid !== null;
+  const delay = (value: number | null) => (value === null ? none : `${decimals.format(value)} ${ms}`);
   return (
     <div className={SVC_CLASS}>
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-foreground">
           <span className="relative shrink-0">
             <IconCircle icon={Cpu} />
-            <i className="absolute -bottom-px -right-px size-2.5 rounded-full bg-success" />
+            <i className={`absolute -bottom-px -right-px size-2.5 rounded-full ${running ? "bg-success" : "bg-error"}`} />
           </span>
-          <span className="truncate">{RUNTIME_PROCESS_LABELS[process.process] ?? process.process}</span>
+          <span className="truncate">{label}</span>
         </span>
-        <Tag className="font-mono">{t("dashboard.runtime.pid", { pid: process.pid })}</Tag>
+        {running && <Tag className="font-mono">{t("dashboard.runtime.pid", { pid: process.pid })}</Tag>}
       </div>
-      <Kv label={t("dashboard.runtime.memory")} value={formatBytes(process.rss_bytes, i18n.language)} />
-      <Kv label={t("dashboard.runtime.uptime")} value={formatUptime(t, process.uptime_seconds)} />
+      <Kv
+        label={t("dashboard.runtime.memory")}
+        value={process.rss_bytes === null ? none : formatBytes(process.rss_bytes, i18n.language)}
+      />
+      <Kv
+        label={t("dashboard.runtime.uptime")}
+        value={process.uptime_seconds === null ? none : formatUptime(t, process.uptime_seconds)}
+      />
       <div className={`${GLASS_PLATE_CLASS} mt-1 flex flex-col gap-1.5 p-2.5`}>
         <span className={EYEBROW_CLASS}>{t("dashboard.runtime.eventLoop")}</span>
-        <Kv label={t("dashboard.runtime.eventLoopDelay")} value={`${decimals.format(process.event_loop_delay_ms)} ${ms}`} />
-        <Kv label={t("dashboard.runtime.eventLoopP99")} value={`${decimals.format(process.event_loop_p99_ms)} ${ms}`} />
+        <Kv label={t("dashboard.runtime.eventLoopDelay")} value={delay(process.event_loop_delay_ms)} />
+        <Kv label={t("dashboard.runtime.eventLoopP99")} value={delay(process.event_loop_p99_ms)} />
       </div>
     </div>
   );
@@ -129,6 +146,8 @@ export function SystemStatusCard({
   host: HostStats | null;
 }) {
   const { t, i18n } = useTranslation();
+  const running = runtime.filter((process) => process.pid !== null).length;
+  const down = runtime.length - running;
   return (
     <Section
       icon={Cpu}
@@ -136,15 +155,22 @@ export function SystemStatusCard({
       description={t("dashboard.runtime.description")}
       aside={
         runtime.length > 0 && (
-          <StatusPill tone="success">{t("dashboard.runtime.running", { n: runtime.length.toLocaleString(i18n.language) })}</StatusPill>
+          <>
+            {down > 0 && (
+              <StatusPill tone="error">{t("dashboard.runtime.down", { n: down.toLocaleString(i18n.language) })}</StatusPill>
+            )}
+            {running > 0 && (
+              <StatusPill tone="success">{t("dashboard.runtime.running", { n: running.toLocaleString(i18n.language) })}</StatusPill>
+            )}
+          </>
         )
       }
     >
       <div className="flex flex-col gap-3 pt-4">
         {runtime.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {runtime.map((process) => (
-              <ProcessCard key={process.process} process={process} />
+            {runtime.map((process, index) => (
+              <ProcessCard key={`${process.process}-${process.instance}-${process.pid ?? index}`} process={process} label={processLabel(runtime, index)} />
             ))}
           </div>
         )}

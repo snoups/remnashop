@@ -5,6 +5,7 @@ from dishka import Provider, Scope, alias, provide, provide_all
 from app.modules.subscriptions.dispatch import (
     GrantAddOnDispatch,
     PanelSyncDispatch,
+    ProcessRemnawaveWebhookDispatch,
     PurchaseSubscriptionDispatch,
 )
 from app.modules.subscriptions.eligibility import PurchaseEligibility
@@ -16,6 +17,7 @@ from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.subscriptions.tasks import (
     grant_addon_task,
+    process_remnawave_webhook_task,
     purchase_subscription_task,
     run_panel_sync_task,
 )
@@ -47,6 +49,7 @@ from app.modules.subscriptions.usecases import (
     ListOwnSubscriptionsUseCase,
     ListPanelSquadsUseCase,
     ListSubscriptionsUseCase,
+    ProcessRemnawaveWebhookUseCase,
     PruneIdempotencyKeysUseCase,
     PublishPanelEventUseCase,
     PullSubscriptionFromPanelUseCase,
@@ -106,6 +109,7 @@ class SubscriptionsProvider(Provider):
         SyncSubscriptionStatusUseCase,
         ListActivePlansUseCase,
         HandleRemnawaveWebhookUseCase,
+        ProcessRemnawaveWebhookUseCase,
         PublishPanelEventUseCase,
         ListOwnActiveSubscriptionsUseCase,
         ListOwnSubscriptionsUseCase,
@@ -135,6 +139,10 @@ class SubscriptionsProvider(Provider):
     @provide(scope=Scope.APP)
     def panel_sync_dispatch(self) -> PanelSyncDispatch:
         return cast(PanelSyncDispatch, run_panel_sync_task)
+
+    @provide(scope=Scope.APP)
+    def process_remnawave_webhook_dispatch(self) -> ProcessRemnawaveWebhookDispatch:
+        return cast(ProcessRemnawaveWebhookDispatch, process_remnawave_webhook_task)
 
 
 def get_subscriptions_providers() -> list[Provider]:

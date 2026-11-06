@@ -203,7 +203,7 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
     )
 
     session = use_fake_bot(
-        monkeypatch, FakeBotSession({"SetMyCommands": True, "DeleteMyCommands": True})
+        monkeypatch, FakeBotSession({"setMyCommands": True, "deleteMyCommands": True})
     )
 
     use_case = UpdateTranslationUseCase(
@@ -220,9 +220,9 @@ async def test_update_translation_repushes_to_telegram_when_bot_configured(
         ),
     )
 
-    pushed = session.called("SetMyCommands")
+    pushed = session.called("setMyCommands")
     assert pushed
-    assert pushed[0].commands[0].description == "New text"
+    assert pushed[0]["commands"][0]["description"] == "New text"
 
 
 async def test_owner_can_reset_translation_to_default(

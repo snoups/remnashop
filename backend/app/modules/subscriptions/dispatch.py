@@ -25,3 +25,7 @@ class GrantAddOnDispatch(Protocol):
 
 class PanelSyncDispatch(Protocol):
     async def kiq(self, *, direction: str) -> object: ...
+
+
+class ProcessRemnawaveWebhookDispatch(Protocol):
+    async def kiq(self, *, body: str) -> object: ...

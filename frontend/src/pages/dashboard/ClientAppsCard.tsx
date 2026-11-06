@@ -7,7 +7,6 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Section } from "@shared/ui/glass/Section";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
-import { Tag } from "@shared/ui/Tag";
 
 const TOP_APPS = 4;
 const APP_TONES: string[] = ["bg-primary", "bg-accent-foreground", "bg-success", "bg-warning"];
@@ -46,7 +45,7 @@ function PlatformRow({ platform }: { platform: ClientApps["platforms"][number] }
 }
 
 export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [state] = useAsyncResource(getClientApps, { deps: [refreshKey], keepData: true });
   const data = state.kind === "ready" ? state.data : null;
 
@@ -57,21 +56,6 @@ export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
       icon={Smartphone}
       title={t("dashboard.clientApps.title")}
       description={t("dashboard.clientApps.description")}
-      aside={
-        data?.available &&
-        data.total_devices > 0 && (
-          <Tag>
-            {t("dashboard.clientApps.devices", {
-              count: data.total_devices,
-              formatted: data.total_devices.toLocaleString(i18n.language),
-              avg: data.average_per_user.toLocaleString(i18n.language, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              }),
-            })}
-          </Tag>
-        )
-      }
     >
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
