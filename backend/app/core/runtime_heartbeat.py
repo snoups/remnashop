@@ -168,3 +168,7 @@ async def poll_runtime_heartbeat(
         sampler_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await sampler_task
+        # a restart starts a new pid: without this the old one lingers on the
+        # dashboard until its key expires
+        with contextlib.suppress(Exception):
+            await redis.delete(_heartbeat_key(process, pid))

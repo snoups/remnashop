@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import os
 import time
 
@@ -6,6 +8,7 @@ import pytest
 from app.core.runtime_heartbeat import (
     RUNTIME_PROCESSES,
     _event_loop_stats_ms,
+    poll_runtime_heartbeat,
     publish_runtime_heartbeat,
     read_host_memory,
     read_runtime_heartbeats,
@@ -131,3 +134,16 @@ async def test_every_process_of_a_role_keeps_its_own_heartbeat(redis) -> None:
     assert [(hb.pid, hb.instance) for hb in heartbeats] == [(10, None), (11, "admin")]
 
     await _clear(redis)
+
+
+async def test_a_stopped_process_removes_its_heartbeat(redis) -> None:
+    await _clear(redis)
+
+    task = asyncio.create_task(poll_runtime_heartbeat(redis, "api"))
+    while not [key async for key in redis.scan_iter(match=_PATTERN)]:
+        await asyncio.sleep(0.01)
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+    assert [key async for key in redis.scan_iter(match=_PATTERN)] == []
