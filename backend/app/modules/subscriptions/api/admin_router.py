@@ -179,7 +179,7 @@ async def list_subscriptions(
     "",
     response_model=SubscriptionResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def grant_subscription(
