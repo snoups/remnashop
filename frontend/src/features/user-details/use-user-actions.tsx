@@ -10,6 +10,7 @@ import {
   blockUser,
   clearEmailUndeliverable,
   deleteUser,
+  setUserTrialAvailability,
   unbindUserTelegram,
   unblockUser,
 } from "@entities/user/api";
@@ -33,12 +34,13 @@ export type UserAction =
   | "unblock"
   | "resetReferralCode"
   | "clearEmailUndeliverable"
+  | "toggleTrial"
   | "merge"
   | "deleteSubscriptions"
   | "delete";
 
 interface UserActionsOptions {
-  /** the account after a promote, block, unblock, referral code reset, Telegram binding or merge */
+  /** the account after a promote, block, unblock, trial toggle, referral code reset, Telegram binding or merge */
   onUpdated: (user: UserListItem) => void;
   onDeleted: (user: UserListItem) => void;
   onSubscriptionsDeleted?: (user: UserListItem) => void;
@@ -132,6 +134,7 @@ export function useUserActions({
       ...(user.email_undeliverable_at && permissions.includes("USERS_EMAIL_UNDELIVERABLE_CLEAR")
         ? ["clearEmailUndeliverable" as const]
         : []),
+      ...(canManage && permissions.includes("USERS_TRIAL_MANAGE") ? ["toggleTrial" as const] : []),
       ...(canTouchStaff &&
       permissions.includes("USERS_MERGE") &&
       permissions.includes("USERS_MERGE_PREVIEW")
@@ -185,6 +188,16 @@ export function useUserActions({
     }
   };
 
+  const toggleTrial = async (user: UserListItem) => {
+    const allow = !user.is_trial_available;
+    try {
+      onUpdated(await setUserTrialAvailability(user.id, allow));
+      toast.success(t(allow ? "users.trial.allowed" : "users.trial.revoked"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
+    }
+  };
+
   const removeSubscriptions = async (user: UserListItem) => {
     try {
       const { deleted } = await deleteUserSubscriptions(user.id);
@@ -209,6 +222,7 @@ export function useUserActions({
   const run = (action: UserAction, user: UserListItem) => {
     if (action === "unblock") void setBlocked(user, false);
     else if (action === "clearEmailUndeliverable") void clearUndeliverable(user);
+    else if (action === "toggleTrial") void toggleTrial(user);
     // blocking an admin also demotes them and drops their sessions, so confirm first
     else if (action === "block") {
       if (user.role === "ADMIN") setPending({ action: "blockAdmin", user });

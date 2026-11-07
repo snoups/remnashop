@@ -155,6 +155,10 @@ class SetDiscountRequest(BaseModel):
     purchase_discount: Optional[int] = Field(None, ge=0, le=100)
 
 
+class SetTrialAvailabilityRequest(BaseModel):
+    is_trial_available: bool
+
+
 class BindTelegramRequest(BaseModel):
     telegram_id: int = Field(gt=0, le=9_223_372_036_854_775_807)
 

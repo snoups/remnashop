@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Gift,
   GitMerge,
   History,
   Layers,
@@ -26,7 +27,8 @@ import { useTranslation } from "react-i18next";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import type { UserListItem } from "@entities/user/api";
 import { userContacts, userName } from "@entities/user/display";
-import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { useAccountPermissions, useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import {
   AnalyticsTab,
   InvitedTab,
@@ -108,6 +110,10 @@ function UserDetailsDialogBody({
   const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
   const isDeleted = Boolean(user.deleted_at);
   const contacts = userContacts(user, t);
+  const accountPermissions = useAccountPermissions(user.id);
+  const canGrant =
+    !isDeleted && accountPermissions.includes("SUBSCRIPTIONS_GRANT") && accountPermissions.includes("PLANS_VIEW");
+  const [isGranting, setIsGranting] = useState(false);
 
   const hasAny = (...required: Permission[]) => required.some((permission) => permissions.includes(permission));
   const tabs: DialogTabItem<UserDetailsTab>[] = [
@@ -184,13 +190,25 @@ function UserDetailsDialogBody({
         </motion.div>
       </div>
 
-      {available.length > 0 && (
+      {(available.length > 0 || canGrant) && (
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center`}>
           <div className="ml-auto">
             <ActionMenu
               glass
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}
               items={[
+                ...(canGrant
+                  ? [{ label: t("subscriptions.grant.open"), icon: Gift, onClick: () => setIsGranting(true) }]
+                  : []),
+                ...(available.includes("toggleTrial")
+                  ? [
+                      {
+                        label: t(user.is_trial_available ? "users.trial.revoke" : "users.trial.allow"),
+                        icon: Gift,
+                        onClick: () => actions.run("toggleTrial", user),
+                      },
+                    ]
+                  : []),
                 ...(available.includes("promote")
                   ? [{ label: t("admins.promote.button"), icon: ShieldPlus, onClick: () => actions.run("promote", user) }]
                   : []),
@@ -241,6 +259,13 @@ function UserDetailsDialogBody({
         </div>
       )}
       {actions.dialogs}
+      {isGranting && (
+        <GrantSubscriptionDialog
+          userId={user.id}
+          onGranted={() => setSubscriptionsVersion((version) => version + 1)}
+          onClose={() => setIsGranting(false)}
+        />
+      )}
     </>
   );
 }

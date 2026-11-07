@@ -768,6 +768,7 @@
       "UserPurchaseDiscountChangedEvent": "Purchase discount changed",
       "UserUnblockedEvent": "User unblocked",
       "UserEmailUndeliverableClearedEvent": "Undeliverable email mark cleared",
+      "UserTrialAvailabilityChangedEvent": "Trial availability changed",
       "UsersBulkUnblockedEvent": "Bulk unblock",
       "TransactionRefundedEvent": "Transaction refunded",
       "PaidOrderNotFulfilledEvent": "Paid order not issued",
@@ -1180,6 +1181,12 @@
       "badge": "Undeliverable",
       "clear": "Clear undeliverable mark",
       "cleared": "Undeliverable mark cleared."
+    },
+    "trial": {
+      "allow": "Allow the trial",
+      "revoke": "Revoke the trial",
+      "allowed": "The trial is allowed.",
+      "revoked": "The trial is revoked."
     },
     "legalAcceptances": {
       "title": "Accepted documents",
@@ -2164,6 +2171,7 @@
     "BLACKLIST_MATCHES_VIEW": "View users matched by the blacklist",
     "USERS_BLOCK": "Block users",
     "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Clear the undeliverable email mark",
+    "USERS_TRIAL_MANAGE": "Allow or revoke the trial",
     "USERS_UNBLOCK": "Unblock users",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Unblock all blacklist matches",
     "AD_LINKS_VIEW": "View advertising links",

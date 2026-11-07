@@ -396,6 +396,13 @@ class ClearEmailUndeliverableDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SetUserTrialAvailabilityDto:
+    user_id: int
+    is_trial_available: bool
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class UnblockUserDto:
     user_id: int
     client_ip: str

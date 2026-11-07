@@ -1,4 +1,4 @@
-import { CreditCard, Gift, Layers, Receipt, Ticket } from "lucide-react";
+import { CreditCard, Layers, Receipt, Ticket } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { ParseKeys, TFunction } from "i18next";
@@ -9,7 +9,6 @@ import { listUserPromocodeActivations, type UserPromocodeActivation } from "@ent
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
 import { useAccountPermissions, usePermissions } from "@entities/user/use-current-user";
-import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import { PaidTimeline } from "@features/user-details/PaidTimeline";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
@@ -20,7 +19,6 @@ import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { Button } from "@shared/ui/Button";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
@@ -248,24 +246,14 @@ export function TransactionsTab({ userId }: { userId: number }) {
 export function SubscriptionsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const permissions = useAccountPermissions(userId);
-  const canGrant = permissions.includes("SUBSCRIPTIONS_GRANT") && permissions.includes("PLANS_VIEW");
   const canOpen = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
   const { openSubscription } = useOpenEntity();
-  const [isGranting, setIsGranting] = useState(false);
   const [state, reload] = useAsyncResource((signal) =>
     listSubscriptions({ userId, pageSize: SUBSCRIPTIONS_PAGE_SIZE }, signal),
   );
 
   return (
     <>
-      {canGrant && (
-        <div className="flex justify-end pb-2">
-          <Button variant="secondary" size="sm" onClick={() => setIsGranting(true)}>
-            <Gift className="size-3.5" />
-            {t("subscriptions.grant.open")}
-          </Button>
-        </div>
-      )}
       <DialogCard>
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
@@ -308,9 +296,6 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
             </Pressable>
           ))}
       </DialogCard>
-      {isGranting && (
-        <GrantSubscriptionDialog userId={userId} onGranted={reload} onClose={() => setIsGranting(false)} />
-      )}
     </>
   );
 }
