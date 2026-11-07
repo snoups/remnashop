@@ -219,6 +219,7 @@ class ErrorCode(UpperStrEnum):
     PLAN_NO_SQUADS = auto()
     PLAN_PUBLIC_CODE_TAKEN = auto()
     PLAN_REORDER_INCOMPLETE = auto()
+    PLAN_SQUADS_MISSING = auto()
     PLAN_TRIAL_BADGE = auto()
     PLAN_TRIAL_EXISTING_ACCESS = auto()
     PLAN_TRIAL_SINGLE_DURATION = auto()

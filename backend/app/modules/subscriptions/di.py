@@ -11,6 +11,7 @@ from app.modules.subscriptions.dispatch import (
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel_squads import PanelSquadCatalog
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.rollback import PurchaseRollbackService
@@ -78,6 +79,7 @@ class SubscriptionsProvider(Provider):
         PurchaseIdempotencyRepository,
         SubscriptionLifecycleService,
         PurchaseEligibility,
+        PanelSquadCatalog,
         PanelSubscriptionRevoker,
         PurchaseRollbackService,
         PanelTrafficUsage,

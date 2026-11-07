@@ -4126,6 +4126,7 @@
     "PLAN_NO_SQUADS": "A plan needs at least one squad to be active.",
     "PLAN_PUBLIC_CODE_TAKEN": "A plan with this code already exists.",
     "PLAN_REORDER_INCOMPLETE": "The new order must include every plan exactly once.",
+    "PLAN_SQUADS_MISSING": "The plan uses squads the Remnawave panel doesn’t have.",
     "PLAN_TRIAL_BADGE": "A trial plan can’t have a badge.",
     "PLAN_TRIAL_EXISTING_ACCESS": "A trial plan can’t be limited to existing users.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",

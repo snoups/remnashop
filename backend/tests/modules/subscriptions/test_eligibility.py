@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 
@@ -75,6 +76,31 @@ async def test_purchasable_applies_purchase_history(
 
     assert [plan.public_code for plan in allowed] == ["for-all", "for-existing"]
     assert await eligibility.purchasable([], buyer) == []
+
+
+async def test_purchasable_hides_a_plan_whose_squad_left_the_panel(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    sub = await create_subscription(
+        subscription_repository, user_repository, telegram_id=91012, remnawave_user_id=91012
+    )
+    buyer = await user_repository.find_by_id(sub.user_id)
+    assert buyer is not None
+    kept, gone = uuid4(), uuid4()
+    plans = [
+        _plan("kept", PlanAvailability.ALL).model_copy(update={"internal_squads": [kept]}),
+        _plan("gone", PlanAvailability.ALL).model_copy(update={"internal_squads": [gone]}),
+    ]
+    session = subscription_repository.session
+
+    allowed = await make_eligibility(session, panel_squads=frozenset({kept})).purchasable(
+        plans, buyer
+    )
+    # an unreadable panel hides nothing
+    unchecked = await make_eligibility(session).purchasable(plans, buyer)
+
+    assert [plan.public_code for plan in allowed] == ["kept"]
+    assert [plan.public_code for plan in unchecked] == ["kept", "gone"]
 
 
 async def test_an_active_trial_holds_no_slot_a_purchase_would_take(

@@ -161,6 +161,52 @@ async def test_new_purchase_creates_subscription_with_real_remnawave_identity(
     assert len(stored) == 1
 
 
+async def test_new_purchase_with_a_squad_gone_from_the_panel_never_touches_it(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 402)
+    plan = await _create_plan(plan_repository)
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        # the panel knows some other squad, not the plan's
+        make_eligibility(subscription_repository.session, panel_squads=frozenset({uuid4()})),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+        UserRepository(subscription_repository.session),
+        AppConfig.get(),
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+                ),
+                duration_days=30,
+                price_paid=Decimal("299.00"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PLAN_SQUADS_MISSING
+    assert remnawave_store == {}
+    assert await subscription_repository.list_all() == []
+
+
 async def test_new_purchase_forbidden_for_a_different_users_actor(
     plan_repository: PlanRepository,
     subscription_repository: SubscriptionRepository,
