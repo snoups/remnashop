@@ -3184,6 +3184,7 @@
       "externalSquadLabel": "External squad",
       "externalSquadNone": "None",
       "squadsEmpty": "The panel has no squads",
+      "squadsGone": "Squads shown by their code are gone from the panel. Unpick them: while they are picked, the plan is off sale.",
       "squadsError": "Plan settings saved, squads weren’t: {{error}}",
       "accessError": "Plan created, access wasn’t saved: {{error}}",
       "sections": {
