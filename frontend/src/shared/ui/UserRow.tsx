@@ -1,3 +1,4 @@
+import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +9,8 @@ import { Pressable } from "@shared/ui/Pressable";
 interface UserRowProps {
   /** empty for a deleted account: shown as users.deleted.name */
   name: string | null | undefined;
+  /** the account has no name of its own: a user icon instead of initials */
+  unnamed?: boolean;
   subtitle: ReactNode;
   /** badges, a tag or an amount on the right */
   aside?: ReactNode;
@@ -17,7 +20,7 @@ interface UserRowProps {
 
 /** A user in a Card variant="list": initials, name, subtitle; opens their card on click.
  *  48px pill: the 32px circle 8px in on every side, a 20px badge on the right 14px in, as on its curve. */
-export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
+export function UserRow({ name, unnamed = false, subtitle, aside, onClick }: UserRowProps) {
   const { t } = useTranslation();
   return (
     <Pressable
@@ -26,7 +29,9 @@ export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
     >
-      <IconCircle glyph={<span className="text-[11px] font-bold">{initials(name)}</span>} />
+      <IconCircle
+        glyph={unnamed ? <User className="size-4" /> : <span className="text-[11px] font-bold">{initials(name)}</span>}
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium leading-tight text-foreground/90">
           {name || t("users.deleted.name")}

@@ -542,6 +542,9 @@ class UserRepository:
 
         db_user.role = Role.ADMIN
         db_user.login = data.login
+        # staff go by their login until they set a name
+        if not db_user.name:
+            db_user.name = data.login
         db_user.password_hash = data.password_hash
         db_user.password_change_required = data.password_change_required
         db_user.permission_grants = None
@@ -564,6 +567,8 @@ class UserRepository:
         db_user.login = login
         db_user.password_hash = password_hash
         db_user.password_change_required = False
+        if not db_user.name:
+            db_user.name = login
 
         await self._flush_unique()
         await self.session.refresh(db_user)

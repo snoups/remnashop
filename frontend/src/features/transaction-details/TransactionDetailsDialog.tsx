@@ -36,6 +36,7 @@ import {
   refundTransaction,
 } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { userNameField } from "@entities/user/display";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
@@ -241,7 +242,7 @@ function TransactionDetailsDialogBody({
               {order.user_id}
             </InfoRow>
             <InfoRow icon={User} label={t("transactions.details.name")} copyValue={user?.name || undefined}>
-              <DetailValue value={user ? user.name || t("users.deleted.name") : none} />
+              <DetailValue value={user ? userNameField(user, t) : none} />
             </InfoRow>
             <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user?.email ?? undefined} mono>
               <DetailValue value={user?.email ?? none} />

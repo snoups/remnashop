@@ -1,6 +1,6 @@
 import pytest
 
-from app.modules.users.display_name import MAX_NAME_LENGTH, clean_telegram_name
+from app.modules.users.display_name import MAX_NAME_LENGTH, clean_display_name
 
 
 @pytest.mark.parametrize(
@@ -20,14 +20,19 @@ from app.modules.users.display_name import MAX_NAME_LENGTH, clean_telegram_name
         ("😀 Anna 🔥", "Anna"),
     ],
 )
-def test_clean_telegram_name(raw: str, expected: str) -> None:
-    assert clean_telegram_name(raw, 1) == expected
+def test_clean_display_name(raw: str, expected: str) -> None:
+    assert clean_display_name(raw) == expected
 
 
-def test_clean_telegram_name_falls_back_to_the_telegram_id() -> None:
-    assert clean_telegram_name("😀🔥", 42) == "42"
-    assert clean_telegram_name(None, 42) == "42"
+def test_clean_display_name_is_empty_without_a_name() -> None:
+    assert clean_display_name("😀🔥") == ""
+    assert clean_display_name(None) == ""
 
 
-def test_clean_telegram_name_caps_the_length() -> None:
-    assert len(clean_telegram_name("a" * 100, 1)) == MAX_NAME_LENGTH
+@pytest.mark.parametrize("raw", [".", "-_-", "'", "🐈‍⬛ .", " . "])
+def test_clean_display_name_drops_names_without_letters_or_digits(raw: str) -> None:
+    assert clean_display_name(raw) == ""
+
+
+def test_clean_display_name_caps_the_length() -> None:
+    assert len(clean_display_name("a" * 100)) == MAX_NAME_LENGTH

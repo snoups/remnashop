@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { getUserReferralStats } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { userLabel } from "@entities/user/display";
 import { OpenUserFooter } from "@features/open-user/OpenUserFooter";
 import { InvitedUsersList } from "@features/user-referrals/InvitedUsersList";
 import { ReferralOverview } from "@features/user-referrals/ReferralOverview";
@@ -68,7 +69,7 @@ function UserReferralsDialogBody({
           stats?.referrer && (
             <Badge borderless tone="accent">
               <UserPlus className="size-3" />
-              {stats.referrer.name || t("users.deleted.name")}
+              {userLabel(stats.referrer, stats.referrer.id, t)}
             </Badge>
           )
         }

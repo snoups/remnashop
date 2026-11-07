@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { userLabel } from "@entities/user/display";
 import { type InvitedUser, listInvitedUsers } from "@entities/referrals/api";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { PillTabs } from "@shared/ui/PillTabs";
@@ -101,7 +102,8 @@ export function InvitedUsersPage({
           return (
             <UserRow
               key={item.user?.id ?? `deleted-${index}`}
-              name={item.user?.name}
+              name={item.user && userLabel(item.user, item.user.id, t)}
+              unnamed={Boolean(item.user && !item.user.name)}
               subtitle={subtitle(item)}
               aside={
                 <>

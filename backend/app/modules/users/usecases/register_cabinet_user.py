@@ -9,6 +9,7 @@ from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.email import normalize_email
 from app.modules.blacklist import BlacklistRepository
+from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import CreateUserDto, RegisterCabinetUserDto, UserDto
 from app.modules.users.events import (
     CabinetRegistrationBlockedEvent,
@@ -44,7 +45,10 @@ class RegisterCabinetUserUseCase(UseCase[RegisterCabinetUserDto, UserDto]):
             async with self._uow:
                 user = await self._user_repository.create(
                     CreateUserDto(
-                        name=data.name, language=data.language, email=email, is_blocked=is_blocked
+                        name=clean_display_name(data.name),
+                        language=data.language,
+                        email=email,
+                        is_blocked=is_blocked,
                     )
                 )
                 if data.snapshot is not None:

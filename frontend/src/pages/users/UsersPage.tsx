@@ -1,24 +1,4 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  Ban,
-  CircleCheck,
-  Gift,
-  GitMerge,
-  History,
-  Info,
-  KeyRound,
-  LaptopMinimal,
-  Layers,
-  Mail,
-  Send,
-  ShieldPlus,
-  Trash2,
-  type LucideIcon,
-  Unlink,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Ban, CircleCheck, Gift, GitMerge, History, Info, KeyRound, LaptopMinimal, Layers, Mail, Send, ShieldPlus, Trash2, type LucideIcon, Unlink, User, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -47,8 +27,8 @@ import { formatDate, formatRelative } from "@shared/lib/relative-time";
 import { useUrlSearch } from "@shared/lib/use-url-search";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { initials } from "@shared/lib/initials";
+import { userContacts, userName } from "@entities/user/display";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
-import { userHandle } from "@features/user-referrals/format";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
@@ -338,7 +318,7 @@ export function UsersPage() {
               <div className={LIST_BODY_CLASS}>
                 {state.items.map((user) => {
                   const isDeleted = Boolean(user.deleted_at);
-                  const displayName = isDeleted ? t("users.deleted.name") : user.name;
+                  const displayName = userName(user, t);
                   // the per-user session endpoints reject yourself
                   const canViewSessions =
                     !isDeleted && user.id !== currentUserId && permissions.includes("USER_SESSIONS_VIEW");
@@ -439,7 +419,13 @@ export function UsersPage() {
                       <span
                         className={`flex size-8 items-center justify-center rounded-full text-[11px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >
-                        {isDeleted ? <Trash2 className="size-4" /> : initials(user.login ?? user.name)}
+                        {isDeleted ? (
+                          <Trash2 className="size-4" />
+                        ) : user.login || user.name ? (
+                          initials(user.login ?? user.name)
+                        ) : (
+                          <User className="size-4" />
+                        )}
                       </span>
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-2">
@@ -448,14 +434,17 @@ export function UsersPage() {
                           >
                             {displayName}
                           </span>
+                          <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                            #{user.id}
+                          </span>
                           {user.role !== "USER" && (
                             <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>
                               {t(`roles.${user.role}`)}
                             </Badge>
                           )}
                         </span>
-                        <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                          {userHandle(user)}
+                        <span className="block truncate text-[12px] text-muted-foreground">
+                          {userContacts(user, t)}
                         </span>
                       </span>
                       <span className="flex flex-wrap gap-1">

@@ -1,12 +1,17 @@
 import uuid
-from typing import AsyncIterator, Awaitable, Callable
+from typing import AsyncIterator, Awaitable, Callable, Final
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.cli.legacy.schema import upgrade_legacy
 from app.core.config import AppConfig
+from app.core.constants import ALEMBIC_INI
+
+NEW_HEAD: Final[str] = str(ScriptDirectory.from_config(Config(str(ALEMBIC_INI))).get_current_head())
 
 
 @pytest.fixture

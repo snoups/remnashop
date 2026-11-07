@@ -20,6 +20,7 @@ import { listPromocodes, type Promocode } from "@entities/promocodes/api";
 import { listSubscriptions, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { listUsers, type UserListItem } from "@entities/user/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { userLabel } from "@entities/user/display";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
@@ -165,7 +166,7 @@ export function HeaderSearch() {
     const found = pages.filter((entry) => matches(`${entry.label} ${entry.hint ?? ""}`, tokens));
     const people = users.map((user) => ({
       id: `user:${user.id}`,
-      label: user.name,
+      label: userLabel(user, user.id, t),
       hint: [user.username && `@${user.username}`, user.login, user.email, user.telegram_id]
         .filter(Boolean)
         .join(" · "),

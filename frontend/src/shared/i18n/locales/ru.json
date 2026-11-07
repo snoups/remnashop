@@ -962,9 +962,7 @@
       "button": "Создать администратора",
       "title": "Создание администратора",
       "loginLabel": "Логин",
-      "loginPlaceholder": "например, ivan.petrov",
-      "nameLabel": "Отображаемое имя",
-      "namePlaceholder": "например, Иван Петров",
+      "loginPlaceholder": "Например, admin",
       "permissionsLabel": "Права",
       "error": "Не удалось создать администратора."
     },
@@ -1175,6 +1173,12 @@
     },
     "status": {
       "blocked": "Заблокирован"
+    },
+    "unnamed": "Пользователь",
+    "contacts": {
+      "telegram": "TG: {{value}}",
+      "email": "Email: {{value}}",
+      "login": "Логин: {{value}}"
     },
     "deleted": {
       "name": "Удалённый пользователь",

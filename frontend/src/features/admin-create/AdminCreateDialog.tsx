@@ -34,7 +34,6 @@ function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCrea
   const { t } = useTranslation();
   const close = useModalClose();
   const [login, setLogin] = useState("");
-  const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const catalogState = usePermissionCatalog();
   // null until touched: the picker starts from the ADMIN role defaults once the catalog is in
@@ -67,7 +66,6 @@ function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCrea
     try {
       const { password } = await createAdmin({
         login: login.trim(),
-        name: name.trim(),
         permission_grants: grantable.filter((p) => selected.has(p) && !roleDefaults.has(p)),
         permission_revokes: grantable.filter((p) => !selected.has(p) && roleDefaults.has(p)),
       });
@@ -99,14 +97,6 @@ function AdminCreateFormBody({ onCreated }: Pick<AdminCreateDialogProps, "onCrea
                 onChange={(event) => setLogin(event.target.value)}
                 placeholder={t("admins.create.loginPlaceholder")}
                 aria-invalid={isLoginInvalid}
-              />
-            </Field>
-            <Field label={t("admins.create.nameLabel")} htmlFor="admin-create-name" required>
-              <Input
-                id="admin-create-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t("admins.create.namePlaceholder")}
               />
             </Field>
           </div>

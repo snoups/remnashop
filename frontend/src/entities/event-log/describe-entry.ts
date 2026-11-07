@@ -6,14 +6,6 @@ import type { EventLogEntry } from "@entities/event-log/api";
 // payload keys from the dataclass fields, so keep this in sync by hand.
 export const PAYLOAD_TARGET_KEY = "target";
 
-function getTargetLogin(entry: EventLogEntry): string | undefined {
-  return entry.payload &&
-    typeof entry.payload === "object" &&
-    PAYLOAD_TARGET_KEY in entry.payload
-    ? (entry.payload as { [PAYLOAD_TARGET_KEY]?: { login?: string } })[PAYLOAD_TARGET_KEY]?.login
-    : undefined;
-}
-
 export interface UserSnapshot {
   id?: number | null;
   login?: string | null;
@@ -63,18 +55,24 @@ function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
   return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
 }
 
-/** Who did it: a login or name, "System" or "Anonymous"; an API token reads as its own name. */
+/** Staff by login, a customer by name or "User #id"; an API token reads as its own name. */
+function participantLabel(user: UserSnapshot, t: TFunction): string {
+  if (isSystemActor(user)) return t("eventLog.detail.system");
+  if (user.login) return user.login;
+  if (user.name) return user.name;
+  return user.id && user.id > 0 ? `${t("users.unnamed")} #${user.id}` : "—";
+}
+
+/** Who did it: a participant label, "System" or "Anonymous". */
 export function initiatorLabel(entry: EventLogEntry, t: TFunction): string {
   const initiator = getInitiator(entry);
-  if (!initiator) return t(getMissingInitiatorKey(entry));
-  if (isSystemActor(initiator)) return t("eventLog.detail.system");
-  return initiator.login ?? initiator.name ?? "—";
+  return initiator ? participantLabel(initiator, t) : t(getMissingInitiatorKey(entry));
 }
 
 export function describeEntry(entry: EventLogEntry, t: TFunction): string {
   const actor = initiatorLabel(entry, t);
-  const target = getTargetLogin(entry);
-  return target ? `${actor} → ${target}` : actor;
+  const target = getUserSnapshot(entry, PAYLOAD_TARGET_KEY);
+  return target ? `${actor} → ${participantLabel(target, t)}` : actor;
 }
 
 // payload field that picks `eventLog.eventVariants.<type>.<value>` over the plain title

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { promoteAdmin } from "@entities/admin/api";
 import type { UserListItem } from "@entities/user/api";
+import { userLabel } from "@entities/user/display";
 import { getErrorMessage } from "@shared/api/http";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
 import { toast } from "@shared/lib/toast";
@@ -69,7 +70,7 @@ function PromoteAdminForm({
         user_id: user.id,
         login: needsLogin ? login.trim() : undefined,
       });
-      if (!result.password) toast.success(t("admins.promote.success", { name: user.name }));
+      if (!result.password) toast.success(t("admins.promote.success", { name: userLabel(user, user.id, t) }));
       onPromoted(result.admin.login ?? login.trim(), result.password);
       close();
     } catch (err) {
@@ -84,7 +85,7 @@ function PromoteAdminForm({
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 p-4">
-          <p className="text-[13px] text-foreground/80">{t("admins.promote.message", { name: user.name })}</p>
+          <p className="text-[13px] text-foreground/80">{t("admins.promote.message", { name: userLabel(user, user.id, t) })}</p>
           {needsLogin && (
             <Field
               label={t("admins.promote.loginLabel")}

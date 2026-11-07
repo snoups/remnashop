@@ -11,6 +11,7 @@ from app.cli.legacy.panel import PanelIndex
 from app.cli.legacy.rollback import drop_legacy, rollback
 from app.cli.legacy.schema import LEGACY_HEAD, current_revision
 from app.core.config import AppConfig
+from tests.cli.legacy.conftest import NEW_HEAD
 
 LegacyAt = Callable[[AsyncEngine, str], Awaitable[None]]
 
@@ -35,7 +36,7 @@ async def test_rollback_restores_old_public(
     legacy_engine: AsyncEngine, config: AppConfig, legacy_at: LegacyAt
 ) -> None:
     await _migrated(legacy_engine, config, legacy_at)
-    assert await _revision(legacy_engine) == "1000"
+    assert await _revision(legacy_engine) == NEW_HEAD
 
     await rollback(legacy_engine)
 
@@ -61,7 +62,7 @@ async def test_drop_legacy(
 ) -> None:
     await _migrated(legacy_engine, config, legacy_at)
     await drop_legacy(legacy_engine)
-    assert await _revision(legacy_engine) == "1000"
+    assert await _revision(legacy_engine) == NEW_HEAD
     with pytest.raises(LegacyMigrationError):
         await drop_legacy(legacy_engine)
 
@@ -72,7 +73,7 @@ async def test_second_migrate_refused(
     await _migrated(legacy_engine, config, legacy_at)
     with pytest.raises(LegacyMigrationError):
         await preflight(legacy_engine, sdk=None, crypt_key="x")  # type: ignore[arg-type]
-    assert await _revision(legacy_engine) == "1000"
+    assert await _revision(legacy_engine) == NEW_HEAD
 
 
 async def test_flush_shop_redis_clears_legacy_stream(redis: Redis) -> None:

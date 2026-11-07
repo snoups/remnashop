@@ -66,7 +66,7 @@ interface ParticipantSectionProps {
 
 function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }: ParticipantSectionProps) {
   const { t } = useTranslation();
-  const name = user?.name ?? missingLabel ?? "—";
+  const name = user ? user.name || t("common.none") : (missingLabel ?? t("common.none"));
   const roleLabel =
     user === undefined
       ? undefined
@@ -81,7 +81,7 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
 
   return (
     <DialogCard title={title} icon={Icon}>
-      <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user?.name ?? undefined}>
+      <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user?.name || undefined}>
         <span className="truncate">{name}</span>
       </InfoRow>
       {user?.login && (

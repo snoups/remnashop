@@ -9,7 +9,7 @@ from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.modules.blacklist import BlacklistRepository
-from app.modules.users.display_name import clean_telegram_name
+from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import CreateUserDto, RegisterTelegramUserDto, UserDto
 from app.modules.users.events import (
     CabinetUserRegisteredEvent,
@@ -51,7 +51,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
                 user = await self._user_repository.create(
                     CreateUserDto(
                         telegram_id=data.telegram_id,
-                        name=clean_telegram_name(data.name, data.telegram_id),
+                        name=clean_display_name(data.name),
                         username=data.username,
                         language=data.language,
                         is_blocked=is_blocked,
@@ -93,7 +93,7 @@ class RegisterTelegramUserUseCase(UseCase[RegisterTelegramUserDto, UserDto]):
 
     async def _sync_profile(self, user: UserDto, data: RegisterTelegramUserDto) -> UserDto:
         # staff names are set from the dashboard, Telegram doesn't own them
-        name = clean_telegram_name(data.name, data.telegram_id) if user.is_customer else user.name
+        name = clean_display_name(data.name) if user.is_customer else user.name
         # staff language comes from the dashboard and drives their notifications
         sync_language = data.sync_language and user.is_customer
         language = data.language if sync_language else user.language

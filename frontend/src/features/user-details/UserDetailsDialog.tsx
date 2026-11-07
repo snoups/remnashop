@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import type { UserListItem } from "@entities/user/api";
+import { userContacts, userName } from "@entities/user/display";
 import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import {
   AnalyticsTab,
@@ -64,11 +65,6 @@ interface UserDetailsDialogProps {
   /** the account was deleted from the footer; the dialog closes itself */
   onDeleted?: (user: UserListItem) => void;
   onClose: () => void;
-}
-
-function getHandle(user: UserListItem): string | null {
-  if (user.username) return `@${user.username}`;
-  return user.login ?? user.email;
 }
 
 export function UserDetailsDialog({ onClose, ...props }: UserDetailsDialogProps) {
@@ -111,7 +107,7 @@ function UserDetailsDialogBody({
   // the per-user session endpoints reject yourself
   const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
   const isDeleted = Boolean(user.deleted_at);
-  const handle = isDeleted ? `#${user.id}` : getHandle(user);
+  const contacts = userContacts(user, t);
 
   const hasAny = (...required: Permission[]) => required.some((permission) => permissions.includes(permission));
   const tabs: DialogTabItem<UserDetailsTab>[] = [
@@ -145,13 +141,15 @@ function UserDetailsDialogBody({
         glyph={
           isDeleted ? (
             <Trash2 className="size-4" />
-          ) : (
+          ) : user.login || user.name ? (
             <span className="text-[11px] font-bold">{initials(user.login ?? user.name)}</span>
+          ) : (
+            <User className="size-4" />
           )
         }
         danger={user.is_blocked && !isDeleted}
-        title={isDeleted ? t("users.deleted.name") : user.name}
-        subtitle={handle && <span className="font-mono">{handle}</span>}
+        title={`${userName(user, t)} #${user.id}`}
+        subtitle={contacts || undefined}
         actions={
           <>
             {user.role !== "USER" && <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
