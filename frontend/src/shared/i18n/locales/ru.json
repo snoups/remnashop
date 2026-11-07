@@ -834,6 +834,7 @@
       "UserPurchaseDiscountChangedEvent": "Скидка на покупку изменена",
       "UserUnblockedEvent": "Пользователь разблокирован",
       "UserEmailUndeliverableClearedEvent": "Снята отметка о недоставке почты",
+      "UserTrialAvailabilityChangedEvent": "Изменён доступ к пробному периоду",
       "UsersBulkUnblockedEvent": "Массовая разблокировка",
       "TransactionRefundedEvent": "Возврат транзакции",
       "PaidOrderNotFulfilledEvent": "Оплаченный заказ не выдан",
@@ -1258,6 +1259,12 @@
       "badge": "Не доставляется",
       "clear": "Снять отметку о недоставке",
       "cleared": "Отметка о недоставке снята."
+    },
+    "trial": {
+      "allow": "Разрешить пробный период",
+      "revoke": "Запретить пробный период",
+      "allowed": "Пробный период разрешён.",
+      "revoked": "Пробный период запрещён."
     },
     "legalAcceptances": {
       "title": "Принятые документы",
@@ -2246,6 +2253,7 @@
     "BLACKLIST_MATCHES_VIEW": "Просмотр пользователей из чёрного списка",
     "USERS_BLOCK": "Блокировка пользователей",
     "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Снятие отметки о недоставке почты",
+    "USERS_TRIAL_MANAGE": "Разрешение и запрет пробного периода",
     "USERS_UNBLOCK": "Разблокировка пользователей",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Разблокировка всех совпадений чёрного списка",
     "AD_LINKS_VIEW": "Просмотр рекламных ссылок",

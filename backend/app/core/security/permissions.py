@@ -238,6 +238,7 @@ class Permission(UpperStrEnum):
     BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
     USERS_EMAIL_UNDELIVERABLE_CLEAR = auto()
+    USERS_TRIAL_MANAGE = auto()
     USERS_UNBLOCK = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     USERS_MERGE_PREVIEW = auto()
@@ -488,6 +489,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_TRIAL_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_MERGE_PREVIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_MERGE: PermissionMeta(resource="users", kind="write"),
@@ -762,6 +764,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.USERS_REGISTRATION_VIEW,
             Permission.USERS_DISCOUNT_MANAGE,
             Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR,
+            Permission.USERS_TRIAL_MANAGE,
             Permission.USERS_LOYALTY_VIEW,
             Permission.USERS_LOYALTY_MANAGE,
             Permission.TRANSACTIONS_VIEW,

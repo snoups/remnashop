@@ -135,6 +135,12 @@ export function blockUser(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/block`, {});
 }
 
+export function setUserTrialAvailability(userId: number, isTrialAvailable: boolean): Promise<UserListItem> {
+  return apiPatch<UserListItem, { is_trial_available: boolean }>(`/users/${userId}/trial`, {
+    is_trial_available: isTrialAvailable,
+  });
+}
+
 export function clearEmailUndeliverable(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/users/${userId}/actions/clear-email-undeliverable`, {});
 }

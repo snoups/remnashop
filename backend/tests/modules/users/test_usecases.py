@@ -37,6 +37,7 @@ from app.modules.users.dto import (
     PromoteToAdminDto,
     RegisterTelegramUserDto,
     SetUserDiscountDto,
+    SetUserTrialAvailabilityDto,
     UpdateAdminDto,
     UpdateSecuritySettingsDto,
     UpdateUserDto,
@@ -53,6 +54,7 @@ from app.modules.users.events import (
     UserDeletedEvent,
     UserPersonalDiscountChangedEvent,
     UserPurchaseDiscountChangedEvent,
+    UserTrialAvailabilityChangedEvent,
 )
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
@@ -66,6 +68,7 @@ from app.modules.users.usecases import (
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
     SetUserDiscountUseCase,
+    SetUserTrialAvailabilityUseCase,
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
@@ -2283,3 +2286,33 @@ async def test_promote_refuses_an_account_promoted_while_its_password_was_hashed
             event_publisher,
             {"role": Role.ADMIN, "login": "first-admin"},
         )
+
+
+async def test_set_trial_availability_records_only_a_change(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Trial", role=Role.USER, language=Locale.EN, telegram_id=840_101)
+        )
+    use_case = SetUserTrialAvailabilityUseCase(user_repository, uow, event_publisher)
+
+    revoked = await use_case(
+        OWNER,
+        SetUserTrialAvailabilityDto(
+            user_id=target.id, is_trial_available=False, client_ip="127.0.0.1"
+        ),
+    )
+    await use_case(
+        OWNER,
+        SetUserTrialAvailabilityDto(
+            user_id=target.id, is_trial_available=False, client_ip="127.0.0.1"
+        ),
+    )
+
+    assert revoked.is_trial_available is False
+    [row] = await _outbox_rows(session, UserTrialAvailabilityChangedEvent.__name__)
+    assert row.payload["is_trial_available"] is False

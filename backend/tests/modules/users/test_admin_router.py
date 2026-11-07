@@ -20,7 +20,7 @@ from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
 from app.modules.blacklist import BlacklistRepository
 from app.modules.users import unsubscribe_token
-from app.modules.users.dto import CreateUserDto, RegistrationSnapshotDto, UserDto
+from app.modules.users.dto import CreateUserDto, RegistrationSnapshotDto, UpdateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import UnsubscribeMarketingUseCase
 from tests.fakes.events import RecordingEventPublisher
@@ -815,6 +815,45 @@ async def test_clear_undeliverable(
         )
     admin_token = await _issue_token(admin.id, session_repository, config)
     denied = await client.post(url, headers={"Authorization": f"Bearer {admin_token}"})
+    assert denied.status_code == 403
+
+
+async def test_set_trial_availability(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    _, token = await _owner_token(user_repository, session_repository, uow, config)
+    target = await _create(user_repository, uow, name="trialist", telegram_id=777021)
+    async with uow:
+        await user_repository.update_fields(target.id, UpdateUserDto(is_trial_available=False))
+    url = f"/api/v1/users/{target.id}/trial"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = await client.patch(url, json={"is_trial_available": True}, headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["is_trial_available"] is True
+    loaded = await user_repository.find_by_id(target.id)
+    assert loaded is not None and loaded.is_trial_available is True
+
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(
+                login="notrial",
+                password_hash=await hash_password("x", config.crypt_key.get_secret_value()),
+                name="notrial",
+                role=Role.ADMIN,
+                language=Locale.EN,
+                permission_revokes=[Permission.USERS_TRIAL_MANAGE.value],
+            )
+        )
+    admin_token = await _issue_token(admin.id, session_repository, config)
+    denied = await client.patch(
+        url, json={"is_trial_available": False}, headers={"Authorization": f"Bearer {admin_token}"}
+    )
     assert denied.status_code == 403
 
 
