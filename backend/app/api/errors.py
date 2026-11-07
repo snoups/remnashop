@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from loguru import logger
 from pydantic import BaseModel
+from remnapy.exceptions import ApiError as RemnawaveApiError
 from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -161,6 +162,18 @@ def register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error", "code": ErrorCode.INTERNAL_ERROR},
+        )
+
+    # the panel answered and refused: the reason is its own error code and message
+    @app.exception_handler(RemnawaveApiError)
+    async def remnawave_error_handler(_: Request, error: RemnawaveApiError) -> JSONResponse:
+        logger.warning(f"Remnawave panel rejected a request: {error}")
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={
+                "detail": f"{error.code}: {error.message}",
+                "code": ErrorCode.REMNAWAVE_REQUEST_REJECTED,
+            },
         )
 
     @app.exception_handler(DBAPIError)

@@ -4171,6 +4171,7 @@
     "REFRESH_TOKEN_MISSING": "Your session expired — sign in again.",
     "REGISTRATION_CLOSED": "Sign-ups are closed right now.",
     "REGISTRATION_INVITE_ONLY": "Sign-up is by invitation only.",
+    "REMNAWAVE_REQUEST_REJECTED": "The Remnawave panel rejected the request: {{detail}}.",
     "REMNAWAVE_UNAVAILABLE": "The Remnawave panel is temporarily unavailable.",
     "RENEW_PLAN_MISMATCH": "Renewing to a different plan is a plan change.",
     "REQUEST_INVALID": "Some fields are filled in incorrectly.",

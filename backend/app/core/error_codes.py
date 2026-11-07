@@ -265,6 +265,7 @@ class ErrorCode(UpperStrEnum):
     REFRESH_TOKEN_MISSING = auto()
     REGISTRATION_CLOSED = auto()
     REGISTRATION_INVITE_ONLY = auto()
+    REMNAWAVE_REQUEST_REJECTED = auto()
     REMNAWAVE_UNAVAILABLE = auto()
     RENEW_PLAN_MISMATCH = auto()
     REQUEST_INVALID = auto()

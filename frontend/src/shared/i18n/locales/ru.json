@@ -4273,6 +4273,7 @@
     "REFRESH_TOKEN_MISSING": "Сессия истекла — войдите снова.",
     "REGISTRATION_CLOSED": "Регистрация сейчас закрыта.",
     "REGISTRATION_INVITE_ONLY": "Регистрация только по приглашению.",
+    "REMNAWAVE_REQUEST_REJECTED": "Панель Remnawave отклонила запрос: {{detail}}.",
     "REMNAWAVE_UNAVAILABLE": "Панель Remnawave временно недоступна.",
     "RENEW_PLAN_MISMATCH": "Продление на другой план — это смена плана.",
     "REQUEST_INVALID": "Некоторые поля заполнены неверно.",

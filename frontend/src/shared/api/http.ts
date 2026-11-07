@@ -108,7 +108,7 @@ const DEBUG_FAILURE_EXEMPT_PATH = "/users/me";
 export function getErrorMessage(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;
   const key = `apiErrors.${err.code}`;
-  return err.code && i18n.exists(key) ? i18n.t(key as ParseKeys) : err.message;
+  return err.code && i18n.exists(key) ? i18n.t(key as ParseKeys, { detail: err.message }) : err.message;
 }
 
 function extractErrorCode(body: unknown): string | null {
