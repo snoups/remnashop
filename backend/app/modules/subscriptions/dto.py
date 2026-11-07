@@ -370,6 +370,8 @@ class PanelSyncResultDto(BaseDto):
     imported: int = 0
     # shop users' panel users without a row, deleted (to panel only)
     deleted: int = 0
+    # panel users left unimported: their shop user is at the subscription cap (from panel only)
+    over_limit: int = 0
     finished_at: datetime
 
 
@@ -377,6 +379,8 @@ class PanelSyncResultDto(BaseDto):
 class SyncFromPanelOptionsDto:
     # import panel users the shop didn't name, matched by Telegram id or email
     adopt_unnamed: bool
+    # skip a panel user whose shop user is at max_active_subscriptions
+    respect_subscription_limit: bool
 
 
 @dataclass(frozen=True, kw_only=True)

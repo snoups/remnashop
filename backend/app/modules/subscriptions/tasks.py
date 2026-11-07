@@ -86,11 +86,17 @@ async def run_panel_sync_task(
     to_panel: FromDishka[SyncAllToPanelUseCase],
     # defaults for a message queued before the options existed
     adopt_unnamed: bool = True,
+    respect_subscription_limit: bool = False,
     recreate_missing: bool = True,
     delete_orphans: bool = True,
 ) -> None:
     if PanelSyncDirection(direction) is PanelSyncDirection.FROM_PANEL:
-        await from_panel.system(SyncFromPanelOptionsDto(adopt_unnamed=adopt_unnamed))
+        await from_panel.system(
+            SyncFromPanelOptionsDto(
+                adopt_unnamed=adopt_unnamed,
+                respect_subscription_limit=respect_subscription_limit,
+            )
+        )
     else:
         await to_panel.system(
             SyncToPanelOptionsDto(recreate_missing=recreate_missing, delete_orphans=delete_orphans)

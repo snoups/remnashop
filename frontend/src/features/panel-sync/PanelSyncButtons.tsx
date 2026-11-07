@@ -19,10 +19,15 @@ import { Switch } from "@shared/ui/glass/Switch";
 
 const POLL_INTERVAL_MS = 5_000;
 
-const DEFAULT_OPTIONS: PanelSyncOptions = { adopt_unnamed: true, recreate_missing: true, delete_orphans: true };
+const DEFAULT_OPTIONS: PanelSyncOptions = {
+  adopt_unnamed: true,
+  respect_subscription_limit: true,
+  recreate_missing: true,
+  delete_orphans: true,
+};
 
 const OPTIONS: Record<PanelSyncDirection, (keyof PanelSyncOptions)[]> = {
-  FROM_PANEL: ["adopt_unnamed"],
+  FROM_PANEL: ["adopt_unnamed", "respect_subscription_limit"],
   TO_PANEL: ["recreate_missing", "delete_orphans"],
 };
 

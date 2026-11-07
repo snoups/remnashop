@@ -209,11 +209,13 @@ class PanelSyncResultResponse(BaseModel):
     recreated: int
     imported: int
     deleted: int
+    over_limit: int
     finished_at: datetime
 
 
 class PanelSyncPullRequest(BaseModel):
     adopt_unnamed: bool = True
+    respect_subscription_limit: bool = True
 
 
 class PanelSyncPushRequest(BaseModel):
