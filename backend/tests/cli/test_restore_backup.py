@@ -5,6 +5,7 @@ import pytest
 
 from app.cli.restore_backup import format_provenance_message, list_database_backups, run_restore
 from app.core.config import AppConfig
+from app.modules.backups import RestoreNotStartedError
 from app.modules.backups.provenance import ProvenanceResult, ProvenanceStatus
 
 
@@ -118,3 +119,28 @@ async def test_run_restore_of_old_version_database_skips_audit_and_names_both_wa
     assert "start the old image" in out
     assert "migrate it again" in out
     assert "Restart api/telegram/worker" not in out
+
+
+async def test_run_restore_that_never_started_leaves_no_trace(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "DATABASE_x.dump"
+    path.write_bytes(b"not signed by us")
+
+    with (
+        patch(
+            "app.cli.restore_backup.restore_database_dump",
+            AsyncMock(side_effect=RestoreNotStartedError("Clearing the database failed")),
+        ),
+        patch("app.cli.restore_backup.terminate_other_backends", AsyncMock(return_value=0)),
+        patch("app.cli.restore_backup._record_restore", AsyncMock()) as record_mock,
+    ):
+        await run_restore(
+            path,
+            config=AppConfig.get(),
+            confirm_foreign=lambda: True,
+            confirm_start=lambda: True,
+        )
+
+    record_mock.assert_not_awaited()
+    assert "left as it was" in capsys.readouterr().out

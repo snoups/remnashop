@@ -1,5 +1,6 @@
 from app.modules.backups.di import get_backups_providers
 from app.modules.backups.dump import (
+    RestoreNotStartedError,
     create_signed_database_dump,
     restore_database_dump,
     terminate_other_backends,
@@ -16,6 +17,7 @@ __all__ = [
     "ProvenanceResult",
     "ProvenanceStatus",
     "ResetBackupSettingsUseCase",
+    "RestoreNotStartedError",
     "UpdateBackupSettingsUseCase",
     "create_signed_database_dump",
     "get_backups_providers",

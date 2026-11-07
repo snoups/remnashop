@@ -9,6 +9,7 @@ from app.core.db.standalone import standalone_session
 from app.modules.backups import (
     ProvenanceResult,
     ProvenanceStatus,
+    RestoreNotStartedError,
     restore_database_dump,
     terminate_other_backends,
     verify_backup_file,
@@ -67,6 +68,9 @@ async def run_restore(
     print("Restoring... (this can take a while)")
     try:
         await restore_database_dump(config, path)
+    except RestoreNotStartedError as error:
+        print(f"{error} -- check the psql output above. The database was left as it was.")
+        return
     except RuntimeError:
         advice = await _finish_restore(config)
         print(f"Restore finished with errors -- check the pg_restore output above. {advice}")
