@@ -217,6 +217,7 @@ class AttentionKind(StrEnum):
     EXPIRING_PAID = "expiring_paid"
     API_TOKEN_EXPIRING = "api_token_expiring"
     BOT_WEBHOOK = "bot_webhook"
+    PLAN_SQUADS_MISSING = "plan_squads_missing"
 
 
 @dataclass(frozen=True, kw_only=True)

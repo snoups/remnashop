@@ -23,13 +23,18 @@ from app.modules.broadcasts import BroadcastRepository
 from app.modules.email import read_smtp_failure
 from app.modules.event_log import EventOutboxRepository
 from app.modules.overview.dto import AttentionDto, AttentionItemDto, AttentionKind
+from app.modules.plans import PlanDto, PlanRepository
 from app.modules.settings import (
     BotSettingsDto,
     BotStatusDto,
     SettingsRepository,
     fetch_bot_status,
 )
-from app.modules.subscriptions import SubscriptionStatsRepository
+from app.modules.subscriptions import (
+    PanelSquadCatalog,
+    SubscriptionStatsRepository,
+    missing_squads,
+)
 from app.modules.transactions import TransactionRepository, TransactionStatsRepository
 from app.modules.users import UserRepository
 
@@ -83,6 +88,8 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         outbox_repository: EventOutboxRepository,
         api_token_repository: ApiTokenRepository,
         user_repository: UserRepository,
+        plan_repository: PlanRepository,
+        squad_catalog: PanelSquadCatalog,
         redis: Redis,
         uow: UnitOfWork,
     ) -> None:
@@ -96,6 +103,8 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
         self._outbox_repository = outbox_repository
         self._api_token_repository = api_token_repository
         self._user_repository = user_repository
+        self._plan_repository = plan_repository
+        self._squad_catalog = squad_catalog
         self._redis = redis
         self._uow = uow
 
@@ -114,6 +123,9 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             items += await self._paid_not_fulfilled(perms)
             items += await self._stale_pending(perms)
             items += await self._expiring_paid(perms)
+            active_plans = (
+                await self._plan_repository.list_active() if Permission.PLANS_VIEW in perms else []
+            )
             bot_settings = (
                 await self._settings_repository.get_bot_settings()
                 if Permission.BOT_STATUS_VIEW in perms
@@ -121,6 +133,7 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             )
         nodes, bot = await asyncio.gather(self._nodes(perms), self._bot_webhook(bot_settings))
         items += nodes + bot
+        items += await self._plan_squads_missing(active_plans)
         items = [i for i in items if i.count > 0]
         items.sort(key=lambda i: (i.severity != "critical", _ORDER.index(i.kind)))
         return AttentionDto(items=items)
@@ -150,6 +163,23 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             )
             for n in nodes
             if not n.is_connected and not n.is_disabled
+        ]
+
+    async def _plan_squads_missing(self, plans: list[PlanDto]) -> list[AttentionItemDto]:
+        # such a plan is off sale (PurchaseEligibility) until its squads are fixed
+        squadded = [plan for plan in plans if plan.internal_squads or plan.external_squad]
+        known = await self._squad_catalog.known() if squadded else None
+        if known is None:
+            return []
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.PLAN_SQUADS_MISSING,
+                severity="critical",
+                count=len(missing),
+                subject=plan.name,
+            )
+            for plan in squadded
+            if (missing := missing_squads(plan.internal_squads, plan.external_squad, known))
         ]
 
     async def _bot_webhook(self, bot_settings: Optional[BotSettingsDto]) -> list[AttentionItemDto]:

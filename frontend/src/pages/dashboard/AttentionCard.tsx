@@ -16,6 +16,7 @@ import {
   MailWarning,
   MailX,
   MegaphoneOff,
+  Network,
   PackageX,
   ServerCrash,
   ServerOff,
@@ -75,6 +76,7 @@ const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = 
   expiring_paid: CalendarClock,
   api_token_expiring: KeyRound,
   bot_webhook: Bot,
+  plan_squads_missing: Network,
 };
 
 interface AttentionLink {
@@ -140,6 +142,11 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
     to: "/dashboard/settings/bot",
     label: "dashboard.attention.actions.bot",
     allowed: settingsTabAllowed("bot"),
+  },
+  plan_squads_missing: {
+    to: "/dashboard/plans",
+    label: "dashboard.attention.actions.plans",
+    allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "plans" && isNavItemVisible(item, permissions)),
   },
 };
 
@@ -250,6 +257,11 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         title: t("dashboard.attention.botWebhook.title"),
         sub: item.subject ?? t("dashboard.attention.botWebhook.noWebhook"),
       };
+    case "plan_squads_missing":
+      return {
+        title: t("dashboard.attention.planSquadsMissing.title", { name: item.subject ?? "" }),
+        sub: counted("dashboard.attention.planSquadsMissing.sub"),
+      };
   }
 }
 
@@ -271,6 +283,7 @@ const KIND_KEY: Record<AttentionKind, string> = {
   expiring_paid: "expiringPaid",
   api_token_expiring: "apiTokenExpiring",
   bot_webhook: "botWebhook",
+  plan_squads_missing: "planSquadsMissing",
 };
 
 function ExplainBlock({ icon, title, text }: { icon: ComponentType<{ className?: string }>; title: string; text: string }) {

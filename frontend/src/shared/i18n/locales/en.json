@@ -250,6 +250,14 @@
         "why": "The bot does not receive messages or button presses, so customers cannot use it.",
         "fix": "Check the webhook URL in the bot settings and that the server is reachable from the internet over HTTPS. Restarting the bot usually helps."
       },
+      "planSquadsMissing": {
+        "title": "Plan “{{name}}” is off sale",
+        "sub_one": "{{formatted}} squad is missing in the panel",
+        "sub_other": "{{formatted}} squads are missing in the panel",
+        "what": "The plan uses squads the Remnawave panel no longer has.",
+        "why": "The panel refuses to create a user with such a squad, so the plan is hidden from sale in the bot and the cabinet, and a trial, a promocode or an admin grant on it fails.",
+        "fix": "Open the plan and replace its squads with ones the panel has. The plan is back on sale within a minute."
+      },
       "sections": {
         "what": "What happened",
         "why": "Why it matters",
@@ -263,7 +271,8 @@
         "bot": "Go to bot settings",
         "broadcasts": "Go to broadcasts",
         "email": "Go to email settings",
-        "apiTokens": "Go to API tokens"
+        "apiTokens": "Go to API tokens",
+        "plans": "Go to plans"
       }
     },
     "revenue": {
