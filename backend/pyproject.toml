@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn>=0.38.0",
     "fastapi>=0.120.2",
     "python-multipart>=0.0.22",
-    "remnapy==3.2.1",
+    "remnapy==3.4.8",
     #
     "dishka~=1.7.2",
     #
@@ -52,8 +52,8 @@ telegram = [
     "segno~=1.6",
 ]
 
-#[tool.uv.sources]
-#remnapy = { git = "https://github.com/remnashop/remnapy", rev = "0680253" }
+[tool.uv.sources]
+remnapy = { url = "https://github.com/remnashop/remnapy/releases/download/v3.4.8/remnapy-3.4.8-py3-none-any.whl" }
 
 [project.urls]
 homepage = "https://t.me/@remna_shop"
