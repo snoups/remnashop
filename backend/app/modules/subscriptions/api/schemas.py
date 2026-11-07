@@ -221,6 +221,24 @@ class PanelSyncPullRequest(BaseModel):
 class PanelSyncPushRequest(BaseModel):
     recreate_missing: bool = True
     delete_orphans: bool = True
+    # a squad gone from the panel -> its replacement, null drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = Field(default_factory=dict)
+
+
+class PushToPanelRequest(BaseModel):
+    # a squad gone from the panel -> its replacement, null drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = Field(default_factory=dict)
+
+
+class MissingSquadResponse(BaseModel):
+    uuid: UUID
+    kind: Literal["internal", "external"]
+    subscriptions: int
+
+
+class MissingSquadListResponse(BaseModel):
+    items: list[MissingSquadResponse]
+    total: int
 
 
 class PanelSyncDirectionStatusResponse(BaseModel):
@@ -255,3 +273,4 @@ class SubscriptionPanelDiffResponse(BaseModel):
     subscription_id: int
     missing_in_panel: bool
     fields: list[PanelFieldDiffResponse]
+    missing_squads: list[MissingSquadResponse]

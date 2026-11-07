@@ -1,3 +1,7 @@
+from collections.abc import Mapping
+from typing import Optional
+from uuid import UUID
+
 from loguru import logger
 from redis.asyncio import Redis
 from remnapy import RemnawaveSDK
@@ -11,8 +15,13 @@ from app.core.exceptions import RemnawavePanelUnavailableError, ValidationError
 from app.core.ports import EventPublisher
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.dto import PanelSyncResultDto, SyncToPanelOptionsDto
+from app.modules.subscriptions.dto import (
+    PanelSyncResultDto,
+    SyncToPanelOptionsDto,
+    UpdateSubscriptionSquadsDto,
+)
 from app.modules.subscriptions.events import PanelSyncCompletedEvent
+from app.modules.subscriptions.panel_squads import replace_squads
 from app.modules.subscriptions.panel_sync import (
     finish_panel_sync,
     holding_panel_sync,
@@ -60,6 +69,7 @@ class SyncAllToPanelUseCase(UseCase[SyncToPanelOptionsDto, PanelSyncResultDto]):
 
     async def _sync(self, actor: Actor, options: SyncToPanelOptionsDto) -> PanelSyncResultDto:
         async with self._uow:
+            await self._replace_squads(options.squad_replacements)
             subscriptions = await self._subscription_repository.list_non_terminal()
             linked = await self._subscription_repository.list_linked_remnawave_user_ids()
             owners = {
@@ -142,6 +152,23 @@ class SyncAllToPanelUseCase(UseCase[SyncToPanelOptionsDto, PanelSyncResultDto]):
             )
         logger.info(f"{actor.log} Synced subscriptions to the panel: {result}")
         return result
+
+    async def _replace_squads(self, replacements: Mapping[UUID, Optional[UUID]]) -> None:
+        # the replaced rows then lag behind the panel, so the loop pushes them
+        if not replacements:
+            return
+        for subscription in await self._subscription_repository.list_non_terminal():
+            internal, external = replace_squads(
+                subscription.internal_squads, subscription.external_squad, replacements
+            )
+            if (internal, external) != (subscription.internal_squads, subscription.external_squad):
+                await self._subscription_repository.update_squads(
+                    UpdateSubscriptionSquadsDto(
+                        subscription_id=subscription.id,
+                        internal_squads=internal,
+                        external_squad=external,
+                    )
+                )
 
     async def _delete_orphans(
         self,

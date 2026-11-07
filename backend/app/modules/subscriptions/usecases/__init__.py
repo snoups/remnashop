@@ -33,6 +33,9 @@ from app.modules.subscriptions.usecases.handle_remnawave_webhook import (
 )
 from app.modules.subscriptions.usecases.list_active_plans import ListActivePlansUseCase
 from app.modules.subscriptions.usecases.list_devices import ListDevicesUseCase
+from app.modules.subscriptions.usecases.list_missing_panel_squads import (
+    ListMissingPanelSquadsUseCase,
+)
 from app.modules.subscriptions.usecases.list_own_active_subscriptions import (
     ListOwnActiveSubscriptionsUseCase,
 )
@@ -97,6 +100,7 @@ __all__ = [
     "HandleRemnawaveWebhookUseCase",
     "ListActivePlansUseCase",
     "ListDevicesUseCase",
+    "ListMissingPanelSquadsUseCase",
     "ListOwnActiveSubscriptionsUseCase",
     "ListOwnSubscriptionsUsageUseCase",
     "ListOwnSubscriptionsUseCase",

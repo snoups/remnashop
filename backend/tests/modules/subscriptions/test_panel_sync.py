@@ -19,6 +19,7 @@ from app.modules.plans.repository import PlanRepository
 from app.modules.subscriptions import panel_sync
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
+    PushSubscriptionToPanelDto,
     SyncFromPanelOptionsDto,
     SyncToPanelOptionsDto,
 )
@@ -43,6 +44,7 @@ from app.modules.subscriptions.usecases import (
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.dispatch import RecordingDispatch
+from tests.fakes.panel_squads import FixedPanelSquads
 from tests.fakes.remnawave import FakeUserStore, _user_payload
 from tests.modules.subscriptions.factories import create_subscription, make_eligibility
 
@@ -226,7 +228,7 @@ async def test_push_disables_the_panel_user_of_a_disabled_row(
         event_publisher,
         uow,
         AppConfig.get(),
-    )(OWNER, created.id)
+    )(OWNER, PushSubscriptionToPanelDto(subscription_id=created.id))
 
     assert remnawave_store[89_011]["status"] == "DISABLED"
 
@@ -276,7 +278,7 @@ async def test_diff_lists_a_telegram_id_the_panel_lacks(
     remnawave_store[89_041] = _panel_user(89_041, expireAt=created.expire_at.isoformat())
 
     diff = await GetSubscriptionPanelDiffUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow
+        subscription_repository, user_repository, remnawave_sdk, FixedPanelSquads(), uow
     )(OWNER, created.id)
 
     assert [(f.field, f.shop, f.panel) for f in diff.fields] == [("telegram_id", "89041", "")]
@@ -405,7 +407,7 @@ async def test_push_without_a_panel_user_creates_one_from_the_row(
         event_publisher,
         uow,
         AppConfig.get(),
-    )(OWNER, created.id)
+    )(OWNER, PushSubscriptionToPanelDto(subscription_id=created.id))
 
     panel_user = remnawave_store[pushed.remnawave_user_id]
     assert pushed.remnawave_user_id != 89_021
@@ -438,7 +440,7 @@ async def test_diff_lists_fields_that_differ_and_pull_takes_them(
     )
 
     diff = await GetSubscriptionPanelDiffUseCase(
-        subscription_repository, user_repository, remnawave_sdk, uow
+        subscription_repository, user_repository, remnawave_sdk, FixedPanelSquads(), uow
     )(OWNER, created.id)
 
     assert diff.missing_in_panel is False

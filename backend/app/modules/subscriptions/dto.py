@@ -387,6 +387,8 @@ class SyncFromPanelOptionsDto:
 class SyncToPanelOptionsDto:
     recreate_missing: bool
     delete_orphans: bool
+    # a squad gone from the panel -> its replacement, None drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = field(default_factory=dict)
 
 
 class PanelSyncStatusDto(BaseDto):
@@ -411,10 +413,26 @@ class DeletedSubscriptionsDto:
     deleted: int
 
 
+class MissingSquadDto(BaseDto):
+    uuid: UUID
+    kind: Literal["internal", "external"]
+    # subscriptions holding it, among the ones the check covered
+    subscriptions: int = 1
+
+
 class SubscriptionPanelDiffDto(BaseDto):
     subscription_id: int
     missing_in_panel: bool
     fields: list[PanelFieldDiffDto]
+    # the row's squads the panel no longer has: a push fails until they're replaced
+    missing_squads: list[MissingSquadDto] = Field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PushSubscriptionToPanelDto:
+    subscription_id: int
+    # a squad gone from the panel -> its replacement, None drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)
