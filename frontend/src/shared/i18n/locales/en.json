@@ -2093,6 +2093,7 @@
     "SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW": "View panel sync status",
     "SUBSCRIPTIONS_PANEL_SYNC_FROM": "Sync all subscriptions from the panel",
     "SUBSCRIPTIONS_PANEL_SYNC_TO": "Sync all subscriptions to the panel",
+    "SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW": "View subscription squads missing in the panel",
     "ADDONS_VIEW": "View add-ons",
     "ADDONS_DETAIL_VIEW": "View add-on details",
     "ADDONS_CREATE": "Create add-ons",
@@ -3535,6 +3536,13 @@
       "menuItem": "Sync with panel",
       "title": "Sync with the panel",
       "inSync": "The subscription matches the panel.",
+      "squads": {
+        "title": "Squads missing in the panel",
+        "hint": "The panel won’t take a subscription with a squad it doesn’t have. Pick a replacement or drop the squad.",
+        "drop": "Drop",
+        "held_one": "In {{formatted}} subscription",
+        "held_other": "In {{formatted}} subscriptions"
+      },
       "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted, sending to the panel creates a new one.",
       "columns": {
         "field": "Field",

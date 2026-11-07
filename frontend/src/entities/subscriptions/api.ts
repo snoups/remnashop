@@ -261,10 +261,25 @@ export interface PanelFieldDiff {
   panel: string;
 }
 
+export interface MissingSquad {
+  uuid: string;
+  kind: "internal" | "external";
+  /** how many of the checked subscriptions hold it */
+  subscriptions: number;
+}
+
+/** a squad gone from the panel -> its replacement, null drops it */
+export type SquadReplacements = Record<string, string | null>;
+
 export interface SubscriptionPanelDiff {
   subscription_id: number;
   missing_in_panel: boolean;
   fields: PanelFieldDiff[];
+  missing_squads: MissingSquad[];
+}
+
+export function listMissingPanelSquads(signal?: AbortSignal): Promise<{ items: MissingSquad[]; total: number }> {
+  return apiGet<{ items: MissingSquad[]; total: number }>("/subscriptions/panel-sync/missing-squads", signal);
 }
 
 export async function getPanelSyncStatus(signal?: AbortSignal): Promise<PanelSyncStatus> {
@@ -280,9 +295,13 @@ export type PanelSyncOptions = Record<
 export async function startPanelSync(
   direction: PanelSyncDirection,
   options: PanelSyncOptions,
+  squadReplacements: SquadReplacements = {},
 ): Promise<PanelSyncDirectionStatus> {
   const action = direction === "FROM_PANEL" ? "pull" : "push";
-  return apiPost<PanelSyncDirectionStatus, PanelSyncOptions>(`/subscriptions/panel-sync/actions/${action}`, options);
+  return apiPost<PanelSyncDirectionStatus, PanelSyncOptions & { squad_replacements: SquadReplacements }>(
+    `/subscriptions/panel-sync/actions/${action}`,
+    { ...options, squad_replacements: squadReplacements },
+  );
 }
 
 export async function getSubscriptionPanelDiff(
@@ -294,5 +313,8 @@ export async function getSubscriptionPanelDiff(
 
 export const pullSubscriptionFromPanel = (subscriptionId: number) =>
   subscriptionAction(subscriptionId, "pull-from-panel");
-export const pushSubscriptionToPanel = (subscriptionId: number) =>
-  subscriptionAction(subscriptionId, "push-to-panel");
+export const pushSubscriptionToPanel = (subscriptionId: number, squadReplacements: SquadReplacements = {}) =>
+  apiPost<SubscriptionListItem, { squad_replacements: SquadReplacements }>(
+    `/subscriptions/${subscriptionId}/actions/push-to-panel`,
+    { squad_replacements: squadReplacements },
+  );

@@ -7,10 +7,13 @@ import {
   getSubscriptionPanelDiff,
   pullSubscriptionFromPanel,
   pushSubscriptionToPanel,
+  type SquadReplacements,
   type SubscriptionListItem,
   type SubscriptionPanelDiff,
 } from "@entities/subscriptions/api";
 import { useAccountPermissions } from "@entities/user/use-current-user";
+import { dropAllSquads } from "@features/panel-sync/drop-all-squads";
+import { SquadReplacementsField } from "@features/panel-sync/SquadReplacements";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
@@ -46,11 +49,15 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
   const close = useModalClose();
   const [state, setState] = useState<DiffState>({ kind: "loading" });
   const [busy, setBusy] = useState(false);
+  const [replacements, setReplacements] = useState<SquadReplacements>({});
 
   useEffect(() => {
     const controller = new AbortController();
     getSubscriptionPanelDiff(subscription.id, controller.signal).then(
-      (diff) => setState({ kind: "ready", diff }),
+      (diff) => {
+        setReplacements(dropAllSquads(diff.missing_squads));
+        setState({ kind: "ready", diff });
+      },
       () => {
         if (!controller.signal.aborted) setState({ kind: "error" });
       },
@@ -85,6 +92,15 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {missing && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
         {inSync && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.inSync")}</p>}
+        {canPush && state.kind === "ready" && state.diff.missing_squads.length > 0 && (
+          <div className="mb-4">
+            <SquadReplacementsField
+              missing={state.diff.missing_squads}
+              value={replacements}
+              onChange={setReplacements}
+            />
+          </div>
+        )}
         {state.kind === "ready" && state.diff.fields.length > 0 && (
           <div className="flex flex-col gap-1.5 text-[12px]">
             <div className="grid grid-cols-3 gap-3 text-muted-foreground">
@@ -125,7 +141,10 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
             className="flex-1"
             disabled={busy || state.kind !== "ready" || inSync}
             onClick={() =>
-              void run(() => pushSubscriptionToPanel(subscription.id), t("subscriptions.panelSync.pushed"))
+              void run(
+                () => pushSubscriptionToPanel(subscription.id, replacements),
+                t("subscriptions.panelSync.pushed"),
+              )
             }
           >
             {t("subscriptions.panelSync.push")}
