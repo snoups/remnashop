@@ -239,7 +239,7 @@ export function SubscriptionsPage() {
                                   )}
                                 </span>
                                 <span className="block truncate text-[12px] text-muted-foreground">
-                                  {subscription.user_name ?? t("subscriptions.userLabel", { id: subscription.user_id })}
+                                  {subscription.user_name || t("subscriptions.userLabel", { id: subscription.user_id })}
                                 </span>
                               </span>
                               <span className="min-w-0">

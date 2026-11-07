@@ -61,7 +61,7 @@ def telegram_profile_from_oauth(profile: OAuthProfile) -> TelegramProfileDto:
     # Telegram OIDC: the subject is the telegram_id
     return TelegramProfileDto(
         telegram_id=int(profile.external_id),
-        name=profile.name or profile.login or "",
+        name=profile.name or "",
         username=profile.login,
         language=profile.language,
     )
@@ -249,7 +249,7 @@ class CabinetSignIn:
                 await self.ensure_can_register(codes, email=email)
             user = await self._register_cabinet_user_use_case.system(
                 RegisterCabinetUserDto(
-                    name=email.split("@", 1)[0],
+                    name="",
                     language=language,
                     method=CabinetSignInMethod.EMAIL,
                     email=email,
@@ -324,7 +324,7 @@ class CabinetSignIn:
                 await self.ensure_can_register(codes)
             user = await self._register_cabinet_user_use_case.system(
                 RegisterCabinetUserDto(
-                    name=profile.name or profile.login or provider.value.title(),
+                    name=profile.name or "",
                     language=_parse_locale(profile.language) or Locale.EN,
                     method=CabinetSignInMethod(provider.value),
                     email=verified_email,

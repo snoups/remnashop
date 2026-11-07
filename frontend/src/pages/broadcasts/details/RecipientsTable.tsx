@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { nameOrUnnamed } from "@entities/user/display";
 import { DEFAULT_PAGE_SIZE, listBroadcastRecipients } from "@entities/broadcasts/api";
 import type { Broadcast, BroadcastChannel, BroadcastRecipient, BroadcastRecipientStatus } from "@entities/broadcasts/api";
 import { processedCount, RECIPIENT_STATUS_TONE } from "@entities/broadcasts/display";
@@ -199,7 +200,7 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
               {state.items.map((r) => (
                 <div key={r.id} className={`${ROW_GRID_CLASS} ${GLASS_LIST_ROW_CLASS}`}>
                   <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-[13px] font-medium text-foreground">{r.user_name}</span>
+                    <span className="truncate text-[13px] font-medium text-foreground">{nameOrUnnamed(r.user_name, r.user_id, t)}</span>
                     <span className="truncate text-[12px] text-muted-foreground">
                       {r.channel === "EMAIL"
                         ? (r.email ?? t("common.none"))

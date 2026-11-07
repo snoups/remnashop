@@ -29,6 +29,7 @@ from app.modules.auth.usecases import BootstrapOwnerUseCase
 from app.modules.settings.repository import SettingsRepository
 from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
+from tests.cli.legacy.conftest import NEW_HEAD
 from tests.fakes.dispatch import RecordingDispatch
 
 LegacyAt = Callable[[AsyncEngine, str], Awaitable[None]]
@@ -241,7 +242,7 @@ async def test_migrates_core_tables_with_ids(
         assert await _ids(connection, "users") == [1, 2, 3]
         assert await _ids(connection, "subscriptions") == [1, 2, 3, 4]
         assert await _ids(connection, "transactions") == [1, 2, 3]
-        assert await current_revision(connection) == "1000"
+        assert await current_revision(connection) == NEW_HEAD
         assert await _ids(connection, "legacy.users") == [1, 2, 3]
         assert await current_revision(connection, "legacy") == LEGACY_HEAD
         statuses = dict(
@@ -493,7 +494,7 @@ async def test_works_from_0039(
 
     assert result.original_revision == "0039"
     async with legacy_engine.connect() as connection:
-        assert await current_revision(connection) == "1000"
+        assert await current_revision(connection) == NEW_HEAD
         assert await _ids(connection, "users") == [1, 2, 3]
 
 

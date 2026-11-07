@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { usePermissions } from "@entities/user/use-current-user";
 import { getMergePreview, listUsers, mergeUsers, type MergeSide, type UserListItem } from "@entities/user/api";
+import { userLabel } from "@entities/user/display";
 import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -96,7 +97,8 @@ function MergePicker({
           {results.map((candidate) => (
             <UserRow
               key={candidate.id}
-              name={candidate.name}
+              name={userLabel(candidate, candidate.id, t)}
+              unnamed={!candidate.name && !candidate.login}
               subtitle={userSubtitle(candidate)}
               onClick={() => onPick(candidate)}
             />
@@ -113,7 +115,7 @@ function AccountColumn({ label, user }: { label: string; user: UserListItem }) {
     <div className="min-w-0">
       <DialogCard icon={UserRound} title={label}>
         <InfoRow icon={UserRound} label={`#${user.id}`}>
-          <span className="truncate">{user.name}</span>
+          <span className="truncate">{userLabel(user, user.id, t)}</span>
         </InfoRow>
         <InfoRow icon={Mail} label={t("users.merge.conflict.email")} mono>
           <span className="truncate">{user.email ?? t("common.none")}</span>

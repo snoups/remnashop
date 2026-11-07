@@ -1,5 +1,6 @@
 from app.modules.users.bot_blocked import mark_bot_blocked
 from app.modules.users.di import get_users_providers
+from app.modules.users.display_name import clean_display_name
 from app.modules.users.dto import (
     CreateUserDto,
     RegisterCabinetUserDto,
@@ -79,6 +80,7 @@ __all__ = [
     "UserStatsRepository",
     "assert_manageable",
     "assert_own_or_manageable",
+    "clean_display_name",
     "detail_roles",
     "generate_referral_code",
     "get_users_providers",

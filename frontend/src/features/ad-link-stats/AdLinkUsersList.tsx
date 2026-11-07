@@ -3,6 +3,7 @@ import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
 import { type AdLink, type AttributedUser, listAdLinkAttributedUsers } from "@entities/advertising/api";
+import { nameOrUnnamed } from "@entities/user/display";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
@@ -37,7 +38,8 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
         state.items.map((user) => (
           <UserRow
             key={user.user_id}
-            name={user.name}
+            name={nameOrUnnamed(user.name, user.user_id, t)}
+            unnamed={!user.name}
             subtitle={`${t(`advertising.channel.${user.channel}`)} · ${formatDateTime(user.created_at, i18n.language)}`}
             aside={
               <Badge borderless tone={user.has_paid ? "success" : "neutral"}>

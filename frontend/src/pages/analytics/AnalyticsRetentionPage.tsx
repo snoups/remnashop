@@ -1,8 +1,9 @@
 import type { ParseKeys } from "i18next";
-import { BarChart3, Clock, Hourglass, Layers, Package, RefreshCw, TrendingUp } from "lucide-react";
+import { BarChart3, Clock, Hourglass, Layers, Package, RefreshCw, TrendingUp, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { nameOrUnnamed } from "@entities/user/display";
 import { getCohorts, getRetention } from "@entities/analytics/api";
 import type { Cohorts, Retention } from "@entities/analytics/api";
 import { usePermissions } from "@entities/user/use-current-user";
@@ -219,9 +220,9 @@ function ExpiringCard({ data }: { data: Retention }) {
                     className={EXPIRING_GRID}
                   >
                     <span className="flex size-8 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-primary">
-                      {initials(row.name)}
+                      {row.name ? initials(row.name) : <User className="size-4" />}
                     </span>
-                    <CellText title={row.name} sub={row.username && `@${row.username}`} mono />
+                    <CellText title={nameOrUnnamed(row.name, row.user_id, t)} sub={row.username && `@${row.username}`} mono />
                     <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
                       <span className="truncate">{row.plan_names[0]}</span>
                       {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}

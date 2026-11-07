@@ -23,6 +23,7 @@ import type { EventLogEntry } from "@entities/event-log/api";
 import { eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import type { UserListItem } from "@entities/user/api";
+import { userLabel, userNameField } from "@entities/user/display";
 import { usePermissions } from "@entities/user/use-current-user";
 import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
@@ -82,7 +83,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
   const referrer = referralData?.referrer;
   const referrerContact = referrer && userHandle(referrer);
   const referrerText = referrer
-    ? `${referrer.name || t("users.deleted.name")} ${referrerContact}`
+    ? `${userLabel(referrer, referrer.id, t)} ${referrerContact}`
     : referralData?.referrer_id != null
       ? `#${referralData.referrer_id}`
       : undefined;
@@ -111,8 +112,8 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
         <InfoRow icon={Hash} label={t("users.details.id")} copyValue={String(user.id)} mono>
           {user.id}
         </InfoRow>
-        <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user.name}>
-          <span className="truncate">{user.name}</span>
+        <InfoRow icon={User} label={t("eventLog.detail.name")} copyValue={user.name || undefined}>
+          <span className="truncate">{userNameField(user, t)}</span>
         </InfoRow>
         {user.login && (
           <InfoRow icon={KeyRound} label={t("users.details.login")} copyValue={user.login} mono>
@@ -147,7 +148,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")} copyValue={referrerText}>
             {referrer ? (
               // contacts go to the clipboard only
-              <span className="truncate">{referrer.name || t("users.deleted.name")}</span>
+              <span className="truncate">{userLabel(referrer, referrer.id, t)}</span>
             ) : (
               (referrerText ?? dash)
             )}

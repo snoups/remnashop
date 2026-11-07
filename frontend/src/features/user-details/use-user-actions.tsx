@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { deleteAdmin } from "@entities/admin/api";
 import { resetUserReferralCode } from "@entities/referrals/api";
 import { deleteUserSubscriptions } from "@entities/subscriptions/api";
+import { userLabel } from "@entities/user/display";
 import {
   type UserListItem,
   blockUser,
@@ -248,7 +249,7 @@ export function useUserActions({
     ) : pending.action === "blockAdmin" ? (
       <ConfirmDialog
         title={t("users.blockAdmin.title")}
-        message={t("users.blockAdmin.confirm", { name: pending.user.name })}
+        message={t("users.blockAdmin.confirm", { name: userLabel(pending.user, pending.user.id, t) })}
         confirmLabel={t("users.blockAdmin.confirmButton")}
         cancelLabel={t("common.cancel")}
         danger
@@ -261,7 +262,7 @@ export function useUserActions({
     ) : pending.action === "unbindTelegram" ? (
       <ConfirmDialog
         title={t("users.telegram.unbindTitle")}
-        message={t("users.telegram.unbindConfirm", { name: pending.user.name })}
+        message={t("users.telegram.unbindConfirm", { name: userLabel(pending.user, pending.user.id, t) })}
         confirmLabel={t("users.telegram.unbind")}
         cancelLabel={t("common.cancel")}
         danger
@@ -287,7 +288,7 @@ export function useUserActions({
     ) : pending.action === "deleteSubscriptions" ? (
       <ConfirmDialog
         title={t("users.deleteSubscriptions.confirmTitle")}
-        message={t("users.deleteSubscriptions.confirm", { name: pending.user.name })}
+        message={t("users.deleteSubscriptions.confirm", { name: userLabel(pending.user, pending.user.id, t) })}
         confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
         danger
@@ -300,7 +301,7 @@ export function useUserActions({
     ) : (
       <ConfirmDialog
         title={t("users.delete.confirmTitle")}
-        message={t("users.delete.confirm", { name: pending.user.name })}
+        message={t("users.delete.confirm", { name: userLabel(pending.user, pending.user.id, t) })}
         confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
         danger

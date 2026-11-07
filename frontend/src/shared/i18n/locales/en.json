@@ -894,9 +894,7 @@
       "button": "Create admin",
       "title": "Create admin",
       "loginLabel": "Login",
-      "loginPlaceholder": "e.g. john.smith",
-      "nameLabel": "Display name",
-      "namePlaceholder": "e.g. John Smith",
+      "loginPlaceholder": "E.g. admin",
       "permissionsLabel": "Permissions",
       "error": "Failed to create admin."
     },
@@ -1097,6 +1095,12 @@
     },
     "status": {
       "blocked": "Blocked"
+    },
+    "unnamed": "User",
+    "contacts": {
+      "telegram": "TG: {{value}}",
+      "email": "Email: {{value}}",
+      "login": "Login: {{value}}"
     },
     "deleted": {
       "name": "Deleted user",

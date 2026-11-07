@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { nameOrUnnamed } from "@entities/user/display";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
@@ -41,7 +42,8 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
         state.items.map((user) => (
           <UserRow
             key={user.activation_id}
-            name={user.name}
+            name={nameOrUnnamed(user.name, user.user_id, t)}
+            unnamed={!user.name}
             subtitle={formatDateTime(user.activated_at, i18n.language)}
             aside={user.subscription_id !== null && <Tag>#{user.subscription_id}</Tag>}
             onClick={() => openUser(user)}

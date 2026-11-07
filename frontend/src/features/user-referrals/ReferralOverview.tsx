@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { getUserReferralRevenue, type ReferralStats } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { userLabel } from "@entities/user/display";
 import { REWARD_TYPES, formatReward, userHandle } from "@features/user-referrals/format";
 import { formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -73,7 +74,7 @@ function ReferralProgramCard({ stats }: { stats: ReferralStats }) {
       <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")}>
         {stats.referrer ? (
           <span className="truncate">
-            {stats.referrer.name || t("users.deleted.name")}{" "}
+            {userLabel(stats.referrer, stats.referrer.id, t)}{" "}
             <span className="font-mono font-medium text-muted-foreground">{userHandle(stats.referrer)}</span>
           </span>
         ) : stats.referrer_id !== null ? (

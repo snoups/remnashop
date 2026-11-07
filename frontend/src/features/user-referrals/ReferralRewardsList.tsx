@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { userLabel } from "@entities/user/display";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
@@ -44,7 +45,8 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
         state.items.map((reward, index) => (
           <UserRow
             key={index}
-            name={reward.buyer?.name}
+            name={reward.buyer && userLabel(reward.buyer, reward.buyer.id, t)}
+            unnamed={Boolean(reward.buyer && !reward.buyer.name)}
             subtitle={subtitle(reward)}
             aside={
               <>

@@ -411,7 +411,6 @@ async def create_admin(
         actor,
         CreateAdminDto(
             login=payload.login,
-            name=payload.name,
             client_ip=resolve_client_ip(request),
             permission_grants=payload.permission_grants,
             permission_revokes=payload.permission_revokes,

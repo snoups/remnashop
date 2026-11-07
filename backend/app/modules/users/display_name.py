@@ -25,8 +25,8 @@ def clean_display_name(name: Optional[str]) -> str:
         for char in text
         if unicodedata.category(char)[0] in "LNM" or char in _ALLOWED_SYMBOLS or char.isspace()
     )
-    return " ".join(kept.split())[:MAX_NAME_LENGTH].strip()
-
-
-def clean_telegram_name(name: Optional[str], telegram_id: int) -> str:
-    return clean_display_name(name) or str(telegram_id)
+    cleaned = " ".join(kept.split())[:MAX_NAME_LENGTH].strip()
+    # "." or "-" alone is how Telegram users leave their name blank
+    if not any(unicodedata.category(char)[0] in "LN" for char in cleaned):
+        return ""
+    return cleaned

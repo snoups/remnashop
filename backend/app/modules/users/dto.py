@@ -187,7 +187,6 @@ class UserListStatsDto:
 @dataclass(frozen=True, kw_only=True)
 class CreateAdminDto:
     login: str
-    name: str
     client_ip: str
     permission_grants: list[Permission] = field(default_factory=list)
     permission_revokes: list[Permission] = field(default_factory=list)
