@@ -1172,8 +1172,8 @@ wheels = [
 
 [[package]]
 name = "remnapy"
-version = "3.2.1"
-source = { registry = "https://pypi.org/simple" }
+version = "3.4.8"
+source = { url = "https://github.com/remnashop/remnapy/releases/download/v3.4.8/remnapy-3.4.8-py3-none-any.whl" }
 dependencies = [
     { name = "cryptography" },
     { name = "httpx" },
@@ -1182,9 +1182,19 @@ dependencies = [
     { name = "pydantic-core" },
     { name = "rapid-api-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/4c/045dc496739a7707fefd34226321323ef2a28dec8b95a51e968c800d7ae4/remnapy-3.2.1.tar.gz", hash = "sha256:ceee26394019e653fa19d91ba802c7547e859e7478385c7e75ef1cfbef49841f", size = 182961, upload-time = "2026-08-06T12:11:59.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/e3/c12eaddeb341b922eb4dafae09e93e2947a266dee6516fadc79342ca22e5/remnapy-3.2.1-py3-none-any.whl", hash = "sha256:57b1033618bfd4e322d938cefec292bbea48b77670ab8fc56bcc5ae3119f9254", size = 96193, upload-time = "2026-08-06T12:11:57.952Z" },
+    { url = "https://github.com/remnashop/remnapy/releases/download/v3.4.8/remnapy-3.4.8-py3-none-any.whl", hash = "sha256:727c0bfd43ca07a58ab33c97709b95e9a502c25a999b7d50475e41823de9481d" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=46.0.3,<47.0.0" },
+    { name = "httpx", specifier = ">=0.27.2,<0.28.0" },
+    { name = "orjson", specifier = ">=3.10.15,<4.0.0" },
+    { name = "pydantic", specifier = ">=2.9.2,<3.0.0" },
+    { name = "pydantic", extras = ["email"], specifier = ">=2.9.2,<3.0.0" },
+    { name = "pydantic-core", specifier = ">=2.33.1,<2.34.0" },
+    { name = "rapid-api-client", specifier = "==0.6.0" },
 ]
 
 [[package]]
@@ -1274,7 +1284,7 @@ requires-dist = [
     { name = "pywebpush", specifier = ">=2.3.0" },
     { name = "qrcode", extras = ["pil"], specifier = ">=8.2" },
     { name = "redis", specifier = "~=7.0.0" },
-    { name = "remnapy", specifier = "==3.2.1" },
+    { name = "remnapy", url = "https://github.com/remnashop/remnapy/releases/download/v3.4.8/remnapy-3.4.8-py3-none-any.whl" },
     { name = "segno", marker = "extra == 'telegram'", specifier = "~=1.6" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "taskiq", specifier = "~=0.12.1" },
