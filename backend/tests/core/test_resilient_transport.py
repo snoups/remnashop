@@ -173,3 +173,15 @@ async def test_a_discarded_5xx_retry_response_releases_its_pooled_connection() -
             # retries must have released theirs. Checked before the client's
             # own teardown, which would close everything and hide a leak.
             assert len(pool._connections) == 1
+
+
+async def test_a_transport_error_after_the_retries_is_the_panel_being_unavailable() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    transport = ResilientTransport(httpx.MockTransport(handler))
+    async with _client(transport) as client:
+        with pytest.raises(RemnawavePanelUnavailableError) as error:
+            await client.get("/users/1")
+
+    assert isinstance(error.value.__cause__, httpx.ReadTimeout)
