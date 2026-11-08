@@ -60,7 +60,7 @@ services:
     volumes:
       - remnashop-redis-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "valkey-cli $${REDIS_PASSWORD:+-a \"$REDIS_PASSWORD\"} ping | grep PONG"]
+      test: ["CMD-SHELL", "valkey-cli $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep PONG"]
       interval: 3s
       timeout: 10s
       retries: 3
