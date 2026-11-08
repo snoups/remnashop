@@ -34,7 +34,7 @@ export function userNameField(user: NamedUser, t: TFunction): string {
 }
 
 /** A title the caller pairs with the id: the name, "User" without one. */
-export function userName(user: UserListItem, t: TFunction): string {
+export function userName(user: NamedUser, t: TFunction): string {
   if (isDeleted(user)) return t("users.deleted.name");
   return user.name || t("users.unnamed");
 }

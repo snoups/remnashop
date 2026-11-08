@@ -8,8 +8,10 @@ import { REWARD_TYPES, formatReward, userHandle } from "@features/user-referrals
 import { formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { FieldHint } from "@shared/ui/FieldHint";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { Tag } from "@shared/ui/Tag";
 
 export function ReferralOverview({ userId, stats }: { userId: number; stats: ReferralStats }) {
   return (
@@ -42,7 +44,26 @@ export function ReferralKpis({ userId, stats }: { userId: number; stats: Referra
         glass
         label={t("referrals.dialog.invited")}
         value={String(invited)}
-        hint={levels.length ? levels.map(([level, count]) => `${t("referrals.list.levelBadge", { level })}: ${count}`).join(" · ") : undefined}
+        hint={
+          levels.length ? (
+            <span className="flex flex-wrap gap-x-3 gap-y-1">
+              {levels.map(([level, count]) => {
+                const hint = t("referrals.list.levelHint", { level, count });
+                return (
+                  <FieldHint
+                    key={level}
+                    text={hint}
+                    trigger={
+                      <Tag className="cursor-help">
+                        {level} · {count}
+                      </Tag>
+                    }
+                  />
+                );
+              })}
+            </span>
+          ) : undefined
+        }
       />
       <KpiTile
         glass

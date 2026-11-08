@@ -1,10 +1,13 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+from typing import cast
+from unittest.mock import AsyncMock
 
 from remnapy import RemnawaveSDK
 
 from app.core.db.uow import UnitOfWork
 from app.core.utils.time import datetime_now
-from app.modules.subscriptions.dto import CreateSubscriptionDto
+from app.modules.subscriptions.dto import CreateSubscriptionDto, PanelActivityDto, SubscriptionDto
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usage import PanelTrafficUsage
 from app.modules.subscriptions.usecases import (
@@ -96,5 +99,56 @@ async def test_the_admin_detail_reads_used_traffic_from_the_panel(
         subscription_repository, user_repository, PanelTrafficUsage(remnawave_sdk), uow
     )
 
-    assert (await use_case.system(known.id)).used_traffic == 42
-    assert (await use_case.system(missing.id)).used_traffic is None
+    assert (await use_case.system(known.id)).activity.used_traffic == 42
+    assert (await use_case.system(missing.id)).activity.used_traffic is None
+
+
+async def test_activity_takes_the_newest_subscription_request() -> None:
+    older = SimpleNamespace(
+        request_at=datetime(2026, 11, 1, tzinfo=timezone.utc), user_agent="Happ/1.0"
+    )
+    newer = SimpleNamespace(
+        request_at=datetime(2026, 11, 7, tzinfo=timezone.utc), user_agent="v2rayNG/1.9"
+    )
+    online_at = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    users = SimpleNamespace(
+        get_user_by_id=AsyncMock(
+            return_value=SimpleNamespace(used_traffic_bytes=7.0, online_at=online_at)
+        ),
+        get_user_subscription_request_history=AsyncMock(
+            return_value=SimpleNamespace(records=[older, newer])
+        ),
+    )
+    usage = PanelTrafficUsage(cast(RemnawaveSDK, SimpleNamespace(users=users)))
+
+    activity = await usage.activity(
+        cast(SubscriptionDto, SimpleNamespace(id=1, remnawave_user_id=5))
+    )
+
+    assert activity == PanelActivityDto(
+        used_traffic=7,
+        online_at=online_at,
+        sub_last_opened_at=newer.request_at,
+        sub_last_user_agent="v2rayNG/1.9",
+    )
+
+
+async def test_activity_keeps_the_history_when_the_user_lookup_fails() -> None:
+    record = SimpleNamespace(
+        request_at=datetime(2026, 11, 7, tzinfo=timezone.utc), user_agent="Happ/1.0"
+    )
+    users = SimpleNamespace(
+        get_user_by_id=AsyncMock(side_effect=RuntimeError("panel down")),
+        get_user_subscription_request_history=AsyncMock(
+            return_value=SimpleNamespace(records=[record])
+        ),
+    )
+    usage = PanelTrafficUsage(cast(RemnawaveSDK, SimpleNamespace(users=users)))
+
+    activity = await usage.activity(
+        cast(SubscriptionDto, SimpleNamespace(id=1, remnawave_user_id=5))
+    )
+
+    assert activity == PanelActivityDto(
+        sub_last_opened_at=record.request_at, sub_last_user_agent="Happ/1.0"
+    )

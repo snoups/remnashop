@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
+import { INTERACTIVE_SELECTOR } from "@shared/ui/ripple-host";
+
 // a press on a control inside the host (a row's switch, a button) is that control's, not the host's
-const INTERACTIVE_SELECTOR = "button, a, input, select, textarea, label, [tabindex]";
 
 interface Wave {
   id: number;

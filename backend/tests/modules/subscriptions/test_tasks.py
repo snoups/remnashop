@@ -504,10 +504,12 @@ async def test_sync_from_panel_keeps_going_after_one_row_fails_to_sync(
     assert refreshed.status == SubscriptionStatus.DELETED
 
 
-async def test_a_delivered_paid_trial_uses_up_the_trial(
+@pytest.mark.parametrize("is_trial", [True, False])
+async def test_a_delivered_purchase_uses_up_the_trial(
     plan_repository: PlanRepository,
     user_repository: UserRepository,
     fulfill_purchase: FulfillPurchaseUseCase,
+    is_trial: bool,
 ) -> None:
     buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=447))
     plan = await plan_repository.create(
@@ -517,7 +519,7 @@ async def test_a_delivered_paid_trial_uses_up_the_trial(
             type=PlanType.BOTH,
             traffic_limit=100,
             device_limit=3,
-            is_trial=True,
+            is_trial=is_trial,
         )
     )
     await plan_repository.set_durations(
@@ -535,7 +537,10 @@ async def test_a_delivered_paid_trial_uses_up_the_trial(
         PurchaseSubscriptionDto(
             user_id=buyer.id,
             plan_snapshot=make_plan_snapshot(
-                plan_id=plan.id, price_paid=Decimal("1.00"), currency=Currency.RUB, is_trial=True
+                plan_id=plan.id,
+                price_paid=Decimal("1.00"),
+                currency=Currency.RUB,
+                is_trial=is_trial,
             ),
             duration_days=3,
             price_paid=Decimal("1.00"),
@@ -545,6 +550,6 @@ async def test_a_delivered_paid_trial_uses_up_the_trial(
         )
     )
 
-    assert subscription is not None and subscription.is_trial is True
+    assert subscription is not None and subscription.is_trial is is_trial
     reloaded = await user_repository.find_by_id(buyer.id)
     assert reloaded is not None and reloaded.is_trial_available is False

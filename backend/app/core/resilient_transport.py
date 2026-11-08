@@ -24,7 +24,8 @@ class ResilientTransport(httpx.AsyncBaseTransport):
     for idempotent (GET) requests. A "failure" is a transport-level
     exception or an HTTP 5xx; a 4xx means the panel is responsive and
     rejecting this specific request, not unhealthy, so it doesn't count
-    toward the breaker and is never retried."""
+    toward the breaker and is never retried. A request that never gets an answer
+    raises RemnawavePanelUnavailableError (503)."""
 
     def __init__(self, wrapped: httpx.AsyncBaseTransport) -> None:
         self._wrapped = wrapped
@@ -62,7 +63,10 @@ class ResilientTransport(httpx.AsyncBaseTransport):
             return response
 
         assert last_error is not None  # every attempt raised; none returned above
-        raise last_error
+        # a timeout or a dropped connection is the panel being down, like an open breaker
+        raise RemnawavePanelUnavailableError(
+            f"Remnawave panel unreachable: {type(last_error).__name__}"
+        ) from last_error
 
     async def _record_failure(self) -> None:
         async with self._lock:

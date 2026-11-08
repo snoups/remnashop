@@ -1,5 +1,6 @@
 import { DollarSign, RussianRuble, Star, type LucideIcon } from "lucide-react";
 
+import type { PlanSnapshot } from "@entities/subscriptions/api";
 import { apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 import type { BadgeTone } from "@shared/ui/Badge";
@@ -7,12 +8,6 @@ import type { BadgeTone } from "@shared/ui/Badge";
 export type TransactionStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
 export type PurchaseType = "NEW" | "RENEW" | "CHANGE";
 export type DiscountSource = "NONE" | "PERSONAL" | "PURCHASE" | "LOYALTY";
-
-export interface PlanSnapshot {
-  name?: string;
-  public_code?: string;
-  duration_days?: number;
-}
 
 export interface TransactionUser {
   name: string;

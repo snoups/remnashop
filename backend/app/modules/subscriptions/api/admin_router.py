@@ -267,7 +267,14 @@ async def get_subscription(
     details = await use_case(actor, subscription_id)
     return SubscriptionDetailResponse.model_validate(
         details.subscription, from_attributes=True
-    ).model_copy(update={"used_traffic": details.used_traffic})
+    ).model_copy(
+        update={
+            "used_traffic": details.activity.used_traffic,
+            "online_at": details.activity.online_at,
+            "sub_last_opened_at": details.activity.sub_last_opened_at,
+            "sub_last_user_agent": details.activity.sub_last_user_agent,
+        }
+    )
 
 
 @router.post(

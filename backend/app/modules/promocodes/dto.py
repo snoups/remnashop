@@ -133,6 +133,13 @@ class ListPromocodeActivatedUsersDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ListUserPromocodeActivationsDto:
+    user_id: int
+    page: int = 1
+    page_size: int = DEFAULT_PAGE_SIZE
+
+
+@dataclass(frozen=True, kw_only=True)
 class PromocodeActivatedUserDto:
     activation_id: int
     user_id: int

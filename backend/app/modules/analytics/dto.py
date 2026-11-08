@@ -275,6 +275,17 @@ class ExpiringCustomerDto(BaseModel):
     renewals: int
 
 
+class ExpiringCustomerPageDto(BaseModel):
+    items: list[ExpiringCustomerDto]
+    total: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListExpiringCustomersDto:
+    page: int
+    page_size: int
+
+
 class PlanActiveDto(BaseModel):
     plan_name: str
     active: int
@@ -295,7 +306,6 @@ class RetentionDto(BaseModel):
     expiring_paid: int
     expiring_trials: int
     expiring_weeks: list[ExpiringWeekDto]
-    expiring_top: list[ExpiringCustomerDto]
     active_by_plan: list[PlanActiveDto]
     monthly_churn: list[MonthlyChurnDto]
 

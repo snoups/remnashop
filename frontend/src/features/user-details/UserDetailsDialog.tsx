@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Captions,
   Gift,
   GitMerge,
   History,
@@ -198,7 +199,7 @@ function UserDetailsDialogBody({
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}
               items={[
                 ...(canGrant
-                  ? [{ label: t("subscriptions.grant.open"), icon: Gift, onClick: () => setIsGranting(true) }]
+                  ? [{ label: t("subscriptions.grant.open"), icon: Captions, onClick: () => setIsGranting(true) }]
                   : []),
                 ...(available.includes("toggleTrial")
                   ? [

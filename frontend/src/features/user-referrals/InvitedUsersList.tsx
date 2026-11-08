@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { userLabel } from "@entities/user/display";
+import { userName } from "@entities/user/display";
 import { type InvitedUser, listInvitedUsers } from "@entities/referrals/api";
+import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { PillTabs } from "@shared/ui/PillTabs";
-import { formatRewardAmounts, userHandle } from "@features/user-referrals/format";
+import { formatRewardAmounts } from "@features/user-referrals/format";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useDebouncedValue } from "@shared/lib/use-debounced-value";
 import { Badge } from "@shared/ui/Badge";
@@ -69,6 +70,7 @@ export function InvitedUsersPage({
 }) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
+  const canOpenUsers = useCanOpenUsers();
   const filters = useMemo(() => ({ level, search: search || undefined, pageSize: PAGE_SIZE }), [level, search]);
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (current: typeof filters, page, signal) => listInvitedUsers(userId, { ...current, page }, signal),
@@ -80,14 +82,18 @@ export function InvitedUsersPage({
     openUserCard(item.user.id);
   };
 
-  const subtitle = (item: InvitedUser): string =>
-    [
-      item.user ? userHandle(item.user) : null,
-      item.via ? t("referrals.dialog.via", { name: item.via.name }) : null,
-      formatDate(item.created_at, i18n.language),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+  const subtitle = (item: InvitedUser) => (
+    <>
+      {item.via && (
+        <>
+          {t("referrals.dialog.via", { name: userName(item.via, t) })}{" "}
+          <span className="font-mono">#{item.via.id}</span>
+          {" · "}
+        </>
+      )}
+      {formatDate(item.created_at, i18n.language)}
+    </>
+  );
 
   return (
     <DialogCard>
@@ -102,7 +108,8 @@ export function InvitedUsersPage({
           return (
             <UserRow
               key={item.user?.id ?? `deleted-${index}`}
-              name={item.user && userLabel(item.user, item.user.id, t)}
+              name={item.user && userName(item.user, t)}
+              id={item.user?.id}
               unnamed={Boolean(item.user && !item.user.name)}
               subtitle={subtitle(item)}
               aside={
@@ -120,7 +127,7 @@ export function InvitedUsersPage({
                   </span>
                 </>
               }
-              onClick={item.user ? () => openUser(item) : undefined}
+              onClick={canOpenUsers && item.user ? () => openUser(item) : undefined}
             />
           );
         })}

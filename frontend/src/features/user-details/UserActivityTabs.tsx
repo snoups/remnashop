@@ -1,4 +1,4 @@
-import { CreditCard, Layers, Receipt, Ticket } from "lucide-react";
+import { Captions, CreditCard, Layers, Receipt, Share2, Ticket } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { ParseKeys, TFunction } from "i18next";
@@ -21,30 +21,29 @@ import { useAsyncResource, type AsyncState } from "@shared/lib/use-async-resourc
 import { Badge } from "@shared/ui/Badge";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
-import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Row } from "@shared/ui/glass/Row";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { formatDate } from "@shared/lib/relative-time";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
-import { Pressable } from "@shared/ui/Pressable";
 
 // Commerce tabs of the user details dialog: analytics, transactions, subscriptions, promocodes, referrals.
 
 const TRANSACTIONS_PAGE_SIZE = 10;
 // a user rarely has more; the tab shows the first page only
-const SUBSCRIPTIONS_PAGE_SIZE = 50;
+const SUBSCRIPTIONS_PAGE_SIZE = 10;
+const PROMOCODES_PAGE_SIZE = 10;
 // the backend's MAX_PAGE_SIZE
 const ANALYTICS_ORDERS_LIMIT = 200;
 
 
-const ROW_CLASSNAME = "flex w-full items-center gap-3 rounded-full px-2.5 py-2 text-left";
 
 
 // a KPI value: loading/forbidden/failed all read as a dash
-function kpiValue<T>(state: AsyncState<T | null>, format: (data: T) => string): string {
-  return state.kind === "ready" && state.data !== null ? format(state.data) : "—";
+function kpiValue<T>(state: AsyncState<T | null>, format: (data: T) => string, none: string): string {
+  return state.kind === "ready" && state.data !== null ? format(state.data) : none;
 }
 
 // the same "+30 дн." / "-10%" the promocode dialog shows; the rest has no number worth a tag
@@ -109,7 +108,7 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
       )}
       <KpiTile glass
         label={t("users.details.analytics.gateway")}
-        value={topGateway ? t(`settings.gateways.types.${topGateway}` as ParseKeys) : "—"}
+        value={topGateway ? t(`settings.gateways.types.${topGateway}` as ParseKeys) : t("common.none")}
         hint={topGateway ? t("users.details.analytics.gatewayHint", { count: topGatewayCount, total: paid.length }) : undefined}
       />
     </>
@@ -118,6 +117,7 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
 
 export function AnalyticsTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
+  const none = t("common.none");
   const permissions = usePermissions();
   const canViewSummary = permissions.includes("TRANSACTIONS_SUMMARY_VIEW");
   const canViewOrders = permissions.includes("TRANSACTIONS_VIEW");
@@ -140,12 +140,15 @@ export function AnalyticsTab({ userId }: { userId: number }) {
     <div className="flex flex-col gap-3">
       {(canViewSummary || canViewOrders) && (
         <>
-          <SectionTitle>{t("users.details.analytics.purchases")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
+          <SectionTitle>
+            <CreditCard className="size-3.5" />
+            {t("users.details.analytics.purchases")}
+          </SectionTitle>
+          <div className="grid auto-rows-fr grid-cols-2 gap-3">
             {canViewSummary && (
               <KpiTile glass
                 label={t("users.details.analytics.total")}
-                value={kpiValue(summary, (s) => money(s.revenue))}
+                value={kpiValue(summary, (s) => money(s.revenue), none)}
                 hint={
                   data && Number(data.refunded_amount) > 0
                     ? `${t("transactions.stats.refunded")} ${money(data.refunded_amount)}`
@@ -158,7 +161,7 @@ export function AnalyticsTab({ userId }: { userId: number }) {
                 <PurchaseKpis
                   orders={orderPage.items}
                   total={orderPage.total}
-                  saved={canViewSummary ? kpiValue(summary, (s) => money(s.discount_amount)) : undefined}
+                  saved={canViewSummary ? kpiValue(summary, (s) => money(s.discount_amount), none) : undefined}
                 />
               ) : orders.kind === "error" ? (
                 <ErrorState text={t("common.loadError")} />
@@ -171,7 +174,10 @@ export function AnalyticsTab({ userId }: { userId: number }) {
       )}
       {referrals.kind === "ready" && referrals.data && (
         <>
-          <SectionTitle>{t("users.details.tabs.referrals")}</SectionTitle>
+          <SectionTitle>
+            <Share2 className="size-3.5" />
+            {t("users.details.tabs.referrals")}
+          </SectionTitle>
           <ReferralKpis userId={userId} stats={referrals.data} />
         </>
       )}
@@ -200,32 +206,25 @@ export function TransactionsTab({ userId }: { userId: number }) {
         state.items.map((order) => {
           const symbol = currencySymbol(order.currency);
           return (
-            <Pressable
+            <Row
               key={order.id}
-              type="button"
-              disabled={!canViewDetails}
-              onClick={() => setOpenedOrder(order)}
-              className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
-            >
-              <IconCircle glyph={<span className="text-[11px] font-bold">{symbol}</span>} />
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-[13px] font-medium text-foreground/90">
-                    {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
-                    {" · "}
-                    {t("plans.daysShort", { count: order.duration_days })}
-                  </span>
-                </span>
-                <span className="block truncate text-[12px] text-muted-foreground">
+              size="sm"
+              glyph={<span className="text-[11px] font-bold">{symbol}</span>}
+              tone={PAYMENT_STATUS_BADGE_TONE[order.status]}
+              label={`${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`}
+              description={
+                <>
                   {t(`transactions.purchaseType.${order.purchase_type}`)} · <span className="font-mono">#{order.id}</span> ·{" "}
                   <span className="font-mono">{formatDate(order.created_at, i18n.language)}</span>
-                </span>
-              </span>
-              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-foreground">
+                </>
+              }
+              onClick={canViewDetails ? () => setOpenedOrder(order) : undefined}
+            >
+              <span className="text-[13px] font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
               <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
-            </Pressable>
+            </Row>
           );
         })}
       {state.kind === "ready" && hasMore && (
@@ -248,8 +247,9 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
   const permissions = useAccountPermissions(userId);
   const canOpen = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
   const { openSubscription } = useOpenEntity();
-  const [state, reload] = useAsyncResource((signal) =>
-    listSubscriptions({ userId, pageSize: SUBSCRIPTIONS_PAGE_SIZE }, signal),
+  const { state, isLoadingMore, hasMore, loadMore, reload } = usePaginatedList(
+    (id: number, page, signal) => listSubscriptions({ userId: id, page, pageSize: SUBSCRIPTIONS_PAGE_SIZE }, signal),
+    userId,
   );
 
   return (
@@ -257,44 +257,58 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
       <DialogCard>
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-        {state.kind === "ready" && state.data.items.length === 0 && (
+        {state.kind === "ready" && state.items.length === 0 && (
           <EmptyState icon={Layers} text={t("users.details.empty.subscriptions")} />
         )}
         {state.kind === "ready" &&
-          state.data.items.map((subscription) => (
-            <Pressable
+          state.items.map((subscription) => (
+            <Row
               key={subscription.id}
-              type="button"
-              disabled={!canOpen}
-              onClick={() => openSubscription(subscription.id, { data: subscription, onChanged: reload })}
-              className={`${ROW_CLASSNAME} transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default`}
+              size="sm"
+              icon={Captions}
+              tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}
+              label={
+                <>
+                  <span className="truncate">{subscription.plan_snapshot.name}</span>
+                  <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">#{subscription.id}</span>
+                  {subscription.is_trial && (
+                    <Badge borderless tone="warning">
+                      {t("subscriptions.trial")}
+                    </Badge>
+                  )}
+                </>
+              }
+              description={`${
+                subscription.effective_traffic_limit === 0
+                  ? t("subscriptions.trafficUnlimited")
+                  : `${subscription.effective_traffic_limit} GB`
+              } · ${
+                subscription.effective_device_limit === 0
+                  ? t("subscriptions.devicesUnlimited")
+                  : t("subscriptions.devicesCount", { count: subscription.effective_device_limit })
+              }`}
+              onClick={canOpen ? () => openSubscription(subscription.id, { data: subscription, onChanged: reload }) : undefined}
             >
-              <IconCircle icon={CreditCard} />
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-[13px] font-medium text-foreground/90">
-                    {subscription.tag ?? `#${subscription.id}`}
-                  </span>
-                  {subscription.is_trial && <Tag>{t("subscriptions.trial")}</Tag>}
+              {subscription.status !== "DELETED" && (
+                <span className="text-[12.5px] tabular-nums text-muted-foreground">
+                  {t("subscriptions.until", { date: formatDate(subscription.expire_at, i18n.language) })}
                 </span>
-                <span className="block truncate text-[12px] text-muted-foreground">
-                  {subscription.effective_traffic_limit === 0
-                    ? t("subscriptions.trafficUnlimited")
-                    : `${subscription.effective_traffic_limit} GB`}
-                  {" · "}
-                  {subscription.effective_device_limit === 0
-                    ? t("subscriptions.devicesUnlimited")
-                    : t("subscriptions.devicesCount", { count: subscription.effective_device_limit })}
-                </span>
-              </span>
-              <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
-                {formatDate(subscription.expire_at, i18n.language)}
-              </span>
+              )}
               <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                 {t(`subscriptions.status.${subscription.status}`)}
               </Badge>
-            </Pressable>
+            </Row>
           ))}
+        {state.kind === "ready" && hasMore && (
+          <div className="px-2.5 py-1">
+            <LoadMoreButton
+              onClick={() => void loadMore()}
+              isLoading={isLoadingMore}
+              shown={state.items.length}
+              total={state.total}
+            />
+          </div>
+        )}
       </DialogCard>
     </>
   );
@@ -302,28 +316,43 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
 
 export function PromocodesTab({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
-  const [state] = useAsyncResource((signal) => listUserPromocodeActivations(userId, signal));
+  const canOpen = usePermissions().includes("PROMOCODES_DETAIL_VIEW");
+  const { openPromocode } = useOpenEntity();
+  const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
+    (id: number, page, signal) => listUserPromocodeActivations(id, page, PROMOCODES_PAGE_SIZE, signal),
+    userId,
+  );
 
   return (
     <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-      {state.kind === "ready" && state.data.length === 0 && (
+      {state.kind === "ready" && state.items.length === 0 && (
         <EmptyState icon={Ticket} text={t("users.details.empty.promocodes")} />
       )}
       {state.kind === "ready" &&
-        state.data.map((activation) => (
-          <div key={activation.activation_id} className={ROW_CLASSNAME}>
-            <IconCircle icon={Ticket} />
-            <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-foreground/90">
-              {activation.code}
-            </span>
+        state.items.map((activation) => (
+          <Row
+            key={activation.activation_id}
+            size="sm"
+            icon={Ticket}
+            label={<span className="truncate font-mono">{activation.code}</span>}
+            description={<span className="font-mono">{formatDate(activation.activated_at, i18n.language)}</span>}
+            onClick={canOpen ? () => openPromocode(activation.promocode_id) : undefined}
+          >
             <Tag>{activationReward(activation, t)}</Tag>
-            <span className="shrink-0 text-[12.5px] tabular-nums text-muted-foreground">
-              {formatDate(activation.activated_at, i18n.language)}
-            </span>
-          </div>
+          </Row>
         ))}
+      {state.kind === "ready" && hasMore && (
+        <div className="px-2.5 py-1">
+          <LoadMoreButton
+            onClick={() => void loadMore()}
+            isLoading={isLoadingMore}
+            shown={state.items.length}
+            total={state.total}
+          />
+        </div>
+      )}
     </DialogCard>
   );
 }

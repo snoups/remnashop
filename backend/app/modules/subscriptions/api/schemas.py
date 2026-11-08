@@ -17,6 +17,7 @@ from app.core.enums import (
 )
 from app.core.security.connect_signature import sign_subscription_url
 from app.modules.subscriptions.dto import PlanSnapshot, SubscriptionDto
+from app.modules.subscriptions.plan_snapshot_response import PlanSnapshotResponse
 
 
 class AddOnEntitlementResponse(BaseModel):
@@ -45,7 +46,7 @@ class SubscriptionResponse(BaseModel):
     created_at: Optional[datetime] = None
     first_connected_at: Optional[datetime] = None
     url: str
-    plan_snapshot: dict[str, Any]
+    plan_snapshot: PlanSnapshotResponse
     device_single_reset_at: Optional[datetime] = None
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
@@ -58,7 +59,11 @@ class SubscriptionResponse(BaseModel):
 
 
 class SubscriptionDetailResponse(SubscriptionResponse):
-    used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
+    # from the panel; None when it is unreachable or hasn't seen the client
+    used_traffic: Optional[int] = None  # bytes
+    online_at: Optional[datetime] = None
+    sub_last_opened_at: Optional[datetime] = None
+    sub_last_user_agent: Optional[str] = None
 
 
 class SubscriptionListItemResponse(SubscriptionResponse):

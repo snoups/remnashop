@@ -145,17 +145,19 @@ function Overview({ data, isAll }: { data: Trial; isAll: boolean }) {
         >
           <div className="flex flex-col gap-4 px-3.5 pt-4">
             <ColumnChart columns={dayColumns} empty={t("analytics.emptyPeriod")} />
-            <Legend
-              items={[
-                { className: "bg-primary", label: t("analytics.trial.during") },
-                { className: "bg-success", label: t("analytics.trial.afterEnd") },
-              ]}
-            />
             {dayTotal > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <Tag>{t("analytics.trial.lastDay", { share: share(lastDay?.count ?? 0) })}</Tag>
-                <Tag>{t("analytics.trial.afterEndShare", { share: share(afterTotal) })}</Tag>
-              </div>
+              <>
+                <Legend
+                  items={[
+                    { className: "bg-primary", label: t("analytics.trial.during") },
+                    { className: "bg-success", label: t("analytics.trial.afterEnd") },
+                  ]}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Tag>{t("analytics.trial.lastDay", { share: share(lastDay?.count ?? 0) })}</Tag>
+                  <Tag>{t("analytics.trial.afterEndShare", { share: share(afterTotal) })}</Tag>
+                </div>
+              </>
             )}
           </div>
         </Section>

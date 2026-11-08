@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Final, Literal, Optional
 from uuid import UUID
 
 from pydantic import Field
@@ -19,6 +19,10 @@ from app.core.enums import (
     PriceAdjustScope,
 )
 from app.modules.pricing import CurrencyRateDto, PricingSettingsDto, UpdateCurrencyRateDto
+
+# lucide_dev's "box", given to a plan created without an icon
+DEFAULT_PLAN_ICON_EMOJI_ID: Final[str] = "5429613693287578957"
+DEFAULT_PLAN_ICON_EMOJI_FALLBACK: Final[str] = "📦"
 
 
 class PlanPriceOverrideDto(BaseDto):

@@ -20,6 +20,7 @@ class Permission(UpperStrEnum):
     ANALYTICS_REVENUE_VIEW = auto()
     ANALYTICS_TRIAL_VIEW = auto()
     ANALYTICS_RETENTION_VIEW = auto()
+    ANALYTICS_EXPIRING_VIEW = auto()
     ANALYTICS_SOURCES_VIEW = auto()
     ANALYTICS_PROMOCODES_VIEW = auto()
     REMNAWAVE_NODES_VIEW = auto()
@@ -517,6 +518,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ANALYTICS_REVENUE_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_TRIAL_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_RETENTION_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_EXPIRING_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_SOURCES_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_PROMOCODES_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.REMNAWAVE_NODES_VIEW: PermissionMeta(resource="remnawave", kind="read"),
@@ -810,6 +812,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.ANALYTICS_REVENUE_VIEW,
             Permission.ANALYTICS_TRIAL_VIEW,
             Permission.ANALYTICS_RETENTION_VIEW,
+            Permission.ANALYTICS_EXPIRING_VIEW,
             Permission.ANALYTICS_SOURCES_VIEW,
             Permission.ANALYTICS_PROMOCODES_VIEW,
             Permission.REMNAWAVE_NODES_VIEW,

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.enums import Currency, PlanAvailability, PlanBadge, PlanType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.modules.plans.api.schemas import PlanIconRequest
+from app.modules.plans.api.schemas import CreatePlanRequest, PlanIconRequest
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -605,6 +605,16 @@ async def test_set_duration_base_price_unknown_duration_raises_not_found(
 def test_request_rejects_an_inconsistent_icon(fields: dict[str, str]) -> None:
     with pytest.raises(PydanticValidationError):
         PlanIconRequest(**fields)
+
+
+def test_create_request_defaults_the_icon_unless_cleared() -> None:
+    base = {"name": "Pro", "type": "BOTH", "traffic_limit": 0, "device_limit": 1}
+    omitted = CreatePlanRequest.model_validate(base)
+    assert (omitted.icon_emoji_id, omitted.icon_emoji_fallback) == ("5429613693287578957", "📦")
+    cleared = CreatePlanRequest.model_validate(
+        {**base, "icon_emoji_id": None, "icon_emoji_fallback": None}
+    )
+    assert (cleared.icon_emoji_id, cleared.icon_emoji_fallback) == (None, None)
 
 
 async def test_set_durations_keeps_pinned_prices_of_kept_durations(

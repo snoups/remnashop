@@ -37,13 +37,12 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
-import { IconCircle } from "@shared/ui/glass/IconCircle";
+import { Row } from "@shared/ui/glass/Row";
 import { InfoRow } from "@shared/ui/InfoRow";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { SECTION_TITLE_CLASS } from "@shared/ui/classes";
-import { Pressable } from "@shared/ui/Pressable";
 
 // Profile/sessions/events tabs shared by the user and admin details dialogs.
 
@@ -62,7 +61,8 @@ function languageName(code: string, uiLanguage: string): string {
 /** onChanged makes points and discounts editable, permissions allowing */
 export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
   const { t, i18n } = useTranslation();
-  const dash = "—";
+  // sans even in mono rows: the dash looks the same everywhere
+  const none = <span className="font-sans">{t("common.none")}</span>;
   const yesNo = (value: boolean) => (value ? t("common.yes") : t("common.no"));
   const blocked = yesNo(user.is_blocked);
   const trialAvailable = user.is_trial_available ? t("users.details.trialYes") : t("users.details.trialNo");
@@ -97,7 +97,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           {user.id}
         </InfoRow>
         <InfoRow icon={CalendarDays} label={t("users.details.createdAt")} copyValue={createdAt} mono>
-          {createdAt ?? dash}
+          {createdAt ?? none}
         </InfoRow>
         <InfoRow icon={Trash2} label={t("users.deleted.at")} copyValue={deletedAt} mono>
           {deletedAt}
@@ -121,7 +121,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           </InfoRow>
         )}
         <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user.email ?? undefined} mono>
-          <span className="truncate">{user.email ?? dash}</span>
+          <span className="truncate">{user.email ?? none}</span>
           {user.email_undeliverable_at && <Badge borderless tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
         </InfoRow>
         <InfoRow icon={Languages} label={t("users.details.language")} copyValue={language}>
@@ -137,7 +137,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           {trialAvailable}
         </InfoRow>
         <InfoRow icon={CalendarDays} label={t("users.details.createdAt")} copyValue={createdAt} mono>
-          {createdAt ?? dash}
+          {createdAt ?? none}
         </InfoRow>
         {user.referral_code && (
           <InfoRow icon={Hash} label={t("users.details.referralCode")} copyValue={user.referral_code} mono>
@@ -150,7 +150,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
               // contacts go to the clipboard only
               <span className="truncate">{userLabel(referrer, referrer.id, t)}</span>
             ) : (
-              (referrerText ?? dash)
+              (referrerText ?? none)
             )}
           </InfoRow>
         )}
@@ -166,7 +166,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
                 <Tag>{t(`advertising.channel.${adSource.data.channel}`)}</Tag>
               </>
             ) : (
-              dash
+              none
             )}
           </InfoRow>
         )}
@@ -186,7 +186,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
               copyValue={user.username ? `@${user.username}` : undefined}
               mono
             >
-              {user.username ? `@${user.username}` : dash}
+              {user.username ? `@${user.username}` : none}
             </InfoRow>
           </div>
         )}
@@ -233,20 +233,17 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
       )}
       {state.kind === "ready" &&
         state.items.map((entry) => (
-          <Pressable
+          <Row
             key={entry.id}
-            type="button"
+            size="sm"
+            glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />}
+            label={eventTitle(entry, t)}
             onClick={() => setOpenedEntry(entry)}
-            className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors hover:bg-white/[0.04]"
           >
-            <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-              {eventTitle(entry, t)}
-            </span>
-            <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+            <span className="font-mono text-[12px] text-muted-foreground">
               {formatDateTime(entry.occurred_at, i18n.language)}
             </span>
-          </Pressable>
+          </Row>
         ))}
       {state.kind === "ready" && hasMore && (
         <div className="px-2.5 py-1">

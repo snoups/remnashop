@@ -25,6 +25,8 @@ export interface PlanIconValue {
 }
 
 export const NO_PLAN_ICON: PlanIconValue = { icon_emoji_id: null, icon_emoji_fallback: null };
+// lucide_dev's "box"
+export const DEFAULT_PLAN_ICON: PlanIconValue = { icon_emoji_id: "5429613693287578957", icon_emoji_fallback: "📦" };
 
 export interface Plan extends PlanIconValue {
   id: number;

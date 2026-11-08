@@ -144,7 +144,7 @@ export function LegalTextEditor({
         <div className="flex items-center gap-3">
           <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-foreground">
             {t("settings.legal.reaccept")}
-            <FieldHint text={t("settings.legal.reacceptHint")} glass />
+            <FieldHint text={t("settings.legal.reacceptHint")} />
           </p>
           <Switch checked={value.reaccept} onChange={(reaccept) => onChange({ ...value, reaccept })} disabled={busy} />
         </div>
