@@ -43,6 +43,7 @@ def transform_transactions(
     *,
     plan_ids: set[int],
     subscription_ids: set[int],
+    cabinet_user_ids: set[int],
     anchor_currency: Currency,
     rates: Mapping[Currency, Decimal],
     report: MigrationReport,
@@ -78,7 +79,11 @@ def transform_transactions(
             previous_plan_snapshot=None,
             duration_days=int(old_snapshot.get("duration") or 0),
             currency=currency,
-            channel=PurchaseChannel.BOT,
+            channel=(
+                PurchaseChannel.CABINET
+                if int(row["user_id"]) in cabinet_user_ids
+                else PurchaseChannel.BOT
+            ),
             gateway_type=PaymentGatewayType(row["gateway_type"]),
             external_payment_id=None,
             status=status,

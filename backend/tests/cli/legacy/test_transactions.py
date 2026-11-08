@@ -59,11 +59,13 @@ def _run(
     plan_ids: Optional[set[int]] = None,
     subscription_ids: Optional[set[int]] = None,
     rates: Optional[dict[Currency, Decimal]] = None,
+    cabinet_user_ids: Optional[set[int]] = None,
 ) -> list[dict[str, Any]]:
     return transform_transactions(
         rows,
         plan_ids={3} if plan_ids is None else plan_ids,
         subscription_ids=set() if subscription_ids is None else subscription_ids,
+        cabinet_user_ids=cabinet_user_ids or set(),
         anchor_currency=Currency.RUB,
         rates=rates or {},
         report=report,
@@ -153,6 +155,12 @@ def test_missing_subscription_links_nulled() -> None:
 def test_paid_sets_fulfilled_at() -> None:
     assert _one()["fulfilled_at"] == UPDATED
     assert _one(status="FAILED")["fulfilled_at"] is None
+
+
+def test_user_without_telegram_bought_in_cabinet() -> None:
+    row = _row()
+    item = _run([row], report=MigrationReport(), cabinet_user_ids={row["user_id"]})[0]
+    assert item["channel"] is PurchaseChannel.CABINET
 
 
 def test_channel_is_bot() -> None:

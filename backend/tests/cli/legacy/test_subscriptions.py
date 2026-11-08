@@ -26,7 +26,10 @@ SNAPSHOT: dict[str, Any] = {
     "internal_squads": ["11111111-1111-1111-1111-111111111111"],
     "traffic_limit_strategy": "MONTH",
 }
-INDEX = PanelIndex(by_username={"rs_1001": 55}, by_telegram_id={})
+CONNECTED = datetime(2025, 12, 1, tzinfo=timezone.utc)
+INDEX = PanelIndex(
+    by_username={"rs_1001": 55}, by_telegram_id={}, first_connected_at={55: CONNECTED}
+)
 USERS = {1: {"telegram_id": 1001}, 2: {"telegram_id": 1002}}
 
 
@@ -99,6 +102,11 @@ def test_remnawave_user_id_from_panel_and_flag_renamed() -> None:
     assert result[0]["remnawave_user_id"] == 55
     assert result[0]["paused_by_channel_leave"] is True
     assert "disabled_by_channel_leave" not in result[0]
+
+
+def test_first_connection_from_panel_on_every_subscription() -> None:
+    result = _run([_row(1), _row(2, "EXPIRED")], {1}, MigrationReport())
+    assert [item["first_connected_at"] for item in result] == [CONNECTED, CONNECTED]
 
 
 def test_plan_snapshot_converted() -> None:
