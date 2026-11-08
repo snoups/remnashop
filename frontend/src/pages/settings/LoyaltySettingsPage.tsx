@@ -209,7 +209,7 @@ export function LoyaltySettingsPage() {
         }
         footer={
           canManage ? (
-            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={hasInvalid} beside={resetButton} />
+            <SaveFooter dirty={dirty} saving={isSaving} disabled={hasInvalid} beside={resetButton} />
           ) : (
             resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
           )

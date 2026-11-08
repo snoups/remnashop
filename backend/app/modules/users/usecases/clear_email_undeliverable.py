@@ -29,7 +29,7 @@ class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserLis
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
-            assert_manageable(actor, target)
+            assert_manageable(actor, target, allow_self=True)
 
             await self._user_repository.set_email_undeliverable(data.user_id, None)
             updated = await self._user_repository.find_by_id(data.user_id)
@@ -40,6 +40,8 @@ class ClearEmailUndeliverableUseCase(UseCase[ClearEmailUndeliverableDto, UserLis
                     actor=actor, target=updated, ip_address=data.client_ip
                 )
             )
-            item = await self._user_repository.get_list_item(updated.id, detail_roles(actor))
+            item = await self._user_repository.get_list_item(
+                updated.id, detail_roles(actor, updated.id)
+            )
         logger.info(f"{actor.log} Cleared undeliverable email of user '{data.user_id}'")
         return item

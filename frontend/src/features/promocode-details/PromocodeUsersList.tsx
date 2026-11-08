@@ -47,7 +47,13 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
             id={user.user_id}
             unnamed={!user.name}
             subtitle={formatDateTime(user.activated_at, i18n.language)}
-            aside={user.subscription_id !== null && <Tag>#{user.subscription_id}</Tag>}
+            aside={
+              user.subscription_id !== null && (
+                <Tag>
+                  {user.subscription_plan_name} #{user.subscription_id}
+                </Tag>
+              )
+            }
             onClick={canOpenUsers ? () => openUser(user) : undefined}
           />
         ))}

@@ -145,6 +145,7 @@ class PromocodeActivatedUserDto:
     user_id: int
     name: str
     subscription_id: Optional[int]
+    subscription_plan_name: Optional[str]
     activated_at: datetime
 
 

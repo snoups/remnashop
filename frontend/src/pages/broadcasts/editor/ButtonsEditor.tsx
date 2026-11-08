@@ -99,7 +99,6 @@ export function ButtonsEditor({
       aside={
         !disabled && (
             <ActionMenu
-              glass
               trigger={{ label: t("broadcasts.editor.buttons.add"), icon: Plus }}
               items={KINDS.map((kind) => ({
                 label: t(`broadcasts.editor.buttons.kind.${kind}`),

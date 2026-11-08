@@ -194,7 +194,7 @@ function RateRow({
         <IconCircle glyph={currencySymbol(rate.currency)} />
         <span className="text-[13px] font-semibold text-foreground">{rate.currency}</span>
         {isAnchor && (
-          <Badge borderless tone="accent" className="ml-auto">
+          <Badge tone="accent" className="ml-auto">
             <Anchor className="size-2.5" />
             {t("pricing.anchor.badge")}
           </Badge>
@@ -248,7 +248,7 @@ function RateRow({
           />
         </Field>
         <div className="mt-auto">
-          <SaveFooter variant="glassAccent" dirty={isDirty} saving={isSubmitting} disabled={isRateInvalid} flush />
+          <SaveFooter dirty={isDirty} saving={isSubmitting} disabled={isRateInvalid} flush />
         </div>
       </form>
 
@@ -439,14 +439,14 @@ function GlobalSettings({
         title={
           <>
             {t("pricing.settings.title")}
-            <Badge tone="warning" borderless tabIndex={0} className="group relative outline-none">
+            <Badge tone="warning" tabIndex={0} className="group relative outline-none">
               {t("dialogs.beta")}
               <Tooltip text={t("pricing.settings.betaHint")} side="bottom" />
             </Badge>
           </>
         }
         description={t("pricing.settings.description")}
-        footer={canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+        footer={canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
       >
         <SectionFields>
           <fieldset disabled={!canManage} className="grid min-w-0 gap-3 sm:grid-cols-2">

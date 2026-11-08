@@ -13,7 +13,7 @@ import { roiClassName } from "@entities/advertising/format";
 import { usePermissions } from "@entities/user/use-current-user";
 import { AdLinkCreateDialog } from "@features/ad-link-create/AdLinkCreateDialog";
 import { AdLinkDetailsDialog } from "@features/ad-link-details/AdLinkDetailsDialog";
-import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { DAY_MS, previousWindow, PERIOD_DAYS, type PeriodDays } from "@shared/lib/period";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -25,7 +25,6 @@ import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { dotIcon } from "@shared/ui/option-icons";
-import type { PeriodDays } from "@shared/ui/PeriodPills";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Button } from "@shared/ui/Button";
@@ -35,7 +34,6 @@ import { ListRow } from "@shared/ui/ListRow";
 
 const STATS_GRID_CLASSNAME =
   "grid grid-cols-[32px_minmax(0,1fr)_88px_80px_104px_104px_80px_104px_16px] items-center gap-3";
-const PERIODS: PeriodDays[] = [0, 7, 30, 90];
 const PLAIN_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_104px_104px_16px] items-center gap-3";
 
 // mirrors AdLinkRepository.list_paginated: active first, then newest
@@ -176,7 +174,7 @@ export function AdvertisingPage() {
               size="compact"
               glassPopover
               placeholder={t("dashboard.periodAll")}
-              options={PERIODS.map((days) => ({
+              options={PERIOD_DAYS.map((days) => ({
                 value: String(days),
                 label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
                 icon: CalendarRange,
@@ -292,7 +290,6 @@ export function AdvertisingPage() {
 
                     return (
                       <ListRow
-                        glass
                         key={link.id}
                         type="button"
                         onClick={() => setDetailsId(link.id)}
@@ -332,7 +329,7 @@ export function AdvertisingPage() {
                           </span>
                         )}
                         <span>
-                          <Badge borderless tone={link.is_active ? "success" : "neutral"}>
+                          <Badge tone={link.is_active ? "success" : "neutral"}>
                             {link.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
                           </Badge>
                         </span>

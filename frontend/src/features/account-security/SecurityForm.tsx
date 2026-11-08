@@ -49,7 +49,7 @@ export function SecurityForm() {
         description={t("profile.accountSecurity.description")}
         footer={
           state.kind === "ready" && (
-            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={invalidEntries.length > 0} />
+            <SaveFooter dirty={dirty} saving={isSaving} disabled={invalidEntries.length > 0} />
           )
         }
       >

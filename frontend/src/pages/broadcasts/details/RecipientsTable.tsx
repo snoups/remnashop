@@ -214,7 +214,7 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
                     {r.channel === "EMAIL" ? <Mail className="size-4" /> : <Send className="size-4" />}
                   </span>
                   <span>
-                    <Badge borderless tone={RECIPIENT_STATUS_TONE[r.status]}>{t(`broadcasts.recipientStatus.${r.status}`)}</Badge>
+                    <Badge tone={RECIPIENT_STATUS_TONE[r.status]}>{t(`broadcasts.recipientStatus.${r.status}`)}</Badge>
                   </span>
                   <span className="truncate text-[12px] text-muted-foreground">{details(r)}</span>
                   <span className="text-[13px] tabular-nums text-foreground">

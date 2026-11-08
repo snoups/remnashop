@@ -73,7 +73,13 @@ function ChangePlanBody({ plans, subscription, onChanged }: Omit<ChangePlanDialo
 
   return (
     <>
-      <DialogHeader icon={Replace} title={t("subscriptions.plan.change")} subtitle={`${subscription.plan_snapshot.name} #${subscription.id}`} />
+      <DialogHeader icon={Replace} title={t("subscriptions.plan.change")} subtitle={
+          <span className="flex min-w-0 gap-1">
+            <span className="truncate">{subscription.plan_snapshot.name}</span>
+            <span className="shrink-0">#{subscription.id}</span>
+          </span>
+        }
+      />
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="p-3 [--dialog-pad:0.75rem]">
           {/* the custom-days field comes and goes */}

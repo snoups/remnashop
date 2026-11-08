@@ -14,7 +14,6 @@ import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { TabBar } from "@shared/ui/glass/TabBar";
 import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
 import { GroupToggle } from "@shared/ui/GroupToggle";
-import { PeriodPills, type PeriodDays } from "@shared/ui/PeriodPills";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { Tag } from "@shared/ui/Tag";
@@ -35,7 +34,6 @@ export function TabsSection() {
   const [segment, setSegment] = useState<DemoTab>("overview");
   const [pillTab, setPillTab] = useState<DemoTab>("overview");
   const [packTab, setPackTab] = useState<DemoTab>("overview");
-  const [period, setPeriod] = useState<PeriodDays>(30);
   const [chip, setChip] = useState(30);
   const [bot, setBot] = useState(true);
   const [cabinet, setCabinet] = useState(false);
@@ -84,20 +82,11 @@ export function TabsSection() {
           options={DEMO_TABS.map((tab) => ({ value: tab, label: label(tab) }))}
         />
       </Specimen>
-      <Specimen name="PeriodPills" usage={k("u.period")}>
-        <PeriodPills value={period} onChange={setPeriod} />
-      </Specimen>
-      <Specimen name='PillTabs · size="compact | field"' usage={k("u.pillTabs")} stage="stretch">
+      <Specimen name="PillTabs" usage={k("u.pillTabs")} stage="stretch">
         <PillTabs
           items={DEMO_TABS.map((tab) => ({ key: tab, label: label(tab) }))}
           activeKey={pillTab}
           onSelect={setPillTab}
-        />
-        <PillTabs
-          items={DEMO_TABS.map((tab) => ({ key: tab, label: label(tab) }))}
-          activeKey={pillTab}
-          onSelect={setPillTab}
-          size="field"
         />
       </Specimen>
       <Specimen name="EmojiPicker · PackTab" usage={k("u.packTab")}>

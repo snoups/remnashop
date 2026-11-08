@@ -235,6 +235,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PRICING_MATRIX_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,
         Permission.SUBSCRIPTIONS_DETAIL_VIEW,
+        Permission.SUBSCRIPTIONS_STATS_VIEW,
         Permission.SUBSCRIPTIONS_UPDATE,
         Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
         Permission.SUBSCRIPTIONS_DELETE,

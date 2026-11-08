@@ -154,6 +154,7 @@ export interface PromocodeActivatedUser {
   user_id: number;
   name: string;
   subscription_id: number | null;
+  subscription_plan_name: string | null;
   activated_at: string;
 }
 

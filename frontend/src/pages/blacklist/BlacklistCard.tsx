@@ -26,7 +26,7 @@ export function BlacklistCard({
 
 export function KindBadge({ kind, label }: { kind: BlacklistKind; label: string }) {
   return (
-    <Badge borderless tone={kind === "TELEGRAM_ID" ? "accent" : "neutral"} className="w-[84px] justify-center">
+    <Badge tone={kind === "TELEGRAM_ID" ? "accent" : "neutral"} className="w-[84px] justify-center">
       {label}
     </Badge>
   );

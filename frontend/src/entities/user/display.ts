@@ -1,7 +1,5 @@
 import type { TFunction } from "i18next";
 
-import type { UserListItem } from "@entities/user/api";
-
 interface NamedUser {
   name: string;
   telegram_id?: number | null;
@@ -40,12 +38,12 @@ export function userName(user: NamedUser, t: TFunction): string {
 }
 
 /** "TG: @username · Email: a@b.ru"; the login only when there is no other contact. */
-export function userContacts(user: UserListItem, t: TFunction): string {
+export function userContacts(user: NamedUser, t: TFunction): string {
   return [
-    user.telegram_id !== null &&
+    user.telegram_id != null &&
       t("users.contacts.telegram", { value: user.username ? `@${user.username}` : user.telegram_id }),
     user.email && t("users.contacts.email", { value: user.email }),
-    user.telegram_id === null && !user.email && user.login && t("users.contacts.login", { value: user.login }),
+    user.telegram_id == null && !user.email && user.login && t("users.contacts.login", { value: user.login }),
   ]
     .filter(Boolean)
     .join(" · ");

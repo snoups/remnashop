@@ -295,7 +295,7 @@ function ValueEditor({ current, max = Number.MAX_SAFE_INTEGER, suffix, hint, chi
       </div>
       <div className="flex gap-1.5">
         {chips.map((chip) => (
-          <ChoiceChip glass
+          <ChoiceChip
             key={chip.label}
             size="sm"
             className="flex-1"

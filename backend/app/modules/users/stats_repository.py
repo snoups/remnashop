@@ -9,7 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db.models.user import User
 from app.core.enums import Role
 from app.modules.users.dto import UserCountsDto, UserListStatsDto
-from app.modules.users.filters import ACTIVE_SUBSCRIPTIONS
+from app.modules.users.filters import (
+    ACTIVE_SUBSCRIPTIONS,
+    EXPIRED_SUBSCRIPTIONS,
+    LIMITED_SUBSCRIPTIONS,
+)
 
 
 class UserStatsRepository:
@@ -22,31 +26,29 @@ class UserStatsRepository:
         self,
         *,
         roles: Sequence[Role],
-        new_since: datetime,
-        previous_since: datetime,
         growth_since: datetime,
     ) -> UserListStatsDto:
         row = (
             await self.session.execute(
                 select(
                     func.count(),
-                    func.count().filter(User.created_at >= new_since),
                     func.count().filter(ACTIVE_SUBSCRIPTIONS > 0),
                     func.count().filter(User.is_blocked.is_(True)),
-                    func.count().filter(
-                        User.created_at >= previous_since, User.created_at < new_since
-                    ),
                     func.count().filter(User.created_at >= growth_since),
+                    func.count().filter(
+                        EXPIRED_SUBSCRIPTIONS > 0,
+                        ACTIVE_SUBSCRIPTIONS == 0,
+                        LIMITED_SUBSCRIPTIONS == 0,
+                    ),
                 ).where(User.role.in_(roles), User.deleted_at.is_(None))
             )
         ).one()
         return UserListStatsDto(
             total=row[0],
-            new=row[1],
-            subscribed=row[2],
-            blocked=row[3],
-            new_previous=row[4],
-            total_growth=row[5],
+            subscribed=row[1],
+            blocked=row[2],
+            total_growth=row[3],
+            churned=row[4],
         )
 
     async def count_total_and_new(self, role: Role, new_since: datetime) -> UserCountsDto:

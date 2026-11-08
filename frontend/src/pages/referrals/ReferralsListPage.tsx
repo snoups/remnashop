@@ -14,8 +14,8 @@ import {
 } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { UserReferralsDialog } from "@features/user-referrals/UserReferralsDialog";
-import { userHandle } from "@features/user-referrals/format";
-import { DAY_MS, previousWindow } from "@shared/lib/period";
+import { userContacts, userName } from "@entities/user/display";
+import { DAY_MS, previousWindow, PERIOD_DAYS, type PeriodDays } from "@shared/lib/period";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
@@ -33,7 +33,6 @@ import { Collapse } from "@shared/ui/Collapse";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
-import type { PeriodDays } from "@shared/ui/PeriodPills";
 import { SearchField } from "@shared/ui/SearchField";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
@@ -49,7 +48,6 @@ const REWARD_TYPE_ICONS: Record<ReferralRewardType, ComponentType<{ className?: 
   EXTRA_DAYS: CalendarPlus,
   POINTS: Coins,
 };
-const PERIODS: PeriodDays[] = [0, 7, 30, 90];
 
 const ROW_GRID_CLASSNAME =
   "grid grid-cols-[32px_minmax(0,1fr)_minmax(0,220px)_84px_130px_64px_16px] items-center gap-3";
@@ -136,9 +134,6 @@ export function ReferralsListPage() {
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
           <SearchField
             id="referrals-search"
-            label={t("referrals.list.search")}
-            hideLabel
-            compact
             placeholder={t("referrals.list.searchPlaceholder")}
             value={searchInput}
             onChange={setSearchInput}
@@ -207,7 +202,7 @@ export function ReferralsListPage() {
             size="compact"
             glassPopover
             placeholder={t("dashboard.periodAll")}
-            options={PERIODS.map((days) => ({
+            options={PERIOD_DAYS.map((days) => ({
               value: String(days),
               label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
               icon: CalendarRange,
@@ -302,7 +297,6 @@ export function ReferralsListPage() {
                           const rewards = formatRewards(item);
                           return (
                             <ListRow
-                              glass
                               key={item.id}
                               type="button"
                               disabled={!canOpen}
@@ -311,9 +305,19 @@ export function ReferralsListPage() {
                             >
                               <IconCircle glyph={<span className="text-[11px] font-bold">{initials(referred?.name)}</span>} />
                               <CellText
-                                title={referred?.name || t("users.deleted.name")}
-                                sub={referred && userHandle(referred)}
-                                mono
+                                title={
+                                  referred ? (
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <span className="truncate">{userName(referred, t)}</span>
+                                      <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">
+                                        #{referred.id}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    t("users.deleted.name")
+                                  )
+                                }
+                                sub={referred && userContacts(referred, t)}
                               />
                               <span className="flex min-w-0 items-center gap-2">
                                 <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
@@ -323,11 +327,16 @@ export function ReferralsListPage() {
                                   {initials(item.referrer?.name)}
                                 </span>
                                 <span className="truncate text-[13px] text-foreground">
-                                  {item.referrer?.name || t("users.deleted.name")}
+                                  {item.referrer ? userName(item.referrer, t) : t("users.deleted.name")}
                                 </span>
+                                {item.referrer && (
+                                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                    #{item.referrer.id}
+                                  </span>
+                                )}
                               </span>
                               <span>
-                                <Badge borderless tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
+                                <Badge tone={LEVEL_BADGE_TONE[item.level] ?? "neutral"}>
                                   {t("referrals.list.levelBadge", { level: item.level })}
                                 </Badge>
                               </span>

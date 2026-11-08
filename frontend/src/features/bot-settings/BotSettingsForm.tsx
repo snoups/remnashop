@@ -332,7 +332,7 @@ export function BotSettingsForm() {
         }
         footer={
           canSave ? (
-            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} beside={beside} />
+            <SaveFooter dirty={dirty} saving={isSubmitting} beside={beside} />
           ) : (
             restartButton && <div className="mt-4 flex items-center gap-3">{beside}</div>
           )

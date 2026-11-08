@@ -89,11 +89,10 @@ class UserPageResponse(BaseModel):
 
 class UserListStatsResponse(BaseModel):
     total: int
-    new: int
     subscribed: int
     blocked: int
-    new_previous: int
     total_growth: int
+    churned: int
 
 
 class CreateAdminRequest(BaseModel):
@@ -176,6 +175,10 @@ class SecurityResponse(BaseModel):
 
 class UnblockBlacklistMatchesResponse(BaseModel):
     unblocked: int
+
+
+class AdminDetailResponse(AdminResponse):
+    can_sign_in_after_demote: bool
 
 
 class AdminListResponse(BaseModel):

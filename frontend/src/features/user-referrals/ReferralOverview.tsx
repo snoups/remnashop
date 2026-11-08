@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { getUserReferralRevenue, type ReferralStats } from "@entities/referrals/api";
 import { usePermissions } from "@entities/user/use-current-user";
-import { userLabel } from "@entities/user/display";
-import { REWARD_TYPES, formatReward, userHandle } from "@features/user-referrals/format";
+import { userContacts, userName } from "@entities/user/display";
+import { REWARD_TYPES, formatReward } from "@features/user-referrals/format";
 import { formatMoney } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -94,10 +94,13 @@ function ReferralProgramCard({ stats }: { stats: ReferralStats }) {
       </InfoRow>
       <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")}>
         {stats.referrer ? (
-          <span className="truncate">
-            {userLabel(stats.referrer, stats.referrer.id, t)}{" "}
-            <span className="font-mono font-medium text-muted-foreground">{userHandle(stats.referrer)}</span>
-          </span>
+          <>
+            <span className="truncate">{userName(stats.referrer, t)}</span>
+            <span className="shrink-0 font-mono font-medium text-muted-foreground">#{stats.referrer.id}</span>
+            {userContacts(stats.referrer, t) && (
+              <span className="truncate font-medium text-muted-foreground">· {userContacts(stats.referrer, t)}</span>
+            )}
+          </>
         ) : stats.referrer_id !== null ? (
           `#${stats.referrer_id}`
         ) : (

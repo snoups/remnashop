@@ -115,6 +115,7 @@ class PromocodeActivatedUserResponse(BaseModel):
     user_id: int
     name: str
     subscription_id: Optional[int] = None
+    subscription_plan_name: Optional[str] = None
     activated_at: datetime
 
 

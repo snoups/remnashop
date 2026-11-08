@@ -1,6 +1,5 @@
 import { motion } from "motion/react";
 
-
 // Active highlight of a pill group. One layoutId per group, so the pill glides
 // to the newly selected option instead of jumping.
 export function ActivePill({ layoutId }: { layoutId: string }) {

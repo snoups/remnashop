@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Ban, CircleCheck, Gift, GitMerge, History, Info, KeyRound, LaptopMinimal, Layers, Mail, Send, ShieldPlus, Trash2, type LucideIcon, Unlink, User, UserPlus, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Ban, Bot, CircleCheck, Gift, GitMerge, History, Info, KeyRound, LaptopMinimal, Layers, Mail, Send, ShieldPlus, Trash2, type LucideIcon, Unlink, User, UserMinus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -42,9 +42,9 @@ import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { GLASS_LIST_HEAD_CLASS, GLASS_LIST_ROW_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
-type Kpi = "all" | "new" | "subscribed" | "blocked";
+type Kpi = "all" | "subscribed" | "churned" | "blocked";
 
-const KPIS: Kpi[] = ["all", "new", "subscribed", "blocked"];
+const KPIS: Kpi[] = ["all", "subscribed", "churned", "blocked"];
 const FILTER_DEBOUNCE_MS = 200;
 
 const ROW_GRID_CLASSNAME =
@@ -60,14 +60,14 @@ const DELETED_FILTER = "deleted";
 
 const KPI_STAT: Record<Kpi, keyof UserListStats> = {
   all: "total",
-  new: "new",
   subscribed: "subscribed",
+  churned: "churned",
   blocked: "blocked",
 };
 const KPI_ICON: Record<Kpi, LucideIcon> = {
   all: Users,
-  new: UserPlus,
   subscribed: Layers,
+  churned: UserMinus,
   blocked: Ban,
 };
 
@@ -193,7 +193,7 @@ export function UsersPage() {
 
   const channels = (user: UserListItem): { key: string; icon: LucideIcon }[] =>
     [
-      user.telegram_id !== null && { key: "telegram", icon: Send },
+      user.telegram_id !== null && { key: "telegram", icon: Bot },
       user.email && { key: "email", icon: Mail },
       user.login && { key: "login", icon: KeyRound },
     ].filter((channel): channel is { key: string; icon: LucideIcon } => Boolean(channel));
@@ -205,9 +205,6 @@ export function UsersPage() {
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
           <SearchField
             id="users-search"
-            label={t("users.filters.search")}
-            hideLabel
-            compact
             placeholder={t("users.filters.searchPlaceholder")}
             value={searchInput}
             onChange={setSearchInput}
@@ -277,20 +274,18 @@ export function UsersPage() {
             label={t(`users.kpi.${value}`)}
             value={stats ? String(stats[KPI_STAT[value]]) : "—"}
             hint={
-              value === "subscribed" || value === "blocked"
+              value !== "all"
                 ? stats && stats.total > 0
                   ? t("users.kpi.shareHint", {
-                      percent: formatPercent(String(stats[value] / stats.total), i18n.language),
+                      percent: formatPercent(String(stats[KPI_STAT[value]] / stats.total), i18n.language),
                     })
                   : undefined
-                : t(`users.kpi.${value}Hint`)
+                : t("users.kpi.allHint")
             }
             trend={
               stats && value === "all"
                 ? { delta: stats.total_growth, hint: t("users.kpi.totalTrend") }
-                : stats && value === "new"
-                  ? { delta: stats.new - stats.new_previous, hint: t("users.kpi.newTrend") }
-                  : undefined
+                : undefined
             }
           />
         ))}
@@ -439,7 +434,7 @@ export function UsersPage() {
                             #{user.id}
                           </span>
                           {user.role !== "USER" && (
-                            <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>
+                            <Badge tone={ROLE_BADGE_TONE[user.role]}>
                               {t(`roles.${user.role}`)}
                             </Badge>
                           )}
@@ -454,13 +449,13 @@ export function UsersPage() {
                             key={key}
                             className="flex size-6 items-center justify-center rounded-full bg-white/[0.06] text-muted-foreground"
                           >
-                            <Icon className="size-3" />
+                            <Icon className="size-3.5" />
                           </span>
                         ))}
                       </span>
                       <span className="flex items-center gap-1">
                         {subscriptionCounts(user).map(({ status, count }) => (
-                          <Badge borderless key={status} tone={SUBSCRIPTION_STATUS_BADGE_TONE[status]} shape="count">
+                          <Badge key={status} tone={SUBSCRIPTION_STATUS_BADGE_TONE[status]} shape="count">
                             {count}
                           </Badge>
                         ))}
@@ -483,7 +478,7 @@ export function UsersPage() {
                         )}
                       </span>
                       <span className="relative z-10 flex justify-end">
-                        <ActionMenu glass items={menuItems} />
+                        <ActionMenu items={menuItems} />
                       </span>
                     </div>
                   );

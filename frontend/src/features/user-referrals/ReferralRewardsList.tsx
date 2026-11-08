@@ -46,7 +46,7 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
             aside={
               <>
                 {reward.level && (
-                  <Badge borderless tone={reward.level === 1 ? "accent" : "neutral"}>
+                  <Badge tone={reward.level === 1 ? "accent" : "neutral"}>
                     {t("referrals.list.levelBadge", { level: reward.level })}
                   </Badge>
                 )}

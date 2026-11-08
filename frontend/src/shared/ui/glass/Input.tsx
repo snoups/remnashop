@@ -83,27 +83,20 @@ export function CopyInput({ value, ...props }: Omit<InputProps, "value" | "readO
   );
 }
 
-/** Multiline field, 18px corners (a 36px field's). corner: a badge over the bottom right (a counter).
- *  className: layout only, on the well. */
+/** Multiline field, 18px corners (a 36px field's). className: layout only, on the well. */
 export function TextArea({
-  corner,
   mono = false,
   className = "",
   ...props
-}: ComponentProps<"textarea"> & { corner?: ReactNode; mono?: boolean }) {
+}: ComponentProps<"textarea"> & { mono?: boolean }) {
   const required = useContext(FieldRequiredContext);
   return (
-    <label className={`relative flex cursor-text overflow-hidden rounded-[18px] ${WELL_CLASS} ${className}`}>
+    <label className={`flex cursor-text overflow-hidden rounded-[18px] ${WELL_CLASS} ${className}`}>
       <textarea
         required={required}
         className={`w-full resize-none px-3.5 py-3 leading-5 ${CONTROL_CLASS} ${mono ? "font-mono text-[12px] text-foreground" : TEXT_CLASS}`}
         {...props}
       />
-      {corner && (
-        <span className="glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground">
-          {corner}
-        </span>
-      )}
     </label>
   );
 }

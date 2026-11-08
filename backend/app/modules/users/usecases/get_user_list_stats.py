@@ -10,7 +10,6 @@ from app.modules.users.dto import GetUserListStatsDto, UserListStatsDto
 from app.modules.users.listing import resolve_list_roles
 from app.modules.users.stats_repository import UserStatsRepository
 
-NEW_USERS_WINDOW: Final[timedelta] = timedelta(days=7)
 TOTAL_GROWTH_WINDOW: Final[timedelta] = timedelta(days=30)
 
 
@@ -26,7 +25,5 @@ class GetUserListStatsUseCase(UseCase[GetUserListStatsDto, UserListStatsDto]):
         async with self._uow:
             return await self._user_stats.list_stats(
                 roles=resolve_list_roles(actor, data.include_staff),
-                new_since=now - NEW_USERS_WINDOW,
-                previous_since=now - 2 * NEW_USERS_WINDOW,
                 growth_since=now - TOTAL_GROWTH_WINDOW,
             )

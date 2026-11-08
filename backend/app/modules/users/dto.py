@@ -175,13 +175,12 @@ class UserCountsDto:
 @dataclass(frozen=True, kw_only=True)
 class UserListStatsDto:
     total: int
-    new: int
     subscribed: int
     blocked: int
-    # registrations in the window just before `new`'s
-    new_previous: int
     # registrations within TOTAL_GROWTH_WINDOW
     total_growth: int
+    # an expired subscription and nothing active or limited
+    churned: int
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -209,6 +208,12 @@ class AdminListDto:
     admins: list[UserDto]
     # can still sign in once demoted (Telegram, email or OAuth): demoting clears the login
     customer_sign_in_ids: frozenset[int]
+
+
+@dataclass(frozen=True, kw_only=True)
+class AdminDetailDto:
+    admin: UserDto
+    can_sign_in_after_demote: bool
 
 
 @dataclass(frozen=True, kw_only=True)

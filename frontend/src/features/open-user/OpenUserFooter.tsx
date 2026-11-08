@@ -14,12 +14,9 @@ export interface OpenUserLink {
 // adds the dialog's own actions to the same row.
 export function OpenUserFooter({
   links,
-  glass = false,
   children,
 }: {
   links: OpenUserLink[];
-  /** in a Modal: its footer inset and buttons */
-  glass?: boolean;
   children?: ReactNode;
 }) {
   const canOpenUsers = useCanOpenUsers();
@@ -27,9 +24,9 @@ export function OpenUserFooter({
   if (available.length === 0 && !children) return null;
 
   return (
-    <div className={`grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] ${glass ? "p-4" : "px-5 py-3.5"}`}>
+    <div className="grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] p-4">
       {available.map((link) => (
-        <OpenUserButton key={link.label} {...link} glass={glass} />
+        <OpenUserButton key={link.label} {...link} />
       ))}
       {children}
     </div>

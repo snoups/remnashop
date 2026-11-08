@@ -28,13 +28,9 @@ interface ActionMenuProps {
   items: ActionMenuItem[];
   /** a labelled button instead of the ⋮ icon, e.g. in a dialog footer */
   trigger?: { label: string; icon: ComponentType<{ className?: string }> };
-  /** glass popover and trigger, on glass pages and dialogs */
-  glass?: boolean;
-  /** the ⋮ button: 32px in rows, 36px in a dialog header */
-  size?: "8" | "9";
 }
 
-export function ActionMenu({ items, trigger, glass = false, size = "8" }: ActionMenuProps) {
+export function ActionMenu({ items, trigger }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -47,14 +43,14 @@ export function ActionMenu({ items, trigger, glass = false, size = "8" }: Action
   return (
     <div ref={ref} className="relative">
       {trigger ? (
-        <Button variant={glass ? "glass" : "outline"} onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}>
-          <trigger.icon className={glass ? "size-4" : "size-3.5"} />
+        <Button variant="glass" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}>
+          <trigger.icon className="size-4" />
           {trigger.label}
-          <ChevronDown className={`${glass ? "size-4" : "size-3.5"} transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`size-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </Button>
       ) : (
         <IconButton
-          size={size}
+          size="8"
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
           propagate={{ tap: false }}
@@ -67,7 +63,7 @@ export function ActionMenu({ items, trigger, glass = false, size = "8" }: Action
         open={isOpen}
         triggerRef={ref}
         popoverRef={popoverRef}
-        glass={glass}
+        glass
         align="right"
         maxHeight={items.length * ITEM_HEIGHT + 20}
         initial={{ opacity: 0, scale: 0.85 }}

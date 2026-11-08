@@ -138,7 +138,7 @@ export function PlanAccessFields({
                     </span>
                   </span>
                   {RESTRICTED_AVAILABILITIES.has(option) && (
-                    <Badge borderless tone="violet">
+                    <Badge tone="violet">
                       {t("plans.access.restricted")}
                     </Badge>
                   )}
@@ -153,7 +153,6 @@ export function PlanAccessFields({
         <div className={GLASS_DIALOG_CARD_CLASS}>
           <Field label={t("plans.access.telegramIdsLabel")} htmlFor="plan-access-telegram-ids" aside={<Tag>{telegramIds.length}</Tag>}>
             <ChipsInput
-              glass
               id="plan-access-telegram-ids"
               values={telegramIds}
               onChange={(next) => onChange({ ...value, telegramIds: next })}
@@ -164,7 +163,6 @@ export function PlanAccessFields({
           </Field>
           <Field label={t("plans.access.emailsLabel")} htmlFor="plan-access-emails" aside={<Tag>{emails.length}</Tag>}>
             <ChipsInput
-              glass
               id="plan-access-emails"
               values={emails}
               onChange={(next) => onChange({ ...value, emails: next })}

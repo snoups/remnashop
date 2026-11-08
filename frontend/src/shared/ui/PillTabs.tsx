@@ -11,8 +11,6 @@ interface PillTabsProps<T extends string> {
   activeKey: T | null;
   onSelect: (key: T) => void;
   disabled?: boolean;
-  /** field: 38px, lines up with a text input in the same row */
-  size?: "compact" | "field";
   /** false: no backdrop blur, for a capsule that shouldn't frost what's behind it */
   blurred?: boolean;
 }
@@ -24,7 +22,6 @@ export function PillTabs<T extends string>({
   activeKey,
   onSelect,
   disabled = false,
-  size = "compact",
   blurred = true,
 }: PillTabsProps<T>) {
   const scrollerRef = useHorizontalWheelScroll<HTMLDivElement>();
@@ -46,9 +43,7 @@ export function PillTabs<T extends string>({
   }, [activeKey]);
 
   return (
-    <div
-      className={`flex w-full rounded-full border border-glass-border bg-white/[0.03] p-1 ${blurred ? "backdrop-blur-md" : ""}`}
-    >
+    <div className={`flex w-full rounded-full border border-glass-border bg-white/[0.03] p-1 ${blurred ? "backdrop-blur-md" : ""}`}>
       {/* layoutScroll: the pill's glide accounts for the strip's own scroll */}
       <motion.div layoutScroll ref={scrollerRef} className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full">
         {items.map((item) => (
@@ -58,18 +53,16 @@ export function PillTabs<T extends string>({
             type="button"
             onClick={() => onSelect(item.key)}
             disabled={disabled}
-            className="group relative isolate block flex-1 shrink-0 cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-50"
+            className="group relative isolate flex-1 shrink-0 cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-50"
           >
             {/* one layoutId per strip, so the highlight glides to the new tab like the sidebar's */}
             {activeKey === item.key ? (
               <ActivePill layoutId={pillId} />
             ) : (
-              <motion.span
-                className={TAB_HOVER_CLASS}
-              />
+              <span className={TAB_HOVER_CLASS} />
             )}
             <span
-              className={`relative z-10 flex ${size === "field" ? "h-[28px]" : "h-[26px]"} items-center justify-center whitespace-nowrap px-3.5 text-[13px] font-medium ${activeKey === item.key ? "text-primary" : "text-foreground"}`}
+              className={`relative z-10 flex h-[26px] items-center justify-center whitespace-nowrap px-3.5 text-[13px] font-medium ${activeKey === item.key ? "text-primary" : "text-foreground"}`}
             >
               {item.label}
             </span>

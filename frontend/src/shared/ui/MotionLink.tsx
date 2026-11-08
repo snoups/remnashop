@@ -19,4 +19,3 @@ export function MotionLink({ to, onClick, ...props }: Omit<HTMLMotionProps<"a">,
     />
   );
 }
-

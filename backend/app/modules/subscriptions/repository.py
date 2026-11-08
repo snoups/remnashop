@@ -257,6 +257,16 @@ class SubscriptionRepository:
         )
         return set(result)
 
+    async def list_plan_names(self, subscription_ids: list[int]) -> dict[int, str]:
+        if not subscription_ids:
+            return {}
+        result = await self.session.execute(
+            select(Subscription.id, Subscription.plan_snapshot["name"].astext).where(
+                in_ids(Subscription.id, subscription_ids)
+            )
+        )
+        return dict(result.tuples().all())
+
     async def list_non_terminal(self) -> list[SubscriptionDto]:
         # recently EXPIRED rows too: a renewal that reached the panel but not
         # our commit leaves the row EXPIRED until reconcile pulls it in

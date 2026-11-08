@@ -10,7 +10,7 @@ import {
   type PopoverAnchor,
   type RightPopoverAnchor,
 } from "@shared/lib/popover-anchor";
-import { GLASS_POPOVER_CLASS, POPOVER_CLASS } from "@shared/ui/classes";
+import { GLASS_POPOVER_CLASS, POPOVER_CLASS, POPOVER_EDGE_CLASS } from "@shared/ui/classes";
 import { FieldRequiredContext } from "@shared/ui/field-context";
 
 interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "className" | "children"> {
@@ -39,8 +39,7 @@ interface PortalPopoverProps extends Omit<HTMLMotionProps<"div">, "ref" | "class
 // glass-dialog's edge and shadow on an opaque fill, no blur
 const SOLID_GLASS_POPOVER_CLASS =
   "rounded-popover bg-popover shadow-[inset_0_1px_0_rgb(255_255_255/0.2),inset_0_0_0_1px_rgb(255_255_255/0.12),0_0_0_1px_rgb(0_0_0/0.35),0_40px_80px_-24px_rgb(0_0_0/0.7)]";
-const SOLID_POPOVER_CLASS =
-  "rounded-popover border border-white/[0.14] bg-popover shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]";
+const SOLID_POPOVER_CLASS = `${POPOVER_EDGE_CLASS} bg-popover`;
 
 function anchorWith(align: PortalPopoverProps["align"], trigger: DOMRect, maxHeight: number) {
   if (align === "stretch") return anchorFor(trigger, maxHeight);

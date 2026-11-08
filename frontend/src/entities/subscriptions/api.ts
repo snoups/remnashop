@@ -90,6 +90,11 @@ export function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / DAY_MS);
 }
 
+export function expiryToneClassName(days: number): string {
+  if (days < 0) return "text-error";
+  return days <= EXPIRING_SOON_DAYS ? "text-warning" : "text-muted-foreground";
+}
+
 export function formatTraffic(gb: number, unlimitedLabel: string): string {
   return gb === 0 ? unlimitedLabel : `${gb} GB`;
 }
@@ -271,6 +276,24 @@ export interface SubscriptionPanelDiff {
   subscription_id: number;
   missing_in_panel: boolean;
   fields: PanelFieldDiff[];
+}
+
+export interface SubscriptionListStats {
+  paid_active: number;
+  active_trials: number;
+  /** paid, expiring within 7 days */
+  expiring: number;
+  /** of them within 24 hours */
+  expiring_urgent: number;
+  limited: number;
+  disabled: number;
+  /** paid, active or limited */
+  paying: number;
+  paying_never_connected: number;
+}
+
+export function getSubscriptionListStats(signal?: AbortSignal): Promise<SubscriptionListStats> {
+  return apiGet<SubscriptionListStats>("/subscriptions/summary", signal);
 }
 
 export async function getPanelSyncStatus(signal?: AbortSignal): Promise<PanelSyncStatus> {

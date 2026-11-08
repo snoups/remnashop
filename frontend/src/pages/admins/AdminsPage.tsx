@@ -6,8 +6,8 @@ import { type Admin, listAdmins } from "@entities/admin/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import { prefetchPermissionCatalog } from "@entities/admin/use-permission-catalog";
 import { AdminCreateDialog } from "@features/admin-create/AdminCreateDialog";
-import type { AdminDetailsTab } from "@features/admin-details/AdminDetailsDialog";
-import { AdminDetailsFlow, DeleteAdminConfirm, DemoteAdminConfirm } from "@features/admin-details/AdminDetailsFlow";
+import { DeleteAdminConfirm, DemoteAdminConfirm } from "@features/admin-details/AdminConfirms";
+import { UserDetailsDialog, type UserDetailsTab } from "@features/user-details/UserDetailsDialog";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { initials } from "@shared/lib/initials";
@@ -34,7 +34,7 @@ export function AdminsPage() {
   const [state, reload] = useAsyncResource(listAdmins);
   const [isCreating, setIsCreating] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
-  const [details, setDetails] = useState<{ admin: Admin; tab: AdminDetailsTab } | null>(null);
+  const [details, setDetails] = useState<{ admin: Admin; tab: UserDetailsTab } | null>(null);
   const [pendingDemote, setPendingDemote] = useState<Admin | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Admin | null>(null);
   const currentUserState = useCurrentUser();
@@ -130,10 +130,10 @@ export function AdminsPage() {
                     onClick={() => setDetails({ admin, tab: "profile" })}
                   >
                     {/* the row's end item when there's no menu: 20px in, as far from the side as from top and bottom */}
-                    <Badge borderless tone={ROLE_BADGE_TONE[admin.role]} className={admin.id === currentUserId ? "mr-1.5" : ""}>
+                    <Badge tone={ROLE_BADGE_TONE[admin.role]} className={admin.id === currentUserId ? "mr-1.5" : ""}>
                       {t(`roles.${admin.role}`)}
                     </Badge>
-                    {admin.id !== currentUserId && <ActionMenu glass items={menuItemsFor(admin)} />}
+                    {admin.id !== currentUserId && <ActionMenu items={menuItemsFor(admin)} />}
                   </Row>
                 ))}
               </SectionRows>
@@ -152,11 +152,11 @@ export function AdminsPage() {
           )}
 
           {details && (
-            <AdminDetailsFlow
-              admin={details.admin}
+            <UserDetailsDialog
+              user={details.admin}
               initialTab={details.tab}
-              canSignInAfterDemote={canSignInAfterDemote(details.admin)}
               onChanged={reload}
+              onDeleted={reload}
               onClose={() => setDetails(null)}
             />
           )}
@@ -171,13 +171,13 @@ export function AdminsPage() {
 
           {pendingDemote && (
             <DemoteAdminConfirm
-              admin={pendingDemote}
+              user={pendingDemote}
               canSignInAfterDemote={canSignInAfterDemote(pendingDemote)}
               onDemoted={reload} onClose={() => setPendingDemote(null)} />
           )}
 
           {pendingDelete && (
-            <DeleteAdminConfirm admin={pendingDelete} onDeleted={reload} onClose={() => setPendingDelete(null)} />
+            <DeleteAdminConfirm user={pendingDelete} onDeleted={reload} onClose={() => setPendingDelete(null)} />
           )}
         </div>
         </LoadGate>

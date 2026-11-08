@@ -180,7 +180,7 @@ export function ScheduleCard({ stats, onStatsChanged }: { stats: BackupStats | n
           footer={
             settingsState.kind === "ready" &&
             (canManageSettings ? (
-              <SaveFooter variant="glassAccent" dirty={dirty} saving={isSavingSettings} disabled={isIntervalTooHigh || isMaxFilesTooHigh} beside={resetButton} />
+              <SaveFooter dirty={dirty} saving={isSavingSettings} disabled={isIntervalTooHigh || isMaxFilesTooHigh} beside={resetButton} />
             ) : (
               resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
             ))

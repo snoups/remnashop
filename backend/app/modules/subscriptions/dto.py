@@ -205,6 +205,20 @@ class SubscriptionOverviewCountsDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SubscriptionListStatsDto:
+    paid_active: int
+    active_trials: int
+    # paid, expiring within EXPIRING_WITHIN
+    expiring: int
+    # of them within EXPIRING_URGENT
+    expiring_urgent: int
+    limited: int
+    disabled: int
+    paying: int
+    paying_never_connected: int
+
+
+@dataclass(frozen=True, kw_only=True)
 class LiveSubscriptionDto:
     user_id: int
     is_trial: bool

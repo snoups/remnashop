@@ -296,7 +296,7 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
           // the status inside the field's end: a ~20px badge 8px in, on the 36px well's curve
           end={
             <span className="flex shrink-0 pr-1">
-              <Badge borderless tone={BROADCAST_STATUS_TONE[status]}>{t(`broadcasts.status.${status}`)}</Badge>
+              <Badge tone={BROADCAST_STATUS_TONE[status]}>{t(`broadcasts.status.${status}`)}</Badge>
             </span>
           }
         />

@@ -53,14 +53,12 @@ export function DialogTabs<T extends string>({
               aria-selected={isActive}
               onClick={() => onSelect(item.key)}
               // flex-1 without min-w-0: equal widths while they fit, never narrower than the label
-              className="group relative isolate block flex-1 rounded-full text-[13px] font-medium"
+              className="group relative isolate flex-1 rounded-full text-[13px] font-medium"
             >
               {isActive ? (
                 <ActivePill layoutId={pillId} />
               ) : (
-                <motion.span
-                  className={TAB_HOVER_CLASS}
-                />
+                <span className={TAB_HOVER_CLASS} />
               )}
               <span
                 className={`relative z-10 flex h-[30px] items-center justify-center gap-1.5 whitespace-nowrap px-3.5 ${

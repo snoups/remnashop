@@ -85,9 +85,6 @@ function MergePicker({
     <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
       <SearchField
         id="merge-search"
-        label={t("users.merge.search")}
-        hideLabel
-        compact
         placeholder={t("users.merge.search")}
         value={query}
         onChange={setQuery}
@@ -243,7 +240,6 @@ function MergePreviewStep({
                       {(["target", "source"] as const).map((side) => (
                         <ChoiceChip
                           key={side}
-                          glass
                           active={(conflict.forced ?? choices[conflict.key]) === side}
                           disabled={conflict.forced !== null || isSubmitting}
                           onClick={() => setChoices((prev) => ({ ...prev, [conflict.key]: side }))}

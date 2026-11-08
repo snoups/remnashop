@@ -1,5 +1,9 @@
 export const DAY_MS = 86_400_000;
 
+/** A list filter's period in days; 0 is all time. */
+export type PeriodDays = 0 | 7 | 30 | 90;
+export const PERIOD_DAYS: readonly PeriodDays[] = [0, 7, 30, 90];
+
 // "all time" has no previous window; trends then cover the last month
 export const ALL_TIME_TREND_DAYS = 30;
 

@@ -96,7 +96,6 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("plans.discount.startsLabel")} htmlFor="plan-discount-starts">
                 <DatePickerField
-                  compact
                   id="plan-discount-starts"
                   value={startsOn}
                   onChange={setStartsOn}
@@ -109,7 +108,6 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
                 error={isWindowInvalid ? t("apiErrors.PLAN_DISCOUNT_WINDOW_INVALID") : undefined}
               >
                 <DatePickerField
-                  compact
                   id="plan-discount-ends"
                   value={lastDay}
                   onChange={setLastDay}
@@ -124,7 +122,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <div className="min-w-0 flex-1">
             {status && (
-              <Badge borderless tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>
+              <Badge tone={PLAN_DISCOUNT_STATUS_TONE[status]}>{t(`plans.discount.status.${status}`)}</Badge>
             )}
           </div>
           <Button variant="glass" type="button" onClick={close}>

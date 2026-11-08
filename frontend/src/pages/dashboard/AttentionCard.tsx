@@ -346,7 +346,7 @@ function AttentionRow({ item }: { item: AttentionItem }) {
 
   return (
     <>
-      <ListRow glass className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
+      <ListRow className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
         <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
         <CellText title={title} sub={sub} />
       </ListRow>

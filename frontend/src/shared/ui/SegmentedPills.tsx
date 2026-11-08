@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useId } from "react";
 
 import { ActivePill } from "@shared/ui/ActivePill";
+import { TAB_HOVER_CLASS } from "@shared/ui/classes";
 
 export interface SegmentedPillsOption<T extends string | number> {
   value: T;
@@ -14,7 +15,6 @@ export function SegmentedPills<T extends string | number>({
   value,
   onChange,
   options,
-  disabled = false,
   stretch = false,
   compact = false,
   panel = false,
@@ -22,7 +22,6 @@ export function SegmentedPills<T extends string | number>({
   value: T;
   onChange: (value: T) => void;
   options: SegmentedPillsOption<T>[];
-  disabled?: boolean;
   /** fill the container, options share the width equally */
   stretch?: boolean;
   /** 36px instead of 38px, 13px text: beside other 36px controls (the notifications header) */
@@ -43,30 +42,23 @@ export function SegmentedPills<T extends string | number>({
         <motion.button
           key={option.value}
           type="button"
-          disabled={disabled}
           onClick={() => onChange(option.value)}
-          className={`group relative isolate whitespace-nowrap rounded-full disabled:cursor-not-allowed ${stretch ? "flex-1" : "shrink-0"}`}
+          className={`group relative isolate whitespace-nowrap rounded-full ${stretch ? "flex-1" : "shrink-0"}`}
         >
           {/* only the pill scales, so the label stays crisp */}
           {value === option.value ? (
             <ActivePill layoutId={pillId} />
           ) : (
-            <motion.span
-              className="absolute inset-0 rounded-full transition-colors group-enabled:group-hover:bg-white/[0.06]"
-            />
+            <span className={TAB_HOVER_CLASS} />
           )}
           <span
-            className={`relative z-10 block font-medium ${
-              panel ? "flex h-9 items-center px-4 text-[13px]" : compact ? "px-3.5 py-[3px] text-[13px] leading-5" : "px-3.5 py-1 text-[13px]"
-            } ${
-              value === option.value ? "text-primary" : "text-foreground"
-            }`}
+            className={`relative z-10 text-[13px] font-medium ${
+              panel ? "flex h-9 items-center px-4" : `block px-3.5 ${compact ? "py-[3px] leading-5" : "py-1"}`
+            } ${value === option.value ? "text-primary" : "text-foreground"}`}
           >
             {option.label}
           </span>
-          {option.dot && (
-            <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-primary" />
-          )}
+          {option.dot && <span className="absolute right-2.5 top-1.5 z-10 size-1.5 rounded-full bg-primary" />}
         </motion.button>
       ))}
     </motion.div>

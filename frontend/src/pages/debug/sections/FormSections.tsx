@@ -89,8 +89,8 @@ export function FieldsSection() {
           }
         />
       </Specimen>
-      <Specimen name="TextArea corner mono" usage={k("u.glassTextarea")} stage="stretch">
-        <TextArea rows={4} mono corner="42 / 32763" defaultValue={k("s.body")} />
+      <Specimen name="TextArea mono" usage={k("u.glassTextarea")} stage="stretch">
+        <TextArea rows={4} mono defaultValue={k("s.body")} />
       </Specimen>
       <Specimen name="TextWidth" usage={k("u.glassTextWidth")}>
         <TextWidth text={k("s.namePlaceholder")}>
@@ -107,7 +107,6 @@ export function FieldsSection() {
       <Specimen name="SearchField" usage={k("u.search")} stage="stretch">
         <SearchField
           id="kit-search"
-          label={k("s.search")}
           placeholder={k("s.searchPlaceholder")}
           value={search}
           onChange={setSearch}
@@ -274,12 +273,12 @@ export function TablesSection() {
       <Specimen name="ListRow · IconCircle · CellText" usage={k("u.cellText")} stage="stretch" wide>
         <div className={PANEL}>
           <div className={LIST_BODY_CLASS}>
-            <ListRow glass className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
+            <ListRow className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
               <IconCircle icon={Globe} tone="success" />
               <CellText title={k("s.person")} sub="SUMMER24" mono />
               <Tag>#1042</Tag>
             </ListRow>
-            <ListRow glass className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
+            <ListRow className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
               <IconCircle glyph={<span className="text-[11px] font-bold">AN</span>} />
               <CellText title={k("s.person")} sub="03.10.2026" />
               <Tag>#1041</Tag>
@@ -356,7 +355,7 @@ function SectionDemo() {
       title={k("s.sectionTitle")}
       description={k("s.body")}
       aside={<Button variant="glass" icon={RefreshCw}>{k("s.refresh")}</Button>}
-      footer={<SaveFooter variant="glassAccent" dirty saving={false} onSave={() => {}} />}
+      footer={<SaveFooter dirty saving={false} onSave={() => {}} />}
     >
       <SectionRows>
         <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>

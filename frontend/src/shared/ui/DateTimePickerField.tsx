@@ -1,5 +1,4 @@
 import { CalendarClock, Clock, X } from "lucide-react";
-import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -66,7 +65,7 @@ export function DateTimePickerField({
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <motion.div
+      <div
         ref={triggerRef}
         tabIndex={0}
         onClick={toggleOpen}
@@ -92,7 +91,7 @@ export function DateTimePickerField({
             <X className="size-3" />
           </IconButton>
         )}
-      </motion.div>
+      </div>
 
       <PortalPopover
         open={isOpen}

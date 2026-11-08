@@ -145,18 +145,18 @@ export function RunsCard({
                             side="bottom"
                             error
                             trigger={
-                              <Badge borderless tone="error" className="cursor-help">
+                              <Badge tone="error" className="cursor-help">
                                 {t(`backups.status.${run.status}`)}
                               </Badge>
                             }
                           />
                         ) : (
-                          <Badge borderless tone={STATUS_BADGE_TONE[run.status]}>
+                          <Badge tone={STATUS_BADGE_TONE[run.status]}>
                             {isRunning && <Loader2 className="size-3 animate-spin" />}
                             {t(`backups.status.${run.status}`)}
                           </Badge>
                         )}
-                        <Badge borderless>
+                        <Badge>
                           {run.triggered_by === null
                             ? t("backups.runs.triggerSchedule")
                             : t("backups.runs.triggerManual")}

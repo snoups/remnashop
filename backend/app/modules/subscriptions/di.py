@@ -37,6 +37,7 @@ from app.modules.subscriptions.usecases import (
     FulfillPurchaseUseCase,
     GetAvailableTrialUseCase,
     GetPanelSyncStatusUseCase,
+    GetSubscriptionListStatsUseCase,
     GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
     GrantAddOnUseCase,
@@ -85,6 +86,7 @@ class SubscriptionsProvider(Provider):
     use_cases = provide_all(
         ListSubscriptionsUseCase,
         GetSubscriptionUseCase,
+        GetSubscriptionListStatsUseCase,
         UpdateSubscriptionUseCase,
         AdminDeleteAllDevicesUseCase,
         AdminDeleteDeviceUseCase,

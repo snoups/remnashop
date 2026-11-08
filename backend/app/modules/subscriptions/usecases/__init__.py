@@ -23,6 +23,9 @@ from app.modules.subscriptions.usecases.fulfill_purchase import FulfillPurchaseU
 from app.modules.subscriptions.usecases.get_available_trial import GetAvailableTrialUseCase
 from app.modules.subscriptions.usecases.get_panel_sync_status import GetPanelSyncStatusUseCase
 from app.modules.subscriptions.usecases.get_subscription import GetSubscriptionUseCase
+from app.modules.subscriptions.usecases.get_subscription_list_stats import (
+    GetSubscriptionListStatsUseCase,
+)
 from app.modules.subscriptions.usecases.get_subscription_panel_diff import (
     GetSubscriptionPanelDiffUseCase,
 )
@@ -90,6 +93,7 @@ __all__ = [
     "FulfillPurchaseUseCase",
     "GetAvailableTrialUseCase",
     "GetPanelSyncStatusUseCase",
+    "GetSubscriptionListStatsUseCase",
     "GetSubscriptionPanelDiffUseCase",
     "GetSubscriptionUseCase",
     "GrantAddOnUseCase",

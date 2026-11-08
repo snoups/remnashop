@@ -14,7 +14,7 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md";
   /** header icon for a non-danger dialog; danger always shows the warning icon */
   icon?: LucideIcon;
   /** false renders inline in the parent's container instead of portaling to document.body */

@@ -152,7 +152,6 @@ export function BotCommandsForm() {
         state.kind === "ready" &&
         canManage && (
           <SaveFooter
-            variant="glassAccent"
             dirty={dirty}
             saving={isSubmitting}
             onSave={() => void handleSave()}

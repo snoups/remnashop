@@ -107,7 +107,6 @@ export function WebPushSettingsForm() {
         state.kind === "ready" &&
         (canManage || canGenerate) && (
           <SaveFooter
-            variant="glassAccent"
             dirty={contactChanged}
             hasWork={generatesKeys}
             saving={isSaving}

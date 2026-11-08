@@ -1196,6 +1196,34 @@ async def test_an_admin_cannot_delete_the_owners_subscriptions(
         )
 
 
+async def test_an_admin_deletes_their_own_subscriptions_only_with_staff_self_manage(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    uow: UnitOfWork,
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(name="self-delete", telegram_id=9151, role=Role.ADMIN)
+        )
+        plan = await _plan(plan_repository, "selfdelete")
+        await uow.commit()
+    await grant_use_case(
+        OWNER, GrantSubscriptionDto(user_id=admin.id, plan_id=plan.id, duration_days=30)
+    )
+    delete_all = _delete_all(subscription_repository, remnawave_sdk, event_publisher, uow)
+
+    with pytest.raises(PermissionDeniedError):
+        await delete_all(admin, admin.id)
+    allowed = admin.model_copy(update={"permission_grants": [Permission.STAFF_SELF_MANAGE.value]})
+    result = await delete_all(allowed, admin.id)
+
+    assert result.deleted == 1
+
+
 async def test_an_admin_changes_their_own_subscription_only_with_staff_self_manage(
     grant_use_case: GrantSubscriptionUseCase,
     user_repository: UserRepository,

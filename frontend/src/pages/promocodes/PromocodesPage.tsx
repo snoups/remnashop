@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { listAddons } from "@entities/addons/api";
 import { listPlans } from "@entities/plans/api";
+import { daysUntil, expiryToneClassName } from "@entities/subscriptions/api";
 import {
   DEFAULT_PAGE_SIZE,
   getPromocodeSummary,
@@ -48,7 +49,7 @@ const STATUS_DOTS: Record<PromocodeStatus, ComponentType<{ className?: string }>
   EXHAUSTED: dotIcon("bg-warning"),
 };
 
-const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_minmax(0,200px)_120px_110px_100px_16px] items-center gap-3";
+const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_minmax(0,170px)_120px_110px_100px_16px] items-center gap-3";
 
 export function PromocodesPage() {
   const { t, i18n } = useTranslation();
@@ -104,6 +105,7 @@ export function PromocodesPage() {
   };
 
   const none = t("common.none");
+  const relativeTime = new Intl.RelativeTimeFormat(i18n.language, { numeric: "auto" });
 
   return (
     // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
@@ -160,7 +162,7 @@ export function PromocodesPage() {
           <KpiTile
             panel
             icon={Ticket}
-            label={t("promocodes.stats.promocodes")}
+            label={t("promocodes.stats.total")}
             value={summary ? String(summary.total_count) : none}
             hint={summary ? t("promocodes.stats.active", { count: summary.active_count }) : undefined}
           />
@@ -217,7 +219,6 @@ export function PromocodesPage() {
                     const promoStatus = getPromocodeStatus(promo);
                     return (
                       <ListRow
-                        glass
                         key={promo.id}
                         type="button"
                         onClick={() => setDetailsPromocode(promo)}
@@ -236,19 +237,27 @@ export function PromocodesPage() {
                           {t(`promocodes.availability.${promo.availability}`)}
                         </span>
                         <span className="text-[13px] tabular-nums text-foreground">
-                          {promo.activations_count}
+                          {promo.activations_count}{" "}
                           <span className="text-muted-foreground">
-                            {" / "}
-                            {promo.max_activations ?? "∞"}
+                            {t("promocodes.details.ofMax", { max: promo.max_activations ?? "∞" })}
                           </span>
                         </span>
-                        <span className="text-[13px] tabular-nums text-foreground">
-                          {promo.expires_at
-                            ? formatDate(promo.expires_at, i18n.language)
-                            : t("promocodes.noExpiry")}
+                        <span className="tabular-nums">
+                          {promo.expires_at ? (
+                            <>
+                              <span className="block text-[13px] text-foreground">
+                                {formatDate(promo.expires_at, i18n.language)}
+                              </span>
+                              <span className={`block text-[12px] ${expiryToneClassName(daysUntil(promo.expires_at))}`}>
+                                {relativeTime.format(daysUntil(promo.expires_at), "day")}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-[13px] text-foreground">{t("promocodes.noExpiry")}</span>
+                          )}
                         </span>
                         <span>
-                          <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
+                          <Badge tone={PROMOCODE_STATUS_BADGE_TONE[promoStatus]}>{t(`promocodes.status.${promoStatus}`)}</Badge>
                         </span>
                         <ChevronRight className="size-4 text-muted-foreground" />
                       </ListRow>

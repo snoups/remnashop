@@ -295,7 +295,6 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
           footer={
             (canManage || canTest) && (
               <SaveFooter
-                variant="glassAccent"
                 dirty={canManage && (hasMainChanges || hasBulkChanges)}
                 saving={isSaving}
                 beside={

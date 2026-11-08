@@ -356,11 +356,10 @@ function TopReferrers({ data }: { data: Sources }) {
         <div className="mt-4 flex flex-col">
         {rows.map((row) => (
           <ListRow
-            glass
             key={row.user_id}
             type="button"
             onClick={() => openUser(row.user_id)}
-            className={`grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3`}
+            className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3"
           >
             <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
               {row.name ? initials(row.name) : <User className="size-4" />}

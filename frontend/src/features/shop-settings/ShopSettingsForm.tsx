@@ -144,7 +144,7 @@ export function ShopSettingsForm() {
         icon={ShoppingBag}
         title={t("settings.shop.title")}
         description={t("settings.shop.description")}
-        footer={state.kind === "ready" && canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+        footer={state.kind === "ready" && canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
       >
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
