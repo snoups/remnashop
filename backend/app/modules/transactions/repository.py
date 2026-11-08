@@ -2,7 +2,18 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final, Optional, cast
 
-from sqlalchemy import ColumnElement, CursorResult, and_, exists, func, or_, select, update
+from sqlalchemy import (
+    ColumnElement,
+    CursorResult,
+    Numeric,
+    and_,
+    exists,
+    func,
+    literal,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX, ZERO_AMOUNT
@@ -12,6 +23,7 @@ from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
 from app.core.db.timestamp import NOW_FUNC
 from app.core.enums import (
+    Currency,
     DiscountSource,
     PaymentGatewayType,
     PurchaseChannel,
@@ -517,6 +529,29 @@ class TransactionRepository:
             update(Transaction).values(
                 anchor_base_price=func.round(Transaction.anchor_base_price * factor, 2),
                 anchor_final_price=func.round(Transaction.anchor_final_price * factor, 2),
+                # paid-at timestamp, pinned like mark_fulfilled does
+                updated_at=Transaction.updated_at,
+            )
+        )
+
+    async def count_unrated_anchor_amounts(self) -> dict[Currency, int]:
+        stmt = (
+            select(Transaction.currency, func.count())
+            .where(Transaction.anchor_unrated.is_(True))
+            .group_by(Transaction.currency)
+        )
+        return dict((await self.session.execute(stmt)).tuples().all())
+
+    async def rate_unrated_anchor_amounts(self, currency: Currency, factor: Decimal) -> None:
+        # bound as the column type, Numeric(10, 2), the factor would be cut to cents
+        exact = literal(factor, Numeric())
+        await self.session.execute(
+            update(Transaction)
+            .where(Transaction.anchor_unrated.is_(True), Transaction.currency == currency)
+            .values(
+                anchor_base_price=func.round(Transaction.base_price * exact, 2),
+                anchor_final_price=func.round(Transaction.final_price * exact, 2),
+                anchor_unrated=False,
                 # paid-at timestamp, pinned like mark_fulfilled does
                 updated_at=Transaction.updated_at,
             )

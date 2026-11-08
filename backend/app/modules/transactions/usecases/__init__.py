@@ -17,6 +17,9 @@ from app.modules.transactions.usecases.list_transaction_gateways import (
     ListTransactionGatewaysUseCase,
 )
 from app.modules.transactions.usecases.list_transactions import ListTransactionsUseCase
+from app.modules.transactions.usecases.list_unrated_anchor_amounts import (
+    ListUnratedAnchorAmountsUseCase,
+)
 from app.modules.transactions.usecases.mark_order_fulfilled import MarkOrderFulfilledUseCase
 from app.modules.transactions.usecases.notify_payment_waitlist import NotifyPaymentWaitlistUseCase
 from app.modules.transactions.usecases.preview_refund import PreviewRefundUseCase
@@ -24,6 +27,9 @@ from app.modules.transactions.usecases.prune_expired_transactions import (
     PruneExpiredTransactionsUseCase,
 )
 from app.modules.transactions.usecases.quote_checkout import QuoteCheckoutUseCase
+from app.modules.transactions.usecases.rate_unrated_anchor_amounts import (
+    RateUnratedAnchorAmountsUseCase,
+)
 from app.modules.transactions.usecases.reconcile_paid_transactions import (
     ReconcilePaidTransactionsUseCase,
 )
@@ -48,11 +54,13 @@ __all__ = [
     "ListPaymentMethodsUseCase",
     "ListTransactionGatewaysUseCase",
     "ListTransactionsUseCase",
+    "ListUnratedAnchorAmountsUseCase",
     "MarkOrderFulfilledUseCase",
     "NotifyPaymentWaitlistUseCase",
     "PreviewRefundUseCase",
     "PruneExpiredTransactionsUseCase",
     "QuoteCheckoutUseCase",
+    "RateUnratedAnchorAmountsUseCase",
     "ReconcilePaidTransactionsUseCase",
     "RefundTransactionUseCase",
     "ValidateStarsPreCheckoutUseCase",

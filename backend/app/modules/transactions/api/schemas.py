@@ -122,6 +122,16 @@ class TransactionGatewayListResponse(BaseModel):
     total: int
 
 
+class UnratedAnchorCountResponse(BaseModel):
+    currency: Currency
+    count: int
+
+
+class UnratedAnchorCountListResponse(BaseModel):
+    items: list[UnratedAnchorCountResponse]
+    total: int
+
+
 class CreateTestPaymentRequest(BaseModel):
     gateway_type: PaymentGatewayType
 

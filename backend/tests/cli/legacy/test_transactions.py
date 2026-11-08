@@ -110,6 +110,7 @@ def test_anchor_other_currency_uses_rate() -> None:
     )[0]
     assert item["anchor_base_price"] == Decimal("1000.00")
     assert item["anchor_final_price"] == Decimal("500.00")
+    assert item["anchor_unrated"] is False
 
 
 def test_anchor_without_rate_noted() -> None:
@@ -119,6 +120,8 @@ def test_anchor_without_rate_noted() -> None:
         report=report,
     )[0]
     assert item["anchor_final_price"] == Decimal("5")
+    assert item["anchor_unrated"] is True
+    assert _one()["anchor_unrated"] is False
     assert "anchor amounts for 1 transactions in USD equal their nominal amounts" in " ".join(
         report.notes
     )
