@@ -299,6 +299,8 @@ def make_fake_remnawave_transport(
         path = request.url.path
         if path == "/api/users/stream" and request.method == "GET":
             return _handle_users_stream(request, store)
+        if path.endswith("/subscription-request-history") and request.method == "GET":
+            return httpx.Response(200, json={"response": {"total": 0, "records": []}})
         if path == "/api/system/metadata" and request.method == "GET":
             return httpx.Response(
                 200,

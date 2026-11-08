@@ -2,7 +2,7 @@ import { CircleHelp } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { GLASS_ERROR_HINT_BUBBLE_CLASS, GLASS_HINT_BUBBLE_CLASS, HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
+import { ERROR_HINT_BUBBLE_CLASS, HINT_BUBBLE_CLASS } from "@shared/ui/hint-bubble";
 
 interface FieldHintProps {
   text: string;
@@ -11,9 +11,7 @@ interface FieldHintProps {
   side?: "top" | "bottom";
   /** "end" lines the bubble's right edge up with the icon instead of centering it */
   align?: "center" | "end";
-  /** the glass design's bubble (shared/ui/glass) */
-  glass?: boolean;
-  /** an error's text: the glass bubble, red */
+  /** an error's text: the bubble, red */
   error?: boolean;
   /** what the bubble hangs off, in place of the ? icon (a status badge) */
   trigger?: ReactNode;
@@ -25,8 +23,10 @@ const GAP_PX = 8;
 const EDGE_MARGIN_PX = 8;
 const CLOSE_DELAY_MS = 150;
 
-// the dashboard's panel (DashboardLayout) when it's on screen, else the viewport: a bubble stays inside it
-function boundsRect(): { left: number; top: number; right: number; bottom: number } {
+// the trigger's dialog, else the dashboard's panel (DashboardLayout), else the viewport: a bubble stays inside it
+function boundsRect(anchor?: HTMLElement): { left: number; top: number; right: number; bottom: number } {
+  const dialog = anchor?.closest<HTMLElement>("[data-dialog]")?.getBoundingClientRect();
+  if (dialog && dialog.width > 0) return dialog;
   const panel = document.querySelector("[data-dashboard-panel]")?.getBoundingClientRect();
   if (panel && panel.width > 0) return panel;
   return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
@@ -34,7 +34,7 @@ function boundsRect(): { left: number; top: number; right: number; bottom: numbe
 
 // Portalled to the body, so no scroll container or overflow-hidden panel clips the bubble.
 // Focusable, so the bubble also opens on keyboard focus.
-export function FieldHint({ text, content, side = "top", align = "center", glass = false, error = false, trigger, className = "" }: FieldHintProps) {
+export function FieldHint({ text, content, side = "top", align = "center", error = false, trigger, className = "" }: FieldHintProps) {
   const iconRef = useRef<HTMLSpanElement>(null);
   const bubbleRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -71,7 +71,7 @@ export function FieldHint({ text, content, side = "top", align = "center", glass
     const bubble = bubbleRef.current?.getBoundingClientRect();
     // closing keeps the last position, so the bubble fades out in place
     if (!open || !icon || !bubble) return;
-    const bounds = boundsRect();
+    const bounds = boundsRect(iconRef.current ?? undefined);
     const preferred = align === "end" ? icon.right - bubble.width : icon.left + icon.width / 2 - bubble.width / 2;
     const minLeft = bounds.left + EDGE_MARGIN_PX;
     const maxLeft = bounds.right - bubble.width - EDGE_MARGIN_PX;
@@ -115,7 +115,7 @@ export function FieldHint({ text, content, side = "top", align = "center", glass
     >
       {trigger ?? (
         <CircleHelp
-          className={`size-3.5 shrink-0 cursor-help text-muted-foreground ${glass ? "transition-colors hover:text-foreground" : ""}`}
+          className="size-3.5 shrink-0 cursor-help text-muted-foreground transition-colors hover:text-foreground"
         />
       )}
       {createPortal(
@@ -124,7 +124,7 @@ export function FieldHint({ text, content, side = "top", align = "center", glass
         <span
           ref={bubbleRef}
           // above everything: Modal (z-50), PortalPopover (z-60), toasts and the debug bar (z-50)
-          className={`${error ? GLASS_ERROR_HINT_BUBBLE_CLASS : glass ? GLASS_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
+          className={`${error ? ERROR_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
           // open, it takes the pointer: hovering it keeps it, its text can be selected
           style={{ position: "fixed", ...position, opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
           onPointerEnter={(event) => event.pointerType === "mouse" && show()}

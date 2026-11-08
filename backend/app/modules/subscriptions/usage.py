@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from loguru import logger
@@ -5,7 +6,7 @@ from remnapy import RemnawaveSDK
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.constants import GB_TO_BYTES
-from app.modules.subscriptions.dto import SubscriptionDto
+from app.modules.subscriptions.dto import PanelActivityDto, SubscriptionDto
 
 
 def traffic_spent_for_good(subscription: SubscriptionDto, used_traffic: int) -> bool:
@@ -39,3 +40,36 @@ class PanelTrafficUsage:
             )
             return None
         return int(panel_user.used_traffic_bytes)  # the SDK types it as float
+
+    async def activity(self, subscription: SubscriptionDto) -> PanelActivityDto:
+        """Traffic, last online and the last subscription request; each part is
+        None when its call fails. Outside a transaction, like used_traffic."""
+        panel_id = subscription.remnawave_user_id
+        panel_user, history = await asyncio.gather(
+            self._remnawave_sdk.users.get_user_by_id(panel_id),
+            self._remnawave_sdk.users.get_user_subscription_request_history(panel_id),
+            return_exceptions=True,
+        )
+        for part in (panel_user, history):
+            if isinstance(part, BaseException):
+                logger.warning(
+                    "Panel activity lookup failed for subscription '{}': {!r}",
+                    subscription.id,
+                    part,
+                )
+        last = (
+            None
+            if isinstance(history, BaseException) or not history.records
+            else max(history.records, key=lambda record: record.request_at)
+        )
+        if isinstance(panel_user, BaseException):
+            return PanelActivityDto(
+                sub_last_opened_at=last.request_at if last else None,
+                sub_last_user_agent=last.user_agent if last else None,
+            )
+        return PanelActivityDto(
+            used_traffic=int(panel_user.used_traffic_bytes),
+            online_at=panel_user.online_at,
+            sub_last_opened_at=last.request_at if last else None,
+            sub_last_user_agent=last.user_agent if last else None,
+        )

@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 import {
   type CreatePlanRequest,
   createPlan,
-  NO_PLAN_ICON,
+  DEFAULT_PLAN_ICON,
   type Plan,
   type PlanIconValue,
   type PlanSquads,
@@ -121,7 +121,7 @@ function PlanEditDialogBody({
   const [icon, setIcon] = useState<PlanIconValue>(
     plan
       ? { icon_emoji_id: plan.icon_emoji_id, icon_emoji_fallback: plan.icon_emoji_fallback }
-      : NO_PLAN_ICON,
+      : DEFAULT_PLAN_ICON,
   );
   const [description, setDescription] = useState(plan?.description ?? "");
   const [tag, setTag] = useState(plan?.tag ?? "");

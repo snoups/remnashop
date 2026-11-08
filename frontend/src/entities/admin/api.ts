@@ -23,7 +23,6 @@ export interface AdminPromoteResult {
 
 export interface CreateAdminPayload {
   login: string;
-  name: string;
   permission_grants: Permission[];
   permission_revokes: Permission[];
 }

@@ -1,6 +1,10 @@
 import {
+  Activity,
+  AppWindow,
   CalendarClock,
   CalendarPlus,
+  Captions,
+  Eye,
   Filter,
   Gift,
   Globe,
@@ -8,19 +12,22 @@ import {
   Info,
   Layers,
   Link2,
+  Link2Off,
+  ListX,
   Network,
   Package,
   PackagePlus,
   Pencil,
   Plug,
   RefreshCw,
+  Replace,
   Server,
+  Settings2,
   Smartphone,
   Tag,
   Trash2,
   User,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,13 +39,14 @@ import {
   type UpdateSubscriptionRequest,
   addonTotal,
   daysUntil,
+  deleteAllSubscriptionDevices,
   deleteSubscription,
   getSubscription,
+  listSubscriptionDevices,
   EXPIRING_SOON_DAYS,
   updateSubscription,
   updateSubscriptionSquads,
 } from "@entities/subscriptions/api";
-import { BrandMark } from "@entities/appearance/BrandMark";
 import { listPlans, NO_PLAN_ICON } from "@entities/plans/api";
 import { PlanIcon } from "@entities/plans/PlanIcon";
 import { getTransactionSummary } from "@entities/transactions/api";
@@ -47,6 +55,7 @@ import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { OpenUserButton } from "@features/open-user/OpenUserButton";
 import { PlanSquadsField } from "@features/plan-edit/PlanSquadsField";
 import { SubscriptionDevicesTab } from "@features/subscription-edit/SubscriptionDevicesTab";
+import { ChangePlanDialog } from "@features/subscription-edit/ChangePlanDialog";
 import { SubscriptionPlanTab } from "@features/subscription-edit/SubscriptionPlanTab";
 import { SubscriptionField } from "@features/subscription-edit/SubscriptionField";
 import { useSquadName } from "@features/subscription-edit/use-squad-name";
@@ -125,29 +134,72 @@ function SubscriptionEditDialogBody({
   const [current, setCurrent] = useState(subscription);
   const [tab, setTab] = useState<Tab>("params");
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPlan, setIsChangingPlan] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isConfirmingDeleteDevices, setIsConfirmingDeleteDevices] = useState(false);
+  // bumped after every device is removed: the card's count and the devices tab read the panel again
+  const [devicesVersion, setDevicesVersion] = useState(0);
 
   const canEdit = permissions.includes("SUBSCRIPTIONS_UPDATE") && current.status !== "DELETED";
   const canDelete = permissions.includes("SUBSCRIPTIONS_DELETE");
+  const canChangePlan =
+    permissions.includes("SUBSCRIPTIONS_PLAN_CHANGE") && permissions.includes("PLANS_VIEW") && current.status !== "DELETED";
 
   const apply = (updated: SubscriptionListItem) => {
     setCurrent(updated);
     onSaved?.(updated);
   };
   const { items: actionItems, confirm: actionConfirm } = useSubscriptionActions(current, apply);
-  const menuItems: ActionMenuItem[] = canEdit
-    ? [
-        {
-          label: t("common.edit"),
-          icon: Pencil,
-          onClick: () => {
-            setTab("params");
-            setIsEditing(true);
+  const menuItems: ActionMenuItem[] = [
+    ...(canEdit
+      ? [
+          {
+            label: t("common.edit"),
+            icon: Pencil,
+            onClick: () => {
+              setTab("params");
+              setIsEditing(true);
+            },
           },
-        },
-        ...actionItems,
-      ]
-    : actionItems;
+        ]
+      : []),
+    ...(canChangePlan
+      ? [
+          {
+            label: t("subscriptions.plan.change"),
+            icon: Replace,
+            onClick: () => setIsChangingPlan(true),
+          },
+        ]
+      : []),
+    ...actionItems,
+  ];
+  const dangerItems: ActionMenuItem[] = [
+    ...(permissions.includes("SUBSCRIPTIONS_DEVICES_DELETE_ALL") && current.status !== "DELETED"
+      ? [{ label: t("subscriptions.devices.deleteAll"), icon: ListX, onClick: () => setIsConfirmingDeleteDevices(true) }]
+      : []),
+    ...(canDelete ? [{ label: t("common.delete"), icon: Trash2, onClick: () => setIsConfirmingDelete(true) }] : []),
+  ];
+  // the reissue already opens the danger group; these join it, or open it themselves
+  const opensDangerGroup = menuItems.length > 0 && menuItems.at(-1)?.variant !== "danger";
+  const footerMenuItems: ActionMenuItem[] = [
+    ...menuItems,
+    ...dangerItems.map((item, index) => ({
+      ...item,
+      variant: "danger" as const,
+      separatorBefore: index === 0 && opensDangerGroup,
+    })),
+  ];
+
+  const handleDeleteDevices = async () => {
+    try {
+      await deleteAllSubscriptionDevices(current.id);
+      toast.success(t("subscriptions.devices.allDeleted"));
+      setDevicesVersion((version) => version + 1);
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("subscriptions.devices.error")));
+    }
+  };
 
   const tabs: DialogTabItem<Tab>[] = [
     { key: "params", label: t("subscriptions.edit.tabs.params"), icon: Info },
@@ -170,9 +222,13 @@ function SubscriptionEditDialogBody({
   return (
     <>
       <DialogHeader
-        icon={Layers}
-        title={t("subscriptions.subscriptionLabel", { id: current.id })}
-        subtitle={userName || t("subscriptions.userLabel", { id: current.user_id })}
+        icon={Captions}
+        title={`${current.plan_snapshot.name} #${current.id}`}
+        subtitle={
+          <>
+            {userName || t("users.unnamed")} <span className="font-mono">#{current.user_id}</span>
+          </>
+        }
         actions={
           <>
             {current.is_trial && (
@@ -183,7 +239,6 @@ function SubscriptionEditDialogBody({
             <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[current.status]}>
               {t(`subscriptions.status.${current.status}`)}
             </Badge>
-            {!isEditing && <ActionMenu glass size="9" items={menuItems} />}
           </>
         }
       />
@@ -205,28 +260,49 @@ function SubscriptionEditDialogBody({
 
           <div className={`${GLASS_DIALOG_BODY_CLASS} max-h-[440px]`}>
             <AnimatedHeight>
-              {tab === "params" && <SubscriptionParamsView subscription={current} />}
-              {tab === "plan" && <SubscriptionPlanTab subscription={current} onChanged={apply} />}
-              {tab === "devices" && <SubscriptionDevicesTab subscriptionId={current.id} userId={current.user_id} />}
+              {tab === "params" && <SubscriptionParamsView key={devicesVersion} subscription={current} />}
+              {tab === "plan" && (
+                <SubscriptionPlanTab subscription={current} />
+              )}
+              {tab === "devices" && (
+                <SubscriptionDevicesTab key={devicesVersion} subscriptionId={current.id} userId={current.user_id} />
+              )}
             </AnimatedHeight>
           </div>
 
-          {(canDelete || canOpenUsers) && (
+          {(footerMenuItems.length > 0 || canOpenUsers) && (
             <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
-              {canDelete && (
-                <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>
-                  <Trash2 className="size-4" />
-                  {t("common.delete")}
-                </Button>
-              )}
-              <span className="flex-1" />
               <OpenUserButton glass label={t("subscriptions.edit.toUser")} icon={User} user={{ id: current.user_id }} />
+              {footerMenuItems.length > 0 && (
+                <div className="ml-auto">
+                  <ActionMenu glass trigger={{ label: t("users.details.actions"), icon: Settings2 }} items={footerMenuItems} />
+                </div>
+              )}
             </div>
           )}
         </>
       )}
 
       {actionConfirm}
+
+      {isChangingPlan && (
+        <ChangePlanDialog subscription={current} onChanged={apply} onClose={() => setIsChangingPlan(false)} />
+      )}
+
+      {isConfirmingDeleteDevices && (
+        <ConfirmDialog
+          title={t("subscriptions.devices.deleteAllTitle")}
+          message={t("subscriptions.devices.deleteAllConfirm")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
+          danger
+          onConfirm={() => {
+            setIsConfirmingDeleteDevices(false);
+            void handleDeleteDevices();
+          }}
+          onCancel={() => setIsConfirmingDeleteDevices(false)}
+        />
+      )}
 
       {isConfirmingDelete && (
         <ConfirmDialog
@@ -257,12 +333,19 @@ function SubscriptionParamsView({ subscription }: { subscription: SubscriptionLi
     { deps: [canViewSummary, subscription.id] },
   );
   const paid = summary.kind === "ready" ? summary.data : null;
+  const canViewDetails = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
+  // only the detail route asks the panel; a change to the subscription (a traffic reset) reads it again
+  const [details] = useAsyncResource(
+    (signal) => (canViewDetails ? getSubscription(subscription.id, signal) : Promise.resolve(null)),
+    { deps: [canViewDetails, subscription], keepData: true },
+  );
+  const panel = details.kind === "ready" ? details.data : null;
   const squadName = useSquadName();
   const dateTime = (iso: string | null) => (iso ? formatDateTime(iso, i18n.language) : null);
 
   return (
     <div className="flex flex-col gap-3">
-      <SubscriptionCard subscription={subscription} />
+      <SubscriptionCard subscription={subscription} used={panel?.used_traffic ?? null} />
       <DialogCard title={t("subscriptions.details.subscription")} icon={Layers}>
         <SubscriptionField
           icon={Wallet}
@@ -306,6 +389,18 @@ function SubscriptionParamsView({ subscription }: { subscription: SubscriptionLi
           />
         )}
         <SubscriptionField icon={Link2} label={t("subscriptions.details.link")} value={subscription.url} mono />
+        {(
+          [
+            [Smartphone, "deviceSingleResetAt", subscription.device_single_reset_at],
+            [ListX, "deviceAllResetAt", subscription.device_all_reset_at],
+            [Link2Off, "linkResetAt", subscription.link_reset_at],
+          ] as const
+        ).map(
+          ([icon, key, at]) =>
+            at && (
+              <SubscriptionField key={key} icon={icon} label={t(`subscriptions.details.${key}`)} value={dateTime(at)} mono />
+            ),
+        )}
       </DialogCard>
       <DialogCard title={t("subscriptions.details.panel")} icon={Server}>
         <SubscriptionField
@@ -326,29 +421,47 @@ function SubscriptionParamsView({ subscription }: { subscription: SubscriptionLi
           value={subscription.external_squad && squadName(subscription.external_squad)}
           copyValue={subscription.external_squad}
         />
+        <SubscriptionField
+          icon={Activity}
+          label={t("subscriptions.details.onlineAt")}
+          value={dateTime(panel?.online_at ?? null)}
+          mono
+        />
+        <SubscriptionField
+          icon={Eye}
+          label={t("subscriptions.details.subLastOpenedAt")}
+          value={dateTime(panel?.sub_last_opened_at ?? null)}
+          mono
+        />
+        <SubscriptionField
+          icon={AppWindow}
+          label={t("subscriptions.details.subLastUserAgent")}
+          value={panel?.sub_last_user_agent}
+          mono
+        />
       </DialogCard>
     </div>
   );
 }
 
-function SubscriptionCard({ subscription }: { subscription: SubscriptionListItem }) {
+function SubscriptionCard({ subscription, used }: { subscription: SubscriptionListItem; used: number | null }) {
   const { t, i18n } = useTranslation();
   const permissions = usePermissions();
   const canViewPlans = permissions.includes("PLANS_VIEW");
-  const canViewDetails = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
+  const canViewDevices = permissions.includes("SUBSCRIPTIONS_DEVICES_VIEW") && subscription.status !== "DELETED";
   // the snapshot holds no icon; a deleted or imported plan, or no right to list plans, falls back to the glyph
   const [plans] = useAsyncResource((signal) => (canViewPlans ? listPlans(signal) : Promise.resolve([])), {
     deps: [canViewPlans],
   });
-  // only the detail route asks the panel; a change to the subscription (a traffic reset) reads it again
-  const [details] = useAsyncResource(
-    (signal) => (canViewDetails ? getSubscription(subscription.id, signal) : Promise.resolve(null)),
-    { deps: [canViewDetails, subscription], keepData: true },
+  // the panel's device list; without it the pill falls back to the limit alone
+  const [connected] = useAsyncResource(
+    (signal) => (canViewDevices ? listSubscriptionDevices(subscription.id, signal) : Promise.resolve(null)),
+    { deps: [canViewDevices, subscription] },
   );
+  const deviceCount = connected.kind === "ready" ? (connected.data?.total ?? null) : null;
   const plan = plans.kind === "ready" ? plans.data.find((item) => item.id === subscription.plan_snapshot.plan_id) : undefined;
-  const PlanGlyph = subscription.is_trial ? Gift : Zap;
+  const PlanGlyph = subscription.is_trial ? Gift : Package;
 
-  const used = details.kind === "ready" ? (details.data?.used_traffic ?? null) : null;
   const limitGb = subscription.effective_traffic_limit;
   const limitBytes = limitGb * GB_BYTES;
   const ratio = limitGb > 0 && used !== null ? Math.min(used / limitBytes, 1) : null;
@@ -365,13 +478,11 @@ function SubscriptionCard({ subscription }: { subscription: SubscriptionListItem
 
   return (
     <div
-      className={`relative flex flex-col gap-3 overflow-hidden rounded-xl border border-white/[0.14] bg-white/[0.06] px-[18px] py-4 ${
+      className={`${GLASS_DIALOG_CARD_CLASS} ${
         subscription.status === "ACTIVE" ? "text-foreground" : "text-muted-foreground"
       }`}
     >
-      <BrandMark className="pointer-events-none absolute -bottom-5 -right-5 size-36 opacity-[0.04]" />
-
-      <div className="relative flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
           <PlanIcon
             icon={plan ?? NO_PLAN_ICON}
@@ -383,7 +494,7 @@ function SubscriptionCard({ subscription }: { subscription: SubscriptionListItem
         <span className="shrink-0 font-mono text-[12px] tracking-[0.12em] text-muted-foreground">#{subscription.id}</span>
       </div>
 
-      <div className="relative flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
           <span className={`text-[26px] font-bold leading-[1.1] tracking-tight tabular-nums ${TEXT_TONE[trafficTone]}`}>
             {limitGb === 0
@@ -412,7 +523,7 @@ function SubscriptionCard({ subscription }: { subscription: SubscriptionListItem
         </div>
       </div>
 
-      <div className="relative mt-1 flex gap-2">
+      <div className="mt-1 flex gap-2">
         <CardPill
           label={t("subscriptions.details.daysLeft")}
           value={days > 0 ? t("subscriptions.duration.days", { count: days }) : t("subscriptions.status.EXPIRED")}
@@ -420,7 +531,13 @@ function SubscriptionCard({ subscription }: { subscription: SubscriptionListItem
         />
         <CardPill
           label={t("subscriptions.fields.devices")}
-          value={devices === 0 ? "∞" : t("subscriptions.details.devicesUpTo", { limit: devices })}
+          value={
+            deviceCount !== null
+              ? t("subscriptions.details.devicesOf", { count: deviceCount, limit: devices === 0 ? "∞" : devices })
+              : devices === 0
+                ? "∞"
+                : t("subscriptions.details.devicesUpTo", { limit: devices })
+          }
         />
       </div>
     </div>
@@ -459,10 +576,11 @@ function SubscriptionParamsForm({
   const initialExpireAt = toLocalInput(subscription.expire_at);
   const [expireAt, setExpireAt] = useState(initialExpireAt);
 
-  // calendar days, so a DST switch doesn't move the hour; a cleared field counts from the current expiry
+  // calendar days, so a DST switch doesn't move the hour; a cleared field counts from the current expiry,
+  // a past one from now, or the result would still be in the past
   const addDays = (days: number) =>
     setExpireAt((value) => {
-      const date = new Date(value || initialExpireAt);
+      const date = new Date(Math.max(new Date(value || initialExpireAt).getTime(), Date.now()));
       date.setDate(date.getDate() + days);
       return toLocalInput(date.toISOString());
     });

@@ -1,9 +1,9 @@
 import type { ParseKeys } from "i18next";
-import { BarChart3, Clock, Hourglass, Layers, Package, RefreshCw, TrendingUp } from "lucide-react";
+import { BarChart3, Clock, Hourglass, Layers, Package, RefreshCw, TrendingUp, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { getCohorts, getRetention } from "@entities/analytics/api";
+import { getCohorts, getRetention, listExpiringCustomers } from "@entities/analytics/api";
 import type { Cohorts, Retention } from "@entities/analytics/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
@@ -12,14 +12,15 @@ import { initials } from "@shared/lib/initials";
 import { DAY_MS } from "@shared/lib/period";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
-import { CellText } from "@shared/ui/CellText";
 import { CHART_CURSOR, ChartTooltip, MIN_CHART_POINTS, useChartAnimation, useChartEntered } from "@shared/ui/chart";
 import { Section } from "@shared/ui/glass/Section";
 import { EYEBROW_CLASS, GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, STAT_VALUE_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile } from "@shared/ui/KpiTile";
+import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tag } from "@shared/ui/Tag";
 import { BarRows, ColumnChart, Legend } from "@pages/analytics/charts";
@@ -159,10 +160,9 @@ function Overview({ data, cohorts }: { data: Retention; cohorts: AsyncState<Coho
 function ExpiringCard({ data }: { data: Retention }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
-  const { openUser } = useOpenEntity();
+  const canList = usePermissions().includes("ANALYTICS_EXPIRING_VIEW");
   const currency = data.report_currency;
   const weekMax = Math.max(0, ...data.expiring_weeks.map((week) => week.count));
-  const now = Date.now();
 
   return (
     <Section
@@ -176,7 +176,7 @@ function ExpiringCard({ data }: { data: Retention }) {
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-3 px-3.5 pb-4 pt-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 px-3.5 pb-6 pt-4 sm:grid-cols-4">
         {data.expiring_weeks.map((week) => (
           <div key={week.key} className="flex min-w-0 flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2">
@@ -193,57 +193,7 @@ function ExpiringCard({ data }: { data: Retention }) {
         ))}
       </div>
 
-      {data.expiring_top.length === 0 ? (
-        <EmptyState text={t("analytics.retention.expiringEmpty")} />
-      ) : (
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
-            <div className={`${EXPIRING_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
-              <span />
-              <span>{t("analytics.retention.customer")}</span>
-              <span>{t("analytics.retention.subscriptionsColumn")}</span>
-              <span>{t("analytics.retention.expires")}</span>
-              <span className="text-right">{t("analytics.totalPaid")}</span>
-              <span className="text-right">{t("analytics.retention.renewals")}</span>
-            </div>
-            <div className={LIST_BODY_CLASS}>
-              {data.expiring_top.map((row) => {
-                const days = Math.max(1, Math.floor((Date.parse(row.expire_at) - now) / DAY_MS));
-                const inDays = t("analytics.retention.inDays", { count: days });
-                return (
-                  <ListRow
-                    glass
-                    key={row.user_id}
-                    type="button"
-                    onClick={() => openUser(row.user_id)}
-                    className={EXPIRING_GRID}
-                  >
-                    <span className="flex size-8 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-primary">
-                      {initials(row.name)}
-                    </span>
-                    <CellText title={row.name} sub={row.username && `@${row.username}`} mono />
-                    <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
-                      <span className="truncate">{row.plan_names[0]}</span>
-                      {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}
-                    </span>
-                    <span>
-                      <Badge borderless tone={days <= SOON_DAYS ? "warning" : "neutral"}>
-                        {inDays}
-                      </Badge>
-                    </span>
-                    <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
-                      {formatMoney(row.spent, currency, language)}
-                    </span>
-                    <span className="text-right text-[12px] tabular-nums text-muted-foreground">
-                      {row.renewals.toLocaleString(language)}
-                    </span>
-                  </ListRow>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      {canList && <ExpiringList currency={currency} />}
     </Section>
   );
 }
@@ -405,5 +355,93 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
         </div>
       )}
     </Section>
+  );
+}
+
+const EXPIRING_PAGE_SIZE = 10;
+
+function ExpiringList({ currency }: { currency: Retention["report_currency"] }) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.language;
+  const { openUser } = useOpenEntity();
+  const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
+    (_: null, page, signal) => listExpiringCustomers(page, EXPIRING_PAGE_SIZE, signal),
+    null,
+    (row) => row.user_id,
+  );
+  const now = Date.now();
+
+  if (state.kind === "loading") return <Spinner size="card" />;
+  if (state.kind === "error") return <ErrorState text={t("common.loadError")} />;
+  if (state.items.length === 0) return <EmptyState text={t("analytics.retention.expiringEmpty")} />;
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[640px]">
+          <div className={`${EXPIRING_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
+            <span className="col-span-2">{t("analytics.retention.customer")}</span>
+            <span>{t("analytics.retention.subscriptionsColumn")}</span>
+            <span>{t("analytics.retention.expires")}</span>
+            <span className="text-right">{t("analytics.totalPaid")}</span>
+            <span className="text-right">{t("analytics.retention.renewals")}</span>
+          </div>
+          <div className={LIST_BODY_CLASS}>
+            {state.items.map((row) => {
+              const days = Math.max(1, Math.floor((Date.parse(row.expire_at) - now) / DAY_MS));
+              const inDays = t("analytics.retention.inDays", { count: days });
+              return (
+                <ListRow
+                  glass
+                  key={row.user_id}
+                  type="button"
+                  onClick={() => openUser(row.user_id)}
+                  className={EXPIRING_GRID}
+                >
+                  <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+                    {row.name ? initials(row.name) : <User className="size-4" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[13px] font-medium text-foreground">
+                        {row.name || t("users.unnamed")}
+                      </span>
+                      <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{row.user_id}</span>
+                    </span>
+                    {row.username && (
+                      <span className="block truncate font-mono text-[12px] text-muted-foreground">@{row.username}</span>
+                    )}
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
+                    <span className="truncate">{row.plan_names[0]}</span>
+                    {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}
+                  </span>
+                  <span>
+                    <Badge borderless tone={days <= SOON_DAYS ? "warning" : "neutral"}>
+                      {inDays}
+                    </Badge>
+                  </span>
+                  <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+                    {formatMoney(row.spent, currency, language)}
+                  </span>
+                  <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                    {row.renewals.toLocaleString(language)}
+                  </span>
+                </ListRow>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {hasMore && (
+        <div className="px-2.5 py-1">
+          <LoadMoreButton
+            onClick={() => void loadMore()}
+            isLoading={isLoadingMore}
+            shown={state.items.length}
+            total={state.total}
+          />
+        </div>
+      )}
+    </div>
   );
 }

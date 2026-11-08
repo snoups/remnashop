@@ -258,6 +258,14 @@
         "why": "The panel refuses to create a user with such a squad, so the plan is hidden from sale in the bot and the cabinet, and a trial, a promocode or an admin grant on it fails.",
         "fix": "Open the plan and replace its squads with ones the panel has. The plan is back on sale within a minute."
       },
+      "unratedAnchorAmounts": {
+        "title": "Migrated payments without a currency rate",
+        "sub_one": "{{formatted}} payment in {{currencies}} counted at face value",
+        "sub_other": "{{formatted}} payments in {{currencies}} counted at face value",
+        "what": "Payments migrated from the old version in a currency other than the anchor were counted at face value: there were no currency rates at migration time.",
+        "why": "Revenue, LTV and other analytics add those amounts as if they were in the anchor currency.",
+        "fix": "Check the currency rates in the pricing settings and recalculate the old payments there."
+      },
       "sections": {
         "what": "What happened",
         "why": "Why it matters",
@@ -272,7 +280,8 @@
         "broadcasts": "Go to broadcasts",
         "email": "Go to email settings",
         "apiTokens": "Go to API tokens",
-        "plans": "Go to plans"
+        "plans": "Go to plans",
+        "pricing": "To pricing"
       }
     },
     "revenue": {
@@ -295,7 +304,7 @@
     },
     "online": {
       "title": "Online",
-      "description": "Peak online by hour and by day",
+      "description": "Peak online",
       "hours24": "24h",
       "valueName": "Online",
       "peak": "Peak — {{peak}} at {{time}}"
@@ -344,7 +353,7 @@
     "remnawaveUnavailable": "Remnawave is unavailable",
     "nodes": {
       "title": "Nodes and countries",
-      "description": "Connections and traffic today, from Remnawave",
+      "description": "Online and traffic today",
       "nodes": "Nodes",
       "countries": "Countries",
       "empty": "No nodes",
@@ -381,7 +390,7 @@
       "title": "New customer funnel",
       "steps": {
         "registered": "Registration",
-        "connected": "VPN connection",
+        "connected": "Connection",
         "first_paid": "First payment",
         "repeat_paid": "Repeat payment"
       },
@@ -484,14 +493,14 @@
     "pp": "{{value}} pp",
     "empty": "No data",
     "emptyPeriod": "No data for this period",
-    "totalPaid": "Paid in total",
+    "totalPaid": "Total purchases",
     "metrics": {
       "periodSection": "For the period",
       "comparedWith": "compared with {{range}}",
       "nowSection": "Right now",
       "revenue": "Revenue",
       "revenueCaption": "{{payers}} paid · {{arppu}} per payer",
-      "arppu": "Revenue per payer",
+      "arppu": "Per payer",
       "newPayers": "New payers",
       "conversion": "Paid within {{days}} days",
       "conversionHint": "Share of users who registered {{days}}+ days before the period’s end and paid within {{days}} days of registering.",
@@ -652,10 +661,8 @@
       "code": "Promocode",
       "reward": "Reward",
       "activationsColumn": "Activations",
-      "activationsCaption": "{{activations}} · {{total}} total",
-      "activationsLimitCaption": "{{activations}} · {{total}} / {{max}}",
       "revenueColumn": "Revenue",
-      "toPayment": "→ payment",
+      "toPayment": "Conversion",
       "empty": "No promocode activations in this period"
     }
   },
@@ -739,6 +746,7 @@
       "LocaleDeactivatedEvent": "Locale removed",
       "DefaultLocaleChangedEvent": "Default language changed",
       "AnchorSwitchedEvent": "Anchor currency changed",
+      "UnratedAnchorAmountsRatedEvent": "Old payments recalculated at current rates",
       "BasePricesAdjustedEvent": "Base prices changed",
       "ApiTokenCreatedEvent": "API token created",
       "ApiTokenRevokedEvent": "API token revoked",
@@ -777,6 +785,7 @@
       "UserPurchaseDiscountChangedEvent": "Purchase discount changed",
       "UserUnblockedEvent": "User unblocked",
       "UserEmailUndeliverableClearedEvent": "Undeliverable email mark cleared",
+      "UserTrialAvailabilityChangedEvent": "Trial availability changed",
       "UsersBulkUnblockedEvent": "Bulk unblock",
       "TransactionRefundedEvent": "Transaction refunded",
       "PaidOrderNotFulfilledEvent": "Paid order not issued",
@@ -903,9 +912,7 @@
       "button": "Create admin",
       "title": "Create admin",
       "loginLabel": "Login",
-      "loginPlaceholder": "e.g. john.smith",
-      "nameLabel": "Display name",
-      "namePlaceholder": "e.g. John Smith",
+      "loginPlaceholder": "E.g. admin",
       "permissionsLabel": "Permissions",
       "error": "Failed to create admin."
     },
@@ -1046,7 +1053,7 @@
             "NEW": "Purchase",
             "RENEW": "Renewal",
             "CHANGE": "Plan change",
-            "gap": "Gap without a subscription",
+            "gap": "Gap in payments",
             "refund": "Refund",
             "today": "Today"
           },
@@ -1054,7 +1061,8 @@
           "gaps_one": "{{count}} gap",
           "gaps_other": "{{count}} gaps",
           "gap": "gap {{count}}d",
-          "empty": "No purchases"
+          "empty": "No purchases",
+          "freeNote": "Free days (grants, promocodes, trials, referral bonuses) are not counted."
         }
       },
       "empty": {
@@ -1106,6 +1114,12 @@
     },
     "status": {
       "blocked": "Blocked"
+    },
+    "unnamed": "User",
+    "contacts": {
+      "telegram": "TG: {{value}}",
+      "email": "Email: {{value}}",
+      "login": "Login: {{value}}"
     },
     "deleted": {
       "name": "Deleted user",
@@ -1185,6 +1199,12 @@
       "badge": "Undeliverable",
       "clear": "Clear undeliverable mark",
       "cleared": "Undeliverable mark cleared."
+    },
+    "trial": {
+      "allow": "Allow the trial",
+      "revoke": "Revoke the trial",
+      "allowed": "The trial is allowed.",
+      "revoked": "The trial is revoked."
     },
     "legalAcceptances": {
       "title": "Accepted documents",
@@ -2136,6 +2156,8 @@
     "TRANSACTIONS_FULFILL": "Issue subscription for a transaction manually",
     "TRANSACTIONS_REFUND": "Refund Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
+    "TRANSACTIONS_UNRATED_VIEW": "View migrated payments without a currency rate",
+    "TRANSACTIONS_UNRATED_RATE": "Recalculate migrated payments at current rates",
     "REFERRALS_VIEW": "View referrals",
     "REFERRALS_INVITED_VIEW": "View a user’s invited users",
     "REFERRALS_REWARDS_VIEW": "View a user’s referral rewards",
@@ -2170,6 +2192,7 @@
     "BLACKLIST_MATCHES_VIEW": "View users matched by the blacklist",
     "USERS_BLOCK": "Block users",
     "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Clear the undeliverable email mark",
+    "USERS_TRIAL_MANAGE": "Allow or revoke the trial",
     "USERS_UNBLOCK": "Unblock users",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Unblock all blacklist matches",
     "AD_LINKS_VIEW": "View advertising links",
@@ -2191,6 +2214,7 @@
     "ANALYTICS_REVENUE_VIEW": "View revenue analytics",
     "ANALYTICS_TRIAL_VIEW": "View trial analytics",
     "ANALYTICS_RETENTION_VIEW": "View retention analytics",
+    "ANALYTICS_EXPIRING_VIEW": "View customers with expiring subscriptions",
     "ANALYTICS_SOURCES_VIEW": "View acquisition sources",
     "ANALYTICS_PROMOCODES_VIEW": "View promocode analytics",
     "REMNAWAVE_NODES_VIEW": "View Remnawave nodes",
@@ -2320,6 +2344,17 @@
       "confirmButton": "Switch",
       "saved": "Anchor currency updated.",
       "saveError": "Failed to switch the anchor currency."
+    },
+    "unrated": {
+      "title": "Old payments without a rate",
+      "description_one": "{{count}} payment from the old version in {{currencies}} is counted at face value",
+      "description_other": "{{count}} payments from the old version in {{currencies}} are counted at face value",
+      "button": "Recalculate",
+      "confirmTitle": "Recalculate old payments",
+      "confirmMessage_one": "{{count}} payment in {{currencies}} will be converted to the anchor currency at the current rates. Check the rates first: this can’t be undone.",
+      "confirmMessage_other": "{{count}} payments in {{currencies}} will be converted to the anchor currency at the current rates. Check the rates first: this can’t be undone.",
+      "saved": "Old payments recalculated.",
+      "saveError": "Failed to recalculate old payments."
     },
     "settings": {
       "betaHint": "Not in use yet: customers can’t buy add-ons on their own.",
@@ -2973,6 +3008,7 @@
       "levelAll": "All levels",
       "level": "Level {{level}}",
       "levelBadge": "Lvl {{level}}",
+      "levelHint": "Users at level {{level}}: {{count}}",
       "search": "User",
       "searchPlaceholder": "Name, @username, ID or email",
       "rewardStatusAll": "Any",
@@ -3400,8 +3436,7 @@
     "devicesUnlimited": "Devices ∞",
     "devicesCount_one": "{{count}} device",
     "devicesCount_other": "{{count}} devices",
-    "userLabel": "User #{{id}}",
-    "subscriptionLabel": "Subscription #{{id}}",
+    "until": "until {{date}}",
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
@@ -3448,7 +3483,7 @@
       "addonsHint": "Add-ons on top: +{{value}}"
     },
     "details": {
-      "paidTotal": "Paid since the last plan change",
+      "paidTotal": "Paid",
       "subscription": "Subscription",
       "trafficUsed": "{{value}} used",
       "trafficLeftOf": "left of {{limit}}",
@@ -3456,11 +3491,18 @@
       "trafficLimit": "traffic limit",
       "daysLeft": "Left",
       "devicesUpTo": "up to {{limit}}",
+      "devicesOf": "{{count}} of {{limit}}",
       "panel": "Panel",
       "createdAt": "Created",
       "firstConnectedAt": "First connection",
       "link": "Link",
       "remnawaveId": "Remnawave ID",
+      "deviceSingleResetAt": "Device removal",
+      "deviceAllResetAt": "All devices removal",
+      "linkResetAt": "Link reissue",
+      "onlineAt": "Last online",
+      "subLastOpenedAt": "Subscription request",
+      "subLastUserAgent": "App",
       "internalSquads": "Internal squads",
       "externalSquad": "External squad",
       "addons": "Add-ons"
@@ -3508,10 +3550,10 @@
       "submit": "Change",
       "changed": "Plan changed.",
       "error": "Failed to change the plan.",
-      "resetWarning": "Add-ons will be removed. Limits, reset strategy, squads and tag will match the new plan. The subscription number will change; the link stays the same."
+      "resetWarning": "Add-ons will be removed. Limits, reset strategy, squads and tag will match the new plan. The subscription number will change; the link stays the same. A new term starts today; the days left on the current subscription are not carried over."
     },
     "devices": {
-      "empty": "No devices",
+      "empty": "No connected devices",
       "deleted": "Device deleted.",
       "deleteAll": "Delete all devices",
       "deleteAllTitle": "Delete all devices?",

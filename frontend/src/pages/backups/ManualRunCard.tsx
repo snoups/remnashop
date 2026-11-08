@@ -93,7 +93,7 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
               <Button variant="glassAccent" onClick={() => void handleRunNow()} icon={Play} isLoading={isStartingRun}>
                 {t("backups.manual.runNow")}
               </Button>
-              <FieldHint text={t("backups.manual.runHint")} glass />
+              <FieldHint text={t("backups.manual.runHint")} />
             </div>
           </div>
         )}

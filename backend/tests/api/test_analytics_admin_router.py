@@ -425,6 +425,22 @@ async def test_admin_without_analytics_retention_view_is_denied(
     assert response.status_code == 403
 
 
+async def test_admin_without_analytics_expiring_view_is_denied(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    headers = await _admin_without_permission_headers(
+        user_repository, session_repository, uow, config, "ANALYTICS_EXPIRING_VIEW"
+    )
+
+    response = await client.get(f"{API_V1}/analytics/retention/expiring", headers=headers)
+
+    assert response.status_code == 403
+
+
 async def test_owner_can_get_ltv_breakdown(
     client: httpx.AsyncClient,
     user_repository: UserRepository,

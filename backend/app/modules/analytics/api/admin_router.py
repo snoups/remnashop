@@ -3,15 +3,17 @@ from typing import Literal, Optional
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies.admin import require_admin
 from app.api.errors import error_responses
 from app.core.actor import Actor
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.modules.analytics.api.schemas import (
     AnalyticsResponse,
     CohortRowResponse,
     CohortsResponse,
+    ExpiringCustomerPageResponse,
     FunnelResponse,
     LtvBreakdownResponse,
     LtvDistributionResponse,
@@ -21,7 +23,11 @@ from app.modules.analytics.api.schemas import (
     SourcesResponse,
     TrialResponse,
 )
-from app.modules.analytics.dto import AnalyticsPeriodQueryDto, GetRevenueDto
+from app.modules.analytics.dto import (
+    AnalyticsPeriodQueryDto,
+    GetRevenueDto,
+    ListExpiringCustomersDto,
+)
 from app.modules.analytics.usecases import (
     GetAnalyticsUseCase,
     GetCohortRetentionUseCase,
@@ -33,6 +39,7 @@ from app.modules.analytics.usecases import (
     GetRevenueUseCase,
     GetSourcesUseCase,
     GetTrialUseCase,
+    ListExpiringCustomersUseCase,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -127,6 +134,18 @@ async def get_analytics_retention(
     actor: Actor = Depends(require_admin),
 ) -> RetentionResponse:
     return RetentionResponse.model_validate(await use_case(actor), from_attributes=True)
+
+
+@router.get("/retention/expiring", response_model=ExpiringCustomerPageResponse)
+@inject
+async def list_analytics_expiring_customers(
+    use_case: FromDishka[ListExpiringCustomersUseCase],
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    actor: Actor = Depends(require_admin),
+) -> ExpiringCustomerPageResponse:
+    result = await use_case(actor, ListExpiringCustomersDto(page=page, page_size=page_size))
+    return ExpiringCustomerPageResponse.model_validate(result, from_attributes=True)
 
 
 @router.get("/sources", response_model=SourcesResponse, responses=error_responses(400))

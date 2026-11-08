@@ -24,6 +24,7 @@ from app.modules.users.api.schemas import (
     PromoteAdminRequest,
     SecurityResponse,
     SetDiscountRequest,
+    SetTrialAvailabilityRequest,
     UnblockBlacklistMatchesResponse,
     UpdateAdminRequest,
     UpdateSecurityRequest,
@@ -46,6 +47,7 @@ from app.modules.users.dto import (
     ListUsersDto,
     PromoteToAdminDto,
     SetUserDiscountDto,
+    SetUserTrialAvailabilityDto,
     UnbindTelegramDto,
     UnblockBlacklistMatchesDto,
     UnblockUserDto,
@@ -76,6 +78,7 @@ from app.modules.users.usecases import (
     ListUsersUseCase,
     PromoteToAdminUseCase,
     SetUserDiscountUseCase,
+    SetUserTrialAvailabilityUseCase,
     UnbindTelegramIdUseCase,
     UnblockBlacklistMatchesUseCase,
     UnblockUserUseCase,
@@ -272,6 +275,30 @@ async def set_user_discount(
     return UserListItemResponse.model_validate(updated, from_attributes=True)
 
 
+@router.patch(
+    "/{user_id:int}/trial",
+    response_model=UserListItemResponse,
+    responses=error_responses(404),
+)
+@inject
+async def set_user_trial_availability(
+    user_id: int,
+    payload: SetTrialAvailabilityRequest,
+    request: Request,
+    use_case: FromDishka[SetUserTrialAvailabilityUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UserListItemResponse:
+    updated = await use_case(
+        actor,
+        SetUserTrialAvailabilityDto(
+            user_id=user_id,
+            is_trial_available=payload.is_trial_available,
+            client_ip=resolve_client_ip(request),
+        ),
+    )
+    return UserListItemResponse.model_validate(updated, from_attributes=True)
+
+
 @router.put(
     "/{user_id:int}/telegram",
     response_model=UserListItemResponse,
@@ -411,7 +438,6 @@ async def create_admin(
         actor,
         CreateAdminDto(
             login=payload.login,
-            name=payload.name,
             client_ip=resolve_client_ip(request),
             permission_grants=payload.permission_grants,
             permission_revokes=payload.permission_revokes,

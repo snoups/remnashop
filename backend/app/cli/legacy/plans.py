@@ -1,3 +1,4 @@
+import unicodedata
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -6,6 +7,7 @@ from typing import Any, Final
 
 from app.cli.legacy.report import MigrationReport
 from app.core.enums import Currency
+from app.modules.plans import DEFAULT_PLAN_ICON_EMOJI_FALLBACK, DEFAULT_PLAN_ICON_EMOJI_ID
 
 _COPIED: Final[tuple[str, ...]] = (
     "id",
@@ -28,6 +30,26 @@ _COPIED: Final[tuple[str, ...]] = (
     "created_at",
     "updated_at",
 )
+
+
+# joiners, variation selectors, keycap, skin tones, subdivision-flag tags
+_EMOJI_PARTS: Final[frozenset[str]] = frozenset(
+    "\u200d\ufe0e\ufe0f\u20e3"
+    + "".join(map(chr, range(0x1F3FB, 0x1F400)))
+    + "".join(map(chr, range(0xE0020, 0xE0080)))
+)
+
+
+def strip_leading_emoji(name: str) -> str:
+    start = 0
+    while start < len(name) and (
+        name[start].isspace()
+        or name[start] in _EMOJI_PARTS
+        or unicodedata.category(name[start]) == "So"
+    ):
+        start += 1
+    # a name of nothing but emoji stays as it was
+    return name[start:] or name
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -82,6 +104,13 @@ def transform_plans(
 
     plan_rows = [{c: plan[c] for c in _COPIED if c in plan} for plan in plans]
     plan_rows.sort(key=lambda p: int(p["id"]))
+    renamed = 0
+    for row in plan_rows:
+        name = strip_leading_emoji(row["name"])
+        renamed += name != row["name"]
+        row["name"] = name
+        row["icon_emoji_id"] = DEFAULT_PLAN_ICON_EMOJI_ID
+        row["icon_emoji_fallback"] = DEFAULT_PLAN_ICON_EMOJI_FALLBACK
     report.count("plans", len(plans), len(plan_rows))
     report.count("plan_durations", len(durations), len(duration_rows))
     report.count("plan_prices", len(prices), len(prices))
@@ -90,4 +119,6 @@ def transform_plans(
             f"plans: {unanchored} durations without an anchor currency price, "
             "base price 0 and every currency price kept as an override"
         )
+    if renamed:
+        report.notes.append(f"plans: leading emoji removed from {renamed} plan names")
     return PlanRows(plans=plan_rows, durations=duration_rows, overrides=overrides)

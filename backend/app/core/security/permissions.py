@@ -20,6 +20,7 @@ class Permission(UpperStrEnum):
     ANALYTICS_REVENUE_VIEW = auto()
     ANALYTICS_TRIAL_VIEW = auto()
     ANALYTICS_RETENTION_VIEW = auto()
+    ANALYTICS_EXPIRING_VIEW = auto()
     ANALYTICS_SOURCES_VIEW = auto()
     ANALYTICS_PROMOCODES_VIEW = auto()
     REMNAWAVE_NODES_VIEW = auto()
@@ -202,6 +203,8 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_FULFILL = auto()
     TRANSACTIONS_REFUND = auto()
     TRANSACTIONS_REFUND_PREVIEW = auto()
+    TRANSACTIONS_UNRATED_VIEW = auto()
+    TRANSACTIONS_UNRATED_RATE = auto()
     REFERRALS_VIEW = auto()
     REFERRALS_INVITED_VIEW = auto()
     REFERRALS_REWARDS_VIEW = auto()
@@ -239,6 +242,7 @@ class Permission(UpperStrEnum):
     BLACKLIST_MATCHES_VIEW = auto()
     USERS_BLOCK = auto()
     USERS_EMAIL_UNDELIVERABLE_CLEAR = auto()
+    USERS_TRIAL_MANAGE = auto()
     USERS_UNBLOCK = auto()
     USERS_UNBLOCK_BLACKLIST_MATCHES = auto()
     USERS_MERGE_PREVIEW = auto()
@@ -456,6 +460,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
     Permission.TRANSACTIONS_REFUND: PermissionMeta(resource="transactions", kind="write"),
     Permission.TRANSACTIONS_REFUND_PREVIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_UNRATED_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.REFERRALS_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_INVITED_VIEW: PermissionMeta(resource="referrals", kind="read"),
     Permission.REFERRALS_REWARDS_VIEW: PermissionMeta(resource="referrals", kind="read"),
@@ -492,6 +497,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BLACKLIST_MATCHES_VIEW: PermissionMeta(resource="blacklist", kind="read"),
     Permission.USERS_BLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR: PermissionMeta(resource="users", kind="write"),
+    Permission.USERS_TRIAL_MANAGE: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_UNBLOCK: PermissionMeta(resource="users", kind="write"),
     Permission.USERS_MERGE_PREVIEW: PermissionMeta(resource="users", kind="read"),
     Permission.USERS_MERGE: PermissionMeta(resource="users", kind="write"),
@@ -516,6 +522,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.ANALYTICS_REVENUE_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_TRIAL_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_RETENTION_VIEW: PermissionMeta(resource="analytics", kind="read"),
+    Permission.ANALYTICS_EXPIRING_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_SOURCES_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.ANALYTICS_PROMOCODES_VIEW: PermissionMeta(resource="analytics", kind="read"),
     Permission.REMNAWAVE_NODES_VIEW: PermissionMeta(resource="remnawave", kind="read"),
@@ -767,6 +774,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.USERS_REGISTRATION_VIEW,
             Permission.USERS_DISCOUNT_MANAGE,
             Permission.USERS_EMAIL_UNDELIVERABLE_CLEAR,
+            Permission.USERS_TRIAL_MANAGE,
             Permission.USERS_LOYALTY_VIEW,
             Permission.USERS_LOYALTY_MANAGE,
             Permission.TRANSACTIONS_VIEW,
@@ -774,6 +782,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.TRANSACTIONS_DETAIL_VIEW,
             Permission.TRANSACTIONS_GATEWAYS_VIEW,
             Permission.TRANSACTIONS_FULFILL,
+            Permission.TRANSACTIONS_UNRATED_VIEW,
             Permission.REFERRALS_VIEW,
             Permission.REFERRALS_INVITED_VIEW,
             Permission.REFERRALS_REWARDS_VIEW,
@@ -808,6 +817,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.ANALYTICS_REVENUE_VIEW,
             Permission.ANALYTICS_TRIAL_VIEW,
             Permission.ANALYTICS_RETENTION_VIEW,
+            Permission.ANALYTICS_EXPIRING_VIEW,
             Permission.ANALYTICS_SOURCES_VIEW,
             Permission.ANALYTICS_PROMOCODES_VIEW,
             Permission.REMNAWAVE_NODES_VIEW,

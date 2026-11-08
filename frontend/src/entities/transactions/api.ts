@@ -1,5 +1,6 @@
 import { DollarSign, RussianRuble, Star, type LucideIcon } from "lucide-react";
 
+import type { PlanSnapshot } from "@entities/subscriptions/api";
 import { apiGet, apiPost } from "@shared/api/http";
 import type { ListResponse } from "@shared/api/http";
 import type { BadgeTone } from "@shared/ui/Badge";
@@ -7,12 +8,6 @@ import type { BadgeTone } from "@shared/ui/Badge";
 export type TransactionStatus = "PENDING" | "PAID" | "FAILED" | "CANCELED" | "REFUNDED";
 export type PurchaseType = "NEW" | "RENEW" | "CHANGE";
 export type DiscountSource = "NONE" | "PERSONAL" | "PURCHASE" | "LOYALTY";
-
-export interface PlanSnapshot {
-  name?: string;
-  public_code?: string;
-  duration_days?: number;
-}
 
 export interface TransactionUser {
   name: string;
@@ -190,6 +185,26 @@ export function canFulfillTransaction(order: TransactionItem): boolean {
 /** Gateway types that appear in at least one (non-test) order. */
 export function listTransactionGateways(signal?: AbortSignal): Promise<string[]> {
   return apiGet<ListResponse<string>>("/transactions/gateways", signal).then((response) => response.items);
+}
+
+export interface UnratedAnchorCount {
+  currency: string;
+  count: number;
+}
+
+/** Migrated orders whose anchor amounts kept the nominal value: no rate at migration time. */
+export function listUnratedAnchorAmounts(signal?: AbortSignal): Promise<UnratedAnchorCount[]> {
+  return apiGet<ListResponse<UnratedAnchorCount>>("/transactions/unrated-anchor-amounts", signal).then(
+    (response) => response.items,
+  );
+}
+
+/** Converts them at the current rates; returns what is still left. */
+export function rateUnratedAnchorAmounts(): Promise<UnratedAnchorCount[]> {
+  return apiPost<ListResponse<UnratedAnchorCount>, Record<string, never>>(
+    "/transactions/unrated-anchor-amounts/actions/rate",
+    {},
+  ).then((response) => response.items);
 }
 
 export const PURCHASE_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];

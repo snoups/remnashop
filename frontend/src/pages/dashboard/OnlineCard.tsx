@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { getOnlineChart } from "@entities/overview/api";
 import type { HourlyOnline } from "@entities/overview/api";
 import type { AsyncState } from "@shared/lib/use-async-resource";
+import { MIN_CHART_POINTS } from "@shared/ui/chart";
 import { KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { Section } from "@shared/ui/glass/Section";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
@@ -32,12 +33,16 @@ function OnlineView({
   labelFormatter?: (x: string) => string;
 }) {
   const { t, i18n } = useTranslation();
+  // same cut as TrendChart's "not enough data": a lone 0 next to it reads as a real value
+  const hasData = data.filter((point) => point.value).length >= MIN_CHART_POINTS;
   return (
     <div className="flex flex-col gap-3 pt-4">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className={`${KPI_VALUE_CLASS} text-foreground`}>{current.toLocaleString(i18n.language)}</span>
-        {peakTag && <Tag>{peakTag}</Tag>}
-      </div>
+      {hasData && (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className={`${KPI_VALUE_CLASS} text-foreground`}>{current.toLocaleString(i18n.language)}</span>
+          {peakTag && <Tag>{peakTag}</Tag>}
+        </div>
+      )}
       <TrendChart
         data={data}
         color={COLOR}

@@ -1,8 +1,8 @@
 import { Gift } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { listPlans } from "@entities/plans/api";
+import { listPlans, type Plan } from "@entities/plans/api";
 import { grantSubscription, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { defaultDuration, durationDays } from "@features/subscription-grant/duration";
 import type { DurationChoice } from "@features/subscription-grant/duration";
@@ -12,11 +12,10 @@ import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
 import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
-import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
-import { Spinner } from "@shared/ui/Spinner";
 
 interface GrantSubscriptionDialogProps {
   userId: number;
@@ -24,25 +23,36 @@ interface GrantSubscriptionDialogProps {
   onClose: () => void;
 }
 
+// opens once the plans are in: the nested modal morphs to the size it has on mount, a spinner there
+// would make it jump when the form arrives
 export function GrantSubscriptionDialog({ onClose, ...props }: GrantSubscriptionDialogProps) {
+  const { t } = useTranslation();
+  const [plans] = useAsyncResource((signal) => listPlans(signal));
+  const failed = plans.kind === "error";
+  useEffect(() => {
+    if (!failed) return;
+    toast.error(t("common.loadError"));
+    onClose();
+  }, [failed, onClose, t]);
+
+  if (plans.kind !== "ready") return null;
   return (
     <Modal onClose={onClose} size="md">
-      <GrantSubscriptionBody {...props} />
+      <GrantSubscriptionBody plans={plans.data} {...props} />
     </Modal>
   );
 }
 
-function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDialogProps, "onClose">) {
+function GrantSubscriptionBody({ plans, userId, onGranted }: Omit<GrantSubscriptionDialogProps, "onClose"> & { plans: Plan[] }) {
   const { t } = useTranslation();
   const close = useModalClose();
-  const [plans] = useAsyncResource((signal) => listPlans(signal));
   const [planId, setPlanId] = useState<number | null>(null);
   const [duration, setDuration] = useState<DurationChoice>({ kind: "custom", days: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePlanChange = (id: number) => {
     setPlanId(id);
-    setDuration(defaultDuration(plans.kind === "ready" ? plans.data.find((plan) => plan.id === id) : undefined));
+    setDuration(defaultDuration(plans.find((plan) => plan.id === id)));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -69,20 +79,19 @@ function GrantSubscriptionBody({ userId, onGranted }: Omit<GrantSubscriptionDial
     <>
       <DialogHeader icon={Gift} title={t("subscriptions.grant.title")} />
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
-          {plans.kind === "loading" && <Spinner size="card" />}
-          {plans.kind === "error" && <ErrorState text={t("common.loadError")} />}
-          {plans.kind === "ready" && (
+        <div className="p-3 [--dialog-pad:0.75rem]">
+          {/* the custom-days field comes and goes */}
+          <AnimatedHeight>
             <div className={GLASS_DIALOG_CARD_CLASS}>
               <PlanDurationPicker
-                plans={plans.data}
+                plans={plans}
                 planId={planId}
                 onPlanChange={handlePlanChange}
                 duration={duration}
                 onDurationChange={setDuration}
               />
             </div>
-          )}
+          </AnimatedHeight>
         </div>
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center justify-end`}>
           <Button variant="glass" type="button" onClick={close}>

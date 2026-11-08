@@ -1,5 +1,7 @@
 import {
   BarChart3,
+  Captions,
+  Gift,
   GitMerge,
   History,
   Layers,
@@ -25,7 +27,9 @@ import { useTranslation } from "react-i18next";
 
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import type { UserListItem } from "@entities/user/api";
-import { useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { userContacts, userName } from "@entities/user/display";
+import { useAccountPermissions, useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import {
   AnalyticsTab,
   InvitedTab,
@@ -64,11 +68,6 @@ interface UserDetailsDialogProps {
   /** the account was deleted from the footer; the dialog closes itself */
   onDeleted?: (user: UserListItem) => void;
   onClose: () => void;
-}
-
-function getHandle(user: UserListItem): string | null {
-  if (user.username) return `@${user.username}`;
-  return user.login ?? user.email;
 }
 
 export function UserDetailsDialog({ onClose, ...props }: UserDetailsDialogProps) {
@@ -111,7 +110,11 @@ function UserDetailsDialogBody({
   // the per-user session endpoints reject yourself
   const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
   const isDeleted = Boolean(user.deleted_at);
-  const handle = isDeleted ? `#${user.id}` : getHandle(user);
+  const contacts = userContacts(user, t);
+  const accountPermissions = useAccountPermissions(user.id);
+  const canGrant =
+    !isDeleted && accountPermissions.includes("SUBSCRIPTIONS_GRANT") && accountPermissions.includes("PLANS_VIEW");
+  const [isGranting, setIsGranting] = useState(false);
 
   const hasAny = (...required: Permission[]) => required.some((permission) => permissions.includes(permission));
   const tabs: DialogTabItem<UserDetailsTab>[] = [
@@ -145,13 +148,15 @@ function UserDetailsDialogBody({
         glyph={
           isDeleted ? (
             <Trash2 className="size-4" />
-          ) : (
+          ) : user.login || user.name ? (
             <span className="text-[11px] font-bold">{initials(user.login ?? user.name)}</span>
+          ) : (
+            <User className="size-4" />
           )
         }
         danger={user.is_blocked && !isDeleted}
-        title={isDeleted ? t("users.deleted.name") : user.name}
-        subtitle={handle && <span className="font-mono">{handle}</span>}
+        title={`${userName(user, t)} #${user.id}`}
+        subtitle={contacts || undefined}
         actions={
           <>
             {user.role !== "USER" && <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
@@ -186,13 +191,25 @@ function UserDetailsDialogBody({
         </motion.div>
       </div>
 
-      {available.length > 0 && (
+      {(available.length > 0 || canGrant) && (
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center`}>
           <div className="ml-auto">
             <ActionMenu
               glass
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}
               items={[
+                ...(canGrant
+                  ? [{ label: t("subscriptions.grant.open"), icon: Captions, onClick: () => setIsGranting(true) }]
+                  : []),
+                ...(available.includes("toggleTrial")
+                  ? [
+                      {
+                        label: t(user.is_trial_available ? "users.trial.revoke" : "users.trial.allow"),
+                        icon: Gift,
+                        onClick: () => actions.run("toggleTrial", user),
+                      },
+                    ]
+                  : []),
                 ...(available.includes("promote")
                   ? [{ label: t("admins.promote.button"), icon: ShieldPlus, onClick: () => actions.run("promote", user) }]
                   : []),
@@ -243,6 +260,13 @@ function UserDetailsDialogBody({
         </div>
       )}
       {actions.dialogs}
+      {isGranting && (
+        <GrantSubscriptionDialog
+          userId={user.id}
+          onGranted={() => setSubscriptionsVersion((version) => version + 1)}
+          onClose={() => setIsGranting(false)}
+        />
+      )}
     </>
   );
 }

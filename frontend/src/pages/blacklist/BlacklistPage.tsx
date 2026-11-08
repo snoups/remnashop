@@ -428,7 +428,6 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                       text={source.url}
                       content={<span className="break-all">{source.url}</span>}
                       side="bottom"
-                      glass
                       className="min-w-0"
                       trigger={<span className="min-w-0 cursor-help truncate">{source.name ?? source.url}</span>}
                     />

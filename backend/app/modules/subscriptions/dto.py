@@ -179,7 +179,18 @@ class PanelSquadDto:
 @dataclass(frozen=True, kw_only=True)
 class SubscriptionDetailsDto:
     subscription: SubscriptionDto
-    used_traffic: Optional[int]
+    activity: "PanelActivityDto"
+
+
+@dataclass(frozen=True, kw_only=True)
+class PanelActivityDto:
+    """What only the panel knows about its user; None where it couldn't be read."""
+
+    used_traffic: Optional[int] = None
+    online_at: Optional[datetime] = None
+    # the newest subscription request
+    sub_last_opened_at: Optional[datetime] = None
+    sub_last_user_agent: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

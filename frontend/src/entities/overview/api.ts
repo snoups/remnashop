@@ -156,7 +156,8 @@ export type AttentionKind =
   | "expiring_paid"
   | "api_token_expiring"
   | "bot_webhook"
-  | "plan_squads_missing";
+  | "plan_squads_missing"
+  | "unrated_anchor_amounts";
 
 export interface AttentionItem {
   kind: AttentionKind;

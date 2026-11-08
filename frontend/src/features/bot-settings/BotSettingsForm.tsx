@@ -76,7 +76,7 @@ function StatusBadge({ status }: { status: BotStatus }) {
   return (
     <StatusPill tone={tone}>
       {label}
-      {hint !== null && <FieldHint text={hint} side="bottom" align="end" glass />}
+      {hint !== null && <FieldHint text={hint} side="bottom" align="end" />}
     </StatusPill>
   );
 }
@@ -306,7 +306,7 @@ export function BotSettingsForm() {
   const beside = (
     <>
       {restartButton}
-      <FieldHint text={t("settings.bot.applyChangesDescription")} glass />
+      <FieldHint text={t("settings.bot.applyChangesDescription")} />
     </>
   );
 

@@ -50,6 +50,10 @@ export interface SubscriptionListItem {
   expire_at: string;
   created_at: string | null;
   first_connected_at: string | null;
+  /** the client's own last device removal, removal of all devices and link reissue */
+  device_single_reset_at: string | null;
+  device_all_reset_at: string | null;
+  link_reset_at: string | null;
   url: string;
   plan_snapshot: PlanSnapshot;
   addon_entitlements: AddOnEntitlement[];
@@ -65,8 +69,11 @@ export interface SubscriptionRow extends SubscriptionListItem {
 }
 
 export interface SubscriptionDetail extends SubscriptionListItem {
-  /** bytes; null when the panel is unreachable */
-  used_traffic: number | null;
+  /** from the panel; null when it is unreachable or hasn't seen the client */
+  used_traffic: number | null; // bytes
+  online_at: string | null;
+  sub_last_opened_at: string | null;
+  sub_last_user_agent: string | null;
 }
 
 export const SUBSCRIPTION_STATUS_BADGE_TONE: Record<SubscriptionStatus, BadgeTone> = {

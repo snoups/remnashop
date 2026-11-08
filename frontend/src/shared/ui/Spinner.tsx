@@ -24,7 +24,7 @@ export function Spinner({ size, className = "" }: SpinnerProps) {
   }, []);
 
   return (
-    <div className={`flex items-center justify-center text-muted-foreground ${size ? PADDING[size] : ""} ${className}`}>
+    <div className={`flex flex-1 items-center justify-center text-muted-foreground ${size ? PADDING[size] : ""} ${className}`}>
       {isVisible && <Loader2 className="size-5 animate-spin" />}
     </div>
   );

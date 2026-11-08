@@ -187,7 +187,6 @@ class UserListStatsDto:
 @dataclass(frozen=True, kw_only=True)
 class CreateAdminDto:
     login: str
-    name: str
     client_ip: str
     permission_grants: list[Permission] = field(default_factory=list)
     permission_revokes: list[Permission] = field(default_factory=list)
@@ -393,6 +392,13 @@ class BlockUserDto:
 @dataclass(frozen=True, kw_only=True)
 class ClearEmailUndeliverableDto:
     user_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SetUserTrialAvailabilityDto:
+    user_id: int
+    is_trial_available: bool
     client_ip: str
 
 

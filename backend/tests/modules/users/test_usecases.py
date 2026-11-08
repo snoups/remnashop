@@ -37,6 +37,7 @@ from app.modules.users.dto import (
     PromoteToAdminDto,
     RegisterTelegramUserDto,
     SetUserDiscountDto,
+    SetUserTrialAvailabilityDto,
     UpdateAdminDto,
     UpdateSecuritySettingsDto,
     UpdateUserDto,
@@ -53,6 +54,7 @@ from app.modules.users.events import (
     UserDeletedEvent,
     UserPersonalDiscountChangedEvent,
     UserPurchaseDiscountChangedEvent,
+    UserTrialAvailabilityChangedEvent,
 )
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
@@ -66,6 +68,7 @@ from app.modules.users.usecases import (
     PromoteToAdminUseCase,
     RegisterTelegramUserUseCase,
     SetUserDiscountUseCase,
+    SetUserTrialAvailabilityUseCase,
     UpdateAdminUseCase,
     UpdateOwnSecuritySettingsUseCase,
 )
@@ -116,13 +119,12 @@ async def test_owner_can_create_admin(
 ) -> None:
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
 
-    result = await use_case(
-        OWNER, CreateAdminDto(client_ip="127.0.0.1", login="newadmin", name="New Admin")
-    )
+    result = await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="newadmin"))
     admin, password = result.admin, result.password
 
     assert admin.role == Role.ADMIN
     assert admin.login == "newadmin"
+    assert admin.name == "newadmin"
     assert len(password) == PASSWORD_MIN_LENGTH
 
 
@@ -140,7 +142,6 @@ async def test_create_admin_stores_permission_overrides(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="newadmin2",
-                name="New Admin 2",
                 permission_grants=[Permission.EVENT_LOG_VIEW],
             ),
         )
@@ -163,7 +164,6 @@ async def test_create_admin_rejects_manage_admins_grant(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="newadmin3",
-                name="X",
                 permission_grants=[Permission.ADMINS_MANAGE],
             ),
         )
@@ -183,7 +183,6 @@ async def test_create_admin_rejects_revoking_own_account_access(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="newadmin4",
-                name="X",
                 permission_revokes=[Permission.OWN_ACCOUNT_MANAGE],
             ),
         )
@@ -196,10 +195,10 @@ async def test_create_admin_rejects_duplicate_login(
     event_publisher: EventPublisher,
 ) -> None:
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
-    await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="dupe", name="First"))
+    await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="dupe"))
 
     with pytest.raises(ConflictError):
-        await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="dupe", name="Second"))
+        await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="dupe"))
 
 
 async def test_regular_admin_cannot_create_admin(
@@ -211,7 +210,7 @@ async def test_regular_admin_cannot_create_admin(
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(ADMIN, CreateAdminDto(client_ip="127.0.0.1", login="x", name="x"))
+        await use_case(ADMIN, CreateAdminDto(client_ip="127.0.0.1", login="x"))
 
 
 async def test_regular_user_cannot_create_admin(
@@ -223,7 +222,7 @@ async def test_regular_user_cannot_create_admin(
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
 
     with pytest.raises(PermissionDeniedError):
-        await use_case(REGULAR_USER, CreateAdminDto(client_ip="127.0.0.1", login="x", name="x"))
+        await use_case(REGULAR_USER, CreateAdminDto(client_ip="127.0.0.1", login="x"))
 
 
 async def test_owner_can_promote_existing_user_by_id(
@@ -246,7 +245,28 @@ async def test_owner_can_promote_existing_user_by_id(
 
     assert admin.id == target.id
     assert admin.role == Role.ADMIN
+    assert admin.name == "Client"
     assert password is not None
+
+
+async def test_promote_names_a_nameless_user_by_login(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+    event_publisher: EventPublisher,
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="", role=Role.USER, language=Locale.EN, telegram_id=840_002)
+        )
+        await uow.commit()
+
+    use_case = PromoteToAdminUseCase(user_repository, uow, config, event_publisher)
+    result = await use_case(
+        OWNER, PromoteToAdminDto(client_ip="127.0.0.1", user_id=target.id, login="nameless")
+    )
+
+    assert result.admin.name == "nameless"
 
 
 async def test_promote_reuses_existing_password_hash_when_already_set(
@@ -370,9 +390,7 @@ async def test_owner_can_update_admin_permissions(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tochange", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tochange"))
     ).admin
 
     update_use_case = UpdateAdminUseCase(user_repository, uow, event_publisher, session_repository)
@@ -397,9 +415,7 @@ async def test_revoking_permissions_also_revokes_active_sessions(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tosession", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tosession"))
     ).admin
     issuer = SessionIssuer(session_repository, uow, config)
     await issuer.issue(admin.id, "127.0.0.1", "pytest")
@@ -427,9 +443,7 @@ async def test_granting_permissions_alone_does_not_revoke_sessions(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tosession2", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tosession2"))
     ).admin
     issuer = SessionIssuer(session_repository, uow, config)
     await issuer.issue(admin.id, "127.0.0.1", "pytest")
@@ -462,7 +476,6 @@ async def test_update_admin_omitted_field_leaves_it_unchanged(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="tochange3",
-                name="X",
                 permission_grants=[Permission.OAUTH_SETTINGS_MANAGE],
                 permission_revokes=[Permission.BOT_SETTINGS_MANAGE],
             ),
@@ -494,7 +507,6 @@ async def test_update_admin_explicit_empty_list_clears_overrides(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="tochange4",
-                name="X",
                 permission_grants=[Permission.OAUTH_SETTINGS_MANAGE],
                 permission_revokes=[Permission.BOT_SETTINGS_MANAGE],
             ),
@@ -522,9 +534,7 @@ async def test_update_admin_rejects_manage_admins_grant(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tochange2", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="tochange2"))
     ).admin
 
     update_use_case = UpdateAdminUseCase(user_repository, uow, event_publisher, session_repository)
@@ -605,7 +615,6 @@ async def test_owner_can_demote_admin(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="todemote",
-                name="X",
                 permission_grants=[Permission.EVENT_LOG_VIEW],
             ),
         )
@@ -716,9 +725,7 @@ async def test_list_admins_returns_admins_and_owner(
         await uow.commit()
 
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
-    await create_use_case(
-        OWNER, CreateAdminDto(client_ip="127.0.0.1", login="listedadmin", name="X")
-    )
+    await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="listedadmin"))
 
     list_use_case = ListAdminsUseCase(user_repository, uow, oauth_identity_repository)
     admins = (await list_use_case(OWNER)).admins
@@ -988,9 +995,7 @@ async def test_create_admin_publishes_admin_created_event(
     session: AsyncSession,
 ) -> None:
     use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
-    admin = (
-        await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="eventtest1", name="X"))
-    ).admin
+    admin = (await use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="eventtest1"))).admin
 
     rows = await _outbox_rows(session, AdminCreatedEvent.__name__)
     assert len(rows) == 1
@@ -1034,7 +1039,7 @@ async def test_update_admin_publishes_permissions_updated_event(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt3", name="X"))
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt3"))
     ).admin
 
     update_use_case = UpdateAdminUseCase(user_repository, uow, event_publisher, session_repository)
@@ -1063,7 +1068,7 @@ async def test_demote_admin_publishes_admin_demoted_event(
 ) -> None:
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt4", name="X"))
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evt4"))
     ).admin
 
     demote_use_case = DemoteAdminUseCase(
@@ -1338,9 +1343,7 @@ async def test_owner_can_delete_admin(
     subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="todelete1", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="todelete1"))
     ).admin
 
     delete_use_case = DeleteAdminUseCase(
@@ -1492,9 +1495,7 @@ async def test_delete_admin_publishes_admin_deleted_event(
     subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evtdel1", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="evtdel1"))
     ).admin
 
     delete_use_case = DeleteAdminUseCase(
@@ -1800,9 +1801,7 @@ async def test_delete_admin_twice_raises_not_found_on_second_call(
     subscription_revoker = _NoopRevoker()
     create_use_case = CreateAdminUseCase(user_repository, uow, config, event_publisher)
     admin = (
-        await create_use_case(
-            OWNER, CreateAdminDto(client_ip="127.0.0.1", login="doubledel1", name="X")
-        )
+        await create_use_case(OWNER, CreateAdminDto(client_ip="127.0.0.1", login="doubledel1"))
     ).admin
 
     delete_use_case = DeleteAdminUseCase(
@@ -2001,7 +2000,6 @@ async def test_demote_admin_revokes_sessions_and_passkeys(
             CreateAdminDto(
                 client_ip="127.0.0.1",
                 login="losesaccess",
-                name="X",
                 permission_grants=[Permission.EVENT_LOG_VIEW],
             ),
         )
@@ -2052,7 +2050,7 @@ async def test_block_user_demotes_an_admin_before_blocking(
     admin = (
         await create_use_case(
             OWNER,
-            CreateAdminDto(client_ip="127.0.0.1", login="toblock", name="X", permission_grants=[]),
+            CreateAdminDto(client_ip="127.0.0.1", login="toblock", permission_grants=[]),
         )
     ).admin
     async with uow:
@@ -2174,9 +2172,7 @@ async def test_block_user_still_refuses_an_api_token_against_staff(
     admin = (
         await create_use_case(
             OWNER,
-            CreateAdminDto(
-                client_ip="127.0.0.1", login="staffmember", name="X", permission_grants=[]
-            ),
+            CreateAdminDto(client_ip="127.0.0.1", login="staffmember", permission_grants=[]),
         )
     ).admin
 
@@ -2290,3 +2286,33 @@ async def test_promote_refuses_an_account_promoted_while_its_password_was_hashed
             event_publisher,
             {"role": Role.ADMIN, "login": "first-admin"},
         )
+
+
+async def test_set_trial_availability_records_only_a_change(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+) -> None:
+    async with uow:
+        target = await user_repository.create(
+            CreateUserDto(name="Trial", role=Role.USER, language=Locale.EN, telegram_id=840_101)
+        )
+    use_case = SetUserTrialAvailabilityUseCase(user_repository, uow, event_publisher)
+
+    revoked = await use_case(
+        OWNER,
+        SetUserTrialAvailabilityDto(
+            user_id=target.id, is_trial_available=False, client_ip="127.0.0.1"
+        ),
+    )
+    await use_case(
+        OWNER,
+        SetUserTrialAvailabilityDto(
+            user_id=target.id, is_trial_available=False, client_ip="127.0.0.1"
+        ),
+    )
+
+    assert revoked.is_trial_available is False
+    [row] = await _outbox_rows(session, UserTrialAvailabilityChangedEvent.__name__)
+    assert row.payload["is_trial_available"] is False

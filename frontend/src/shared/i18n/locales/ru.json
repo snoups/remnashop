@@ -276,6 +276,16 @@
         "why": "Панель отказывает в создании пользователя с таким сквадом, поэтому план скрыт от покупки в боте и кабинете, а пробная подписка, промокод и выдача админом на нём не сработают.",
         "fix": "Откройте план и замените сквады на существующие в панели. План снова появится в продаже в течение минуты."
       },
+      "unratedAnchorAmounts": {
+        "title": "Перенесённые оплаты без курса",
+        "sub_one": "{{formatted}} оплата в {{currencies}} учтена по номиналу",
+        "sub_few": "{{formatted}} оплаты в {{currencies}} учтены по номиналу",
+        "sub_many": "{{formatted}} оплат в {{currencies}} учтены по номиналу",
+        "sub_other": "{{formatted}} оплаты в {{currencies}} учтены по номиналу",
+        "what": "Оплаты, перенесённые из старой версии в валюте, отличной от опорной, учтены по номиналу: при переносе курсов валют не было.",
+        "why": "Выручка, LTV и остальная аналитика складывают эти суммы так, будто они в опорной валюте.",
+        "fix": "Проверьте курсы валют в настройках цен и пересчитайте там старые оплаты."
+      },
       "sections": {
         "what": "Что случилось",
         "why": "Чем это грозит",
@@ -290,7 +300,8 @@
         "broadcasts": "К рассылкам",
         "email": "К настройкам почты",
         "apiTokens": "К API-токенам",
-        "plans": "К планам"
+        "plans": "К планам",
+        "pricing": "К ценам"
       }
     },
     "revenue": {
@@ -315,7 +326,7 @@
     },
     "online": {
       "title": "Онлайн",
-      "description": "Пиковый онлайн по часам и дням",
+      "description": "Пиковый онлайн",
       "hours24": "24 ч",
       "valueName": "В сети",
       "peak": "Пик — {{peak}} в {{time}}"
@@ -384,7 +395,7 @@
     "remnawaveUnavailable": "Remnawave недоступна",
     "nodes": {
       "title": "Ноды и страны",
-      "description": "Подключения и трафик за сегодня, по данным Remnawave",
+      "description": "Онлайн и трафик за сегодня",
       "nodes": "Ноды",
       "countries": "Страны",
       "empty": "Нет нод",
@@ -423,7 +434,7 @@
       "title": "Воронка новых клиентов",
       "steps": {
         "registered": "Регистрация",
-        "connected": "Подключение к VPN",
+        "connected": "Подключение",
         "first_paid": "Первая оплата",
         "repeat_paid": "Повторная оплата"
       },
@@ -531,15 +542,15 @@
     "vsPreviousDays": "к прошлым {{days}} дн.",
     "pp": "{{value}} п.п.",
     "empty": "Нет данных",
-    "emptyPeriod": "За этот период нет данных",
-    "totalPaid": "Оплачено всего",
+    "emptyPeriod": "Нет данных за этот период",
+    "totalPaid": "Сумма покупок",
     "metrics": {
       "periodSection": "За период",
       "comparedWith": "сравнение с {{range}}",
       "nowSection": "Сейчас",
       "revenue": "Выручка",
       "revenueCaption": "Платили {{payers}} · {{arppu}} на платящего",
-      "arppu": "Выручка на платящего",
+      "arppu": "На платящего",
       "newPayers": "Новые платящие",
       "conversion": "Оплатили за {{days}} дней",
       "conversionHint": "Доля пользователей, зарегистрированных не позже чем за {{days}} дней до конца периода и оплативших в течение {{days}} дней.",
@@ -720,10 +731,8 @@
       "code": "Промокод",
       "reward": "Награда",
       "activationsColumn": "Активаций",
-      "activationsCaption": "{{activations}} · всего {{total}}",
-      "activationsLimitCaption": "{{activations}} · {{total}} / {{max}}",
       "revenueColumn": "Выручка",
-      "toPayment": "→ оплата",
+      "toPayment": "Конверсия",
       "empty": "За этот период нет активаций промокодов"
     }
   },
@@ -807,6 +816,7 @@
       "LocaleDeactivatedEvent": "Локаль удалена",
       "DefaultLocaleChangedEvent": "Язык по умолчанию изменён",
       "AnchorSwitchedEvent": "Опорная валюта изменена",
+      "UnratedAnchorAmountsRatedEvent": "Старые оплаты пересчитаны по текущим курсам",
       "BasePricesAdjustedEvent": "Базовые цены изменены",
       "ApiTokenCreatedEvent": "API-токен создан",
       "ApiTokenRevokedEvent": "API-токен отозван",
@@ -845,6 +855,7 @@
       "UserPurchaseDiscountChangedEvent": "Скидка на покупку изменена",
       "UserUnblockedEvent": "Пользователь разблокирован",
       "UserEmailUndeliverableClearedEvent": "Снята отметка о недоставке почты",
+      "UserTrialAvailabilityChangedEvent": "Изменён доступ к пробному периоду",
       "UsersBulkUnblockedEvent": "Массовая разблокировка",
       "TransactionRefundedEvent": "Возврат транзакции",
       "PaidOrderNotFulfilledEvent": "Оплаченный заказ не выдан",
@@ -973,9 +984,7 @@
       "button": "Создать администратора",
       "title": "Создание администратора",
       "loginLabel": "Логин",
-      "loginPlaceholder": "например, ivan.petrov",
-      "nameLabel": "Отображаемое имя",
-      "namePlaceholder": "например, Иван Петров",
+      "loginPlaceholder": "Например, admin",
       "permissionsLabel": "Права",
       "error": "Не удалось создать администратора."
     },
@@ -1124,7 +1133,7 @@
             "NEW": "Покупка",
             "RENEW": "Продление",
             "CHANGE": "Смена плана",
-            "gap": "Перерыв без подписки",
+            "gap": "Перерыв в оплате",
             "refund": "Возврат",
             "today": "Сегодня"
           },
@@ -1134,7 +1143,8 @@
           "gaps_many": "{{count}} перерывов",
           "gaps_other": "{{count}} перерыва",
           "gap": "перерыв {{count}} дн.",
-          "empty": "Нет покупок"
+          "empty": "Нет покупок",
+          "freeNote": "Бесплатные дни (выдача, промокод, пробный период, бонусы рефералов) не учитываются."
         }
       },
       "empty": {
@@ -1186,6 +1196,12 @@
     },
     "status": {
       "blocked": "Заблокирован"
+    },
+    "unnamed": "Пользователь",
+    "contacts": {
+      "telegram": "TG: {{value}}",
+      "email": "Email: {{value}}",
+      "login": "Логин: {{value}}"
     },
     "deleted": {
       "name": "Удалённый пользователь",
@@ -1265,6 +1281,12 @@
       "badge": "Не доставляется",
       "clear": "Снять отметку о недоставке",
       "cleared": "Отметка о недоставке снята."
+    },
+    "trial": {
+      "allow": "Разрешить пробный период",
+      "revoke": "Запретить пробный период",
+      "allowed": "Пробный период разрешён.",
+      "revoked": "Пробный период запрещён."
     },
     "legalAcceptances": {
       "title": "Принятые документы",
@@ -2220,6 +2242,8 @@
     "TRANSACTIONS_FULFILL": "Ручная выдача подписки по транзакции",
     "TRANSACTIONS_REFUND": "Возврат Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Предпросмотр возврата Telegram Stars",
+    "TRANSACTIONS_UNRATED_VIEW": "Просмотр перенесённых оплат без курса",
+    "TRANSACTIONS_UNRATED_RATE": "Пересчёт перенесённых оплат по текущим курсам",
     "REFERRALS_VIEW": "Просмотр рефералов",
     "REFERRALS_INVITED_VIEW": "Просмотр приглашённых пользователя",
     "REFERRALS_REWARDS_VIEW": "Просмотр реферальных наград пользователя",
@@ -2254,6 +2278,7 @@
     "BLACKLIST_MATCHES_VIEW": "Просмотр пользователей из чёрного списка",
     "USERS_BLOCK": "Блокировка пользователей",
     "USERS_EMAIL_UNDELIVERABLE_CLEAR": "Снятие отметки о недоставке почты",
+    "USERS_TRIAL_MANAGE": "Разрешение и запрет пробного периода",
     "USERS_UNBLOCK": "Разблокировка пользователей",
     "USERS_UNBLOCK_BLACKLIST_MATCHES": "Разблокировка всех совпадений чёрного списка",
     "AD_LINKS_VIEW": "Просмотр рекламных ссылок",
@@ -2275,6 +2300,7 @@
     "ANALYTICS_REVENUE_VIEW": "Просмотр аналитики выручки",
     "ANALYTICS_TRIAL_VIEW": "Просмотр аналитики пробного периода",
     "ANALYTICS_RETENTION_VIEW": "Просмотр аналитики удержания",
+    "ANALYTICS_EXPIRING_VIEW": "Просмотр клиентов с истекающими подписками",
     "ANALYTICS_SOURCES_VIEW": "Просмотр источников привлечения",
     "ANALYTICS_PROMOCODES_VIEW": "Просмотр аналитики промокодов",
     "REMNAWAVE_NODES_VIEW": "Просмотр нод Remnawave",
@@ -2404,6 +2430,21 @@
       "confirmButton": "Сменить",
       "saved": "Опорная валюта обновлена.",
       "saveError": "Не удалось сменить опорную валюту."
+    },
+    "unrated": {
+      "title": "Старые оплаты без курса",
+      "description_one": "{{count}} оплата из старой версии в {{currencies}} учтена по номиналу",
+      "description_few": "{{count}} оплаты из старой версии в {{currencies}} учтены по номиналу",
+      "description_many": "{{count}} оплат из старой версии в {{currencies}} учтены по номиналу",
+      "description_other": "{{count}} оплаты из старой версии в {{currencies}} учтены по номиналу",
+      "button": "Пересчитать",
+      "confirmTitle": "Пересчёт старых оплат",
+      "confirmMessage_one": "{{count}} оплата в {{currencies}} будет пересчитана в опорную валюту по текущим курсам. Сначала проверьте курсы: отменить пересчёт нельзя.",
+      "confirmMessage_few": "{{count}} оплаты в {{currencies}} будут пересчитаны в опорную валюту по текущим курсам. Сначала проверьте курсы: отменить пересчёт нельзя.",
+      "confirmMessage_many": "{{count}} оплат в {{currencies}} будут пересчитаны в опорную валюту по текущим курсам. Сначала проверьте курсы: отменить пересчёт нельзя.",
+      "confirmMessage_other": "{{count}} оплаты в {{currencies}} будут пересчитаны в опорную валюту по текущим курсам. Сначала проверьте курсы: отменить пересчёт нельзя.",
+      "saved": "Старые оплаты пересчитаны.",
+      "saveError": "Не удалось пересчитать старые оплаты."
     },
     "settings": {
       "betaHint": "Пока не используется: клиенты не могут сами докупать дополнения.",
@@ -3061,6 +3102,7 @@
       "levelAll": "Все уровни",
       "level": "Уровень {{level}}",
       "levelBadge": "Ур. {{level}}",
+      "levelHint": "Пользователей на уровне {{level}}: {{count}}",
       "search": "Пользователь",
       "searchPlaceholder": "Имя, @username, ID или email",
       "rewardStatusAll": "Любые",
@@ -3502,8 +3544,7 @@
     "devicesCount_few": "{{count}} устройства",
     "devicesCount_many": "{{count}} устройств",
     "devicesCount_other": "{{count}} устройства",
-    "userLabel": "Пользователь #{{id}}",
-    "subscriptionLabel": "Подписка #{{id}}",
+    "until": "до {{date}}",
     "filters": {
       "search": "Поиск",
       "searchPlaceholder": "ID подписки, ID пользователя, тег или план",
@@ -3550,7 +3591,7 @@
       "addonsHint": "Аддоны сверху: +{{value}}"
     },
     "details": {
-      "paidTotal": "Оплачено с последней смены плана",
+      "paidTotal": "Оплачено",
       "subscription": "Подписка",
       "trafficUsed": "израсходовано {{value}}",
       "trafficLeftOf": "осталось из {{limit}}",
@@ -3558,11 +3599,18 @@
       "trafficLimit": "лимит трафика",
       "daysLeft": "Осталось",
       "devicesUpTo": "до {{limit}}",
+      "devicesOf": "{{count}} из {{limit}}",
       "panel": "Панель",
       "createdAt": "Создана",
       "firstConnectedAt": "Первое подключение",
       "link": "Ссылка",
       "remnawaveId": "ID в Remnawave",
+      "deviceSingleResetAt": "Удаление устройства",
+      "deviceAllResetAt": "Удаление всех устройств",
+      "linkResetAt": "Перевыпуск ссылки",
+      "onlineAt": "Последний онлайн",
+      "subLastOpenedAt": "Запрос подписки",
+      "subLastUserAgent": "Приложение",
       "internalSquads": "Внутренние сквады",
       "externalSquad": "Внешний сквад",
       "addons": "Аддоны"
@@ -3612,10 +3660,10 @@
       "submit": "Сменить",
       "changed": "План изменён.",
       "error": "Не удалось сменить план.",
-      "resetWarning": "Дополнения будут удалены. Лимиты, стратегия сброса, сквады и тег станут как в новом плане. Номер подписки изменится, ссылка останется прежней."
+      "resetWarning": "Дополнения будут удалены. Лимиты, стратегия сброса, сквады и тег станут как в новом плане. Номер подписки изменится, ссылка останется прежней. Новый срок считается от сегодня, остаток текущей подписки не переносится."
     },
     "devices": {
-      "empty": "Устройств нет",
+      "empty": "Нет подключённых устройств",
       "deleted": "Устройство удалено.",
       "deleteAll": "Удалить все устройства",
       "deleteAllTitle": "Удалить все устройства?",

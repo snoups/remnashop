@@ -36,6 +36,7 @@ import {
   refundTransaction,
 } from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { userNameField } from "@entities/user/display";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
@@ -132,11 +133,11 @@ function TransactionDetailsDialogBody({
     }
   };
 
-  const plan = `${order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? none} · ${t("plans.daysShort", { count: order.duration_days })}`;
+  const plan = `${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`;
   const previous = order.previous_plan_snapshot;
   const previousPlan =
     previous &&
-    [previous.name ?? previous.public_code ?? none, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
+    [previous.name, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
       .filter(Boolean)
       .join(" · ");
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);
@@ -241,7 +242,7 @@ function TransactionDetailsDialogBody({
               {order.user_id}
             </InfoRow>
             <InfoRow icon={User} label={t("transactions.details.name")} copyValue={user?.name || undefined}>
-              <DetailValue value={user ? user.name || t("users.deleted.name") : none} />
+              <DetailValue value={user ? userNameField(user, t) : none} />
             </InfoRow>
             <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user?.email ?? undefined} mono>
               <DetailValue value={user?.email ?? none} />

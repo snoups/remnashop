@@ -29,6 +29,7 @@ from app.cli.legacy.run import (
 )
 from app.cli.legacy.schema import LEGACY_HEAD, current_revision
 from app.core.config import AppConfig
+from tests.cli.legacy.conftest import NEW_HEAD
 
 LegacyAt = Callable[[AsyncEngine, str], Awaitable[None]]
 
@@ -298,7 +299,7 @@ async def test_run_migration_refuses_current_database(
         await run_migration(pointed)
 
     async with legacy_engine.connect() as connection:
-        assert await current_revision(connection) == "1000"
+        assert await current_revision(connection) == NEW_HEAD
         assert await connection.scalar(text("SELECT count(*) FROM legacy.users")) == 0
 
 

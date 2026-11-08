@@ -98,7 +98,6 @@ class UserListStatsResponse(BaseModel):
 
 class CreateAdminRequest(BaseModel):
     login: str = Field(min_length=1, max_length=64)
-    name: str = Field(min_length=1)
     permission_grants: list[Permission] = Field(default_factory=list)
     permission_revokes: list[Permission] = Field(default_factory=list)
 
@@ -154,6 +153,10 @@ class UpdateSecurityRequest(BaseModel):
 class SetDiscountRequest(BaseModel):
     personal_discount: Optional[int] = Field(None, ge=0, le=100)
     purchase_discount: Optional[int] = Field(None, ge=0, le=100)
+
+
+class SetTrialAvailabilityRequest(BaseModel):
+    is_trial_available: bool
 
 
 class BindTelegramRequest(BaseModel):

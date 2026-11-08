@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Final, Optional
 from urllib.parse import urlparse
 
@@ -18,6 +19,7 @@ class PanelIndex:
     by_short_uuid: dict[str, int] = field(default_factory=dict)
     by_username: dict[str, int] = field(default_factory=dict)
     by_telegram_id: dict[int, list[int]] = field(default_factory=dict)
+    first_connected_at: dict[int, datetime] = field(default_factory=dict)
 
 
 async def fetch_panel_index(sdk: RemnawaveSDK, page_size: int = _PAGE_SIZE) -> PanelIndex:
@@ -28,6 +30,8 @@ async def fetch_panel_index(sdk: RemnawaveSDK, page_size: int = _PAGE_SIZE) -> P
         for user in page.users:
             index.by_short_uuid[user.short_uuid] = user.id
             index.by_username[user.username] = user.id
+            if user.first_connected_at is not None:
+                index.first_connected_at[user.id] = user.first_connected_at
             if user.telegram_id is not None:
                 index.by_telegram_id.setdefault(user.telegram_id, []).append(user.id)
         if not page.has_more or page.next_cursor is None:

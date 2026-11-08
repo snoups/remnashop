@@ -81,6 +81,12 @@ class UserEmailUndeliverableClearedEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class UserTrialAvailabilityChangedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.USER
+    is_trial_available: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class TelegramRegistrationBlockedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.USER
 

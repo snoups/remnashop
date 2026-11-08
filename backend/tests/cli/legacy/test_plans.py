@@ -92,3 +92,34 @@ def test_counts_reported() -> None:
     report = MigrationReport()
     transform_plans([PLAN], DURATIONS, [], anchor_currency=Currency.RUB, report=report)
     assert report.counts["plans"].migrated == 1
+
+
+def test_leading_emoji_stripped_and_default_icon_set() -> None:
+    names = {
+        1: "🚀 Premium",
+        2: "🇷🇺Россия 🔥",
+        3: "👨‍👩‍👧  Семья",
+        4: "👍🏽 Ок",
+        5: "Basic",
+        6: "🔥",
+    }
+    report = MigrationReport()
+    rows = transform_plans(
+        [{**PLAN, "id": i, "name": n} for i, n in names.items()],
+        [],
+        [],
+        anchor_currency=Currency.RUB,
+        report=report,
+    )
+    assert [p["name"] for p in rows.plans] == [
+        "Premium",
+        "Россия 🔥",
+        "Семья",
+        "Ок",
+        "Basic",
+        "🔥",
+    ]
+    assert {(p["icon_emoji_id"], p["icon_emoji_fallback"]) for p in rows.plans} == {
+        ("5429613693287578957", "📦")
+    }
+    assert "plans: leading emoji removed from 4 plan names" in report.notes

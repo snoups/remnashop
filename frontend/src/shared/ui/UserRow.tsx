@@ -1,13 +1,17 @@
+import { User } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { initials } from "@shared/lib/initials";
-import { IconCircle } from "@shared/ui/glass/IconCircle";
-import { Pressable } from "@shared/ui/Pressable";
+import { Row } from "@shared/ui/glass/Row";
 
 interface UserRowProps {
   /** empty for a deleted account: shown as users.deleted.name */
   name: string | null | undefined;
+  /** set: a mono #id after the name, as in the users list; pair it with a name that has no id of its own */
+  id?: number;
+  /** the account has no name of its own: a user icon instead of initials */
+  unnamed?: boolean;
   subtitle: ReactNode;
   /** badges, a tag or an amount on the right */
   aside?: ReactNode;
@@ -15,25 +19,23 @@ interface UserRowProps {
   onClick?: () => void;
 }
 
-/** A user in a Card variant="list": initials, name, subtitle; opens their card on click.
- *  48px pill: the 32px circle 8px in on every side, a 20px badge on the right 14px in, as on its curve. */
-export function UserRow({ name, subtitle, aside, onClick }: UserRowProps) {
+/** A user in a DialogCard list: a Row size="sm" with initials, name, subtitle; opens their card on click. */
+export function UserRow({ name, id, unnamed = false, subtitle, aside, onClick }: UserRowProps) {
   const { t } = useTranslation();
   return (
-    <Pressable
-      type="button"
-      disabled={!onClick}
+    <Row
+      size="sm"
+      glyph={unnamed ? <User className="size-4" /> : <span className="text-[11px] font-bold">{initials(name)}</span>}
+      label={
+        <>
+          <span className="truncate">{name || t("users.deleted.name")}</span>
+          {id !== undefined && <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">#{id}</span>}
+        </>
+      }
+      description={subtitle}
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-full py-2 pl-2 pr-3.5 text-left transition-colors enabled:hover:bg-white/[0.04] disabled:cursor-default"
     >
-      <IconCircle glyph={<span className="text-[11px] font-bold">{initials(name)}</span>} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium leading-tight text-foreground/90">
-          {name || t("users.deleted.name")}
-        </p>
-        <p className="truncate text-[12px] leading-tight text-muted-foreground">{subtitle}</p>
-      </div>
       {aside}
-    </Pressable>
+    </Row>
   );
 }

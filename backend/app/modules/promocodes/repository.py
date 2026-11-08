@@ -376,12 +376,20 @@ class PromocodeRepository:
         row = result.scalar_one_or_none()
         return self._to_activation_dto(row) if row is not None else None
 
-    async def list_activations_by_user(self, user_id: int) -> list[UserPromocodeActivationDto]:
+    async def list_activations_by_user(
+        self, user_id: int, *, page: int = 1, page_size: int = 50
+    ) -> tuple[list[UserPromocodeActivationDto], int]:
+        condition = PromocodeActivation.user_id == user_id
+        total = await self.session.scalar(
+            select(func.count()).select_from(PromocodeActivation).where(condition)
+        )
         rows = await self.session.execute(
             select(PromocodeActivation, Promocode)
             .join(Promocode, Promocode.id == PromocodeActivation.promocode_id)
-            .where(PromocodeActivation.user_id == user_id)
-            .order_by(PromocodeActivation.activated_at.desc())
+            .where(condition)
+            .order_by(PromocodeActivation.activated_at.desc(), PromocodeActivation.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
         )
         return [
             UserPromocodeActivationDto(
@@ -394,4 +402,4 @@ class PromocodeRepository:
                 activated_at=activation.activated_at,
             )
             for activation, promo in rows.tuples()
-        ]
+        ], total or 0

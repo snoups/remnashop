@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Final, Literal, Optional
+from typing import Any, Final, Literal, Optional
 
 from sqlalchemy import ColumnElement, Numeric, and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +30,11 @@ from app.modules.subscriptions.dto import (
 # modules/plans/repository.py are 8221938/8221939).
 _SUBSCRIPTION_PURCHASE_CAP_LOCK_KEY: Final[int] = 8221940
 RECONCILE_EXPIRED_WINDOW: Final[timedelta] = timedelta(days=30)
+# the subscriptions a customer is using now, listed first on their own card
+_LIVE_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
+    SubscriptionStatus.ACTIVE,
+    SubscriptionStatus.LIMITED,
+)
 
 ResetColumn = Literal["device_single_reset_at", "device_all_reset_at", "link_reset_at"]
 
@@ -174,10 +179,14 @@ class SubscriptionRepository:
         count_stmt = select(func.count()).select_from(Subscription).where(*filters)
         total = await self.session.scalar(count_stmt)
 
+        # newest first; one user's list puts the working ones (active, limited) on top
+        order: list[ColumnElement[Any]] = [Subscription.id.desc()]
+        if user_id is not None:
+            order.insert(0, Subscription.status.notin_(_LIVE_STATUSES))
         stmt = (
             select(Subscription)
             .where(*filters)
-            .order_by(Subscription.id)
+            .order_by(*order)
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

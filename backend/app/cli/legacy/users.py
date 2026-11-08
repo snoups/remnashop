@@ -5,7 +5,7 @@ from typing import Any, Final, Optional
 from app.cli.legacy.report import MigrationReport
 from app.core.enums import Role
 from app.core.utils.email import canonical_email
-from app.modules.users import generate_referral_code
+from app.modules.users import clean_display_name, generate_referral_code
 
 _TABLE: Final[str] = "users"
 _REFERRAL_CODE_MAX_LENGTH: Final[int] = 16
@@ -20,7 +20,6 @@ _COPIED: Final[tuple[str, ...]] = (
     "id",
     "telegram_id",
     "username",
-    "name",
     "language",
     "personal_discount",
     "purchase_discount",
@@ -61,6 +60,14 @@ def _email_holders(
 
 def _email_rank(row: Mapping[str, Any], live: set[int]) -> tuple[bool, int]:
     return (int(row["id"]) not in live, int(row["id"]))
+
+
+def _clean_name(row: Mapping[str, Any]) -> str:
+    # the old bot stored the telegram_id as the name of a Telegram account without one
+    name = row.get("name")
+    if name is None or name == str(row.get("telegram_id")):
+        return ""
+    return clean_display_name(name)
 
 
 def transform_users(
@@ -109,6 +116,7 @@ def transform_users(
         item = {column: row.get(column) for column in _COPIED}
         item.update(
             role=role,
+            name=_clean_name(row),
             email=email,
             email_canonical=canonical_email(email) if email else None,
             password_hash=None,

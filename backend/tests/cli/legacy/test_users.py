@@ -126,3 +126,14 @@ def test_rules_and_current_subscription_dropped() -> None:
     out, _ = _run([_row(1, current_subscription_id=7)])
     assert "is_rules_accepted" not in out[1]
     assert "current_subscription_id" not in out[1]
+
+
+def test_names_hold_only_a_real_name() -> None:
+    rows = [
+        _row(1, name="Иван 🔥"),
+        _row(2, name=str(1002)),
+        _row(3, name="."),
+        _row(4, name="🐈‍⬛"),
+    ]
+    out, _ = _run(rows)
+    assert [out[i]["name"] for i in (1, 2, 3, 4)] == ["Иван", "", "", ""]

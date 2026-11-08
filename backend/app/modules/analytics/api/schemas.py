@@ -227,6 +227,11 @@ class ExpiringCustomerResponse(BaseModel):
     renewals: int
 
 
+class ExpiringCustomerPageResponse(BaseModel):
+    items: list[ExpiringCustomerResponse]
+    total: int
+
+
 class PlanActiveResponse(BaseModel):
     plan_name: str
     active: int
@@ -247,7 +252,6 @@ class RetentionResponse(BaseModel):
     expiring_paid: int
     expiring_trials: int
     expiring_weeks: list[ExpiringWeekResponse]
-    expiring_top: list[ExpiringCustomerResponse]
     active_by_plan: list[PlanActiveResponse]
     monthly_churn: list[MonthlyChurnResponse]
 

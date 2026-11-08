@@ -1,5 +1,4 @@
-import type { ParseKeys } from "i18next";
-import { Receipt } from "lucide-react";
+import { Receipt, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -11,9 +10,7 @@ import { initials } from "@shared/lib/initials";
 import { formatTime } from "@shared/lib/relative-time";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { CellText } from "@shared/ui/CellText";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
-import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { LIST_BODY_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
@@ -66,11 +63,20 @@ export function RecentPaymentsCard({
               onClick={() => openUser(payment.user_id)}
               className={`grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3`}
             >
-              <IconCircle glyph={<span className="text-[11px] font-bold">{initials(payment.name)}</span>} />
-              <CellText
-                title={`${payment.name} · ${payment.plan_name}`}
-                sub={`${t(`settings.gateways.types.${payment.gateway_type}` as ParseKeys, { defaultValue: payment.gateway_type })} · ${formatPaidAt(payment.paid_at, language)}`}
-              />
+              <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+                {payment.name ? initials(payment.name) : <User className="size-4" />}
+              </span>
+              <span className="min-w-0">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-[13px] font-medium text-foreground">
+                    {payment.name || t("users.unnamed")}
+                  </span>
+                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{payment.user_id}</span>
+                </span>
+                <span className="block truncate text-[12px] text-muted-foreground">
+                  {`${payment.plan_name} · ${formatPaidAt(payment.paid_at, language)}`}
+                </span>
+              </span>
               <span className="flex flex-col items-end gap-1">
                 <span className="text-[13px] font-semibold tabular-nums text-foreground">
                   {formatMoney(payment.amount, payment.currency, language)}

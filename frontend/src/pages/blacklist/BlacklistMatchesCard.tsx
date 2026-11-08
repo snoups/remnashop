@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, SearchX, Unlock, UserX } from "lucide-react";
+import { ChevronLeft, ChevronRight, SearchX, Unlock, User, UserX } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ import {
   type BlacklistOrigin,
   unblockBlacklistMatches,
 } from "@entities/blacklist/api";
+import { userLabel } from "@entities/user/display";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { UserDetailsDialog } from "@features/user-details/UserDetailsDialog";
@@ -182,9 +183,17 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                   >
                     <td className="h-15 px-3">
                       <div className="flex items-center gap-2.5">
-                        <IconCircle glyph={<span className="text-[11px] font-bold">{initials(match.user.name)}</span>} />
+                        <IconCircle
+                          glyph={
+                            match.user.name ? (
+                              <span className="text-[11px] font-bold">{initials(match.user.name)}</span>
+                            ) : (
+                              <User className="size-4" />
+                            )
+                          }
+                        />
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">{match.user.name}</p>
+                          <p className="truncate font-medium text-foreground">{userLabel(match.user, match.user.id, t)}</p>
                           <p className="truncate text-[12px] text-muted-foreground">
                             {match.user.username ? `@${match.user.username}` : `#${match.user.id}`}
                           </p>
@@ -219,7 +228,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                       ) : (
                         <Badge borderless tone="warning">
                           {t("blacklist.matches.pending")}
-                          <FieldHint text={t("blacklist.matches.pendingHint")} glass />
+                          <FieldHint text={t("blacklist.matches.pendingHint")} />
                         </Badge>
                       )}
                     </td>

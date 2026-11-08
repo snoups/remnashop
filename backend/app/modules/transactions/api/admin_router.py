@@ -24,13 +24,17 @@ from app.modules.transactions.api.schemas import (
     TransactionPageResponse,
     TransactionResponse,
     TransactionSummaryResponse,
+    UnratedAnchorCountListResponse,
+    UnratedAnchorCountResponse,
 )
 from app.modules.transactions.dto import (
     FulfillTransactionDto,
     GetTransactionSummaryDto,
     ListTransactionsDto,
+    RateUnratedAnchorAmountsDto,
     RefundTransactionDto,
     TransactionWithUserDto,
+    UnratedAnchorCountDto,
 )
 from app.modules.transactions.usecases import (
     CreateTestPaymentUseCase,
@@ -41,7 +45,9 @@ from app.modules.transactions.usecases import (
     GetTransactionUseCase,
     ListTransactionGatewaysUseCase,
     ListTransactionsUseCase,
+    ListUnratedAnchorAmountsUseCase,
     PreviewRefundUseCase,
+    RateUnratedAnchorAmountsUseCase,
     RefundTransactionUseCase,
 )
 from app.modules.users import UserDto
@@ -141,6 +147,33 @@ async def list_transaction_gateways(
 ) -> TransactionGatewayListResponse:
     items = await use_case(actor)
     return TransactionGatewayListResponse(items=items, total=len(items))
+
+
+def _to_unrated_response(items: list[UnratedAnchorCountDto]) -> UnratedAnchorCountListResponse:
+    return UnratedAnchorCountListResponse(
+        items=[UnratedAnchorCountResponse.model_validate(i, from_attributes=True) for i in items],
+        total=len(items),
+    )
+
+
+@router.get("/unrated-anchor-amounts", response_model=UnratedAnchorCountListResponse)
+@inject
+async def list_unrated_anchor_amounts(
+    use_case: FromDishka[ListUnratedAnchorAmountsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UnratedAnchorCountListResponse:
+    return _to_unrated_response(await use_case(actor))
+
+
+@router.post("/unrated-anchor-amounts/actions/rate", response_model=UnratedAnchorCountListResponse)
+@inject
+async def rate_unrated_anchor_amounts(
+    request: Request,
+    use_case: FromDishka[RateUnratedAnchorAmountsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> UnratedAnchorCountListResponse:
+    items = await use_case(actor, RateUnratedAnchorAmountsDto(client_ip=resolve_client_ip(request)))
+    return _to_unrated_response(items)
 
 
 @router.post(

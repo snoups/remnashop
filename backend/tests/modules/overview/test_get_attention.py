@@ -291,6 +291,37 @@ async def test_stale_pending_counts_only_orders_between_15_and_30_minutes_old(
     assert {i.kind: i.count for i in result.items}["stale_pending"] == 1
 
 
+async def test_migrated_amounts_without_a_rate_are_listed_with_their_currencies(
+    session: AsyncSession,
+    user_repository: UserRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    plan_id: int,
+    redis_alive: Redis,
+) -> None:
+    repo = TransactionRepository(session)
+    user = await user_repository.create(CreateUserDto(name="Payer", telegram_id=840_003))
+    async with uow:
+        orders = [
+            await repo.create(
+                _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=f"ur-{i}")
+            )
+            for i in range(3)
+        ]
+    await session.execute(
+        update(Transaction)
+        .where(Transaction.id.in_([order.id for order in orders[:2]]))
+        .values(anchor_unrated=True)
+    )
+
+    result = await _use_case(session, _sdk(_NodesStub([])), uow, settings_repository, redis_alive)(
+        OWNER
+    )
+
+    item = next(i for i in result.items if i.kind == "unrated_anchor_amounts")
+    assert (item.count, item.subject) == (2, orders[0].currency.value)
+
+
 async def test_failed_backup_stays_visible_after_a_later_run_of_another_kind(
     session: AsyncSession,
     settings_repository: SettingsRepository,

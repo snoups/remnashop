@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
@@ -16,6 +17,7 @@ const USERS_PAGE_SIZE = 10;
 export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
+  const canOpenUsers = useCanOpenUsers();
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (id: number, page, signal) => listAdLinkAttributedUsers(id, page, USERS_PAGE_SIZE, signal),
     adLink.id,
@@ -37,14 +39,16 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
         state.items.map((user) => (
           <UserRow
             key={user.user_id}
-            name={user.name}
+            name={user.name || t("users.unnamed")}
+            id={user.user_id}
+            unnamed={!user.name}
             subtitle={`${t(`advertising.channel.${user.channel}`)} · ${formatDateTime(user.created_at, i18n.language)}`}
             aside={
               <Badge borderless tone={user.has_paid ? "success" : "neutral"}>
                 {user.has_paid ? t("advertising.stats.hasPaid") : t("advertising.stats.notPaid")}
               </Badge>
             }
-            onClick={() => openUser(user)}
+            onClick={canOpenUsers ? () => openUser(user) : undefined}
           />
         ))}
       {state.kind === "ready" && hasMore && (

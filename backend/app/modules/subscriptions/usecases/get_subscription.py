@@ -31,5 +31,5 @@ class GetSubscriptionUseCase(UseCase[int, SubscriptionDetailsDto]):
             )
         return SubscriptionDetailsDto(
             subscription=subscription,
-            used_traffic=await self._usage.used_traffic(subscription),
+            activity=await self._usage.activity(subscription),
         )

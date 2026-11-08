@@ -22,6 +22,7 @@ import type { BroadcastAudience, SubscriptionFilter } from "@entities/broadcasts
 import type { AdLink } from "@entities/advertising/api";
 import type { Plan } from "@entities/plans/api";
 import { listUsers } from "@entities/user/api";
+import { userLabel } from "@entities/user/display";
 import { normalizePositiveInt } from "@shared/lib/chip-normalizers";
 import { formatDate } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -94,7 +95,8 @@ function UserPicker({
           {results.map((user) => (
             <UserRow
               key={user.id}
-              name={user.name}
+              name={userLabel(user, user.id, t)}
+              unnamed={!user.name && !user.login}
               subtitle={[`#${user.id}`, user.username ? `@${user.username}` : null].filter(Boolean).join(" · ")}
               onClick={
                 userIds.includes(user.id)

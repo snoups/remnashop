@@ -320,7 +320,7 @@ export function ReferralSettingsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className={SWITCH_LABEL_CLASS}>
                     {t("referrals.settings.daysRequirePaidLabel")}
-                    <FieldHint text={t("referrals.settings.daysRequirePaidHint")} glass />
+                    <FieldHint text={t("referrals.settings.daysRequirePaidHint")} />
                   </span>
                   <Switch checked={daysRequirePaid} onChange={setDaysRequirePaid} disabled={areSettingsLocked} />
                 </div>
@@ -484,7 +484,7 @@ export function ReferralSettingsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="referrals-invitee" className={SWITCH_LABEL_CLASS}>
                     {t("referrals.settings.invitee.amountLabel")}
-                    <FieldHint text={t("referrals.settings.invitee.hint")} glass />
+                    <FieldHint text={t("referrals.settings.invitee.hint")} />
                   </label>
                   <Input
                     className="w-28 shrink-0"

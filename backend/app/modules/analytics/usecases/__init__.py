@@ -8,6 +8,7 @@ from app.modules.analytics.usecases.get_retention import GetRetentionUseCase
 from app.modules.analytics.usecases.get_revenue import GetRevenueUseCase
 from app.modules.analytics.usecases.get_sources import GetSourcesUseCase
 from app.modules.analytics.usecases.get_trial import GetTrialUseCase
+from app.modules.analytics.usecases.list_expiring_customers import ListExpiringCustomersUseCase
 
 __all__ = [
     "GetAnalyticsUseCase",
@@ -20,4 +21,5 @@ __all__ = [
     "GetRevenueUseCase",
     "GetSourcesUseCase",
     "GetTrialUseCase",
+    "ListExpiringCustomersUseCase",
 ]

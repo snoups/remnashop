@@ -199,7 +199,7 @@ async def test_email_registration_publishes_event(
     user, _ = await sign_in.email(
         "New@Mail.ru", Locale.EN, InviteCodesDto(referral_code="abc"), _IP, None
     )
-    assert user.email == "new@mail.ru" and user.name == "new"
+    assert user.email == "new@mail.ru" and user.name == ""
     [event] = await _outbox(session, "CabinetUserRegisteredEvent")
     assert event.payload["method"] == "EMAIL"
     assert event.payload["referral_code"] == "abc"

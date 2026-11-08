@@ -10,6 +10,7 @@ import {
   CreditCard,
   DatabaseBackup,
   DatabaseZap,
+  History,
   Hourglass,
   Info,
   KeyRound,
@@ -77,6 +78,7 @@ const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = 
   api_token_expiring: KeyRound,
   bot_webhook: Bot,
   plan_squads_missing: Network,
+  unrated_anchor_amounts: History,
 };
 
 interface AttentionLink {
@@ -147,6 +149,11 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
     to: "/dashboard/plans",
     label: "dashboard.attention.actions.plans",
     allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "plans" && isNavItemVisible(item, permissions)),
+  },
+  unrated_anchor_amounts: {
+    to: "/dashboard/settings/pricing",
+    label: "dashboard.attention.actions.pricing",
+    allowed: settingsTabAllowed("pricing"),
   },
 };
 
@@ -262,6 +269,16 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         title: t("dashboard.attention.planSquadsMissing.title", { name: item.subject ?? "" }),
         sub: counted("dashboard.attention.planSquadsMissing.sub"),
       };
+    case "unrated_anchor_amounts":
+      // subject: their currencies
+      return {
+        title: t("dashboard.attention.unratedAnchorAmounts.title"),
+        sub: t("dashboard.attention.unratedAnchorAmounts.sub", {
+          count: item.count,
+          formatted,
+          currencies: item.subject ?? "",
+        }),
+      };
   }
 }
 
@@ -284,6 +301,7 @@ const KIND_KEY: Record<AttentionKind, string> = {
   api_token_expiring: "apiTokenExpiring",
   bot_webhook: "botWebhook",
   plan_squads_missing: "planSquadsMissing",
+  unrated_anchor_amounts: "unratedAnchorAmounts",
 };
 
 function ExplainBlock({ icon, title, text }: { icon: ComponentType<{ className?: string }>; title: string; text: string }) {

@@ -39,7 +39,7 @@ class CreateAdminUseCase(UseCase[CreateAdminDto, AdminWithPasswordDto]):
                     login=data.login,
                     password_hash=password_hash,
                     password_change_required=True,
-                    name=data.name,
+                    name=data.login,
                     role=Role.ADMIN,
                     language=Locale.EN,
                     permission_grants=[p.value for p in data.permission_grants],

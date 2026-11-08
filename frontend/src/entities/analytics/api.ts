@@ -315,13 +315,21 @@ export interface Retention {
   expiring_paid: number;
   expiring_trials: number;
   expiring_weeks: ExpiringWeek[];
-  expiring_top: ExpiringCustomer[];
   active_by_plan: PlanActive[];
   monthly_churn: MonthlyChurn[];
 }
 
 export function getRetention(signal?: AbortSignal): Promise<Retention> {
   return apiGet<Retention>("/analytics/retention", signal);
+}
+
+export function listExpiringCustomers(
+  page: number,
+  pageSize: number,
+  signal?: AbortSignal,
+): Promise<{ items: ExpiringCustomer[]; total: number }> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiGet<{ items: ExpiringCustomer[]; total: number }>(`/analytics/retention/expiring?${params.toString()}`, signal);
 }
 
 export interface SourceRow {
