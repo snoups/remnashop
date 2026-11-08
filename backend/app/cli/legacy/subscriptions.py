@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any, Final
 
 from app.cli.legacy.panel import PanelIndex, resolve_panel_id
+from app.cli.legacy.plans import strip_leading_emoji
 from app.cli.legacy.report import MigrationReport
 from app.core.enums import Currency, SubscriptionStatus
 
@@ -35,7 +36,8 @@ def convert_plan_snapshot(
     return {
         "plan_id": old["id"],
         "public_code": public_code,
-        "name": old["name"],
+        # the same name the migrated plan got, so reports group old and new orders together
+        "name": strip_leading_emoji(old["name"]),
         "price_paid": str(price_paid),
         "currency": currency.value,
         "duration_days": duration,
@@ -140,6 +142,7 @@ def transform_subscriptions(
         item.update(
             status=status,
             remnawave_user_id=panel_id,
+            first_connected_at=index.first_connected_at.get(panel_id),
             paused_by_channel_leave=bool(row.get("disabled_by_channel_leave")),
             plan_snapshot=convert_plan_snapshot(
                 old_snapshot, public_code=public_code, price_paid=price, currency=currency

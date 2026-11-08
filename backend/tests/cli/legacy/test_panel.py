@@ -47,6 +47,18 @@ async def test_fetch_panel_index_follows_cursor() -> None:
     assert index.by_short_uuid["s7"] == 7
 
 
+async def test_fetch_panel_index_keeps_first_connection() -> None:
+    store: dict[int, dict[str, Any]] = {}
+    _put(store, 1, "u1")
+    _put(store, 2, "u2")
+    store[1]["userTraffic"]["firstConnectedAt"] = "2025-12-01T10:00:00.000Z"
+    transport, _, _ = make_fake_remnawave_transport(store)
+
+    index = await fetch_panel_index(_sdk(transport))
+
+    assert index.first_connected_at == {1: datetime(2025, 12, 1, 10, tzinfo=timezone.utc)}
+
+
 def _index() -> PanelIndex:
     return PanelIndex(
         by_short_uuid={"abc123XYZ": 5},

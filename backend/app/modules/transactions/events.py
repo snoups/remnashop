@@ -81,3 +81,10 @@ class TransactionCanceledEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int
     user_id: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class UnratedAnchorAmountsRatedEvent(ActorEvent):
+    category: ClassVar[EventCategory] = EventCategory.PRICING
+    currencies: list[Currency]
+    count: int

@@ -323,3 +323,14 @@ class RefundPreviewDto:
 class RefundResultDto:
     transaction: TransactionWithUserDto
     rollback_failed: bool
+
+
+@dataclass(frozen=True, kw_only=True)
+class UnratedAnchorCountDto:
+    currency: Currency
+    count: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class RateUnratedAnchorAmountsDto:
+    client_ip: str

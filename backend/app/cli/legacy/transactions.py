@@ -43,6 +43,7 @@ def transform_transactions(
     *,
     plan_ids: set[int],
     subscription_ids: set[int],
+    cabinet_user_ids: set[int],
     anchor_currency: Currency,
     rates: Mapping[Currency, Decimal],
     report: MigrationReport,
@@ -60,7 +61,8 @@ def transform_transactions(
 
         anchor_base = _to_anchor(base_price, currency, anchor_currency, rates)
         anchor_final = _to_anchor(final_price, currency, anchor_currency, rates)
-        if anchor_base is None or anchor_final is None:
+        anchor_unrated = anchor_base is None or anchor_final is None
+        if anchor_unrated:
             anchor_base, anchor_final = base_price, final_price
             unrated.append(currency)
 
@@ -78,7 +80,11 @@ def transform_transactions(
             previous_plan_snapshot=None,
             duration_days=int(old_snapshot.get("duration") or 0),
             currency=currency,
-            channel=PurchaseChannel.BOT,
+            channel=(
+                PurchaseChannel.CABINET
+                if int(row["user_id"]) in cabinet_user_ids
+                else PurchaseChannel.BOT
+            ),
             gateway_type=PaymentGatewayType(row["gateway_type"]),
             external_payment_id=None,
             status=status,
@@ -91,6 +97,7 @@ def transform_transactions(
             final_price=final_price,
             anchor_base_price=anchor_base,
             anchor_final_price=anchor_final,
+            anchor_unrated=anchor_unrated,
             idempotency_key=str(row["payment_id"]),
             expires_at=row["created_at"],
             fulfilled_at=row["updated_at"] if status is TransactionStatus.PAID else None,
@@ -106,7 +113,8 @@ def transform_transactions(
         currencies = ", ".join(sorted({currency.value for currency in unrated}))
         report.notes.append(
             f"transactions: anchor amounts for {len(unrated)} transactions in {currencies} "
-            "equal their nominal amounts (no currency rates at migration time)"
+            "equal their nominal amounts (no currency rates at migration time): "
+            "check the rates in the dashboard and recalculate them there"
         )
     return result
 

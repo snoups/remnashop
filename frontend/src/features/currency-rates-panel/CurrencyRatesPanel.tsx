@@ -1,4 +1,4 @@
-import { Anchor, Coins, Filter, Gauge } from "lucide-react";
+import { Anchor, Coins, Filter, Gauge, History } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -15,12 +15,18 @@ import {
   type RoundingMode,
 } from "@entities/pricing/api";
 import { PricingDiffList } from "@entities/pricing/PricingDiffList";
+import {
+  listUnratedAnchorAmounts,
+  rateUnratedAnchorAmounts,
+  type UnratedAnchorCount,
+} from "@entities/transactions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
 import { currencySymbol } from "@shared/lib/format";
 import { blockNonDecimalKeys, blockNonIntegerKeys, parseOptionalInt, toTwoDecimals } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Button } from "@shared/ui/Button";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Badge } from "@shared/ui/Badge";
 import { Field } from "@shared/ui/glass/Field";
@@ -45,6 +51,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
   const permissions = usePermissions();
   const canManageRates = permissions.includes("PRICING_RATES_MANAGE");
   const canSwitchAnchor = permissions.includes("PRICING_ANCHOR_MANAGE");
+  const canRateUnrated = permissions.includes("TRANSACTIONS_UNRATED_RATE");
 
   return (
     <>
@@ -54,11 +61,14 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
           title={t("pricing.rates.title")}
           description={t("pricing.rates.description")}
         >
-          {canSwitchAnchor && (
+          {(canSwitchAnchor || canRateUnrated) && (
             <SectionRows>
-              <Row icon={Anchor} label={t("pricing.anchor.title")} description={t("pricing.anchor.description")}>
-                <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
-              </Row>
+              {canSwitchAnchor && (
+                <Row icon={Anchor} label={t("pricing.anchor.title")} description={t("pricing.anchor.description")}>
+                  <AnchorSwitcher anchorCurrency={book.settings.anchor_currency} onChanged={onChanged} />
+                </Row>
+              )}
+              {canRateUnrated && <UnratedAnchorRow />}
             </SectionRows>
           )}
           {canManageRates && (
@@ -323,6 +333,61 @@ function AnchorSwitcher({ anchorCurrency, onChanged }: { anchorCurrency: Currenc
         </ConfirmDialog>
       )}
     </>
+  );
+}
+
+function UnratedAnchorRow() {
+  const { t } = useTranslation();
+  const [items, setItems] = useState<UnratedAnchorCount[]>([]);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    listUnratedAnchorAmounts(controller.signal)
+      .then(setItems)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  const count = items.reduce((sum, item) => sum + item.count, 0);
+  if (count === 0) return null;
+  const currencies = items.map((item) => item.currency).join(", ");
+
+  const handleConfirm = async () => {
+    setIsConfirming(false);
+    setIsSubmitting(true);
+    try {
+      setItems(await rateUnratedAnchorAmounts());
+      toast.success(t("pricing.unrated.saved"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("pricing.unrated.saveError")));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Row
+      icon={History}
+      label={t("pricing.unrated.title")}
+      description={t("pricing.unrated.description", { count, currencies })}
+    >
+      <Button variant="glass" size="sm" isLoading={isSubmitting} onClick={() => setIsConfirming(true)}>
+        {t("pricing.unrated.button")}
+      </Button>
+      {isConfirming && (
+        <ConfirmDialog
+          title={t("pricing.unrated.confirmTitle")}
+          size="md"
+          message={t("pricing.unrated.confirmMessage", { count, currencies })}
+          confirmLabel={t("pricing.unrated.button")}
+          cancelLabel={t("common.cancel")}
+          onConfirm={() => void handleConfirm()}
+          onCancel={() => setIsConfirming(false)}
+        />
+      )}
+    </Row>
   );
 }
 

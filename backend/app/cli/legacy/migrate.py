@@ -311,6 +311,8 @@ async def _transfer(
         _owned(legacy_transactions, user_ids, "transactions", report),
         plan_ids=plan_ids,
         subscription_ids=subscription_ids,
+        # an account without Telegram could only buy through the old web cabinet
+        cabinet_user_ids={int(user["id"]) for user in users if user["telegram_id"] is None},
         anchor_currency=anchor,
         rates={},
         report=report,

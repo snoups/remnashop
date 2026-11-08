@@ -78,6 +78,8 @@ class Transaction(BaseSql, TimestampMixin):
     final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     anchor_base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     anchor_final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # migrated without a currency rate: the anchor amounts are the nominal ones
+    anchor_unrated: Mapped[bool] = mapped_column(default=False, server_default="false")
     discount_promocode_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("promocodes.id", ondelete="SET NULL"), index=True
     )

@@ -187,6 +187,26 @@ export function listTransactionGateways(signal?: AbortSignal): Promise<string[]>
   return apiGet<ListResponse<string>>("/transactions/gateways", signal).then((response) => response.items);
 }
 
+export interface UnratedAnchorCount {
+  currency: string;
+  count: number;
+}
+
+/** Migrated orders whose anchor amounts kept the nominal value: no rate at migration time. */
+export function listUnratedAnchorAmounts(signal?: AbortSignal): Promise<UnratedAnchorCount[]> {
+  return apiGet<ListResponse<UnratedAnchorCount>>("/transactions/unrated-anchor-amounts", signal).then(
+    (response) => response.items,
+  );
+}
+
+/** Converts them at the current rates; returns what is still left. */
+export function rateUnratedAnchorAmounts(): Promise<UnratedAnchorCount[]> {
+  return apiPost<ListResponse<UnratedAnchorCount>, Record<string, never>>(
+    "/transactions/unrated-anchor-amounts/actions/rate",
+    {},
+  ).then((response) => response.items);
+}
+
 export const PURCHASE_TYPES: readonly PurchaseType[] = ["NEW", "RENEW", "CHANGE"];
 
 /** The status filter's "paid, not issued" choice; sent as `unfulfilled`, not as a status. */

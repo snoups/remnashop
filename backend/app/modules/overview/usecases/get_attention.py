@@ -114,6 +114,7 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             items += await self._paid_not_fulfilled(perms)
             items += await self._stale_pending(perms)
             items += await self._expiring_paid(perms)
+            items += await self._unrated_anchor_amounts(perms)
             bot_settings = (
                 await self._settings_repository.get_bot_settings()
                 if Permission.BOT_STATUS_VIEW in perms
@@ -237,6 +238,19 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
                 severity="warning",
                 count=count,
                 subject=str(urgent),
+            )
+        ]
+
+    async def _unrated_anchor_amounts(self, perms: set[Permission]) -> list[AttentionItemDto]:
+        if Permission.TRANSACTIONS_UNRATED_VIEW not in perms:
+            return []
+        counts = await self._transaction_repository.count_unrated_anchor_amounts()
+        return [
+            AttentionItemDto(
+                kind=AttentionKind.UNRATED_ANCHOR_AMOUNTS,
+                severity="warning",
+                count=sum(counts.values()),
+                subject=", ".join(sorted(counts)),
             )
         ]
 
