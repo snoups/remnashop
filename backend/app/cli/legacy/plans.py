@@ -40,7 +40,7 @@ _EMOJI_PARTS: Final[frozenset[str]] = frozenset(
 )
 
 
-def _strip_leading_emoji(name: str) -> str:
+def strip_leading_emoji(name: str) -> str:
     start = 0
     while start < len(name) and (
         name[start].isspace()
@@ -106,7 +106,7 @@ def transform_plans(
     plan_rows.sort(key=lambda p: int(p["id"]))
     renamed = 0
     for row in plan_rows:
-        name = _strip_leading_emoji(row["name"])
+        name = strip_leading_emoji(row["name"])
         renamed += name != row["name"]
         row["name"] = name
         row["icon_emoji_id"] = DEFAULT_PLAN_ICON_EMOJI_ID

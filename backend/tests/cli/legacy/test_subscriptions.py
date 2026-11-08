@@ -152,3 +152,13 @@ def test_convert_plan_snapshot_shape() -> None:
         SNAPSHOT, public_code="pro", price_paid=Decimal("1"), currency=Currency.USD
     )
     assert out["credit_paid"] is None and out["credit_days"] is None
+
+
+def test_convert_plan_snapshot_drops_the_leading_emoji_like_the_plan() -> None:
+    out = convert_plan_snapshot(
+        {**SNAPSHOT, "name": "🔅ОБЫЧНЫЙ"},
+        public_code="pro",
+        price_paid=Decimal("1"),
+        currency=Currency.USD,
+    )
+    assert out["name"] == "ОБЫЧНЫЙ"

@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any, Final
 
 from app.cli.legacy.panel import PanelIndex, resolve_panel_id
+from app.cli.legacy.plans import strip_leading_emoji
 from app.cli.legacy.report import MigrationReport
 from app.core.enums import Currency, SubscriptionStatus
 
@@ -35,7 +36,8 @@ def convert_plan_snapshot(
     return {
         "plan_id": old["id"],
         "public_code": public_code,
-        "name": old["name"],
+        # the same name the migrated plan got, so reports group old and new orders together
+        "name": strip_leading_emoji(old["name"]),
         "price_paid": str(price_paid),
         "currency": currency.value,
         "duration_days": duration,
