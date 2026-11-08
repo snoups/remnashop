@@ -12,6 +12,7 @@ from app.modules.analytics.usecases import (
     GetRevenueUseCase,
     GetSourcesUseCase,
     GetTrialUseCase,
+    ListExpiringCustomersUseCase,
 )
 
 
@@ -30,6 +31,7 @@ class AnalyticsProvider(Provider):
         GetRevenueUseCase,
         GetSourcesUseCase,
         GetTrialUseCase,
+        ListExpiringCustomersUseCase,
     )
 
 

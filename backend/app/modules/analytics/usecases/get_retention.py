@@ -15,13 +15,13 @@ from app.modules.analytics.aggregates import monthly_value
 from app.modules.analytics.cache import AnalyticsCache
 from app.modules.analytics.coverage import shift_months
 from app.modules.analytics.dto import (
-    ExpiringCustomerDto,
     ExpiringWeekDto,
     MonthlyChurnDto,
     PlanActiveDto,
     RetentionDto,
     RetentionPointDto,
 )
+from app.modules.analytics.expiring import expiring_window
 from app.modules.pricing import CurrencyRateTable, PricingRepository
 from app.modules.subscriptions import LiveSubscriptionDto, SubscriptionStatsRepository
 from app.modules.transactions import TransactionStatsRepository
@@ -30,8 +30,6 @@ from app.modules.users import UserRepository
 _MICROSECOND: Final[timedelta] = timedelta(microseconds=1)
 _ANNIVERSARIES: Final[tuple[int, ...]] = (1, 3, 6)
 _CHURN_MONTHS: Final[int] = 12
-_EXPIRING_DAYS: Final[int] = 30
-_TOP_LIMIT: Final[int] = 10
 _DAYS_PER_MONTH: Final[Decimal] = Decimal("30.44")
 _WEEK_KEYS: Final[tuple[str, ...]] = ("1_7", "8_14", "15_21", "22_30")
 
@@ -158,41 +156,6 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
         payers, days = await self._transaction_stats.total_covered_days(now)
         return days / payers / float(_DAYS_PER_MONTH) if payers else 0.0
 
-    async def _top_customers(
-        self, expiring: list[LiveSubscriptionDto], now: datetime
-    ) -> list[ExpiringCustomerDto]:
-        summaries = await self._transaction_stats.payer_summaries(
-            now, user_ids={row.user_id for row in expiring}
-        )
-        spent = {s.user_id: s.spent for s in summaries}
-        renewals = {s.user_id: s.renewals for s in summaries}
-        nearest: dict[int, LiveSubscriptionDto] = {}
-        plan_names: dict[int, list[str]] = {}
-        for row in sorted(expiring, key=lambda r: r.expire_at):
-            nearest.setdefault(row.user_id, row)
-            plan_names.setdefault(row.user_id, []).append(row.plan_name)
-        # a customer ranking: staff subscriptions are not shown to anyone
-        staff = await self._user_repository.list_staff_ids()
-        top = sorted(
-            (row for row in nearest.values() if row.user_id not in staff),
-            key=lambda r: spent.get(r.user_id, ZERO_AMOUNT),
-            reverse=True,
-        )
-        top = top[:_TOP_LIMIT]
-        users = {u.id: u for u in await self._user_repository.list_by_ids([r.user_id for r in top])}
-        return [
-            ExpiringCustomerDto(
-                user_id=row.user_id,
-                name=users[row.user_id].name if row.user_id in users else "",
-                username=users[row.user_id].username if row.user_id in users else None,
-                plan_names=plan_names[row.user_id],
-                expire_at=row.expire_at,
-                spent=round_cents(spent.get(row.user_id, ZERO_AMOUNT)),
-                renewals=renewals.get(row.user_id, 0),
-            )
-            for row in top
-        ]
-
     async def _execute(self, actor: Actor, data: None) -> RetentionDto:
         return await self._cache.get_or_compute(
             "get_retention", data, RetentionDto, partial(self._compute, data)
@@ -208,8 +171,7 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
                 {point for start in months for point in (start, _churn_probe(start, now))}, now
             )
             live = await self._subscription_stats.list_live()
-            horizon = now + timedelta(days=_EXPIRING_DAYS)
-            window = [row for row in live if now <= row.expire_at < horizon]
+            window = expiring_window(live, now)
             expiring_paid = [row for row in window if not row.is_trial]
             return RetentionDto(
                 report_currency=rates.anchor,
@@ -218,7 +180,6 @@ class GetRetentionUseCase(UseCase[None, RetentionDto]):
                 expiring_paid=len(expiring_paid),
                 expiring_trials=len(window) - len(expiring_paid),
                 expiring_weeks=_expiring_weeks(expiring_paid, now, rates),
-                expiring_top=await self._top_customers(expiring_paid, now),
                 active_by_plan=_active_by_plan(live),
                 monthly_churn=_monthly_churn(covered, months, now),
             )

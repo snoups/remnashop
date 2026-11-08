@@ -12,7 +12,8 @@ from app.core.enums import Locale, PurchaseType, Role, SubscriptionStatus, Trans
 from app.core.exceptions import PermissionDeniedError
 from app.core.utils.time import datetime_now
 from app.modules.analytics.coverage import is_covered
-from app.modules.analytics.usecases import GetRetentionUseCase
+from app.modules.analytics.dto import ListExpiringCustomersDto
+from app.modules.analytics.usecases import GetRetentionUseCase, ListExpiringCustomersUseCase
 from app.modules.analytics.usecases.get_retention import (
     _anniversaries,
     _churn_probe,
@@ -45,6 +46,25 @@ def _use_case(
         uow,
         PassThroughAnalyticsCache(),
     )
+
+
+def _list_use_case(session: AsyncSession, uow: UnitOfWork) -> ListExpiringCustomersUseCase:
+    return ListExpiringCustomersUseCase(
+        SubscriptionStatsRepository(session),
+        TransactionStatsRepository(session),
+        UserRepository(session),
+        uow,
+        PassThroughAnalyticsCache(),
+    )
+
+
+async def test_actor_without_expiring_view_is_denied(
+    session: AsyncSession, uow: UnitOfWork
+) -> None:
+    actor = OWNER.model_copy(update={"role": Role.USER})
+
+    with pytest.raises(PermissionDeniedError):
+        await _list_use_case(session, uow)(actor, ListExpiringCustomersDto(page=1, page_size=10))
 
 
 def test_anniversaries_only_count_the_ones_already_passed() -> None:
@@ -186,11 +206,16 @@ async def test_retention_expiring_blocks(
     assert result.expiring_paid == 3 and result.expiring_trials == 1
     weeks = {w.key: w.count for w in result.expiring_weeks}
     assert weeks == {"1_7": 1, "8_14": 1, "15_21": 1, "22_30": 0}
-    assert [c.user_id for c in result.expiring_top] == [soon.user_id, later.user_id]
-    assert result.expiring_top[0].plan_names == [soon.plan_snapshot.name, "Extra"]
-    assert result.expiring_top[0].expire_at == soon.expire_at
-    assert result.expiring_top[0].renewals == 2 and result.expiring_top[1].renewals == 0
-    assert result.expiring_top[0].spent > result.expiring_top[1].spent
+    top = await _list_use_case(session, uow)(OWNER, ListExpiringCustomersDto(page=1, page_size=10))
+    assert [c.user_id for c in top.items] == [soon.user_id, later.user_id] and top.total == 2
+    assert top.items[0].plan_names == [soon.plan_snapshot.name, "Extra"]
+    assert top.items[0].expire_at == soon.expire_at
+    assert top.items[0].renewals == 2 and top.items[1].renewals == 0
+    assert top.items[0].spent > top.items[1].spent
+    second = await _list_use_case(session, uow)(
+        OWNER, ListExpiringCustomersDto(page=2, page_size=1)
+    )
+    assert [c.user_id for c in second.items] == [later.user_id] and second.total == 2
     assert result.active_by_plan[0].plan_name == "Basic" and result.active_by_plan[0].active >= 2
     assert len(result.points) == 3 and len(result.monthly_churn) == 12
 
@@ -221,6 +246,8 @@ async def test_expiring_top_leaves_out_staff(
             transaction_repository, session, uow, user_id, plan_id, key, now - timedelta(days=60)
         )
 
-    result = await _use_case(session, pricing_repository, uow)(OWNER)
+    result = await _list_use_case(session, uow)(
+        OWNER, ListExpiringCustomersDto(page=1, page_size=10)
+    )
 
-    assert [c.user_id for c in result.expiring_top] == [customer.user_id]
+    assert [c.user_id for c in result.items] == [customer.user_id] and result.total == 1
