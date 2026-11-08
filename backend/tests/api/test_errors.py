@@ -7,6 +7,7 @@ import pytest
 from fastapi import FastAPI, HTTPException, status
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from remnapy.exceptions import ApiErrorResponse, ServerError
 from sqlalchemy.exc import DBAPIError
 
 import app as app_package
@@ -101,6 +102,23 @@ def test_panel_outage_hides_internal_breaker_state(client: TestClient) -> None:
     assert response.json() == {
         "detail": "Remnawave panel is temporarily unavailable",
         "code": "REMNAWAVE_UNAVAILABLE",
+    }
+
+
+def test_panel_refusal_names_the_panels_own_reason() -> None:
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/refused")
+    async def refused() -> None:
+        raise ServerError(500, ApiErrorResponse(message="Update user error", errorCode="A039"))
+
+    response = TestClient(app, raise_server_exceptions=False).get("/refused")
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "A039: Update user error",
+        "code": "REMNAWAVE_REQUEST_REJECTED",
     }
 
 

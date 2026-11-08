@@ -35,6 +35,7 @@ from app.modules.subscriptions.idempotency_repository import (
     IDEMPOTENCY_KEY_RETENTION_DAYS,
     PurchaseIdempotencyRepository,
 )
+from app.modules.subscriptions.panel_squads import PanelSquadCatalog, missing_squads
 from app.modules.subscriptions.plan_snapshot_response import PlanSnapshotResponse
 from app.modules.subscriptions.ports import (
     OpenOrderCounter,
@@ -83,6 +84,7 @@ __all__ = [
     "LiveSubscriptionDto",
     "OpenOrderCounter",
     "OrderFailer",
+    "PanelSquadCatalog",
     "PanelTrafficUsage",
     "PlanCatalogDto",
     "PlanSnapshot",
@@ -116,5 +118,6 @@ __all__ = [
     "TorrentBlockerReportEvent",
     "get_owned_target",
     "get_subscriptions_providers",
+    "missing_squads",
     "traffic_spent_for_good",
 ]

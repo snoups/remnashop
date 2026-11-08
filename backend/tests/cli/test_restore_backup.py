@@ -1,8 +1,11 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from app.cli.restore_backup import format_provenance_message, list_database_backups, run_restore
 from app.core.config import AppConfig
+from app.modules.backups import RestoreNotStartedError
 from app.modules.backups.provenance import ProvenanceResult, ProvenanceStatus
 
 
@@ -75,6 +78,7 @@ async def test_run_restore_runs_when_confirmed(tmp_path: Path) -> None:
         patch(
             "app.cli.restore_backup.terminate_other_backends", AsyncMock(return_value=3)
         ) as terminate_mock,
+        patch("app.cli.restore_backup._restored_revision", AsyncMock(return_value="1000")),
         # its own session would commit into the shared test database
         patch("app.cli.restore_backup._record_restore", AsyncMock()) as record_mock,
     ):
@@ -88,3 +92,55 @@ async def test_run_restore_runs_when_confirmed(tmp_path: Path) -> None:
     terminate_mock.assert_awaited_once()
     restore_mock.assert_awaited_once_with(AppConfig.get(), path)
     record_mock.assert_awaited_once()
+
+
+async def test_run_restore_of_old_version_database_skips_audit_and_names_both_ways(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "DATABASE_pre-legacy-migration_0039_x.dump"
+    path.write_bytes(b"not signed by us")
+
+    with (
+        patch("app.cli.restore_backup.restore_database_dump", AsyncMock()),
+        patch("app.cli.restore_backup.terminate_other_backends", AsyncMock(return_value=0)),
+        patch("app.cli.restore_backup._restored_revision", AsyncMock(return_value="0039")),
+        patch("app.cli.restore_backup._record_restore", AsyncMock()) as record_mock,
+    ):
+        await run_restore(
+            path,
+            config=AppConfig.get(),
+            confirm_foreign=lambda: True,
+            confirm_start=lambda: True,
+        )
+
+    record_mock.assert_not_awaited()
+    out = capsys.readouterr().out
+    assert "old-version database (revision 0039)" in out
+    assert "start the old image" in out
+    assert "migrate it again" in out
+    assert "Restart api/telegram/worker" not in out
+
+
+async def test_run_restore_that_never_started_leaves_no_trace(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path / "DATABASE_x.dump"
+    path.write_bytes(b"not signed by us")
+
+    with (
+        patch(
+            "app.cli.restore_backup.restore_database_dump",
+            AsyncMock(side_effect=RestoreNotStartedError("Clearing the database failed")),
+        ),
+        patch("app.cli.restore_backup.terminate_other_backends", AsyncMock(return_value=0)),
+        patch("app.cli.restore_backup._record_restore", AsyncMock()) as record_mock,
+    ):
+        await run_restore(
+            path,
+            config=AppConfig.get(),
+            confirm_foreign=lambda: True,
+            confirm_start=lambda: True,
+        )
+
+    record_mock.assert_not_awaited()
+    assert "left as it was" in capsys.readouterr().out

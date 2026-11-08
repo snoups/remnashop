@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Optional
+from uuid import UUID
 
 from remnapy.enums import TrafficLimitStrategy
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,15 +17,19 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.panel_squads import FixedPanelSquads
 
 
-def make_eligibility(session: AsyncSession) -> PurchaseEligibility:
+def make_eligibility(
+    session: AsyncSession, panel_squads: Optional[frozenset[UUID]] = None
+) -> PurchaseEligibility:
     return PurchaseEligibility(
         SubscriptionRepository(session),
         ReferralRepository(session),
         SettingsRepository(session),
         TransactionRepository(session),
         UserRepository(session),
+        FixedPanelSquads(panel_squads),
     )
 
 

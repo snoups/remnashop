@@ -161,6 +161,7 @@ class Permission(UpperStrEnum):
     SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW = auto()
     SUBSCRIPTIONS_PANEL_SYNC_FROM = auto()
     SUBSCRIPTIONS_PANEL_SYNC_TO = auto()
+    SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW = auto()
     ADDONS_VIEW = auto()
     ADDONS_DETAIL_VIEW = auto()
     ADDONS_CREATE = auto()
@@ -416,6 +417,9 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
         resource="subscriptions", kind="write"
     ),
     Permission.SUBSCRIPTIONS_PANEL_SYNC_TO: PermissionMeta(resource="subscriptions", kind="write"),
+    Permission.SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW: PermissionMeta(
+        resource="subscriptions", kind="read"
+    ),
     Permission.ADDONS_VIEW: PermissionMeta(resource="addons", kind="read"),
     Permission.ADDONS_DETAIL_VIEW: PermissionMeta(resource="addons", kind="read"),
     Permission.ADDONS_CREATE: PermissionMeta(resource="addons", kind="write"),
@@ -732,6 +736,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW,
             Permission.SUBSCRIPTIONS_PANEL_SYNC_FROM,
             Permission.SUBSCRIPTIONS_PANEL_SYNC_TO,
+            Permission.SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW,
             Permission.ADDONS_VIEW,
             Permission.ADDONS_DETAIL_VIEW,
             Permission.ADDONS_CREATE,

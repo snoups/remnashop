@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Optional
+from uuid import UUID
 
 from dishka.integrations.taskiq import FromDishka, inject
 
@@ -86,14 +87,28 @@ async def run_panel_sync_task(
     to_panel: FromDishka[SyncAllToPanelUseCase],
     # defaults for a message queued before the options existed
     adopt_unnamed: bool = True,
+    respect_subscription_limit: bool = False,
     recreate_missing: bool = True,
     delete_orphans: bool = True,
+    squad_replacements: Optional[dict[str, Optional[str]]] = None,
 ) -> None:
     if PanelSyncDirection(direction) is PanelSyncDirection.FROM_PANEL:
-        await from_panel.system(SyncFromPanelOptionsDto(adopt_unnamed=adopt_unnamed))
+        await from_panel.system(
+            SyncFromPanelOptionsDto(
+                adopt_unnamed=adopt_unnamed,
+                respect_subscription_limit=respect_subscription_limit,
+            )
+        )
     else:
         await to_panel.system(
-            SyncToPanelOptionsDto(recreate_missing=recreate_missing, delete_orphans=delete_orphans)
+            SyncToPanelOptionsDto(
+                recreate_missing=recreate_missing,
+                delete_orphans=delete_orphans,
+                squad_replacements={
+                    UUID(squad): UUID(target) if target is not None else None
+                    for squad, target in (squad_replacements or {}).items()
+                },
+            )
         )
 
 

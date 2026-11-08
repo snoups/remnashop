@@ -46,6 +46,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
+        self._eligibility = eligibility
         self._uow = uow
         # one step per purchase type, sharing this usecase's dependencies
         self._new = NewPurchase(
@@ -76,9 +77,17 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             pricing_repository,
         )
 
+    async def _assert_squads_in_panel(self, data: PurchaseSubscriptionDto) -> None:
+        # a renewal sends only the new expiry, the rest write the plan's squads
+        if data.purchase_type is not PurchaseType.RENEW:
+            await self._eligibility.assert_squads_in_panel(
+                data.plan_snapshot.internal_squads, data.plan_snapshot.external_squad
+            )
+
     async def _execute(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
         if data.user_id != actor.id and not actor.is_privileged:
             raise PermissionDeniedError
+        await self._assert_squads_in_panel(data)
 
         if data.idempotency_key is not None:
             token, existing = await self._claim_or_return_existing(

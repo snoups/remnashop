@@ -1,4 +1,7 @@
 from datetime import timedelta
+from decimal import Decimal
+from typing import Optional
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -18,6 +21,7 @@ from app.core.enums import (
     BackupKind,
     BroadcastStatus,
     Locale,
+    PlanType,
     Role,
     SubscriptionStatus,
     TransactionStatus,
@@ -35,6 +39,14 @@ from app.modules.email import record_smtp_failure
 from app.modules.event_log import EventOutboxRepository
 from app.modules.overview.dto import AttentionItemDto
 from app.modules.overview.usecases import GetAttentionUseCase
+from app.modules.plans.dto import (
+    CreatePlanDto,
+    SetPlanDurationDto,
+    SetPlanDurationsDto,
+    UpdatePlanDto,
+    UpdatePlanSquadsDto,
+)
+from app.modules.plans.repository import PlanRepository
 from app.modules.settings import SettingsRepository
 from app.modules.settings.dto import BotStatusDto, UpdateBotSettingsDto
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -43,6 +55,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
+from tests.fakes.panel_squads import FixedPanelSquads
 from tests.modules.broadcasts.test_repository import save_dto
 from tests.modules.overview.test_get_nodes_overview import _node, _NodesStub, _sdk
 from tests.modules.overview.test_usecases import _paid_order_dto
@@ -64,6 +77,7 @@ def _use_case(
     uow: UnitOfWork,
     settings: SettingsRepository,
     redis: Redis,
+    panel_squads: Optional[frozenset[UUID]] = None,
 ) -> GetAttentionUseCase:
     return GetAttentionUseCase(
         sdk,
@@ -76,6 +90,8 @@ def _use_case(
         EventOutboxRepository(session),
         ApiTokenRepository(session),
         UserRepository(session),
+        PlanRepository(session),
+        FixedPanelSquads(panel_squads),
         redis,
         uow,
     )
@@ -550,3 +566,47 @@ async def test_api_token_expiring_within_a_week(
     items = await _kinds(session, settings_repository, uow, redis_alive)
 
     assert [i.subject for i in items["api_token_expiring"]] == ["soon", "later"]
+
+
+async def test_active_plan_with_a_squad_gone_from_the_panel(
+    session: AsyncSession,
+    plan_repository: PlanRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    redis_alive: Redis,
+) -> None:
+    kept, gone = uuid4(), uuid4()
+    for code, squads, active in (
+        ("ok", [kept], True),
+        ("broken", [kept, gone], True),
+        ("off", [gone], False),
+    ):
+        plan = await plan_repository.create(
+            CreatePlanDto(
+                public_code=code, name=code, type=PlanType.BOTH, traffic_limit=1, device_limit=1
+            )
+        )
+        await plan_repository.set_durations(
+            SetPlanDurationsDto(
+                plan_id=plan.id,
+                durations=[SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("1"))],
+            )
+        )
+        await plan_repository.update_squads(
+            UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=squads, external_squad=None)
+        )
+        await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=active))
+    use_case = _use_case(
+        session,
+        _sdk(_NodesStub([])),
+        uow,
+        settings_repository,
+        redis_alive,
+        panel_squads=frozenset({kept}),
+    )
+
+    items = [i for i in (await use_case(OWNER)).items if i.kind == "plan_squads_missing"]
+    unchecked = await _kinds(session, settings_repository, uow, redis_alive)
+
+    assert [(i.subject, i.count, i.severity) for i in items] == [("broken", 1, "critical")]
+    assert "plan_squads_missing" not in unchecked

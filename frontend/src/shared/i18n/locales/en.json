@@ -250,6 +250,14 @@
         "why": "The bot does not receive messages or button presses, so customers cannot use it.",
         "fix": "Check the webhook URL in the bot settings and that the server is reachable from the internet over HTTPS. Restarting the bot usually helps."
       },
+      "planSquadsMissing": {
+        "title": "Plan “{{name}}” is off sale",
+        "sub_one": "{{formatted}} squad is missing in the panel",
+        "sub_other": "{{formatted}} squads are missing in the panel",
+        "what": "The plan uses squads the Remnawave panel no longer has.",
+        "why": "The panel refuses to create a user with such a squad, so the plan is hidden from sale in the bot and the cabinet, and a trial, a promocode or an admin grant on it fails.",
+        "fix": "Open the plan and replace its squads with ones the panel has. The plan is back on sale within a minute."
+      },
       "unratedAnchorAmounts": {
         "title": "Migrated payments without a currency rate",
         "sub_one": "{{formatted}} payment in {{currencies}} counted at face value",
@@ -272,6 +280,7 @@
         "broadcasts": "Go to broadcasts",
         "email": "Go to email settings",
         "apiTokens": "Go to API tokens",
+        "plans": "Go to plans",
         "pricing": "To pricing"
       }
     },
@@ -2103,6 +2112,7 @@
     "SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW": "View panel sync status",
     "SUBSCRIPTIONS_PANEL_SYNC_FROM": "Sync all subscriptions from the panel",
     "SUBSCRIPTIONS_PANEL_SYNC_TO": "Sync all subscriptions to the panel",
+    "SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW": "View subscription squads missing in the panel",
     "ADDONS_VIEW": "View add-ons",
     "ADDONS_DETAIL_VIEW": "View add-on details",
     "ADDONS_CREATE": "Create add-ons",
@@ -3212,6 +3222,7 @@
       "externalSquadLabel": "External squad",
       "externalSquadNone": "None",
       "squadsEmpty": "The panel has no squads",
+      "squadsGone": "Squads shown by their code are gone from the panel. Unpick them: while they are picked, the plan is off sale.",
       "squadsError": "Plan settings saved, squads weren’t: {{error}}",
       "accessError": "Plan created, access wasn’t saved: {{error}}",
       "sections": {
@@ -3568,6 +3579,13 @@
       "menuItem": "Sync with panel",
       "title": "Sync with the panel",
       "inSync": "The subscription matches the panel.",
+      "squads": {
+        "title": "Squads missing in the panel",
+        "hint": "The panel won’t take a subscription with a squad it doesn’t have. Pick a replacement or drop the squad.",
+        "drop": "Drop",
+        "held_one": "In {{formatted}} subscription",
+        "held_other": "In {{formatted}} subscriptions"
+      },
       "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted, sending to the panel creates a new one.",
       "columns": {
         "field": "Field",
@@ -3606,6 +3624,10 @@
             "label": "Also import panel users the shop didn’t create",
             "hint": "They are matched to a shop user by Telegram ID or email. Turn it off when the panel is shared with another shop or bot."
           },
+          "respect_subscription_limit": {
+            "label": "Respect the subscription limit",
+            "hint": "A panel user is not imported when its owner already has the shop’s maximum of active subscriptions."
+          },
           "recreate_missing": {
             "label": "Recreate missing panel users",
             "hint": "If a subscription has no panel user, a new one is created and the subscription link changes."
@@ -3616,7 +3638,7 @@
           }
         },
         "started": "Sync started.",
-        "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{missing}} deleted, {{failed}} failed.",
+        "finished": "Sync finished: {{updated}} updated, {{imported}} imported, {{over_limit}} skipped over the limit, {{missing}} deleted, {{failed}} failed.",
         "finishedToPanel": "Sync finished: {{updated}} updated, {{recreated}} recreated in the panel, {{deleted}} deleted from the panel, {{failed}} failed.",
         "error": "Failed to start the sync."
       }
@@ -4171,6 +4193,7 @@
     "PLAN_NO_SQUADS": "A plan needs at least one squad to be active.",
     "PLAN_PUBLIC_CODE_TAKEN": "A plan with this code already exists.",
     "PLAN_REORDER_INCOMPLETE": "The new order must include every plan exactly once.",
+    "PLAN_SQUADS_MISSING": "The plan uses squads the Remnawave panel doesn’t have.",
     "PLAN_TRIAL_BADGE": "A trial plan can’t have a badge.",
     "PLAN_TRIAL_EXISTING_ACCESS": "A trial plan can’t be limited to existing users.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",
@@ -4216,6 +4239,7 @@
     "REFRESH_TOKEN_MISSING": "Your session expired — sign in again.",
     "REGISTRATION_CLOSED": "Sign-ups are closed right now.",
     "REGISTRATION_INVITE_ONLY": "Sign-up is by invitation only.",
+    "REMNAWAVE_REQUEST_REJECTED": "The Remnawave panel rejected the request: {{detail}}.",
     "REMNAWAVE_UNAVAILABLE": "The Remnawave panel is temporarily unavailable.",
     "RENEW_PLAN_MISMATCH": "Renewing to a different plan is a plan change.",
     "REQUEST_INVALID": "Some fields are filled in incorrectly.",

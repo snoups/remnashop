@@ -10,6 +10,18 @@ from app.core.config import AppConfig
 from app.modules.backups.provenance import sign_backup_file
 
 BACKUP_FILE_MODE: Final[int] = 0o600
+# a dump recreates only its own objects: a table added since, referencing one of
+# them, would block its drop and leave two schemas mixed. `legacy` holds the old
+# version's data after a migration; a dump that has it brings it back.
+_CLEAR_SCHEMAS: Final[str] = (
+    "SET client_min_messages = warning; "
+    "DROP SCHEMA IF EXISTS legacy CASCADE; DROP SCHEMA IF EXISTS public CASCADE; "
+    "CREATE SCHEMA public;"
+)
+
+
+class RestoreNotStartedError(RuntimeError):
+    """Clearing the database failed: nothing was dropped or restored."""
 
 
 async def create_database_dump(config: AppConfig, dest: Path) -> None:
@@ -105,6 +117,27 @@ async def create_assets_dump(config: AppConfig, dest_without_ext: Path) -> Path:
 
 async def restore_database_dump(config: AppConfig, dump_path: Path) -> None:
     db = config.database
+    env = {**os.environ, "PGPASSWORD": db.password.get_secret_value()}
+    # one -c is one transaction: either the schemas are cleared or nothing is
+    clear = await asyncio.create_subprocess_exec(
+        "psql",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-h",
+        db.host,
+        "-p",
+        str(db.port),
+        "-U",
+        db.user,
+        "-d",
+        db.name,
+        "-c",
+        _CLEAR_SCHEMAS,
+        env=env,
+    )
+    if await clear.wait() != 0:
+        raise RestoreNotStartedError("Clearing the database before the restore failed")
     proc = await asyncio.create_subprocess_exec(
         "pg_restore",
         "--clean",
@@ -118,7 +151,7 @@ async def restore_database_dump(config: AppConfig, dump_path: Path) -> None:
         "-d",
         db.name,
         str(dump_path),
-        env={**os.environ, "PGPASSWORD": db.password.get_secret_value()},
+        env=env,
     )
     returncode = await proc.wait()
     if returncode != 0:

@@ -255,6 +255,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW,
         Permission.SUBSCRIPTIONS_PANEL_SYNC_FROM,
         Permission.SUBSCRIPTIONS_PANEL_SYNC_TO,
+        Permission.SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW,
         Permission.ADDONS_VIEW,
         Permission.ADDONS_DETAIL_VIEW,
         Permission.ADDONS_CREATE,

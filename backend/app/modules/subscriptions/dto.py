@@ -395,6 +395,8 @@ class PanelSyncResultDto(BaseDto):
     imported: int = 0
     # shop users' panel users without a row, deleted (to panel only)
     deleted: int = 0
+    # panel users left unimported: their shop user is at the subscription cap (from panel only)
+    over_limit: int = 0
     finished_at: datetime
 
 
@@ -402,12 +404,16 @@ class PanelSyncResultDto(BaseDto):
 class SyncFromPanelOptionsDto:
     # import panel users the shop didn't name, matched by Telegram id or email
     adopt_unnamed: bool
+    # skip a panel user whose shop user is at max_active_subscriptions
+    respect_subscription_limit: bool
 
 
 @dataclass(frozen=True, kw_only=True)
 class SyncToPanelOptionsDto:
     recreate_missing: bool
     delete_orphans: bool
+    # a squad gone from the panel -> its replacement, None drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = field(default_factory=dict)
 
 
 class PanelSyncStatusDto(BaseDto):
@@ -432,10 +438,26 @@ class DeletedSubscriptionsDto:
     deleted: int
 
 
+class MissingSquadDto(BaseDto):
+    uuid: UUID
+    kind: Literal["internal", "external"]
+    # subscriptions holding it, among the ones the check covered
+    subscriptions: int = 1
+
+
 class SubscriptionPanelDiffDto(BaseDto):
     subscription_id: int
     missing_in_panel: bool
     fields: list[PanelFieldDiffDto]
+    # the row's squads the panel no longer has: a push fails until they're replaced
+    missing_squads: list[MissingSquadDto] = Field(default_factory=list)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PushSubscriptionToPanelDto:
+    subscription_id: int
+    # a squad gone from the panel -> its replacement, None drops it
+    squad_replacements: dict[UUID, Optional[UUID]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)

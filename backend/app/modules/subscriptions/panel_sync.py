@@ -366,6 +366,19 @@ async def release_panel_sync(redis: Redis, direction: PanelSyncDirection) -> Non
     await redis.delete(_running_key(direction))
 
 
+def _options_payload(
+    options: Union[SyncFromPanelOptionsDto, SyncToPanelOptionsDto],
+) -> dict[str, object]:
+    """JSON-safe: the event's payload and the task message."""
+    payload: dict[str, object] = asdict(options)
+    if isinstance(options, SyncToPanelOptionsDto):
+        payload["squad_replacements"] = {
+            str(squad): str(target) if target is not None else None
+            for squad, target in options.squad_replacements.items()
+        }
+    return payload
+
+
 async def start_panel_sync(
     redis: Redis,
     uow: UnitOfWork,
@@ -376,14 +389,13 @@ async def start_panel_sync(
     options: Union[SyncFromPanelOptionsDto, SyncToPanelOptionsDto],
 ) -> PanelSyncStatusDto:
     await claim_panel_sync(redis, direction)
+    payload = _options_payload(options)
     try:
         async with uow:
             await event_publisher.publish(
-                PanelSyncStartedEvent(actor=actor, direction=direction, options=asdict(options))
+                PanelSyncStartedEvent(actor=actor, direction=direction, options=payload)
             )
-            await uow.after_commit(
-                partial(dispatch.kiq, direction=direction.value, **asdict(options))
-            )
+            await uow.after_commit(partial(dispatch.kiq, direction=direction.value, **payload))
     except BaseException:
         await release_panel_sync(redis, direction)
         raise

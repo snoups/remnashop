@@ -252,6 +252,7 @@ export interface PanelSyncResult {
   recreated: number;
   imported: number;
   deleted: number;
+  over_limit: number;
   finished_at: string;
 }
 
@@ -272,10 +273,25 @@ export interface PanelFieldDiff {
   panel: string;
 }
 
+export interface MissingSquad {
+  uuid: string;
+  kind: "internal" | "external";
+  /** how many of the checked subscriptions hold it */
+  subscriptions: number;
+}
+
+/** a squad gone from the panel -> its replacement, null drops it */
+export type SquadReplacements = Record<string, string | null>;
+
 export interface SubscriptionPanelDiff {
   subscription_id: number;
   missing_in_panel: boolean;
   fields: PanelFieldDiff[];
+  missing_squads: MissingSquad[];
+}
+
+export function listMissingPanelSquads(signal?: AbortSignal): Promise<{ items: MissingSquad[]; total: number }> {
+  return apiGet<{ items: MissingSquad[]; total: number }>("/subscriptions/panel-sync/missing-squads", signal);
 }
 
 export interface SubscriptionListStats {
@@ -300,15 +316,22 @@ export async function getPanelSyncStatus(signal?: AbortSignal): Promise<PanelSyn
   return apiGet<PanelSyncStatus>("/subscriptions/panel-sync", signal);
 }
 
-/** each direction reads its own: pull adopt_unnamed, push recreate_missing and delete_orphans */
-export type PanelSyncOptions = Record<"adopt_unnamed" | "recreate_missing" | "delete_orphans", boolean>;
+/** each direction reads its own: pull adopt_unnamed and respect_subscription_limit, push recreate_missing and delete_orphans */
+export type PanelSyncOptions = Record<
+  "adopt_unnamed" | "respect_subscription_limit" | "recreate_missing" | "delete_orphans",
+  boolean
+>;
 
 export async function startPanelSync(
   direction: PanelSyncDirection,
   options: PanelSyncOptions,
+  squadReplacements: SquadReplacements = {},
 ): Promise<PanelSyncDirectionStatus> {
   const action = direction === "FROM_PANEL" ? "pull" : "push";
-  return apiPost<PanelSyncDirectionStatus, PanelSyncOptions>(`/subscriptions/panel-sync/actions/${action}`, options);
+  return apiPost<PanelSyncDirectionStatus, PanelSyncOptions & { squad_replacements: SquadReplacements }>(
+    `/subscriptions/panel-sync/actions/${action}`,
+    { ...options, squad_replacements: squadReplacements },
+  );
 }
 
 export async function getSubscriptionPanelDiff(
@@ -320,5 +343,8 @@ export async function getSubscriptionPanelDiff(
 
 export const pullSubscriptionFromPanel = (subscriptionId: number) =>
   subscriptionAction(subscriptionId, "pull-from-panel");
-export const pushSubscriptionToPanel = (subscriptionId: number) =>
-  subscriptionAction(subscriptionId, "push-to-panel");
+export const pushSubscriptionToPanel = (subscriptionId: number, squadReplacements: SquadReplacements = {}) =>
+  apiPost<SubscriptionListItem, { squad_replacements: SquadReplacements }>(
+    `/subscriptions/${subscriptionId}/actions/push-to-panel`,
+    { squad_replacements: squadReplacements },
+  );

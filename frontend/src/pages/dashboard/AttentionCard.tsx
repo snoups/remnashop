@@ -17,6 +17,7 @@ import {
   MailWarning,
   MailX,
   MegaphoneOff,
+  Network,
   PackageX,
   ServerCrash,
   ServerOff,
@@ -76,6 +77,7 @@ const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = 
   expiring_paid: CalendarClock,
   api_token_expiring: KeyRound,
   bot_webhook: Bot,
+  plan_squads_missing: Network,
   unrated_anchor_amounts: History,
 };
 
@@ -142,6 +144,11 @@ const KIND_LINK: Partial<Record<AttentionKind, AttentionLink>> = {
     to: "/dashboard/settings/bot",
     label: "dashboard.attention.actions.bot",
     allowed: settingsTabAllowed("bot"),
+  },
+  plan_squads_missing: {
+    to: "/dashboard/plans",
+    label: "dashboard.attention.actions.plans",
+    allowed: (permissions) => NAV_ITEMS.some((item) => item.key === "plans" && isNavItemVisible(item, permissions)),
   },
   unrated_anchor_amounts: {
     to: "/dashboard/settings/pricing",
@@ -257,6 +264,11 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
         title: t("dashboard.attention.botWebhook.title"),
         sub: item.subject ?? t("dashboard.attention.botWebhook.noWebhook"),
       };
+    case "plan_squads_missing":
+      return {
+        title: t("dashboard.attention.planSquadsMissing.title", { name: item.subject ?? "" }),
+        sub: counted("dashboard.attention.planSquadsMissing.sub"),
+      };
     case "unrated_anchor_amounts":
       // subject: their currencies
       return {
@@ -288,6 +300,7 @@ const KIND_KEY: Record<AttentionKind, string> = {
   expiring_paid: "expiringPaid",
   api_token_expiring: "apiTokenExpiring",
   bot_webhook: "botWebhook",
+  plan_squads_missing: "planSquadsMissing",
   unrated_anchor_amounts: "unratedAnchorAmounts",
 };
 

@@ -25,6 +25,8 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
   ];
   const internal = withMissing("internal", value.internal_squads);
   const external = withMissing("external", value.external_squad ? [value.external_squad] : []);
+  const isGone = (uuid: string) => !squads.some((squad) => squad.uuid === uuid);
+  const goneError = (picked: string[]) => (picked.some(isGone) ? t("plans.edit.squadsGone") : undefined);
 
   const toggleInternal = (uuid: string) =>
     onChange({
@@ -36,7 +38,7 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
 
   return (
     <>
-      <Field label={t("plans.edit.internalSquadsLabel")} required>
+      <Field label={t("plans.edit.internalSquadsLabel")} required error={goneError(value.internal_squads)}>
         {internal.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">{t("plans.edit.squadsEmpty")}</p>
         ) : (
@@ -55,7 +57,10 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
         )}
       </Field>
       {external.length > 0 && (
-        <Field label={t("plans.edit.externalSquadLabel")}>
+        <Field
+          label={t("plans.edit.externalSquadLabel")}
+          error={goneError(value.external_squad ? [value.external_squad] : [])}
+        >
           <div className="flex flex-wrap gap-1.5">
             <ChoiceChip
               className="h-9"

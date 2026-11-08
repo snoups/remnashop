@@ -11,6 +11,7 @@ from app.modules.subscriptions.dispatch import (
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.panel_squads import PanelSquadCatalog
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.rollback import PurchaseRollbackService
@@ -45,6 +46,7 @@ from app.modules.subscriptions.usecases import (
     HandleRemnawaveWebhookUseCase,
     ListActivePlansUseCase,
     ListDevicesUseCase,
+    ListMissingPanelSquadsUseCase,
     ListOwnActiveSubscriptionsUseCase,
     ListOwnSubscriptionsUsageUseCase,
     ListOwnSubscriptionsUseCase,
@@ -79,6 +81,7 @@ class SubscriptionsProvider(Provider):
         PurchaseIdempotencyRepository,
         SubscriptionLifecycleService,
         PurchaseEligibility,
+        PanelSquadCatalog,
         PanelSubscriptionRevoker,
         PurchaseRollbackService,
         PanelTrafficUsage,
@@ -119,6 +122,7 @@ class SubscriptionsProvider(Provider):
         FulfillPurchaseUseCase,
         GetPanelSyncStatusUseCase,
         GetSubscriptionPanelDiffUseCase,
+        ListMissingPanelSquadsUseCase,
         ListPanelSquadsUseCase,
         PullSubscriptionFromPanelUseCase,
         PushSubscriptionToPanelUseCase,

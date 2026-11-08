@@ -4,11 +4,14 @@ import { useTranslation } from "react-i18next";
 
 import {
   getPanelSyncStatus,
+  listMissingPanelSquads,
   startPanelSync,
+  type MissingSquad,
   type PanelSyncDirection,
   type PanelSyncOptions,
   type PanelSyncResult,
   type PanelSyncStatus,
+  type SquadReplacements,
 } from "@entities/subscriptions/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
@@ -17,12 +20,20 @@ import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Switch } from "@shared/ui/glass/Switch";
 
+import { dropAllSquads } from "./drop-all-squads";
+import { SquadReplacementsField } from "./SquadReplacements";
+
 const POLL_INTERVAL_MS = 5_000;
 
-const DEFAULT_OPTIONS: PanelSyncOptions = { adopt_unnamed: true, recreate_missing: true, delete_orphans: true };
+const DEFAULT_OPTIONS: PanelSyncOptions = {
+  adopt_unnamed: true,
+  respect_subscription_limit: true,
+  recreate_missing: true,
+  delete_orphans: true,
+};
 
 const OPTIONS: Record<PanelSyncDirection, (keyof PanelSyncOptions)[]> = {
-  FROM_PANEL: ["adopt_unnamed"],
+  FROM_PANEL: ["adopt_unnamed", "respect_subscription_limit"],
   TO_PANEL: ["recreate_missing", "delete_orphans"],
 };
 
@@ -43,6 +54,8 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
   const [status, setStatus] = useState<PanelSyncStatus | null>(null);
   const [confirming, setConfirming] = useState<PanelSyncDirection | null>(null);
   const [options, setOptions] = useState<PanelSyncOptions>(DEFAULT_OPTIONS);
+  const [missingSquads, setMissingSquads] = useState<MissingSquad[]>([]);
+  const [replacements, setReplacements] = useState<SquadReplacements>({});
   const previous = useRef<PanelSyncStatus | null>(null);
 
   const canView = permissions.includes("SUBSCRIPTIONS_PANEL_SYNC_STATUS_VIEW");
@@ -88,10 +101,25 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
 
   if (allowed.length === 0) return null;
 
+  const open = (direction: PanelSyncDirection) => {
+    setOptions(DEFAULT_OPTIONS);
+    setMissingSquads([]);
+    setReplacements({});
+    setConfirming(direction);
+    if (direction !== "TO_PANEL" || !permissions.includes("SUBSCRIPTIONS_PANEL_MISSING_SQUADS_VIEW")) return;
+    listMissingPanelSquads().then(
+      ({ items }) => {
+        setMissingSquads(items);
+        setReplacements(dropAllSquads(items));
+      },
+      () => undefined,
+    );
+  };
+
   const start = async (direction: PanelSyncDirection) => {
     setConfirming(null);
     try {
-      await startPanelSync(direction, options);
+      await startPanelSync(direction, options, direction === "TO_PANEL" ? replacements : {});
       toast.success(t("subscriptions.panelSync.bulk.started"));
       load();
     } catch (err) {
@@ -109,10 +137,7 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
           variant="glass"
           icon={icon}
           isLoading={isRunning(status, direction)}
-          onClick={() => {
-            setOptions(DEFAULT_OPTIONS);
-            setConfirming(direction);
-          }}
+          onClick={() => open(direction)}
         >
           {t(`subscriptions.panelSync.bulk.${key}`)}
         </Button>
@@ -124,6 +149,7 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
           confirmLabel={t(`subscriptions.panelSync.bulk.${confirmKey}Action`)}
           cancelLabel={t("common.cancel")}
           danger={confirming === "TO_PANEL"}
+          size={confirming === "TO_PANEL" && missingSquads.length > 0 ? "md" : "sm"}
           onConfirm={() => void start(confirming)}
           onCancel={() => setConfirming(null)}
         >
@@ -141,6 +167,9 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
               </p>
             </div>
           ))}
+          {confirming === "TO_PANEL" && missingSquads.length > 0 && (
+            <SquadReplacementsField missing={missingSquads} value={replacements} onChange={setReplacements} showHolders />
+          )}
         </ConfirmDialog>
       )}
     </div>

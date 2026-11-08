@@ -15,12 +15,15 @@ from app.modules.subscriptions.api.schemas import (
     DeviceListResponse,
     DeviceResponse,
     GrantSubscriptionRequest,
+    MissingSquadListResponse,
+    MissingSquadResponse,
     PanelSquadListResponse,
     PanelSquadResponse,
     PanelSyncDirectionStatusResponse,
     PanelSyncPullRequest,
     PanelSyncPushRequest,
     PanelSyncStatusResponse,
+    PushToPanelRequest,
     SubscriptionDetailResponse,
     SubscriptionListItemResponse,
     SubscriptionListStatsResponse,
@@ -35,6 +38,7 @@ from app.modules.subscriptions.dto import (
     ChangeSubscriptionPlanDto,
     GrantSubscriptionDto,
     ListSubscriptionsDto,
+    PushSubscriptionToPanelDto,
     SetSubscriptionEnabledDto,
     SyncFromPanelOptionsDto,
     SyncToPanelOptionsDto,
@@ -54,6 +58,7 @@ from app.modules.subscriptions.usecases import (
     GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
+    ListMissingPanelSquadsUseCase,
     ListPanelSquadsUseCase,
     ListSubscriptionsUseCase,
     PullSubscriptionFromPanelUseCase,
@@ -96,7 +101,10 @@ async def start_panel_sync_from_panel(
 ) -> PanelSyncDirectionStatusResponse:
     result = await use_case(
         actor,
-        SyncFromPanelOptionsDto(adopt_unnamed=body.adopt_unnamed),
+        SyncFromPanelOptionsDto(
+            adopt_unnamed=body.adopt_unnamed,
+            respect_subscription_limit=body.respect_subscription_limit,
+        ),
     )
     return PanelSyncDirectionStatusResponse.model_validate(result, from_attributes=True)
 
@@ -116,10 +124,29 @@ async def start_panel_sync_to_panel(
     result = await use_case(
         actor,
         SyncToPanelOptionsDto(
-            recreate_missing=body.recreate_missing, delete_orphans=body.delete_orphans
+            recreate_missing=body.recreate_missing,
+            delete_orphans=body.delete_orphans,
+            squad_replacements=body.squad_replacements,
         ),
     )
     return PanelSyncDirectionStatusResponse.model_validate(result, from_attributes=True)
+
+
+@router.get(
+    "/panel-sync/missing-squads",
+    response_model=MissingSquadListResponse,
+    responses=error_responses(503),
+)
+@inject
+async def list_missing_panel_squads(
+    use_case: FromDishka[ListMissingPanelSquadsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> MissingSquadListResponse:
+    items = await use_case(actor)
+    return MissingSquadListResponse(
+        items=[MissingSquadResponse.model_validate(i, from_attributes=True) for i in items],
+        total=len(items),
+    )
 
 
 @router.get("/summary", response_model=SubscriptionListStatsResponse)
@@ -163,7 +190,7 @@ async def list_subscriptions(
     "",
     response_model=SubscriptionResponse,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(404, 503),
+    responses=error_responses(400, 404, 503),
 )
 @inject
 async def grant_subscription(
@@ -479,7 +506,12 @@ async def push_subscription_to_panel(
     subscription_id: int,
     use_case: FromDishka[PushSubscriptionToPanelUseCase],
     actor: Actor = Depends(require_admin),
+    body: PushToPanelRequest = Body(default_factory=PushToPanelRequest),
 ) -> SubscriptionResponse:
-    return SubscriptionResponse.model_validate(
-        await use_case(actor, subscription_id), from_attributes=True
+    result = await use_case(
+        actor,
+        PushSubscriptionToPanelDto(
+            subscription_id=subscription_id, squad_replacements=body.squad_replacements
+        ),
     )
+    return SubscriptionResponse.model_validate(result, from_attributes=True)
