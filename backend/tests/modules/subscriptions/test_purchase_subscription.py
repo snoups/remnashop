@@ -845,10 +845,8 @@ async def test_change_applies_proration_credit_as_extra_days(
             purchase_type=PurchaseType.NEW,
         ),
     )
-    # Full 30 days remaining, price_paid=300/30days => daily_rate=10 => full
-    # credit=300 => at new plan's daily_rate=10 (300/30) => 30 credit-days.
-    # base_price stays None, as for non-checkout callers: the denominator
-    # falls back to price_paid
+    # 30 days left at 300/30 = 10/day: credit 300, 30 days at the new plan's
+    # 10/day; base_price None, so the denominator is price_paid
 
     changed = await use_case(
         buyer,

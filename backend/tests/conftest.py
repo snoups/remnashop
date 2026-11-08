@@ -1,12 +1,8 @@
 import os
 
-# Tests run against the local dev Postgres/Redis containers, so the
-# docker-service hostnames the real app expects are overridden here.
-# Everything else (secrets, remnawave/bot tokens) comes from the repo-root .env.
-#
-# Must run before the imports below: app.core.broker builds its broker at
-# import time from AppConfig.get().redis.dsn, and with the docker hostname
-# every .kiq() waits ~5s on DNS before publish() swallows the error.
+# local dev containers instead of the docker-service hostnames; the rest comes
+# from the repo-root .env. Before the imports: the broker reads the Redis DSN at
+# import time, and with the docker hostname every .kiq() waits ~5s on DNS.
 os.environ.setdefault("DATABASE_HOST", "localhost")
 os.environ.setdefault("DATABASE_PORT", "5432")
 os.environ.setdefault("REDIS_HOST", "localhost")

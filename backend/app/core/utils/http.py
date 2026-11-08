@@ -55,18 +55,10 @@ def resolve_client_ip(request: Request) -> str:
     if cabinet_ip is not None:
         return cabinet_ip
 
-    # X-Forwarded-For is trusted only from a loopback or RFC1918 peer: every
-    # compose file binds `api` to 127.0.0.1, so only a same-host reverse proxy
-    # or a container on the docker bridge can reach it. Exposed publicly, the
-    # header is ignored.
-    #
-    # The LAST entry: there's exactly one trusted hop, and whether it
-    # overwrites or appends (nginx's `$proxy_add_x_forwarded_for`), its
-    # view of the peer lands last. Anything before it may be spoofed.
-    #
-    # getlist, not get: repeated header lines form one list, and a proxy that
-    # adds a line instead of merging (HAProxy's `option forwardfor` without
-    # `if-none`) would otherwise leave us reading the client's line.
+    # X-Forwarded-For only from a loopback or RFC1918 peer (compose binds `api` to
+    # 127.0.0.1). The last entry is the one trusted hop's view of the peer,
+    # anything before it may be spoofed. getlist: a proxy that adds a header line
+    # instead of merging would otherwise leave us reading the client's line.
     direct_peer = request.client.host if request.client else None
     if direct_peer is None or not _is_trusted_proxy(direct_peer):
         return direct_peer or "unknown"

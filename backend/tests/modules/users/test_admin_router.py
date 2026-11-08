@@ -30,10 +30,8 @@ from tests.fakes.events import RecordingEventPublisher
 async def client(
     test_container: AsyncContainer, api_app: FastAPI
 ) -> AsyncIterator[httpx.AsyncClient]:
-    # httpx.AsyncClient + ASGITransport runs the app on this test's loop.
-    # TestClient (tests/api/test_app.py) uses a thread with its own loop, and
-    # the endpoint's session is the `session` fixture's asyncpg connection,
-    # which is loop-bound ("Future attached to a different loop").
+    # ASGITransport runs the app on this test's loop: the `session` fixture's
+    # connection is loop-bound, and TestClient would run on a loop of its own
     app = api_app
     app.state.dishka_container = test_container
     transport = httpx.ASGITransport(app=app)

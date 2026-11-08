@@ -126,11 +126,8 @@ def test_resolve_client_ip_uses_last_entry_when_proxy_appends() -> None:
 
 
 def test_resolve_client_ip_uses_last_of_repeated_field_lines() -> None:
-    # HTTP treats repeated field lines as one comma-joined list. A proxy that
-    # adds a line rather than merging (HAProxy's `option forwardfor` without
-    # `if-none`) leaves the client's own line first, so reading only the first
-    # line would hand the client the value that keys rate limits and the IP
-    # allowlist.
+    # a proxy that adds a line instead of merging leaves the client's own line
+    # first; reading it would hand the client the rate-limit and allowlist key
     request = _make_request(
         "127.0.0.1",
         header_pairs=[

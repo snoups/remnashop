@@ -31,10 +31,8 @@ class Transaction(BaseSql, TimestampMixin):
         ),
         # the admin list's newest-first pages
         Index("ix_transactions_created_at_id", text("created_at DESC"), text("id DESC")),
-        # Per gateway, not global: providers mint their own id namespaces and
-        # two of them handing out the same id must not collide (it would fail
-        # the checkout that writes the second one, leaving a payment the
-        # customer can still complete against an order with no external id).
+        # per gateway: two providers may hand out the same id, and a collision
+        # would fail a checkout whose payment the customer can still complete
         UniqueConstraint(
             "gateway_type", "external_payment_id", name="ux_transactions_gateway_external_id"
         ),

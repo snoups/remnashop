@@ -18,10 +18,8 @@ if __name__ == "__main__":
 
     # Startup crashes go through loguru too, so they reach the dashboard log view.
     with logger.catch(onerror=lambda _: sys.exit(1)):
-        # Read once, before uvicorn starts its loop: uvicorn calls a
-        # `factory=True` callable from inside a running loop, where asyncio.run()
-        # fails. Hence the token is fetched here and a concrete app is built.
-        # No hot-reload.
+        # before uvicorn's loop: a `factory=True` callable runs inside it, where
+        # asyncio.run() fails, so the token is read here and a concrete app built
         asyncio.run(assert_crypt_key_matches(_config))
         _bot_settings = asyncio.run(read_bot_settings(_config))
         if _bot_settings.token is None or _bot_settings.secret_token is None:

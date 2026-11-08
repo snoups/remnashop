@@ -51,10 +51,8 @@ class UseCase(ABC, Generic[InputDto, OutputDto, ActorT]):
 
     async def _run(self, actor: ActorT, data: Optional[InputDto] = None) -> OutputDto:
         self._check_permissions(actor)
-        # data-less usecases (InputDto=None) are called via the no-data
-        # __call__ overload above and never read `data` in _execute(); mypy
-        # can't express that relationship, so it sees `InputDto | None`
-        # against `_execute`'s `InputDto` parameter.
+        # a data-less usecase comes through the no-data overload and never reads
+        # `data`; mypy can't tie the two together
         return await self._execute(actor, data)  # type: ignore[arg-type]
 
     def _check_permissions(self, actor: Actor) -> None:

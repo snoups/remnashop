@@ -31,10 +31,7 @@ OWNED_STATUSES: Final[tuple[SubscriptionStatus, ...]] = (
     SubscriptionStatus.LIMITED,
 )
 
-# Every status maps to the set of statuses it may transition into,
-# including itself (a same-status write, e.g. a redelivered sync webhook,
-# is always legal and a no-op). DELETED is terminal: once set, no further
-# transition is legal from it.
+# a status may always go to itself (a redelivered webhook); DELETED is terminal
 VALID_TRANSITIONS: Final[dict[SubscriptionStatus, frozenset[SubscriptionStatus]]] = {
     SubscriptionStatus.ACTIVE: frozenset(
         {

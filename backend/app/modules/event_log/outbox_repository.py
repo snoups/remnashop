@@ -21,9 +21,7 @@ class EventOutboxRepository:
         self.session = session
 
     async def find_unprocessed_by_id(self, entry_id: int) -> Optional[EventOutboxEntry]:
-        # No _MAX_ATTEMPTS cap here, unlike list_unprocessed_ids: the fast path
-        # fires once per publish and never retries. A future re-enqueue path must
-        # gate on attempts itself or route through list_unprocessed_ids.
+        # no _MAX_ATTEMPTS cap: the fast path fires once per publish, never retries
         stmt = (
             select(EventOutboxEntry)
             .where(EventOutboxEntry.id == entry_id, EventOutboxEntry.processed_at.is_(None))

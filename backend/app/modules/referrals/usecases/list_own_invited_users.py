@@ -9,11 +9,8 @@ from app.modules.users import UserDto, UserRepository
 class ListOwnInvitedUsersUseCase(
     UseCase[ListOwnInvitedUsersDto, tuple[list[OwnInvitedUserDto], int], UserDto]
 ):
-    """The customer's own downline, every level: who, how deep, since when, what they earned them.
-
-    Only the name of each: no ids, usernames or contacts reach another customer, and staff
-    stay out of the list as they do in the dashboard's.
-    """
+    """The customer's own downline, every level. Names only, no ids or contacts;
+    staff stay out of it."""
 
     required_permission = Permission.PUBLIC
 

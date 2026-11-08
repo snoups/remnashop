@@ -1464,10 +1464,8 @@ async def test_delete_admin_rejects_self_delete(
             )
         )
         await uow.commit()
-    # Fabricated actor: ADMINS_MANAGE is never actually grantable to an ADMIN
-    # in production (see permissions.py), but the usecase's defensive
-    # self-delete guard must hold regardless of how the permission was
-    # obtained.
+    # ADMINS_MANAGE isn't grantable to an ADMIN, but the self-delete guard must
+    # hold however the permission got there
     self_actor = self_admin.model_copy(update={"permission_grants": ["ADMINS_MANAGE"]})
 
     delete_use_case = DeleteAdminUseCase(

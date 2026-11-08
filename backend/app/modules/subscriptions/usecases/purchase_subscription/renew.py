@@ -174,13 +174,9 @@ class RenewPurchase:
         duration_days: int,
         keep_key: Callable[[], None],
     ) -> datetime:
-        # Same result as the panel's extend (max(expire_at, now) + days, an
-        # EXPIRED user flips to ACTIVE on a future expireAt), but as an absolute
-        # value pinned before the call, so a lost response or failed commit is
-        # retried with it instead of extending twice.
-        # Known gap: an extend from elsewhere between the read and the write is
-        # overwritten, and on resume an extension past the pinned value hides
-        # an unlanded write. A panel-side idempotency token would close both.
+        # the panel's extend (max(expire_at, now) + days) as an absolute value
+        # pinned before the call, so a retry can't extend twice. Known gap: an
+        # extend from elsewhere between read and write is overwritten.
         async with self._uow:
             pinned = await self._idempotency.find_pending_renew_expire_at(key)
         if pinned is None:

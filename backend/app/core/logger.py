@@ -94,11 +94,8 @@ def setup_logger(config: AppConfig, process: str) -> None:
     logger.remove()
     logger.configure(patcher=redact_exception)
 
-    # diagnose=False on every sink: loguru's default annotates each traceback
-    # frame with the repr of that frame's variables. On a request path those
-    # hold the caller's bearer credential; on the asyncpg path, the database
-    # password. Neither reaches the log through an application DTO, so schema
-    # changes alone would not close it.
+    # diagnose=False on every sink: loguru would print each traceback frame's
+    # locals, the bearer credential on a request path, the DB password in asyncpg
     logger.add(
         sink=sys.stderr,
         level=config.log.level,

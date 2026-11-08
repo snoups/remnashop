@@ -19,12 +19,9 @@ def reward_takes_effect(
     extra_traffic_gb: int,
     now: datetime,
 ) -> bool:
-    """Whether the reward is of any use to the subscription. An ACTIVE one
-    takes every reward. Days help an EXPIRED or LIMITED one unless its traffic
-    is spent for good (they count from now: max(expire_at, now) + days, and a
-    periodic reset brings the traffic back); traffic brings a LIMITED one back
-    while its term runs and the new limit clears what's used. A trial never
-    takes a promocode; an unknown usage (panel unreachable) is no."""
+    """Whether the reward is of any use to the subscription. ACTIVE takes any;
+    days help EXPIRED or LIMITED unless the traffic is spent for good; traffic
+    helps LIMITED while its term runs. Never a trial; unknown usage is no."""
     if subscription.is_trial:
         return False
     if subscription.status is SubscriptionStatus.ACTIVE:

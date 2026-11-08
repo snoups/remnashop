@@ -83,12 +83,9 @@ class BackupRepository:
         exclude_run_id: Optional[int] = None,
         pending: bool = True,
     ) -> bool:
-        # PENDING counts for a click: a new run waits there for the worker, and a
-        # second click meanwhile must not pass. The worker counts only RUNNING,
-        # under lock_kind(), so queued siblings take turns instead of refusing
-        # each other. exclude_run_id lets run_backup() skip its own row. Older
-        # rows were stranded by a killed worker; updated_at is when a RUNNING
-        # row started, not when it was queued.
+        # a click counts PENDING too, so a second click can't pass before the
+        # worker starts; the worker counts only RUNNING, under lock_kind(), so
+        # queued siblings take turns. Older rows were stranded by a killed worker.
         statuses = (
             (BackupRunStatus.PENDING, BackupRunStatus.RUNNING)
             if pending

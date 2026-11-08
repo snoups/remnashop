@@ -166,7 +166,7 @@ class TransactionStatsRepository:
         An early renewal stacks onto the current coverage, a late one starts
         afresh: end_n = max(end_{n-1}, paid_n) + days_n, which unrolls to
         S_n + max over k <= n of (paid_k - S_{k-1}), S being the running sum of
-        days -- a running max, so window functions can compute it.
+        days: a running max, so window functions can compute it.
         """
         order = (Transaction.updated_at, Transaction.duration_days, Transaction.id)
         conditions: list[ColumnElement[bool]] = [*_PAID, Transaction.updated_at < before]
