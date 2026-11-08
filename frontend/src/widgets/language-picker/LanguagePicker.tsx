@@ -36,7 +36,6 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
     <div ref={ref} className="relative shrink-0">
       <Pressable
         type="button"
-        aria-label={LANGUAGE_LABELS[currentLanguage]}
         onClick={() => setIsOpen((open) => !open)}
         className={
           capsule

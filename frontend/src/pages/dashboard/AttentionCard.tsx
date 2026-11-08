@@ -1,19 +1,18 @@
 import type { ParseKeys, TFunction } from "i18next";
 import {
   AlertTriangle,
-  ArchiveX,
   ArrowRight,
-  Bot,
+  BotOff,
   CalendarClock,
-  Clock,
   CloudOff,
+  Coins,
   CreditCard,
   DatabaseBackup,
-  DatabaseZap,
-  History,
+  DatabaseX,
   Hourglass,
   Info,
   KeyRound,
+  ListX,
   MailWarning,
   MailX,
   MegaphoneOff,
@@ -21,9 +20,11 @@ import {
   PackageX,
   ServerCrash,
   ServerOff,
+  TimerOff,
   Wrench,
+  X,
 } from "lucide-react";
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -33,10 +34,12 @@ import { UNFULFILLED_STATUS } from "@entities/transactions/api";
 import type { AttentionItem, AttentionKind } from "@entities/overview/api";
 import { usePermissions } from "@entities/user/use-current-user";
 import { formatDateTime } from "@shared/lib/relative-time";
+import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import type { Permission } from "@shared/types/rbac";
 import { Button } from "@shared/ui/Button";
 import { CellText } from "@shared/ui/CellText";
+import { IconButton } from "@shared/ui/IconButton";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
@@ -53,7 +56,10 @@ import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { NAV_ITEMS, SETTINGS_TABS, isNavItemVisible } from "@widgets/sidebar/nav-items";
 import { RUNTIME_PROCESS_LABELS, formatUptime } from "@pages/dashboard/runtime";
 
-const OPEN_ROW_CLASS = "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3";
+// the last column keeps the text clear of the hide button laid over the row
+const OPEN_ROW_CLASS = "grid grid-cols-[32px_minmax(0,1fr)_32px] items-center gap-3";
+
+const DISMISSED_KEY = "remnashop_attention_dismissed";
 
 const SEVERITY_TONE = {
   critical: "error",
@@ -62,23 +68,23 @@ const SEVERITY_TONE = {
 
 const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = {
   process_down: ServerCrash,
-  outbox_stuck: ArchiveX,
+  outbox_stuck: ListX,
   panel_unavailable: CloudOff,
   node_offline: ServerOff,
   gateway_failures: CreditCard,
   smtp_failed: MailX,
-  backup_failed: DatabaseZap,
+  backup_failed: DatabaseX,
   backup_overdue: DatabaseBackup,
   broadcast_failed: MegaphoneOff,
   paid_not_fulfilled: PackageX,
-  stale_pending: Clock,
+  stale_pending: TimerOff,
   broadcast_stalled: Hourglass,
   email_undeliverable: MailWarning,
   expiring_paid: CalendarClock,
   api_token_expiring: KeyRound,
-  bot_webhook: Bot,
+  bot_webhook: BotOff,
   plan_squads_missing: Network,
-  unrated_anchor_amounts: History,
+  unrated_anchor_amounts: Coins,
 };
 
 interface AttentionLink {
@@ -262,12 +268,18 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
     case "bot_webhook":
       return {
         title: t("dashboard.attention.botWebhook.title"),
-        sub: item.subject ?? t("dashboard.attention.botWebhook.noWebhook"),
+        sub: item.subject
+          ? t("dashboard.attention.botWebhook.error", { error: item.subject })
+          : t("dashboard.attention.botWebhook.noWebhook"),
       };
     case "plan_squads_missing":
       return {
         title: t("dashboard.attention.planSquadsMissing.title", { name: item.subject ?? "" }),
-        sub: counted("dashboard.attention.planSquadsMissing.sub"),
+        sub: t(
+          item.count === 1
+            ? "dashboard.attention.planSquadsMissing.subOne"
+            : "dashboard.attention.planSquadsMissing.subMany",
+        ),
       };
     case "unrated_anchor_amounts":
       // subject: their currencies
@@ -352,17 +364,34 @@ function AttentionDialog({ item, onClose }: { item: AttentionItem; onClose: () =
   );
 }
 
-function AttentionRow({ item }: { item: AttentionItem }) {
+// a hidden item comes back once its object or start time changes, or its count grows
+const fingerprint = (item: AttentionItem) => `${item.kind}|${item.subject ?? ""}|${item.since ?? ""}`;
+
+// fingerprint → count when hidden
+function readDismissed(): Record<string, number> {
+  try {
+    return JSON.parse(readStorage(DISMISSED_KEY) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss: () => void }) {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const { title, sub } = itemText(item, t, i18n.language);
 
   return (
     <>
-      <ListRow className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
-        <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
-        <CellText title={title} sub={sub} />
-      </ListRow>
+      <div className="relative">
+        <ListRow className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
+          <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
+          <CellText title={title} sub={sub} />
+        </ListRow>
+        <IconButton size="8" className="absolute right-3.5 top-1/2 -translate-y-1/2" onClick={onDismiss}>
+          <X className="size-4" />
+        </IconButton>
+      </div>
       {isOpen && <AttentionDialog item={item} onClose={() => setIsOpen(false)} />}
     </>
   );
@@ -372,10 +401,22 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
   const { t, i18n } = useTranslation();
   const [state] = useAsyncResource(getAttention, { deps: [refreshKey], keepData: true });
 
-  const items = state.kind === "ready" ? state.data.items : [];
-  const sorted = [...items].sort((a, b) => Number(a.severity !== "critical") - Number(b.severity !== "critical"));
+  const [dismissed, setDismissed] = useState(readDismissed);
+
+  const all = state.kind === "ready" ? state.data.items : [];
+  // an item that went away is forgotten, so the same problem shows again when it returns
+  const live = new Set(all.map(fingerprint));
+  const active = Object.fromEntries(Object.entries(dismissed).filter(([key]) => live.has(key)));
+  const items = all.filter((item) => !(fingerprint(item) in active && item.count <= active[fingerprint(item)]));
   const critical = items.filter((item) => item.severity === "critical").length;
   const warning = items.length - critical;
+  const activeJson = JSON.stringify(active);
+
+  useEffect(() => {
+    if (state.kind === "ready") writeStorage(DISMISSED_KEY, activeJson);
+  }, [state.kind, activeJson]);
+
+  const dismiss = (item: AttentionItem) => setDismissed({ ...active, [fingerprint(item)]: item.count });
 
   // only when something needs a look: nothing while loading or when the list comes back empty
   if (state.kind === "loading" || (state.kind === "ready" && items.length === 0)) return null;
@@ -393,7 +434,11 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
                 {t("dashboard.attention.critical", { value: critical.toLocaleString(i18n.language) })}
               </StatusPill>
             )}
-            {warning > 0 && <StatusPill tone="warning">{warning.toLocaleString(i18n.language)}</StatusPill>}
+            {warning > 0 && (
+              <StatusPill tone="warning">
+                {t("dashboard.attention.warning", { value: warning.toLocaleString(i18n.language) })}
+              </StatusPill>
+            )}
           </>
         )
       }
@@ -401,7 +446,9 @@ export function AttentionCard({ refreshKey }: { refreshKey: number }) {
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && (
         <div className={`${LIST_BODY_CLASS} pt-4`}>
-          {sorted.map((item, index) => <AttentionRow key={`${item.kind}-${item.subject ?? index}`} item={item} />)}
+          {items.map((item, index) => (
+            <AttentionRow key={`${item.kind}-${item.subject ?? index}`} item={item} onDismiss={() => dismiss(item)} />
+          ))}
         </div>
       )}
     </Section>

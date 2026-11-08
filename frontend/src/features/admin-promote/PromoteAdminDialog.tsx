@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { promoteAdmin } from "@entities/admin/api";
-import type { UserListItem } from "@entities/user/api";
+import type { UserBase } from "@entities/user/api";
 import { userLabel } from "@entities/user/display";
 import { getErrorMessage } from "@shared/api/http";
 import { LOGIN_PATTERN } from "@shared/lib/login-validation";
@@ -18,7 +18,7 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { OneTimeSecretDialog } from "@shared/ui/OneTimeSecretDialog";
 
 interface PromoteAdminDialogProps {
-  user: Pick<UserListItem, "id" | "name" | "login">;
+  user: Pick<UserBase, "id" | "name" | "login">;
   /** The promotion went through; `login` is the one the new admin signs in with. */
   onPromoted: (login: string) => void;
   /** Fires once everything is closed, cancelled or done. */

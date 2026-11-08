@@ -22,7 +22,7 @@ import { listEventLogAfter } from "@entities/event-log/api";
 import type { EventLogEntry } from "@entities/event-log/api";
 import { eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
-import type { UserListItem } from "@entities/user/api";
+import type { UserBase } from "@entities/user/api";
 import { userContacts, userName, userNameField } from "@entities/user/display";
 import { usePermissions } from "@entities/user/use-current-user";
 import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
@@ -58,7 +58,7 @@ function languageName(code: string, uiLanguage: string): string {
 }
 
 /** onChanged makes points and discounts editable, permissions allowing */
-export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
+export function ProfileTab({ user, onChanged }: { user: UserBase; onChanged?: (user: UserBase) => void }) {
   const { t, i18n } = useTranslation();
   // sans even in mono rows: the dash looks the same everywhere
   const none = <span className="font-sans">{t("common.none")}</span>;

@@ -26,7 +26,7 @@ export function updateOwnProfile(payload: UpdateOwnProfileRequest): Promise<Curr
   return apiPatch<CurrentUser, UpdateOwnProfileRequest>("/users/me", payload);
 }
 
-export interface UserListItem {
+export interface UserBase {
   id: number;
   name: string;
   role: Role;
@@ -48,10 +48,12 @@ export interface UserListItem {
   deleted_at?: string | null;
   email_undeliverable_at?: string | null;
   is_bot_blocked?: boolean;
-  // absent only from the merge preview's two sides
-  active_subscriptions?: number;
-  limited_subscriptions?: number;
-  expired_subscriptions?: number;
+}
+
+export interface UserListItem extends UserBase {
+  active_subscriptions: number;
+  limited_subscriptions: number;
+  expired_subscriptions: number;
 }
 
 export const DEFAULT_PAGE_SIZE = 50;
@@ -158,8 +160,8 @@ export interface MergeConflict {
 }
 
 export interface MergePreview {
-  source: UserListItem;
-  target: UserListItem;
+  source: UserBase;
+  target: UserBase;
   conflicts: MergeConflict[];
   /** keeping this side's inviter would loop, so the merge drops the link */
   referrer_cycles: { side: MergeSide; referrer_id: number }[];

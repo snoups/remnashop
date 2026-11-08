@@ -7,7 +7,7 @@ import { useAnchorCurrency } from "@entities/pricing/use-anchor-currency";
 import { type Promocode, getPromocode } from "@entities/promocodes/api";
 import { type SubscriptionListItem, getSubscription } from "@entities/subscriptions/api";
 import { type TransactionItem, getTransaction } from "@entities/transactions/api";
-import { type UserListItem, getUser } from "@entities/user/api";
+import { type UserBase, getUser } from "@entities/user/api";
 import { PlanEditDialog } from "@features/plan-edit/PlanEditDialog";
 import { PromocodeDetailsDialog } from "@features/promocode-details/PromocodeDetailsDialog";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
@@ -95,7 +95,7 @@ function EntityDialog({ request, onClose }: { request: OpenDialog; onClose: () =
     case "user":
       return (
         <UserDetailsDialog
-          user={entity as UserListItem}
+          user={entity as UserBase}
           initialTab={request.tab as UserDetailsTab | undefined}
           onChanged={onChanged}
           onDeleted={onChanged}

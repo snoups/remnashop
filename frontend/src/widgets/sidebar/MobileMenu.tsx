@@ -26,7 +26,6 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 md:hidden">
       <motion.button
         type="button"
-        aria-label={t("header.closeMenu")}
         tabIndex={-1}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -36,11 +35,7 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
       <motion.div
-        id="mobile-navigation"
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={brandName}
         tabIndex={-1}
         initial={{ x: "-100%" }}
         animate={{ x: 0 }}
@@ -51,7 +46,7 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
         <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4">
           <BrandMark className="size-7 shrink-0 text-primary" />
           <span className="min-w-0 flex-1 truncate text-base font-bold">{brandName}</span>
-          <IconButton size="9" aria-label={t("header.closeMenu")} onClick={onClose}><X className="size-5" /></IconButton>
+          <IconButton size="9" onClick={onClose}><X className="size-5" /></IconButton>
         </div>
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-3">
           {NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map(({ key, to, end, icon: Icon }) => (

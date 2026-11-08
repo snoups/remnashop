@@ -6,7 +6,7 @@ import { listEventLog, type EventLogEntry } from "@entities/event-log/api";
 import { initiatorLabel } from "@entities/event-log/describe-entry";
 import { getUserLoyalty, setUserLoyaltyExcluded } from "@entities/loyalty/api";
 import { adjustUserBonusDays, adjustUserPoints } from "@entities/referrals/api";
-import { setUserDiscount, type UserListItem } from "@entities/user/api";
+import { setUserDiscount, type UserBase } from "@entities/user/api";
 import { useAccountPermissions } from "@entities/user/use-current-user";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { getErrorMessage } from "@shared/api/http";
@@ -39,7 +39,7 @@ const DISCOUNT_EVENT: Record<DiscountKind, string> = {
   purchase_discount: "UserPurchaseDiscountChangedEvent",
 };
 
-export function BalanceTiles({ user, onChanged }: { user: UserListItem; onChanged?: (user: UserListItem) => void }) {
+export function BalanceTiles({ user, onChanged }: { user: UserBase; onChanged?: (user: UserBase) => void }) {
   const { t } = useTranslation();
   const permissions = useAccountPermissions(user.id);
   const [openedEntry, setOpenedEntry] = useState<EventLogEntry | null>(null);

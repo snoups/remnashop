@@ -7,6 +7,7 @@ import {
   getUserListStats,
   listUsers,
   type UserListFilters,
+  type UserBase,
   type UserListItem,
   type BlockedBy,
   type UserListStats,
@@ -149,12 +150,12 @@ export function UsersPage() {
         : prev,
     );
 
-  const handleUserUpdated = (updated: UserListItem) => {
+  const handleUserUpdated = (updated: UserBase) => {
     setState((prev) =>
       prev.kind === "ready"
         ? {
             kind: "ready",
-            items: prev.items.map((u) => (u.id === updated.id ? updated : u)),
+            items: prev.items.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
             total: prev.total,
           }
         : prev,

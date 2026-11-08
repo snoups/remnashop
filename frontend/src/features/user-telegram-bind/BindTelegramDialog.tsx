@@ -2,7 +2,7 @@ import { GitMerge, Send } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { bindUserTelegram, listUsers, type UserListItem } from "@entities/user/api";
+import { bindUserTelegram, listUsers, type UserBase } from "@entities/user/api";
 import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
@@ -17,10 +17,10 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 const OWNER_LOOKUP_LIMIT = 10;
 
 interface BindTelegramDialogProps {
-  user: UserListItem;
-  onBound: (user: UserListItem) => void;
+  user: UserBase;
+  onBound: (user: UserBase) => void;
   /** the id is taken by `other`; the caller opens the merge with it */
-  onMergeWith: (other: UserListItem) => void;
+  onMergeWith: (other: UserBase) => void;
   onClose: () => void;
 }
 
@@ -37,7 +37,7 @@ function BindTelegramForm({ user, onBound, onMergeWith }: Omit<BindTelegramDialo
   const close = useModalClose();
   const [value, setValue] = useState(user.telegram_id === null ? "" : String(user.telegram_id));
   const [error, setError] = useState<string | null>(null);
-  const [owner, setOwner] = useState<UserListItem | null>(null);
+  const [owner, setOwner] = useState<UserBase | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const telegramId = /^\d+$/.test(value.trim()) ? Number(value.trim()) : null;
 

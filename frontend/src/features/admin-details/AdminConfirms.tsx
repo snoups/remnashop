@@ -1,16 +1,16 @@
 import { useTranslation } from "react-i18next";
 
 import { deleteAdmin, demoteAdmin } from "@entities/admin/api";
-import type { UserListItem } from "@entities/user/api";
+import type { UserBase } from "@entities/user/api";
 import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 interface DemoteAdminConfirmProps {
-  user: UserListItem;
+  user: UserBase;
   /** Telegram, email or OAuth left once the login is cleared; false adds a warning */
   canSignInAfterDemote: boolean;
-  onDemoted: (user: UserListItem) => void;
+  onDemoted: (user: UserBase) => void;
   onClose: () => void;
 }
 
@@ -44,7 +44,7 @@ export function DemoteAdminConfirm({ user, canSignInAfterDemote, onDemoted, onCl
 }
 
 interface DeleteAdminConfirmProps {
-  user: UserListItem;
+  user: UserBase;
   onDeleted: () => void;
   onClose: () => void;
 }

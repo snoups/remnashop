@@ -1,10 +1,10 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
-import type { UserListItem } from "@entities/user/api";
+import type { UserBase } from "@entities/user/api";
 import type { ListResponse } from "@shared/api/http";
 import type { Permission } from "@shared/types/rbac";
 
 /** the user fields plus the permission breakdown */
-export interface Admin extends UserListItem {
+export interface Admin extends UserBase {
   permission_grants: Permission[];
   permission_revokes: Permission[];
   role_permissions: Permission[];
@@ -67,8 +67,8 @@ export function getAdmin(userId: number, signal?: AbortSignal): Promise<AdminDet
   return apiGet<AdminDetail>(`/admins/${userId}`, signal);
 }
 
-export function demoteAdmin(userId: number): Promise<UserListItem> {
-  return apiPost<UserListItem, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
+export function demoteAdmin(userId: number): Promise<UserBase> {
+  return apiPost<UserBase, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
 }
 
 export function deleteAdmin(userId: number): Promise<void> {

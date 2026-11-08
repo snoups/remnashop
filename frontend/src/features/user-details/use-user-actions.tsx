@@ -6,7 +6,7 @@ import { resetUserReferralCode } from "@entities/referrals/api";
 import { deleteUserSubscriptions } from "@entities/subscriptions/api";
 import { userLabel } from "@entities/user/display";
 import {
-  type UserListItem,
+  type UserBase,
   blockUser,
   clearEmailUndeliverable,
   deleteUser,
@@ -43,17 +43,17 @@ export type UserAction =
 
 interface UserActionsOptions {
   /** the account after a promote, block, unblock, trial toggle, referral code reset, Telegram binding or merge */
-  onUpdated: (user: UserListItem) => void;
-  onDeleted: (user: UserListItem) => void;
-  onSubscriptionsDeleted?: (user: UserListItem) => void;
+  onUpdated: (user: UserBase) => void;
+  onDeleted: (user: UserBase) => void;
+  onSubscriptionsDeleted?: (user: UserBase) => void;
   /** Telegram, email or OAuth left once demoted; unknown OAuth counts as none, so the warning errs on showing */
-  canSignInAfterDemote?: (user: UserListItem) => boolean;
+  canSignInAfterDemote?: (user: UserBase) => boolean;
 }
 
 interface UserActions {
   /** what the viewer may do to this account, in footer order */
-  available: (user: UserListItem) => UserAction[];
-  run: (action: UserAction, user: UserListItem) => void;
+  available: (user: UserBase) => UserAction[];
+  run: (action: UserAction, user: UserBase) => void;
   /** confirmations and the promote form; render it where they should stack */
   dialogs: ReactNode;
 }
@@ -90,12 +90,12 @@ export function useUserActions({
       | "merge"
       | "deleteSubscriptions"
       | "delete";
-    user: UserListItem;
+    user: UserBase;
     /** the merge counterpart, preset when a Telegram ID turned out taken */
-    other?: UserListItem;
+    other?: UserBase;
   } | null>(null);
 
-  const available = (user: UserListItem): UserAction[] => {
+  const available = (user: UserBase): UserAction[] => {
     // a deleted account is read-only
     if (user.deleted_at) return [];
     // the backend's can_manage: a customer is anyone's, staff only from a strictly higher role,
@@ -159,7 +159,7 @@ export function useUserActions({
     ];
   };
 
-  const setBlocked = async (user: UserListItem, blocked: boolean) => {
+  const setBlocked = async (user: UserBase, blocked: boolean) => {
     try {
       onUpdated(await (blocked ? blockUser(user.id) : unblockUser(user.id)));
     } catch (err) {
@@ -172,7 +172,7 @@ export function useUserActions({
     }
   };
 
-  const unbindTelegram = async (user: UserListItem) => {
+  const unbindTelegram = async (user: UserBase) => {
     try {
       onUpdated(await unbindUserTelegram(user.id));
       toast.success(t("users.telegram.unbound"));
@@ -181,7 +181,7 @@ export function useUserActions({
     }
   };
 
-  const resetReferralCode = async (user: UserListItem) => {
+  const resetReferralCode = async (user: UserBase) => {
     try {
       const stats = await resetUserReferralCode(user.id);
       onUpdated({ ...user, referral_code: stats.referral_code });
@@ -191,7 +191,7 @@ export function useUserActions({
     }
   };
 
-  const clearUndeliverable = async (user: UserListItem) => {
+  const clearUndeliverable = async (user: UserBase) => {
     try {
       onUpdated(await clearEmailUndeliverable(user.id));
       toast.success(t("users.emailUndeliverable.cleared"));
@@ -200,7 +200,7 @@ export function useUserActions({
     }
   };
 
-  const toggleTrial = async (user: UserListItem) => {
+  const toggleTrial = async (user: UserBase) => {
     const allow = !user.is_trial_available;
     try {
       onUpdated(await setUserTrialAvailability(user.id, allow));
@@ -210,7 +210,7 @@ export function useUserActions({
     }
   };
 
-  const removeSubscriptions = async (user: UserListItem) => {
+  const removeSubscriptions = async (user: UserBase) => {
     try {
       const { deleted } = await deleteUserSubscriptions(user.id);
       toast.success(t("users.deleteSubscriptions.done", { count: deleted }));
@@ -220,7 +220,7 @@ export function useUserActions({
     }
   };
 
-  const remove = async (user: UserListItem) => {
+  const remove = async (user: UserBase) => {
     try {
       await (user.role === "ADMIN"
         ? deleteAdmin(user.id)
@@ -231,7 +231,7 @@ export function useUserActions({
     }
   };
 
-  const run = (action: UserAction, user: UserListItem) => {
+  const run = (action: UserAction, user: UserBase) => {
     if (action === "unblock") void setBlocked(user, false);
     else if (action === "clearEmailUndeliverable") void clearUndeliverable(user);
     else if (action === "toggleTrial") void toggleTrial(user);

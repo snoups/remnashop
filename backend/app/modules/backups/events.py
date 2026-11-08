@@ -7,7 +7,7 @@ from app.core.events import ActorEvent, EventCategory, SystemEvent
 
 @dataclass(frozen=True, kw_only=True)
 class BackupFailedEvent(SystemEvent):
-    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    category: ClassVar[EventCategory] = EventCategory.INFRASTRUCTURE
     run_id: int
     kind: BackupKind
     error: str
@@ -23,7 +23,7 @@ class BackupChangedEvent(ActorEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class BackupCompletedEvent(SystemEvent):
-    category: ClassVar[EventCategory] = EventCategory.SETTINGS
+    category: ClassVar[EventCategory] = EventCategory.INFRASTRUCTURE
     run_id: int
     kind: BackupKind
     size_bytes: int

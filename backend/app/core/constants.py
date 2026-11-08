@@ -23,8 +23,8 @@ ALEMBIC_INI: Final[Path] = BASE_DIR / "alembic.ini"
 DOMAIN_REGEX: Final[Pattern[str]] = re.compile(r"^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$")
 LOGIN_PATTERN: Final[Pattern[str]] = re.compile(r"^[A-Za-z0-9._-]+$")
 
-REMNAWAVE_MIN_VERSION: Final[Version] = Version("2.7.0")
-REMNAWAVE_MAX_VERSION: Final[Version] = Version("2.8.0")
+REMNAWAVE_MIN_VERSION: Final[Version] = Version("3.0.0")
+REMNAWAVE_MAX_VERSION: Final[Version] = Version("4.0.0")
 
 REPOSITORY: Final[str] = "https://github.com/remnashop/remnashop"
 T_ME: Final[str] = "https://t.me/"

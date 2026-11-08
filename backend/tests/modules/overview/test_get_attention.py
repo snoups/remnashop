@@ -117,9 +117,12 @@ async def _seed(
         stuck = await repo.create(
             _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key="att-p")
         )
-        pending = await repo.create(
-            _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key="att-s")
-        )
+        pending = [
+            await repo.create(
+                _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=f"att-s{i}")
+            )
+            for i in range(5)
+        ]
     for order in failed:
         await repo.mark_status(order.id, TransactionStatus.FAILED)
     await repo.mark_status(stuck.id, TransactionStatus.PAID)
@@ -130,7 +133,7 @@ async def _seed(
     )
     await session.execute(
         update(Transaction)
-        .where(Transaction.id == pending.id)
+        .where(Transaction.id.in_([order.id for order in pending]))
         .values(created_at=now - timedelta(minutes=20), expires_at=now + timedelta(minutes=10))
     )
     backups = BackupRepository(session)
@@ -256,6 +259,7 @@ async def test_transport_error_before_the_breaker_opens_drops_only_the_node_item
     assert "gateway_failures" in kinds
 
 
+@pytest.mark.parametrize(("counted", "expected"), [(5, 5), (4, None)], ids=["spike", "below"])
 async def test_stale_pending_counts_only_orders_between_15_and_30_minutes_old(
     session: AsyncSession,
     user_repository: UserRepository,
@@ -263,6 +267,8 @@ async def test_stale_pending_counts_only_orders_between_15_and_30_minutes_old(
     uow: UnitOfWork,
     plan_id: int,
     redis_alive: Redis,
+    counted: int,
+    expected: Optional[int],
 ) -> None:
     repo = TransactionRepository(session)
     user = await user_repository.create(CreateUserDto(name="Payer", telegram_id=840_002))
@@ -272,10 +278,12 @@ async def test_stale_pending_counts_only_orders_between_15_and_30_minutes_old(
             await repo.create(
                 _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=f"sp-{i}")
             )
-            for i in range(3)
+            for i in range(counted + 2)
         ]
-    # counted, too fresh, already expired
-    for order, age, ttl in zip(orders, (20, 10, 40), (10, 20, -10), strict=True):
+    # counted, then one too fresh and one already expired
+    ages = (20,) * counted + (10, 40)
+    ttls = (10,) * counted + (20, -10)
+    for order, age, ttl in zip(orders, ages, ttls, strict=True):
         await session.execute(
             update(Transaction)
             .where(Transaction.id == order.id)
@@ -288,7 +296,7 @@ async def test_stale_pending_counts_only_orders_between_15_and_30_minutes_old(
         OWNER
     )
 
-    assert {i.kind: i.count for i in result.items}["stale_pending"] == 1
+    assert {i.kind: i.count for i in result.items}.get("stale_pending") == expected
 
 
 async def test_migrated_amounts_without_a_rate_are_listed_with_their_currencies(

@@ -4,6 +4,7 @@ import {
   Ban,
   BarChart3,
   BellRing,
+  BookOpen,
   Bot,
   Check,
   Coins,
@@ -95,6 +96,7 @@ const RESOURCE_ICONS: Record<string, LucideIcon> = {
   email_settings: Mail,
   legal_documents: FileText,
   legal_acceptances: FileCheck,
+  connect_guide: BookOpen,
 };
 
 function getResourceIcon(resource: string): LucideIcon {

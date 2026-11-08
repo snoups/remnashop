@@ -21,7 +21,6 @@ from app.modules.users.repository import UserRepository
 _KEPT_SUBSCRIPTION_EVENTS = {
     "PanelSyncCompletedEvent",
     "PanelSyncStartedEvent",
-    "AddOnChangedEvent",
     "SubscriptionAddOnGrantedEvent",
     "SubscriptionChangedEvent",
     "SubscriptionConfigSyncedEvent",

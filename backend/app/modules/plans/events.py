@@ -25,6 +25,6 @@ class PlanChangedEvent(ActorEvent):
 
 @dataclass(frozen=True, kw_only=True)
 class AddOnChangedEvent(ActorEvent):
-    category: ClassVar[EventCategory] = EventCategory.SUBSCRIPTION
+    category: ClassVar[EventCategory] = EventCategory.PLANS
     action: Literal["base_price", "create", "delete", "price_override", "update"]
     addon_id: Optional[int] = None

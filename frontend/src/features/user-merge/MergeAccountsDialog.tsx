@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { usePermissions } from "@entities/user/use-current-user";
-import { getMergePreview, listUsers, mergeUsers, type MergeSide, type UserListItem } from "@entities/user/api";
+import { getMergePreview, listUsers, mergeUsers, type MergeSide, type UserBase } from "@entities/user/api";
 import { userLabel } from "@entities/user/display";
 import { ApiError, getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
@@ -32,17 +32,17 @@ const COUNT_KEYS = ["subscriptions", "transactions", "referrals", "passkeys", "o
 const MONO_KEYS = new Set(["telegram", "email", "login"]);
 
 interface MergeAccountsDialogProps {
-  user: UserListItem;
+  user: UserBase;
   /** skips the search, e.g. the account that already holds a Telegram ID */
-  initialOther?: UserListItem;
+  initialOther?: UserBase;
   /** `removed` is the merged-in account, now deleted */
-  onMerged: (merged: UserListItem, removed: UserListItem) => void;
+  onMerged: (merged: UserBase, removed: UserBase) => void;
   onClose: () => void;
 }
 
 export function MergeAccountsDialog({ user, initialOther, onMerged, onClose }: MergeAccountsDialogProps) {
   const { t } = useTranslation();
-  const [other, setOther] = useState<UserListItem | null>(initialOther ?? null);
+  const [other, setOther] = useState<UserBase | null>(initialOther ?? null);
   const includeStaff = usePermissions().includes("ADMINS_MANAGE");
   return (
     <Modal onClose={onClose} size="lg" scrollable>
@@ -56,7 +56,7 @@ export function MergeAccountsDialog({ user, initialOther, onMerged, onClose }: M
   );
 }
 
-function userSubtitle(user: UserListItem): string {
+function userSubtitle(user: UserBase): string {
   return [`#${user.id}`, user.username ? `@${user.username}` : user.email].filter(Boolean).join(" · ");
 }
 
@@ -67,7 +67,7 @@ function MergePicker({
 }: {
   excludeId: number;
   includeStaff: boolean;
-  onPick: (user: UserListItem) => void;
+  onPick: (user: UserBase) => void;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -106,7 +106,7 @@ function MergePicker({
   );
 }
 
-function AccountColumn({ label, user }: { label: string; user: UserListItem }) {
+function AccountColumn({ label, user }: { label: string; user: UserBase }) {
   const { t } = useTranslation();
   return (
     <div className="min-w-0">
@@ -131,8 +131,8 @@ function MergePreviewStep({
   onMerged,
   onChange,
 }: {
-  user: UserListItem;
-  other: UserListItem;
+  user: UserBase;
+  other: UserBase;
   onMerged: MergeAccountsDialogProps["onMerged"];
   onChange: () => void;
 }) {

@@ -30,7 +30,7 @@ import { useTranslation } from "react-i18next";
 
 import { getAdmin } from "@entities/admin/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
-import type { UserListItem } from "@entities/user/api";
+import type { UserBase } from "@entities/user/api";
 import { userContacts, userName } from "@entities/user/display";
 import { useAccountPermissions, useCurrentUser, usePermissions } from "@entities/user/use-current-user";
 import {
@@ -73,12 +73,12 @@ export type UserDetailsTab =
   | "events";
 
 interface UserDetailsDialogProps {
-  user: UserListItem;
+  user: UserBase;
   initialTab?: UserDetailsTab;
   /** the account after an action from the footer */
-  onChanged?: (user: UserListItem) => void;
+  onChanged?: (user: UserBase) => void;
   /** the account was deleted from the footer; the dialog closes itself */
-  onDeleted?: (user: UserListItem) => void;
+  onDeleted?: (user: UserBase) => void;
   onClose: () => void;
 }
 
@@ -116,7 +116,7 @@ function UserDetailsDialogBody({
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   // remounts the subscriptions tab once they're deleted
   const [subscriptionsVersion, setSubscriptionsVersion] = useState(0);
-  const handleUpdated = (updated: UserListItem) => {
+  const handleUpdated = (updated: UserBase) => {
     setUser(updated);
     if (updated.role !== "ADMIN") setTab((current) => (current === "permissions" ? "profile" : current));
     onChanged?.(updated);

@@ -26,7 +26,6 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
     <>
       <Pressable
         type="button"
-        aria-label={t("donate.button")}
         onClick={() => setIsOpen(true)}
         className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-[13px] font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >

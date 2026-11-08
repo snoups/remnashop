@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.constants import LOGIN_PATTERN
-from app.core.enums import BlacklistKind, Locale
+from app.core.enums import BlacklistKind, Locale, RegistrationSource
 from app.core.security import PASSWORD_MIN_LENGTH, PASSWORD_PATTERN
 from app.core.security.permissions import Permission
 from app.core.utils.http import validate_ip_allowlist
@@ -67,7 +67,7 @@ class BlacklistMatchPageResponse(BaseModel):
 
 
 class RegistrationSnapshotResponse(BaseModel):
-    source: str
+    source: RegistrationSource
     start_payload: Optional[str]
     telegram_language_code: Optional[str]
     telegram_is_premium: Optional[bool]

@@ -104,7 +104,7 @@ export function Header({ onLogout }: HeaderProps) {
       {/* desktop: one 48px glass capsule across the page, title in it, 36px items 6px in; mobile: the bar is the frame */}
       <div className={mobile ? "contents" : "glass-panel flex h-12 items-center justify-between gap-5 rounded-full p-1.5"}>
       <div className="flex min-w-0 items-center gap-2.5">
-        {mobile && <IconButton size="9" tone="glass" aria-label={t("header.openMenu")} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-4" /></IconButton>}
+        {mobile && <IconButton size="9" tone="glass" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-4" /></IconButton>}
         {!mobile && !isOverviewPage && <IconCircle icon={PageIcon} header />}
         {!mobile && isOverviewPage && (
           // the page icon is the refresh button: hover swaps it for the refresh arrows
@@ -163,8 +163,6 @@ export function Header({ onLogout }: HeaderProps) {
         <div ref={menuRef} className="relative shrink-0">
           <Pressable
             type="button"
-            aria-label={t("header.profile")}
-            aria-expanded={openPopover === "user"}
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
             className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1 md:pl-0.5 md:pr-2.5"
           >

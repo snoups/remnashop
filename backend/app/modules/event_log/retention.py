@@ -27,6 +27,8 @@ SHORT_RETENTION_EVENT_TYPES: Final[frozenset[str]] = frozenset(
         "SubscriptionTrafficThresholdEvent",
         "TorrentBlockerReportEvent",
         # infrastructure
+        "BackupCompletedEvent",
+        "BackupFailedEvent",
         "BotStartedEvent",
         "BotStoppedEvent",
         "NodeBillingDueEvent",

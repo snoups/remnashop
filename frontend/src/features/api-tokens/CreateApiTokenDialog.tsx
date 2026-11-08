@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarClock, Eye, Globe, KeyRound, Megaphone } from "lucide-react";
+import { AlertTriangle, CalendarClock, Eye, KeyRound, LockOpen, PanelsTopLeft } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -157,13 +157,13 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
             </div>
             <Field label={t("apiTokens.presets")}>
               <div className="flex flex-wrap gap-2">
-                <Button variant="glass" icon={Megaphone} className="flex-auto" onClick={applyLanding}>
+                <Button variant="glass" icon={PanelsTopLeft} className="flex-auto" onClick={applyLanding}>
                   {t("apiTokens.landing")}
                 </Button>
                 <Button variant="glass" icon={Eye} className="flex-auto" onClick={applyReadOnly}>
                   {t("apiTokens.readOnly")}
                 </Button>
-                <Button variant="glass" icon={Globe} className="flex-auto" onClick={applyFullAccess}>
+                <Button variant="glass" icon={LockOpen} className="flex-auto" onClick={applyFullAccess}>
                   {t("apiTokens.fullAccess")}
                 </Button>
               </div>

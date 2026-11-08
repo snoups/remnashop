@@ -44,6 +44,8 @@ _UNFULFILLED_AFTER: Final[timedelta] = timedelta(minutes=10)
 _UNFULFILLED_WINDOW: Final[timedelta] = timedelta(days=7)
 # checkout orders expire after 30 min, so this has to be shorter to ever fire
 _STALE_PENDING_AFTER: Final[timedelta] = timedelta(minutes=15)
+# a few abandoned checkouts are normal
+_STALE_PENDING_SPIKE: Final[int] = 5
 _BOT_ERROR_WINDOW: Final[timedelta] = timedelta(hours=1)
 _EXPIRING_WITHIN: Final[timedelta] = timedelta(days=7)
 _EXPIRING_URGENT: Final[timedelta] = timedelta(hours=24)
@@ -253,6 +255,8 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             return []
         now = datetime_now()
         count = await self._transaction_stats.count_stale_pending(now - _STALE_PENDING_AFTER, now)
+        if count < _STALE_PENDING_SPIKE:
+            return []
         return [AttentionItemDto(kind=AttentionKind.STALE_PENDING, severity="warning", count=count)]
 
     async def _expiring_paid(self, perms: set[Permission]) -> list[AttentionItemDto]:
