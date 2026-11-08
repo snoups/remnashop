@@ -223,20 +223,22 @@ function SubscriptionEditDialogBody({
     <>
       <DialogHeader
         icon={Captions}
-        title={`${current.plan_snapshot.name} #${current.id}`}
+        title={current.plan_snapshot.name}
+        id={current.id}
         subtitle={
-          <>
-            {userName || t("users.unnamed")} <span className="font-mono">#{current.user_id}</span>
-          </>
+          <span className="flex min-w-0 gap-1">
+            <span className="truncate">{userName || t("users.unnamed")}</span>
+            <span className="shrink-0 font-mono">#{current.user_id}</span>
+          </span>
         }
         actions={
           <>
             {current.is_trial && (
-              <Badge borderless tone="warning">
+              <Badge tone="warning">
                 {t("subscriptions.trial")}
               </Badge>
             )}
-            <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[current.status]}>
+            <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[current.status]}>
               {t(`subscriptions.status.${current.status}`)}
             </Badge>
           </>
@@ -272,10 +274,10 @@ function SubscriptionEditDialogBody({
 
           {(footerMenuItems.length > 0 || canOpenUsers) && (
             <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
-              <OpenUserButton glass label={t("subscriptions.edit.toUser")} icon={User} user={{ id: current.user_id }} />
+              <OpenUserButton label={t("subscriptions.edit.toUser")} icon={User} user={{ id: current.user_id }} />
               {footerMenuItems.length > 0 && (
                 <div className="ml-auto">
-                  <ActionMenu glass trigger={{ label: t("users.details.actions"), icon: Settings2 }} items={footerMenuItems} />
+                  <ActionMenu trigger={{ label: t("users.details.actions"), icon: Settings2 }} items={footerMenuItems} />
                 </div>
               )}
             </div>

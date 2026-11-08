@@ -84,13 +84,12 @@ export interface UserListFilters {
 
 export interface UserListStats {
   total: number;
-  new: number;
   subscribed: number;
   blocked: number;
-  /** registrations in the 7 days before `new`'s window */
-  new_previous: number;
   /** registrations over the last 30 days */
   total_growth: number;
+  /** an expired subscription and nothing active or limited */
+  churned: number;
 }
 
 export function listUsers(

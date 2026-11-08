@@ -281,7 +281,7 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
         description={t("settings.cabinetAuth.description")}
         footer={
           state.kind === "ready" &&
-          (canManage || canManageOAuth) && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />
+          (canManage || canManageOAuth) && <SaveFooter dirty={dirty} saving={isSubmitting} />
         }
       >
         {state.kind === "loading" && <Spinner size="card" />}

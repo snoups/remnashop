@@ -57,11 +57,10 @@ export function RecentPaymentsCard({
           {payments.map((payment, index) => (
             <ListRow
               key={`${payment.user_id}-${payment.paid_at}-${index}`}
-              glass
               type="button"
               disabled={!canOpenUsers}
               onClick={() => openUser(payment.user_id)}
-              className={`grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3`}
+              className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3"
             >
               <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
                 {payment.name ? initials(payment.name) : <User className="size-4" />}
@@ -81,7 +80,7 @@ export function RecentPaymentsCard({
                 <span className="text-[13px] font-semibold tabular-nums text-foreground">
                   {formatMoney(payment.amount, payment.currency, language)}
                 </span>
-                <Badge borderless tone="neutral">{t(`transactions.purchaseType.${payment.purchase_type}`)}</Badge>
+                <Badge tone="neutral">{t(`transactions.purchaseType.${payment.purchase_type}`)}</Badge>
               </span>
             </ListRow>
           ))}

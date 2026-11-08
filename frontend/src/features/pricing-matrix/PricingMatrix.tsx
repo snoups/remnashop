@@ -172,7 +172,6 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
         rows.length > 0 &&
         canEditAny && (
           <SaveFooter
-            variant="glassAccent"
             dirty={dirty}
             saving={isSaving}
             disabled={isInvalid}

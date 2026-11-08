@@ -141,6 +141,7 @@ class Permission(UpperStrEnum):
     PRICING_MATRIX_MANAGE = auto()
     SUBSCRIPTIONS_VIEW = auto()
     SUBSCRIPTIONS_DETAIL_VIEW = auto()
+    SUBSCRIPTIONS_STATS_VIEW = auto()
     SUBSCRIPTIONS_UPDATE = auto()
     SUBSCRIPTIONS_SQUADS_MANAGE = auto()
     SUBSCRIPTIONS_DELETE = auto()
@@ -386,6 +387,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PRICING_MATRIX_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.SUBSCRIPTIONS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_DETAIL_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
+    Permission.SUBSCRIPTIONS_STATS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
     Permission.SUBSCRIPTIONS_UPDATE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_SQUADS_MANAGE: PermissionMeta(resource="subscriptions", kind="write"),
     Permission.SUBSCRIPTIONS_DELETE: PermissionMeta(resource="subscriptions", kind="write"),
@@ -714,6 +716,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.PRICING_MATRIX_MANAGE,
             Permission.SUBSCRIPTIONS_VIEW,
             Permission.SUBSCRIPTIONS_DETAIL_VIEW,
+            Permission.SUBSCRIPTIONS_STATS_VIEW,
             Permission.SUBSCRIPTIONS_UPDATE,
             Permission.SUBSCRIPTIONS_SQUADS_MANAGE,
             Permission.SUBSCRIPTIONS_DELETE,

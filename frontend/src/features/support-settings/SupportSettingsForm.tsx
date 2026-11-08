@@ -73,7 +73,7 @@ export function SupportSettingsForm() {
         icon={LifeBuoy}
         title={t("settings.support.title")}
         description={t("settings.support.description")}
-        footer={state.kind === "ready" && canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+        footer={state.kind === "ready" && canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
       >
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}

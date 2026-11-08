@@ -276,7 +276,6 @@ export function ReferralSettingsPage() {
         footer={
           canManage ? (
             <SaveFooter
-              variant="glassAccent"
               dirty={dirty}
               saving={isSaving}
               disabled={hasInvalidLevel || isInviteeInvalid}

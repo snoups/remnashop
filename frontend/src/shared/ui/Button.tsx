@@ -4,13 +4,11 @@ import type { ReactNode } from "react";
 
 import { Pressable } from "@shared/ui/Pressable";
 
-// accent/solid/outline/danger: primary and destructive actions, dialog and form footers (14px).
+// outline/danger: neutral and destructive actions outside the glass design (14px).
 // secondary: card-header actions and buttons next to a field (12.5px semibold).
 // glass: PillTabs' capsule fill, for actions beside one; glassAccent: its primary action, glassDanger:
 // its destructive one (13px medium); glassSolid: full primary, the one action of a page like sign-in.
 export type ButtonVariant =
-  | "accent"
-  | "solid"
   | "outline"
   | "secondary"
   | "glass"
@@ -20,8 +18,6 @@ export type ButtonVariant =
   | "danger";
 
 const COLOR_CLASS: Record<ButtonVariant, string> = {
-  accent: "border-transparent bg-accent text-primary hover:bg-primary/20",
-  solid: "border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
   outline: "border-border text-foreground/80 hover:bg-white/[0.06]",
   secondary: "border-border text-foreground/90 hover:bg-white/[0.06]",
   glass: "border-glass-border bg-white/[0.03] text-foreground/90 hover:bg-white/[0.06]",
@@ -33,19 +29,17 @@ const COLOR_CLASS: Record<ButtonVariant, string> = {
 };
 
 const TYPE_CLASS: Record<ButtonVariant, string> = {
-  accent: "gap-1.5 px-4 text-sm font-medium",
-  solid: "gap-1.5 px-4 text-sm font-semibold",
-  outline: "gap-1.5 px-4 text-sm font-medium",
-  secondary: "gap-1.5 px-3.5 text-[12.5px] font-semibold",
-  glass: "gap-1.5 px-3.5 text-[13px] font-medium",
-  glassAccent: "gap-1.5 px-3.5 text-[13px] font-medium",
-  glassSolid: "gap-1.5 px-3.5 text-[13px] font-semibold",
-  glassDanger: "gap-1.5 px-3.5 text-[13px] font-medium",
-  danger: "gap-1.5 px-4 text-sm font-medium",
+  outline: "px-4 text-sm font-medium",
+  secondary: "px-3.5 text-[12.5px] font-semibold",
+  glass: "px-3.5 text-[13px] font-medium",
+  glassAccent: "px-3.5 text-[13px] font-medium",
+  glassSolid: "px-3.5 text-[13px] font-semibold",
+  glassDanger: "px-3.5 text-[13px] font-medium",
+  danger: "px-4 text-sm font-medium",
 };
 
 // sm: 32px, for actions inside list rows; one typography for every variant
-const SM_TYPE_CLASS = "gap-1.5 px-3 text-[12.5px]";
+const SM_TYPE_CLASS = "px-3 text-[12.5px]";
 
 // field: 38px, lines up with a text input in the same row
 const SIZE_CLASS = { sm: "h-8", md: "h-9", field: "h-9.5" } as const;
@@ -74,7 +68,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   // the glass pair keeps its 13px medium at every height
-  const isGlass = variant === "glass" || variant === "glassAccent" || variant === "glassSolid" || variant === "glassDanger";
+  const isGlass = variant.startsWith("glass");
   const typography =
     size === "sm" && !isGlass
       ? `${SM_TYPE_CLASS} ${variant === "danger" ? "font-semibold" : "font-medium"}`
@@ -83,7 +77,7 @@ export function Button({
   return (
     <Pressable
       type={type}
-      className={`flex shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${COLOR_CLASS[variant]} ${typography} ${className}`}
+      className={`flex shrink-0 items-center justify-center gap-1.5 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${SIZE_CLASS[size]} ${COLOR_CLASS[variant]} ${typography} ${className}`}
       disabled={disabled || isLoading}
       {...props}
     >

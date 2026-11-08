@@ -1,10 +1,11 @@
 // Class strings shared by elements that are too different in structure for one component.
 
-const GLASS_SURFACE_CLASS =
-  "border border-white/[0.14] bg-popover/60 shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)] backdrop-blur-2xl backdrop-saturate-150";
+/** A dropdown's edge and shadow, under a frosted or an opaque fill. */
+export const POPOVER_EDGE_CLASS =
+  "rounded-popover border border-white/[0.14] shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_0_1px_0_rgba(232,236,251,0.16)]";
 
 /** Glass dropdown shell; padding is the caller's (p-1.5 for menus, p-3 for pickers). */
-export const POPOVER_CLASS = `rounded-popover ${GLASS_SURFACE_CLASS}`;
+export const POPOVER_CLASS = `${POPOVER_EDGE_CLASS} bg-popover/60 backdrop-blur-2xl backdrop-saturate-150`;
 
 /** An external link that reads as Button variant="glass"; grows in a row of links. */
 export const GLASS_LINK_BUTTON_CLASS =
@@ -55,11 +56,8 @@ const LIST_DIVIDER_CLASS =
  *  scrollable too, and the rows' rise-in would flash a scrollbar; the 8px/4px bleed keeps row edges and focus rings unclipped. */
 export const LIST_SCROLL_X_CLASS = "-mx-2 -my-1 overflow-x-auto overflow-y-hidden px-2 py-1";
 export const LIST_BODY_CLASS = `list-rows flex flex-col ${LIST_DIVIDER_CLASS}`;
-// 36px icon + 12px inset on every side = concentric pill; taller content overflows instead of growing the row.
-const LIST_ROW_SHAPE = "h-15 rounded-full [transition-property:background-color] duration-150";
-export const LIST_ROW_CLASS = `${LIST_ROW_SHAPE} px-3`;
-// a glass page's row, as a settings Row: a 32px circle 14px in on the 60px pill's curve
-export const GLASS_LIST_ROW_CLASS = `${LIST_ROW_SHAPE} px-3.5`;
+// a glass page's row, as a settings Row: a 32px circle 14px in on the 60px pill's curve; taller content overflows
+export const GLASS_LIST_ROW_CLASS = "h-15 rounded-full px-3.5 [transition-property:background-color] duration-150";
 
 /** A dashboard page that runs its own scroller instead of main's: the root, its bar and its scroller. */
 export const PAGE_CLASS = "relative flex flex-1 flex-col md:min-h-0 md:pr-[var(--scrollbar-size)] md:-mb-5";

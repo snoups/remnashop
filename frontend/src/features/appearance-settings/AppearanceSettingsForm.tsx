@@ -373,7 +373,7 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
         footer={
           state.kind === "ready" &&
           (canManage ? (
-            <SaveFooter variant="glassAccent" dirty={dirty} saving={isSaving} disabled={isBrandNameEmpty} beside={resetButton} />
+            <SaveFooter dirty={dirty} saving={isSaving} disabled={isBrandNameEmpty} beside={resetButton} />
           ) : (
             resetButton && <div className="mt-4 flex items-center gap-3">{resetButton}</div>
           ))

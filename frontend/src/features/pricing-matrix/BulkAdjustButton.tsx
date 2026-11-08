@@ -254,7 +254,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
             <Field label={t("pricing.matrix.modeLabel")}>
               <div className="flex flex-wrap gap-1.5">
                 {modes.map((mode) => (
-                  <ChoiceChip glass className="h-9" key={mode} active={form.mode === mode} onClick={() => update({ mode })}>
+                  <ChoiceChip className="h-9" key={mode} active={form.mode === mode} onClick={() => update({ mode })}>
                     {t(`pricing.matrix.mode.${mode}`)}
                   </ChoiceChip>
                 ))}
@@ -311,7 +311,6 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
                 <div className="flex flex-wrap gap-1.5">
                   {durations.map((days) => (
                     <ChoiceChip
-                      glass
                       className="h-9"
                       key={days}
                       active={baseDays === days}
@@ -358,7 +357,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
             <Field label={t("pricing.matrix.pinnedLabel")} hint={t(`pricing.matrix.pinnedHint.${form.pinned}`)}>
               <div className="flex flex-wrap gap-1.5">
                 {PINNED_ACTIONS.map((pinned) => (
-                  <ChoiceChip glass className="h-9" key={pinned} active={form.pinned === pinned} onClick={() => update({ pinned })}>
+                  <ChoiceChip className="h-9" key={pinned} active={form.pinned === pinned} onClick={() => update({ pinned })}>
                     {t(`pricing.matrix.pinned.${pinned}`)}
                   </ChoiceChip>
                 ))}

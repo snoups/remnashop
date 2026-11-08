@@ -251,9 +251,7 @@ export function TranslationsEditorForm() {
                     onClick={() => toggleGroup(group)}
                     className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
                   >
-                    <motion.span
-                      className={TAB_HOVER_CLASS}
-                    />
+                    <span className={TAB_HOVER_CLASS} />
                     <ChevronRight
                       className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
                     />

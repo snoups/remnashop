@@ -17,6 +17,7 @@ from app.modules.users.usecases import (
     DeleteUserUseCase,
     DemoteAdminUseCase,
     FindTelegramUserUseCase,
+    GetAdminUseCase,
     GetCurrentUserUseCase,
     GetUserListStatsUseCase,
     GetUserRegistrationUseCase,
@@ -52,6 +53,7 @@ class UsersProvider(Provider):
     use_cases = provide_all(
         GetCurrentUserUseCase,
         ListAdminsUseCase,
+        GetAdminUseCase,
         ListUsersUseCase,
         GetUserUseCase,
         GetUserRegistrationUseCase,

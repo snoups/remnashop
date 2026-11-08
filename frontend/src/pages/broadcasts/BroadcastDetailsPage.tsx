@@ -210,7 +210,7 @@ function BroadcastDetails({ id }: { id: number }) {
             {broadcastTitle(b, t("broadcasts.untitled"))}
           </span>
           <span className="flex shrink-0">
-            <Badge borderless tone={BROADCAST_STATUS_TONE[b.status]}>{t(`broadcasts.status.${b.status}`)}</Badge>
+            <Badge tone={BROADCAST_STATUS_TONE[b.status]}>{t(`broadcasts.status.${b.status}`)}</Badge>
           </span>
         </span>
         <div className="flex shrink-0 flex-wrap gap-2">

@@ -21,7 +21,7 @@ import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPer
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { ALL_TIME_TREND_DAYS, DAY_MS } from "@shared/lib/period";
+import { ALL_TIME_TREND_DAYS, DAY_MS, PERIOD_DAYS, type PeriodDays } from "@shared/lib/period";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { currencySymbol, formatMoney, formatPercent } from "@shared/lib/format";
@@ -35,7 +35,6 @@ import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { KpiTile, type KpiTrend } from "@shared/ui/KpiTile";
 import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { dotIcon, letterIcon } from "@shared/ui/option-icons";
-import type { PeriodDays } from "@shared/ui/PeriodPills";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
@@ -44,7 +43,6 @@ import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS
 import { ListRow } from "@shared/ui/ListRow";
 
 const STATUSES: TransactionStatus[] = ["PENDING", "PAID", "FAILED", "CANCELED", "REFUNDED"];
-const PERIODS: PeriodDays[] = [0, 7, 30, 90];
 
 const STATUS_DOT_ICONS = Object.fromEntries(
   STATUSES.map((value) => [value, dotIcon(PAYMENT_STATUS_DOT_CLASSNAME[value])]),
@@ -233,7 +231,7 @@ export function TransactionsPage() {
             size="compact"
             glassPopover
             placeholder={t("dashboard.periodAll")}
-            options={PERIODS.map((days) => ({
+            options={PERIOD_DAYS.map((days) => ({
               value: String(days),
               label: days === 0 ? t("dashboard.periodAll") : t("dashboard.periodDays", { count: days }),
               icon: CalendarRange,
@@ -337,7 +335,6 @@ export function TransactionsPage() {
 
                               return (
                                 <ListRow
-                        glass
                                   key={order.id}
                                   type="button"
                                   disabled={!canViewDetails}
@@ -381,7 +378,7 @@ export function TransactionsPage() {
                                     {formatTime(order.created_at, i18n.language)}
                                   </span>
                                   <span>
-                                    <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
+                                    <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>
                                       {t(`transactions.status.${order.status}`)}
                                     </Badge>
                                   </span>

@@ -133,7 +133,7 @@ export function OAuthSettingsForm() {
         icon={KeyRound}
         title={t("settings.oauth.title")}
         description={t("settings.oauth.description")}
-        footer={state.kind === "ready" && canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />}
+        footer={state.kind === "ready" && canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
       >
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
@@ -237,9 +237,6 @@ interface ProviderRowProps {
   fields: ProviderField[];
   /** above the fields: a provider choice */
   extra?: ReactNode;
-  /** under the fields: the row's own Save, when it is its own form */
-  footer?: ReactNode;
-  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 /** A sign-in provider in a glass card: status under the name, credentials folding out. The switch
@@ -255,8 +252,6 @@ export function ProviderRow({
   canEdit,
   fields,
   extra,
-  footer,
-  onSubmit,
 }: ProviderRowProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -287,7 +282,6 @@ export function ProviderRow({
       // a field error opens the row: a failed save must not hide what's wrong
       expanded={isOpen || fields.some((field) => field.error !== undefined)}
       onClick={() => setIsOpen((open) => !open)}
-      onSubmit={onSubmit}
       panel={
         <>
           {extra}
@@ -313,7 +307,6 @@ export function ProviderRow({
               </GlassField>
             );
           })}
-          {footer}
         </>
       }
     >

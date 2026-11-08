@@ -45,14 +45,13 @@ export function SquadReplacementsField({ missing, value, onChange, showHolders =
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <ChoiceChip glass className="h-9" active={value[squad.uuid] == null} onClick={() => pick(squad.uuid, null)}>
+            <ChoiceChip className="h-9" active={value[squad.uuid] == null} onClick={() => pick(squad.uuid, null)}>
               {t("subscriptions.panelSync.squads.drop")}
             </ChoiceChip>
             {squadsState.data.items
               .filter((candidate) => candidate.kind === squad.kind)
               .map((candidate) => (
                 <ChoiceChip
-                  glass
                   className="h-9"
                   key={candidate.uuid}
                   active={value[squad.uuid] === candidate.uuid}

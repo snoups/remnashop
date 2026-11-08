@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { copyToClipboard } from "@shared/lib/clipboard";
 
+const ROW_CLASS = "flex h-9 items-center justify-between gap-3 rounded-full px-2.5 transition-colors hover:bg-white/[0.04]";
+
 interface InfoRowProps {
   icon: ComponentType<{ className?: string }>;
   label: string;
@@ -43,7 +45,7 @@ export function InfoRow({ icon: Icon, label, children, copyValue, action, mono =
 
   if (copyValue) {
     return (
-      <div className="relative flex w-full items-center justify-between gap-3 rounded-full px-2.5 h-9 text-left transition-colors hover:bg-white/[0.04]">
+      <div className={`relative w-full text-left ${ROW_CLASS}`}>
         {/* a sibling under the content, not a parent: `action` may hold a link */}
         <button type="button" onClick={handleCopy} className="absolute inset-0 rounded-full" />
         <div className="pointer-events-none relative flex min-w-0 flex-1 items-center justify-between gap-3">
@@ -61,7 +63,7 @@ export function InfoRow({ icon: Icon, label, children, copyValue, action, mono =
   }
 
   return (
-    <div className="flex h-9 items-center justify-between gap-3 rounded-full px-2.5 transition-colors hover:bg-white/[0.04]">
+    <div className={ROW_CLASS}>
       {left}
       {right}
     </div>

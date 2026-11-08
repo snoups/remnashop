@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button, type ButtonVariant } from "@shared/ui/Button";
+import { Button } from "@shared/ui/Button";
 
 interface SaveFooterProps {
   dirty: boolean;
@@ -14,18 +14,17 @@ interface SaveFooterProps {
   onSave?: () => void;
   /** buttons right after Save */
   beside?: ReactNode;
-  variant?: ButtonVariant;
   /** no margin of its own: in a Row's fold-out, whose gap spaces it */
   flush?: boolean;
 }
 
 /** A settings card's one Save button, with the unsaved-changes mark beside it. */
-export function SaveFooter({ dirty, saving, disabled = false, hasWork = false, onSave, beside, variant = "accent", flush = false }: SaveFooterProps) {
+export function SaveFooter({ dirty, saving, disabled = false, hasWork = false, onSave, beside, flush = false }: SaveFooterProps) {
   const { t } = useTranslation();
   return (
     <div className={`${flush ? "" : "mt-4"} flex flex-wrap items-center gap-3`}>
       <Button
-        variant={variant}
+        variant="glassAccent"
         className="w-fit"
         type={onSave ? "button" : "submit"}
         disabled={saving || !(dirty || hasWork) || disabled}

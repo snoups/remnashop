@@ -122,7 +122,6 @@ function RecapBody() {
                 <div className="flex flex-wrap gap-1.5">
                   {HIDEABLE.map((field) => (
                     <ChoiceChip
-                      glass
                       size="sm"
                       key={field}
                       active={hidden.includes(field)}

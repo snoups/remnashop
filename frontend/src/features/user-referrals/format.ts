@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 
-import type { ReferralRewardType, ReferralUser } from "@entities/referrals/api";
+import type { ReferralRewardType } from "@entities/referrals/api";
 
 export const REWARD_TYPES: ReferralRewardType[] = ["EXTRA_DAYS", "POINTS"];
 
@@ -15,10 +15,4 @@ export function formatRewardAmounts(t: TFunction, amounts: Partial<Record<Referr
     const amount = amounts[type];
     return amount === undefined ? [] : [`+${formatReward(t, type, amount)}`];
   });
-}
-
-/** TG ID and email, whichever exist; the internal id when neither does. No username: it's optional and changes. */
-export function userHandle(user: Pick<ReferralUser, "id" | "telegram_id" | "email">): string {
-  const contacts = [user.telegram_id !== null ? `TG ID ${user.telegram_id}` : null, user.email].filter(Boolean);
-  return contacts.length > 0 ? contacts.join(" · ") : `#${user.id}`;
 }

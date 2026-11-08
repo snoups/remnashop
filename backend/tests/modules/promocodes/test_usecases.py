@@ -1208,7 +1208,10 @@ async def test_promocode_summary_requires_permission(
 
 
 async def test_list_promocode_activated_users_returns_newest_first(
-    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
     promo = await promocode_repository.create(
         CreatePromocodeDto(code="MANY", reward_type=PromocodeRewardType.DURATION, reward=5)
@@ -1219,31 +1222,57 @@ async def test_list_promocode_activated_users_returns_newest_first(
     second = await user_repository.create(
         CreateUserDto(name="second", telegram_id=uuid4().int % 10**9)
     )
+    subscription = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=second.id,
+            remnawave_user_id=second.id,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=0,
+            device_limit=0,
+            expire_at=datetime_now(),
+            url="https://example.test/sub",
+            plan_snapshot=make_plan_snapshot(name="Pro"),
+        )
+    )
     await promocode_repository.claim_activation(promo.id, first.id, None)
-    await promocode_repository.claim_activation(promo.id, second.id, None)
-    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+    await promocode_repository.claim_activation(promo.id, second.id, subscription.id)
+    use_case = ListPromocodeActivatedUsersUseCase(
+        promocode_repository, user_repository, subscription_repository, uow
+    )
 
     users, total = await use_case(
         OWNER, ListPromocodeActivatedUsersDto(promocode_id=promo.id, page=1, page_size=1)
     )
 
     assert total == 2
-    assert [user.name for user in users] == ["second"]
+    assert [(u.name, u.subscription_id, u.subscription_plan_name) for u in users] == [
+        ("second", subscription.id, "Pro")
+    ]
 
 
 async def test_list_promocode_activated_users_unknown_promocode_raises(
-    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+    use_case = ListPromocodeActivatedUsersUseCase(
+        promocode_repository, user_repository, subscription_repository, uow
+    )
 
     with pytest.raises(NotFoundError):
         await use_case(OWNER, ListPromocodeActivatedUsersDto(promocode_id=999_999))
 
 
 async def test_list_promocode_activated_users_requires_permission(
-    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
-    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+    use_case = ListPromocodeActivatedUsersUseCase(
+        promocode_repository, user_repository, subscription_repository, uow
+    )
 
     with pytest.raises(PermissionDeniedError):
         await use_case(REGULAR_USER, ListPromocodeActivatedUsersDto(promocode_id=1))
@@ -1767,7 +1796,10 @@ async def test_subscription_reward_counts_an_open_order_as_purchase_history(
 
 
 async def test_list_promocode_activated_users_hides_staff_without_admins_manage(
-    promocode_repository: PromocodeRepository, user_repository: UserRepository, uow: UnitOfWork
+    promocode_repository: PromocodeRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
 ) -> None:
     promo = await promocode_repository.create(
         CreatePromocodeDto(code="STAFFHIDE", reward_type=PromocodeRewardType.DURATION, reward=5)
@@ -1780,7 +1812,9 @@ async def test_list_promocode_activated_users_hides_staff_without_admins_manage(
     )
     await promocode_repository.claim_activation(promo.id, customer.id, None)
     await promocode_repository.claim_activation(promo.id, staff.id, None)
-    use_case = ListPromocodeActivatedUsersUseCase(promocode_repository, user_repository, uow)
+    use_case = ListPromocodeActivatedUsersUseCase(
+        promocode_repository, user_repository, subscription_repository, uow
+    )
     query = ListPromocodeActivatedUsersDto(promocode_id=promo.id, page=1, page_size=10)
     admin = UserDto(id=customer.id + staff.id, name="admin", role=Role.ADMIN, language=Locale.EN)
 

@@ -124,7 +124,7 @@ export function BotRequirementsForm() {
         footer={
           state.kind === "ready" &&
           // stays enabled with errors: pressing it shows them all instead of sending
-          canManage && <SaveFooter variant="glassAccent" dirty={dirty} saving={isSubmitting} />
+          canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />
         }
       >
         {state.kind === "loading" && <Spinner size="card" />}

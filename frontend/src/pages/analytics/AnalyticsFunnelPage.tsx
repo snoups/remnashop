@@ -123,7 +123,7 @@ function FunnelStepRow({
           <ArrowDown className="size-3.5" />
           <span className="tabular-nums text-foreground">{formatPercent(step.pct_of_prev, language)}</span>
           {t("analytics.funnel.ofPrevious")}
-          {isBiggestDrop && <Badge borderless tone="warning">{t("analytics.funnel.biggestDrop")}</Badge>}
+          {isBiggestDrop && <Badge tone="warning">{t("analytics.funnel.biggestDrop")}</Badge>}
         </div>
       )}
       <div className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 rounded-3xl px-3.5 py-2.5 sm:grid-cols-[32px_minmax(0,200px)_minmax(0,1fr)_72px_56px]">

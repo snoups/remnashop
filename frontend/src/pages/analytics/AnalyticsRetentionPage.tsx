@@ -77,7 +77,7 @@ function Overview({ data, cohorts }: { data: Retention; cohorts: AsyncState<Coho
     value: plan.active,
     cells: [
       plan.active.toLocaleString(language),
-      plan.limited > 0 ? <Badge key="limited" borderless tone="warning">{t("analytics.retention.limited", { value: plan.limited.toLocaleString(language) })}</Badge> : "",
+      plan.limited > 0 ? <Badge key="limited" tone="warning">{t("analytics.retention.limited", { value: plan.limited.toLocaleString(language) })}</Badge> : "",
       formatPercent(activeTotal > 0 ? plan.active / activeTotal : 0, language),
     ],
   }));
@@ -391,7 +391,6 @@ function ExpiringList({ currency }: { currency: Retention["report_currency"] }) 
               const inDays = t("analytics.retention.inDays", { count: days });
               return (
                 <ListRow
-                  glass
                   key={row.user_id}
                   type="button"
                   onClick={() => openUser(row.user_id)}
@@ -416,7 +415,7 @@ function ExpiringList({ currency }: { currency: Retention["report_currency"] }) 
                     {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}
                   </span>
                   <span>
-                    <Badge borderless tone={days <= SOON_DAYS ? "warning" : "neutral"}>
+                    <Badge tone={days <= SOON_DAYS ? "warning" : "neutral"}>
                       {inDays}
                     </Badge>
                   </span>

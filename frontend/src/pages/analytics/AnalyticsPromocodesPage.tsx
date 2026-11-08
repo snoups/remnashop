@@ -171,7 +171,6 @@ function Overview({ data }: { data: PromocodeStats }) {
               {data.codes.map((row) => {
                 return (
                   <ListRow
-                    glass
                     key={row.promocode_id}
                     type="button"
                     onClick={() => openPromocode(row.promocode_id)}
@@ -200,7 +199,7 @@ function Overview({ data }: { data: PromocodeStats }) {
                         : formatPercent(row.conversion_rate, language)}
                     </span>
                     <span className="text-right">
-                      <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[row.status]}>
+                      <Badge tone={PROMOCODE_STATUS_BADGE_TONE[row.status]}>
                         {t(`promocodes.status.${row.status}` as ParseKeys)}
                       </Badge>
                     </span>

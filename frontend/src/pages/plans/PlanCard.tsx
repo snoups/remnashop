@@ -63,16 +63,16 @@ export function PlanCard({
               <PlanIcon icon={plan} size={16} fallback={<DefaultIcon className="size-4 shrink-0" />} />
               <span className="truncate">{plan.name}</span>
               {plan.is_trial ? (
-                <Badge borderless tone="warning">{t("plans.trialBadge")}</Badge>
+                <Badge tone="warning">{t("plans.trialBadge")}</Badge>
               ) : (
-                plan.badge && <Badge borderless tone="accent">{t(`plans.edit.badges.${plan.badge}`)}</Badge>
+                plan.badge && <Badge tone="accent">{t(`plans.edit.badges.${plan.badge}`)}</Badge>
               )}
             </div>
             <div className="-mr-2 flex shrink-0 items-center">
               <IconButton size="8" onClick={() => setIsExpanded((open) => !open)} propagate={{ tap: false }}>
                 <ChevronDown className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
               </IconButton>
-              {menuItems.length > 0 && <ActionMenu glass items={menuItems} />}
+              {menuItems.length > 0 && <ActionMenu items={menuItems} />}
             </div>
           </div>
 

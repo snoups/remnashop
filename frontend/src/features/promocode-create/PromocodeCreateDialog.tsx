@@ -239,7 +239,6 @@ function PromocodeCreateDialogBody({
                   <div className="col-span-2 grid grid-cols-6 gap-1.5">
                     {DAY_PRESETS.map((days) => (
                       <ChoiceChip
-                        glass
                         // 36px, the field's height beside it
                         className="h-9"
                         key={days}

@@ -1,13 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import {
-  type ReactNode,
-  useCallback,
-  useContext,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { DialogPortal } from "@shared/ui/DialogPortal";
@@ -113,48 +105,48 @@ export function Modal({
 
   const content = (
     <ParentPanelContext.Provider value={panelRef}>
-    <ModalCloseContext.Provider value={requestClose}>
-      <AnimatePresence onExitComplete={onClose}>
-        {open && (
-          <motion.div
-            initial={isNested ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={isNested ? INSTANT : { duration: 0.15, ease: "easeOut" }}
-            className={
-              isNested
-                ? "absolute inset-0 z-50 flex items-center justify-center p-4"
-                : // the glass panel frosts the page itself, so the backdrop only dims
-                  "fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
-            }
-          >
-            {dismissable && (
-              <button
-                type="button"
-                tabIndex={-1}
-                className="absolute inset-0 cursor-default"
-                onClick={requestClose}
-              />
-            )}
-
+      <ModalCloseContext.Provider value={requestClose}>
+        <AnimatePresence onExitComplete={onClose}>
+          {open && (
             <motion.div
-              ref={panelRef}
-              data-dialog
-              tabIndex={-1}
-              initial={isNested ? false : { opacity: 0, scale: 0.94, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 8 }}
-              transition={isNested ? INSTANT : { duration: 0.18, ease: "easeOut" }}
-              className={`relative z-50 w-full ${SIZE_CLASS[size]} rounded-dialog glass-dialog outline-none ${
-                scrollable ? "flex max-h-[85vh] flex-col" : ""
-              }`}
+              initial={isNested ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={isNested ? INSTANT : { duration: 0.15, ease: "easeOut" }}
+              className={
+                isNested
+                  ? "absolute inset-0 z-50 flex items-center justify-center p-4"
+                  : // the glass panel frosts the page itself, so the backdrop only dims
+                    "fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
+              }
             >
-              {children}
+              {dismissable && (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute inset-0 cursor-default"
+                  onClick={requestClose}
+                />
+              )}
+
+              <motion.div
+                ref={panelRef}
+                data-dialog
+                tabIndex={-1}
+                initial={isNested ? false : { opacity: 0, scale: 0.94, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 8 }}
+                transition={isNested ? INSTANT : { duration: 0.18, ease: "easeOut" }}
+                className={`relative z-50 w-full ${SIZE_CLASS[size]} rounded-dialog glass-dialog outline-none ${
+                  scrollable ? "flex max-h-[85vh] flex-col" : ""
+                }`}
+              >
+                {children}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </ModalCloseContext.Provider>
+          )}
+        </AnimatePresence>
+      </ModalCloseContext.Provider>
     </ParentPanelContext.Provider>
   );
 

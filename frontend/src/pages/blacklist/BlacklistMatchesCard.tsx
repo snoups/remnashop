@@ -136,9 +136,6 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
             <div className="flex flex-wrap items-center gap-2">
               <SearchField
                 id="blacklist-matches-search"
-                label={t("blacklist.matches.searchPlaceholder")}
-                hideLabel
-                compact
                 placeholder={t("blacklist.matches.searchPlaceholder")}
                 value={search}
                 onChange={(value) => {
@@ -222,11 +219,11 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                     </td>
                     <td className="h-15 px-3">
                       {match.user.is_blocked ? (
-                        <Badge borderless tone="error">
+                        <Badge tone="error">
                           {t("blacklist.matches.blocked")}
                         </Badge>
                       ) : (
-                        <Badge borderless tone="warning">
+                        <Badge tone="warning">
                           {t("blacklist.matches.pending")}
                           <FieldHint text={t("blacklist.matches.pendingHint")} />
                         </Badge>

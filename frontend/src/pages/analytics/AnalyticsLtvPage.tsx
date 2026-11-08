@@ -189,7 +189,6 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
               <div className={LIST_BODY_CLASS}>
                 {data.top_payers.map((payer) => (
                   <ListRow
-                    glass
                     key={payer.user_id}
                     type="button"
                     onClick={() => openUser(payer.user_id)}

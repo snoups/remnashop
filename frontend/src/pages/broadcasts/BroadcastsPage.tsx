@@ -153,9 +153,6 @@ export function BroadcastsPage() {
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
           <SearchField
             id="broadcasts-search"
-            label={t("broadcasts.search")}
-            hideLabel
-            compact
             placeholder={t("broadcasts.search")}
             value={searchInput}
             onChange={setSearchInput}
@@ -267,7 +264,6 @@ export function BroadcastsPage() {
                   const { label, percent } = progress(b);
                   return (
                     <ListRow
-                      glass
                       key={b.id}
                       type="button"
                       disabled={!canOpen}
@@ -284,7 +280,7 @@ export function BroadcastsPage() {
                         <span className="block truncate text-[12px] text-muted-foreground">{broadcastMeta(b, t)}</span>
                       </span>
                       <span>
-                        <Badge borderless tone={tone}>{t(`broadcasts.status.${b.status}`)}</Badge>
+                        <Badge tone={tone}>{t(`broadcasts.status.${b.status}`)}</Badge>
                       </span>
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span className="text-[13px] tabular-nums text-foreground">

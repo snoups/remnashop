@@ -4,6 +4,7 @@ from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.modules.promocodes.dto import ListPromocodeActivatedUsersDto, PromocodeActivatedUserDto
 from app.modules.promocodes.repository import PromocodeRepository
+from app.modules.subscriptions import SubscriptionRepository
 from app.modules.users import UserRepository
 
 
@@ -16,10 +17,12 @@ class ListPromocodeActivatedUsersUseCase(
         self,
         promocode_repository: PromocodeRepository,
         user_repository: UserRepository,
+        subscription_repository: SubscriptionRepository,
         uow: UnitOfWork,
     ) -> None:
         self._promocode_repository = promocode_repository
         self._user_repository = user_repository
+        self._subscription_repository = subscription_repository
         self._uow = uow
 
     async def _execute(
@@ -42,6 +45,9 @@ class ListPromocodeActivatedUsersUseCase(
                     [activation.user_id for activation in activations]
                 )
             }
+            plan_names = await self._subscription_repository.list_plan_names(
+                [a.subscription_id for a in activations if a.subscription_id is not None]
+            )
 
         return [
             PromocodeActivatedUserDto(
@@ -49,6 +55,9 @@ class ListPromocodeActivatedUsersUseCase(
                 user_id=activation.user_id,
                 name=users_by_id[activation.user_id].name,
                 subscription_id=activation.subscription_id,
+                subscription_plan_name=plan_names.get(activation.subscription_id)
+                if activation.subscription_id is not None
+                else None,
                 activated_at=activation.activated_at,
             )
             for activation in activations

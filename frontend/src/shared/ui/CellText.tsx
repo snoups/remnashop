@@ -5,7 +5,6 @@ export function CellText({
   title,
   sub,
   mono = false,
-  tabular = false,
   className = "",
 }: {
   title: ReactNode;
@@ -13,19 +12,13 @@ export function CellText({
   sub?: ReactNode;
   /** a code, an id or a @username */
   mono?: boolean;
-  /** a subtitle of counts */
-  tabular?: boolean;
   className?: string;
 }) {
   return (
     <span className={`min-w-0 ${className}`}>
       <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
       {sub && (
-        <span
-          className={`block truncate text-[12px] text-muted-foreground ${mono ? "font-mono" : ""} ${tabular ? "tabular-nums" : ""}`}
-        >
-          {sub}
-        </span>
+        <span className={`block truncate text-[12px] text-muted-foreground ${mono ? "font-mono" : ""}`}>{sub}</span>
       )}
     </span>
   );

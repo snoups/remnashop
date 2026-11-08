@@ -140,7 +140,7 @@ export function DialogsSection() {
         </Button>
       </Specimen>
       <Specimen name="ConfirmDialog · danger" usage={k("u.confirm")}>
-        <Button variant="accent" onClick={() => setConfirm("accent")}>
+        <Button variant="glassAccent" onClick={() => setConfirm("accent")}>
           {k("s.save")}
         </Button>
         <Button variant="danger" onClick={() => setConfirm("danger")}>

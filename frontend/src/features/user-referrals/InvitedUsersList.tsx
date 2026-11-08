@@ -33,9 +33,6 @@ export function InvitedUsersList({ userId }: { userId: number }) {
       <div className="grid grid-cols-2 items-end gap-2">
         <SearchField
           id={`referral-invited-search-${userId}`}
-          label={t("referrals.list.search")}
-          hideLabel
-          compact
           placeholder={t("referrals.dialog.searchPlaceholder")}
           value={searchInput}
           onChange={setSearchInput}
@@ -48,7 +45,6 @@ export function InvitedUsersList({ userId }: { userId: number }) {
             ]}
             activeKey={level === undefined ? "ALL" : String(level)}
             onSelect={(key) => setLevel(key === "ALL" ? undefined : Number(key))}
-            size="compact"
           />
         </div>
       </div>
@@ -83,16 +79,17 @@ export function InvitedUsersPage({
   };
 
   const subtitle = (item: InvitedUser) => (
-    <>
+    <span className="flex min-w-0 gap-1">
       {item.via && (
         <>
-          {t("referrals.dialog.via", { name: userName(item.via, t) })}{" "}
-          <span className="font-mono">#{item.via.id}</span>
-          {" · "}
+          <span className="truncate">{t("referrals.dialog.via", { name: userName(item.via, t) })}</span>
+          <span className="shrink-0">
+            <span className="font-mono">#{item.via.id}</span> ·
+          </span>
         </>
       )}
-      {formatDate(item.created_at, i18n.language)}
-    </>
+      <span className="shrink-0">{formatDate(item.created_at, i18n.language)}</span>
+    </span>
   );
 
   return (
@@ -114,7 +111,7 @@ export function InvitedUsersPage({
               subtitle={subtitle(item)}
               aside={
                 <>
-                  <Badge borderless tone={item.level === 1 ? "accent" : "neutral"}>
+                  <Badge tone={item.level === 1 ? "accent" : "neutral"}>
                     {t("referrals.list.levelBadge", { level: item.level })}
                   </Badge>
                   <span className="flex w-24 shrink-0 flex-col items-end text-[12px] leading-tight tabular-nums">

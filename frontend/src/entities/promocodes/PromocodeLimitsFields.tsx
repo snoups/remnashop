@@ -67,7 +67,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
       {value.availability === "ALLOWED" && (
         <Field label={t("promocodes.limits.allowedUserIdsLabel")} htmlFor={`${idPrefix}-allowed-users`}>
           <ChipsInput
-            glass
             id={`${idPrefix}-allowed-users`}
             values={value.allowedUserIds.map(String)}
             onChange={(ids) => set({ allowedUserIds: ids.map(Number) })}
@@ -82,14 +81,13 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
         <Field label={t("promocodes.limits.plansLabel")}>
           <div className="flex flex-wrap gap-1.5">
             {/* an empty list is "any plan" */}
-            <ChoiceChip glass active={value.allowedPlanIds.length === 0} onClick={() => set({ allowedPlanIds: [] })}>
+            <ChoiceChip active={value.allowedPlanIds.length === 0} onClick={() => set({ allowedPlanIds: [] })}>
               {t("promocodes.limits.plansAll")}
             </ChoiceChip>
             {plans.map((plan) => {
               const isSelected = value.allowedPlanIds.includes(plan.id);
               return (
                 <ChoiceChip
-                  glass
                   key={plan.id}
                   active={isSelected}
                   // a plan that refuses promocodes can be unticked, not picked
@@ -117,7 +115,6 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
         <Field label={t("promocodes.limits.expiresLabel")} htmlFor={`${idPrefix}-expires-at`}>
           <DatePickerField
             variant="well"
-            compact
             id={`${idPrefix}-expires-at`}
             value={value.expiresAt}
             onChange={(expiresAt) => set({ expiresAt })}

@@ -52,7 +52,7 @@ export function ProfilePage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate text-[15px] font-semibold tracking-tight text-foreground">{state.data.name}</span>
-                      <Badge borderless tone={ROLE_BADGE_TONE[state.data.role]}>
+                      <Badge tone={ROLE_BADGE_TONE[state.data.role]}>
                         {t(`roles.${state.data.role}`)}
                       </Badge>
                     </div>

@@ -10,7 +10,7 @@ from app.modules.subscriptions.dto import DeletedSubscriptionsDto
 from app.modules.subscriptions.events import SubscriptionEditedEvent
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
-from app.modules.users import UserRepository, assert_manageable, get_visible_target
+from app.modules.users import UserRepository, assert_own_or_manageable, get_visible_target
 
 
 class DeleteUserSubscriptionsUseCase(UseCase[int, DeletedSubscriptionsDto]):
@@ -35,7 +35,7 @@ class DeleteUserSubscriptionsUseCase(UseCase[int, DeletedSubscriptionsDto]):
     async def _execute(self, actor: Actor, data: int) -> DeletedSubscriptionsDto:
         async with self._uow:
             target = await get_visible_target(self._user_repository, actor, data)
-            assert_manageable(actor, target)
+            assert_own_or_manageable(actor, target)
             subscriptions = await self._subscription_repository.get_live_by_user(target.id)
 
         deleted = 0

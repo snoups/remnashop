@@ -18,6 +18,7 @@ import {
   useCurrentUser,
   usePermissions,
 } from "@entities/user/use-current-user";
+import { DemoteAdminConfirm } from "@features/admin-details/AdminConfirms";
 import { PromoteAdminDialog } from "@features/admin-promote/PromoteAdminDialog";
 import { MergeAccountsDialog } from "@features/user-merge/MergeAccountsDialog";
 import { BindTelegramDialog } from "@features/user-telegram-bind/BindTelegramDialog";
@@ -28,6 +29,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 
 export type UserAction =
   | "promote"
+  | "demote"
   | "bindTelegram"
   | "unbindTelegram"
   | "block"
@@ -44,6 +46,8 @@ interface UserActionsOptions {
   onUpdated: (user: UserListItem) => void;
   onDeleted: (user: UserListItem) => void;
   onSubscriptionsDeleted?: (user: UserListItem) => void;
+  /** Telegram, email or OAuth left once demoted; unknown OAuth counts as none, so the warning errs on showing */
+  canSignInAfterDemote?: (user: UserListItem) => boolean;
 }
 
 interface UserActions {
@@ -66,6 +70,7 @@ export function useUserActions({
   onUpdated,
   onDeleted,
   onSubscriptionsDeleted,
+  canSignInAfterDemote = (user) => user.telegram_id !== null || Boolean(user.email),
 }: UserActionsOptions): UserActions {
   const { t } = useTranslation();
   const permissions = usePermissions();
@@ -77,6 +82,7 @@ export function useUserActions({
   const [pending, setPending] = useState<{
     action:
       | "promote"
+      | "demote"
       | "bindTelegram"
       | "unbindTelegram"
       | "blockAdmin"
@@ -105,6 +111,9 @@ export function useUserActions({
       user.role === "USER" ||
       (permissions.includes("ADMINS_MANAGE") &&
         (canManage || user.id === currentUserId));
+    const isSelf = user.id === currentUserId;
+    // one's own subscriptions and trial take a permission of their own, as on the backend
+    const canManageOwn = canManage || (isSelf && permissions.includes("STAFF_SELF_MANAGE"));
     const canDelete =
       user.id !== currentUserId &&
       ((user.role === "ADMIN" && permissions.includes("ADMINS_MANAGE")) ||
@@ -112,6 +121,9 @@ export function useUserActions({
     return [
       ...(user.role === "USER" && permissions.includes("ADMINS_MANAGE")
         ? ["promote" as const]
+        : []),
+      ...(user.role === "ADMIN" && canManage && permissions.includes("ADMINS_MANAGE")
+        ? ["demote" as const]
         : []),
       // bound: only unbinding is offered; a new id goes on after that. Staff link
       // Telegram from their profile by signing in with it, never by a typed id
@@ -128,19 +140,19 @@ export function useUserActions({
         : canBlock && permissions.includes("USERS_BLOCK")
           ? ["block" as const]
           : []),
-      ...(user.referral_code && permissions.includes("REFERRALS_CODE_RESET")
+      ...(user.referral_code && (canManage || isSelf) && permissions.includes("REFERRALS_CODE_RESET")
         ? ["resetReferralCode" as const]
         : []),
-      ...(user.email_undeliverable_at && permissions.includes("USERS_EMAIL_UNDELIVERABLE_CLEAR")
+      ...(user.email_undeliverable_at && (canManage || isSelf) && permissions.includes("USERS_EMAIL_UNDELIVERABLE_CLEAR")
         ? ["clearEmailUndeliverable" as const]
         : []),
-      ...(canManage && permissions.includes("USERS_TRIAL_MANAGE") ? ["toggleTrial" as const] : []),
+      ...(canManageOwn && permissions.includes("USERS_TRIAL_MANAGE") ? ["toggleTrial" as const] : []),
       ...(canTouchStaff &&
       permissions.includes("USERS_MERGE") &&
       permissions.includes("USERS_MERGE_PREVIEW")
         ? ["merge" as const]
         : []),
-      ...(canManage && permissions.includes("SUBSCRIPTIONS_DELETE_ALL")
+      ...(canManageOwn && permissions.includes("SUBSCRIPTIONS_DELETE_ALL")
         ? ["deleteSubscriptions" as const]
         : []),
       ...(canDelete ? ["delete" as const] : []),
@@ -239,6 +251,13 @@ export function useUserActions({
         onPromoted={(login) =>
           onUpdated({ ...pending.user, role: "ADMIN", login })
         }
+        onClose={close}
+      />
+    ) : pending.action === "demote" ? (
+      <DemoteAdminConfirm
+        user={pending.user}
+        canSignInAfterDemote={canSignInAfterDemote(pending.user)}
+        onDemoted={onUpdated}
         onClose={close}
       />
     ) : pending.action === "bindTelegram" ? (

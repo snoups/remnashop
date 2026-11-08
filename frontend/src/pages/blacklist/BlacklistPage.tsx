@@ -229,9 +229,6 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
             <div className="flex flex-wrap items-center gap-2">
               <SearchField
                 id="blacklist-search"
-                label={t("blacklist.manual.searchPlaceholder")}
-                hideLabel
-                compact
                 placeholder={t("blacklist.manual.searchPlaceholder")}
                 value={search}
                 onChange={setSearch}
@@ -437,7 +434,7 @@ function BlacklistSourcesCard({ state, setSources, permissions, onSynced }: Blac
                         side="bottom"
                         error
                         trigger={
-                          <Badge borderless tone="error" className="cursor-help">
+                          <Badge tone="error" className="cursor-help">
                             {t("blacklist.sources.errorBadge")}
                           </Badge>
                         }

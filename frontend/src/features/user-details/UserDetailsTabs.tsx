@@ -23,14 +23,13 @@ import type { EventLogEntry } from "@entities/event-log/api";
 import { eventTitle } from "@entities/event-log/describe-entry";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import type { UserListItem } from "@entities/user/api";
-import { userLabel, userNameField } from "@entities/user/display";
+import { userContacts, userName, userNameField } from "@entities/user/display";
 import { usePermissions } from "@entities/user/use-current-user";
 import { SessionsPanel } from "@features/account-sessions/SessionsPanel";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { BalanceTiles } from "@features/user-details/BalanceTiles";
 import { LegalAcceptancesCard } from "@features/user-details/LegalAcceptancesCard";
 import { RegistrationCard } from "@features/user-details/RegistrationCard";
-import { userHandle } from "@features/user-referrals/format";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -81,9 +80,8 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
   );
   const referralData = referralStats.kind === "ready" ? referralStats.data : null;
   const referrer = referralData?.referrer;
-  const referrerContact = referrer && userHandle(referrer);
   const referrerText = referrer
-    ? `${userLabel(referrer, referrer.id, t)} ${referrerContact}`
+    ? [`${userName(referrer, t)} #${referrer.id}`, userContacts(referrer, t)].filter(Boolean).join(" · ")
     : referralData?.referrer_id != null
       ? `#${referralData.referrer_id}`
       : undefined;
@@ -122,7 +120,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
         )}
         <InfoRow icon={Mail} label={t("users.details.email")} copyValue={user.email ?? undefined} mono>
           <span className="truncate">{user.email ?? none}</span>
-          {user.email_undeliverable_at && <Badge borderless tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
+          {user.email_undeliverable_at && <Badge tone="error">{t("users.emailUndeliverable.badge")}</Badge>}
         </InfoRow>
         <InfoRow icon={Languages} label={t("users.details.language")} copyValue={language}>
           {language}
@@ -148,7 +146,10 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
           <InfoRow icon={UserPlus} label={t("referrals.stats.referrerLabel")} copyValue={referrerText}>
             {referrer ? (
               // contacts go to the clipboard only
-              <span className="truncate">{userLabel(referrer, referrer.id, t)}</span>
+              <>
+                <span className="truncate">{userName(referrer, t)}</span>
+                <span className="shrink-0 font-mono font-medium text-muted-foreground">#{referrer.id}</span>
+              </>
             ) : (
               (referrerText ?? none)
             )}
@@ -178,7 +179,7 @@ export function ProfileTab({ user, onChanged }: { user: UserListItem; onChanged?
             </h4>
             <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={String(user.telegram_id)} mono>
               {user.telegram_id}
-              {user.is_bot_blocked && <Badge borderless tone="error">{t("users.botBlocked.badge")}</Badge>}
+              {user.is_bot_blocked && <Badge tone="error">{t("users.botBlocked.badge")}</Badge>}
             </InfoRow>
             <InfoRow
               icon={AtSign}

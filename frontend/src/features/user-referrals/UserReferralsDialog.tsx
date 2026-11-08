@@ -67,7 +67,7 @@ function UserReferralsDialogBody({
         title={userName}
         actions={
           stats?.referrer && (
-            <Badge borderless tone="accent">
+            <Badge tone="accent">
               <UserPlus className="size-3" />
               {userLabel(stats.referrer, stats.referrer.id, t)}
             </Badge>
@@ -111,7 +111,6 @@ function UserReferralsDialogBody({
       </div>
 
       <OpenUserFooter
-        glass
         links={[
           // two side by side: short labels, the long ones wrap
           { label: t("referrals.stats.toReferrer"), icon: UserPlus, user: stats && { id: stats.referrer_id } },

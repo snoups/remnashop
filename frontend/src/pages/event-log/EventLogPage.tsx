@@ -145,9 +145,6 @@ export function EventLogPage() {
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
           <SearchField
             id="event-log-actor"
-            label={t("eventLog.filters.actor")}
-            hideLabel
-            compact
             placeholder={t("eventLog.filters.actorPlaceholder")}
             value={searchInput}
             onChange={setSearchInput}
@@ -180,7 +177,6 @@ export function EventLogPage() {
             value={dateFromInput}
             onChange={setDateFromInput}
             placeholder={t("eventLog.filters.dateFrom")}
-            compact
           />
         </div>
 
@@ -190,7 +186,6 @@ export function EventLogPage() {
             value={dateToInput}
             onChange={setDateToInput}
             placeholder={t("eventLog.filters.dateTo")}
-            compact
           />
         </div>
       </div>
@@ -235,7 +230,6 @@ export function EventLogPage() {
                           <Collapse open={!collapsedDays.has(group.key)} className={LIST_BODY_CLASS}>
                           {group.items.map((entry) => (
                             <ListRow
-                    glass
                               key={entry.id}
                               onClick={() => setSelectedEntry(entry)}
                               className={ROW_GRID_CLASSNAME}

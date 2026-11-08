@@ -534,6 +534,8 @@ async def test_list_stats_counts_within_roles(
     _add_subscription(session, blocked.id, SubscriptionStatus.ACTIVE, remnawave_user_id=802)
     _add_subscription(session, blocked.id, SubscriptionStatus.ACTIVE, remnawave_user_id=803)
     _add_subscription(session, staff.id, SubscriptionStatus.ACTIVE, remnawave_user_id=804)
+    _add_subscription(session, last_week.id, SubscriptionStatus.EXPIRED, remnawave_user_id=805)
+    _add_subscription(session, last_week.id, SubscriptionStatus.LIMITED, remnawave_user_id=806)
     await session.execute(
         update(User)
         .where(User.id == blocked.id)
@@ -548,13 +550,11 @@ async def test_list_stats_counts_within_roles(
     now = datetime_now()
     stats = await user_stats_repository.list_stats(
         roles=[Role.USER],
-        new_since=now - timedelta(days=7),
-        previous_since=now - timedelta(days=14),
         growth_since=now - timedelta(days=30),
     )
 
-    assert (stats.total, stats.new, stats.subscribed, stats.blocked) == (3, 1, 1, 1)
-    assert (stats.new_previous, stats.total_growth) == (1, 2)
+    assert (stats.total, stats.subscribed, stats.blocked) == (3, 1, 1)
+    assert (stats.total_growth, stats.churned) == (2, 1)
 
 
 async def test_list_filtered_search_matches_user_id(

@@ -94,7 +94,6 @@ export function KpiTile({
   info,
   icon: Icon,
   highlighted = false,
-  valueClassName = "text-foreground",
   valueSuffix,
   glass = false,
   panel = false,
@@ -109,8 +108,6 @@ export function KpiTile({
   info?: string;
   icon?: ComponentType<{ className?: string }>;
   highlighted?: boolean;
-  /** overrides the value's color, e.g. ROI green/red */
-  valueClassName?: string;
   /** muted text right after the value, e.g. "of 5" or a struck-out old price */
   valueSuffix?: ReactNode;
   /** inside a glass dialog's 12px-padded body: 12px corners, 14px in, as tall as its grid row */
@@ -149,7 +146,7 @@ export function KpiTile({
         {info && <FieldHint text={info} />}
       </div>
       <div className="flex items-center gap-2">
-        <span className={`${KPI_VALUE_CLASS} ${valueClassName}`}>
+        <span className={`${KPI_VALUE_CLASS} text-foreground`}>
           <CountUp text={value} />
         </span>
         {valueSuffix && <span className="text-[13px] font-medium text-muted-foreground">{valueSuffix}</span>}

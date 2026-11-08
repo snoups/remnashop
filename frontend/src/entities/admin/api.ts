@@ -58,6 +58,15 @@ export function updateAdmin(userId: number, payload: UpdateAdminPayload): Promis
   return apiPatch<Admin, UpdateAdminPayload>(`/admins/${userId}`, payload);
 }
 
+export interface AdminDetail extends Admin {
+  /** Telegram, email or OAuth left once demoted */
+  can_sign_in_after_demote: boolean;
+}
+
+export function getAdmin(userId: number, signal?: AbortSignal): Promise<AdminDetail> {
+  return apiGet<AdminDetail>(`/admins/${userId}`, signal);
+}
+
 export function demoteAdmin(userId: number): Promise<UserListItem> {
   return apiPost<UserListItem, Record<string, never>>(`/admins/${userId}/actions/demote`, {});
 }

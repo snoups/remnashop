@@ -936,7 +936,7 @@
     },
     "details": {
       "tabs": {
-        "profile": "Profile",
+        "details": "Details",
         "permissions": "Permissions",
         "sessions": "Sessions",
         "events": "Events"
@@ -1098,13 +1098,11 @@
     "kpi": {
       "all": "Total",
       "allHint": "All time",
-      "new": "New",
-      "newHint": "Last 7 days",
       "subscribed": "Subscribed",
+      "churned": "Churned",
       "shareHint": "Share {{percent}}",
       "blocked": "Blocked",
-      "totalTrend": "last 30 days",
-      "newTrend": "vs. prior 7 days"
+      "totalTrend": "last 30 days"
     },
     "columns": {
       "user": "User",
@@ -2094,6 +2092,7 @@
     "PRICING_MATRIX_MANAGE": "Save the price matrix",
     "SUBSCRIPTIONS_VIEW": "View subscriptions",
     "SUBSCRIPTIONS_DETAIL_VIEW": "View subscription details",
+    "SUBSCRIPTIONS_STATS_VIEW": "View subscription counters",
     "SUBSCRIPTIONS_UPDATE": "Edit subscriptions",
     "SUBSCRIPTIONS_SQUADS_MANAGE": "Manage subscription squads",
     "SUBSCRIPTIONS_DELETE": "Delete subscriptions",
@@ -3138,7 +3137,7 @@
       "reusableHint": "One user can redeem it more than once"
     },
     "stats": {
-      "promocodes": "Promocodes",
+      "total": "Total",
       "active": "{{count}} active",
       "activations": "Activations",
       "users": "{{count}} users",
@@ -3149,10 +3148,12 @@
     },
     "details": {
       "tabs": {
-        "overview": "Overview",
-        "users": "Users",
-        "settings": "Settings"
+        "details": "Details",
+        "users": "Users"
       },
+      "promocode": "Promocode",
+      "createdAt": "Created",
+      "plans": "Plans",
       "availability": "Who can use it",
       "expires": "Valid until",
       "used": "Used",
@@ -3641,6 +3642,17 @@
         "finishedToPanel": "Sync finished: {{updated}} updated, {{recreated}} recreated in the panel, {{deleted}} deleted from the panel, {{failed}} failed.",
         "error": "Failed to start the sync."
       }
+    },
+    "kpi": {
+      "paidActive": "Active",
+      "trialsHint_one": "Plus {{count}} trial",
+      "trialsHint_other": "Plus {{count}} trials",
+      "expiring": "Expiring soon",
+      "expiringHint": "Within 7 days, {{count}} in 24 hours",
+      "limited": "Limited",
+      "disabledHint": "Disabled: {{count}}",
+      "neverConnected": "Never connected",
+      "neverConnectedHint": "{{percent}} of paid"
     }
   },
   "donate": {
@@ -3731,7 +3743,7 @@
       },
       "u": {
         "announcementsCarousel": "Developer shorts: story carousel over the dashboard.",
-        "primary": "Main actions, dialog and form footers. 14px.",
+        "primary": "Neutral and destructive actions outside the glass design. 14px.",
         "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
         "glass": "PillTabs capsule fill, 13px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
         "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
@@ -3748,11 +3760,10 @@
         "dialogClose": "In a p-4 dialog header, the 36px icon’s height.",
         "dialogTabs": "Dialog tabs: ad link, admin, event.",
         "segmented": "Page filters: plans, users, subscriptions.",
-        "period": "Period picker: transactions, ads, dashboard, analytics.",
-        "pillTabs": "Dialog editor, backups, translations; field — 38px beside a search.",
+        "pillTabs": "Dialog editor, backups, translations.",
         "packTab": "Emoji packs in the picker.",
         "choice": "One of a small set; sm — dense grids.",
-        "badge": "Status: uppercase with a border, colored by tone.",
+        "badge": "Status: uppercase, tinted by tone.",
         "tag": "Counts and metadata: gray pill, no uppercase.",
         "badgeCount": "A number in a circle: subscriptions in the users list; stretches past one digit.",
         "badgeIcon": "Status with an icon.",
@@ -3767,7 +3778,7 @@
         "kpiIcon": "With an icon and a label hint.",
         "list": "Reference row list: admins, event log, transactions, ads, referrals.",
         "pressable": "The base of everything pressable: positioning and the ripple, no look of its own. as picks the tag.",
-        "listRow": "A table row that opens details: Pressable + LIST_ROW_CLASS, the grid via className. Disabled (no right to open): no hover, no ripple, third row.",
+        "listRow": "A table row that opens details: Pressable + GLASS_LIST_ROW_CLASS, the grid via className. Disabled (no right to open): no hover, no ripple, third row.",
         "table": "Page table: analytics cohorts.",
         "compact": "Compact table in a dialog: price changes.",
         "dialogHeader": "Every glass dialog’s header: icon or glyph, subtitle, danger/warning tone, actions, close.",
@@ -3796,7 +3807,7 @@
         "glassRowVsRows": "Row is the row itself: icon, label, description, controls on the right, a fold-out panel. SectionRows is the container: it adds the margin and the lines between rows, with no look of its own.",
         "glassInput": "Sunken well: 36px in forms, 32px in a Row; a unit suffix, a machine value with controls at the end.",
         "glassField": "13px label over the control, hint or error under it; the browser’s own checks land here too.",
-        "glassTextarea": "Multiline well with 18px corners and a badge in the corner (a counter).",
+        "glassTextarea": "Multiline well with 18px corners; mono for keys and tokens.",
         "glassSwitch": "48×28; off it is a well like the fields. The knob stretches while held.",
         "glassToggle": "A field-like capsule with a switch: clicking anywhere toggles it. Pairs split a line.",
         "glassTextWidth": "Controls as wide as a text in a field: lines a field+switch up with a field sized to its placeholder.",
@@ -3959,11 +3970,7 @@
       },
       "variants": {
         "caption": "Live copies of markup being redesigned, beside the current one. Once the new one is signed off, the copy goes.",
-        "planCards": "Plan cards",
-        "old": "Previous design",
-        "new": "Current design",
-        "planName": "Standard plan",
-        "previewOnly": "This is a preview. Real plans are not changed."
+        "empty": "Nothing under review."
       }
     }
   },

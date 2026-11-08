@@ -1,5 +1,4 @@
 import { Calendar, X } from "lucide-react";
-import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -26,11 +25,9 @@ interface DatePickerFieldProps {
   placeholder: string;
   // glass is for filters; well: a glass dialog's form, the sunken well of its Input
   variant?: "glass" | "well";
-  /** 36px, 13px text and a glass popover: the glass design's filter row */
-  compact?: boolean;
 }
 
-export function DatePickerField({ id, value, onChange, placeholder, variant = "glass", compact = false }: DatePickerFieldProps) {
+export function DatePickerField({ id, value, onChange, placeholder, variant = "glass" }: DatePickerFieldProps) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,7 +44,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
 
   return (
     <div ref={ref} className="relative">
-      <motion.div
+      <div
         ref={triggerRef}
         id={id}
         tabIndex={0}
@@ -58,14 +55,16 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
             toggleOpen();
           }
         }}
-        className={`group flex w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} ${compact ? "h-9 text-[13px]" : "py-2 text-sm"} pl-9 pr-8 ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary`}
+        className={`group flex w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} h-9 text-[13px] pl-9 pr-8 ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary`}
       >
         <Calendar className={PICKER_ICON_CLASS} />
         <span className={displayValue ? "text-foreground" : "text-muted-foreground"}>
           {displayValue || placeholder}
         </span>
         {value && (
-          <IconButton size="5" className="absolute right-2 top-1/2 -translate-y-1/2"
+          <IconButton
+            size="5"
+            className="absolute right-2 top-1/2 -translate-y-1/2"
             onClick={(event) => {
               event.stopPropagation();
               onChange("");
@@ -74,7 +73,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
             <X className="size-3" />
           </IconButton>
         )}
-      </motion.div>
+      </div>
 
       <PortalPopover
         open={isOpen}
@@ -86,9 +85,9 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: -4 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        glass={compact || variant === "well"}
+        glass
         className="w-64 p-3"
->
+      >
         <MonthCalendar
           value={value}
           onPick={(isoDate) => {

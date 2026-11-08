@@ -156,7 +156,7 @@ function TransactionDetailsDialogBody({
         glyph={<span className="text-[13px] font-bold">{symbol}</span>}
         title={t("transactions.orderLabel", { id: order.id })}
         subtitle={<span className="font-mono">{createdAt}</span>}
-        actions={<Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{statusLabel}</Badge>}
+        actions={<Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{statusLabel}</Badge>}
       />
 
       <div className={GLASS_DIALOG_BODY_CLASS}>
@@ -266,7 +266,6 @@ function TransactionDetailsDialogBody({
       </div>
 
       <OpenUserFooter
-        glass
         links={[{ label: t("users.openUser"), icon: User, user: user && { id: order.user_id } }]}
       >
         {canRefund && (

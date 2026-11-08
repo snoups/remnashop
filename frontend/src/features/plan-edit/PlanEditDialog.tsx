@@ -404,7 +404,6 @@ function PlanEditDialogBody({
                 <div className="flex flex-wrap gap-1.5">
                   {STRATEGIES.map((value) => (
                     <ChoiceChip
-                      glass
                       // 36px, the fields' height above
                       className="h-9"
                       key={value}

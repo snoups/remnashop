@@ -45,7 +45,6 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
           <div className="flex flex-wrap gap-1.5">
             {internal.map((squad) => (
               <ChoiceChip
-                glass
                 className="h-9"
                 key={squad.uuid}
                 active={value.internal_squads.includes(squad.uuid)}
@@ -64,7 +63,6 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
         >
           <div className="flex flex-wrap gap-1.5">
             <ChoiceChip
-              glass
               className="h-9"
               active={value.external_squad === null}
               onClick={() => onChange({ ...value, external_squad: null })}
@@ -73,7 +71,6 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
             </ChoiceChip>
             {external.map((squad) => (
               <ChoiceChip
-                glass
                 className="h-9"
                 key={squad.uuid}
                 active={value.external_squad === squad.uuid}

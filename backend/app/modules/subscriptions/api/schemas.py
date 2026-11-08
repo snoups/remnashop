@@ -76,6 +76,17 @@ class SubscriptionPageResponse(BaseModel):
     total: int
 
 
+class SubscriptionListStatsResponse(BaseModel):
+    paid_active: int
+    active_trials: int
+    expiring: int
+    expiring_urgent: int
+    limited: int
+    disabled: int
+    paying: int
+    paying_never_connected: int
+
+
 class UpdateSubscriptionRequest(BaseModel):
     tag: Optional[str] = Field(
         default=None, max_length=PANEL_TAG_MAX_LENGTH, pattern=PANEL_TAG_PATTERN

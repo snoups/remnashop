@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, Check, Copy, Hash, Pause, Pencil, Play, Repeat, ShieldCheck, Ticket, Trash2, Users } from "lucide-react";
+import { CalendarClock, CalendarPlus, Check, Copy, Hash, Info, Package, Pause, Pencil, Play, Repeat, Settings2, ShieldCheck, Ticket, Trash2, UserCheck, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,9 +22,9 @@ import { getErrorMessage } from "@shared/api/http";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
+import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { InfoRow } from "@shared/ui/InfoRow";
-import { KpiTile } from "@shared/ui/KpiTile";
 import { Modal } from "@shared/ui/Modal";
 import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -36,7 +36,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { IconButton } from "@shared/ui/IconButton";
 import { formatDate } from "@shared/lib/relative-time";
 
-type PromocodeDetailsTab = "overview" | "users" | "settings";
+type PromocodeDetailsTab = "overview" | "users";
 
 const COPIED_RESET_MS = 1500;
 const FORM_ID = "promocode-settings-form";
@@ -77,7 +77,7 @@ function PromocodeDetailsDialogBody({
   const [tab, setTab] = useState<PromocodeDetailsTab>("overview");
   const [contentRef, contentHeight] = useMeasuredHeight();
   const [isCopied, setIsCopied] = useState(false);
-  const [isToggling, setIsToggling] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [limits, setLimits] = useState(() => limitsDraftOf(promocode));
 
@@ -85,9 +85,38 @@ function PromocodeDetailsDialogBody({
   const RewardIcon = REWARD_TYPE_ICON[promocode.reward_type];
 
   const tabs: DialogTabItem<PromocodeDetailsTab>[] = [
-    { key: "overview", label: t("promocodes.details.tabs.overview"), icon: BarChart3 },
+    { key: "overview", label: t("promocodes.details.tabs.details"), icon: Info },
     ...(canViewUsers ? [{ key: "users" as const, label: t("promocodes.details.tabs.users"), icon: Users }] : []),
-    ...(canUpdate ? [{ key: "settings" as const, label: t("promocodes.details.tabs.settings"), icon: Pencil }] : []),
+  ];
+  const menuItems: ActionMenuItem[] = [
+    ...(canUpdate
+      ? [
+          {
+            label: t("common.edit"),
+            icon: Pencil,
+            onClick: () => {
+              setLimits(limitsDraftOf(promocode));
+              setIsEditing(true);
+            },
+          },
+          {
+            label: promocode.is_active ? t("promocodes.pause") : t("promocodes.resume"),
+            icon: promocode.is_active ? Pause : Play,
+            onClick: () => void handleToggleActive(),
+          },
+        ]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            label: t("common.delete"),
+            icon: Trash2,
+            onClick: () => setIsConfirmingDelete(true),
+            variant: "danger" as const,
+            separatorBefore: canUpdate,
+          },
+        ]
+      : []),
   ];
 
   const handleCopy = () => {
@@ -114,13 +143,10 @@ function PromocodeDetailsDialogBody({
   };
 
   const handleToggleActive = async () => {
-    setIsToggling(true);
     try {
       saved(await updatePromocode(promocode.id, { is_active: !promocode.is_active }));
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.edit.error")));
-    } finally {
-      setIsToggling(false);
     }
   };
 
@@ -135,6 +161,7 @@ function PromocodeDetailsDialogBody({
     try {
       saved(await updatePromocode(promocode.id, limitsPayload));
       toast.success(t("promocodes.edit.saved"));
+      setIsEditing(false);
     } catch (err) {
       toast.error(getErrorMessage(err, t("promocodes.edit.error")));
     } finally {
@@ -154,7 +181,7 @@ function PromocodeDetailsDialogBody({
         subtitle={t(`promocodes.rewardType.${promocode.reward_type}`)}
         actions={
           <>
-            <Badge borderless tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
+            <Badge tone={PROMOCODE_STATUS_BADGE_TONE[status]}>{t(`promocodes.status.${status}`)}</Badge>
             <IconButton size="9" onClick={handleCopy}>
               {isCopied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
             </IconButton>
@@ -162,7 +189,7 @@ function PromocodeDetailsDialogBody({
         }
       />
 
-      {tabs.length > 1 && (
+      {tabs.length > 1 && !isEditing && (
         <div className="px-3 pt-3">
           <DialogTabs items={tabs} activeKey={tab} onSelect={setTab} />
         </div>
@@ -175,28 +202,44 @@ function PromocodeDetailsDialogBody({
           className="overflow-hidden"
         >
           <div ref={contentRef}>
-            {tab === "overview" && (
+            {!isEditing && tab === "overview" && (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <KpiTile
-                    glass
-                    icon={RewardIcon}
-                    label={t("promocodes.sections.reward")}
-                    value={describeReward(promocode, addons, plans, t)}
-                  />
-                  <KpiTile
-                    glass
-                    icon={Hash}
-                    label={t("promocodes.details.used")}
-                    value={String(promocode.activations_count)}
-                    valueSuffix={t("promocodes.details.ofMax", { max: promocode.max_activations ?? "∞" })}
-                  />
-                </div>
+                <DialogCard title={t("promocodes.details.promocode")} icon={Ticket}>
+                  <InfoRow icon={RewardIcon} label={t("promocodes.sections.reward")}>
+                    <span className="truncate">{describeReward(promocode, addons, plans, t)}</span>
+                  </InfoRow>
+                  <InfoRow icon={Hash} label={t("promocodes.details.used")}>
+                    {promocode.activations_count} {t("promocodes.details.ofMax", { max: promocode.max_activations ?? "∞" })}
+                  </InfoRow>
+                  {promocode.created_at && (
+                    <InfoRow icon={CalendarPlus} label={t("promocodes.details.createdAt")} mono>
+                      {formatDate(promocode.created_at, i18n.language)}
+                    </InfoRow>
+                  )}
+                </DialogCard>
 
                 <DialogCard title={t("promocodes.sections.limits")} icon={ShieldCheck}>
                   <InfoRow icon={Users} label={t("promocodes.details.availability")}>
                     <span className="truncate">{t(`promocodes.availability.${promocode.availability}`)}</span>
                   </InfoRow>
+                  {promocode.availability === "ALLOWED" && (
+                    <InfoRow icon={UserCheck} label={t("promocodes.limits.allowedUserIdsLabel")} mono>
+                      <span className="truncate">
+                        {promocode.allowed_user_ids.map((id) => `#${id}`).join(", ") || t("common.none")}
+                      </span>
+                    </InfoRow>
+                  )}
+                  {PLAN_LIMITED_REWARDS.includes(promocode.reward_type) && (
+                    <InfoRow icon={Package} label={t("promocodes.details.plans")}>
+                      <span className="truncate">
+                        {promocode.allowed_plan_ids.length > 0
+                          ? promocode.allowed_plan_ids
+                              .map((id) => plans.find((plan) => plan.id === id)?.name ?? `#${id}`)
+                              .join(", ")
+                          : t("promocodes.limits.plansAll")}
+                      </span>
+                    </InfoRow>
+                  )}
                   <InfoRow icon={CalendarClock} label={t("promocodes.details.expires")}>
                     <span className="truncate">{expires}</span>
                   </InfoRow>
@@ -206,8 +249,8 @@ function PromocodeDetailsDialogBody({
                 </DialogCard>
               </div>
             )}
-            {tab === "users" && <PromocodeUsersList promocode={promocode} />}
-            {tab === "settings" && (
+            {!isEditing && tab === "users" && <PromocodeUsersList promocode={promocode} />}
+            {isEditing && (
               <form id={FORM_ID} onSubmit={(event) => void handleSubmit(event)}>
                 <PromocodeLimitsFields
                   idPrefix="promo-edit"
@@ -221,28 +264,23 @@ function PromocodeDetailsDialogBody({
         </motion.div>
       </div>
 
-      {(canUpdate || canDelete) && (
-        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center justify-between`}>
-          <div className="flex gap-2">
-            {canDelete && (
-              <Button variant="glassDanger" type="button" onClick={() => setIsConfirmingDelete(true)}>
-                <Trash2 className="size-4" />
-                {t("common.delete")}
-              </Button>
-            )}
-            {canUpdate && (
-              <Button variant="glass" onClick={() => void handleToggleActive()} isLoading={isToggling}>
-                {promocode.is_active ? <Pause className="size-4" /> : <Play className="size-4" />}
-                {promocode.is_active ? t("promocodes.pause") : t("promocodes.resume")}
-              </Button>
-            )}
-          </div>
-          {tab === "settings" && (
-            <Button variant="glassAccent" type="submit" form={FORM_ID} isLoading={isSubmitting}>
-              {t("common.save")}
-            </Button>
-          )}
+      {isEditing ? (
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center justify-end`}>
+          <Button variant="glass" type="button" onClick={() => setIsEditing(false)}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="glassAccent" type="submit" form={FORM_ID} isLoading={isSubmitting}>
+            {t("common.save")}
+          </Button>
         </div>
+      ) : (
+        menuItems.length > 0 && (
+          <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center`}>
+            <div className="ml-auto">
+              <ActionMenu trigger={{ label: t("users.details.actions"), icon: Settings2 }} items={menuItems} />
+            </div>
+          </div>
+        )
       )}
       {isConfirmingDelete && (
         <ConfirmDialog

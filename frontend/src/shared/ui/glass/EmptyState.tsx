@@ -1,6 +1,6 @@
 import { AlertCircle, Inbox, type LucideIcon } from "lucide-react";
 
-const PADDING = {
+export const STATE_PADDING = {
   // a list that is the whole page
   page: "py-12",
   // inside a card, dialog or panel
@@ -10,26 +10,25 @@ const PADDING = {
 interface EmptyStateProps {
   text: string;
   icon?: LucideIcon;
-  size?: keyof typeof PADDING;
+  size?: keyof typeof STATE_PADDING;
 }
 
-/** Nothing to list: a bare 20px icon, 13px muted text under it, semibold so its strokes are as heavy as
- *  the icon's (1.67px at 20px). */
-export function EmptyState({ text, icon: Icon = Inbox, size = "card" }: EmptyStateProps) {
+function StateMessage({ text, icon: Icon, size, tone }: Required<EmptyStateProps> & { tone: string }) {
   return (
-    <div className={`flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground ${PADDING[size]}`}>
+    <div className={`flex flex-1 flex-col items-center justify-center gap-2 ${tone} ${STATE_PADDING[size]}`}>
       <Icon className="size-5" />
       <p className="whitespace-pre-line text-center text-[13px] font-semibold">{text}</p>
     </div>
   );
 }
 
+/** Nothing to list: a bare 20px icon, 13px muted text under it, semibold so its strokes are as heavy as
+ *  the icon's (1.67px at 20px). */
+export function EmptyState({ text, icon = Inbox, size = "card" }: EmptyStateProps) {
+  return <StateMessage text={text} icon={icon} size={size} tone="text-muted-foreground" />;
+}
+
 /** EmptyState's layout in the error tone, for a block whose data failed to load. */
 export function ErrorState({ text, size = "card" }: Omit<EmptyStateProps, "icon">) {
-  return (
-    <div className={`flex flex-1 flex-col items-center justify-center gap-2 text-error ${PADDING[size]}`}>
-      <AlertCircle className="size-5" />
-      <p className="whitespace-pre-line text-center text-[13px] font-semibold">{text}</p>
-    </div>
-  );
+  return <StateMessage text={text} icon={AlertCircle} size={size} tone="text-error" />;
 }

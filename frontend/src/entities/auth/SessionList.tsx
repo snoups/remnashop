@@ -42,7 +42,7 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke, size 
                   {browser} · {os}
                 </span>
                 {isCurrent && (
-                  <Badge borderless tone="accent">
+                  <Badge tone="accent">
                     {t("sessions.thisDevice")}
                   </Badge>
                 )}

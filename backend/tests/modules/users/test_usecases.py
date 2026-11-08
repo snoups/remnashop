@@ -28,6 +28,7 @@ from app.modules.passkeys.dto import CreatePasskeyCredentialDto
 from app.modules.passkeys.repository import PasskeyRepository
 from app.modules.users.dto import (
     BlockUserDto,
+    ClearEmailUndeliverableDto,
     CreateAdminDto,
     CreateUserDto,
     DeleteAdminDto,
@@ -59,10 +60,12 @@ from app.modules.users.events import (
 from app.modules.users.repository import UserRepository
 from app.modules.users.usecases import (
     BlockUserUseCase,
+    ClearEmailUndeliverableUseCase,
     CreateAdminUseCase,
     DeleteAdminUseCase,
     DeleteUserUseCase,
     DemoteAdminUseCase,
+    GetAdminUseCase,
     ListAdminsUseCase,
     ListUsersUseCase,
     PromoteToAdminUseCase,
@@ -777,6 +780,36 @@ async def test_list_admins_marks_who_can_sign_in_without_a_login(
     assert with_telegram.id in result.customer_sign_in_ids
     assert with_google.id in result.customer_sign_in_ids
     assert with_github.id not in result.customer_sign_in_ids
+
+
+async def test_get_admin_returns_permissions_and_sign_in(
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    async with uow:
+        login_only = await user_repository.create(
+            CreateUserDto(login="getloginonly", name="A", role=Role.ADMIN, language=Locale.EN)
+        )
+        with_telegram = await user_repository.create(
+            CreateUserDto(
+                login="gettg", name="B", role=Role.ADMIN, language=Locale.EN, telegram_id=4343
+            )
+        )
+        customer = await user_repository.create(
+            CreateUserDto(name="C", language=Locale.EN, telegram_id=4344)
+        )
+    use_case = GetAdminUseCase(user_repository, uow, oauth_identity_repository)
+
+    login_detail = await use_case(OWNER, login_only.id)
+    telegram_detail = await use_case(OWNER, with_telegram.id)
+
+    assert (login_detail.admin.id, login_detail.can_sign_in_after_demote) == (login_only.id, False)
+    assert telegram_detail.can_sign_in_after_demote is True
+    with pytest.raises(NotFoundError):
+        await use_case(OWNER, customer.id)
+    with pytest.raises(PermissionDeniedError):
+        await use_case(REGULAR_USER, login_only.id)
 
 
 async def test_regular_user_cannot_list_admins(
@@ -2286,6 +2319,45 @@ async def test_promote_refuses_an_account_promoted_while_its_password_was_hashed
             event_publisher,
             {"role": Role.ADMIN, "login": "first-admin"},
         )
+
+
+async def test_an_admin_toggles_their_own_trial_only_with_staff_self_manage(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(login="self-trial", name="admin", role=Role.ADMIN, language=Locale.EN)
+        )
+        await uow.commit()
+    use_case = SetUserTrialAvailabilityUseCase(user_repository, uow, event_publisher)
+    data = SetUserTrialAvailabilityDto(
+        user_id=admin.id, is_trial_available=False, client_ip="127.0.0.1"
+    )
+
+    with pytest.raises(PermissionDeniedError):
+        await use_case(admin, data)
+    granted = admin.model_copy(update={"permission_grants": [Permission.STAFF_SELF_MANAGE.value]})
+    updated = await use_case(granted, data)
+
+    assert updated.is_trial_available is False
+
+
+async def test_an_admin_clears_their_own_undeliverable_email(
+    user_repository: UserRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    async with uow:
+        admin = await user_repository.create(
+            CreateUserDto(login="self-mail", name="admin", role=Role.ADMIN, language=Locale.EN)
+        )
+        await user_repository.set_email_undeliverable(admin.id, datetime_now())
+        await uow.commit()
+    use_case = ClearEmailUndeliverableUseCase(user_repository, uow, event_publisher)
+
+    updated = await use_case(
+        admin, ClearEmailUndeliverableDto(user_id=admin.id, client_ip="127.0.0.1")
+    )
+
+    assert updated.email_undeliverable_at is None
 
 
 async def test_set_trial_availability_records_only_a_change(

@@ -26,6 +26,7 @@ from app.modules.subscriptions.api.schemas import (
     PushToPanelRequest,
     SubscriptionDetailResponse,
     SubscriptionListItemResponse,
+    SubscriptionListStatsResponse,
     SubscriptionPageResponse,
     SubscriptionPanelDiffResponse,
     SubscriptionResponse,
@@ -53,6 +54,7 @@ from app.modules.subscriptions.usecases import (
     DeleteSubscriptionUseCase,
     DeleteUserSubscriptionsUseCase,
     GetPanelSyncStatusUseCase,
+    GetSubscriptionListStatsUseCase,
     GetSubscriptionPanelDiffUseCase,
     GetSubscriptionUseCase,
     GrantSubscriptionUseCase,
@@ -145,6 +147,15 @@ async def list_missing_panel_squads(
         items=[MissingSquadResponse.model_validate(i, from_attributes=True) for i in items],
         total=len(items),
     )
+
+
+@router.get("/summary", response_model=SubscriptionListStatsResponse)
+@inject
+async def get_subscription_list_stats(
+    use_case: FromDishka[GetSubscriptionListStatsUseCase],
+    actor: Actor = Depends(require_admin),
+) -> SubscriptionListStatsResponse:
+    return SubscriptionListStatsResponse.model_validate(await use_case(actor), from_attributes=True)
 
 
 @router.get("", response_model=SubscriptionPageResponse)

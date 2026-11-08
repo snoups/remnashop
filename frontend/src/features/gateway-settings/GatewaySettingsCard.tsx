@@ -243,7 +243,7 @@ export function GatewaySettingsCard({
               );
             })}
             {valueFields.length > 0 && canUpdate ? (
-              <SaveFooter variant="glassAccent" flush dirty={dirty} saving={isSubmitting} beside={testButton} />
+              <SaveFooter flush dirty={dirty} saving={isSubmitting} beside={testButton} />
             ) : (
               testButton && <div className="flex items-center gap-3">{testButton}</div>
             )}

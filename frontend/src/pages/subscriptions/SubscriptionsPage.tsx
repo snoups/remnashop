@@ -1,4 +1,4 @@
-import { Captions, ChevronRight, Filter } from "lucide-react";
+import { Captions, ChevronRight, CircleCheck, Filter, Gauge, Hourglass, Unplug } from "lucide-react";
 import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,9 +6,11 @@ import { useTranslation } from "react-i18next";
 import {
   DEFAULT_PAGE_SIZE,
   daysUntil,
+  expiryToneClassName,
   EXPIRING_SOON_DAYS,
   formatLimit,
   formatTraffic,
+  getSubscriptionListStats,
   listSubscriptions,
   SUBSCRIPTION_STATUS_BADGE_TONE,
   type SubscriptionListItem,
@@ -19,6 +21,8 @@ import { usePermissions } from "@entities/user/use-current-user";
 import { PanelSyncButtons } from "@features/panel-sync/PanelSyncButtons";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
+import { formatPercent } from "@shared/lib/format";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -34,6 +38,7 @@ import { LoadMoreButton } from "@shared/ui/LoadMoreButton";
 import { SearchField } from "@shared/ui/SearchField";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
+import { KpiTile } from "@shared/ui/KpiTile";
 import { Collapse } from "@shared/ui/Collapse";
 import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS, PAGE_TOOLBAR_SEARCH_CLASS } from "@shared/ui/classes";
 import { formatDate } from "@shared/lib/relative-time";
@@ -69,11 +74,6 @@ function expiryGroup(subscription: SubscriptionListItem): ExpiryGroup {
   return days <= EXPIRING_SOON_DAYS ? "soon" : "active";
 }
 
-function expiryToneClassName(days: number): string {
-  if (days < 0) return "text-error";
-  return days <= EXPIRING_SOON_DAYS ? "text-warning" : "text-muted-foreground";
-}
-
 export function SubscriptionsPage() {
   const { t, i18n } = useTranslation();
   const [status, setStatus] = useState("");
@@ -83,6 +83,12 @@ export function SubscriptionsPage() {
 
   const permissions = usePermissions();
   const canViewDetails = permissions.includes("SUBSCRIPTIONS_DETAIL_VIEW");
+  const canViewStats = permissions.includes("SUBSCRIPTIONS_STATS_VIEW");
+  const [statsState, refreshStats] = useAsyncResource(
+    (signal) => (canViewStats ? getSubscriptionListStats(signal) : Promise.resolve(null)),
+    { deps: [canViewStats], keepData: true },
+  );
+  const stats = statsState.kind === "ready" ? statsState.data : null;
 
   const unlimitedLabel = t("subscriptions.unlimited");
 
@@ -100,7 +106,10 @@ export function SubscriptionsPage() {
     (filters, page, signal) => listSubscriptions({ ...filters, page, pageSize: DEFAULT_PAGE_SIZE }, signal),
     baseFilters,
   );
-  useEntityChanged("subscription", reload);
+  useEntityChanged("subscription", () => {
+    reload();
+    refreshStats();
+  });
 
   const handleSaved = (updated: SubscriptionListItem) => {
     // a plan change answers with a new subscription id; the old row is gone
@@ -145,9 +154,6 @@ export function SubscriptionsPage() {
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
           <SearchField
             id="subscriptions-search"
-            label={t("subscriptions.filters.search")}
-            hideLabel
-            compact
             placeholder={t("subscriptions.filters.searchPlaceholder")}
             value={searchInput}
             onChange={setSearchInput}
@@ -177,7 +183,46 @@ export function SubscriptionsPage() {
 
       <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
       <LoadGate>
-      <LoadGateHold isLoading={state.kind === "loading"} />
+      <LoadGateHold isLoading={state.kind === "loading" || statsState.kind === "loading"} />
+      <div className="flex flex-col gap-5">
+      {canViewStats && (
+        <div className="grid shrink-0 grid-cols-2 gap-5 lg:grid-cols-4">
+          <KpiTile
+            panel
+            icon={CircleCheck}
+            label={t("subscriptions.kpi.paidActive")}
+            value={stats ? String(stats.paid_active) : t("common.none")}
+            hint={stats?.active_trials ? t("subscriptions.kpi.trialsHint", { count: stats.active_trials }) : undefined}
+          />
+          <KpiTile
+            panel
+            icon={Hourglass}
+            label={t("subscriptions.kpi.expiring")}
+            value={stats ? String(stats.expiring) : t("common.none")}
+            hint={stats ? t("subscriptions.kpi.expiringHint", { count: stats.expiring_urgent }) : undefined}
+          />
+          <KpiTile
+            panel
+            icon={Gauge}
+            label={t("subscriptions.kpi.limited")}
+            value={stats ? String(stats.limited) : t("common.none")}
+            hint={stats ? t("subscriptions.kpi.disabledHint", { count: stats.disabled }) : undefined}
+          />
+          <KpiTile
+            panel
+            icon={Unplug}
+            label={t("subscriptions.kpi.neverConnected")}
+            value={stats ? String(stats.paying_never_connected) : t("common.none")}
+            hint={
+              stats && stats.paying > 0
+                ? t("subscriptions.kpi.neverConnectedHint", {
+                    percent: formatPercent(String(stats.paying_never_connected / stats.paying), i18n.language),
+                  })
+                : undefined
+            }
+          />
+        </div>
+      )}
       <div className="glass-panel relative shrink-0 rounded-3xl p-4">
         {state.kind === "ready" && isFetching && <RefetchSpinner />}
         <AnimatedHeight>
@@ -219,7 +264,6 @@ export function SubscriptionsPage() {
 
                           return (
                             <ListRow
-                              glass
                               key={subscription.id}
                               type="button"
                               disabled={!canViewDetails}
@@ -236,14 +280,14 @@ export function SubscriptionsPage() {
                                     #{subscription.id}
                                   </span>
                                   {subscription.is_trial && (
-                                    <Badge borderless tone="warning">
+                                    <Badge tone="warning">
                                       {t("subscriptions.trial")}
                                     </Badge>
                                   )}
                                 </span>
-                                <span className="block truncate text-[12px] text-muted-foreground">
-                                  {subscription.user_name || t("users.unnamed")}{" "}
-                                  <span className="font-mono">#{subscription.user_id}</span>
+                                <span className="flex min-w-0 gap-1 text-[12px] text-muted-foreground">
+                                  <span className="truncate">{subscription.user_name || t("users.unnamed")}</span>
+                                  <span className="shrink-0 font-mono">#{subscription.user_id}</span>
                                 </span>
                               </span>
                               <span className="min-w-0">
@@ -266,7 +310,7 @@ export function SubscriptionsPage() {
                                 </span>
                               </span>
                               <span>
-                                <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+                                <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                                   {t(`subscriptions.status.${subscription.status}`)}
                                 </Badge>
                               </span>
@@ -293,6 +337,7 @@ export function SubscriptionsPage() {
           </>
         )}
         </AnimatedHeight>
+      </div>
       </div>
       </LoadGate>
       </div>

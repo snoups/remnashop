@@ -1,5 +1,4 @@
 import { Check, ChevronDown } from "lucide-react";
-import { motion } from "motion/react";
 import { useId, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 
 import { useClickOutside } from "@shared/lib/use-click-outside";
@@ -124,22 +123,22 @@ export function SelectDropdown({
 
   return (
     <div ref={ref} className="relative">
-      <motion.button
+      <button
         ref={triggerRef}
         id={id}
         type="button"
         onClick={toggleOpen}
         onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
-        className={`relative group flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`group relative flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <Ripple />
         <TriggerIcon className={PICKER_ICON_CLASS} />
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown
-          className={`pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-colors transition-transform group-not-focus:group-hover:text-foreground group-focus:text-primary ${isOpen ? "rotate-180" : ""}`}
+          className={`pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-transform group-not-focus:group-hover:text-foreground group-focus:text-primary ${isOpen ? "rotate-180" : ""}`}
         />
-      </motion.button>
+      </button>
 
       <PortalPopover
         open={isOpen}
@@ -155,29 +154,26 @@ export function SelectDropdown({
         id={`${baseId}-listbox`}
         onKeyDown={(event) => event.key === "Escape" && setIsOpen(false)}
         className="min-w-32 p-1.5"
->
+      >
         {/* the scroll lives inside the padding: on the popover itself
             the scrollbar column paints over the rounded corners */}
         <div className="max-h-72 overflow-y-auto">
           {options.map((option, index) => (
-            <motion.button
+            <button
               key={option.value}
               id={optionId(index)}
               type="button"
               onClick={() => selectIndex(index)}
               onMouseEnter={() => setActiveIndex(index)}
-              animate={index === activeIndex ? "hover" : "rest"}
               className={`relative flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
             >
               <Ripple />
               <span className="flex min-w-0 items-center gap-2">
-                {option.icon && (
-                  <option.icon className="size-4 shrink-0 text-muted-foreground" />
-                )}
+                {option.icon && <option.icon className="size-4 shrink-0 text-muted-foreground" />}
                 <span className="truncate">{option.label}</span>
               </span>
               {option.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
-            </motion.button>
+            </button>
           ))}
         </div>
       </PortalPopover>

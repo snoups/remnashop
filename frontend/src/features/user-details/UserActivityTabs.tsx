@@ -223,7 +223,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
               <span className="text-[13px] font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
-              <Badge borderless tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
+              <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
             </Row>
           );
         })}
@@ -272,7 +272,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
                   <span className="truncate">{subscription.plan_snapshot.name}</span>
                   <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">#{subscription.id}</span>
                   {subscription.is_trial && (
-                    <Badge borderless tone="warning">
+                    <Badge tone="warning">
                       {t("subscriptions.trial")}
                     </Badge>
                   )}
@@ -294,7 +294,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
                   {t("subscriptions.until", { date: formatDate(subscription.expire_at, i18n.language) })}
                 </span>
               )}
-              <Badge borderless tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
+              <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>
                 {t(`subscriptions.status.${subscription.status}`)}
               </Badge>
             </Row>

@@ -121,7 +121,6 @@ function UserPicker({
           onChange={(ids) => onChange(ids.map(Number))}
           normalize={normalizePositiveInt}
           inputMode="numeric"
-          glass
           placeholder={t("broadcasts.editor.audience.userIdsPlaceholder")}
         />
       </Field>
@@ -153,7 +152,7 @@ export function AudienceEditor({
   const { t, i18n } = useTranslation();
   const set = (patch: Partial<BroadcastAudience>) => onChange({ ...audience, ...patch });
   const chip = (key: string | number, active: boolean, label: string, onClick: () => void) => (
-    <ChoiceChip key={key} glass active={active} disabled={disabled} onClick={onClick}>
+    <ChoiceChip key={key} active={active} disabled={disabled} onClick={onClick}>
       {label}
     </ChoiceChip>
   );
@@ -329,13 +328,11 @@ export function AudienceEditor({
         <div className="flex w-full flex-col gap-1">
           <div className="grid grid-cols-2 gap-2">
             <DatePickerField
-              compact
               value={audience.registered_from ?? ""}
               placeholder={t("broadcasts.editor.audience.from")}
               onChange={(value) => set({ registered_from: value || null })}
             />
             <DatePickerField
-              compact
               value={audience.registered_to ?? ""}
               placeholder={t("broadcasts.editor.audience.to")}
               onChange={(value) => set({ registered_to: value || null })}

@@ -4,6 +4,7 @@ import {
   Gift,
   GitMerge,
   History,
+  Info,
   Layers,
   ListX,
   Lock,
@@ -13,22 +14,29 @@ import {
   RotateCcw,
   Send,
   Settings2,
+  ShieldCheck,
   ShieldPlus,
   Ticket,
   Trash2,
   Unlink,
   Unlock,
   User,
+  UserMinus,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { getAdmin } from "@entities/admin/api";
 import { ROLE_BADGE_TONE } from "@entities/admin/display";
 import type { UserListItem } from "@entities/user/api";
 import { userContacts, userName } from "@entities/user/display";
 import { useAccountPermissions, useCurrentUser, usePermissions } from "@entities/user/use-current-user";
+import {
+  ADMIN_PERMISSIONS_FORM_ID,
+  AdminPermissionsEditor,
+} from "@features/admin-update-permissions/AdminPermissionsEditor";
 import { GrantSubscriptionDialog } from "@features/subscription-grant/GrantSubscriptionDialog";
 import {
   AnalyticsTab,
@@ -39,19 +47,23 @@ import {
 } from "@features/user-details/UserActivityTabs";
 import { EventsTab, ProfileTab, SessionsTab } from "@features/user-details/UserDetailsTabs";
 import { useUserActions } from "@features/user-details/use-user-actions";
+import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { initials } from "@shared/lib/initials";
 import type { Permission } from "@shared/types/rbac";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
-import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { DialogTabs, type DialogTabItem } from "@shared/ui/DialogTabs";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
+import { Spinner } from "@shared/ui/Spinner";
 
 export type UserDetailsTab =
   | "profile"
+  | "permissions"
   | "analytics"
   | "subscriptions"
   | "transactions"
@@ -87,10 +99,26 @@ function UserDetailsDialogBody({
   const { t } = useTranslation();
   const close = useModalClose();
   const [user, setUser] = useState(initialUser);
+  const currentUserState = useCurrentUser();
+  const permissions = usePermissions();
+  // the per-user session endpoints reject yourself
+  const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
+  const isDeleted = Boolean(user.deleted_at);
+  // permissions and the demote warning come from the admin record
+  const canManageAdmin = user.role === "ADMIN" && !isSelf && !isDeleted && permissions.includes("ADMINS_MANAGE");
+  const [adminState, , setAdmin] = useAsyncResource(
+    (signal) => (canManageAdmin ? getAdmin(user.id, signal) : Promise.resolve(null)),
+    { deps: [canManageAdmin, user.id] },
+  );
+  const admin = adminState.kind === "ready" ? adminState.data : null;
+  // bumping it remounts the permissions editor: reset drops unsaved toggles, save re-seeds from the response
+  const [permissionsRevision, setPermissionsRevision] = useState(0);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   // remounts the subscriptions tab once they're deleted
   const [subscriptionsVersion, setSubscriptionsVersion] = useState(0);
   const handleUpdated = (updated: UserListItem) => {
     setUser(updated);
+    if (updated.role !== "ADMIN") setTab((current) => (current === "permissions" ? "profile" : current));
     onChanged?.(updated);
   };
   const actions = useUserActions({
@@ -101,24 +129,24 @@ function UserDetailsDialogBody({
       if (deleted.id === user.id) close();
     },
     onSubscriptionsDeleted: () => setSubscriptionsVersion((version) => version + 1),
+    canSignInAfterDemote: admin ? () => admin.can_sign_in_after_demote : undefined,
   });
   const available = actions.available(user);
   const [tab, setTab] = useState<UserDetailsTab>(initialTab);
   const [contentRef, contentHeight] = useMeasuredHeight();
-  const currentUserState = useCurrentUser();
-  const permissions = usePermissions();
-  // the per-user session endpoints reject yourself
-  const isSelf = currentUserState.kind === "ready" && currentUserState.data.id === user.id;
-  const isDeleted = Boolean(user.deleted_at);
   const contacts = userContacts(user, t);
   const accountPermissions = useAccountPermissions(user.id);
   const canGrant =
     !isDeleted && accountPermissions.includes("SUBSCRIPTIONS_GRANT") && accountPermissions.includes("PLANS_VIEW");
   const [isGranting, setIsGranting] = useState(false);
+  const canEditPermissions = admin !== null;
 
   const hasAny = (...required: Permission[]) => required.some((permission) => permissions.includes(permission));
   const tabs: DialogTabItem<UserDetailsTab>[] = [
-    { key: "profile", label: t("admins.details.tabs.profile"), icon: User },
+    { key: "profile", label: t("admins.details.tabs.details"), icon: Info },
+    ...(canEditPermissions
+      ? [{ key: "permissions" as const, label: t("admins.details.tabs.permissions"), icon: ShieldCheck }]
+      : []),
     ...(hasAny("TRANSACTIONS_VIEW", "TRANSACTIONS_SUMMARY_VIEW", "REFERRALS_VIEW")
       ? [{ key: "analytics" as const, label: t("users.details.tabs.analytics"), icon: BarChart3 }]
       : []),
@@ -155,13 +183,14 @@ function UserDetailsDialogBody({
           )
         }
         danger={user.is_blocked && !isDeleted}
-        title={`${userName(user, t)} #${user.id}`}
+        title={userName(user, t)}
+        id={user.id}
         subtitle={contacts || undefined}
         actions={
           <>
-            {user.role !== "USER" && <Badge borderless tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
-            {isDeleted && <Badge borderless tone="neutral">{t("users.deleted.badge")}</Badge>}
-            {user.is_blocked && !isDeleted && <Badge borderless tone="error">{t("users.status.blocked")}</Badge>}
+            {user.role !== "USER" && <Badge tone={ROLE_BADGE_TONE[user.role]}>{t(`roles.${user.role}`)}</Badge>}
+            {isDeleted && <Badge tone="neutral">{t("users.deleted.badge")}</Badge>}
+            {user.is_blocked && !isDeleted && <Badge tone="error">{t("users.status.blocked")}</Badge>}
           </>
         }
       />
@@ -180,22 +209,46 @@ function UserDetailsDialogBody({
         >
           <div ref={contentRef}>
             {tab === "profile" && <ProfileTab user={user} onChanged={handleUpdated} />}
+            {tab === "permissions" && adminState.kind === "loading" && <Spinner size="card" />}
+            {tab === "permissions" && canEditPermissions && (
+              <div className={GLASS_DIALOG_CARD_CLASS}>
+                <AdminPermissionsEditor
+                  key={permissionsRevision}
+                  admin={admin}
+                  onSaved={(updated) => {
+                    setAdmin({ ...updated, can_sign_in_after_demote: admin.can_sign_in_after_demote });
+                    setPermissionsRevision((value) => value + 1);
+                    handleUpdated(updated);
+                  }}
+                  onSubmittingChange={setIsSavingPermissions}
+                />
+              </div>
+            )}
             {tab === "analytics" && <AnalyticsTab userId={user.id} />}
             {tab === "subscriptions" && <SubscriptionsTab key={subscriptionsVersion} userId={user.id} />}
             {tab === "transactions" && <TransactionsTab userId={user.id} />}
             {tab === "promocodes" && <PromocodesTab userId={user.id} />}
             {tab === "invited" && <InvitedTab userId={user.id} />}
             {tab === "sessions" && <SessionsTab userId={user.id} />}
-            {tab === "events" && <EventsTab userId={user.id} by="target" />}
+            {tab === "events" && <EventsTab userId={user.id} by={user.role === "USER" ? "target" : "actor"} />}
           </div>
         </motion.div>
       </div>
 
-      {(available.length > 0 || canGrant) && (
-        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center`}>
-          <div className="ml-auto">
+      {(available.length > 0 || canGrant || (tab === "permissions" && canEditPermissions)) && (
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} items-center justify-end`}>
+          {tab === "permissions" && canEditPermissions && (
+            <>
+              <Button variant="glass" type="button" onClick={() => setPermissionsRevision((value) => value + 1)}>
+                {t("common.reset")}
+              </Button>
+              <Button variant="glassAccent" type="submit" form={ADMIN_PERMISSIONS_FORM_ID} isLoading={isSavingPermissions}>
+                {t("common.save")}
+              </Button>
+            </>
+          )}
+          {(available.length > 0 || canGrant) && (
             <ActionMenu
-              glass
               trigger={{ label: t("users.details.actions"), icon: Settings2 }}
               items={[
                 ...(canGrant
@@ -226,6 +279,9 @@ function UserDetailsDialogBody({
                   ? [{ label: t("users.unblock.action"), icon: Unlock, onClick: () => actions.run("unblock", user) }]
                   : []),
                 ...[
+                  ...(available.includes("demote")
+                    ? [{ label: t("admins.demote.button"), icon: UserMinus, onClick: () => actions.run("demote", user) }]
+                    : []),
                   ...(available.includes("block")
                     ? [{ label: t("users.block.action"), icon: Lock, onClick: () => actions.run("block", user) }]
                     : []),
@@ -256,7 +312,7 @@ function UserDetailsDialogBody({
                 ].map((item, index) => ({ ...item, variant: "danger" as const, separatorBefore: index === 0 })),
               ]}
             />
-          </div>
+          )}
         </div>
       )}
       {actions.dialogs}

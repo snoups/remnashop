@@ -56,10 +56,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
 
       <div className="mt-2 grid grid-cols-7 place-items-center gap-y-1">
         {weekdayLabels.map((label, index) => (
-          <span
-            key={`${label}-${index}`}
-            className={EYEBROW_CLASS}
-          >
+          <span key={`${label}-${index}`} className={EYEBROW_CLASS}>
             {label}
           </span>
         ))}

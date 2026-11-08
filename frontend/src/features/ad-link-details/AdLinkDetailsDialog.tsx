@@ -124,7 +124,7 @@ function AdLinkDetailsDialogBody({
         title={adLink.name}
         subtitle={<span className="font-mono">{adLink.code}</span>}
         actions={
-          <Badge borderless tone={adLink.is_active ? "success" : "neutral"}>
+          <Badge tone={adLink.is_active ? "success" : "neutral"}>
             {adLink.is_active ? t("advertising.status.active") : t("advertising.status.paused")}
           </Badge>
         }

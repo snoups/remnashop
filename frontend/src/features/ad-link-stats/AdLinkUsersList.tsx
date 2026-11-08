@@ -44,7 +44,7 @@ export function AdLinkUsersList({ adLink }: { adLink: AdLink }) {
             unnamed={!user.name}
             subtitle={`${t(`advertising.channel.${user.channel}`)} · ${formatDateTime(user.created_at, i18n.language)}`}
             aside={
-              <Badge borderless tone={user.has_paid ? "success" : "neutral"}>
+              <Badge tone={user.has_paid ? "success" : "neutral"}>
                 {user.has_paid ? t("advertising.stats.hasPaid") : t("advertising.stats.notPaid")}
               </Badge>
             }

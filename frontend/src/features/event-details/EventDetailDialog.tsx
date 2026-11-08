@@ -264,7 +264,6 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
       </div>
 
       <OpenUserFooter
-        glass
         links={[
           {
             label: t("eventLog.detail.openInitiator"),

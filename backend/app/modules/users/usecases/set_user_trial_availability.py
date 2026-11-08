@@ -11,7 +11,7 @@ from app.modules.users.dto import SetUserTrialAvailabilityDto, UpdateUserDto, Us
 from app.modules.users.events import UserTrialAvailabilityChangedEvent
 from app.modules.users.listing import detail_roles
 from app.modules.users.repository import UserRepository
-from app.modules.users.visibility import assert_manageable, get_visible_target
+from app.modules.users.visibility import assert_own_or_manageable, get_visible_target
 
 
 class SetUserTrialAvailabilityUseCase(UseCase[SetUserTrialAvailabilityDto, UserListItemDto]):
@@ -29,7 +29,7 @@ class SetUserTrialAvailabilityUseCase(UseCase[SetUserTrialAvailabilityDto, UserL
             target = await get_visible_target(
                 self._user_repository, actor, data.user_id, for_update=True
             )
-            assert_manageable(actor, target)
+            assert_own_or_manageable(actor, target)
 
             if target.is_trial_available != data.is_trial_available:
                 updated = await self._user_repository.update_fields(

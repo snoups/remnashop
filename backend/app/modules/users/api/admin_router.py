@@ -14,6 +14,7 @@ from app.core.security.permissions import ROLE_PERMISSIONS
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.users.api.schemas import (
+    AdminDetailResponse,
     AdminListResponse,
     AdminPromoteResponse,
     AdminResponse,
@@ -69,6 +70,7 @@ from app.modules.users.usecases import (
     DeleteAdminUseCase,
     DeleteUserUseCase,
     DemoteAdminUseCase,
+    GetAdminUseCase,
     GetCurrentUserUseCase,
     GetUserListStatsUseCase,
     GetUserRegistrationUseCase,
@@ -418,6 +420,24 @@ async def list_admins(
     items = [_to_admin_response(a) for a in result.admins]
     return AdminListResponse(
         items=items, total=len(items), customer_sign_in_ids=sorted(result.customer_sign_in_ids)
+    )
+
+
+@admins_router.get(
+    "/{user_id:int}", response_model=AdminDetailResponse, responses=error_responses(404)
+)
+@inject
+async def get_admin(
+    user_id: int,
+    use_case: FromDishka[GetAdminUseCase],
+    actor: Actor = Depends(require_admin),
+) -> AdminDetailResponse:
+    detail = await use_case(actor, user_id)
+    return AdminDetailResponse.model_validate(
+        {
+            **_to_admin_response(detail.admin).model_dump(),
+            "can_sign_in_after_demote": detail.can_sign_in_after_demote,
+        }
     )
 
 
