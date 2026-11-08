@@ -120,12 +120,8 @@ class AdLinkRepository:
         return self._to_dto(row)
 
     async def delete_if_no_attributions(self, ad_link_id: int) -> None:
-        # Lock the ad_link row before counting attributions: Postgres takes an
-        # implicit FOR KEY SHARE lock on it for any concurrent
-        # create_attribution INSERT (FK reference), so that insert blocks
-        # until this transaction commits/rolls back instead of racing the
-        # count-then-delete below (same pattern as PromocodeRepository's
-        # claim_activation).
+        # a concurrent attribution INSERT takes FOR KEY SHARE on this row, so it
+        # waits for this transaction instead of racing the count-then-delete
         locked = await self.session.execute(
             select(AdLink).where(AdLink.id == ad_link_id).with_for_update()
         )

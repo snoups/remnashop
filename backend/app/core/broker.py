@@ -14,10 +14,8 @@ from app.core.metrics import TaskMetricsMiddleware
 broker = ListQueueBroker(
     url=AppConfig.get().redis.dsn, **REDIS_WAIT_CONNECTION_KWARGS
 ).with_serializer(ORJSONSerializer(default=json_default))
-# Built at import time; its Redis connection binds to the first event loop that
-# uses it. pytest-asyncio gives each test its own loop, so tests monkeypatch a
-# task's `.kiq()` (tests/core/test_event_bus.py's `_capture_kiq`) instead of
-# going through the broker.
+# Built at import time and bound to the first event loop that uses it, so tests
+# stub `.kiq()` instead of going through the broker.
 
 # Shared Redis keys: SmartRetryMiddleware below schedules a delayed retry,
 # the worker scheduler dispatches it when due.

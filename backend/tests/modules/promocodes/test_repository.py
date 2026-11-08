@@ -15,10 +15,7 @@ from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 
-# Race-window guard for the concurrency test below: 50ms of dead air between
-# claim_activation's locking SELECT returning and its follow-up count query
-# is far longer than either side's real round-trip, so both sides are
-# guaranteed to overlap there regardless of scheduling luck.
+# far longer than a round trip, so both sides of the race test overlap there
 _RACE_WINDOW_DELAY_SECONDS: float = 0.05
 
 

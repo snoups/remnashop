@@ -16,9 +16,8 @@ async def get_or_create_singleton(
 ) -> _Row:
     """Fetch the always-id=N row of a settings-style table, creating it if absent.
 
-    ON CONFLICT DO NOTHING rather than session.add: on a fresh database the
-    first few requests arrive in parallel and would otherwise each insert the
-    same row, and all but one blow up on the primary key.
+    ON CONFLICT DO NOTHING: parallel first requests on a fresh database would
+    otherwise all insert it and fail on the primary key.
     """
     row = await session.get(model, row_id)
     if row is not None:

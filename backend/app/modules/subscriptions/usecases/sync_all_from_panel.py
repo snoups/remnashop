@@ -41,12 +41,9 @@ _SOURCE: Final[StatusSyncSource] = "panel_sync"
 class SyncAllFromPanelUseCase(UseCase[SyncFromPanelOptionsDto, PanelSyncResultDto]):
     """Takes the panel's state into every live subscription that differs.
 
-    One stream of the whole panel finds the candidates; each one is read again
-    on its own before it is written, so a row changed while the stream ran is
-    judged by the panel's current state, not the minutes-old snapshot.
-    A shop user's panel user that no subscription stands for is imported;
-    one the shop didn't name only with `adopt_unnamed`, and none past the
-    owner's subscription cap with `respect_subscription_limit`.
+    Each candidate from the panel stream is read again before it is written, so
+    a row changed meanwhile is judged by the panel's current state. Panel users
+    without a subscription are imported, subject to the options.
     """
 
     required_permission = None

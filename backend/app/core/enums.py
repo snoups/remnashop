@@ -363,7 +363,7 @@ class Role(IntEnum):
 
 # https://docs.aiogram.dev/en/latest/api/types/update.html
 class MiddlewareEventType(StrEnum):
-    AIOGD_UPDATE = auto()  # AIOGRAM DIALOGS
+    AIOGD_UPDATE = auto()  # aiogram-dialog
     UPDATE = auto()
     MESSAGE = auto()
     EDITED_MESSAGE = auto()

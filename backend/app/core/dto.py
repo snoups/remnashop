@@ -9,10 +9,8 @@ SERVER_OWNED_FIELDS: Final[frozenset[str]] = frozenset({"id", "created_at", "upd
 class BaseDto(BaseModel):
     model_config = ConfigDict(strict=False, extra="ignore")
 
-    # 0 means "not persisted yet" (a DTO built for repository.create(),
-    # excluded via SERVER_OWNED_FIELDS). Not Optional[int]: every DTO that
-    # round-tripped through the DB always has a real id, and Postgres serial
-    # PKs never assign 0, so it can't collide. Don't truth-test `id`.
+    # 0 = not persisted yet (excluded via SERVER_OWNED_FIELDS); serial PKs never
+    # assign 0, so no Optional. Don't truth-test `id`.
     id: int = 0
 
 

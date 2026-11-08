@@ -6,13 +6,9 @@ from app.modules.plans.dto import PlanDto
 def is_plan_purchasable_by(
     plan: PlanDto, actor: Actor, *, has_purchase_history: bool, has_referrer: bool
 ) -> bool:
-    """Whether `actor` may purchase `plan` right now. Every provisioning entry
-    point (checkout, a promocode's SUBSCRIPTION reward) checks it, so a known
-    plan_id can't get around availability. `has_purchase_history`: a non-trial
-    subscription in any status, DELETED and EXPIRED included.
-
-    LINK plans pass unconditionally: their public_code is the access control,
-    and checkout requires it on top of this check."""
+    """Whether `actor` may purchase `plan` right now; checked by every provisioning
+    entry point. `has_purchase_history`: a non-trial subscription in any status.
+    LINK plans always pass: checkout requires their public_code on top."""
     if not plan.is_active:
         return False
     if plan.availability == PlanAvailability.ALL:

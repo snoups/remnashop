@@ -97,12 +97,9 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
                 return existing
             data = replace(data, claim_token=token)
 
-        # Releasing the key lets a retry (taskiq's, or the reconcile sweep)
-        # start over from scratch. A RENEW keeps its key once its target
-        # expire_at is pinned: the retry then resumes with that same absolute
-        # value instead of computing a new one. A NEW mints a fresh panel user
-        # per attempt (and disables the failed one) and a CHANGE writes an
-        # absolute expire_at, so both stay safe to start over.
+        # a released key lets a retry start over; a RENEW keeps it once its
+        # expire_at is pinned, so the retry re-applies that value. NEW and
+        # CHANGE are safe to start over as they are.
         keep_key = False
 
         def mark_key_kept() -> None:

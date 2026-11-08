@@ -20,12 +20,10 @@ _RETRYABLE_METHODS: Final[frozenset[str]] = frozenset({"GET"})
 
 
 class ResilientTransport(httpx.AsyncBaseTransport):
-    """Wraps another transport with a circuit breaker and retry-with-backoff
-    for idempotent (GET) requests. A "failure" is a transport-level
-    exception or an HTTP 5xx; a 4xx means the panel is responsive and
-    rejecting this specific request, not unhealthy, so it doesn't count
-    toward the breaker and is never retried. A request that never gets an answer
-    raises RemnawavePanelUnavailableError (503)."""
+    """Circuit breaker plus retry-with-backoff for GET requests. Transport errors
+    and 5xx count as failures; a 4xx is the panel refusing one request, so it
+    neither trips the breaker nor retries. No answer at all raises
+    RemnawavePanelUnavailableError (503)."""
 
     def __init__(self, wrapped: httpx.AsyncBaseTransport) -> None:
         self._wrapped = wrapped

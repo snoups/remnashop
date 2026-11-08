@@ -38,11 +38,8 @@ def test_tampered_content_after_signing_is_malformed(tmp_path: Path) -> None:
     body = bytearray(path.read_bytes())
     marker_idx = body.rfind(_MARKER)
     hash_start = marker_idx + len(_MARKER)
-    # flip the first hex char of the embedded content-hash: the trailer
-    # still parses cleanly (marker found, line ends in "\n"), but the hash
-    # no longer matches the real body. Appending bytes after the trailer
-    # instead breaks the "ends with \n" check and is reported as
-    # UNSTAMPED (no trailer found), not MALFORMED.
+    # the trailer still parses, only the hash no longer matches; appended bytes
+    # would read as UNSTAMPED instead of MALFORMED
     body[hash_start] = ord("0") if body[hash_start] != ord("0") else ord("1")
     path.write_bytes(bytes(body))
     result = verify_backup_file(path, "key-a")
