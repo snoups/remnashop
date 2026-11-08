@@ -525,10 +525,11 @@ class TransactionRepository:
         return list(rows.all())
 
     async def rescale_anchor_amounts(self, factor: Decimal) -> None:
+        exact = _exact(factor)
         await self.session.execute(
             update(Transaction).values(
-                anchor_base_price=func.round(Transaction.anchor_base_price * factor, 2),
-                anchor_final_price=func.round(Transaction.anchor_final_price * factor, 2),
+                anchor_base_price=func.round(Transaction.anchor_base_price * exact, 2),
+                anchor_final_price=func.round(Transaction.anchor_final_price * exact, 2),
                 # paid-at timestamp, pinned like mark_fulfilled does
                 updated_at=Transaction.updated_at,
             )
@@ -543,8 +544,7 @@ class TransactionRepository:
         return dict((await self.session.execute(stmt)).tuples().all())
 
     async def rate_unrated_anchor_amounts(self, currency: Currency, factor: Decimal) -> None:
-        # bound as the column type, Numeric(10, 2), the factor would be cut to cents
-        exact = literal(factor, Numeric())
+        exact = _exact(factor)
         await self.session.execute(
             update(Transaction)
             .where(Transaction.anchor_unrated.is_(True), Transaction.currency == currency)
@@ -704,3 +704,8 @@ class TransactionRepository:
             day: DailyPaidDto(amount=amount, count=count)
             for day, amount, count in (await self.session.execute(stmt)).tuples()
         }
+
+
+def _exact(factor: Decimal) -> ColumnElement[Decimal]:
+    # bound as the column type, Numeric(10, 2), the factor would be cut to cents
+    return literal(factor, Numeric())

@@ -124,6 +124,25 @@ async def test_rate_converts_only_unrated_amounts_at_current_rates(
     assert await repository.count_unrated_anchor_amounts() == {}
 
 
+async def test_rescale_keeps_a_factor_finer_than_cents(
+    session: AsyncSession, user_repository: UserRepository
+) -> None:
+    repository = TransactionRepository(session)
+    buyer = await user_repository.create(CreateUserDto(name="buyer", telegram_id=950_102))
+    order = await _order(repository, session, buyer.id, Currency.RUB, Decimal("850"), unrated=False)
+
+    # an anchor switch from RUB to USD at 85
+    await repository.rescale_anchor_amounts(Decimal(1) / Decimal(85))
+
+    session.expire_all()
+    after = await repository.get_by_id(order.id)
+    assert (after.anchor_base_price, after.anchor_final_price) == (
+        Decimal("20.00"),
+        Decimal("10.00"),
+    )
+    assert after.updated_at == order.updated_at
+
+
 def test_rating_is_owner_only_and_viewing_is_an_admin_default() -> None:
     assert RateUnratedAnchorAmountsUseCase.required_permission is (
         Permission.TRANSACTIONS_UNRATED_RATE
