@@ -39,12 +39,6 @@ export function SettingsPage() {
   }
 
   return (
-    // fills main and scrolls on its own (data-fills-main: see AnimatedOutlet and main). Negative
-    // margins hand main's bottom and right padding to the scroller, so its scrollbar sits on the
-    // panel edge as main's did; pr-[var(--scrollbar-size)] is the scrollbar; no bottom fade. Desktop: the 48px tab bar floats
-    // over the scroller's top. Under it a 20px gap, as between cards, where the top fade sits
-    // (scroll-fade-gap from 48px); content starts at 68px at rest; scroll-pt lands a linked card
-    // (#access) there too
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_BAR_CLASS}>
         <TabBar

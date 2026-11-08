@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Colors from remnashop.dev's Fumadocs dark theme (.dark CSS vars, --color-fd-*). */
 @theme {
   --color-canvas: #111111;
   /* Form input/select fields, separate from --color-canvas so changing the

@@ -6,7 +6,7 @@ import type { Permission } from "@shared/types/rbac";
 const SCOPE_WILDCARD = "*";
 
 /**
- * Remnawave-style scopes: a fully selected resource (or one kind of it) becomes
+ * A fully selected resource (or one kind of it) becomes
  * `<resource>:*` / `<resource>:read|write` and so also covers permissions added to
  * it in later releases; a partial pick stays a list of single permissions.
  */

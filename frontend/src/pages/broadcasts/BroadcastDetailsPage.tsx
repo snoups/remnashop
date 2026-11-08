@@ -198,7 +198,6 @@ function BroadcastDetails({ id }: { id: number }) {
   };
 
   return (
-    // as the editor: the title bar, the actions in it, floats over a scroller of its own
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>

@@ -226,9 +226,7 @@ function Row({
   );
 }
 
-/** Where a dropped button opens a new row. Mounted only while something is
- * being dragged: a permanent dashed strip sits in the layout doing nothing the
- * rest of the time. */
+/** Where a dropped button opens a new row; mounted only during a drag. */
 function NewRowIndicator({ id }: { id: string }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 

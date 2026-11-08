@@ -237,7 +237,7 @@ export function AudienceEditor({
             disabled={disabled}
             value={audience.not_connected_within_days ?? ""}
             placeholder={any}
-            // the label lost its "(days)": the unit sits in the field
+            // no "(days)" in the label: the unit sits in the field
             suffix={t("broadcasts.editor.audience.daysSuffix")}
             onChange={(event) => {
               const days = Math.trunc(Number(event.target.value));

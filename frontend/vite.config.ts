@@ -4,7 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -18,10 +17,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    // recharts pulls in a dozen d3-* packages -- without eager pre-bundling
-    // Vite discovers them lazily on first visit to a page that imports it
-    // (the overview dashboard), triggering a mid-navigation "bundling
-    // dependencies" pass that stalls every in-flight request for 10-20s+.
+    // recharts pulls in a dozen d3-* packages; found lazily, they trigger a mid-navigation
+    // re-bundle on the overview that stalls every in-flight request for 10-20s
     include: ["recharts"],
   },
   server: {

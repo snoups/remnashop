@@ -147,7 +147,6 @@ export function BroadcastsPage() {
   };
 
   return (
-    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>

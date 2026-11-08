@@ -278,8 +278,6 @@ function BroadcastEditor({ initial, botLocales, defaultLocale }: BroadcastEditor
   const contentTabs = channelTabs(contentTab, setContentTab);
 
   return (
-    // as the settings pages: the title bar, the actions in it, floats over a scroller of its own,
-    // whose fade clears it
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <IconButton size="9" tone="glass" onClick={() => navigate(LIST_PATH)}>

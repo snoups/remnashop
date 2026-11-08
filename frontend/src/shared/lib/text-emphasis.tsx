@@ -4,7 +4,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Wraps each occurrence of `terms` in `text` in an inline-code chip (GitHub-style), kept on one line, sunken like a field. */
+/** Wraps each occurrence of `terms` in `text` in an inline-code chip, kept on one line, sunken like a field. */
 export function withEmphasis(text: string, terms: string | string[]): ReactNode {
   const termList = Array.isArray(terms) ? terms : [terms];
   const pattern = new RegExp(`(${termList.map(escapeRegExp).join("|")})`, "g");

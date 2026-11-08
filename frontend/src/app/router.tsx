@@ -71,8 +71,6 @@ export const router = createBrowserRouter([
         ),
         children: [
           {
-            // data-fills-main: main's fade would dim the card's top; data-under-header: the header's 20px
-            // padding moves above it
             errorElement: (
               <div data-fills-main data-under-header className="md:pt-5">
                 <PageRouteError />

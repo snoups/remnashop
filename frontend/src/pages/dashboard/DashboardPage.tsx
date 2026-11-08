@@ -145,8 +145,6 @@ export function DashboardPage() {
   const showClientApps = permissions.includes("REMNAWAVE_CLIENT_APPS_VIEW");
 
   return (
-    // its own scroller: main's fade would dim the first cards at rest. data-under-header: the
-    // header's 20px padding moves into this one, where the fade (scroll-fade-gap) sits
     <div data-fills-main data-under-header className={PAGE_CLASS}>
     <div className={PAGE_SCROLL_CLASS}>
     <LoadGate>

@@ -160,8 +160,6 @@ export function TransactionsPage() {
       : undefined;
 
   return (
-    // as the event log: the filter bar floats over a scroller of its own, whose fade clears the bar.
-    // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-40 flex-1 md:min-w-0">

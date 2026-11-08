@@ -136,7 +136,6 @@ export function PlansPage() {
   };
 
   return (
-    // as the broadcasts page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-0 flex-1 md:max-w-md">

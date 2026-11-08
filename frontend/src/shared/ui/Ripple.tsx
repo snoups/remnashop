@@ -12,12 +12,10 @@ interface Wave {
 }
 
 /**
- * A tap ripple for its parent: drop it inside a positioned button, tab or row, and it answers that element's
- * pointer-down with a wave from the pointer. It clips to a layer that takes the parent's radius, so the parent
- * needs no overflow-hidden (which would clip a pill gliding into it). The point is kept as a share of the
- * element, so a wave stays put while the element resizes. CSS animate-tap-ripple (app/styles.css); none with
- * reduced motion, none from a key, none on a disabled control (it gets no pointer events), none when the press
- * lands on a control inside the element.
+ * A tap ripple for its positioned parent, a wave from the pointer. Clips to its own layer with the parent's
+ * radius, so the parent needs no overflow-hidden (it would clip a gliding pill); the point is a share of the
+ * element, so the wave stays put on resize. None under reduced motion, from a key, on a disabled control or
+ * for a press on a control inside.
  */
 export function Ripple() {
   const layerRef = useRef<HTMLSpanElement>(null);

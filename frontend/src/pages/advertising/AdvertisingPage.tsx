@@ -145,7 +145,6 @@ export function AdvertisingPage() {
   const detailsLink = state.kind === "ready" ? state.items.find((item) => item.id === detailsId) : undefined;
 
   return (
-    // as the transactions page: the filter bar floats over a scroller of its own, whose fade clears the bar
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <div className="min-w-40 flex-1 md:min-w-0">
