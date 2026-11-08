@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Final, Literal, Optional
+from typing import Annotated, Any, Final, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -18,6 +18,7 @@ from app.core.enums import (
     PriceAdjustScope,
     RoundingMode,
 )
+from app.modules.plans.dto import DEFAULT_PLAN_ICON_EMOJI_FALLBACK, DEFAULT_PLAN_ICON_EMOJI_ID
 
 MATRIX_MAX_EDITS: Final[int] = 2000
 LADDER_MAX_MARKUP: Final[int] = 1000
@@ -98,6 +99,18 @@ class PlanIconRequest(BaseModel):
 
 
 class CreatePlanRequest(PlanIconRequest):
+    @model_validator(mode="before")
+    @classmethod
+    def _default_icon(cls, data: Any) -> Any:
+        # an explicit null still means no icon
+        if isinstance(data, dict) and not {"icon_emoji_id", "icon_emoji_fallback"} & data.keys():
+            return {
+                **data,
+                "icon_emoji_id": DEFAULT_PLAN_ICON_EMOJI_ID,
+                "icon_emoji_fallback": DEFAULT_PLAN_ICON_EMOJI_FALLBACK,
+            }
+        return data
+
     name: str = Field(min_length=1, max_length=PLAN_NAME_MAX_LENGTH)
     description: Optional[str] = Field(default=None, max_length=PLAN_DESCRIPTION_MAX_LENGTH)
     tag: Optional[str] = Field(
