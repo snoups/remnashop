@@ -6,8 +6,7 @@ import type { Session } from "@entities/auth/sessions";
 import { parseUserAgent } from "@shared/lib/parse-user-agent";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { Badge } from "@shared/ui/Badge";
-import { IconCircle } from "@shared/ui/glass/IconCircle";
-import { Pressable } from "@shared/ui/Pressable";
+import { Row } from "@shared/ui/glass/Row";
 
 interface SessionListProps {
   sessions: Session[];
@@ -27,38 +26,38 @@ export function SessionList({ sessions, currentSessionId, onRequestRevoke, size 
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border/50">
+    <div className={`flex flex-col ${compact ? "" : "divide-y divide-border/50"}`}>
       {sessions.map((session) => {
         const { browser, os } = parseUserAgent(session.user_agent);
         const isCurrent = session.id === currentSessionId;
         const DeviceIcon = os === "iOS" || os === "Android" ? Smartphone : os === "Unknown" ? MonitorSmartphone : Monitor;
         return (
-          <Pressable
+          <Row
             key={session.id}
-            type="button"
-            onClick={() => onRequestRevoke(session)}
-            className={`group flex w-full items-center justify-between gap-3 rounded-full text-left transition-colors hover:bg-white/[0.04] ${compact ? "p-2" : "min-h-15 px-3.5 py-2"}`}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <IconCircle icon={DeviceIcon} />
-              <div className="min-w-0">
-                <p className={`flex items-center gap-2 text-[13px] font-medium text-foreground ${compact ? "h-4 leading-tight" : "flex-wrap leading-5"}`}>
+            size={compact ? "sm" : "md"}
+            icon={DeviceIcon}
+            label={
+              <>
+                <span className="truncate">
                   {browser} · {os}
-                  {isCurrent && (
-                    <Badge borderless tone="accent">
-                      {t("sessions.thisDevice")}
-                    </Badge>
-                  )}
-                </p>
-                <p className={`text-[12px] text-muted-foreground ${compact ? "leading-tight" : "mt-0.5 break-words leading-4"}`}>
-                  {session.ip_address} · {t("sessions.lastUsed", { date: formatDateTime(session.last_used_at, i18n.language) })}
-                </p>
-              </div>
-            </div>
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover:bg-error/10 group-hover:text-error">
+                </span>
+                {isCurrent && (
+                  <Badge borderless tone="accent">
+                    {t("sessions.thisDevice")}
+                  </Badge>
+                )}
+              </>
+            }
+            description={`${session.ip_address} · ${t("sessions.lastUsed", { date: formatDateTime(session.last_used_at, i18n.language) })}`}
+            onClick={() => onRequestRevoke(session)}
+          >
+            <span
+              data-row-button
+              className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors group-hover/row:bg-error/10 group-hover/row:text-error"
+            >
               <Trash2 className="size-4" />
             </span>
-          </Pressable>
+          </Row>
         );
       })}
     </div>

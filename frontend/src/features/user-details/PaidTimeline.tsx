@@ -30,18 +30,20 @@ interface Segment {
 
 // A renewal extends its own subscription's period, starting where that one ends if it's
 // still ahead; a plan change carries the chain on to the subscription it creates and cuts the
-// replaced period short. Orders
-// with no subscription link (not reconciled yet) each start a chain of their own.
+// replaced period short. A renewal or change with no subscription link (a migrated order, or
+// one not reconciled yet) continues the latest chain; an unlinked purchase starts its own.
 function buildSegments(paid: TransactionItem[]): Segment[] {
   const chainOf = new Map<number, string>();
   const chainEnd = new Map<string, number>();
   const placed: { order: TransactionItem; start: number; end: number; chain: string }[] = [];
+  let lastChain: string | undefined;
   for (const order of paid) {
     const linked = order.target_subscription_id ?? order.fulfilled_subscription_id;
+    const continued = order.purchase_type !== "NEW";
     const chain =
-      (order.purchase_type !== "NEW" && order.target_subscription_id !== null
-        ? chainOf.get(order.target_subscription_id)
-        : undefined) ?? (linked !== null ? `sub-${linked}` : `order-${order.id}`);
+      (continued && order.target_subscription_id !== null ? chainOf.get(order.target_subscription_id) : undefined) ??
+      (linked !== null ? `sub-${linked}` : continued && lastChain !== undefined ? lastChain : `order-${order.id}`);
+    lastChain = chain;
     for (const id of [order.target_subscription_id, order.fulfilled_subscription_id]) {
       if (id !== null) chainOf.set(id, chain);
     }
@@ -143,6 +145,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
           {label}
         </span>
       ))}
+      <span className="max-w-56 pt-0.5 text-muted-foreground">{t("users.details.analytics.timeline.freeNote")}</span>
     </span>
   );
   const title = (
@@ -150,7 +153,11 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
       {t("users.details.analytics.timeline.title")}
       {/* the Card title is uppercase; the bubble inherits it otherwise */}
       <span className="inline-flex font-medium normal-case tracking-normal">
-        <FieldHint text={legendItems.map(([, label]) => label).join(", ")} content={legend} side="bottom" />
+        <FieldHint
+          text={`${legendItems.map(([, label]) => label).join(", ")}. ${t("users.details.analytics.timeline.freeNote")}`}
+          content={legend}
+          side="bottom"
+        />
       </span>
     </>
   );

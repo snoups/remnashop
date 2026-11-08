@@ -228,9 +228,12 @@ export function SubscriptionsPage() {
                             >
                               <IconCircle icon={Captions} tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]} />
                               <span className="min-w-0">
-                                <span className="flex min-w-0 items-center gap-1.5">
+                                <span className="flex min-w-0 items-center gap-2">
                                   <span className="truncate text-[13px] font-medium text-foreground">
-                                    {subscription.plan_snapshot.name} #{subscription.id}
+                                    {subscription.plan_snapshot.name}
+                                  </span>
+                                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                    #{subscription.id}
                                   </span>
                                   {subscription.is_trial && (
                                     <Badge borderless tone="warning">
@@ -239,7 +242,8 @@ export function SubscriptionsPage() {
                                   )}
                                 </span>
                                 <span className="block truncate text-[12px] text-muted-foreground">
-                                  {subscription.user_name || t("subscriptions.userLabel", { id: subscription.user_id })}
+                                  {subscription.user_name || t("users.unnamed")}{" "}
+                                  <span className="font-mono">#{subscription.user_id}</span>
                                 </span>
                               </span>
                               <span className="min-w-0">

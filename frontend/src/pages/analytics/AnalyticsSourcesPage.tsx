@@ -1,5 +1,5 @@
 import type { ParseKeys } from "i18next";
-import { ChevronRight, Link2, Share2, Trophy } from "lucide-react";
+import { ChevronRight, Link2, Share2, Trophy, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -48,7 +48,7 @@ const KIND_TONE = {
   referral: "violet",
 } as const;
 const TABLE_GRID =
-  "grid grid-cols-[32px_minmax(180px,1fr)_100px_90px_170px_120px_90px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(180px,1fr)_100px_90px_170px_120px_110px] items-center gap-3";
 
 type ReferrerSort = "revenue" | "invited";
 
@@ -182,10 +182,9 @@ function Overview({ data }: { data: Sources }) {
           />
         </div>
         <div className="overflow-x-auto">
-          <div className="min-w-[820px]">
+          <div className="min-w-[840px]">
             <div className={`${TABLE_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
-              <span />
-              <span>{t("analytics.sources.channel")}</span>
+              <span className="col-span-2">{t("analytics.sources.channel")}</span>
               <span className="text-right">
                 {t("analytics.sources.registrations")}
               </span>
@@ -363,15 +362,23 @@ function TopReferrers({ data }: { data: Sources }) {
             onClick={() => openUser(row.user_id)}
             className={`grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3`}
           >
-            <IconCircle tone="violet" glyph={<span className="text-[11px] font-bold">{initials(row.name)}</span>} />
-            <CellText
-              title={row.name}
-              sub={t("analytics.sources.invitedPaid", {
-                invited: row.invited.toLocaleString(language),
-                paid: row.paid.toLocaleString(language),
-              })}
-              tabular
-            />
+            <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+              {row.name ? initials(row.name) : <User className="size-4" />}
+            </span>
+            <span className="min-w-0">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[13px] font-medium text-foreground">
+                  {row.name || t("users.unnamed")}
+                </span>
+                <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{row.user_id}</span>
+              </span>
+              <span className="block truncate text-[12px] tabular-nums text-muted-foreground">
+                {t("analytics.sources.invitedPaid", {
+                  invited: row.invited.toLocaleString(language),
+                  paid: row.paid.toLocaleString(language),
+                })}
+              </span>
+            </span>
             <span className="text-right text-[13px] font-semibold tabular-nums">
               {formatMoney(row.revenue, data.report_currency, language)}
             </span>

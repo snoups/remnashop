@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { nameOrUnnamed } from "@entities/user/display";
+import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
@@ -21,6 +21,7 @@ const USERS_PAGE_SIZE = 10;
 export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
+  const canOpenUsers = useCanOpenUsers();
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (id: number, page, signal) => listPromocodeActivatedUsers(id, page, USERS_PAGE_SIZE, signal),
     promocode.id,
@@ -42,11 +43,12 @@ export function PromocodeUsersList({ promocode }: { promocode: Promocode }) {
         state.items.map((user) => (
           <UserRow
             key={user.activation_id}
-            name={nameOrUnnamed(user.name, user.user_id, t)}
+            name={user.name || t("users.unnamed")}
+            id={user.user_id}
             unnamed={!user.name}
             subtitle={formatDateTime(user.activated_at, i18n.language)}
             aside={user.subscription_id !== null && <Tag>#{user.subscription_id}</Tag>}
-            onClick={() => openUser(user)}
+            onClick={canOpenUsers ? () => openUser(user) : undefined}
           />
         ))}
       {state.kind === "ready" && hasMore && (

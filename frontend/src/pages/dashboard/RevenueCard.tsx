@@ -31,7 +31,7 @@ export function RevenueCard({ refreshKey }: { refreshKey: number }) {
       title={
         <>
           {t("dashboard.revenue.title")}
-          {report && <FieldHint glass text={t("analytics.currencyNote", { currency: report.report_currency })} />}
+          {report && <FieldHint text={t("analytics.currencyNote", { currency: report.report_currency })} />}
         </>
       }
       description={t("dashboard.revenue.description")}

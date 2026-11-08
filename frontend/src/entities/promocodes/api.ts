@@ -1,5 +1,4 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@shared/api/http";
-import type { ListResponse } from "@shared/api/http";
 
 // mirrors CreatePromocodeRequest.code on the backend
 export const PROMOCODE_CODE_MAX_LENGTH = 64;
@@ -70,10 +69,19 @@ export interface UserPromocodeActivation {
   activated_at: string;
 }
 
-export function listUserPromocodeActivations(userId: number, signal?: AbortSignal): Promise<UserPromocodeActivation[]> {
-  return apiGet<ListResponse<UserPromocodeActivation>>(`/users/${userId}/promocode-activations`, signal).then(
-    (response) => response.items,
-  );
+export interface UserPromocodeActivationPage {
+  items: UserPromocodeActivation[];
+  total: number;
+}
+
+export function listUserPromocodeActivations(
+  userId: number,
+  page: number,
+  pageSize: number,
+  signal?: AbortSignal,
+): Promise<UserPromocodeActivationPage> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiGet<UserPromocodeActivationPage>(`/users/${userId}/promocode-activations?${params.toString()}`, signal);
 }
 
 export interface CreatePromocodeRequest {

@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { userLabel } from "@entities/user/display";
+import { userName } from "@entities/user/display";
+import { useCanOpenUsers } from "@features/open-user/openable-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 
 import { type ReferralReward, listUserReferralRewards } from "@entities/referrals/api";
-import { formatReward, userHandle } from "@features/user-referrals/format";
+import { formatReward } from "@features/user-referrals/format";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { Badge } from "@shared/ui/Badge";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -18,6 +19,7 @@ const PAGE_SIZE = 10;
 export function ReferralRewardsList({ userId }: { userId: number }) {
   const { t, i18n } = useTranslation();
   const { openUser: openUserCard } = useOpenEntity();
+  const canOpenUsers = useCanOpenUsers();
   const { state, isLoadingMore, hasMore, loadMore } = usePaginatedList(
     (id: number, page, signal) => listUserReferralRewards(id, page, PAGE_SIZE, signal),
     userId,
@@ -28,14 +30,6 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
     openUserCard(reward.buyer.id);
   };
 
-  const subtitle = (reward: ReferralReward): string =>
-    [
-      reward.buyer ? userHandle(reward.buyer) : null,
-      formatDateTime(reward.created_at, i18n.language),
-    ]
-      .filter(Boolean)
-      .join(" · ");
-
   return (
     <DialogCard>
       {state.kind === "loading" && <Spinner size="card" />}
@@ -45,9 +39,10 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
         state.items.map((reward, index) => (
           <UserRow
             key={index}
-            name={reward.buyer && userLabel(reward.buyer, reward.buyer.id, t)}
+            name={reward.buyer && userName(reward.buyer, t)}
+            id={reward.buyer?.id}
             unnamed={Boolean(reward.buyer && !reward.buyer.name)}
-            subtitle={subtitle(reward)}
+            subtitle={formatDateTime(reward.created_at, i18n.language)}
             aside={
               <>
                 {reward.level && (
@@ -60,7 +55,7 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
                 </span>
               </>
             }
-            onClick={reward.buyer ? () => openBuyer(reward) : undefined}
+            onClick={canOpenUsers && reward.buyer ? () => openBuyer(reward) : undefined}
           />
         ))}
       {state.kind === "ready" && hasMore && (

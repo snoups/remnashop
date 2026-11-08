@@ -180,7 +180,8 @@ export function UsersPage() {
       <Pressable
         type="button"
         onClick={() => toggleSort(by)}
-        className={`flex items-center gap-1 uppercase transition-colors hover:text-foreground ${
+        // negative margins: the pill gives the ripple room without shifting the label off its column
+        className={`-mx-2 -my-1 flex items-center gap-1 rounded-full px-2 py-1 uppercase transition-colors hover:text-foreground ${
           isActive ? "text-foreground" : ""
         }`}
       >

@@ -286,7 +286,7 @@
     },
     "online": {
       "title": "Online",
-      "description": "Peak online by hour and by day",
+      "description": "Peak online",
       "hours24": "24h",
       "valueName": "Online",
       "peak": "Peak — {{peak}} at {{time}}"
@@ -335,7 +335,7 @@
     "remnawaveUnavailable": "Remnawave is unavailable",
     "nodes": {
       "title": "Nodes and countries",
-      "description": "Connections and traffic today, from Remnawave",
+      "description": "Online and traffic today",
       "nodes": "Nodes",
       "countries": "Countries",
       "empty": "No nodes",
@@ -372,7 +372,7 @@
       "title": "New customer funnel",
       "steps": {
         "registered": "Registration",
-        "connected": "VPN connection",
+        "connected": "Connection",
         "first_paid": "First payment",
         "repeat_paid": "Repeat payment"
       },
@@ -475,14 +475,14 @@
     "pp": "{{value}} pp",
     "empty": "No data",
     "emptyPeriod": "No data for this period",
-    "totalPaid": "Paid in total",
+    "totalPaid": "Total purchases",
     "metrics": {
       "periodSection": "For the period",
       "comparedWith": "compared with {{range}}",
       "nowSection": "Right now",
       "revenue": "Revenue",
       "revenueCaption": "{{payers}} paid · {{arppu}} per payer",
-      "arppu": "Revenue per payer",
+      "arppu": "Per payer",
       "newPayers": "New payers",
       "conversion": "Paid within {{days}} days",
       "conversionHint": "Share of users who registered {{days}}+ days before the period’s end and paid within {{days}} days of registering.",
@@ -643,10 +643,8 @@
       "code": "Promocode",
       "reward": "Reward",
       "activationsColumn": "Activations",
-      "activationsCaption": "{{activations}} · {{total}} total",
-      "activationsLimitCaption": "{{activations}} · {{total}} / {{max}}",
       "revenueColumn": "Revenue",
-      "toPayment": "→ payment",
+      "toPayment": "Conversion",
       "empty": "No promocode activations in this period"
     }
   },
@@ -1036,7 +1034,7 @@
             "NEW": "Purchase",
             "RENEW": "Renewal",
             "CHANGE": "Plan change",
-            "gap": "Gap without a subscription",
+            "gap": "Gap in payments",
             "refund": "Refund",
             "today": "Today"
           },
@@ -1044,7 +1042,8 @@
           "gaps_one": "{{count}} gap",
           "gaps_other": "{{count}} gaps",
           "gap": "gap {{count}}d",
-          "empty": "No purchases"
+          "empty": "No purchases",
+          "freeNote": "Free days (grants, promocodes, trials, referral bonuses) are not counted."
         }
       },
       "empty": {
@@ -2193,6 +2192,7 @@
     "ANALYTICS_REVENUE_VIEW": "View revenue analytics",
     "ANALYTICS_TRIAL_VIEW": "View trial analytics",
     "ANALYTICS_RETENTION_VIEW": "View retention analytics",
+    "ANALYTICS_EXPIRING_VIEW": "View customers with expiring subscriptions",
     "ANALYTICS_SOURCES_VIEW": "View acquisition sources",
     "ANALYTICS_PROMOCODES_VIEW": "View promocode analytics",
     "REMNAWAVE_NODES_VIEW": "View Remnawave nodes",
@@ -2975,6 +2975,7 @@
       "levelAll": "All levels",
       "level": "Level {{level}}",
       "levelBadge": "Lvl {{level}}",
+      "levelHint": "Users at level {{level}}: {{count}}",
       "search": "User",
       "searchPlaceholder": "Name, @username, ID or email",
       "rewardStatusAll": "Any",
@@ -3401,8 +3402,7 @@
     "devicesUnlimited": "Devices ∞",
     "devicesCount_one": "{{count}} device",
     "devicesCount_other": "{{count}} devices",
-    "userLabel": "User #{{id}}",
-    "subscriptionLabel": "Subscription #{{id}}",
+    "until": "until {{date}}",
     "filters": {
       "search": "Search",
       "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
@@ -3449,7 +3449,7 @@
       "addonsHint": "Add-ons on top: +{{value}}"
     },
     "details": {
-      "paidTotal": "Paid since the last plan change",
+      "paidTotal": "Paid",
       "subscription": "Subscription",
       "trafficUsed": "{{value}} used",
       "trafficLeftOf": "left of {{limit}}",
@@ -3457,11 +3457,18 @@
       "trafficLimit": "traffic limit",
       "daysLeft": "Left",
       "devicesUpTo": "up to {{limit}}",
+      "devicesOf": "{{count}} of {{limit}}",
       "panel": "Panel",
       "createdAt": "Created",
       "firstConnectedAt": "First connection",
       "link": "Link",
       "remnawaveId": "Remnawave ID",
+      "deviceSingleResetAt": "Device removal",
+      "deviceAllResetAt": "All devices removal",
+      "linkResetAt": "Link reissue",
+      "onlineAt": "Last online",
+      "subLastOpenedAt": "Subscription request",
+      "subLastUserAgent": "App",
       "internalSquads": "Internal squads",
       "externalSquad": "External squad",
       "addons": "Add-ons"
@@ -3509,10 +3516,10 @@
       "submit": "Change",
       "changed": "Plan changed.",
       "error": "Failed to change the plan.",
-      "resetWarning": "Add-ons will be removed. Limits, reset strategy, squads and tag will match the new plan. The subscription number will change; the link stays the same."
+      "resetWarning": "Add-ons will be removed. Limits, reset strategy, squads and tag will match the new plan. The subscription number will change; the link stays the same. A new term starts today; the days left on the current subscription are not carried over."
     },
     "devices": {
-      "empty": "No devices",
+      "empty": "No connected devices",
       "deleted": "Device deleted.",
       "deleteAll": "Delete all devices",
       "deleteAllTitle": "Delete all devices?",

@@ -133,11 +133,11 @@ function TransactionDetailsDialogBody({
     }
   };
 
-  const plan = `${order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? none} · ${t("plans.daysShort", { count: order.duration_days })}`;
+  const plan = `${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`;
   const previous = order.previous_plan_snapshot;
   const previousPlan =
     previous &&
-    [previous.name ?? previous.public_code ?? none, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
+    [previous.name, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
       .filter(Boolean)
       .join(" · ");
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);

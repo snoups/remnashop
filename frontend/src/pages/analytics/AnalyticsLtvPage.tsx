@@ -1,4 +1,4 @@
-import { BarChart3, Link2, Package, Trophy, Users, Wallet } from "lucide-react";
+import { BarChart3, Link2, Package, Trophy, User, Users, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { getLtvBreakdown, getLtvDistribution } from "@entities/analytics/api";
@@ -6,10 +6,10 @@ import type { LtvBreakdown, LtvDistribution, LtvGroup } from "@entities/analytic
 import { usePermissions } from "@entities/user/use-current-user";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney, formatPercent } from "@shared/lib/format";
+import { initials } from "@shared/lib/initials";
 import { formatDate } from "@shared/lib/relative-time";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
-import { CellText } from "@shared/ui/CellText";
 import { Section } from "@shared/ui/glass/Section";
 import { LIST_BODY_CLASS, GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
@@ -20,10 +20,7 @@ import type { BarRow, Column } from "@pages/analytics/charts";
 import { ListRow } from "@shared/ui/ListRow";
 import { Tag } from "@shared/ui/Tag";
 
-// the rank's circle fades from the first place down: 30% primary, 2.8 points less per place
-const rankBackground = (index: number) =>
-  `color-mix(in srgb, var(--color-primary) ${Math.max(30 - index * 2.8, 4)}%, transparent)`;
-const TOP_GRID = "grid grid-cols-[32px_minmax(0,1.4fr)_minmax(0,1fr)_80px_110px_110px] items-center gap-3";
+const TOP_GRID = "grid grid-cols-[32px_minmax(0,1.4fr)_minmax(0,1fr)_80px_120px_140px] items-center gap-3";
 
 export function AnalyticsLtvPage() {
   const { t } = useTranslation();
@@ -183,15 +180,14 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
           <div className="overflow-x-auto pt-4">
             <div className="min-w-[720px]">
               <div className={`${TOP_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
-                <span>#</span>
-                <span>{t("analytics.ltv.customer")}</span>
+                <span className="col-span-2">{t("analytics.ltv.customer")}</span>
                 <span>{t("analytics.ltv.subscriptionsColumn")}</span>
                 <span className="text-right">{t("analytics.ltv.payments")}</span>
                 <span className="text-right">{t("analytics.totalPaid")}</span>
                 <span className="text-right">{t("analytics.ltv.lastPayment")}</span>
               </div>
               <div className={LIST_BODY_CLASS}>
-                {data.top_payers.map((payer, index) => (
+                {data.top_payers.map((payer) => (
                   <ListRow
                     glass
                     key={payer.user_id}
@@ -199,13 +195,20 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
                     onClick={() => openUser(payer.user_id)}
                     className={TOP_GRID}
                   >
-                    <span
-                      className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-primary"
-                      style={{ backgroundColor: rankBackground(index) }}
-                    >
-                      {index + 1}
+                    <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+                      {payer.name ? initials(payer.name) : <User className="size-4" />}
                     </span>
-                    <CellText title={payer.name} sub={payer.username && `@${payer.username}`} mono />
+                    <span className="min-w-0">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-[13px] font-medium text-foreground">
+                          {payer.name || t("users.unnamed")}
+                        </span>
+                        <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{payer.user_id}</span>
+                      </span>
+                      {payer.username && (
+                        <span className="block truncate font-mono text-[12px] text-muted-foreground">@{payer.username}</span>
+                      )}
+                    </span>
                     <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
                       <span className="truncate">{payer.current_plans[0] ?? t("common.none")}</span>
                       {payer.current_plans.length > 1 && <Tag>+{payer.current_plans.length - 1}</Tag>}

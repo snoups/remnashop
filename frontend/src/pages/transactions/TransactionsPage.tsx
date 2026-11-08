@@ -352,7 +352,7 @@ export function TransactionsPage() {
                                   <span className="min-w-0">
                                     <span className="flex min-w-0 items-center gap-2">
                                       <span className="truncate text-[13px] font-medium text-foreground">
-                                        {order.plan_snapshot.name ?? order.plan_snapshot.public_code ?? "—"}
+                                        {order.plan_snapshot.name}
                                         {" · "}
                                         {t("plans.daysShort", { count: order.duration_days })}
                                       </span>

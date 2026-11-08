@@ -228,7 +228,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                       ) : (
                         <Badge borderless tone="warning">
                           {t("blacklist.matches.pending")}
-                          <FieldHint text={t("blacklist.matches.pendingHint")} glass />
+                          <FieldHint text={t("blacklist.matches.pendingHint")} />
                         </Badge>
                       )}
                     </td>

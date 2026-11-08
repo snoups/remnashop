@@ -31,7 +31,7 @@ export function Field({ label, htmlFor, required = false, info, aside, hint, err
       <label htmlFor={htmlFor} className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
         {label}
         {required && <span className="text-error">*</span>}
-        {info && <FieldHint text={info} glass />}
+        {info && <FieldHint text={info} />}
         {aside}
       </label>
       <FieldRequiredContext.Provider value={required}>{children}</FieldRequiredContext.Provider>

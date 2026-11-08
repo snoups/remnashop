@@ -10,6 +10,7 @@ import { formatMoney, formatPercent } from "@shared/lib/format";
 import { LoadGateHold } from "@shared/lib/load-gate";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Badge } from "@shared/ui/Badge";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Section } from "@shared/ui/glass/Section";
 import { GLASS_LIST_HEAD_CLASS } from "@shared/ui/classes";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
@@ -23,7 +24,7 @@ import { countTrend, ppTrend, previousPeriodHint, relativeTrend } from "@pages/a
 import { ListRow } from "@shared/ui/ListRow";
 
 const TABLE_GRID =
-  "grid grid-cols-[minmax(120px,1fr)_120px_210px_100px_84px_84px] items-center gap-3";
+  "grid grid-cols-[32px_minmax(120px,1fr)_120px_120px_120px_104px_84px] items-center gap-3";
 
 export function AnalyticsPromocodesPage() {
   const { t } = useTranslation();
@@ -152,9 +153,9 @@ function Overview({ data }: { data: PromocodeStats }) {
           <EmptyState text={t("analytics.promocodes.empty")} />
         ) : (
           <div className="overflow-x-auto pt-4">
-            <div className="min-w-[740px]">
+            <div className="min-w-[780px]">
               <div className={`${TABLE_GRID} ${GLASS_LIST_HEAD_CLASS}`}>
-                <span>{t("analytics.promocodes.code")}</span>
+                <span className="col-span-2">{t("analytics.promocodes.code")}</span>
                 <span>{t("analytics.promocodes.reward")}</span>
                 <span>{t("analytics.promocodes.activationsColumn")}</span>
                 <span className="text-right">
@@ -168,7 +169,6 @@ function Overview({ data }: { data: PromocodeStats }) {
                 </span>
               </div>
               {data.codes.map((row) => {
-                const max = row.max_activations;
                 return (
                   <ListRow
                     glass
@@ -177,38 +177,18 @@ function Overview({ data }: { data: PromocodeStats }) {
                     onClick={() => openPromocode(row.promocode_id)}
                     className={TABLE_GRID}
                   >
+                    <IconCircle icon={Ticket} tone={row.status === "ACTIVE" ? "success" : "neutral"} />
                     <span className="truncate font-mono text-[12px] text-muted-foreground">
                       {row.code}
                     </span>
                     <span>
                       <Tag>{rewardLabel(row)}</Tag>
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 flex-1 overflow-hidden rounded-full glass-track">
-                        {max !== null && max > 0 && (
-                          <span
-                            className="block h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
-                            style={{
-                              width: `${Math.min(row.total_activations / max, 1) * 100}%`,
-                            }}
-                          />
-                        )}
-                      </span>
-                      <span className="w-24 text-right text-[12px] tabular-nums text-muted-foreground">
-                        {max === null
-                          ? t("analytics.promocodes.activationsCaption", {
-                              activations:
-                                row.activations.toLocaleString(language),
-                              total:
-                                row.total_activations.toLocaleString(language),
-                            })
-                          : t("analytics.promocodes.activationsLimitCaption", {
-                              activations:
-                                row.activations.toLocaleString(language),
-                              total:
-                                row.total_activations.toLocaleString(language),
-                              max: max.toLocaleString(language),
-                            })}
+                    <span className="text-[13px] tabular-nums text-foreground">
+                      {row.total_activations.toLocaleString(language)}
+                      <span className="text-muted-foreground">
+                        {" / "}
+                        {row.max_activations?.toLocaleString(language) ?? "∞"}
                       </span>
                     </span>
                     <span className="text-right text-[13px] font-semibold tabular-nums">
