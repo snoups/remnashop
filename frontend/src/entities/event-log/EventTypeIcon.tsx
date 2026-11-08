@@ -106,6 +106,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   LocaleDeactivatedEvent: Languages,
   DefaultLocaleChangedEvent: Languages,
   AnchorSwitchedEvent: Anchor,
+  UnratedAnchorAmountsRatedEvent: History,
   BasePricesAdjustedEvent: Tags,
   ApiTokenCreatedEvent: KeyRound,
   ApiTokenRevokedEvent: KeyRound,

@@ -250,6 +250,14 @@
         "why": "The bot does not receive messages or button presses, so customers cannot use it.",
         "fix": "Check the webhook URL in the bot settings and that the server is reachable from the internet over HTTPS. Restarting the bot usually helps."
       },
+      "unratedAnchorAmounts": {
+        "title": "Migrated payments without a currency rate",
+        "sub_one": "{{formatted}} payment in {{currencies}} counted at face value",
+        "sub_other": "{{formatted}} payments in {{currencies}} counted at face value",
+        "what": "Payments migrated from the old version in a currency other than the anchor were counted at face value: there were no currency rates at migration time.",
+        "why": "Revenue, LTV and other analytics add those amounts as if they were in the anchor currency.",
+        "fix": "Check the currency rates in the pricing settings and recalculate the old payments there."
+      },
       "sections": {
         "what": "What happened",
         "why": "Why it matters",
@@ -263,7 +271,8 @@
         "bot": "Go to bot settings",
         "broadcasts": "Go to broadcasts",
         "email": "Go to email settings",
-        "apiTokens": "Go to API tokens"
+        "apiTokens": "Go to API tokens",
+        "pricing": "To pricing"
       }
     },
     "revenue": {
@@ -730,6 +739,7 @@
       "LocaleDeactivatedEvent": "Locale removed",
       "DefaultLocaleChangedEvent": "Default language changed",
       "AnchorSwitchedEvent": "Anchor currency changed",
+      "UnratedAnchorAmountsRatedEvent": "Old payments recalculated at current rates",
       "BasePricesAdjustedEvent": "Base prices changed",
       "ApiTokenCreatedEvent": "API token created",
       "ApiTokenRevokedEvent": "API token revoked",
@@ -2137,6 +2147,8 @@
     "TRANSACTIONS_FULFILL": "Issue subscription for a transaction manually",
     "TRANSACTIONS_REFUND": "Refund Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
+    "TRANSACTIONS_UNRATED_VIEW": "View migrated payments without a currency rate",
+    "TRANSACTIONS_UNRATED_RATE": "Recalculate migrated payments at current rates",
     "REFERRALS_VIEW": "View referrals",
     "REFERRALS_INVITED_VIEW": "View a user’s invited users",
     "REFERRALS_REWARDS_VIEW": "View a user’s referral rewards",
@@ -2322,6 +2334,17 @@
       "confirmButton": "Switch",
       "saved": "Anchor currency updated.",
       "saveError": "Failed to switch the anchor currency."
+    },
+    "unrated": {
+      "title": "Old payments without a rate",
+      "description_one": "{{count}} payment from the old version in {{currencies}} is counted at face value",
+      "description_other": "{{count}} payments from the old version in {{currencies}} are counted at face value",
+      "button": "Recalculate",
+      "confirmTitle": "Recalculate old payments",
+      "confirmMessage_one": "{{count}} payment in {{currencies}} will be converted to the anchor currency at the current rates. Check the rates first: this can’t be undone.",
+      "confirmMessage_other": "{{count}} payments in {{currencies}} will be converted to the anchor currency at the current rates. Check the rates first: this can’t be undone.",
+      "saved": "Old payments recalculated.",
+      "saveError": "Failed to recalculate old payments."
     },
     "settings": {
       "betaHint": "Not in use yet: customers can’t buy add-ons on their own.",
