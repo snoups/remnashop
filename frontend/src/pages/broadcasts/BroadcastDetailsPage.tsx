@@ -1,4 +1,4 @@
-import { Calendar, ChevronLeft, Image, Languages, Mail, Megaphone, Send, Tag, Ticket, Trash2, User, Users } from "lucide-react";
+import { CalendarClock, ChevronLeft, Image, Languages, Mail, Megaphone, RotateCcw, Send, Tag, Ticket, Trash2, User, Users } from "lucide-react";
 import type { ParseKeys } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -281,7 +281,7 @@ function BroadcastDetails({ id }: { id: number }) {
               {[b.created_by_name, b.created_at ? formatDateTime(b.created_at, i18n.language) : null].filter(Boolean).join(" · ") || none}
             </InfoRow>
             {b.scheduled_at && (
-              <InfoRow icon={Calendar} label={t("broadcasts.details.params.scheduledAt")}>
+              <InfoRow icon={CalendarClock} label={t("broadcasts.details.params.scheduledAt")}>
                 {formatDateTime(b.scheduled_at, i18n.language)}
               </InfoRow>
             )}
@@ -302,6 +302,7 @@ function BroadcastDetails({ id }: { id: number }) {
           message={t(`broadcasts.details.actions.${pending}.message` as ParseKeys)}
           confirmLabel={t(`broadcasts.details.actions.${pending}.confirm` as ParseKeys)}
           cancelLabel={t("common.cancel")}
+          icon={RotateCcw}
           danger={pending !== "retry"}
           onConfirm={() => void run(pending)}
           onCancel={() => setPending(null)}

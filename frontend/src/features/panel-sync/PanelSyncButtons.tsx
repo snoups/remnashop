@@ -148,6 +148,7 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
           message={t(`subscriptions.panelSync.bulk.${confirmKey}Confirm`)}
           confirmLabel={t(`subscriptions.panelSync.bulk.${confirmKey}Action`)}
           cancelLabel={t("common.cancel")}
+          icon={Download}
           danger={confirming === "TO_PANEL"}
           size={confirming === "TO_PANEL" && missingSquads.length > 0 ? "md" : "sm"}
           onConfirm={() => void start(confirming)}

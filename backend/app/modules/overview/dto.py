@@ -57,9 +57,11 @@ class RevenueTodayDto:
 
 @dataclass(frozen=True, kw_only=True)
 class RecentPaymentDto:
+    transaction_id: int
     user_id: int
     name: str
     plan_name: str
+    duration_days: int
     gateway_type: PaymentGatewayType
     purchase_type: PurchaseType
     amount: Decimal

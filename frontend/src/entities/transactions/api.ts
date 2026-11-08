@@ -229,11 +229,3 @@ export const PAYMENT_STATUS_DOT_CLASSNAME: Record<TransactionStatus, string> = {
   CANCELED: "bg-muted-foreground",
   REFUNDED: "bg-primary",
 };
-
-export const PAYMENT_STATUS_ICON_CLASSNAME: Record<TransactionStatus, string> = {
-  PAID: "bg-success/10 text-success",
-  PENDING: "bg-warning/10 text-warning",
-  FAILED: "bg-error/10 text-error",
-  CANCELED: "bg-white/[0.06] text-muted-foreground",
-  REFUNDED: "bg-accent text-primary",
-};

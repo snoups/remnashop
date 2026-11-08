@@ -1,5 +1,5 @@
 import type { ParseKeys } from "i18next";
-import { RefreshCw } from "lucide-react";
+import { CircleCheck, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,7 +19,7 @@ import { toast } from "@shared/lib/toast";
 import { Button } from "@shared/ui/Button";
 import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
-import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Spinner } from "@shared/ui/Spinner";
@@ -91,7 +91,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {missing && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
-        {inSync && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.inSync")}</p>}
+        {inSync && <EmptyState text={t("subscriptions.panelSync.inSync")} icon={CircleCheck} />}
         {canPush && state.kind === "ready" && state.diff.missing_squads.length > 0 && (
           <div className="mb-4">
             <SquadReplacementsField

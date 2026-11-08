@@ -241,6 +241,7 @@ class MarkOrderFulfilledDto:
 
 @dataclass(frozen=True, kw_only=True)
 class PaidTransactionDto:
+    transaction_id: int
     user_id: int
     paid_at: datetime
     currency: Currency

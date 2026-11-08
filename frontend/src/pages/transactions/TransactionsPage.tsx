@@ -17,7 +17,8 @@ import { useMemo, useState, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 
-import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPercent, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PAYMENT_STATUS_ICON_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactionsAfter, UNFULFILLED_STATUS, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
+import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPercent, PAYMENT_STATUS_BADGE_TONE, PAYMENT_STATUS_DOT_CLASSNAME, PURCHASE_TYPES, listTransactionGateways, listTransactionsAfter, UNFULFILLED_STATUS, type TransactionItem, type TransactionListFilters, type TransactionStatus, type TransactionSummary, type PurchaseType } from "@entities/transactions/api";
+import { userName } from "@entities/user/display";
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -38,7 +39,7 @@ import { dotIcon, letterIcon } from "@shared/ui/option-icons";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { RefetchSpinner, Spinner } from "@shared/ui/Spinner";
 import { Badge } from "@shared/ui/Badge";
-import { Tag } from "@shared/ui/Tag";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { GLASS_LIST_HEAD_CLASS, LIST_BODY_CLASS, LIST_SCROLL_X_CLASS, PAGE_CLASS, PAGE_SCROLL_UNDER_BAR_CLASS, PAGE_TOOLBAR_CLASS } from "@shared/ui/classes";
 import { ListRow } from "@shared/ui/ListRow";
 
@@ -53,7 +54,7 @@ const PURCHASE_TYPE_ICONS: Record<PurchaseType, ComponentType<{ className?: stri
   CHANGE: ArrowLeftRight,
 };
 
-const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_150px_80px_112px_16px] items-center gap-3";
+const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_140px_150px_80px_112px_16px] items-center gap-3";
 
 const STATUS_FILTERS: readonly string[] = [...STATUSES, UNFULFILLED_STATUS];
 
@@ -306,11 +307,12 @@ export function TransactionsPage() {
             {state.items.length > 0 && (
               <>
                 <div className={LIST_SCROLL_X_CLASS}>
-                  <div className="min-w-[700px]">
+                  <div className="min-w-[850px]">
                     <div
                       className={`${ROW_GRID_CLASSNAME} ${GLASS_LIST_HEAD_CLASS}`}
                     >
                       <span className="col-span-2">{t("transactions.columns.order")}</span>
+                      <span>{t("transactions.columns.purchaseType")}</span>
                       <span>{t("transactions.columns.amount")}</span>
                       <span>{t("transactions.columns.created")}</span>
                       <span>{t("transactions.columns.status")}</span>
@@ -341,11 +343,10 @@ export function TransactionsPage() {
                                   onClick={() => setDetailsOrder(order)}
                                   className={ROW_GRID_CLASSNAME}
                                 >
-                                  <span
-                                    className={`flex size-8 items-center justify-center rounded-full text-[13px] font-bold ${PAYMENT_STATUS_ICON_CLASSNAME[order.status]}`}
-                                  >
-                                    {symbol}
-                                  </span>
+                                  <IconCircle
+                                    tone={PAYMENT_STATUS_BADGE_TONE[order.status]}
+                                    glyph={<span className="text-[13px] font-bold">{symbol}</span>}
+                                  />
                                   <span className="min-w-0">
                                     <span className="flex min-w-0 items-center gap-2">
                                       <span className="truncate text-[13px] font-medium text-foreground">
@@ -353,13 +354,20 @@ export function TransactionsPage() {
                                         {" · "}
                                         {t("plans.daysShort", { count: order.duration_days })}
                                       </span>
-                                      <Tag>
-                                        {t(`transactions.purchaseType.${order.purchase_type}`)}
-                                      </Tag>
+                                      <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                        #{order.id}
+                                      </span>
                                     </span>
-                                    <span className="block truncate font-mono text-[12px] text-muted-foreground">
-                                      #{order.id} &middot; {gatewayLabel}
+                                    <span className="flex min-w-0 gap-1 text-[12px] text-muted-foreground">
+                                      <span className="truncate">
+                                        {order.user ? userName(order.user, t) : t("users.deleted.name")}
+                                      </span>
+                                      <span className="shrink-0 font-mono">#{order.user_id}</span>
+                                      <span className="shrink-0">&middot; {gatewayLabel}</span>
                                     </span>
+                                  </span>
+                                  <span className="truncate text-[13px] text-foreground">
+                                    {t(`transactions.purchaseType.${order.purchase_type}`)}
                                   </span>
                                   <span className="tabular-nums">
                                     <span className="block text-[13px] font-semibold text-foreground">

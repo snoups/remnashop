@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Eye, Globe, KeyRound, Megaphone } from "lucide-react";
+import { AlertTriangle, CalendarClock, Eye, Globe, KeyRound, Megaphone } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -148,7 +148,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
                     size="compact"
                     value={expiresInDays}
                     onChange={setExpiresInDays}
-                    icon={Clock}
+                    icon={CalendarClock}
                     placeholder={t("apiTokens.expiresIn30Days")}
                     options={EXPIRY_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
                   />

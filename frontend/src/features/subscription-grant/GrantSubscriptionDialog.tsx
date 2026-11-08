@@ -1,4 +1,4 @@
-import { Gift } from "lucide-react";
+import { Captions } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -77,7 +77,7 @@ function GrantSubscriptionBody({ plans, userId, onGranted }: Omit<GrantSubscript
 
   return (
     <>
-      <DialogHeader icon={Gift} title={t("subscriptions.grant.title")} />
+      <DialogHeader icon={Captions} title={t("subscriptions.grant.title")} />
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="p-3 [--dialog-pad:0.75rem]">
           {/* the custom-days field comes and goes */}

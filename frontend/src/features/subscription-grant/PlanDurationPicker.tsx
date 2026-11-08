@@ -1,4 +1,4 @@
-import { CalendarClock, Package } from "lucide-react";
+import { CalendarDays, Package } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { Plan } from "@entities/plans/api";
@@ -61,7 +61,7 @@ export function PlanDurationPicker({ plans, planId, onPlanChange, duration, onDu
           id="subscription-duration"
           value={durationValue}
           onChange={handleDurationChange}
-          icon={CalendarClock}
+          icon={CalendarDays}
           placeholder={durationOptions.find((option) => option.value === durationValue)?.label ?? ""}
           options={durationOptions}
         />

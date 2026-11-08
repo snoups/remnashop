@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarPlus, Check, Copy, Hash, Info, Package, Pause, Pencil, Play, Repeat, Settings2, ShieldCheck, Ticket, Trash2, UserCheck, Users } from "lucide-react";
+import { CalendarClock, CalendarDays, Check, Copy, Info, Package, Pause, Pencil, Play, Repeat, Settings2, ShieldCheck, Ticket, TicketCheck, Trash2, UserCheck, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -208,11 +208,11 @@ function PromocodeDetailsDialogBody({
                   <InfoRow icon={RewardIcon} label={t("promocodes.sections.reward")}>
                     <span className="truncate">{describeReward(promocode, addons, plans, t)}</span>
                   </InfoRow>
-                  <InfoRow icon={Hash} label={t("promocodes.details.used")}>
+                  <InfoRow icon={TicketCheck} label={t("promocodes.details.used")}>
                     {promocode.activations_count} {t("promocodes.details.ofMax", { max: promocode.max_activations ?? "∞" })}
                   </InfoRow>
                   {promocode.created_at && (
-                    <InfoRow icon={CalendarPlus} label={t("promocodes.details.createdAt")} mono>
+                    <InfoRow icon={CalendarDays} label={t("promocodes.details.createdAt")} mono>
                       {formatDate(promocode.created_at, i18n.language)}
                     </InfoRow>
                   )}

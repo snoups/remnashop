@@ -62,6 +62,7 @@ class TransactionStatsRepository:
             Transaction.gateway_type,
             Transaction.plan_discount_percent,
             Transaction.channel,
+            Transaction.id,
         ).where(*_PAID)
 
     def _to_paid(self, row: Any) -> PaidTransactionDto:
@@ -81,6 +82,7 @@ class TransactionStatsRepository:
             gateway_type=row[12],
             plan_discount_percent=row[13],
             channel=row[14],
+            transaction_id=row[15],
         )
 
     async def list_paid(self, start: Optional[datetime], end: datetime) -> list[PaidTransactionDto]:

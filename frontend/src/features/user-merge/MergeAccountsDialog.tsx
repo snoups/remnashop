@@ -1,5 +1,5 @@
 import type { ParseKeys } from "i18next";
-import { ArrowLeftRight, GitMerge, Mail, Send, ShieldAlert, Swords, TriangleAlert, UserRound, Users } from "lucide-react";
+import { ArrowLeftRight, GitMerge, Mail, Send, ShieldAlert, Swords, TriangleAlert, User, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -110,8 +110,8 @@ function AccountColumn({ label, user }: { label: string; user: UserListItem }) {
   const { t } = useTranslation();
   return (
     <div className="min-w-0">
-      <DialogCard icon={UserRound} title={label}>
-        <InfoRow icon={UserRound} label={`#${user.id}`}>
+      <DialogCard icon={User} title={label}>
+        <InfoRow icon={User} label={`#${user.id}`}>
           <span className="truncate">{userLabel(user, user.id, t)}</span>
         </InfoRow>
         <InfoRow icon={Mail} label={t("users.merge.conflict.email")} mono>

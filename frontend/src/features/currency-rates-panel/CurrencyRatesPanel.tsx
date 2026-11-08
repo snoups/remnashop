@@ -379,6 +379,7 @@ function UnratedAnchorRow() {
       {isConfirming && (
         <ConfirmDialog
           title={t("pricing.unrated.confirmTitle")}
+          icon={Coins}
           size="md"
           message={t("pricing.unrated.confirmMessage", { count, currencies })}
           confirmLabel={t("pricing.unrated.button")}

@@ -1,4 +1,4 @@
-import { Dices, Package, Ticket } from "lucide-react";
+import { Dices, Package, PackagePlus, Ticket } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -280,7 +280,7 @@ function PromocodeCreateDialogBody({
                     id="promo-reward-addon"
                     value={rewardAddonId}
                     onChange={setRewardAddonId}
-                    icon={Package}
+                    icon={PackagePlus}
                     placeholder={t("promocodes.create.rewardAddonPlaceholder")}
                     options={matchingAddons.map((addon) => ({
                       value: String(addon.id),

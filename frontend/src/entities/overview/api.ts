@@ -68,9 +68,11 @@ export interface RevenueToday {
 }
 
 export interface RecentPayment {
+  transaction_id: number;
   user_id: number;
   name: string;
   plan_name: string;
+  duration_days: number;
   gateway_type: string;
   purchase_type: PurchaseType;
   amount: string;

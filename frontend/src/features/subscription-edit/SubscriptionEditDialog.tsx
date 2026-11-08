@@ -2,7 +2,7 @@ import {
   Activity,
   AppWindow,
   CalendarClock,
-  CalendarPlus,
+  CalendarDays,
   Captions,
   Eye,
   Filter,
@@ -361,7 +361,7 @@ function SubscriptionParamsView({ subscription }: { subscription: SubscriptionLi
           mono
         />
         <SubscriptionField
-          icon={CalendarPlus}
+          icon={CalendarDays}
           label={t("subscriptions.details.createdAt")}
           value={dateTime(subscription.created_at)}
           mono

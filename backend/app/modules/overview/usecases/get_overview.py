@@ -136,9 +136,11 @@ class GetOverviewUseCase(UseCase[None, OverviewDto]):
         }
         return [
             RecentPaymentDto(
+                transaction_id=row.transaction_id,
                 user_id=row.user_id,
                 name=payer.name if (payer := users.get(row.user_id)) else "",
                 plan_name=row.plan_name,
+                duration_days=row.duration_days,
                 gateway_type=row.gateway_type,
                 purchase_type=row.purchase_type,
                 amount=row.final_price,

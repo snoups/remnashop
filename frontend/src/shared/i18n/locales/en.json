@@ -3381,6 +3381,7 @@
     },
     "columns": {
       "order": "Transaction",
+      "purchaseType": "Type",
       "amount": "Amount",
       "created": "Created",
       "status": "Status"
@@ -3578,7 +3579,7 @@
     "panelSync": {
       "menuItem": "Sync with panel",
       "title": "Sync with the panel",
-      "inSync": "The subscription matches the panel.",
+      "inSync": "The data already matches the panel",
       "squads": {
         "title": "Squads missing in the panel",
         "hint": "The panel won’t take a subscription with a squad it doesn’t have. Pick a replacement or drop the squad.",

@@ -2,10 +2,10 @@ import type { ParseKeys } from "i18next";
 import {
   AtSign,
   CalendarDays,
+  Captions,
   CreditCard,
   Hash,
   KeyRound,
-  Layers,
   Mail,
   Package,
   PackageMinus,
@@ -232,7 +232,7 @@ function TransactionDetailsDialogBody({
             <InfoRow icon={Package} label={t("transactions.details.plan")} copyValue={plan}>
               <DetailValue value={plan} />
             </InfoRow>
-            <InfoRow icon={Layers} label={t("transactions.details.targetSubscription")} copyValue={targetSubscription} mono>
+            <InfoRow icon={Captions} label={t("transactions.details.targetSubscription")} copyValue={targetSubscription} mono>
               <DetailValue value={targetSubscription ?? missingSubscription} />
             </InfoRow>
           </DialogCard>
@@ -253,7 +253,7 @@ function TransactionDetailsDialogBody({
                   <Send className="size-3.5" />
                   {t("transactions.details.sections.telegram")}
                 </h4>
-                <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={telegramId} mono>
+                <InfoRow icon={Send} label={t("users.details.telegramId")} copyValue={telegramId} mono>
                   {telegramId}
                 </InfoRow>
                 <InfoRow icon={AtSign} label={t("users.details.username")} copyValue={username} mono>

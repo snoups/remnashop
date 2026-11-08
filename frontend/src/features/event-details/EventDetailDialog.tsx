@@ -121,7 +121,7 @@ function ParticipantSection({ title, icon: Icon, user, missingLabel, ipAddress }
             {t("eventLog.detail.telegram")}
           </h4>
           {telegramId && (
-            <InfoRow icon={Hash} label={t("users.details.telegramId")} copyValue={telegramId} mono>
+            <InfoRow icon={Send} label={t("users.details.telegramId")} copyValue={telegramId} mono>
               {telegramId}
             </InfoRow>
           )}
