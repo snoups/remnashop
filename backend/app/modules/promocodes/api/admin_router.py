@@ -21,7 +21,7 @@ from app.modules.promocodes.api.schemas import (
     PromocodeResponse,
     PromocodeSummaryResponse,
     UpdatePromocodeRequest,
-    UserPromocodeActivationListResponse,
+    UserPromocodeActivationPageResponse,
     UserPromocodeActivationResponse,
 )
 from app.modules.promocodes.dto import (
@@ -29,6 +29,7 @@ from app.modules.promocodes.dto import (
     DeletePromocodeDto,
     ListPromocodeActivatedUsersDto,
     ListPromocodesDto,
+    ListUserPromocodeActivationsDto,
     UpdatePromocodeDto,
 )
 from app.modules.promocodes.usecases import (
@@ -81,7 +82,7 @@ async def list_promocodes(
 
 @user_router.get(
     "/{user_id:int}/promocode-activations",
-    response_model=UserPromocodeActivationListResponse,
+    response_model=UserPromocodeActivationPageResponse,
     responses=error_responses(404),
 )
 @inject
@@ -89,13 +90,19 @@ async def list_user_promocode_activations(
     user_id: int,
     use_case: FromDishka[ListUserPromocodeActivationsUseCase],
     actor: Actor = Depends(require_admin),
-) -> UserPromocodeActivationListResponse:
-    activations = await use_case(actor, user_id)
-    items = [
-        UserPromocodeActivationResponse.model_validate(item, from_attributes=True)
-        for item in activations
-    ]
-    return UserPromocodeActivationListResponse(items=items, total=len(items))
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+) -> UserPromocodeActivationPageResponse:
+    activations, total = await use_case(
+        actor, ListUserPromocodeActivationsDto(user_id=user_id, page=page, page_size=page_size)
+    )
+    return UserPromocodeActivationPageResponse(
+        items=[
+            UserPromocodeActivationResponse.model_validate(item, from_attributes=True)
+            for item in activations
+        ],
+        total=total,
+    )
 
 
 @router.get("/summary", response_model=PromocodeSummaryResponse)

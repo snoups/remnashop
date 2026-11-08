@@ -14,7 +14,7 @@ from app.core.enums import (
     TransactionStatus,
 )
 from app.core.utils.validators import known_locale
-from app.modules.subscriptions import PlanSnapshot
+from app.modules.subscriptions import PlanSnapshot, PlanSnapshotResponse
 from app.modules.transactions.dto import TransactionDto
 
 
@@ -68,9 +68,9 @@ class TransactionResponse(BaseModel):
     user: Optional[TransactionUserResponse]
     # None once the plan is deleted; plan_snapshot always records what was ordered
     plan_id: Optional[int]
-    plan_snapshot: dict[str, Any]
+    plan_snapshot: PlanSnapshotResponse
     # a CHANGE order's plan before it; None on other orders and on ones older than the field
-    previous_plan_snapshot: Optional[dict[str, Any]]
+    previous_plan_snapshot: Optional[PlanSnapshotResponse]
     duration_days: int
     currency: Currency
     purchase_type: PurchaseType

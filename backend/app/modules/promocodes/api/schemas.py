@@ -128,6 +128,6 @@ class PromocodeActivatedUserPageResponse(BaseModel):
     total: int
 
 
-class UserPromocodeActivationListResponse(BaseModel):
+class UserPromocodeActivationPageResponse(BaseModel):
     items: list[UserPromocodeActivationResponse]
     total: int

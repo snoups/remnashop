@@ -331,6 +331,32 @@ async def test_get_by_remnawave_user_id_finds_the_matching_subscription(
     assert found.id == created.id
 
 
+async def test_list_paginated_orders_newest_first_and_live_first_for_one_user(
+    subscription_repository: SubscriptionRepository, user_repository: UserRepository
+) -> None:
+    user_id = await _create_user(user_repository, 144)
+    older_active = await subscription_repository.create(_create_dto(user_id, 54401))
+    expired = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=user_id,
+            remnawave_user_id=54402,
+            status=SubscriptionStatus.EXPIRED,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime_now() - timedelta(days=1),
+            url="https://example.com/sub/expired",
+            plan_snapshot=make_plan_snapshot(),
+        )
+    )
+    newer_active = await subscription_repository.create(_create_dto(user_id, 54403))
+
+    everyone, _ = await subscription_repository.list_paginated()
+    own, _ = await subscription_repository.list_paginated(user_id=user_id)
+
+    assert [row.id for row in everyone] == [newer_active.id, expired.id, older_active.id]
+    assert [row.id for row in own] == [newer_active.id, older_active.id, expired.id]
+
+
 async def test_list_non_terminal_keeps_recently_expired_and_excludes_deleted(
     subscription_repository: SubscriptionRepository, user_repository: UserRepository
 ) -> None:

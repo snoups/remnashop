@@ -406,9 +406,12 @@ async def test_list_activations_by_user_returns_only_that_users_codes(
         promocode_id=first.id, user_id=other_id, subscription_id=None
     )
 
-    activations = await promocode_repository.list_activations_by_user(user_id)
+    activations, total = await promocode_repository.list_activations_by_user(user_id)
+    page, _ = await promocode_repository.list_activations_by_user(user_id, page=2, page_size=1)
 
     assert {a.code for a in activations} == {"MINE1", "MINE2"}
+    assert total == 2
+    assert len(page) == 1
 
 
 async def test_is_live_follows_activity_and_expiry(
