@@ -1,7 +1,5 @@
-// Pill styling shared between the nav list (Sidebar.tsx) and the footer
-// buttons (BuildInfoBadge, DonateButton) so they read as more nav rows,
-// not a visually distinct block. Split into its own module so those footer
-// widgets don't import Sidebar.tsx directly and create a cycle.
+// Shared by the nav list and the footer buttons (BuildInfoBadge, DonateButton), so they read as
+// more nav rows; its own module, or the footer would import Sidebar.tsx in a cycle.
 // Icon rail: a 40px circle, icon dead centre. Expanded: a full-width row whose
 // icon keeps the same 12px inset on every side (40px - 16px icon, halved).
 export const SIDEBAR_PILL_SHAPE_CLASSNAME =

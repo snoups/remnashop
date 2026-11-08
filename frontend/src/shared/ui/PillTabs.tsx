@@ -29,10 +29,8 @@ export function PillTabs<T extends string>({
   const pillId = useId();
 
   useEffect(() => {
-    // With twenty locales the selected one can sit past the right edge, and a
-    // tab you cannot see reads as no selection at all.
-    // Scrolls the strip itself, never the page: scrollIntoView would drag the
-    // whole page down to an editor that sits below the fold.
+    // keeps the selected tab in view (twenty locales overflow); scrolls the strip only,
+    // scrollIntoView would drag the page down to an editor below the fold
     const active = activeRef.current;
     const scroller = active?.parentElement;
     if (!active || !scroller) return;

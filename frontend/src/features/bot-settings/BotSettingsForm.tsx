@@ -42,7 +42,6 @@ const RESTART_COOLDOWN_SECONDS = 10;
 const LOGS_POLL_INTERVAL_MS = 3000;
 // Telegram bot token format: numeric bot id, ":", then the 35-char API secret.
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]{35}$/;
-// what Telegram's setWebhook takes as a secret_token
 const SECRET_TOKEN_PATTERN = /^[A-Za-z0-9_-]{1,256}$/;
 // the backend's check (set_bot_proxy.py): scheme://[user:password@]host:port with one of its schemes.
 // A pattern, not new URL(): browsers long parsed no host out of non-web schemes like socks5://
@@ -85,8 +84,7 @@ function BotLogsDialogBody() {
   const { t } = useTranslation();
   const [state, reload] = useAsyncResource(getBotLogs);
 
-  // the next poll waits for the previous answer: a fixed interval aborted any
-  // response slower than itself, so on a slow backend the logs never arrived
+  // the next poll waits for the previous answer, so a slow backend still gets its logs through
   useEffect(() => {
     if (state.kind === "loading") return;
     const timer = setTimeout(reload, LOGS_POLL_INTERVAL_MS);

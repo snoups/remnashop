@@ -516,7 +516,6 @@ export function DialogCanvasEditor() {
         </>
       }
     >
-      {/* the three panes are zones inside the card rather than separate floating blocks */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex min-h-0 flex-1 flex-col pt-4 lg:flex-row">
           <aside

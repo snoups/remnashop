@@ -95,10 +95,8 @@ export class ApiError extends Error {
   }
 }
 
-// Thrown when the backend itself is unreachable: either `fetch` fails outright
-// (DNS/connection refused/offline), or the dev/reverse proxy in front of the
-// API answers on its own with 502/503/504 because the upstream is down;
-// distinct from ApiError, where the API itself responded with an error status.
+// The backend is unreachable: `fetch` failed outright, or the proxy in front answered 502/503/504
+// for a dead upstream. ApiError is the API itself answering with an error.
 export class NetworkError extends Error {}
 
 const GATEWAY_ERROR_STATUSES = new Set([502, 503, 504]);

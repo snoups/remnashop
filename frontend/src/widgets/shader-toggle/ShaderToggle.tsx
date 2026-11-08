@@ -11,7 +11,6 @@ export function ShaderToggle() {
   const state = useAppearance();
   const muted = useShaderMuted();
 
-  // Nothing to toggle when the shader is off dashboard-wide.
   if (state.kind === "ready" && !state.data.shader_enabled) return null;
 
   const label = t(muted ? "header.shaderOn" : "header.shaderOff");

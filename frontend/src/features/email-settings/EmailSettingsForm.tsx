@@ -429,7 +429,6 @@ interface SmtpFieldsProps {
   onChange: (patch: Partial<ProfileDraft>) => void;
 }
 
-/** One SMTP server's fields. */
 function SmtpFields({ profile, draft, current, errors, validation, onChange }: SmtpFieldsProps) {
   const { t } = useTranslation();
   const canManage = usePermissions().includes("EMAIL_SETTINGS_MANAGE");

@@ -63,7 +63,6 @@ export function AnalyticsPage() {
   }
 
   return (
-    // as the settings page: the 48px bar floats over a scroller of its own, content starts at 68px
     <div data-fills-main className={PAGE_CLASS}>
       <div className={`${PAGE_BAR_CLASS} flex flex-wrap items-center gap-2 md:flex-nowrap`}>
         <div className="min-w-0">

@@ -15,10 +15,7 @@ type PressableProps =
   /** a row that holds controls of its own (a switch, a link), which a <button> can't contain */
   | (Base & { as: "div"; disabled?: boolean } & Omit<HTMLMotionProps<"div">, "children" | "className">);
 
-/**
- * The one thing that knows about pressing: positions the element and puts the tap ripple in it, so the shared
- * buttons, rows and links built on it never repeat that. No look of its own; className is the whole style.
- */
+/** Positions the element and puts the tap ripple in it; no look of its own, className is the whole style. */
 export function Pressable(props: PressableProps) {
   const host = rippleHost(props.className ?? "");
   const className = `${host} ${props.className ?? ""}`;

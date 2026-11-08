@@ -41,9 +41,7 @@ export function ToastContainer() {
               onPointerEnter={() => pauseToast(item.id)}
               onPointerMove={() => pauseToast(item.id)}
               onPointerLeave={() => resumeToast(item.id)}
-              // the glass dialog's material, the panel's 32px corners. One line is 48px: a 32px row
-              // 8px in, so a single-line toast is a pill (corners capped at 24px) with the 32px close
-              // button (16px radius) on its curve; the icon starts 16px in
+              // one line is 48px (a 32px row 8px in): a single-line toast is a pill with the close button on its curve
               className="glass-dialog pointer-events-auto flex items-start gap-3 rounded-[32px] p-2 pl-4"
             >
               <Icon className={`mt-[7px] size-[18px] shrink-0 ${VARIANT_COLOR[item.variant]}`} />

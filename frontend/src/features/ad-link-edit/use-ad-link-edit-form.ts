@@ -11,7 +11,6 @@ export const AD_LINK_EDIT_FORM_ID = "adlink-edit-form";
 
 export type AdLinkEditFormState = ReturnType<typeof useAdLinkEditForm>;
 
-// Lives in the dialog, not the form: its footer carries the save button.
 export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => void) {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);

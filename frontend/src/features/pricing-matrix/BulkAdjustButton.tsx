@@ -72,7 +72,6 @@ function targetRows(form: BulkForm, planGroups: PriceBookRow[][]): PriceBookRow[
   return typeof form.target === "number" ? planGroups.filter((rows) => rows[0].plan_id === form.target) : planGroups;
 }
 
-/** Durations in the selection, shortest first. */
 function ladderDurations(form: BulkForm, planGroups: PriceBookRow[][]): number[] {
   return [...new Set(targetRows(form, planGroups).flat().map((row) => row.days))]
     .filter((days): days is number => days !== null)

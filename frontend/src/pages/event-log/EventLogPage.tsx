@@ -138,8 +138,6 @@ export function EventLogPage() {
   const [collapsedDays, toggleDay] = useCollapsedSet();
 
   return (
-    // as settings: the filter bar floats over a scroller of its own, whose fade clears the bar.
-    // Desktop keeps the bar on one line, the 68px under it assumes its 48px.
     <div data-fills-main className={PAGE_CLASS}>
       <div className={PAGE_TOOLBAR_CLASS}>
         <div className={PAGE_TOOLBAR_SEARCH_CLASS}>
