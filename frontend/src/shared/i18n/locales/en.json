@@ -3952,7 +3952,9 @@
         "pageRouteError": "One dashboard page crashed: the sidebar and header stay.",
         "editorFields": "The dialog editor’s own field, kept in its editor styling.",
         "iconCircle": "32px circle of a list or settings row: plain, in a status badge’s tone (subscriptions, broadcasts, ad links, promocodes, API tokens, attention), or with initials and numbers in 12px bold.",
-        "cellText": "A list row’s text cell: title over a muted subtitle, mono for codes and @usernames. Ad links, referrals, analytics, attention, recent payments, notifications."
+        "cellText": "A list row’s text cell: title over a muted subtitle, mono for codes and @usernames. Ad links, referrals, analytics, attention, recent payments, notifications.",
+        "typeScale": "The type scale: every text size in the app is one of these steps. text-sm/text-xs set their own line height, so inside a leading-* block they override it.",
+        "typeExceptions": "The only arbitrary sizes left, each with its reason."
       },
       "s": {
         "openCarousel": "Open carousel",
@@ -4034,9 +4036,58 @@
           "serverUnreachable": "Server unreachable",
           "oauthCallback": "Completing sign-in"
         },
-        "refunds": "Refunds"
+        "refunds": "Refunds",
+        "type": {
+          "kpi": {
+            "sample": "128 400 ₽",
+            "role": "KPI value, card totals"
+          },
+          "screen": {
+            "sample": "Page not found",
+            "role": "Full-screen message title"
+          },
+          "header": {
+            "sample": "Subscriptions",
+            "role": "Page title in the header"
+          },
+          "title": {
+            "sample": "Notifications",
+            "role": "Card and dialog title, guide steps"
+          },
+          "stat": {
+            "sample": "1 284",
+            "role": "A row’s number: funnel steps, retention"
+          },
+          "body": {
+            "sample": "Subscription renewed for 30 days",
+            "role": "Body text, fields, buttons, menu items"
+          },
+          "secondary": {
+            "sample": "Updated 5 minutes ago",
+            "role": "Hints, meta, mono ids, Badge and Tag"
+          },
+          "eyebrow": {
+            "sample": "Channel",
+            "role": "Labels over blocks, columns and filters"
+          },
+          "counter": {
+            "sample": "5",
+            "role": "Counters and mini badges only"
+          }
+        },
+        "typeException": {
+          "headerAccount": "Header account name and role — 13/12px, so the block’s leading-tight still applies",
+          "emoji": "Emoji glyphs in the picker — 16/17px, an icon size, not text",
+          "avatar": "Avatar initials — 18px, sized to the 56px circle",
+          "recap": "RecapCard — rendered to a shared image, its own layout"
+        }
       },
       "sections": {
+        "typography": {
+          "nav": "Typography",
+          "title": "Typography",
+          "meta": "Tailwind scale · 6 steps + 11px"
+        },
         "buttons": {
           "nav": "Buttons",
           "title": "Buttons",

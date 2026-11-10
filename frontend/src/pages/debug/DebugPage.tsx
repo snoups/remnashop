@@ -7,8 +7,10 @@ import { CardsSection, FieldsSection, TablesSection } from "@pages/debug/section
 import { DialogsSection, HintsSection, MenusSection, StatesSection } from "@pages/debug/sections/OverlaySections";
 import { ScreensSection } from "@pages/debug/sections/ScreenSections";
 import { BadgesSection, TabsSection } from "@pages/debug/sections/SelectionSections";
+import { TypographySection } from "@pages/debug/sections/TypographySection";
 
 const SECTION_IDS = [
+  "typography",
   "buttons",
   "icons",
   "tabs",
@@ -35,6 +37,7 @@ export function DebugKitPage() {
         <span className="shrink-0 font-mono text-xs text-muted-foreground">{k("intro.meta")}</span>
       </div>
 
+      <TypographySection />
       <ButtonsSection />
       <IconButtonsSection />
       <TabsSection />
