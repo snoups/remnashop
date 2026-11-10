@@ -10,7 +10,7 @@ const TONE_CLASS = {
  *  doesn't read as one of the bordered buttons beside it. */
 export function StatusPill({ tone, children }: { tone: keyof typeof TONE_CLASS; children: ReactNode }) {
   return (
-    <span className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium ${TONE_CLASS[tone]}`}>
+    <span className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium ${TONE_CLASS[tone]}`}>
       <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {children}
     </span>

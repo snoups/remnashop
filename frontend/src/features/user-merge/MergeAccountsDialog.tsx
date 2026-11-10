@@ -235,7 +235,7 @@ function MergePreviewStep({
               <DialogCard icon={Swords} title={t("users.merge.conflicts")}>
                 {data.conflicts.map((conflict) => (
                   <div key={conflict.key} className="flex flex-col gap-1.5 px-2.5 py-2">
-                    <span className="text-[12.5px] text-muted-foreground">{conflictLabel(conflict.key)}</span>
+                    <span className="text-sm text-muted-foreground">{conflictLabel(conflict.key)}</span>
                     <div className="flex flex-wrap gap-2">
                       {(["target", "source"] as const).map((side) => (
                         <ChoiceChip
@@ -251,7 +251,7 @@ function MergePreviewStep({
                       ))}
                     </div>
                     {conflict.forced !== null && (
-                      <span className="text-[12px] text-muted-foreground">{t("users.merge.forced")}</span>
+                      <span className="text-xs text-muted-foreground">{t("users.merge.forced")}</span>
                     )}
                   </div>
                 ))}
@@ -261,14 +261,14 @@ function MergePreviewStep({
             {droppedReferrers.map((cycle) => (
               <p
                 key={cycle.side}
-                className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-[12.5px] text-warning"
+                className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-sm text-warning"
               >
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 {t("users.merge.referrerCycle", { id: cycle.referrer_id })}
               </p>
             ))}
 
-            <div className="flex items-center gap-2 rounded-xl border border-error/30 bg-error/10 px-3.5 py-3 text-[13px] text-error">
+            <div className="flex items-center gap-2 rounded-xl border border-error/30 bg-error/10 px-3.5 py-3 text-sm text-error">
               <ShieldAlert className="size-4 shrink-0" />
               {t("users.merge.warning")}
             </div>

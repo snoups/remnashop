@@ -54,9 +54,9 @@ function TimelineItem({
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
-        <div className="truncate text-[12px] text-muted-foreground">{label}</div>
-        <div className="truncate text-[13px] font-medium text-foreground">{value}</div>
-        {detail && <div className="truncate text-[12px] text-muted-foreground">{detail}</div>}
+        <div className="truncate text-xs text-muted-foreground">{label}</div>
+        <div className="truncate text-sm font-medium text-foreground">{value}</div>
+        {detail && <div className="truncate text-xs text-muted-foreground">{detail}</div>}
       </div>
     </div>
   );

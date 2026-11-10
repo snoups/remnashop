@@ -272,23 +272,23 @@ export function BroadcastsPage() {
                       <IconCircle icon={DeliveryIcon} tone={tone} />
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-[13px] font-medium text-foreground">
+                          <span className="truncate text-sm font-medium text-foreground">
                             {broadcastTitle(b, t("broadcasts.untitled"))}
                           </span>
                         </span>
-                        <span className="block truncate text-[12px] text-muted-foreground">{broadcastMeta(b, t)}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{broadcastMeta(b, t)}</span>
                       </span>
                       <span>
                         <Badge tone={tone}>{t(`broadcasts.status.${b.status}`)}</Badge>
                       </span>
                       <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="text-[13px] tabular-nums text-foreground">
+                        <span className="text-sm tabular-nums text-foreground">
                           {b.status === "DRAFT" ? none : b.total_count.toLocaleString(i18n.language)}
                         </span>
                         <AudienceCell audience={b.audience} />
                       </span>
                       <span className="flex min-w-0 flex-col gap-1.5">
-                        <span className="truncate text-[13px] tabular-nums text-foreground">{label}</span>
+                        <span className="truncate text-sm tabular-nums text-foreground">{label}</span>
                         <span className="h-[5px] overflow-hidden rounded-full glass-track">
                           <span
                             className={`block h-full rounded-full ${BAR_TONE_CLASS[tone]}`}
@@ -296,7 +296,7 @@ export function BroadcastsPage() {
                           />
                         </span>
                       </span>
-                      <span className="text-[13px] tabular-nums text-foreground">{when(b)}</span>
+                      <span className="text-sm tabular-nums text-foreground">{when(b)}</span>
                       {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}
                     </ListRow>
                   );
@@ -335,5 +335,5 @@ function AudienceCell({ audience }: { audience: BroadcastAudience }) {
     : filters
       ? t("broadcasts.audience.filters", { count: filters })
       : t("broadcasts.audience.all");
-  return <span className="truncate text-[12px] text-muted-foreground">{text}</span>;
+  return <span className="truncate text-xs text-muted-foreground">{text}</span>;
 }

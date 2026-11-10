@@ -71,7 +71,7 @@ export function ButtonsSection() {
       <Specimen name='Pressable as="button | link | a | div"' usage={k("u.pressable")} stage="stretch">
         <div className="flex flex-wrap gap-2">
           {(["button", "link", "a", "div"] as const).map((kind) => {
-            const look = "flex h-9 items-center rounded-full border border-glass-border bg-white/[0.05] px-4 text-[13px] font-medium text-foreground";
+            const look = "flex h-9 items-center rounded-full border border-glass-border bg-white/[0.05] px-4 text-sm font-medium text-foreground";
             if (kind === "link") return <Pressable key={kind} as="link" to="/dashboard/debug" className={look}>link</Pressable>;
             if (kind === "a") return <Pressable key={kind} as="a" href="#buttons" className={look}>a</Pressable>;
             if (kind === "div") return <Pressable key={kind} as="div" onClick={() => undefined} className={look}>div</Pressable>;
@@ -82,7 +82,7 @@ export function ButtonsSection() {
       <Specimen name="dashed" usage={k("u.dashed")}>
         <Pressable
           type="button"
-          className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+          className="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-sm text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
           {k("s.add")}
@@ -110,7 +110,7 @@ export function IconButtonsSection() {
           {["123456789", "987654321"].map((id) => (
             <span
               key={id}
-              className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-0.5 font-mono text-[12.5px] text-foreground"
+              className="flex items-center gap-1 rounded-full bg-white/[0.06] py-0.5 pl-2.5 pr-0.5 font-mono text-sm text-foreground"
             >
               {id}
               <IconButton size="18px">
@@ -140,7 +140,7 @@ export function IconButtonsSection() {
       </Specimen>
       <Specimen name='size="8"' usage={k("u.toast")} stage="stretch">
         <div className="flex items-start gap-2.5 rounded-popover-item border border-white/[0.14] bg-popover p-3.5">
-          <p className="flex-1 text-[13px] leading-6 text-foreground">{k("s.toast")}</p>
+          <p className="flex-1 text-sm leading-6 text-foreground">{k("s.toast")}</p>
           <IconButton size="8" className="-my-1 -mr-1">
             <X className="size-4" />
           </IconButton>

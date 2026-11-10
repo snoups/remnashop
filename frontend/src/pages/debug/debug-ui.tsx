@@ -74,7 +74,7 @@ export function DebugNav({ links }: { links: DebugSectionLink[] }) {
             setActive(id);
             document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
-          className="group relative isolate h-9 flex-1 shrink-0 whitespace-nowrap rounded-full text-[13px] font-medium"
+          className="group relative isolate h-9 flex-1 shrink-0 whitespace-nowrap rounded-full text-sm font-medium"
         >
           {active === id ? (
             <ActivePill layoutId={pillId} />
@@ -95,7 +95,7 @@ export function DebugSection({ id, children }: { id: string; children: ReactNode
     // the scroller's scroll-pt clears the nav on desktop; scroll-mt clears the fixed mobile header
     <section id={id} className="flex max-md:scroll-mt-16 flex-col gap-3.5">
       <div className="flex items-baseline justify-between gap-4 border-b border-white/[0.08] px-1 pb-2.5">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{k(`sections.${id}.title`)}</h2>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">{k(`sections.${id}.title`)}</h2>
         <span className={`truncate ${EYEBROW_CLASS}`}>{k(`sections.${id}.meta`)}</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
@@ -134,8 +134,8 @@ export function Specimen({
         {children}
       </div>
       <div className="flex flex-col gap-0.5 p-4">
-        <span className="font-mono text-[12px] font-semibold text-foreground">{name}</span>
-        <span className="text-[12px] text-muted-foreground">{usage}</span>
+        <span className="font-mono text-xs font-semibold text-foreground">{name}</span>
+        <span className="text-xs text-muted-foreground">{usage}</span>
       </div>
     </div>
   );

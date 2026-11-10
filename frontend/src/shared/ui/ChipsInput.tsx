@@ -55,7 +55,7 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
       {values.map((value) => (
         <span
           key={value}
-          className="flex h-6 items-center gap-1 rounded-full bg-white/[0.06] pl-2.5 pr-0.5 font-mono text-[12px] text-foreground"
+          className="flex h-6 items-center gap-1 rounded-full bg-white/[0.06] pl-2.5 pr-0.5 font-mono text-xs text-foreground"
         >
           {value}
           <IconButton size="18px" onClick={() => onChange(values.filter((other) => other !== value))}>
@@ -76,7 +76,7 @@ export function ChipsInput({ id, values, onChange, normalize, placeholder, input
         onBlur={() => commit(draft)}
         placeholder={values.length === 0 ? placeholder : undefined}
         aria-invalid={isInvalid}
-        className="h-6 min-w-16 flex-1 bg-transparent px-1.5 font-mono text-[13px] text-foreground outline-none"
+        className="h-6 min-w-16 flex-1 bg-transparent px-1.5 font-mono text-sm text-foreground outline-none"
       />
     </div>
   );

@@ -64,7 +64,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
           locale === defaultLocale || isPending || !permissions.includes(isActive ? "LOCALES_REMOVE" : "LOCALES_ADD")
         }
         onClick={() => void run(() => (isActive ? removeLocale(locale) : addLocale(locale)))}
-        className="flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
+        className="flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
       >
         <span
           className={`flex size-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
@@ -74,7 +74,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
           {isActive && <Check className="size-3" />}
         </span>
         <span className="truncate">{localeLabel(locale, i18n.language)}</span>
-        <span className="ml-auto shrink-0 text-[11px] uppercase tabular-nums opacity-60">
+        <span className="ml-auto shrink-0 text-xs uppercase tabular-nums opacity-60">
           {locale}
         </span>
       </Pressable>
@@ -100,7 +100,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         type="button"
         onClick={toggleOpen}
         // the PillTabs capsule next to it: same border, fill, text and hover
-        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-4 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06]"
+        className="flex h-9 w-full cursor-pointer items-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.06]"
       >
         <Globe className="size-3.5" />
         {t("dialogs.texts.languages", { total: active.length })}
@@ -132,7 +132,7 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
           )}
           {available.map((locale) => row(locale, false))}
         </div>
-        <p className="mt-1 border-t border-white/[0.08] px-2.5 pt-2 pb-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 border-t border-white/[0.08] px-2.5 pt-2 pb-1 text-xs text-muted-foreground">
           {t("dialogs.texts.defaultLanguageHint")}
         </p>
       </PortalPopover>

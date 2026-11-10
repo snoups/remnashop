@@ -60,7 +60,7 @@ function AllowedDomainsForm({ domains, canManage, onSaved }: Omit<AllowedDomains
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-1.5 p-4">
           <ChipsInput values={values} onChange={setValues} normalize={normalizeDomain} placeholder="example.com" />
-          <span className="text-[12px] text-muted-foreground">{t("settings.cabinetAuth.allowedDomainsHint")}</span>
+          <span className="text-xs text-muted-foreground">{t("settings.cabinetAuth.allowedDomainsHint")}</span>
         </div>
         {canManage && (
           <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>

@@ -272,10 +272,10 @@ export function SubscriptionsPage() {
                               <IconCircle icon={Captions} tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]} />
                               <span className="min-w-0">
                                 <span className="flex min-w-0 items-center gap-2">
-                                  <span className="truncate text-[13px] font-medium text-foreground">
+                                  <span className="truncate text-sm font-medium text-foreground">
                                     {subscription.plan_snapshot.name}
                                   </span>
-                                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                     #{subscription.id}
                                   </span>
                                   {subscription.is_trial && (
@@ -284,27 +284,27 @@ export function SubscriptionsPage() {
                                     </Badge>
                                   )}
                                 </span>
-                                <span className="flex min-w-0 gap-1 text-[12px] text-muted-foreground">
+                                <span className="flex min-w-0 gap-1 text-xs text-muted-foreground">
                                   <span className="truncate">{subscription.user_name || t("users.unnamed")}</span>
                                   <span className="shrink-0 font-mono">#{subscription.user_id}</span>
                                 </span>
                               </span>
                               <span className="min-w-0">
-                                <span className="block text-[13px] font-medium text-foreground">
+                                <span className="block text-sm font-medium text-foreground">
                                   {formatTraffic(subscription.effective_traffic_limit, unlimitedLabel)}
                                 </span>
-                                <span className="block truncate text-[12px] text-muted-foreground">
+                                <span className="block truncate text-xs text-muted-foreground">
                                   {t(`subscriptions.edit.strategy.${subscription.traffic_limit_strategy}`)}
                                 </span>
                               </span>
-                              <span className="text-[13px] font-medium tabular-nums text-foreground">
+                              <span className="text-sm font-medium tabular-nums text-foreground">
                                 {formatLimit(subscription.effective_device_limit, unlimitedLabel)}
                               </span>
                               <span className="tabular-nums">
-                                <span className="block text-[13px] text-foreground">
+                                <span className="block text-sm text-foreground">
                                   {formatDate(subscription.expire_at, i18n.language)}
                                 </span>
-                                <span className={`block text-[12px] ${expiryToneClassName(days)}`}>
+                                <span className={`block text-xs ${expiryToneClassName(days)}`}>
                                   {relativeTime.format(days, "day")}
                                 </span>
                               </span>

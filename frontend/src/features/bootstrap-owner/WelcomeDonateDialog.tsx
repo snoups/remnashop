@@ -84,7 +84,7 @@ export function WelcomeDonateDialog({ onContinue }: WelcomeDonateDialogProps) {
 
           <motion.div className="flex flex-col gap-2" {...riseIn(0.5)}>
             <h1 className={SCREEN_TITLE_CLASS}>{t("auth.welcome.title")}</h1>
-            <p className="text-[13px] text-muted-foreground">{t("auth.welcome.description")}</p>
+            <p className="text-sm text-muted-foreground">{t("auth.welcome.description")}</p>
           </motion.div>
 
           <motion.div className="w-full" {...riseIn(0.6)}>

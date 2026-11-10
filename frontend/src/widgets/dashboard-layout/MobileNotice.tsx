@@ -44,7 +44,7 @@ function MobileNoticeBody() {
   return (
     <>
       <DialogHeader icon={Monitor} title={t("mobileNotice.title")} closable={false} />
-      <p className="p-4 text-[13px] leading-relaxed text-foreground/80">{t("mobileNotice.description")}</p>
+      <p className="p-4 text-sm leading-relaxed text-foreground/80">{t("mobileNotice.description")}</p>
       <div className="border-t border-white/[0.08] p-4">
         <Button variant="glassAccent" className="w-full" onClick={close}>
           {t("mobileNotice.continueButton")}

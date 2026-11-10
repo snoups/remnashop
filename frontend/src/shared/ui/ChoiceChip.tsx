@@ -25,7 +25,7 @@ export function ChoiceChip({
     <Pressable
       type={type}
       className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border font-medium transition-colors ${
-        size === "sm" ? "px-1.5 py-1 text-[12px]" : "px-3 py-1.5 text-[13px]"
+        size === "sm" ? "px-1.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
       } disabled:cursor-not-allowed disabled:opacity-50 ${
         active
           ? "border-primary/35 bg-primary/15 text-primary"

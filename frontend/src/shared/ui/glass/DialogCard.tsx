@@ -44,7 +44,7 @@ export function DialogCard({
           <Pressable
             type="button"
             onClick={() => setIsOpen((open) => !open)}
-            className="flex w-full items-center gap-1.5 rounded-full px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-white/[0.04]"
+            className="flex w-full items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-white/[0.04]"
           >
             {heading}
             <ChevronDown
@@ -60,7 +60,7 @@ export function DialogCard({
               className={
                 variant === "list"
                   ? SECTION_TITLE_CLASS
-                  : "flex items-center gap-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground"
+                  : "flex items-center gap-1.5 pt-2 text-xs font-semibold uppercase tracking-wide text-foreground"
               }
             >
               {heading}

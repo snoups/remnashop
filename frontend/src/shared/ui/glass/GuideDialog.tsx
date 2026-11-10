@@ -7,7 +7,7 @@ import { CopyInput } from "@shared/ui/glass/Input";
 import { IconButton } from "@shared/ui/IconButton";
 import { Modal } from "@shared/ui/Modal";
 
-/** A ? button (32px with a 14px icon, a Row's) opening a glass help dialog; body text 13px, step groups
+/** A ? button (32px with a 14px icon, a Row's) opening a glass help dialog; body text 14px, step groups
  *  divided by lines. */
 export function GuideDialog({
   title,
@@ -38,8 +38,8 @@ export function GuideDialog({
         <span className="contents" onClick={(event) => event.stopPropagation()}>
           <Modal onClose={() => setIsOpen(false)} size="lg" scrollable>
             <DialogHeader icon={CircleHelp} title={title} />
-            {/* each step group under a line, 20px apart; body 13px at 1.6 so long instructions don't run together */}
-            <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-[13px] leading-[1.6] text-foreground/85 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
+            {/* each step group under a line, 20px apart; body 14px at 1.6 so long instructions don't run together */}
+            <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm leading-[1.6] text-foreground/85 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
               {children}
             </div>
           </Modal>
@@ -49,9 +49,9 @@ export function GuideDialog({
   );
 }
 
-/** A step group's title inside GuideDialog: the 15px step of the type scale, above 13px text. */
+/** A step group's title inside GuideDialog: the 16px step of the type scale, above 14px text. */
 export function GuideHeading({ children }: { children: ReactNode }) {
-  return <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{children}</h3>;
+  return <h3 className="text-base font-semibold tracking-tight text-foreground">{children}</h3>;
 }
 
 /** A value to paste somewhere else (a callback URL, a command), labelled, with copy. */

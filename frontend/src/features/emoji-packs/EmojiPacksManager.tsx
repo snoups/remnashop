@@ -101,7 +101,7 @@ export function EmojiPacksManager() {
                 {isImporting ? t("dialogs.emojiPacks.adding") : t("common.add")}
               </Button>
             </div>
-            {linkShown && <p className="text-[12px] text-error">{linkShown}</p>}
+            {linkShown && <p className="text-xs text-error">{linkShown}</p>}
           </div>
         </SectionFields>
       )}

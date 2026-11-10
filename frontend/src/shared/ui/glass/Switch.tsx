@@ -1,5 +1,7 @@
 import { motion } from "motion/react";
 
+import { Ripple } from "@shared/ui/Ripple";
+
 interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -18,6 +20,7 @@ export function Switch({ checked, onChange, disabled = false }: SwitchProps) {
         checked ? "bg-primary shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]" : "glass-well"
       }`}
     >
+      <Ripple />
       {/* 24px knob 2px in, 20px of travel; held, it stretches 6px toward the middle like a drop */}
       <motion.span
         className="absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow-[0_2px_6px_rgb(0_0_0/0.35)]"

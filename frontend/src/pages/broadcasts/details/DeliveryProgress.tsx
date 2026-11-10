@@ -59,13 +59,13 @@ export function DeliveryProgress({ broadcast: b, now, children }: DeliveryProgre
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         <span className={`${KPI_VALUE_CLASS} text-foreground`}>
           {processed.toLocaleString(i18n.language)}{" "}
-          <span className="text-[15px] font-medium text-muted-foreground">
+          <span className="text-base font-medium text-muted-foreground">
             {t("broadcasts.details.of", { total: b.total_count.toLocaleString(i18n.language) })}
           </span>
         </span>
-        {pace && <span className="text-[13px] text-muted-foreground">{pace}</span>}
+        {pace && <span className="text-sm text-muted-foreground">{pace}</span>}
         {startedMs !== null && (
-          <span className="text-[12px] text-muted-foreground sm:ml-auto">
+          <span className="text-xs text-muted-foreground sm:ml-auto">
             {t("broadcasts.details.started", { date: formatDateTime(b.started_at!, i18n.language) })}
             {canRecall(b, now) && (
               <>
@@ -86,7 +86,7 @@ export function DeliveryProgress({ broadcast: b, now, children }: DeliveryProgre
           ))}
       </div>
       {/* every outcome with its count: the numbers the page has */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-foreground/80">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground/80">
         {segments.map(({ key, count }) => (
           <span key={key} className="flex items-center gap-1.5">
             <span className={`size-2 rounded-full ${SEGMENT_CLASS[key]}`} />

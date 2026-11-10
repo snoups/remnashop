@@ -50,7 +50,7 @@ export function ReferralRewardsList({ userId }: { userId: number }) {
                     {t("referrals.list.levelBadge", { level: reward.level })}
                   </Badge>
                 )}
-                <span className="w-24 shrink-0 truncate text-right text-[12px] font-semibold tabular-nums text-foreground">
+                <span className="w-24 shrink-0 truncate text-right text-xs font-semibold tabular-nums text-foreground">
                   +{formatReward(t, reward.type, reward.amount)}
                 </span>
               </>

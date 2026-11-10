@@ -59,7 +59,7 @@ export function PlanCard({
       >
         <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-6">
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-semibold">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold">
               <PlanIcon icon={plan} size={16} fallback={<DefaultIcon className="size-4 shrink-0" />} />
               <span className="truncate">{plan.name}</span>
               {plan.is_trial ? (
@@ -106,7 +106,7 @@ export function PlanCard({
               <div className="mt-auto flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className={`min-w-0 break-words leading-tight ${KPI_VALUE_CLASS}`}>
-                    {durations.length > 1 && <span className="mr-1.5 text-[13px] font-medium text-muted-foreground">{t("plans.priceFrom")}</span>}
+                    {durations.length > 1 && <span className="mr-1.5 text-sm font-medium text-muted-foreground">{t("plans.priceFrom")}</span>}
                     {cheapest
                       ? anchorCurrency
                         ? formatMoney(cheapest.base_price, anchorCurrency, i18n.language)
@@ -114,10 +114,10 @@ export function PlanCard({
                       : t("common.none")}
                   </span>
                   {cheapest && (
-                    <span className="text-[12px] text-muted-foreground">{t("plans.perDays", { count: cheapest.days })}</span>
+                    <span className="text-xs text-muted-foreground">{t("plans.perDays", { count: cheapest.days })}</span>
                   )}
                 </div>
-                <div className="truncate text-[12px] text-muted-foreground">
+                <div className="truncate text-xs text-muted-foreground">
                   {durations.length > 0
                     ? durations.map((d) => t("plans.daysShort", { count: d.days })).join(" · ")
                     : "\u00a0"}
@@ -155,8 +155,8 @@ function DetailTile({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 rounded-xl bg-white/[0.04] px-2.5 py-2">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className={`truncate text-[13px] ${mono ? "font-mono tracking-[0.08em]" : ""} ${className}`}>{children}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`truncate text-sm ${mono ? "font-mono tracking-[0.08em]" : ""} ${className}`}>{children}</span>
     </div>
   );
 }

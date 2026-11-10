@@ -82,8 +82,8 @@ export function ApiTokensForm() {
       {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" && state.data.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
-          <p className="max-w-md text-[12px] leading-relaxed text-muted-foreground">{t("apiTokens.emptyHint")}</p>
-          <code className="glass-well flex h-9 items-center rounded-full px-3.5 font-mono text-[12px] text-muted-foreground">
+          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">{t("apiTokens.emptyHint")}</p>
+          <code className="glass-well flex h-9 items-center rounded-full px-3.5 font-mono text-xs text-muted-foreground">
             Authorization: Bearer &lt;token&gt;
           </code>
           <Button variant="glassAccent" icon={Plus} onClick={() => setIsCreating(true)}>
@@ -163,7 +163,7 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
         <div className="flex min-w-0 items-start gap-3">
           <IconCircle icon={KeyRound} tone={isExpired ? "error" : isExpiringSoon ? "warning" : "success"} />
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <p className="min-w-0 truncate text-[13px] font-medium leading-8 text-foreground">{token.name}</p>
+            <p className="min-w-0 truncate text-sm font-medium leading-8 text-foreground">{token.name}</p>
             {preset && <Tag>{t(`apiTokens.${preset}`)}</Tag>}
           </div>
           <span className="flex size-8 shrink-0 items-center justify-center">
@@ -173,22 +173,22 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
 
         <div className="col-span-2 pl-11 md:col-span-1 md:pl-0">
           {token.last_used_at ? (
-            <p className="truncate text-[13px] leading-8 text-foreground">
+            <p className="truncate text-sm leading-8 text-foreground">
               {formatDateTime(token.last_used_at, i18n.language)}
             </p>
           ) : (
-            <p className="text-[13px] leading-8 text-muted-foreground italic">{t("apiTokens.neverUsed")}</p>
+            <p className="text-sm leading-8 text-muted-foreground italic">{t("apiTokens.neverUsed")}</p>
           )}
         </div>
 
         <div className="col-span-2 pl-11 md:col-span-1 md:pl-0">
           {daysLeft !== null && totalDays !== null ? (
             <>
-              <div className="flex justify-between gap-2 text-[13px]">
+              <div className="flex justify-between gap-2 text-sm">
                 <span className={`${isExpired ? "text-error" : isExpiringSoon ? "text-warning" : "text-foreground"}`}>
                   {isExpired ? t("apiTokens.expired") : t("apiTokens.daysLeft", { count: daysLeft })}
                 </span>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {totalDays}
                 </span>
               </div>
@@ -200,7 +200,7 @@ function ApiTokenRow({ token, catalog, onRevoke }: ApiTokenRowProps) {
               </div>
             </>
           ) : (
-            <p className="flex h-8 items-center gap-1.5 text-[13px] text-foreground">
+            <p className="flex h-8 items-center gap-1.5 text-sm text-foreground">
               <InfinityIcon className="size-3.5" />
               {t("apiTokens.neverExpires")}
             </p>

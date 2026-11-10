@@ -88,7 +88,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t("dialogs.inspector.variableSearch")}
-              className="w-full min-w-0 bg-transparent text-[12px] text-foreground outline-none placeholder:text-muted-foreground"
+              className="w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
             />
             {/* 20px in the 30px inner height: 5px inset (px-3 minus 7) */}
             {query && <SearchClearButton size="5" className="-mr-[7px]" onClear={() => setQuery("")} />}
@@ -96,7 +96,7 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
         )}
         <div className={`max-h-72 ${POPOVER_SCROLL_CLASS}`}>
           {groups.length === 0 && (
-            <p className="px-2.5 py-2 text-[12px] text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
+            <p className="px-2.5 py-2 text-xs text-muted-foreground">{t("dialogs.inspector.variableEmpty")}</p>
           )}
           {groups.map(({ category, items }) => (
             <div key={category} className="mb-1 last:mb-0">
@@ -114,8 +114,8 @@ export function VariablePicker({ variables, format, onPick, disabled = false }: 
                   }}
                   className="flex w-full flex-col items-start rounded-popover-item px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.07]"
                 >
-                  <span className="text-[13px] font-medium text-foreground">{label(name)}</span>
-                  <span className="font-mono text-[12px] text-muted-foreground">{format(name)}</span>
+                  <span className="text-sm font-medium text-foreground">{label(name)}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{format(name)}</span>
                 </Pressable>
               ))}
             </div>

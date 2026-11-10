@@ -55,7 +55,7 @@ export function DatePickerField({ id, value, onChange, placeholder, variant = "g
             toggleOpen();
           }
         }}
-        className={`group flex w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} h-9 text-[13px] pl-9 pr-8 ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary`}
+        className={`group flex w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} h-9 text-sm pl-9 pr-8 ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary`}
       >
         <Calendar className={PICKER_ICON_CLASS} />
         <span className={displayValue ? "text-foreground" : "text-muted-foreground"}>

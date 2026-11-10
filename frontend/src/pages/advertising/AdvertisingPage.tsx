@@ -298,14 +298,14 @@ export function AdvertisingPage() {
                         <CellText title={link.name} sub={link.code} mono />
                         {canViewSummary && (
                           <>
-                            <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+                            <span className="text-right text-sm font-semibold tabular-nums text-foreground">
                               {metrics?.attributions_count ?? none}
                             </span>
-                            <span className="text-right text-[13px] tabular-nums text-foreground">
+                            <span className="text-right text-sm tabular-nums text-foreground">
                               {metrics?.paid_count ?? none}
                             </span>
                             <span className="flex flex-col items-end gap-1">
-                              <span className="text-[13px] tabular-nums text-foreground">
+                              <span className="text-sm tabular-nums text-foreground">
                                 {conversion !== null ? formatPercent(String(conversion), i18n.language) : none}
                               </span>
                               <span className="h-[3px] w-14 overflow-hidden rounded-full glass-track">
@@ -317,12 +317,12 @@ export function AdvertisingPage() {
                             </span>
                           </>
                         )}
-                        <span className="text-right text-[13px] tabular-nums text-foreground">
+                        <span className="text-right text-sm tabular-nums text-foreground">
                           {formatMoney(link.cost, link.cost_currency, i18n.language)}
                         </span>
                         {canViewSummary && (
                           <span
-                            className={`text-right text-[13px] font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
+                            className={`text-right text-sm font-semibold tabular-nums ${roiClassName(metrics?.roi ?? null)}`}
                           >
                             {metrics?.roi != null ? formatPercent(metrics.roi, i18n.language, true) : none}
                           </span>

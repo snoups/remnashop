@@ -160,7 +160,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
           </SectionFields>
 
           <div className="-mx-2 mt-2 -mb-1 overflow-x-auto px-2 py-1">
-            <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
+            <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className={`text-left ${EYEBROW_CLASS} [&>th]:border-b [&>th]:border-border`}>
                   <th scope="col" className="px-3 py-2 font-semibold">{t("blacklist.matches.columnUser")}</th>
@@ -183,7 +183,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                         <IconCircle
                           glyph={
                             match.user.name ? (
-                              <span className="text-[11px] font-bold">{initials(match.user.name)}</span>
+                              <span className="text-xs font-bold">{initials(match.user.name)}</span>
                             ) : (
                               <User className="size-4" />
                             )
@@ -191,7 +191,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                         />
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{userLabel(match.user, match.user.id, t)}</p>
-                          <p className="truncate text-[12px] text-muted-foreground">
+                          <p className="truncate text-xs text-muted-foreground">
                             {match.user.username ? `@${match.user.username}` : `#${match.user.id}`}
                           </p>
                         </div>
@@ -209,7 +209,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
                                   : t("blacklist.manual.kindEmail")
                               }
                             />
-                            <span className="truncate font-mono text-[12px] text-foreground">{hit.value}</span>
+                            <span className="truncate font-mono text-xs text-foreground">{hit.value}</span>
                           </div>
                         ))}
                       </div>
@@ -247,7 +247,7 @@ export function BlacklistMatchesCard({ reloadKey, canUnblockAll, onUnblocked }: 
 
           {pageCount > 1 && (
             <div className="mt-3 flex items-center justify-between gap-3 px-3">
-              <span className="text-[12px] tabular-nums text-muted-foreground">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 {t("blacklist.matches.range", {
                   from: (page - 1) * PAGE_SIZE + 1,
                   to: (page - 1) * PAGE_SIZE + data.items.length,

@@ -9,6 +9,7 @@ import { localized } from "@entities/announcements/api";
 import type { Announcement } from "@entities/announcements/api";
 import { BrandLogo } from "@shared/ui/BrandLogo";
 import { GLASS_SOLID_LINK_BUTTON_CLASS, SCREEN_TITLE_CLASS } from "@shared/ui/classes";
+import { Pressable } from "@shared/ui/Pressable";
 import { StatusPill } from "@shared/ui/glass/StatusPill";
 import { IconButton } from "@shared/ui/IconButton";
 
@@ -147,7 +148,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
         {neighbour.slides[0]?.image_url && (
           <img src={neighbour.slides[0].image_url} alt="" className="absolute inset-0 size-full object-cover" />
         )}
-        <span className="absolute inset-x-4 bottom-4 text-[13px] font-medium text-foreground">
+        <span className="absolute inset-x-4 bottom-4 text-sm font-medium text-foreground">
           {localized(neighbour.title, i18n.language)}
         </span>
       </motion.button>
@@ -165,8 +166,8 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
         <div className="absolute left-6 top-5 hidden items-center gap-3 sm:flex">
           <BrandLogo className="size-9 text-primary" />
           <span className="flex flex-col">
-            <span className="text-[15px] font-semibold tracking-tight text-foreground">{t("announcements.heading")}</span>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-base font-semibold tracking-tight text-foreground">{t("announcements.heading")}</span>
+            <span className="text-xs text-muted-foreground">
               {t("announcements.counter", { current: storyIndex + 1, total: stories.length })}
             </span>
           </span>
@@ -198,11 +199,12 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
               {slide.image_url && <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 to-transparent" />}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 p-4">
                 <span className={`${SCREEN_TITLE_CLASS} leading-tight`}>{title}</span>
-                <span className="whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
+                <span className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
                   {localized(slide.text, i18n.language)}
                 </span>
                 {slide.url && (
-                  <a
+                  <Pressable
+                    as="a"
                     href={slide.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -210,7 +212,7 @@ export function AnnouncementsCarousel({ stories, startIndex, onView, onClose }: 
                   >
                     {localized(slide.url_label, i18n.language) || t("announcements.openLink")}
                     <ExternalLink className="size-4" />
-                  </a>
+                  </Pressable>
                 )}
               </div>
             </motion.div>

@@ -124,12 +124,15 @@ export function Header({ onLogout }: HeaderProps) {
             )}
           </Pressable>
         )}
-        <span className="truncate text-[17px] font-semibold tracking-tight text-foreground">{pageTitle}</span>
-        {!mobile && isOverviewPage && updatedAt && (
-          <span className="mt-1 shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
-            {t("dashboard.updatedAt", { time: formatTime(updatedAt, i18n.language) })}
-          </span>
-        )}
+        <div className="flex min-w-0 items-baseline gap-2">
+          {/* pr-0.5: tracking-tight pulls the last glyph past the box, truncate's overflow would clip it */}
+          <span className="truncate pr-0.5 text-lg font-semibold tracking-tight text-foreground">{pageTitle}</span>
+          {!mobile && isOverviewPage && updatedAt && (
+            <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+              {t("dashboard.updatedAt", { time: formatTime(updatedAt, i18n.language) })}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3 max-md:flex-none max-md:shrink-0 max-md:gap-2">
@@ -169,7 +172,7 @@ export function Header({ onLogout }: HeaderProps) {
             <span
               className={TAB_HOVER_CLASS}
             />
-            <div className="glass-control relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-foreground md:size-8">
+            <div className="glass-control relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-foreground md:size-8">
               {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
             <div className="relative z-10 hidden text-left leading-tight md:block">
@@ -194,7 +197,7 @@ export function Header({ onLogout }: HeaderProps) {
             <Pressable as="link"
               to="/dashboard/profile"
               onClick={() => setOpenPopover(null)}
-              className="flex h-9 items-center gap-2.5 rounded-popover-item px-2.5 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]"
+              className="flex h-9 items-center gap-2.5 rounded-popover-item px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.07]"
             >
               <UserIcon className="size-4 shrink-0" />
               {t("header.profile")}
@@ -202,7 +205,7 @@ export function Header({ onLogout }: HeaderProps) {
             <Pressable
               type="button"
               onClick={onLogout}
-              className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-error transition-colors hover:bg-white/[0.07]"
+              className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm font-medium text-error transition-colors hover:bg-white/[0.07]"
             >
               <LogOut className="size-4 shrink-0" />
               {t("header.logout")}
@@ -235,7 +238,7 @@ function MaintenanceBadge() {
     // the capsule's first item, 36px like the rest; leads to the switch that set it
     <Pressable
       onClick={() => navigate(`/dashboard/settings#${ACCESS_SECTION_ID}`)}
-      className="flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium text-warning transition-colors hover:bg-white/[0.06]"
+      className="flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-warning transition-colors hover:bg-white/[0.06]"
     >
       <span className="size-1.5 shrink-0 rounded-full bg-current" />
       {t("header.maintenance")}

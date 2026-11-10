@@ -233,7 +233,7 @@ function GatewayRow({ gateway, revenue }: { gateway: GatewayStats; revenue: stri
   const width = (value: number) => `${attempts > 0 ? (value / attempts) * 100 : 0}%`;
 
   return (
-    <div className="flex flex-col gap-2 text-[13px]">
+    <div className="flex flex-col gap-2 text-sm">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
           {t(`settings.gateways.types.${gateway.gateway_type}` as ParseKeys)}
@@ -248,7 +248,7 @@ function GatewayRow({ gateway, revenue }: { gateway: GatewayStats; revenue: stri
         <div className="bg-muted-foreground transition-[width] duration-200 ease-out" style={{ width: width(gateway.canceled) }} />
         <div className="bg-error transition-[width] duration-200 ease-out" style={{ width: width(gateway.failed) }} />
       </div>
-      <span className="text-[12px] text-muted-foreground">
+      <span className="text-xs text-muted-foreground">
         {t("analytics.revenue.gatewayCaption", {
           paid: gateway.paid.toLocaleString(i18n.language),
           canceled: gateway.canceled.toLocaleString(i18n.language),

@@ -493,12 +493,12 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
           />
           <span className="truncate">{subscription.plan_snapshot.name}</span>
         </div>
-        <span className="shrink-0 font-mono text-[12px] tracking-[0.12em] text-muted-foreground">#{subscription.id}</span>
+        <span className="shrink-0 font-mono text-xs tracking-[0.12em] text-muted-foreground">#{subscription.id}</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className={`text-[26px] font-bold leading-[1.1] tracking-tight tabular-nums ${TEXT_TONE[trafficTone]}`}>
+          <span className={`text-2xl font-bold leading-[1.1] tracking-tight tabular-nums ${TEXT_TONE[trafficTone]}`}>
             {limitGb === 0
               ? "∞"
               : used === null
@@ -506,7 +506,7 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
                 : formatBytes(Math.max(0, limitBytes - used), i18n.language)}
           </span>
           {used !== null && (
-            <span className="min-w-0 truncate text-[13px] font-bold">
+            <span className="min-w-0 truncate text-sm font-bold">
               {t("subscriptions.details.trafficUsed", { value: formatBytes(used, i18n.language) })}
             </span>
           )}
@@ -516,7 +516,7 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
             <div className={`h-full rounded-full ${BAR_TONE[trafficTone]}`} style={{ width: `${(1 - ratio) * 100}%` }} />
           </div>
         )}
-        <div className="text-[12px] text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           {limitGb === 0
             ? t("subscriptions.details.trafficUnlimited")
             : ratio === null

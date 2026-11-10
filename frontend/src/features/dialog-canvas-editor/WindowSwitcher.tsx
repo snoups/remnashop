@@ -44,7 +44,7 @@ const FLOW_ORDER: DialogFlow[] = [
 
 function StateBadge({ label }: { label: string }) {
   return (
-    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-warning">
+    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide text-warning">
       {label}
     </span>
   );
@@ -83,7 +83,7 @@ function WindowChip({
       <Pressable
         type="button"
         onClick={onSelect}
-        className={`z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-[13px] ${
+        className={`z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-sm ${
           isSelected ? "font-medium text-primary" : "text-foreground/80"
         } ${window.is_enabled ? "" : "opacity-55"}`}
       >
@@ -98,7 +98,7 @@ function WindowChip({
         <button
           type="button"
           onClick={onDelete}
-          className="relative z-10 cursor-pointer px-1 text-[13px] text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
+          className="relative z-10 cursor-pointer px-1 text-sm text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
         >
           ×
         </button>
@@ -145,7 +145,7 @@ export function WindowSwitcher({
             <Pressable
               type="button"
               onClick={() => toggleFlow(flow)}
-              className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
+              className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-xs uppercase leading-5 tracking-wide text-muted-foreground"
             >
               <span className={TAB_HOVER_CLASS} />
               <ChevronRight
@@ -154,7 +154,7 @@ export function WindowSwitcher({
               <span className="relative z-10 truncate">
                 {t(`dialogs.windowList.flows.${flow}`)}
               </span>
-              <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
+              <span className="relative z-10 ml-auto text-xs tabular-nums opacity-70">
                 {items.length}
               </span>
             </Pressable>
@@ -180,14 +180,14 @@ export function WindowSwitcher({
         <Pressable
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+          className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-sm text-foreground/70 transition-colors hover:bg-white/[0.06]"
         >
           <Plus className="size-3.5" />
           {t("dialogs.windowList.addWindow")}
         </Pressable>
       )}
       {isLimitReached && (
-        <span className="mt-1 text-[12px] text-muted-foreground">
+        <span className="mt-1 text-xs text-muted-foreground">
           {t("dialogs.windowList.limitReached")}
         </span>
       )}

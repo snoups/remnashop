@@ -62,7 +62,7 @@ function CommandRow({ row, onChange, readOnly }: CommandRowProps) {
           <GripVertical className="size-4" />
         </button>
       )}
-      <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">/{row.command}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">/{row.command}</span>
       <Switch checked={row.enabled} onChange={(checked) => onChange("enabled", checked)} disabled={readOnly} />
     </div>
   );

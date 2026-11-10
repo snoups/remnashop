@@ -142,7 +142,7 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
         ) : (
           <>
             <BrandLogo className="size-1/2 text-primary" />
-            <span className="absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-2 py-0.5 text-xs text-muted-foreground">
               {t("settings.appearance.defaultImage")}
             </span>
           </>
@@ -160,7 +160,7 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
         {canUpload && (
           <motion.label
             data-disabled={isBusy || undefined}
-            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
+            className="absolute inset-x-2 bottom-2 flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] text-sm font-medium text-foreground transition-colors hover:bg-white/[0.06] data-disabled:cursor-not-allowed data-disabled:opacity-60"
           >
             <input
               type="file"
@@ -480,7 +480,7 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
 
                   <div className="flex flex-col gap-2.5 border-t border-white/[0.08] pt-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[13px] font-medium text-foreground">{t("settings.appearance.shaderEnabledLabel")}</span>
+                      <span className="text-sm font-medium text-foreground">{t("settings.appearance.shaderEnabledLabel")}</span>
                       <Switch
                         checked={shaderEnabled}
                         onChange={setShaderEnabled}
@@ -501,10 +501,10 @@ export function AppearanceSettingsForm({ target }: { target: AppearanceTarget })
                               displayValue={shownColor}
                             />
                             <div className="flex min-w-0 flex-col">
-                              <span className="truncate text-[12px] font-medium text-foreground">
+                              <span className="truncate text-xs font-medium text-foreground">
                                 {t(`settings.appearance.shaderPalette.${key}`)}
                               </span>
-                              <span className="font-mono text-[11px] text-muted-foreground">{shownColor}</span>
+                              <span className="font-mono text-xs text-muted-foreground">{shownColor}</span>
                             </div>
                             <IconButton
                               size="7"

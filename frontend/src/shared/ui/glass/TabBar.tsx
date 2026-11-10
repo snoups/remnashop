@@ -14,7 +14,7 @@ export interface TabBarItem {
   isActive: boolean;
 }
 
-/** Route tabs in a 48px glass-panel capsule: 36px tabs 6px in, 13px medium. */
+/** Route tabs in a 48px glass-panel capsule: 36px tabs 6px in, 14px medium. */
 export function TabBar({ items }: { items: TabBarItem[] }) {
   const tabsRef = useHorizontalWheelScroll<HTMLDivElement>();
   const navRef = useRef<HTMLElement>(null);
@@ -39,7 +39,7 @@ export function TabBar({ items }: { items: TabBarItem[] }) {
             aria-current={isActive ? "page" : undefined}
             // navigating to the active tab would only re-run navigate()
             onClick={(event: MouseEvent) => isActive && event.preventDefault()}
-            className="group relative isolate flex h-9 shrink-0 items-center rounded-full text-[13px] font-medium"
+            className="group relative isolate flex h-9 shrink-0 items-center rounded-full text-sm font-medium"
           >
             {isActive ? (
               <ActivePill layoutId={pillId} />

@@ -24,7 +24,7 @@ export function SegmentedPills<T extends string | number>({
   options: SegmentedPillsOption<T>[];
   /** fill the container, options share the width equally */
   stretch?: boolean;
-  /** 36px instead of 38px, 13px text: beside other 36px controls (the notifications header) */
+  /** 36px instead of 38px, 14px text: beside other 36px controls (the notifications header) */
   compact?: boolean;
   /** the glass TabBar's 48px glass-panel capsule, 36px options: beside it in a page's floating bar */
   panel?: boolean;
@@ -52,7 +52,7 @@ export function SegmentedPills<T extends string | number>({
             <span className={TAB_HOVER_CLASS} />
           )}
           <span
-            className={`relative z-10 text-[13px] font-medium ${
+            className={`relative z-10 text-sm font-medium ${
               panel ? "flex h-9 items-center px-4" : `block px-3.5 ${compact ? "py-[3px] leading-5" : "py-1"}`
             } ${value === option.value ? "text-primary" : "text-foreground"}`}
           >

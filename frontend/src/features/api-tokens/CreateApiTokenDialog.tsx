@@ -124,7 +124,7 @@ function CreateApiTokenDialogBody({ onCreated }: Pick<CreateApiTokenDialogProps,
         <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
           <div className="flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
-            <p className="text-[12px] leading-snug text-warning">{t("apiTokens.createNotice")}</p>
+            <p className="text-xs leading-snug text-warning">{t("apiTokens.createNotice")}</p>
           </div>
 
           <div className={GLASS_DIALOG_CARD_CLASS}>

@@ -147,7 +147,7 @@ function AdLinkDetailsDialogBody({
               <div className="flex flex-col gap-3">
                 {adLink.note && (
                   <DialogCard title={t("advertising.edit.noteLabel")} icon={StickyNote}>
-                    <p className="whitespace-pre-wrap break-words px-2.5 pb-1.5 text-[13px] text-foreground">
+                    <p className="whitespace-pre-wrap break-words px-2.5 pb-1.5 text-sm text-foreground">
                       {adLink.note}
                     </p>
                   </DialogCard>

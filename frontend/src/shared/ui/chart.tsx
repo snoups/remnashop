@@ -32,7 +32,7 @@ export function ChartTooltip({
   rows: { label: string; value: string }[];
 }) {
   return (
-    <div className="glass-dialog flex flex-col gap-1 rounded-2xl px-3.5 py-2.5 text-[12px] leading-[1.5]">
+    <div className="glass-dialog flex flex-col gap-1 rounded-2xl px-3.5 py-2.5 text-xs leading-[1.5]">
       <span className="flex items-center gap-2 text-muted-foreground">
         {color && <span className="size-2 rounded-full" style={{ background: color }} />}
         {title}

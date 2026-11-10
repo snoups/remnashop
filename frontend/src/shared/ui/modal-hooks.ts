@@ -64,3 +64,37 @@ export function useDialogFocus(panelRef: RefObject<HTMLDivElement | null>, onEsc
     };
   }, [panelRef]);
 }
+
+/** The desktop backdrop covers only the dashboard panel (its backdrop-blur bounds `fixed`), so a press on
+ *  the sidebar or the page margins dismisses the topmost dialog too, and only that: nothing under it reacts.
+ *  Portaled popovers and toasts sit outside the shell and are left alone. */
+export function useOutsidePanelDismiss(panelRef: RefObject<HTMLDivElement | null>, onDismiss: (() => void) | null) {
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  useEffect(() => {
+    const isOutside = (event: Event) => {
+      const panel = panelRef.current;
+      if (!onDismissRef.current || !panel || openPanels[openPanels.length - 1] !== panel) return false;
+      const target = event.target;
+      const shell = document.querySelector("[data-dashboard-shell]");
+      if (!(target instanceof Element) || !shell || target.closest("[data-dashboard-panel]")) return false;
+      return target.closest("[data-dashboard-shell]") !== null || target.contains(shell);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (isOutside(event)) event.stopPropagation();
+    };
+    const onClick = (event: MouseEvent) => {
+      if (!isOutside(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onDismissRef.current?.();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [panelRef]);
+}

@@ -9,7 +9,7 @@ export function DebugVariantsPage() {
   const k = useKit();
   return (
     <DebugShell>
-      <p className="px-1 text-[12px] text-muted-foreground">{k("variants.caption")}</p>
+      <p className="px-1 text-xs text-muted-foreground">{k("variants.caption")}</p>
       <EmptyState text={k("variants.empty")} icon={FlaskConical} />
     </DebugShell>
   );

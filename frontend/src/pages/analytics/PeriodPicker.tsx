@@ -116,7 +116,7 @@ export function PeriodPicker({ period, onChange: setPeriod }: { period: Analytic
                 key={preset.key}
                 type="button"
                 onClick={() => setDraft(preset.draft)}
-                className={`h-9 rounded-full px-3 text-left text-[13px] font-medium transition-colors ${
+                className={`h-9 rounded-full px-3 text-left text-sm font-medium transition-colors ${
                   sameDraft(draft, preset.draft) ? "bg-accent text-primary" : "text-foreground hover:bg-white/[0.07]"
                 }`}
               >
@@ -128,11 +128,11 @@ export function PeriodPicker({ period, onChange: setPeriod }: { period: Analytic
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
                 <span className={EYEBROW_CLASS}>{t("analytics.period.start")}</span>
-                <span className="text-[13px] font-medium tabular-nums text-foreground">{formatDay(from)}</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatDay(from)}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className={EYEBROW_CLASS}>{t("analytics.period.end")}</span>
-                <span className="text-[13px] font-medium tabular-nums text-foreground">{formatDay(to)}</span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatDay(to)}</span>
               </div>
             </div>
             {/* remounts on a new start so a preset jumps the view to its month */}

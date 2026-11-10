@@ -42,7 +42,7 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
             ? "flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
             : iconOnly
               ? "flex size-11 shrink-0 items-center justify-center rounded-full bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
-              : "glass-panel flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.06]"
+              : "glass-panel flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.06]"
         }
       >
         <Languages className={`${iconOnly ? "size-5" : "size-4"} shrink-0`} />
@@ -70,7 +70,7 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
             key={language}
             type="button"
             onClick={() => handleSelect(language)}
-            className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]"
+            className="flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-white/[0.07]"
           >
             <span className="flex-1">{LANGUAGE_LABELS[language]}</span>
             {language === currentLanguage && <Check className="size-[15px] text-primary" />}

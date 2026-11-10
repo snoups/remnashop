@@ -29,8 +29,8 @@ function PromocodeSwitchRow({
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground">{label}</p>
-        <p className="text-[12px] text-muted-foreground">{hint}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       <Switch checked={checked} onChange={onChange} />
     </div>
@@ -108,7 +108,7 @@ export function PromocodeLimitsFields({ idPrefix, value, onChange, plans }: Prom
         </Field>
       )}
       {plans && plans.some((plan) => !plan.allow_promocodes) && (
-        <p className="-mt-1 text-[12px] text-muted-foreground">{t("promocodes.limits.plansPromocodesOff")}</p>
+        <p className="-mt-1 text-xs text-muted-foreground">{t("promocodes.limits.plansPromocodesOff")}</p>
       )}
 
       <div className="grid grid-cols-2 gap-3">

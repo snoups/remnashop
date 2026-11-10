@@ -44,8 +44,8 @@ export function PageRouteError() {
         <TriangleAlert className="size-5" />
       </span>
       <div className="flex flex-col gap-1">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{t("errors.crashTitle")}</h2>
-        <p className="text-[13px] text-muted-foreground">{t("errors.crashDescription")}</p>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">{t("errors.crashTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("errors.crashDescription")}</p>
       </div>
       <Button variant="glassSolid" onClick={() => window.location.reload()}>
         {t("errors.reload")}

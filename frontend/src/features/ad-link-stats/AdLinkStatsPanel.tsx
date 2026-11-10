@@ -101,12 +101,12 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
 
       <div className={`${GLASS_PLATE_CLASS} p-3.5`}>
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-foreground">
             <BarChart3 className="size-3.5" />
             {t("advertising.stats.daily")}
           </h3>
           {peak.count > 0 && (
-            <span className="text-[12px] tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {t("advertising.stats.peak", { count: peak.count, day: formatDay(peak.day) })}
             </span>
           )}
@@ -138,7 +138,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
             );
           })}
         </div>
-        <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1.5 flex justify-between text-xs text-muted-foreground">
           <span>{formatDay(days[0].day)}</span>
           <span>{formatDay(days[days.length - 1].day)}</span>
         </div>

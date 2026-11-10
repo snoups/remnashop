@@ -130,7 +130,7 @@ export function SelectDropdown({
         onClick={toggleOpen}
         onKeyDown={handleTriggerKeyDown}
         disabled={disabled}
-        className={`group relative flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-[13px]" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`group relative flex w-full items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-left ${size === "compact" ? "h-9 text-sm" : size === "lg" ? "h-10 text-sm" : "py-2 text-sm"} ${variant === "well" ? "" : "font-medium"} text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <Ripple />
         <TriggerIcon className={PICKER_ICON_CLASS} />
@@ -165,7 +165,7 @@ export function SelectDropdown({
               type="button"
               onClick={() => selectIndex(index)}
               onMouseEnter={() => setActiveIndex(index)}
-              className={`relative flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
+              className={`relative flex h-9 w-full items-center justify-between gap-2 rounded-popover-item px-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-white/[0.07] ${index === activeIndex ? "bg-white/[0.07]" : ""}`}
             >
               <Ripple />
               <span className="flex min-w-0 items-center gap-2">

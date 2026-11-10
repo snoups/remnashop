@@ -29,8 +29,8 @@ export function AnnouncementDialog({ announcement, onClose }: AnnouncementDialog
       />
 
       <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
-        {text && <p className="whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">{text}</p>}
-        <p className="text-[12px] text-muted-foreground">
+        {text && <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">{text}</p>}
+        <p className="text-xs text-muted-foreground">
           {critical && `${t("announcements.critical")} · `}
           {formatRelative(announcement.notify_at, i18n.language)}
         </p>

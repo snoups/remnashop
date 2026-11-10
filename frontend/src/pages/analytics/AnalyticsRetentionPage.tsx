@@ -36,7 +36,7 @@ const CURVE_MIN_MONTHS = 6;
 const EXPIRING_GRID = "grid grid-cols-[32px_minmax(0,1.4fr)_minmax(0,1fr)_110px_120px_80px] items-center gap-3";
 
 // theme tokens, not hex: --color-primary follows the dashboard's appearance settings
-const CHART_TICK = { fill: "var(--color-muted-foreground)", fontSize: 11 };
+const CHART_TICK = { fill: "var(--color-muted-foreground)", fontSize: 12 };
 
 function retentionCellStyle(value: number): { background: string; color?: string } {
   const alpha = Math.max(0.06, Math.min(0.85, value));
@@ -186,7 +186,7 @@ function ExpiringCard({ data }: { data: Retention }) {
             <div className="h-2.5 overflow-hidden rounded-full glass-track">
               <div className="h-full rounded-full bg-warning transition-[width] duration-200 ease-out" style={{ width: `${weekMax > 0 ? (week.count / weekMax) * 100 : 0}%` }} />
             </div>
-            <span className="text-[12px] tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {t("analytics.retention.mrrAtRisk", { money: formatMoney(week.mrr_at_risk, currency, language) })}
             </span>
           </div>
@@ -305,7 +305,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
       title={t("analytics.retention.cohortsTitle")}
       description={t("analytics.retention.cohortsDescription")}
       aside={
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {formatPercent(0, language)}
           <span className="h-2 w-28 rounded-full bg-gradient-to-r from-primary/5 to-primary/85" />
           {formatPercent(1, language)}
@@ -317,7 +317,7 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
         <EmptyState text={t("analytics.empty")} size="page" />
       ) : (
         <div className="mx-2.5 mt-4 overflow-x-auto">
-          <table className="w-full border-separate border-spacing-1 text-[12px] tabular-nums">
+          <table className="w-full border-separate border-spacing-1 text-xs tabular-nums">
             <thead>
               <tr className={EYEBROW_CLASS}>
                 <th className="px-1 pb-1.5 text-left font-semibold">{t("analytics.retention.cohortColumn")}</th>
@@ -332,8 +332,8 @@ function CohortHeatmap({ data }: { data: Cohorts }) {
             <tbody>
               {data.items.map((row) => (
                 <tr key={row.cohort}>
-                  <td className="px-1 font-mono text-[12px] text-foreground">{row.cohort}</td>
-                  <td className="px-1.5 text-right text-[12px] font-semibold text-foreground">{row.cohort_size.toLocaleString(language)}</td>
+                  <td className="px-1 font-mono text-xs text-foreground">{row.cohort}</td>
+                  <td className="px-1.5 text-right text-xs font-semibold text-foreground">{row.cohort_size.toLocaleString(language)}</td>
                   {Array.from({ length: MONTH_COLUMNS }).map((_, idx) => {
                     const value = row.retention_by_month[idx];
                     return value === undefined ? (
@@ -396,21 +396,21 @@ function ExpiringList({ currency }: { currency: Retention["report_currency"] }) 
                   onClick={() => openUser(row.user_id)}
                   className={EXPIRING_GRID}
                 >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-foreground">
                     {row.name ? initials(row.name) : <User className="size-4" />}
                   </span>
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-[13px] font-medium text-foreground">
+                      <span className="truncate text-sm font-medium text-foreground">
                         {row.name || t("users.unnamed")}
                       </span>
-                      <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{row.user_id}</span>
+                      <span className="shrink-0 font-mono text-xs text-muted-foreground">#{row.user_id}</span>
                     </span>
                     {row.username && (
-                      <span className="block truncate font-mono text-[12px] text-muted-foreground">@{row.username}</span>
+                      <span className="block truncate font-mono text-xs text-muted-foreground">@{row.username}</span>
                     )}
                   </span>
-                  <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
+                  <span className="flex min-w-0 items-center gap-1.5 text-sm text-foreground">
                     <span className="truncate">{row.plan_names[0]}</span>
                     {row.plan_names.length > 1 && <Tag>+{row.plan_names.length - 1}</Tag>}
                   </span>
@@ -419,10 +419,10 @@ function ExpiringList({ currency }: { currency: Retention["report_currency"] }) 
                       {inDays}
                     </Badge>
                   </span>
-                  <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+                  <span className="text-right text-sm font-semibold tabular-nums text-foreground">
                     {formatMoney(row.spent, currency, language)}
                   </span>
-                  <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                  <span className="text-right text-xs tabular-nums text-muted-foreground">
                     {row.renewals.toLocaleString(language)}
                   </span>
                 </ListRow>

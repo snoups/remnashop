@@ -131,13 +131,13 @@ export function ButtonInspector({
           <span className="block truncate text-sm font-semibold text-foreground">
             {t("dialogs.inspector.buttonTitle")}
           </span>
-          <span className="block truncate font-mono text-[12px] text-muted-foreground">
+          <span className="block truncate font-mono text-xs text-muted-foreground">
             {button.text_key}
           </span>
         </div>
 
         <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium text-foreground/80">
+          <span className="text-sm font-medium text-foreground/80">
             {t("dialogs.inspector.enabledLabel")}
           </span>
           <Switch
@@ -148,7 +148,7 @@ export function ButtonInspector({
         </div>
 
         <div className="mb-3">
-          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLabel")}</span>
+          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonLabel")}</span>
           <TextEditorPanel
             textKey={button.text_key}
             entries={entries}
@@ -174,14 +174,14 @@ export function ButtonInspector({
             }
           />
           {!isTextSeeded && (
-            <p className="mt-1 text-[12px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               {t("dialogs.inspector.buttonLabelPending")}
             </p>
           )}
         </div>
 
         <div className="mb-3">
-          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonStyle")}</span>
+          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonStyle")}</span>
           <SelectDropdown
             size="compact"
             icon={Palette}
@@ -201,7 +201,7 @@ export function ButtonInspector({
         </div>
 
         <div className="mb-3">
-          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonCondition")}</span>
+          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonCondition")}</span>
           <SelectDropdown
             size="compact"
             icon={Eye}
@@ -217,7 +217,7 @@ export function ButtonInspector({
         </div>
 
         <div className="mb-3">
-          <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonLinkType")}</span>
+          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonLinkType")}</span>
           <SelectDropdown
             size="compact"
             icon={Link2}
@@ -230,14 +230,14 @@ export function ButtonInspector({
         </div>
 
         {button.link_type === "action" && (
-          <p className="mb-3 text-[12px] text-muted-foreground">
+          <p className="mb-3 text-xs text-muted-foreground">
             {t("dialogs.inspector.buttonActionHint", { key: button.action_key ?? "" })}
           </p>
         )}
 
         {button.link_type === "navigate" && (
           <div className="mb-3">
-            <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonTarget")}</span>
+            <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonTarget")}</span>
             <SelectDropdown
               size="compact"
               icon={ArrowRight}
@@ -252,7 +252,7 @@ export function ButtonInspector({
 
         {isLinkButton(button.link_type) && (
           <div className="mb-3">
-            <span className="mb-1 block text-[13px] font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
+            <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
             <div className="relative mb-1.5">
               <input
                 ref={urlFieldRef}
@@ -273,7 +273,7 @@ export function ButtonInspector({
                 />
               </div>
             </div>
-            {urlError !== null && <p className="mb-1.5 text-[12px] text-error">{urlError}</p>}
+            {urlError !== null && <p className="mb-1.5 text-xs text-error">{urlError}</p>}
           </div>
         )}
 

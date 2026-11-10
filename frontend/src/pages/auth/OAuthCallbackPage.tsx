@@ -83,7 +83,7 @@ export function OAuthCallbackScreen() {
         </div>
         <div className={`flex w-full flex-col items-center gap-3 text-center ${GLASS_STANDALONE_CARD_CLASS}`}>
           <Loader2 className="size-6 animate-spin text-primary" />
-          <p className="text-[13px] text-muted-foreground">{t("auth.oauth.completingSignIn")}</p>
+          <p className="text-sm text-muted-foreground">{t("auth.oauth.completingSignIn")}</p>
         </div>
       </div>
     </div>

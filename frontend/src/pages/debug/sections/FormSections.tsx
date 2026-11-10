@@ -244,7 +244,7 @@ export function TablesSection() {
               </span>
             ))}
           </div>
-          <div className={`${LIST_BODY_CLASS} text-[13px]`}>
+          <div className={`${LIST_BODY_CLASS} text-sm`}>
             {ROWS.map((row) => (
               <div key={row.days} className={`${GRID} ${GLASS_LIST_ROW_CLASS} hover:bg-white/[0.04]`}>
                 <span className="text-foreground">{days(row.days)}</span>
@@ -258,7 +258,7 @@ export function TablesSection() {
       </Specimen>
       <Specimen name="ListRow · disabled" usage={k("u.listRow")} stage="stretch" wide>
         <div className={PANEL}>
-          <div className={`${LIST_BODY_CLASS} text-[13px]`}>
+          <div className={`${LIST_BODY_CLASS} text-sm`}>
             {ROWS.map((row, index) => (
               <ListRow key={row.days} className={GRID} disabled={index === 2}>
                 <span className="text-foreground">{days(row.days)}</span>
@@ -279,7 +279,7 @@ export function TablesSection() {
               <Tag>#1042</Tag>
             </ListRow>
             <ListRow className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3">
-              <IconCircle glyph={<span className="text-[11px] font-bold">AN</span>} />
+              <IconCircle glyph={<span className="text-xs font-bold">AN</span>} />
               <CellText title={k("s.person")} sub="03.10.2026" />
               <Tag>#1041</Tag>
             </ListRow>
@@ -288,7 +288,7 @@ export function TablesSection() {
       </Specimen>
       <Specimen name="table · page" usage={k("u.table")} stage="stretch">
         <div className={PANEL}>
-          <table className="w-full border-separate border-spacing-0 text-[13px]">
+          <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr className={`text-left ${EYEBROW_CLASS}`}>
                 {head.slice(0, 3).map((cell, index) => (
@@ -315,7 +315,7 @@ export function TablesSection() {
       </Specimen>
       <Specimen name="table · compact" usage={k("u.compact")} stage="stretch">
         <div className={DIALOG_BLOCK}>
-          <table className="w-full border-separate border-spacing-0 text-[12px]">
+          <table className="w-full border-separate border-spacing-0 text-xs">
             <thead>
               <tr className="text-left">
                 {head.slice(0, 3).map((cell) => (
@@ -394,7 +394,7 @@ function RowsDemo() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <div className="flex flex-col gap-2">
-        <p className="text-[12px] text-muted-foreground">{k("s.rowOnly")}</p>
+        <p className="text-xs text-muted-foreground">{k("s.rowOnly")}</p>
         <div className="rounded-[30px] outline-1 outline-dashed outline-primary">
           <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>
             <Switch checked={isOn} onChange={setIsOn} />
@@ -402,17 +402,17 @@ function RowsDemo() {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <p className="text-[12px] text-muted-foreground">{k("s.rowsOnly")}</p>
+        <p className="text-xs text-muted-foreground">{k("s.rowsOnly")}</p>
         <div className="rounded-2xl outline-1 outline-dashed outline-warning">
           <SectionRows flush>
-            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">1</div>
-            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">2</div>
-            <div className="flex h-15 items-center justify-center text-[12px] text-muted-foreground">3</div>
+            <div className="flex h-15 items-center justify-center text-xs text-muted-foreground">1</div>
+            <div className="flex h-15 items-center justify-center text-xs text-muted-foreground">2</div>
+            <div className="flex h-15 items-center justify-center text-xs text-muted-foreground">3</div>
           </SectionRows>
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <p className="text-[12px] text-muted-foreground">{k("s.rowsTogether")}</p>
+        <p className="text-xs text-muted-foreground">{k("s.rowsTogether")}</p>
         <div className="rounded-2xl outline-1 outline-dashed outline-warning">
           <SectionRows flush>
             <Row icon={User} label={k("s.status")} description={k("s.nameHint")}>

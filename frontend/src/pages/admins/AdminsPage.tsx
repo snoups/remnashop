@@ -109,7 +109,7 @@ export function AdminsPage() {
               <Pressable
                 type="button"
                 onClick={() => setIsCreating(true)}
-                className="group mb-2 flex min-h-15 w-full items-center gap-3 rounded-full border border-dashed border-glass-border px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+                className="group mb-2 flex min-h-15 w-full items-center gap-3 rounded-full border border-dashed border-glass-border px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
               >
                 <IconCircle icon={CreateAdminIcon} />
                 {t("admins.create.button")}
@@ -119,7 +119,7 @@ export function AdminsPage() {
                   <Row
                     key={admin.id}
                     glyph={
-                      <span className={`text-[11px] font-bold ${admin.id === currentUserId ? "text-primary" : ""}`}>
+                      <span className={`text-xs font-bold ${admin.id === currentUserId ? "text-primary" : ""}`}>
                         {initials(admin.login ?? admin.name)}
                       </span>
                     }

@@ -31,8 +31,8 @@ export function DebugKitPage() {
   return (
     <DebugShell bar={<DebugNav links={links} />}>
       <div className="flex items-baseline justify-between gap-4 px-1">
-        <p className="text-[12px] text-muted-foreground">{k("intro.caption")}</p>
-        <span className="shrink-0 font-mono text-[12px] text-muted-foreground">{k("intro.meta")}</span>
+        <p className="text-xs text-muted-foreground">{k("intro.caption")}</p>
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">{k("intro.meta")}</span>
       </div>
 
       <ButtonsSection />

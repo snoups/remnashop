@@ -36,7 +36,7 @@ function OneTimeSecretDialogBody({ title, value }: Omit<OneTimeSecretDialogProps
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-start gap-2 rounded-xl bg-error/10 px-3.5 py-2.5">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-error" />
-          <p className="text-[12px] leading-snug text-error">{t("app.secretShownOnce")}</p>
+          <p className="text-xs leading-snug text-error">{t("app.secretShownOnce")}</p>
         </div>
         <CopyInput id={id} value={value} />
       </div>

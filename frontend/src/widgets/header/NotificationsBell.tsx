@@ -208,7 +208,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       <IconButton size="9" tone={capsule ? "default" : "glass"} className="relative" onClick={onToggle}>
         <Bell className="size-4" />
         {unread > 0 && (
-          <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+          <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-none text-primary-foreground">
             {unread > MAX_BADGE ? `${MAX_BADGE}+` : unread}
           </span>
         )}
@@ -242,14 +242,14 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
               />
             </div>
           ) : (
-            <span className="min-w-0 flex-1 px-2.5 text-[13px] font-semibold text-foreground">
+            <span className="min-w-0 flex-1 px-2.5 text-sm font-semibold text-foreground">
               {t(activeTab === "news" ? "header.tabNews" : "header.tabEvents")}
             </span>
           )}
           {activeCount > 0 && (
             <Pressable
               onClick={clearActive}
-              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
             >
               <Trash2 className="size-4" />
               {t("header.clear")}
@@ -266,7 +266,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
           {loading ? (
             <Spinner size="card" />
           ) : failed ? (
-            <p className="px-2.5 py-8 text-center text-[12px] text-error">{t("header.notificationsLoadError")}</p>
+            <p className="px-2.5 py-8 text-center text-xs text-error">{t("header.notificationsLoadError")}</p>
           ) : activeCount === 0 ? (
             <EmptyState text={t("header.notificationsEmpty")} icon={Bell} />
           ) : activeTab === "events" ? (
@@ -305,11 +305,11 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                     <AnnouncementIcon icon={a.icon} className="size-3.5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium text-foreground">
+                    <span className="block truncate text-sm font-medium text-foreground">
                       {localized(a.title, i18n.language)}
                     </span>
-                    {text && <span className="line-clamp-2 text-[12px] text-muted-foreground">{text}</span>}
-                    <span className="block truncate text-[12px] text-muted-foreground">
+                    {text && <span className="line-clamp-2 text-xs text-muted-foreground">{text}</span>}
+                    <span className="block truncate text-xs text-muted-foreground">
                       {critical && `${t("announcements.critical")} · `}
                       {formatRelative(a.notify_at, i18n.language)}
                     </span>
@@ -349,7 +349,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
           <Pressable
             type="button"
             onClick={() => openEntry()}
-            className="mt-1 flex h-9 w-full shrink-0 items-center justify-center rounded-popover-item text-[13px] font-medium text-primary transition-colors hover:bg-white/[0.07]"
+            className="mt-1 flex h-9 w-full shrink-0 items-center justify-center rounded-popover-item text-sm font-medium text-primary transition-colors hover:bg-white/[0.07]"
           >
             {t("header.openEventLog")}
           </Pressable>

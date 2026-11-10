@@ -93,7 +93,7 @@ function ChangePlanBody({ plans, subscription, onChanged }: Omit<ChangePlanDialo
                 onDurationChange={setDuration}
                 keepLabel={t("subscriptions.duration.keep", { date: formatDate(subscription.expire_at, i18n.language) })}
               />
-              <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-[12px] text-warning">
+              <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-xs text-warning">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                 {t("subscriptions.plan.resetWarning")}
               </p>

@@ -79,11 +79,11 @@ export function ContentEditor({
           value={text}
           disabled={disabled}
           onChange={(value) => onChange(setText(form, activeLocale, value))}
-          className="min-h-48 w-full px-3.5 pb-10 pt-3 text-[13px] leading-relaxed text-foreground outline-none"
+          className="min-h-48 w-full px-3.5 pb-10 pt-3 text-sm leading-relaxed text-foreground outline-none"
         />
         {/* the length in the field's corner, as the glass TextArea's */}
         <span
-          className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[11px] tabular-nums ${
+          className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-xs tabular-nums ${
             length > limit ? "text-error" : "text-muted-foreground"
           }`}
         >

@@ -107,7 +107,7 @@ function RecapBody() {
             <div className="flex min-w-64 flex-1 flex-col gap-3">
               <DialogCard variant="form" title={t("recap.controls.blocks")}>
                 {BLOCKS.map((block) => (
-                  <div key={block} className="flex items-center justify-between gap-3 text-[13px] font-medium text-foreground">
+                  <div key={block} className="flex items-center justify-between gap-3 text-sm font-medium text-foreground">
                     {t(`recap.blocks.${block}`)}
                     <Switch
                       checked={blocks.includes(block)}

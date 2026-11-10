@@ -12,8 +12,8 @@ const WELL_CLASS =
 // number inputs drop the browser's spinner: the well has no room for it, and arrow keys still step
 const CONTROL_CLASS =
   "min-w-0 bg-transparent outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
-const TEXT_CLASS = "text-[13px] text-foreground";
-const MONO_CLASS = "font-mono text-[12px] text-muted-foreground";
+const TEXT_CLASS = "text-sm text-foreground";
+const MONO_CLASS = "font-mono text-xs text-muted-foreground";
 
 const HEIGHT = { sm: "h-8", md: "h-9" } as const;
 
@@ -36,7 +36,7 @@ export function Input({ size = "md", suffix, end, mono = false, className = "", 
     <label className={`flex cursor-text items-center rounded-full ${HEIGHT[size]} ${WELL_CLASS} ${end ? "pr-1" : ""} ${className}`}>
       {/* size 1: the default 20-character width would hold the well wider than its layout */}
       <input size={1} {...requiredProps} className={`flex-1 px-3.5 ${CONTROL_CLASS} ${mono ? MONO_CLASS : TEXT_CLASS}`} {...props} />
-      {suffix != null && <span className="shrink-0 pr-3.5 text-[13px] text-muted-foreground">{suffix}</span>}
+      {suffix != null && <span className="shrink-0 pr-3.5 text-sm text-muted-foreground">{suffix}</span>}
       {end}
     </label>
   );
@@ -94,7 +94,7 @@ export function TextArea({
     <label className={`flex cursor-text overflow-hidden rounded-[18px] ${WELL_CLASS} ${className}`}>
       <textarea
         required={required}
-        className={`w-full resize-none px-3.5 py-3 leading-5 ${CONTROL_CLASS} ${mono ? "font-mono text-[12px] text-foreground" : TEXT_CLASS}`}
+        className={`w-full resize-none px-3.5 py-3 leading-5 ${CONTROL_CLASS} ${mono ? "font-mono text-xs text-foreground" : TEXT_CLASS}`}
         {...props}
       />
     </label>

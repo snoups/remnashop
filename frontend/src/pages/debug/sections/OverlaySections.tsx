@@ -30,7 +30,7 @@ import { initials } from "@shared/lib/initials";
 
 const TOOLTIP_SIDES = ["right", "bottom", "top", "top-start", "top-end"] as const;
 const MENU_ITEM =
-  "flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium text-foreground transition-colors hover:bg-white/[0.07]";
+  "flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-white/[0.07]";
 const noop = () => undefined;
 
 const SAMPLE_STORIES: Announcement[] = [
@@ -78,7 +78,7 @@ function DemoModalBody() {
     <>
       <DialogHeader icon={Layers} title="Modal" />
       <div className="flex flex-col gap-4 p-4">
-        <p className="text-[13px] text-muted-foreground">{k("s.modalText")}</p>
+        <p className="text-sm text-muted-foreground">{k("s.modalText")}</p>
         <Button variant="outline" onClick={close}>
           {k("s.close")}
         </Button>
@@ -104,7 +104,7 @@ export function DialogsSection() {
           </div>
           <div className={frame}>
             <DialogHeader
-              glyph={<span className="text-[11px] font-bold">{initials(k("s.person"))}</span>}
+              glyph={<span className="text-xs font-bold">{initials(k("s.person"))}</span>}
               title={k("s.person")}
               subtitle={<span className="font-mono">anna</span>}
             />
@@ -227,7 +227,7 @@ export function HintsSection() {
                 <Settings className="size-4" />
                 <Tooltip text={k("s.tooltipSide", { side })} side={side} />
               </IconButton>
-              <span className="font-mono text-[11px] text-muted-foreground">{side}</span>
+              <span className="font-mono text-xs text-muted-foreground">{side}</span>
             </div>
           ))}
           <IconButton size="9" tone="glass" className="group relative">
@@ -293,7 +293,7 @@ export function MenusSection() {
       </Specimen>
       <Specimen name="POPOVER_CLASS · p-1.5 · p-3 · solid" usage={k("u.popover")}>
         <div className={`${POPOVER_CLASS} w-44 p-1.5`}>{items}</div>
-        <div className={`${POPOVER_CLASS} w-44 p-3 text-[12.5px] text-muted-foreground`}>{k("s.body")}</div>
+        <div className={`${POPOVER_CLASS} w-44 p-3 text-sm text-muted-foreground`}>{k("s.body")}</div>
         <div className="w-44 rounded-popover border border-white/[0.14] bg-popover p-1.5">{items}</div>
       </Specimen>
     </DebugSection>
@@ -322,7 +322,7 @@ export function StatesSection() {
           {isOpen ? k("s.hide") : k("s.show")}
         </Button>
         <Collapse open={isOpen}>
-          <p className="rounded-xl bg-white/[0.04] p-3 text-[13px] text-foreground/80">{k("s.collapseText")}</p>
+          <p className="rounded-xl bg-white/[0.04] p-3 text-sm text-foreground/80">{k("s.collapseText")}</p>
         </Collapse>
       </Specimen>
       <Specimen name='EmptyState size="page | card" · icon' usage={k("u.empty")} stage="stretch" wide>

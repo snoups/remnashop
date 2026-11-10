@@ -329,7 +329,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
                     const price = ladderPrice(days);
                     return (
                       <div key={days} className="grid grid-cols-[72px_minmax(0,1fr)_96px] items-center gap-2">
-                        <span className="text-[13px] text-foreground">{t("plans.daysShort", { count: days })}</span>
+                        <span className="text-sm text-foreground">{t("plans.daysShort", { count: days })}</span>
                         <Input
                           type="number"
                           step="any"
@@ -341,7 +341,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
                           aria-invalid={!isValidDiscount(form.ladder[days])}
                           suffix="%"
                         />
-                        <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                        <span className="text-right text-xs tabular-nums text-muted-foreground">
                           {price === null ? "" : `${price} ${currency}`}
                         </span>
                       </div>

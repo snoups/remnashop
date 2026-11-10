@@ -225,17 +225,17 @@ export function PromocodesPage() {
                       >
                         <IconCircle icon={Ticket} tone={promoStatus === "ACTIVE" ? "success" : "neutral"} />
                         <span className="min-w-0">
-                          <span className="block truncate font-mono text-[13px] font-medium text-foreground">{promo.code}</span>
-                          <span className="block truncate text-[12px] text-muted-foreground">
+                          <span className="block truncate font-mono text-sm font-medium text-foreground">{promo.code}</span>
+                          <span className="block truncate text-xs text-muted-foreground">
                             {t(`promocodes.rewardType.${promo.reward_type}`)}
                             {" · "}
                             <span className="font-medium text-foreground/80">{describeReward(promo, addons, plans, t)}</span>
                           </span>
                         </span>
-                        <span className="truncate text-[13px] text-foreground">
+                        <span className="truncate text-sm text-foreground">
                           {t(`promocodes.availability.${promo.availability}`)}
                         </span>
-                        <span className="text-[13px] tabular-nums text-foreground">
+                        <span className="text-sm tabular-nums text-foreground">
                           {promo.activations_count}{" "}
                           <span className="text-muted-foreground">
                             {t("promocodes.details.ofMax", { max: promo.max_activations ?? "∞" })}
@@ -244,15 +244,15 @@ export function PromocodesPage() {
                         <span className="tabular-nums">
                           {promo.expires_at ? (
                             <>
-                              <span className="block text-[13px] text-foreground">
+                              <span className="block text-sm text-foreground">
                                 {formatDate(promo.expires_at, i18n.language)}
                               </span>
-                              <span className={`block text-[12px] ${expiryToneClassName(daysUntil(promo.expires_at))}`}>
+                              <span className={`block text-xs ${expiryToneClassName(daysUntil(promo.expires_at))}`}>
                                 {relativeTime.format(daysUntil(promo.expires_at), "day")}
                               </span>
                             </>
                           ) : (
-                            <span className="text-[13px] text-foreground">{t("promocodes.noExpiry")}</span>
+                            <span className="text-sm text-foreground">{t("promocodes.noExpiry")}</span>
                           )}
                         </span>
                         <span>

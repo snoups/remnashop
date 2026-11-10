@@ -42,4 +42,4 @@ export function formatChartDayLong(iso: string, language: string): string {
 }
 
 // theme tokens, not hex: --color-primary follows the dashboard's appearance settings
-export const CHART_TICK = { fill: "var(--color-muted-foreground)", fontSize: 11 };
+export const CHART_TICK = { fill: "var(--color-muted-foreground)", fontSize: 12 };

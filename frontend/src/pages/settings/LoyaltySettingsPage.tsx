@@ -253,7 +253,7 @@ export function LoyaltySettingsPage() {
                       key={index}
                       className={`${TIER_ROW_CLASS} min-h-15 rounded-full px-3.5 transition-colors ${isDisabled ? "" : "hover:bg-white/[0.04]"}`}
                     >
-                      <IconCircle glyph={<span className="text-[13px] font-semibold">{index + 1}</span>} />
+                      <IconCircle glyph={<span className="text-sm font-semibold">{index + 1}</span>} />
                       <Input
                         type="number"
                         min={0}
@@ -305,7 +305,7 @@ export function LoyaltySettingsPage() {
             </div>
           </div>
           {showTiersError && needsTier && (
-            <p className="mt-2 px-3.5 text-[12px] text-error">{t("loyalty.settings.tiersRequired")}</p>
+            <p className="mt-2 px-3.5 text-xs text-error">{t("loyalty.settings.tiersRequired")}</p>
           )}
         </div>
       </Section>

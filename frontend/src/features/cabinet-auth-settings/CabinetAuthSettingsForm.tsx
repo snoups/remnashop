@@ -231,7 +231,7 @@ export function CabinetAuthSettingsForm({ emailVersion }: { emailVersion: number
           isEmail && (
             // 2px past the panel's 14px: the switch under the row's own (16px in)
             <div className="flex items-center gap-3 pr-0.5">
-              <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground">
+              <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
                 {t("settings.cabinetAuth.restrictDomains")}
               </span>
               <Button variant="glass" size="sm" onClick={() => setIsDomainsOpen(true)}>

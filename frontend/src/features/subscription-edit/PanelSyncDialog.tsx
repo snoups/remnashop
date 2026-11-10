@@ -90,7 +90,7 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
       <div className="p-4">
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
-        {missing && <p className="text-[13px] text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
+        {missing && <p className="text-sm text-foreground/80">{t("subscriptions.panelSync.missing")}</p>}
         {inSync && <EmptyState text={t("subscriptions.panelSync.inSync")} icon={CircleCheck} />}
         {canPush && state.kind === "ready" && state.diff.missing_squads.length > 0 && (
           <div className="mb-4">
@@ -102,14 +102,14 @@ function PanelSyncBody({ subscription, onApplied }: Omit<PanelSyncDialogProps, "
           </div>
         )}
         {state.kind === "ready" && state.diff.fields.length > 0 && (
-          <div className="flex flex-col gap-1.5 text-[12px]">
+          <div className="flex flex-col gap-1.5 text-xs">
             <div className="grid grid-cols-3 gap-3 text-muted-foreground">
               <span>{t("subscriptions.panelSync.columns.field")}</span>
               <span>{t("subscriptions.panelSync.columns.shop")}</span>
               <span>{t("subscriptions.panelSync.columns.panel")}</span>
             </div>
             {state.diff.fields.map((diff) => {
-              const valueClass = `break-all ${MONO_FIELDS.has(diff.field) ? "font-mono text-[12px]" : ""}`;
+              const valueClass = `break-all ${MONO_FIELDS.has(diff.field) ? "font-mono text-xs" : ""}`;
               return (
                 <div key={diff.field} className="grid grid-cols-3 gap-3">
                   <span>{t(`subscriptions.panelSync.fieldNames.${diff.field}` as ParseKeys)}</span>

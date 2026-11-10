@@ -12,9 +12,9 @@ const TONE_CLASS: Record<BadgeTone, string> = {
 };
 
 const SHAPE_CLASS = {
-  pill: "gap-1 px-2 py-0.5 text-[11px] uppercase tracking-wide",
+  pill: "gap-1 px-2 py-0.5 text-xs uppercase tracking-wide",
   // a circle for one digit, stretching into a pill for more
-  count: "h-6 min-w-6 justify-center px-1.5 text-[11px] tabular-nums",
+  count: "h-6 min-w-6 justify-center px-1.5 text-xs tabular-nums",
 } as const;
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {

@@ -99,7 +99,7 @@ export function EmailPreview({ visible, broadcastId, savedAt, dirty, locale, can
         // an inbox's view of it: the subject on a header strip, the letter under it
         <div className={`${GLASS_PLATE_CLASS} overflow-hidden`}>
           <div className="border-b border-white/[0.08] px-3.5 py-2.5">
-            <p className="truncate text-[13px]">
+            <p className="truncate text-sm">
               <span className="text-muted-foreground">{t("broadcasts.editor.emailPreview.subjectLabel")} </span>
               <span className={preview.subject ? "font-medium text-foreground" : "text-muted-foreground"}>
                 {preview.subject || t("broadcasts.editor.emailPreview.noSubject")}

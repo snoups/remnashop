@@ -67,12 +67,12 @@ export function SecurityForm() {
               aria-invalid={invalidEntries.length > 0}
             />
             {invalidEntries.length > 0 && (
-              <p className="text-[12px] text-error">
+              <p className="text-xs text-error">
                 {t("profile.accountSecurity.invalidEntries", { entries: invalidEntries.join(", ") })}
               </p>
             )}
             {clientIp && (
-              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{t("profile.accountSecurity.currentIp", { ip: clientIp })}</span>
                 {!isIpCovered(clientIp, entries) && (
                   <Button variant="glass" size="sm" icon={Plus} onClick={() => setText(entries.concat(clientIp).join("\n"))}>

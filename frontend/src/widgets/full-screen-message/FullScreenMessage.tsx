@@ -6,7 +6,7 @@ import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 
 // Button's glassSolid, full width: the card's one action
 export const FULL_SCREEN_ACTION_CLASS =
-  "flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-transparent bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] transition-colors hover:bg-primary-hover";
+  "flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-transparent bg-primary px-3.5 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] transition-colors hover:bg-primary-hover";
 
 const TONE_CLASS = {
   primary:
@@ -40,7 +40,7 @@ export function FullScreenMessage({ icon: Icon, tone, code, title, description, 
         <div className="flex flex-col gap-2">
           {code && <span className="font-mono text-[28px] font-bold tracking-tight text-foreground">{code}</span>}
           <h1 className={SCREEN_TITLE_CLASS}>{title}</h1>
-          <p className="text-[13px] text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         {action}
       </div>

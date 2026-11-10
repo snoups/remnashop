@@ -115,7 +115,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
                 />
               </Field>
             </div>
-            <p className="text-[12px] text-muted-foreground">{t("plans.discount.stackingHint")}</p>
+            <p className="text-xs text-muted-foreground">{t("plans.discount.stackingHint")}</p>
           </div>
         </div>
 

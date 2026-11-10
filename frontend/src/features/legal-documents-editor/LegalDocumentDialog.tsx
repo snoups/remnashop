@@ -205,7 +205,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <div className="min-w-0 flex-1">
             {(pending.length > 0 || visibilityChanged) && (
-              <span className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="size-1.5 shrink-0 rounded-full bg-warning" />
                 {t("common.unsavedChanges")}
               </span>

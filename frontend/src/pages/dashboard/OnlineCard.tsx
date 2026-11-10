@@ -36,7 +36,8 @@ function OnlineView({
   // same cut as TrendChart's "not enough data": a lone 0 next to it reads as a real value
   const hasData = data.filter((point) => point.value).length >= MIN_CHART_POINTS;
   return (
-    <div className="flex flex-col gap-3 pt-4">
+    // no pt-4 under "not enough data": the message centres in the body, level with the nodes card beside it
+    <div className={`flex flex-col gap-3 ${hasData ? "pt-4" : ""}`}>
       {hasData && (
         <div className="flex flex-wrap items-center gap-2.5">
           <span className={`${KPI_VALUE_CLASS} text-foreground`}>{current.toLocaleString(i18n.language)}</span>

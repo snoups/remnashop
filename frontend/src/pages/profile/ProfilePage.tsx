@@ -49,12 +49,12 @@ export function ProfilePage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-[15px] font-semibold tracking-tight text-foreground">{state.data.name}</span>
+                      <span className="truncate text-base font-semibold tracking-tight text-foreground">{state.data.name}</span>
                       <Badge tone={ROLE_BADGE_TONE[state.data.role]}>
                         {t(`roles.${state.data.role}`)}
                       </Badge>
                     </div>
-                    <div className="truncate text-[12px] text-muted-foreground">{state.data.login ?? t("header.account")}</div>
+                    <div className="truncate text-xs text-muted-foreground">{state.data.login ?? t("header.account")}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <EditProfileDialog name={state.data.name} login={state.data.login} />

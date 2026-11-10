@@ -5,9 +5,9 @@ import type { ReactNode } from "react";
 import { Pressable } from "@shared/ui/Pressable";
 
 // outline/danger: neutral and destructive actions outside the glass design (14px).
-// secondary: card-header actions and buttons next to a field (12.5px semibold).
+// secondary: card-header actions and buttons next to a field (14px semibold).
 // glass: PillTabs' capsule fill, for actions beside one; glassAccent: its primary action, glassDanger:
-// its destructive one (13px medium); glassSolid: full primary, the one action of a page like sign-in.
+// its destructive one (14px medium); glassSolid: full primary, the one action of a page like sign-in.
 export type ButtonVariant =
   | "outline"
   | "secondary"
@@ -30,16 +30,16 @@ const COLOR_CLASS: Record<ButtonVariant, string> = {
 
 const TYPE_CLASS: Record<ButtonVariant, string> = {
   outline: "px-4 text-sm font-medium",
-  secondary: "px-3.5 text-[12.5px] font-semibold",
-  glass: "px-3.5 text-[13px] font-medium",
-  glassAccent: "px-3.5 text-[13px] font-medium",
-  glassSolid: "px-3.5 text-[13px] font-semibold",
-  glassDanger: "px-3.5 text-[13px] font-medium",
+  secondary: "px-3.5 text-sm font-semibold",
+  glass: "px-3.5 text-sm font-medium",
+  glassAccent: "px-3.5 text-sm font-medium",
+  glassSolid: "px-3.5 text-sm font-semibold",
+  glassDanger: "px-3.5 text-sm font-medium",
   danger: "px-4 text-sm font-medium",
 };
 
 // sm: 32px, for actions inside list rows; one typography for every variant
-const SM_TYPE_CLASS = "px-3 text-[12.5px]";
+const SM_TYPE_CLASS = "px-3 text-sm";
 
 // field: 38px, lines up with a text input in the same row
 const SIZE_CLASS = { sm: "h-8", md: "h-9", field: "h-9.5" } as const;
@@ -67,7 +67,7 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  // the glass pair keeps its 13px medium at every height
+  // the glass pair keeps its 14px medium at every height
   const isGlass = variant.startsWith("glass");
   const typography =
     size === "sm" && !isGlass
@@ -81,7 +81,7 @@ export function Button({
       disabled={disabled || isLoading}
       {...props}
     >
-      {/* glass buttons (36px, 13px text) take 16px icons, about the text's line height */}
+      {/* glass buttons (36px, 14px text) take 16px icons, about the text's line height */}
       {isLoading ? (
         <Loader2 className={`${isGlass ? "size-4" : "size-3.5"} animate-spin`} />
       ) : (

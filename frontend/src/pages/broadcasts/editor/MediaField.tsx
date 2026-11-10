@@ -57,7 +57,7 @@ export function MediaField({ broadcast, fileName, canSet, canDelete, onChanged }
       <div className="flex flex-wrap items-center gap-3 rounded-[18px] border border-dashed border-white/[0.18] bg-black/[0.24] py-2 pl-3.5 pr-2">
         {input}
         <FileUp className="size-5 text-muted-foreground" />
-        <span className="min-w-0 flex-1 text-[12px] text-muted-foreground">
+        <span className="min-w-0 flex-1 text-xs text-muted-foreground">
           {t(broadcast ? "broadcasts.editor.media.hint" : "broadcasts.editor.media.saveFirst")}
         </span>
         <Button
@@ -78,10 +78,10 @@ export function MediaField({ broadcast, fileName, canSet, canDelete, onChanged }
         <Image className="size-5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-[13px] font-medium text-foreground">
+        <span className="truncate text-sm font-medium text-foreground">
           {fileName ?? t(`broadcasts.media.${broadcast.media_type}`)}
         </span>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {[
             t(`broadcasts.media.${broadcast.media_type}`),
             broadcast.media_size_bytes !== null ? formatBytes(broadcast.media_size_bytes, i18n.language) : null,

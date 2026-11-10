@@ -167,7 +167,7 @@ export function GatewaySettingsCard({
         logoUrl ? (
           <img src={logoUrl} alt="" className="size-[22px] rounded-[6px] object-contain" />
         ) : (
-          <span className="text-[13px] font-semibold">{label.charAt(0)}</span>
+          <span className="text-sm font-semibold">{label.charAt(0)}</span>
         )
       }
       label={label}
@@ -192,10 +192,10 @@ export function GatewaySettingsCard({
               // 2px past the panel's 14px: the switch under the row's own (16px in)
               <div key={field.key} className="flex items-center gap-3 pr-0.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-foreground">
+                  <p className="text-sm font-medium text-foreground">
                     {t(`settings.gateways.fields.${field.key}` as ParseKeys)}
                   </p>
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {t(`settings.gateways.flagHints.${field.key}` as ParseKeys)}
                   </p>
                 </div>
@@ -249,7 +249,7 @@ export function GatewaySettingsCard({
             )}
             {testStatus !== null && (
               <p
-                className={`text-[12px] ${
+                className={`text-xs ${
                   testStatus === "PAID"
                     ? "text-success"
                     : testStatus === "PENDING"

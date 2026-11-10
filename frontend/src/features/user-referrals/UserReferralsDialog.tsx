@@ -63,7 +63,7 @@ function UserReferralsDialogBody({
   return (
     <>
       <DialogHeader
-        glyph={<span className="text-[11px] font-bold">{initials(userName)}</span>}
+        glyph={<span className="text-xs font-bold">{initials(userName)}</span>}
         title={userName}
         actions={
           stats?.referrer && (

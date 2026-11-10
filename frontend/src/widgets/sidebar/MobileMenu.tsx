@@ -10,6 +10,7 @@ import { useBrandName } from "@entities/appearance/use-appearance";
 import { usePermissions } from "@entities/user/use-current-user";
 import { IconButton } from "@shared/ui/IconButton";
 import { useDialogFocus } from "@shared/ui/modal-hooks";
+import { Ripple } from "@shared/ui/Ripple";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -45,7 +46,7 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
       >
         <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4">
           <BrandMark className="size-7 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-base font-bold">{brandName}</span>
+          <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight">{brandName}</span>
           <IconButton size="9" onClick={onClose}><X className="size-5" /></IconButton>
         </div>
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-3">
@@ -55,8 +56,9 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
               to={to}
               end={end}
               onClick={onClose}
-              className={({ isActive }) => `flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm font-medium ${isActive ? "bg-accent text-primary" : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"}`}
+              className={({ isActive }) => `relative flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm font-medium ${isActive ? "bg-accent text-primary" : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"}`}
             >
+              <Ripple />
               <Icon className="size-5 shrink-0" />
               {t(`sidebar.${key}`)}
             </NavLink>

@@ -46,7 +46,7 @@ export function LocaleTabs({
               <span className="flex items-center gap-1.5">
                 {locale.toUpperCase()}
                 {locale === form.default_locale && (
-                  <span className="text-[11px] opacity-80">{t("broadcasts.editor.defaultLocale")}</span>
+                  <span className="text-xs opacity-80">{t("broadcasts.editor.defaultLocale")}</span>
                 )}
               </span>
             ),

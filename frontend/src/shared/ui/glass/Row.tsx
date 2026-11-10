@@ -50,12 +50,12 @@ export function Row({ icon, tone, glyph, label, description, hint, children, onC
       {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} tone={tone} />}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className={`flex items-center gap-1.5 text-[13px] font-medium text-foreground ${small ? "min-w-0 leading-tight" : "leading-5"}`}>
+          <p className={`flex items-center gap-1.5 text-sm font-medium text-foreground ${small ? "min-w-0 leading-tight" : "leading-5"}`}>
             {small && typeof label === "string" ? <span className="truncate">{label}</span> : label}
             {hint && <FieldHint text={hint} />}
           </p>
           {description && (
-            <div className={`text-[12px] text-muted-foreground ${small ? "truncate leading-tight" : "mt-0.5 leading-4"}`}>{description}</div>
+            <div className={`text-xs text-muted-foreground ${small ? "truncate leading-tight" : "mt-0.5 leading-4"}`}>{description}</div>
           )}
         </div>
         {expanded !== undefined && chevron && (

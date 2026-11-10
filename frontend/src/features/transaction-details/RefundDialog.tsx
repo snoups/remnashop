@@ -31,13 +31,13 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
   const close = useModalClose();
   const [rollbackOn, setRollbackOn] = useState(false);
   const { rollback } = preview;
-  const hint = "text-[12px] text-muted-foreground";
+  const hint = "text-xs text-muted-foreground";
 
   return (
     <>
       <DialogHeader icon={Undo2} danger title={t("transactions.refund.title")} />
 
-      <div className="flex flex-col gap-3 p-4 text-[13px] text-foreground/80">
+      <div className="flex flex-col gap-3 p-4 text-sm text-foreground/80">
         {!preview.refundable ? (
           <p>{t(`transactions.refund.notRefundable.${preview.reason}` as ParseKeys)}</p>
         ) : (

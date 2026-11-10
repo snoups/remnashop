@@ -23,7 +23,7 @@ interface SectionProps {
   children: ReactNode;
 }
 
-/** A settings card: header (icon, 15px title, description, actions), a line across, then
+/** A settings card: header (icon, 16px title, description, actions), a line across, then
  *  SectionRows / SectionFields, then the footer. glass-panel, 24px corners, 16px inset. */
 export function Section({ id, icon, title, description, aside, footer, flush = false, stretched = false, className = "", children }: SectionProps) {
   return (
@@ -31,8 +31,8 @@ export function Section({ id, icon, title, description, aside, footer, flush = f
       <header className={`flex flex-wrap items-center gap-3 ${flush ? "px-4 pt-4" : ""}`}>
         <IconCircle icon={icon} header />
         <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
-          {description && <p className="mt-0.5 text-[12px] text-muted-foreground">{description}</p>}
+          <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">{title}</h2>
+          {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
         </div>
         {/* shrink-0: a w-full control (PillTabs) would otherwise share the line with the title */}
         {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
