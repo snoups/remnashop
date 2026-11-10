@@ -70,7 +70,7 @@ async def subscriptions_list_getter(
     runner = get_translator(i18n, user)
     subscriptions = await list_own_subscriptions(user)
     active = [s for s in subscriptions if s.status is not SubscriptionStatus.EXPIRED]
-    can_purchase, referral_enabled = await menu_flags(
+    can_purchase, referral_enabled, single_subscription = await menu_flags(
         subscriptions, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
@@ -80,6 +80,7 @@ async def subscriptions_list_getter(
         cabinet_url=config.cabinet.url,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
+        single_subscription=single_subscription,
     )
     data["banner"] = await _window_banner(
         "subscriptions.list", dialog_config_cache, get_banner, config, user

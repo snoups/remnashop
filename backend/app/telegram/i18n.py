@@ -21,8 +21,10 @@ def build_translator_hub(
     translators = [
         FluentTranslator(
             locale=locale.value,
+            # bidi marks around a placeable on its own line show up in Telegram
+            # as an empty line, e.g. before a select's <blockquote>
             translator=FluentBundle.from_string(  # type: ignore[no-untyped-call]
-                locale.value, text=translations_by_locale[locale]
+                locale.value, text=translations_by_locale[locale], use_isolating=False
             ),
         )
         for locale in active_locales

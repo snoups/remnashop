@@ -115,6 +115,31 @@ async def test_reseed_refreshes_snapshot_but_keeps_edited_buttons(
     assert [b.text_key for b in reset.buttons] == ["btn-menu.subscription", "btn-menu.trial"]
 
 
+async def test_reseed_moves_untouched_buttons_to_the_new_layout(
+    dialog_repository: DialogRepository,
+) -> None:
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
+    moved = {**_SNAPSHOT["buttons"][0], "row": 2, "column": 1}
+    trial = {
+        "key": "trial",
+        "text_key": "btn-menu.trial",
+        "row": 0,
+        "column": 0,
+        "link_type": "action",
+        "action_key": "get_trial",
+    }
+
+    await dialog_repository.upsert_seed(
+        "menu.main", DialogFlow.MENU, "menu", {"banner_name": "menu", "buttons": [moved, trial]}
+    )
+
+    window = await dialog_repository.get_by_key_or_raise("menu.main")
+    assert [(b.text_key, b.row, b.column) for b in window.buttons] == [
+        ("btn-menu.trial", 0, 0),
+        ("btn-menu.subscription", 2, 1),
+    ]
+
+
 async def test_update_window_clears_banner_only_when_told_to(
     dialog_repository: DialogRepository,
 ) -> None:

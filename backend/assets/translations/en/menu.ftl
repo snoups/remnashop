@@ -35,20 +35,20 @@ frg-menu-subscription =
                    *[RESET] Traffic is restored at the start of the next period. You can also buy a subscription to use the service without limits.
                 }
             }</i></blockquote>
-        [DISABLED]
+       *[DISABLED]
             <blockquote>• Your subscription is disabled.
 
             <i>Contact support to find out why.</i></blockquote>
-       *[NONE]
-            <blockquote>• You have no subscription.
-
-            <i>{ $trial_available ->
-                [1] 🎁 A free trial is available to you — tap the button below to get it.
-               *[0] ↘️ To get access, tap “Buy a subscription”.
-            }</i></blockquote>
     }
 
     More subscriptions: { $extra_count } — see “My subscriptions”.
+frg-menu-no-subscription =
+    <blockquote>You have no subscription.
+
+    <i>{ $trial_available ->
+        [1] 🎁 A free trial is available to you — tap the button below to get it.
+       *[0] ↘️ To get access, tap “Buy a subscription”.
+    }</i></blockquote>
 frg-subscription-status = { $status ->
         [ACTIVE] Active
         [LIMITED] Traffic limit reached
@@ -68,19 +68,29 @@ msg-menu-devices-confirm-reissue = Reissue the connection link? The old link wil
 
 btn-menu =
     .connect = Connect
+    .connect-icon = 🚀
     .connect-not-available = Connection unavailable
+    .connect-not-available-icon = ⚠️
     .trial = Try for free
+    .trial-icon = 🎁
     .trial-paid = Trial — { $trial_price }
+    .trial-paid-icon = 🚀
     .devices = Devices
     .devices-icon = 📱
     .support = Support
     .support-icon = 🆘
     .web-cabinet = Web cabinet
     .web-cabinet-icon = 🌐
+    .subscription = Subscription
+    .subscription-icon = 💳
     .subscriptions = My subscriptions
+    .subscriptions-icon = 💳
     .purchase = Buy a subscription
+    .purchase-icon = 💸
     .promocode = Promocode
+    .promocode-icon = 🎟
     .referrals = Referrals
+    .referrals-icon = 👥
     .legal = Documents
 
 btn-legal =
@@ -104,10 +114,15 @@ btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
     .empty = No connected devices
     .delete-all = Delete all devices
+    .delete-all-icon = 🗑
     .reissue = Reissue link
+    .reissue-icon = 🔄
     .confirm-delete = Yes, delete
+    .confirm-delete-icon = ✅
     .confirm-reissue = Yes, reissue
+    .confirm-reissue-icon = ✅
     .cancel-reissue = Cancel
+    .cancel-reissue-icon = ❌
 
 msg-subscriptions-list = Your subscriptions. Pick one to see its details.
 msg-subscription-card =
@@ -130,31 +145,96 @@ msg-subscription-card =
        *[other] { $device_limit }
     }
 msg-referrals =
-    Invite friends and get rewards.
+    <b>👥 Invite friends</b>
 
-    Level 1: { $referrals_level_1 }
-    Level 2: { $referrals_level_2 }
-    Points: { $points }
-    Bonus days: { $bonus_days }
+    Share your unique link and get rewards!
 
-    { $referral_url }
+    <b>📊 Statistics</b>:
+    <blockquote>• <b>Invited by you</b>: { $referrals_level_1 }
+    • <b>Invited by your friends</b>: { $referrals_level_2 }
+    • <b>Points</b>: { $points }
+    • <b>Bonus days</b>: { $bonus_days }</blockquote>
 
 btn-subscriptions =
     .purchase = Buy a subscription
+    .purchase-icon = 💸
 
 btn-subscription =
     .renew = Renew
+    .renew-icon = 🔄
     .change = Change plan
+    .change-icon = 🔃
 
+msg-referrals-about =
+    <b>❓ How does it work?</b>
+
+    <b>1️⃣ Share your link</b>
+    <blockquote>Send it to a friend or show the QR code.</blockquote>
+
+    <b>2️⃣ Your friend signs up with it</b>
+    <blockquote>{ $invitee_reward_amount ->
+        [0] And becomes your referral.
+       *[other] And gets +{ $invitee_reward_amount } { $invitee_reward_type ->
+            [POINTS] { $invitee_reward_amount ->
+                [one] point
+               *[other] points
+            }
+           *[EXTRA_DAYS] { $invitee_reward_amount ->
+                [one] bonus day
+               *[other] bonus days
+            }
+        } right away.
+    }</blockquote>
+
+    <b>3️⃣ Your friend pays for a subscription</b>
+    <blockquote>You get { $reward_terms }. { $accrual_strategy ->
+        [EVERY_PAYMENT] For each of their payments: a purchase, a renewal and a plan change.
+       *[FIRST_PAYMENT] For their first payment only.
+    }
+    { $reward_levels }</blockquote>
+
+    { $reward_type ->
+        [POINTS] <b>4️⃣ Exchange your points</b>
+        <blockquote>Tap “Withdraw points” and message support — an administrator will make the exchange.</blockquote>
+       *[EXTRA_DAYS] <b>4️⃣ Apply your bonus days</b>
+        <blockquote>Add them to any of your subscriptions.</blockquote>
+    }
+
+    <i>You can only invite someone who doesn't use the service yet. Trial subscriptions and ones from a promo code earn no reward. If a payment is refunded, its reward is cancelled.</i>
+frg-referral-terms = { $reward_strategy ->
+        [PERCENT] { $reward_type ->
+            [POINTS] { $amount }% of a friend's payment as points
+           *[EXTRA_DAYS] { $amount }% of the days your friend buys, as bonus days
+        }
+       *[AMOUNT] { $reward_type ->
+            [POINTS] +{ $amount } { $amount ->
+                [one] point
+               *[other] points
+            } for a friend's payment
+           *[EXTRA_DAYS] +{ $amount } { $amount ->
+                [one] day
+               *[other] days
+            } for a friend's payment
+        }
+    }
+frg-referral-levels = Friends of your friends earn you a reward too:
+frg-referral-level = Level { $level } — { $terms }
 msg-referrals-redeem-target = Choose which subscription gets your { $bonus_days } bonus days:
 
 btn-referrals =
+    .about = How does it work?
+    .about-icon = ❓
     .copy = Copy link
+    .copy-icon = 📋
     .share = Share link
+    .share-icon = 📩
     .withdraw = Withdraw points
+    .withdraw-icon = 💎
     .redeem = Redeem bonus days
     .qr = QR code
+    .qr-icon = 🧾
     .reset-code = New referral link
+    .reset-code-icon = 🔄
 
 btn-back =
     .general = Back
@@ -209,10 +289,14 @@ btn-purchase =
     .duration = { $days } d — { $price } { $currency_symbol }
     .method = { $gateway } — { $price } { $currency_symbol }
     .pay = Pay
+    .pay-icon = 💳
     .go-to-payment = Go to payment
+    .go-to-payment-icon = 💳
     .menu = Main menu
+    .menu-icon = ↩️
     .link-renew = Renew: { $subscription }
     .link-new = Buy a new one
+    .link-new-icon = 💸
 
 msg-payment-result-success =
     <b>✅ Payment successful!</b>
@@ -230,8 +314,10 @@ msg-payment-result-canceled = <b>Payment canceled.</b> The order is no longer va
 
 btn-payment-result =
     .subscription = My subscription
+    .subscription-icon = 💳
     .retry = Try again
     .menu = Main menu
+    .menu-icon = ↩️
 
 gateway-name =
     .TELEGRAM_STARS = Telegram Stars
@@ -276,11 +362,44 @@ ntf-promocode =
     .activation-failed = Failed to activate the promocode. Please try again later.
     .too-many-attempts = Too many attempts. Try again in a minute.
 
-msg-promocode-input = Enter your promocode:
-msg-promocode-target = Choose which subscription to apply the promocode to:
-msg-promocode-confirm = Code: { $promo_code }
-    Reward: { $promo_reward_type } { $promo_reward }
-msg-promocode-confirm-will-replace = ⚠️ This will replace your current subscription.
+msg-promocode-input =
+    <b>🎟 Promo code</b>
+
+    Send your promo code as a message.
+msg-promocode-target =
+    <b>🎟 Promo code</b>
+
+    Choose which subscription to apply the promo code to.
+msg-promocode-confirm =
+    <b>🎟 Promo code <code>{ $promo_code }</code></b>
+
+    🎁 You'll get: { $promo_reward_type ->
+        [DURATION] <b>+{ $promo_reward } { $promo_reward ->
+            [one] day
+           *[other] days
+        }</b> on your subscription.
+        [TRAFFIC] <b>+{ $promo_reward } GB</b> of traffic.
+        [DEVICES] <b>+{ $promo_reward } { $promo_reward ->
+            [one] device
+           *[other] devices
+        }</b> on your device limit.
+        [SUBSCRIPTION] the <b>{ $promo_plan_name }</b> subscription for <b>{ $promo_reward } { $promo_reward ->
+            [one] day
+           *[other] days
+        }</b>.
+        [PERSONAL_DISCOUNT] a permanent <b>{ $promo_reward }% discount</b> on every purchase.
+        [PURCHASE_DISCOUNT] a <b>{ $promo_reward }% discount</b> on your next purchase.
+       *[other] a reward on your account.
+    }
+
+    { $promo_reward_type ->
+        [TRAFFIC] ⚠️ <i>The bonus stays when you renew but is lost when you change plans.</i>
+        [DEVICES] ⚠️ <i>The bonus stays when you renew but is lost when you change plans.</i>
+       *[other] { "" }
+    }
+
+    Tap “Apply” to activate it.
+msg-promocode-confirm-will-replace = ⚠️ <i>The promo code will replace your current subscription.</i>
 
 btn-promocode =
     .confirm = Apply
@@ -314,7 +433,9 @@ ntf-requirements =
 
 btn-requirements =
     .subscribe = Subscribe
+    .subscribe-icon = ❤️
     .check = I've subscribed
+    .check-icon = ✅
 
 ntf-cabinet-login =
     .link = Tap the button to sign in to the web cabinet. The link works once and expires in 5 minutes.

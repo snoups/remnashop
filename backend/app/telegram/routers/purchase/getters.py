@@ -187,7 +187,7 @@ async def link_choice_getter(
             }
             for s in owned
         ],
-        "new_text": runner.get("btn-purchase.link-new") if plan is not None else "",
+        "new_text": label_with_icon(runner, "btn-purchase.link-new") if plan is not None else "",
         "has_plan": plan is not None,
         "menu_text": label_with_icon(runner, "btn-purchase.menu"),
     }

@@ -110,10 +110,11 @@ async def test_menu_flags_can_purchase_below_the_cap(
     shop, referral = _settings(max_active, referral_enabled=True)
     active = [MagicMock(is_trial=False)] * paid + [MagicMock(is_trial=True)] * trials
 
-    can_purchase, referral_enabled = await menu_flags(active, shop, referral)
+    can_purchase, referral_enabled, single = await menu_flags(active, shop, referral)
 
     assert can_purchase is expected
     assert referral_enabled is True
+    assert single is (max_active == 1)
 
 
 async def test_device_confirm_getter_routes_message_text_through_resolve_variable_kwargs(

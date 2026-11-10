@@ -14,6 +14,7 @@ from app.modules.subscriptions import (
     DeleteAllDevicesUseCase,
     DeleteDeviceDto,
     DeleteDeviceUseCase,
+    ListOwnActiveSubscriptionsUseCase,
     ListOwnSubscriptionsUseCase,
     ReissueSubscriptionUseCase,
     SubscriptionDto,
@@ -54,6 +55,26 @@ async def on_open_subscriptions(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     await open_subscriptions(dialog_manager, await list_own_subscriptions(user))
+
+
+@inject
+async def on_open_devices(
+    callback: CallbackQuery,
+    widget: Keyboard,
+    dialog_manager: DialogManager,
+    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+) -> None:
+    # the main menu's own subscription: the first active one, as its block shows
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    active = await list_own_active_subscriptions(user)
+    if not active:
+        await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+        return
+    await dialog_manager.start(
+        Subscriptions.DEVICES,
+        data={SELECTED_SUBSCRIPTION_KEY: active[0].id},
+        mode=StartMode.RESET_STACK,
+    )
 
 
 @inject

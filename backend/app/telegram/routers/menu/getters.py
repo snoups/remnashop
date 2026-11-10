@@ -8,7 +8,7 @@ from remnapy.enums import TrafficLimitStrategy
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.core.enums import PurchaseChannel
+from app.core.enums import PurchaseChannel, SubscriptionStatus
 from app.modules.banners import GetBannerForDisplayUseCase
 from app.modules.legal import ListVisibleLegalDocumentsUseCase
 from app.modules.referrals import GetReferralSettingsUseCase
@@ -32,6 +32,17 @@ from app.telegram.dialogs.rendering import (
     resolve_variable_kwargs,
 )
 from app.telegram.i18n import format_datetime, get_translator
+
+
+def menu_subscription(
+    active: Optional[SubscriptionDto], owned: list[SubscriptionDto]
+) -> Optional[SubscriptionDto]:
+    """The subscription the menu describes: the active one, else the latest
+    expired, so the customer sees it ran out rather than that they never had one."""
+    if active is not None:
+        return active
+    expired = [s for s in owned if s.status == SubscriptionStatus.EXPIRED]
+    return max(expired, key=lambda s: s.expire_at, default=None)
 
 
 def subscription_menu_values(
@@ -68,16 +79,18 @@ def subscription_menu_values(
             "subscription_device_limit": str(devices) if devices else unlimited,
             "subscription_expire_at": format_datetime(subscription.expire_at),
         }
+    if subscription is None:
+        block = render_window_text(
+            runner, "frg-menu-no-subscription", trial_available=int(trial_available)
+        )
+        return {**values, "subscription_block": TrustedHtml(block)}
     # no helper for the traffic reset date yet, so the RESET texts name none
-    resets = (
-        subscription is not None
-        and subscription.traffic_limit_strategy != TrafficLimitStrategy.NO_RESET
-    )
+    resets = subscription.traffic_limit_strategy != TrafficLimitStrategy.NO_RESET
     block = render_window_text(
         runner,
         "frg-menu-subscription",
-        status=subscription.status.value if subscription is not None else "NONE",
-        is_trial=int(subscription is not None and subscription.is_trial),
+        status=subscription.status.value,
+        is_trial=int(subscription.is_trial),
         traffic_strategy="RESET" if resets else "NO_RESET",
         trial_available=int(trial_available),
         traffic_limit=values["subscription_traffic_limit"],
@@ -116,7 +129,7 @@ async def menu_getter(
     active = await list_own_active_subscriptions(user)
     # an expired subscription still opens from "My subscriptions" to be renewed, and holds its slot
     owned = await list_own_subscriptions(user)
-    can_purchase, referral_enabled = await menu_flags(
+    can_purchase, referral_enabled, single_subscription = await menu_flags(
         owned, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
@@ -126,6 +139,7 @@ async def menu_getter(
         cabinet_url=config.cabinet.url,
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
+        single_subscription=single_subscription,
     )
     data["subscriptions_count"] = len(owned)
     data["legal_available"] = bool(
@@ -133,7 +147,7 @@ async def menu_getter(
     )
     subscription_values = subscription_menu_values(
         runner,
-        data["subscription"],
+        menu_subscription(data["subscription"], owned),
         extra_count=len(active) - 1,
         trial_available=data["trial_available"],
     )

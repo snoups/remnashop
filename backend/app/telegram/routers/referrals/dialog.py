@@ -9,6 +9,7 @@ from app.telegram.dialogs.keyboard import ConfigKeyboard
 from app.telegram.routers.referrals.catalog import register_referrals_catalog
 from app.telegram.routers.referrals.getters import (
     redeem_target_getter,
+    referrals_about_getter,
     referrals_getter,
 )
 from app.telegram.routers.referrals.handlers import on_redeem_target_selected
@@ -40,4 +41,13 @@ redeem_target = Window(
     getter=redeem_target_getter,
 )
 
-router = Dialog(referrals_main, redeem_target)
+referrals_about = Window(
+    DynamicMedia("banner", when="banner"),
+    Format("{window_text}"),
+    ConfigKeyboard(window_key="referrals.about"),
+    parse_mode=ParseMode.HTML,
+    state=Referrals.ABOUT,
+    getter=referrals_about_getter,
+)
+
+router = Dialog(referrals_main, redeem_target, referrals_about)

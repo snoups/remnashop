@@ -23,14 +23,14 @@ async def menu_flags(
     owned: list[SubscriptionDto],
     get_shop_settings: GetShopSettingsUseCase,
     get_referral_settings: GetReferralSettingsUseCase,
-) -> tuple[bool, bool]:
-    """(can_purchase, referral_enabled); owned is every subscription but a
-    deleted one, an expired one holding its slot as at checkout"""
+) -> tuple[bool, bool, bool]:
+    """(can_purchase, referral_enabled, single_subscription); owned is every
+    subscription but a deleted one, an expired one holding its slot as at checkout"""
     max_active = (await get_shop_settings.system()).max_active_subscriptions
     # same count as checkout's cap: a purchase upgrades an active trial in place
     paid = sum(1 for subscription in owned if not subscription.is_trial)
     can_purchase = max_active is None or paid < max_active
-    return can_purchase, (await get_referral_settings.system()).enabled
+    return can_purchase, (await get_referral_settings.system()).enabled, max_active == 1
 
 
 async def build_condition_data(
@@ -42,6 +42,7 @@ async def build_condition_data(
     selected_id: Optional[int] = None,
     can_purchase: bool = False,
     referral_enabled: bool = False,
+    single_subscription: bool = False,
 ) -> dict[str, Any]:
     """What catalog conditions and variables resolve against, so a button an
     admin configures behaves the same whichever window they put it in. Device
@@ -66,6 +67,8 @@ async def build_condition_data(
         "subscriptions_count": len(active),
         "can_purchase": can_purchase,
         "referral_enabled": referral_enabled,
+        # max one subscription: the menu shows it directly instead of a list
+        "single_subscription": single_subscription,
         "subscription": subscription,
         "has_subscription": subscription is not None,
         "connectable": subscription is not None

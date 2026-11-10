@@ -27,7 +27,7 @@ from app.modules.settings import (
 )
 from app.modules.users import UserDto
 from app.telegram.broadcast_callbacks import RESUBSCRIBE_CALLBACK, UNSUBSCRIBE_CALLBACK
-from app.telegram.dialogs.rendering import render_window_text
+from app.telegram.dialogs.rendering import label_with_icon, render_window_text
 from app.telegram.i18n import get_translator
 from app.telegram.legal_gate import (
     GATE_MESSAGE_TTL_S,
@@ -179,12 +179,14 @@ def channel_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=runner.get("btn-requirements.subscribe"), url=requirements.channel_url
+                    text=label_with_icon(runner, "btn-requirements.subscribe"),
+                    url=requirements.channel_url,
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=runner.get("btn-requirements.check"), callback_data=CHANNEL_CHECK_CALLBACK
+                    text=label_with_icon(runner, "btn-requirements.check"),
+                    callback_data=CHANNEL_CHECK_CALLBACK,
                 )
             ],
         ]

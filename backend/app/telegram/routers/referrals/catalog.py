@@ -18,3 +18,4 @@ def register_referrals_catalog() -> None:
     catalog.bind_action_handler("reset_referral_code", on_reset_referral_code)
 
     register_seed_state("referrals.main", Referrals.MAIN)
+    register_seed_state("referrals.about", Referrals.ABOUT)

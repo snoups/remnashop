@@ -1,4 +1,5 @@
-from typing import Optional
+from enum import Enum
+from typing import Final, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,19 @@ from app.modules.dialogs.dto import (
     DialogButtonInputDto,
     DialogWindowDto,
     UpdateDialogWindowDto,
+)
+
+_LAYOUT_FIELDS: Final[tuple[str, ...]] = (
+    "row",
+    "column",
+    "text_key",
+    "link_type",
+    "action_key",
+    "target_window_key",
+    "url_value",
+    "visibility_condition",
+    "style",
+    "is_hidden",
 )
 
 
@@ -114,10 +128,18 @@ class DialogRepository:
         existing = await self._get_row(key)
         if existing is not None:
             # The catalog owns a seed window's place in its flow and its default layout;
-            # the admin's current buttons stay as they are.
+            # buttons the admin edited stay, untouched ones follow the new layout.
             existing.position = position
+            untouched = _layout(existing.buttons) == _snapshot_layout(existing.default_snapshot)
+            if untouched and existing.default_snapshot != default_snapshot:
+                for button in list(existing.buttons):
+                    await self.session.delete(button)
+                await self.session.flush()
+                for raw in default_snapshot.get("buttons", []):
+                    self.session.add(self._button_from_snapshot(existing.id, raw))
             existing.default_snapshot = default_snapshot
             await self.session.flush()
+            await self.session.refresh(existing)
             return False
         window = DialogWindow(
             key=key,
@@ -276,3 +298,21 @@ def _system_text_keys(row: DialogWindow) -> set[str]:
     if row.kind != DialogWindowKind.SEED:
         return set()
     return {b["text_key"] for b in row.default_snapshot.get("buttons", [])}
+
+
+def _layout(buttons: list[DialogButton]) -> set[tuple[object, ...]]:
+    return {
+        tuple(
+            value.value if isinstance(value, Enum) else value
+            for value in (getattr(button, name) for name in _LAYOUT_FIELDS)
+        )
+        for button in buttons
+    }
+
+
+def _snapshot_layout(snapshot: dict) -> set[tuple[object, ...]]:
+    defaults: dict[str, object] = {"is_hidden": False}
+    return {
+        tuple(raw.get(name, defaults.get(name)) for name in _LAYOUT_FIELDS)
+        for raw in snapshot.get("buttons", [])
+    }
