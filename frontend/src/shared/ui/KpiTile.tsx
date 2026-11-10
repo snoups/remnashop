@@ -137,7 +137,7 @@ export function KpiTile({
           ))}
         <span
           // two lines at most: a longer label is cut, not a third line
-          className={`line-clamp-2 whitespace-pre-line text-[11px] font-semibold uppercase tracking-wide ${
+          className={`line-clamp-2 whitespace-pre-line text-xs font-semibold uppercase tracking-wide ${
             highlighted ? "text-accent-foreground" : "text-muted-foreground"
           }`}
         >
@@ -149,7 +149,7 @@ export function KpiTile({
         <span className={`${KPI_VALUE_CLASS} text-foreground`}>
           <CountUp text={value} />
         </span>
-        {valueSuffix && <span className="text-[13px] font-medium text-muted-foreground">{valueSuffix}</span>}
+        {valueSuffix && <span className="text-sm font-medium text-muted-foreground">{valueSuffix}</span>}
         {tone && (
           <span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${tone.badge}`}>
             <tone.Icon className="size-3.5" />
@@ -157,7 +157,7 @@ export function KpiTile({
         )}
       </div>
       {trend && tone && (
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           <span className={`font-semibold tabular-nums ${tone.text}`}>
             {trend.delta > 0 ? "+" : trend.delta < 0 ? "−" : ""}
             {trend.text ?? Math.abs(trend.delta)}
@@ -166,7 +166,7 @@ export function KpiTile({
         </span>
       )}
       {/* mt-auto: hints line up across a grid row where only some tiles have a trend line */}
-      {hint && <span className="mt-auto text-[12px] tabular-nums text-muted-foreground">{hint}</span>}
+      {hint && <span className="mt-auto text-xs tabular-nums text-muted-foreground">{hint}</span>}
     </div>
   );
 }

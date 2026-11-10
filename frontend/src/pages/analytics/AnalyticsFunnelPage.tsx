@@ -119,7 +119,7 @@ function FunnelStepRow({
   return (
     <div className="flex flex-col">
       {index > 0 && (
-        <div className="flex flex-wrap items-center gap-2 py-0.5 pl-[23px] text-[12px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 py-0.5 pl-[23px] text-xs text-muted-foreground">
           <ArrowDown className="size-3.5" />
           <span className="tabular-nums text-foreground">{formatPercent(step.pct_of_prev, language)}</span>
           {t("analytics.funnel.ofPrevious")}
@@ -127,8 +127,8 @@ function FunnelStepRow({
         </div>
       )}
       <div className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 rounded-3xl px-3.5 py-2.5 sm:grid-cols-[32px_minmax(0,200px)_minmax(0,1fr)_72px_56px]">
-        <IconCircle glyph={<span className="text-[11px] font-bold">{index + 1}</span>} />
-        <span className="truncate text-[13px] font-medium text-foreground">
+        <IconCircle glyph={<span className="text-xs font-bold">{index + 1}</span>} />
+        <span className="truncate text-sm font-medium text-foreground">
           {t(`analytics.funnel.steps.${step.key}` as ParseKeys)}
         </span>
         <span className="order-last col-span-4 flex h-2.5 overflow-hidden rounded-full glass-track sm:order-none sm:col-span-1">
@@ -140,7 +140,7 @@ function FunnelStepRow({
         <span className={`text-right text-foreground ${STAT_VALUE_CLASS}`}>
           {step.count.toLocaleString(language)}
         </span>
-        <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+        <span className="text-right text-xs tabular-nums text-muted-foreground">
           {formatPercent(step.pct_of_start, language)}
         </span>
       </div>
@@ -176,7 +176,7 @@ function SourceTable({ rows }: { rows: FunnelSourceRow[] }) {
   const cell = (count: number, registered: number) => (
     <span className="text-right tabular-nums text-foreground">
       {count.toLocaleString(language)}
-      <span className="ml-1.5 text-[12px] text-muted-foreground">
+      <span className="ml-1.5 text-xs text-muted-foreground">
         {registered > 0 ? formatPercent(count / registered, language) : t("common.none")}
       </span>
     </span>
@@ -193,7 +193,7 @@ function SourceTable({ rows }: { rows: FunnelSourceRow[] }) {
           <span className="text-right">{t("analytics.funnel.repeatShort")}</span>
         </div>
         {rows.map((row) => (
-          <div key={`${row.source}:${row.ad_link_id ?? ""}`} className={`${SOURCE_GRID} items-center px-3.5 py-2 text-[13px]`}>
+          <div key={`${row.source}:${row.ad_link_id ?? ""}`} className={`${SOURCE_GRID} items-center px-3.5 py-2 text-sm`}>
             <span className="truncate text-foreground">{label(row)}</span>
             <span className="text-right tabular-nums text-foreground">{row.registered.toLocaleString(language)}</span>
             {cell(row.connected, row.registered)}

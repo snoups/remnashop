@@ -165,7 +165,7 @@ export function BadgesSection() {
         {TONES.map((tone) => (
           <div key={tone} className="flex flex-col items-center gap-1.5">
             <Badge tone={tone}>{k("s.status")}</Badge>
-            <span className="font-mono text-[11px] text-muted-foreground">{tone}</span>
+            <span className="font-mono text-xs text-muted-foreground">{tone}</span>
           </div>
         ))}
       </Specimen>
@@ -174,8 +174,8 @@ export function BadgesSection() {
         {TONES.map((tone) => (
           <IconCircle key={tone} icon={ShieldCheck} tone={tone} />
         ))}
-        <IconCircle glyph={<span className="text-[11px] font-bold">AN</span>} />
-        <IconCircle tone="violet" glyph={<span className="text-[11px] font-bold">R</span>} />
+        <IconCircle glyph={<span className="text-xs font-bold">AN</span>} />
+        <IconCircle tone="violet" glyph={<span className="text-xs font-bold">R</span>} />
       </Specimen>
       <Specimen name="Tag" usage={k("u.tag")}>
         <Tag>128</Tag>

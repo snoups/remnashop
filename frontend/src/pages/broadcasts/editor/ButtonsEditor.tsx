@@ -88,7 +88,7 @@ export function ButtonsEditor({
     }
     // the broadcast has one promocode: every promocode button, and { $promocode }, open the same
     if (button.kind === "PROMOCODE") return promocodeSelect;
-    return <span className="truncate px-3.5 text-[13px] text-muted-foreground">{t("broadcasts.editor.buttons.menuTarget")}</span>;
+    return <span className="truncate px-3.5 text-sm text-muted-foreground">{t("broadcasts.editor.buttons.menuTarget")}</span>;
   };
 
   return (
@@ -122,7 +122,7 @@ export function ButtonsEditor({
             <div key={index} className={`${ROW_GRID_CLASSNAME} rounded-full px-3.5 py-3`}>
               <IconCircle icon={KIND_ICON[button.kind]} />
               {/* narrow screens: the icon names the kind */}
-              <span className="hidden truncate text-[13px] font-medium text-foreground sm:block">
+              <span className="hidden truncate text-sm font-medium text-foreground sm:block">
                 {t(`broadcasts.editor.buttons.kind.${button.kind}`)}
               </span>
               <Input

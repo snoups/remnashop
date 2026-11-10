@@ -21,7 +21,7 @@ export function LegalAcceptancesCard({ userId }: { userId: number }) {
   return (
     <DialogCard collapsible title={t("users.legalAcceptances.title")} icon={Scale}>
       {state.kind === "error" && (
-        <p className="px-3 py-2 text-[13px] text-muted-foreground">{t("common.loadError")}</p>
+        <p className="px-3 py-2 text-sm text-muted-foreground">{t("common.loadError")}</p>
       )}
       {state.kind === "ready" &&
         state.data.items.map((item) => (
@@ -80,13 +80,13 @@ function AcceptanceRow({
       <div className="pointer-events-none relative flex min-w-0 flex-1 items-center gap-2.5">
         <Icon className="size-[15px] shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium text-foreground">{title}</div>
-          <div className="truncate text-[12px] text-muted-foreground">{children}</div>
+          <div className="truncate text-sm font-medium text-foreground">{title}</div>
+          <div className="truncate text-xs text-muted-foreground">{children}</div>
         </div>
-        <span className="shrink-0 font-mono text-[12px] text-muted-foreground">{date}</span>
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">{date}</span>
       </div>
       {isCopied && (
-        <span className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-full bg-black/35 text-[12px] font-medium text-primary">
+        <span className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-full bg-black/35 text-xs font-medium text-primary">
           <Check className="size-3.5" />
           {t("app.copied")}
         </span>

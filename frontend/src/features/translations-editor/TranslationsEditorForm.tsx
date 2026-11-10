@@ -249,7 +249,7 @@ export function TranslationsEditorForm() {
                   <Pressable
                     type="button"
                     onClick={() => toggleGroup(group)}
-                    className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-[11px] uppercase leading-5 tracking-wide text-muted-foreground"
+                    className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-xs uppercase leading-5 tracking-wide text-muted-foreground"
                   >
                     <span className={TAB_HOVER_CLASS} />
                     <ChevronRight
@@ -261,7 +261,7 @@ export function TranslationsEditorForm() {
                         className="relative z-10 size-3 shrink-0 text-warning"
                       />
                     )}
-                    <span className="relative z-10 ml-auto text-[11px] tabular-nums opacity-70">
+                    <span className="relative z-10 ml-auto text-xs tabular-nums opacity-70">
                       {keys.length}
                     </span>
                   </Pressable>
@@ -279,7 +279,7 @@ export function TranslationsEditorForm() {
                           }`}
                         />
                         <span
-                          className={`relative z-10 min-w-0 flex-1 truncate px-2.5 text-left font-mono text-[12px] leading-[30px] ${
+                          className={`relative z-10 min-w-0 flex-1 truncate px-2.5 text-left font-mono text-xs leading-[30px] ${
                             key === selectedKey
                               ? "font-medium text-primary"
                               : "text-foreground/80"
@@ -358,10 +358,10 @@ export function TranslationsEditorForm() {
               <ul className="flex flex-col divide-y divide-border/50">
                 {localeStats.map(({ locale, total, translated }) => (
                   <li key={locale} className="flex flex-wrap items-baseline gap-x-2 px-3.5 py-2.5">
-                    <span className="truncate text-[13px] font-medium text-foreground">
+                    <span className="truncate text-sm font-medium text-foreground">
                       {localeLabel(locale, i18n.language)}
                     </span>
-                    <span className="ml-auto shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                    <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
                       {locale === SOURCE_LOCALE
                         ? t("dialogs.texts.localeSource", { total })
                         : t("dialogs.texts.localeTranslated", { translated, total })}

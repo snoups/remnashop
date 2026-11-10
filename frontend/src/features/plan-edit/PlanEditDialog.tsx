@@ -90,7 +90,7 @@ function durationsKey(rows: DurationRow[]): string {
   return JSON.stringify(rows.map((row) => [row.days, row.base_price]));
 }
 
-const hintClassName = "text-[12px] text-muted-foreground";
+const hintClassName = "text-xs text-muted-foreground";
 
 export function PlanEditDialog({ plan, anchorCurrency, onClose, onSaved }: PlanEditDialogProps) {
   return (
@@ -368,7 +368,7 @@ function PlanEditDialogBody({
                       }`}
                     >
                       <Icon className={`size-4 ${isSelected ? "" : "text-muted-foreground"}`} />
-                      <span className="text-[13px] font-medium">{t(`plans.edit.type.${value}`)}</span>
+                      <span className="text-sm font-medium">{t(`plans.edit.type.${value}`)}</span>
                     </Pressable>
                   );
                 })}
@@ -433,7 +433,7 @@ function PlanEditDialogBody({
               <>
                 {durations.length > 0 && (
                   <div className="flex flex-col gap-2">
-                    <div className="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_36px] gap-2 text-[11px] text-muted-foreground">
+                    <div className="grid grid-cols-[20px_minmax(0,1fr)_minmax(0,1fr)_36px] gap-2 text-xs text-muted-foreground">
                       <span />
                       <span>{t("plans.edit.daysLabel")}</span>
                       <span>{t("plans.edit.basePriceLabel")}</span>
@@ -457,7 +457,7 @@ function PlanEditDialogBody({
                 )}
                 {canAddDuration && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-0.5 text-[12px] text-muted-foreground">{t("plans.edit.addPresetLabel")}</span>
+                    <span className="mr-0.5 text-xs text-muted-foreground">{t("plans.edit.addPresetLabel")}</span>
                     {presets.map((days) => (
                       <PresetButton key={days} onClick={() => addDuration(String(days))}>
                         {days}
@@ -657,7 +657,7 @@ function ToggleRow({
   return (
     <div className="flex items-center gap-3">
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-foreground">{label}</span>
+        <span className="block text-sm font-medium text-foreground">{label}</span>
         <span className={hintClassName}>{hint}</span>
       </span>
       <Switch checked={checked} onChange={onChange} disabled={disabled} />

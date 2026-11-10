@@ -209,7 +209,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
             <Row
               key={order.id}
               size="sm"
-              glyph={<span className="text-[11px] font-bold">{symbol}</span>}
+              glyph={<span className="text-xs font-bold">{symbol}</span>}
               tone={PAYMENT_STATUS_BADGE_TONE[order.status]}
               label={`${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`}
               description={
@@ -220,7 +220,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
               }
               onClick={canViewDetails ? () => setOpenedOrder(order) : undefined}
             >
-              <span className="text-[13px] font-semibold tabular-nums text-foreground">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
                 {formatMoney(order.final_price, order.currency, i18n.language, true)}
               </span>
               <Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{t(`transactions.status.${order.status}`)}</Badge>
@@ -270,7 +270,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
               label={
                 <>
                   <span className="truncate">{subscription.plan_snapshot.name}</span>
-                  <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">#{subscription.id}</span>
+                  <span className="shrink-0 font-mono text-xs font-normal text-muted-foreground">#{subscription.id}</span>
                   {subscription.is_trial && (
                     <Badge tone="warning">
                       {t("subscriptions.trial")}
@@ -290,7 +290,7 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
               onClick={canOpen ? () => openSubscription(subscription.id, { data: subscription, onChanged: reload }) : undefined}
             >
               {subscription.status !== "DELETED" && (
-                <span className="text-[12.5px] tabular-nums text-muted-foreground">
+                <span className="text-sm tabular-nums text-muted-foreground">
                   {t("subscriptions.until", { date: formatDate(subscription.expire_at, i18n.language) })}
                 </span>
               )}

@@ -25,11 +25,11 @@ export function UserRow({ name, id, unnamed = false, subtitle, aside, onClick }:
   return (
     <Row
       size="sm"
-      glyph={unnamed ? <User className="size-4" /> : <span className="text-[11px] font-bold">{initials(name)}</span>}
+      glyph={unnamed ? <User className="size-4" /> : <span className="text-xs font-bold">{initials(name)}</span>}
       label={
         <>
           <span className="truncate">{name || t("users.deleted.name")}</span>
-          {id !== undefined && <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">#{id}</span>}
+          {id !== undefined && <span className="shrink-0 font-mono text-xs font-normal text-muted-foreground">#{id}</span>}
         </>
       }
       description={subtitle}

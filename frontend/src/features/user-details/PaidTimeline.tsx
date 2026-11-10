@@ -177,7 +177,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
 
   return (
     <DialogCard variant="form" title={title} icon={CalendarRange}>
-      <p className="-mt-1 text-[12px] text-muted-foreground">
+      <p className="-mt-1 text-xs text-muted-foreground">
         {t("users.details.analytics.timeline.coverage", {
           paid: Math.round(paidDays),
           total: Math.max(1, Math.round(totalDays)),
@@ -199,7 +199,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute whitespace-nowrap text-[11px] font-semibold tabular-nums text-foreground"
+                  className="absolute whitespace-nowrap text-xs font-semibold tabular-nums text-foreground"
                   style={{ top: lane * LANE_PX, left: `${pct(start)}%` }}
                 >
                   {formatMoney(order.final_price, order.currency, i18n.language, true)}
@@ -220,7 +220,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
               />
               {pct(end) - pct(start) >= MIN_LABEL_PCT && (
                 <span
-                  className="absolute whitespace-nowrap pl-1 text-[11px] text-error"
+                  className="absolute whitespace-nowrap pl-1 text-xs text-error"
                   style={{ top: barsBottom + 6, left: `${pct(start)}%` }}
                 >
                   {t("users.details.analytics.timeline.gap", { count: Math.round((end - start) / DAY_MS) })}
@@ -249,7 +249,7 @@ export function PaidTimeline({ orders }: { orders: TransactionItem[] }) {
             index % tickStep === 0 ? (
               <span
                 key={month}
-                className="absolute top-1 text-[11px] text-muted-foreground"
+                className="absolute top-1 text-xs text-muted-foreground"
                 style={{ left: `${pct(month)}%` }}
               >
                 {monthLabel(month)}

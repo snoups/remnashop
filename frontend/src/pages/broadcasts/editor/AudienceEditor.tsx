@@ -72,7 +72,7 @@ function UserPicker({
   if (disabled) {
     return (
       <Field label={t("broadcasts.editor.audience.userIds")}>
-        <span className="text-[13px] tabular-nums text-foreground">
+        <span className="text-sm tabular-nums text-foreground">
           {userIds.length > 0 ? userIds.map((id) => `#${id}`).join(", ") : t("common.none")}
         </span>
       </Field>
@@ -338,7 +338,7 @@ export function AudienceEditor({
               onChange={(value) => set({ registered_to: value || null })}
             />
           </div>
-          {oneDateOnly && <span className="text-[12px] text-error">{t("broadcasts.editor.audience.bothDates")}</span>}
+          {oneDateOnly && <span className="text-xs text-error">{t("broadcasts.editor.audience.bothDates")}</span>}
         </div>
       ),
     },

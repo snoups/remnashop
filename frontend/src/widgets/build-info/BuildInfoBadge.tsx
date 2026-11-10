@@ -116,13 +116,13 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
         onPointerUp={cancelLongPress}
         onPointerLeave={cancelLongPress}
         onContextMenu={(event) => event.preventDefault()}
-        className={mobile ? "flex h-11 min-w-0 flex-1 items-center justify-center gap-3 rounded-full border border-glass-border bg-white/[0.05] px-4 text-[13px] font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
+        className={mobile ? "flex h-11 min-w-0 flex-1 items-center justify-center gap-3 rounded-full border border-glass-border bg-white/[0.05] px-4 text-sm font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >
         {mobile ? <Info className="size-5 shrink-0" /> : <Info className="size-4 shrink-0" />}
         <span className={`${labelClass} font-mono`}>{currentVersion}</span>
         {!mobile && isUpdateAvailable && release && (
           <span
-            className={`${labelClass} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[10px] font-semibold leading-none text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--color-primary)_40%,transparent)]`}
+            className={`${labelClass} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[11px] font-semibold leading-none text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--color-primary)_40%,transparent)]`}
           >
             {release.tag_name}
           </span>
@@ -152,20 +152,21 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
               <div className={GLASS_DIALOG_CARD_CLASS}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[12px] text-muted-foreground">{t("buildInfo.version")}</div>
-                    <div className="mt-0.5 font-mono text-[15px] font-semibold text-foreground">v{currentVersion}</div>
+                    <div className="text-xs text-muted-foreground">{t("buildInfo.version")}</div>
+                    <div className="mt-0.5 font-mono text-base font-semibold text-foreground">v{currentVersion}</div>
                   </div>
 
                   {isUpdateAvailable && release && isHttpsUrl(release.html_url) && (
-                    <a
+                    <Pressable
+                      as="a"
                       href={release.html_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex h-8 items-center gap-1.5 rounded-full border border-primary/35 bg-primary/15 px-3 font-mono text-[12px] font-medium text-primary transition-colors hover:bg-primary/20"
+                      className="flex h-8 items-center gap-1.5 rounded-full border border-primary/35 bg-primary/15 px-3 font-mono text-xs font-medium text-primary transition-colors hover:bg-primary/20"
                     >
                       <ArrowUpCircle className="size-3.5" />
                       {release.tag_name}
-                    </a>
+                    </Pressable>
                   )}
                 </div>
               </div>
@@ -184,14 +185,16 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
                     label={t("buildInfo.commit")}
                     copyValue={git.commit_sha}
                     action={
-                      <a
+                      <Pressable
+                        as="a"
                         href={`${metadata.repository_url}/commit/${git.commit_sha}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-muted-foreground transition-colors hover:text-primary"
+                        // -m-1 p-1: a round 22px press area, the row's layout unchanged
+                        className="-m-1 rounded-full p-1 text-muted-foreground transition-colors hover:text-primary"
                       >
                         <ExternalLink className="size-3.5" />
-                      </a>
+                      </Pressable>
                     }
                     mono
                   >

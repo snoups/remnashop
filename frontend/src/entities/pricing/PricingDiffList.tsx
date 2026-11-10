@@ -26,7 +26,7 @@ export function PricingDiffList({ diff }: PricingDiffListProps) {
   ];
 
   if (diff.changes.length === 0 && extras.length === 0) {
-    return <p className="text-[12px] text-muted-foreground">{t("pricing.diff.empty")}</p>;
+    return <p className="text-xs text-muted-foreground">{t("pricing.diff.empty")}</p>;
   }
 
   return (
@@ -34,7 +34,7 @@ export function PricingDiffList({ diff }: PricingDiffListProps) {
       {/* clipping on the outer box keeps the scrollbar inside the rounded corners */}
       <div className="-mx-1 glass-well overflow-hidden rounded-xl">
         <div className="relative max-h-56 overflow-auto">
-          <table className="w-full border-separate border-spacing-0 text-[12px]">
+          <table className="w-full border-separate border-spacing-0 text-xs">
             <thead>
               <tr className={`text-left ${EYEBROW_CLASS}`}>
                 <th scope="col" className="border-b border-border px-3 py-2 font-semibold">{t("pricing.matrix.item")}</th>
@@ -67,7 +67,7 @@ export function PricingDiffList({ diff }: PricingDiffListProps) {
         </div>
       </div>
       {diff.rescaled_transactions > 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {t("pricing.diff.rescaledTransactions", { count: diff.rescaled_transactions })}
         </p>
       )}

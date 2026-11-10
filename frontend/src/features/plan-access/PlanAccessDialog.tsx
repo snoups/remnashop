@@ -72,7 +72,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
         </div>
 
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
-          <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {availability === "ALLOWED" ? (
               <span className="font-semibold text-violet-300">
                 {t("plans.access.recipients", { count: value.telegramIds.length + value.emails.length })}
@@ -130,10 +130,10 @@ export function PlanAccessFields({
                     }`}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-semibold text-foreground">
+                    <span className="block text-sm font-semibold text-foreground">
                       {t(`plans.access.availability.${option}`)}
                     </span>
-                    <span className="block text-[12px] text-muted-foreground">
+                    <span className="block text-xs text-muted-foreground">
                       {isDisabled ? t("plans.access.trialUnavailable") : t(`plans.access.availabilityHint.${option}`)}
                     </span>
                   </span>

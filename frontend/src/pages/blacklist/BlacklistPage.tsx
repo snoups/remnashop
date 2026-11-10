@@ -212,7 +212,7 @@ function ManualEntriesCard({ state, permissions, onChanged }: ManualEntriesCardP
                 {t("common.add")}
               </Button>
             </div>
-            {isEntryInvalid && <p className="text-[12px] text-error">{t("blacklist.manual.valueInvalid")}</p>}
+            {isEntryInvalid && <p className="text-xs text-error">{t("blacklist.manual.valueInvalid")}</p>}
           </form>
         </SectionFields>
       )}

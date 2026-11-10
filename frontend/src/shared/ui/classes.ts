@@ -9,10 +9,10 @@ export const POPOVER_CLASS = `${POPOVER_EDGE_CLASS} bg-popover/60 backdrop-blur-
 
 /** An external link that reads as Button variant="glass"; grows in a row of links. */
 export const GLASS_LINK_BUTTON_CLASS =
-  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-3 text-[13px] font-medium text-foreground/90 transition-colors hover:bg-white/[0.06]";
+  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.03] px-3 text-sm font-medium text-foreground/90 transition-colors hover:bg-white/[0.06]";
 /** Same for variant="glassSolid". */
 export const GLASS_SOLID_LINK_BUTTON_CLASS =
-  "flex h-9 items-center justify-center gap-1.5 rounded-full border border-transparent bg-primary px-3 text-[13px] font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] transition-colors hover:bg-primary-hover";
+  "flex h-9 items-center justify-center gap-1.5 rounded-full border border-transparent bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] transition-colors hover:bg-primary-hover";
 
 /** A settings card's glass straight over the shader, no panel under it to blur: sign-in and welcome. */
 export const GLASS_STANDALONE_CARD_CLASS = "glass-panel rounded-3xl p-6 backdrop-blur-[28px] backdrop-saturate-150";
@@ -39,10 +39,10 @@ export const GLASS_DIALOG_CLASS = "rounded-dialog glass-dialog";
 
 /** Section heading inside a details dialog card. */
 export const SECTION_TITLE_CLASS =
-  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-foreground";
+  "flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-foreground";
 
-/** 11px uppercase label over a filter, column or stat. */
-export const EYEBROW_CLASS = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+/** 12px uppercase label over a filter, column or stat. */
+export const EYEBROW_CLASS = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 /** Row-list table (transactions, event log...): header row, body, row. Rows add their own hover (enabled: on disableable buttons).
  *  The header is 14px in, as a settings Row, so the columns start over its rows' 32px circles. */
@@ -83,13 +83,13 @@ export const GLASS_DIALOG_FOOTER_CLASS = "flex gap-2 border-t border-white/[0.08
 export const TAB_HOVER_CLASS = "absolute inset-0 rounded-full transition-colors group-hover:bg-white/[0.06]";
 
 /** A headline number: a KPI tile's value and the dashboard cards' totals; color is the caller's. */
-export const KPI_VALUE_CLASS = "text-[26px] font-bold tabular-nums tracking-tight";
+export const KPI_VALUE_CLASS = "text-2xl font-bold tabular-nums tracking-tight";
 
 /** A row's number between body text and a KPI: funnel steps, retention weeks; color is the caller's. */
-export const STAT_VALUE_CLASS = "text-[15px] font-bold tabular-nums";
+export const STAT_VALUE_CLASS = "text-base font-bold tabular-nums";
 
 /** The title of a full-screen card or story: sign-in, welcome, password change, error screens, announcements. */
-export const SCREEN_TITLE_CLASS = "text-[21px] font-bold tracking-tight text-foreground";
+export const SCREEN_TITLE_CLASS = "text-xl font-bold tracking-tight text-foreground";
 
 /** The formatting toolbar over a text editor's field, and the divider between its groups. */
 export const TEXT_TOOLBAR_CLASS = "flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5";

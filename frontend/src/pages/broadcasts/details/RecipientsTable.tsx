@@ -200,8 +200,8 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
               {state.items.map((r) => (
                 <div key={r.id} className={`${ROW_GRID_CLASS} ${GLASS_LIST_ROW_CLASS}`}>
                   <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-[13px] font-medium text-foreground">{nameOrUnnamed(r.user_name, r.user_id, t)}</span>
-                    <span className="truncate text-[12px] text-muted-foreground">
+                    <span className="truncate text-sm font-medium text-foreground">{nameOrUnnamed(r.user_name, r.user_id, t)}</span>
+                    <span className="truncate text-xs text-muted-foreground">
                       {r.channel === "EMAIL"
                         ? (r.email ?? t("common.none"))
                         : r.username
@@ -216,8 +216,8 @@ export function RecipientsTable({ broadcast, refreshKey }: RecipientsTableProps)
                   <span>
                     <Badge tone={RECIPIENT_STATUS_TONE[r.status]}>{t(`broadcasts.recipientStatus.${r.status}`)}</Badge>
                   </span>
-                  <span className="truncate text-[12px] text-muted-foreground">{details(r)}</span>
-                  <span className="text-[13px] tabular-nums text-foreground">
+                  <span className="truncate text-xs text-muted-foreground">{details(r)}</span>
+                  <span className="text-sm tabular-nums text-foreground">
                     {r.sent_at ? formatDateTime(r.sent_at, i18n.language) : t("common.none")}
                   </span>
                 </div>

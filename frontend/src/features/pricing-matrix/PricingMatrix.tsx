@@ -190,7 +190,7 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
       ) : (
         <div className="relative -mx-2 mt-4 -mb-1 overflow-x-auto px-2 py-1">
           {/* separate borders: collapsed tables ignore border-radius on cells */}
-          <table className="w-full min-w-[720px] border-separate border-spacing-0 text-[13px]">
+          <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
             <thead>
               <tr className={`whitespace-nowrap text-left ${EYEBROW_CLASS} [&>th]:border-b [&>th]:border-border [&>th]:px-3 [&>th]:py-2`}>
                 <th>{t("pricing.matrix.item")}</th>
@@ -200,7 +200,7 @@ export function PricingMatrix({ book, onChanged, onSaved }: PricingMatrixProps) 
                     <span className="inline-flex items-center gap-1.5">
                       {currency}
                       {currency === book.settings.anchor_currency && (
-                        <span className="rounded-full bg-accent px-1.5 py-px text-[10px] tracking-wide text-primary">
+                        <span className="rounded-full bg-accent px-1.5 py-px text-[11px] tracking-wide text-primary">
                           {t("pricing.anchor.badge")}
                         </span>
                       )}

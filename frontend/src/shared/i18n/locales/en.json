@@ -3874,8 +3874,8 @@
       "u": {
         "announcementsCarousel": "Developer shorts: story carousel over the dashboard.",
         "primary": "Neutral and destructive actions outside the glass design. 14px.",
-        "secondary": "Card headers and beside fields. 12.5px semibold, same height as pills.",
-        "glass": "PillTabs capsule fill, 13px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
+        "secondary": "Card headers and beside fields. 14px semibold, same height as pills.",
+        "glass": "PillTabs capsule fill, 14px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
         "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
         "disabled": "A disabled button — 50% opacity.",
         "loadMore": "“Show more” under lists.",
@@ -3902,7 +3902,7 @@
         "slider": "Slider: a value within a range, regular and disabled.",
         "color": "Accent color picker.",
         "labels": "Labels: forms — 14px, filters and columns — eyebrow.",
-        "cardForm": "Form section in a dialog, 11px title.",
+        "cardForm": "Form section in a dialog, 12px title.",
         "cardList": "InfoRow rows, title with an icon.",
         "kpi": "Number tiles; highlighted variant.",
         "kpiIcon": "With an icon and a label hint.",
@@ -3936,13 +3936,13 @@
         "glassSection": "A settings card: header, 60px rows with 32px ends on the pill curve, a field block, glassAccent save.",
         "glassRowVsRows": "Row is the row itself: icon, label, description, controls on the right, a fold-out panel. SectionRows is the container: it adds the margin and the lines between rows, with no look of its own.",
         "glassInput": "Sunken well: 36px in forms, 32px in a Row; a unit suffix, a machine value with controls at the end.",
-        "glassField": "13px label over the control, hint or error under it; the browser’s own checks land here too.",
+        "glassField": "14px label over the control, hint or error under it; the browser’s own checks land here too.",
         "glassTextarea": "Multiline well with 18px corners; mono for keys and tokens.",
         "glassSwitch": "48×28; off it is a well like the fields. The knob stretches while held.",
         "glassToggle": "A field-like capsule with a switch: clicking anywhere toggles it. Pairs split a line.",
         "glassTextWidth": "Controls as wide as a text in a field: lines a field+switch up with a field sized to its placeholder.",
         "glassTabBar": "Route tabs in a 48px capsule: settings pages, this page.",
-        "glassGuide": "The ? in a Row opening a glass help dialog: 13px text, step titles, values to copy, an accent tip.",
+        "glassGuide": "The ? in a Row opening a glass help dialog: 14px text, step titles, values to copy, an accent tip.",
         "glassSecret": "A secret shown once: API token, generated password. Only “Done” closes it.",
         "cardPill": "Limits on a plan card and in the subscription dialog: traffic, devices.",
         "chartTooltip": "Chart tooltip in analytics and the overview: a dot for a single series, a row per value.",
@@ -3951,7 +3951,7 @@
         "fullScreen": "Standalone screens without the dashboard: app crash, 404, server error and server unreachable, the OAuth sign-in wait. Open over the window, the cross at the top left closes.",
         "pageRouteError": "One dashboard page crashed: the sidebar and header stay.",
         "editorFields": "The dialog editor’s own field, kept in its editor styling.",
-        "iconCircle": "32px circle of a list or settings row: plain, in a status badge’s tone (subscriptions, broadcasts, ad links, promocodes, API tokens, attention), or with initials and numbers in 11px bold.",
+        "iconCircle": "32px circle of a list or settings row: plain, in a status badge’s tone (subscriptions, broadcasts, ad links, promocodes, API tokens, attention), or with initials and numbers in 12px bold.",
         "cellText": "A list row’s text cell: title over a muted subtitle, mono for codes and @usernames. Ad links, referrals, analytics, attention, recent payments, notifications."
       },
       "s": {
@@ -4100,55 +4100,7 @@
       },
       "variants": {
         "caption": "Live copies of markup being redesigned, beside the current one. Once the new one is signed off, the copy goes.",
-        "empty": "Nothing under review.",
-        "type": {
-          "title": "Type scale: current vs conventional",
-          "caption": "Right: Tailwind’s default steps (12/14/16/20/24), the same as Material 3 and GitHub use: 14px body text, 12px floor, uppercase labels at 12, 11 only for a counter. Whole pixels only. Desktop only.",
-          "now": "Now",
-          "standard": "Conventional",
-          "columns": {
-            "role": "Role",
-            "size": "px"
-          },
-          "role": {
-            "kpi": "KPI value — KPI_VALUE_CLASS",
-            "screen": "Screen title — SCREEN_TITLE_CLASS",
-            "header": "Page title in the header",
-            "cardTitle": "Card and dialog title — Section, DialogHeader",
-            "body": "Body text, fields, menu items",
-            "button": "Buttons — glass 13, secondary/sm 12.5",
-            "secondary": "Hints, meta, mono ids",
-            "eyebrow": "Labels over blocks — EYEBROW_CLASS",
-            "badge": "Badge, Tag",
-            "micro": "Counters and mini badges"
-          },
-          "sample": {
-            "kpi": "128 400 ₽",
-            "screen": "Page not found",
-            "header": "Subscriptions",
-            "cardTitle": "Notifications",
-            "body": "Subscription renewed for 30 days",
-            "button": "Save",
-            "secondary": "Updated 5 minutes ago",
-            "eyebrow": "Channel",
-            "badge": "Active",
-            "micro": "5"
-          },
-          "mock": {
-            "pageTitle": "Subscriptions",
-            "create": "Create",
-            "cardTitle": "Notifications",
-            "cardDesc": "Who gets told about events, and how",
-            "channel": "Channel",
-            "telegram": "Telegram",
-            "telegramHint": "Messages to admins in the bot",
-            "on": "On",
-            "user": "Alex Morgan",
-            "revenue": "Revenue this month",
-            "revenueValue": "128 400 ₽",
-            "revenueDelta": "+12% on last month"
-          }
-        }
+        "empty": "Nothing under review."
       }
     }
   },

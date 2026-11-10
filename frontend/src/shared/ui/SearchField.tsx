@@ -45,7 +45,7 @@ export function SearchField({ id, placeholder, value, onChange }: SearchFieldPro
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="w-full min-w-0 border-0 bg-transparent text-[13px] font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground"
+          className="w-full min-w-0 border-0 bg-transparent text-sm font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground"
         />
         {value && (
           // 24px in a 36px-tall field: 6px inset top, bottom and right (px-3 minus 6)

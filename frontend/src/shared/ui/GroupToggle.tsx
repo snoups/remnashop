@@ -1,6 +1,8 @@
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Ripple } from "@shared/ui/Ripple";
+
 interface GroupToggleProps {
   open: boolean;
   onToggle: () => void;
@@ -18,16 +20,17 @@ export function GroupToggle({ open, onToggle, label, count, leading, glass = fal
     <button
       type="button"
       onClick={onToggle}
-      className={`group flex w-full items-center gap-2.5 rounded-full py-1.5 text-left ${glass ? "px-3.5" : "px-3"}`}
+      className={`group relative flex w-full items-center gap-2.5 rounded-full py-1.5 text-left ${glass ? "px-3.5" : "px-3"}`}
     >
+      <Ripple />
       <ChevronDown
         className={`size-3.5 text-muted-foreground transition-transform group-hover:text-foreground ${
           open ? "" : "-rotate-90"
         }`}
       />
       {leading}
-      <span className="-ml-1 text-[12px] font-semibold text-foreground">{label}</span>
-      <span className="-ml-1 text-[12px] tabular-nums text-muted-foreground">{count}</span>
+      <span className="-ml-1 text-xs font-semibold text-foreground">{label}</span>
+      <span className="-ml-1 text-xs tabular-nums text-muted-foreground">{count}</span>
     </button>
   );
 }

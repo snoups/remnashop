@@ -205,7 +205,7 @@ function BroadcastDetails({ id }: { id: number }) {
         </IconButton>
         {/* the status right after the title, the actions pushed to the end */}
         <span className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
-          <span className="min-w-0 truncate text-[15px] font-semibold tracking-tight text-foreground">
+          <span className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground">
             {broadcastTitle(b, t("broadcasts.untitled"))}
           </span>
           <span className="flex shrink-0">

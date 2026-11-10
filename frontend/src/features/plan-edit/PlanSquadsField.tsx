@@ -40,7 +40,7 @@ export function PlanSquadsField({ value, onChange }: { value: PlanSquads; onChan
     <>
       <Field label={t("plans.edit.internalSquadsLabel")} required error={goneError(value.internal_squads)}>
         {internal.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">{t("plans.edit.squadsEmpty")}</p>
+          <p className="text-xs text-muted-foreground">{t("plans.edit.squadsEmpty")}</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {internal.map((squad) => (

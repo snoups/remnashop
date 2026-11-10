@@ -92,8 +92,8 @@ export function Sidebar() {
         >
           <BrandMark className="size-8 shrink-0 text-primary" />
           <div className={LABEL_CLASSNAME}>
-            <span className="block text-[15px] font-bold leading-[22px] tracking-tight text-foreground">{brandName}</span>
-            <span className="block text-[11px] font-medium leading-4 text-muted-foreground">{t("sidebar.tagline")}</span>
+            <span className="block text-base font-bold leading-[22px] tracking-tight text-foreground">{brandName}</span>
+            <span className="block text-xs font-medium leading-4 text-muted-foreground">{t("sidebar.tagline")}</span>
           </div>
         </Link>
         {/* pt matches the Link's, so the button lines up with the logo on whole pixels */}

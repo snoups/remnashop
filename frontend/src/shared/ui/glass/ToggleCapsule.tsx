@@ -21,7 +21,7 @@ export function ToggleCapsule({
   return (
     <label className="glass-well flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-full pl-3.5 pr-1 has-disabled:cursor-not-allowed">
       <Icon className={`size-4 shrink-0 ${checked ? "text-primary" : "text-muted-foreground"}`} />
-      <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-sm text-foreground">{label}</span>
       <Switch checked={checked} onChange={onChange} disabled={disabled} />
     </label>
   );

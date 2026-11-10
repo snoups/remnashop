@@ -60,13 +60,13 @@ export function RecipientsPreview({ state, category, defaultLocale, contentLocal
       <div className="mt-4 flex flex-col gap-3 px-3.5 pb-2">
       {state.kind === "loading" && <Spinner />}
       {state.kind === "error" && (
-        <span className="text-[12px] text-error">{t("broadcasts.editor.recipients.error")}</span>
+        <span className="text-xs text-error">{t("broadcasts.editor.recipients.error")}</span>
       )}
       {state.kind === "ready" && (
         <>
           <div className="flex items-baseline gap-2">
             <span className={`${KPI_VALUE_CLASS} text-foreground`}>{format(total)}</span>
-            <span className="text-[13px] text-muted-foreground">{t("broadcasts.editor.recipients.title").toLowerCase()}</span>
+            <span className="text-sm text-muted-foreground">{t("broadcasts.editor.recipients.title").toLowerCase()}</span>
           </div>
           {/* a share bar each, of the total: one customer can be counted on both channels */}
           {channelCounts.length > 0 && (
@@ -123,7 +123,7 @@ function ShareLine({
     <div className="flex items-center gap-3">
       <IconCircle icon={Icon} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-3 text-[13px]">
+        <div className="flex items-center justify-between gap-3 text-sm">
           <span className={`truncate ${muted ? "text-muted-foreground" : "text-foreground"}`}>{label}</span>
           <span className="shrink-0 font-semibold tabular-nums text-foreground">{value}</span>
         </div>

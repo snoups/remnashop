@@ -177,7 +177,7 @@ function UserDetailsDialogBody({
           isDeleted ? (
             <Trash2 className="size-4" />
           ) : user.login || user.name ? (
-            <span className="text-[11px] font-bold">{initials(user.login ?? user.name)}</span>
+            <span className="text-xs font-bold">{initials(user.login ?? user.name)}</span>
           ) : (
             <User className="size-4" />
           )

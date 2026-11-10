@@ -177,23 +177,23 @@ function Overview({ data }: { data: PromocodeStats }) {
                     className={TABLE_GRID}
                   >
                     <IconCircle icon={Ticket} tone={row.status === "ACTIVE" ? "success" : "neutral"} />
-                    <span className="truncate font-mono text-[12px] text-muted-foreground">
+                    <span className="truncate font-mono text-xs text-muted-foreground">
                       {row.code}
                     </span>
                     <span>
                       <Tag>{rewardLabel(row)}</Tag>
                     </span>
-                    <span className="text-[13px] tabular-nums text-foreground">
+                    <span className="text-sm tabular-nums text-foreground">
                       {row.total_activations.toLocaleString(language)}
                       <span className="text-muted-foreground">
                         {" / "}
                         {row.max_activations?.toLocaleString(language) ?? "∞"}
                       </span>
                     </span>
-                    <span className="text-right text-[13px] font-semibold tabular-nums">
+                    <span className="text-right text-sm font-semibold tabular-nums">
                       {formatMoney(row.revenue_after, currency, language)}
                     </span>
-                    <span className="text-right text-[13px] font-semibold tabular-nums">
+                    <span className="text-right text-sm font-semibold tabular-nums">
                       {row.conversion_rate === null
                         ? t("common.none")
                         : formatPercent(row.conversion_rate, language)}

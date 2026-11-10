@@ -22,7 +22,7 @@ export function PasswordLoginGuideDialog() {
           />
         </div>
 
-        <p className="mt-2 text-[12px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {t("settings.oauth.passwordLoginGuide.rescueNote")}
         </p>
       </div>

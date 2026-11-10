@@ -241,7 +241,7 @@ export function EventsTab({ userId, by }: { userId: number; by: "actor" | "targe
             label={eventTitle(entry, t)}
             onClick={() => setOpenedEntry(entry)}
           >
-            <span className="font-mono text-[12px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               {formatDateTime(entry.occurred_at, i18n.language)}
             </span>
           </Row>

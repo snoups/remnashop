@@ -73,7 +73,7 @@ function ConfirmDialogBody({
 
       {(message || children) && (
         <div className="flex flex-col gap-3 p-4">
-          {message && <p className="whitespace-pre-line text-[13px] text-foreground/80">{message}</p>}
+          {message && <p className="whitespace-pre-line text-sm text-foreground/80">{message}</p>}
           {children}
         </div>
       )}

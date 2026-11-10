@@ -318,7 +318,7 @@ export function HeaderSearch() {
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           placeholder={t("header.searchPlaceholder")}
-          className="w-full min-w-0 border-0 bg-transparent text-[13px] font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
+          className="w-full min-w-0 border-0 bg-transparent text-sm font-medium text-foreground outline-none focus-visible:outline-none placeholder:text-muted-foreground placeholder:transition-colors group-not-focus-within:group-hover:placeholder:text-foreground"
         />
         {query && (
           // 24px in a 36px-tall field: 6px inset top, bottom and right (px-3 minus 6)
@@ -355,12 +355,12 @@ export function HeaderSearch() {
             scrollbar column paints over the rounded corners */}
         <div className="max-h-96 overflow-y-auto">
         {entries.length === 0 && (isFetching || query.trim() !== debounced) ? (
-          <p className="flex items-center gap-2 px-3 py-2 text-[12px] text-muted-foreground">
+          <p className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             {t("header.searching")}
           </p>
         ) : entries.length === 0 ? (
-          <p className="px-3 py-2 text-[12px] text-muted-foreground">{t("header.searchEmpty")}</p>
+          <p className="px-3 py-2 text-xs text-muted-foreground">{t("header.searchEmpty")}</p>
         ) : (
           entries.map((entry, index) => (
             <Pressable
@@ -369,13 +369,13 @@ export function HeaderSearch() {
               onMouseEnter={() => setActive(index)}
               onClick={() => go(entry)}
               animate={index === active ? "hover" : "rest"}
-              className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] ${
+              className={`flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm ${
                 index === active ? "bg-accent text-primary" : "text-foreground"
               }`}
             >
               <entry.icon className="size-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">{highlight(entry.label, tokens)}</span>
-              {entry.hint && <span className="max-w-32 truncate text-[11px] text-muted-foreground">{highlight(entry.hint, tokens)}</span>}
+              {entry.hint && <span className="max-w-32 truncate text-xs text-muted-foreground">{highlight(entry.hint, tokens)}</span>}
               {index === active && <CornerDownLeft className="size-3.5 shrink-0" />}
             </Pressable>
           ))

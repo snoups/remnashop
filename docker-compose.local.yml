@@ -186,7 +186,7 @@ services:
     networks:
       - remnawave-network
     ports:
-      - 5173:5173
+      - 127.0.0.1:5173:5173
     depends_on:
       remnashop:
         condition: service_healthy

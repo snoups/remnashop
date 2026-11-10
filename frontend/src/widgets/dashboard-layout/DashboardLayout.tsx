@@ -127,6 +127,7 @@ function DashboardShell({ onLogout, isLeaving, onLeft }: DashboardShellProps) {
     <RefreshSignalContext.Provider value={refreshSignal}>
       <EntityDialogHost>
       <motion.div
+        data-dashboard-shell
         // A collapsed sidebar gives its 176px (w-62 - 72px) back by narrowing the
         // shell, not widening the card, on the sidebar's timing, so the card
         // keeps its width (both ends use min() to stay linear on narrow screens).

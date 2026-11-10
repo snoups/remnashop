@@ -68,7 +68,7 @@ export function PasswordChangeRequired() {
       >
         <div className="mb-3 flex flex-col gap-2">
           <h1 className={SCREEN_TITLE_CLASS}>{t("auth.passwordChange.title")}</h1>
-          <p className="text-[13px] text-muted-foreground">{t("auth.passwordChange.description")}</p>
+          <p className="text-sm text-muted-foreground">{t("auth.passwordChange.description")}</p>
         </div>
 
         <Field label={t("auth.passwordChange.currentPasswordLabel")} htmlFor="force-current-password" required>

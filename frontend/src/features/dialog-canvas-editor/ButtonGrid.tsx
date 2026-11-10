@@ -117,18 +117,18 @@ function ButtonFace({
 
   return (
     <span
-      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-[13px] ${styleClassName} ${className}`}
+      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-sm ${styleClassName} ${className}`}
     >
       {iconId ? (
-        <span className="text-[13px]">
+        <span className="text-sm">
           <EmojiThumbnail glyph={icon ?? ""} customEmojiId={iconId} />
         </span>
       ) : icon ? (
-        <span className="text-[13px]">{icon}</span>
+        <span className="text-sm">{icon}</span>
       ) : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
       {button.visibility_condition ? (
-        <span className="text-[10px] text-muted-foreground">({button.visibility_condition})</span>
+        <span className="text-[11px] text-muted-foreground">({button.visibility_condition})</span>
       ) : null}
     </span>
   );
@@ -303,7 +303,7 @@ export function ButtonGrid({
   if (buttons.length === 0 && !canEdit) {
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-[12px] text-muted-foreground">{emptyLabel}</p>
+        <p className="text-xs text-muted-foreground">{emptyLabel}</p>
       </div>
     );
   }

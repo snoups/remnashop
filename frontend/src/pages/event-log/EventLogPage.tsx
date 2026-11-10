@@ -234,14 +234,14 @@ export function EventLogPage() {
                               className={ROW_GRID_CLASSNAME}
                             >
                               <IconCircle glyph={<EventTypeIcon eventType={entry.event_type} className="size-4" />} />
-                              <span className="truncate text-[13px] font-medium text-foreground/90">{eventTitle(entry, t)}</span>
-                              <span className="text-[13px] tabular-nums text-foreground">
+                              <span className="truncate text-sm font-medium text-foreground/90">{eventTitle(entry, t)}</span>
+                              <span className="text-sm tabular-nums text-foreground">
                                 {formatTime(entry.occurred_at, i18n.language)}
                               </span>
-                              <span className="truncate text-[13px] text-foreground">
+                              <span className="truncate text-sm text-foreground">
                                 <EntryParticipants entry={entry} />
                               </span>
-                              <span className="truncate font-mono text-[12px] text-muted-foreground">
+                              <span className="truncate font-mono text-xs text-muted-foreground">
                                 {entry.ip_address ?? "—"}
                               </span>
                               <ChevronRight className="size-4 text-muted-foreground" />

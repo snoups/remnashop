@@ -380,7 +380,7 @@ export function DialogCanvasEditor() {
     if (selection.kind === "text") {
       return (
         <div className={`${EDITOR_PANEL_CLASSNAME} w-full p-4`}>
-          <h3 className="mb-3 text-[13px] font-semibold text-foreground">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">
             {t("dialogs.inspector.textTitle")}
           </h3>
           <TextEditorPanel
@@ -577,7 +577,7 @@ export function DialogCanvasEditor() {
               <Pressable
                 type="button"
                 onClick={handleAddButton}
-                className={`flex h-9 w-full max-w-sm cursor-pointer items-center ${isTreeFolded ? "lg:max-w-md" : ""} justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-[13px] text-foreground/70 transition-colors hover:bg-white/[0.06]`}
+                className={`flex h-9 w-full max-w-sm cursor-pointer items-center ${isTreeFolded ? "lg:max-w-md" : ""} justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-sm text-foreground/70 transition-colors hover:bg-white/[0.06]`}
               >
                 <Plus className="size-3.5" />
                 {t("dialogs.inspector.buttonAdd")}
@@ -610,7 +610,7 @@ export function DialogCanvasEditor() {
                   />
                 )
               : (elementInspector ?? (
-                  <p className="rounded-xl border border-dashed border-white/[0.12] p-4 text-[12.5px] text-muted-foreground">
+                  <p className="rounded-xl border border-dashed border-white/[0.12] p-4 text-sm text-muted-foreground">
                     {t("dialogs.inspector.emptySelection")}
                   </p>
                 ))}
@@ -629,16 +629,16 @@ export function DialogCanvasEditor() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-warning/25 bg-warning/[0.07] px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="size-[7px] rounded-full bg-warning" />
-                  <span className="text-[13px] text-foreground">
+                  <span className="text-sm text-foreground">
                     {t("dialogs.inspector.dirtyTitle")}
                   </span>
                   {brokenUrlButton !== null && (
-                    <span className="text-[12.5px] text-error">
+                    <span className="text-sm text-error">
                       {t("dialogs.inspector.buttonUrlInvalidGrid")}
                     </span>
                   )}
                   {limitProblem !== null && (
-                    <span className="text-[12.5px] text-error">
+                    <span className="text-sm text-error">
                       {limitProblem.kind === "row"
                         ? t("dialogs.inspector.buttonsRowLimit", { max: limitProblem.max })
                         : t("dialogs.inspector.buttonsTotalLimit", { max: limitProblem.max })}

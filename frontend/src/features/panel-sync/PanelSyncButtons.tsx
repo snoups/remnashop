@@ -156,14 +156,14 @@ export function PanelSyncButtons({ onFinished }: { onFinished: () => void }) {
         >
           {OPTIONS[confirming].map((option) => (
             <div key={option} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-3 text-[13px] text-foreground/80">
+              <div className="flex items-center justify-between gap-3 text-sm text-foreground/80">
                 <span>{t(`subscriptions.panelSync.bulk.options.${option}.label`)}</span>
                 <Switch
                   checked={options[option]}
                   onChange={(on) => setOptions((current) => ({ ...current, [option]: on }))}
                 />
               </div>
-              <p className="text-[12px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {t(`subscriptions.panelSync.bulk.options.${option}.hint`)}
               </p>
             </div>

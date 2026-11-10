@@ -31,7 +31,7 @@ export function SubscriptionsCard({ subscriptions }: { subscriptions: OverviewSu
           {rows.map((row) => (
             <Fragment key={row.key}>
               {row.key === "limited" && <div className="h-px bg-border" />}
-              <div className="flex items-center justify-between gap-3 text-[13px]">
+              <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="flex items-center gap-2 text-muted-foreground">
                   <span className={`size-2.5 rounded-full ${row.dot}`} />
                   {t(`dashboard.subscriptions.${row.key}`)}

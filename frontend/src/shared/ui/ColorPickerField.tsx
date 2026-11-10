@@ -4,6 +4,7 @@ import { HexColorPicker } from "react-colorful";
 import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
+import { Ripple } from "@shared/ui/Ripple";
 
 // HexColorPicker (200px) plus the popover padding
 const POPOVER_MAX_HEIGHT = 230;
@@ -30,8 +31,10 @@ export function ColorPickerField({ value, onChange, displayValue }: ColorPickerF
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         style={{ backgroundColor: displayValue ?? value }}
-        className="size-9 shrink-0 rounded-full border-2 border-glass-border shadow-inner"
-      />
+        className="relative size-9 shrink-0 rounded-full border-2 border-glass-border shadow-inner"
+      >
+        <Ripple />
+      </button>
 
       <PortalPopover
         glass

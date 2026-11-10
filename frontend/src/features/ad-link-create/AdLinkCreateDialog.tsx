@@ -167,7 +167,7 @@ function AdLinkCreateDialogBody({
                 )}
               </div>
               {isCodeInvalid && (
-                <p id="adlink-code-hint" className="text-[12px] text-error">
+                <p id="adlink-code-hint" className="text-xs text-error">
                   {t("advertising.create.codeInvalid")}
                 </p>
               )}

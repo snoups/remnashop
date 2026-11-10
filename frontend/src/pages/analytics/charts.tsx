@@ -54,7 +54,7 @@ export function BarRows({
           </div>
         )}
         {rows.map((row) => (
-          <div key={row.key} className="col-span-full grid grid-cols-subgrid items-center px-3.5 py-2 text-[13px]">
+          <div key={row.key} className="col-span-full grid grid-cols-subgrid items-center px-3.5 py-2 text-sm">
             <span className="truncate text-foreground">{row.label}</span>
             <div className="h-2 rounded-full glass-track">
               <div
@@ -103,7 +103,7 @@ export function ColumnChart({ columns, empty, height = 200 }: { columns: Column[
         {columns.map((column, index) => (
           <div key={column.key} className="flex min-w-6 flex-1 flex-col items-center gap-1.5">
             {column.caption !== undefined && (
-              <span className="whitespace-nowrap text-[11px] font-semibold tabular-nums text-foreground">
+              <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-foreground">
                 {column.caption}
               </span>
             )}
@@ -122,7 +122,7 @@ export function ColumnChart({ columns, empty, height = 200 }: { columns: Column[
                 />
               ))}
             </div>
-            <span className="h-4 whitespace-nowrap text-[11px] text-muted-foreground">
+            <span className="h-4 whitespace-nowrap text-xs text-muted-foreground">
               {index % labelEvery === 0 ? column.label : ""}
             </span>
           </div>
@@ -134,7 +134,7 @@ export function ColumnChart({ columns, empty, height = 200 }: { columns: Column[
 
 export function Legend({ items }: { items: { className: string; label: ReactNode; line?: boolean }[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
       {items.map((item, index) => (
         <span key={index} className="inline-flex items-center gap-1.5">
           <span className={item.line ? `h-0 w-3 border-t-2 border-dashed ${item.className}` : `size-2 rounded-full ${item.className}`} />
@@ -150,7 +150,7 @@ export function CurrencyNote({ currency }: { currency: string }) {
   return (
     <div className="flex gap-2.5 rounded-2xl border border-dashed border-white/[0.12] p-3.5">
       <Info className="mt-px size-4 shrink-0 text-muted-foreground" />
-      <p className="text-[12px] leading-relaxed text-muted-foreground">{t("analytics.currencyNote", { currency })}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{t("analytics.currencyNote", { currency })}</p>
     </div>
   );
 }

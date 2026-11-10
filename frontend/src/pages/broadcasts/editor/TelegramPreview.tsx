@@ -57,12 +57,12 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
       <div className={`${GLASS_PLATE_CLASS} p-2.5`}>
         <div className="flex flex-col gap-1.5">
           {mediaType && (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-white/[0.12] bg-white/[0.02] text-[12px] text-muted-foreground">
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-white/[0.12] bg-white/[0.02] text-xs text-muted-foreground">
               <Image className="size-5" />
               {[t(`broadcasts.media.${mediaType}`), mediaName].filter(Boolean).join(" · ")}
             </div>
           )}
-          <div className="whitespace-pre-wrap break-words px-2.5 py-2 text-[13px] leading-relaxed text-foreground">
+          <div className="whitespace-pre-wrap break-words px-2.5 py-2 text-sm leading-relaxed text-foreground">
             {text.trim() ? (
               <TelegramHtml value={text} values={values} />
             ) : (
@@ -77,7 +77,7 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
               {buttons.map((label, index) => (
                 <span
                   key={index}
-                  className="truncate rounded-lg border border-white/[0.12] px-3 py-2 text-center text-[13px] text-foreground"
+                  className="truncate rounded-lg border border-white/[0.12] px-3 py-2 text-center text-sm text-foreground"
                 >
                   {label}
                 </span>

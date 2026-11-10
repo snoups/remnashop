@@ -85,7 +85,7 @@ function PromoteAdminForm({
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 p-4">
-          <p className="text-[13px] text-foreground/80">{t("admins.promote.message", { name: userLabel(user, user.id, t) })}</p>
+          <p className="text-sm text-foreground/80">{t("admins.promote.message", { name: userLabel(user, user.id, t) })}</p>
           {needsLogin && (
             <Field
               label={t("admins.promote.loginLabel")}

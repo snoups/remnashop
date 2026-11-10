@@ -27,7 +27,7 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
       <Pressable
         type="button"
         onClick={() => setIsOpen(true)}
-        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-[13px] font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
+        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-sm font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
       >
         {mobile ? <Crown className="size-5" /> : <Crown className="size-4 shrink-0" />}
         {!mobile && <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>}
@@ -54,7 +54,7 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
 
               <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
                 <div className={GLASS_DIALOG_CARD_CLASS}>
-                  <p className="text-[13px] text-foreground">{t("donate.description")}</p>
+                  <p className="text-sm text-foreground">{t("donate.description")}</p>
                   <div className="flex gap-2">
                     <Pressable as="a" href={BOOSTY_URL} target="_blank" rel="noreferrer" className={GLASS_LINK_BUTTON_CLASS}>
                       <PiggyBank className="size-4" />
@@ -69,8 +69,8 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
 
                 <div className={GLASS_DIALOG_CARD_CLASS}>
                   <div>
-                    <div className="text-[13px] font-medium text-foreground">{t("donate.communityTitle")}</div>
-                    <p className="mt-0.5 text-[12px] text-muted-foreground">{t("donate.communityDescription")}</p>
+                    <div className="text-sm font-medium text-foreground">{t("donate.communityTitle")}</div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{t("donate.communityDescription")}</p>
                   </div>
                   <Pressable as="a" href={COMMUNITY_URL} target="_blank" rel="noreferrer" className={GLASS_SOLID_LINK_BUTTON_CLASS}>
                     {t("donate.communityButton")}

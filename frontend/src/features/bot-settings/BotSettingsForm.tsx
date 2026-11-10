@@ -139,7 +139,7 @@ function BotLogsDialogBody() {
               const el = event.currentTarget;
               stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 16;
             }}
-            className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all p-3.5 font-mono text-[12px] leading-relaxed text-foreground/80"
+            className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all p-3.5 font-mono text-xs leading-relaxed text-foreground/80"
           >
             {state.kind === "error"
               ? t("settings.bot.logsLoadError")
@@ -421,7 +421,7 @@ function InlineAction({ onClick, disabled = false, children }: { onClick: () => 
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex h-7 shrink-0 items-center rounded-full px-3 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
+      className="flex h-7 shrink-0 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:opacity-50"
     >
       {children}
     </Pressable>

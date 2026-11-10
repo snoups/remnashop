@@ -154,7 +154,7 @@ export function DashboardPage() {
     <div className="flex flex-col gap-5">
       {updatedAt && (
         // the header holds it on desktop
-        <span className="text-[12px] text-muted-foreground md:hidden">
+        <span className="text-xs text-muted-foreground md:hidden">
           {t("dashboard.updatedAt", {
             time: formatTime(updatedAt, i18n.language),
           })}

@@ -153,7 +153,7 @@ function TransactionDetailsDialogBody({
   return (
     <>
       <DialogHeader
-        glyph={<span className="text-[13px] font-bold">{symbol}</span>}
+        glyph={<span className="text-sm font-bold">{symbol}</span>}
         title={t("transactions.orderLabel", { id: order.id })}
         subtitle={<span className="font-mono">{createdAt}</span>}
         actions={<Badge tone={PAYMENT_STATUS_BADGE_TONE[order.status]}>{statusLabel}</Badge>}

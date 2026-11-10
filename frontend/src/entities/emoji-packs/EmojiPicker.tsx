@@ -236,7 +236,7 @@ export function EmojiPicker({
               onClear();
               setIsOpen(false);
             }}
-            className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-[12px] text-foreground/70 transition-colors hover:bg-white/[0.06]"
+            className="mt-1 flex h-[34px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border text-xs text-foreground/70 transition-colors hover:bg-white/[0.06]"
           >
             <X className="size-3" />
             {t("dialogs.inspector.emojiClear")}

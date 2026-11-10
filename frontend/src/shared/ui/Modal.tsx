@@ -3,7 +3,7 @@ import { useCallback, useContext, useLayoutEffect, useRef, useState, type ReactN
 import { createPortal } from "react-dom";
 
 import { DialogPortal } from "@shared/ui/DialogPortal";
-import { ModalCloseContext, ParentPanelContext, useDialogFocus } from "@shared/ui/modal-hooks";
+import { ModalCloseContext, ParentPanelContext, useDialogFocus, useOutsidePanelDismiss } from "@shared/ui/modal-hooks";
 
 const SIZE_CLASS = {
   sm: "max-w-sm",
@@ -102,6 +102,7 @@ export function Modal({
   }, [parentPanelRef]);
 
   useDialogFocus(panelRef, dismissable ? requestClose : null);
+  useOutsidePanelDismiss(panelRef, dismissable ? requestClose : null);
 
   const content = (
     <ParentPanelContext.Provider value={panelRef}>

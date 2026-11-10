@@ -154,7 +154,7 @@ export function WindowInspector({
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{label}</span>
           {window.kind === "seed" && (
-            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("dialogs.windowList.seedBadge")}
             </span>
           )}
@@ -166,7 +166,7 @@ export function WindowInspector({
               if (copied) toast.success(t("dialogs.inspector.keyCopied"));
             });
           }}
-          className="block max-w-full truncate text-left font-mono text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          className="block max-w-full truncate text-left font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {window.key}
         </Pressable>
@@ -174,7 +174,7 @@ export function WindowInspector({
 
       {window.kind === "custom" && (
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-foreground/80">
+          <span className="text-sm font-medium text-foreground/80">
             {t("dialogs.inspector.nameLabel")}
           </span>
           <input
@@ -194,7 +194,7 @@ export function WindowInspector({
 
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium text-foreground/80">
+          <span className="text-sm font-medium text-foreground/80">
             {t("dialogs.inspector.enabledLabel")}
           </span>
           <Switch
@@ -206,7 +206,7 @@ export function WindowInspector({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[13px] font-medium text-foreground/80">
+        <span className="text-sm font-medium text-foreground/80">
           {t("dialogs.inspector.bannerLabel")}
         </span>
         <PillTabs
@@ -234,7 +234,7 @@ export function WindowInspector({
                 <ImageIcon className="size-5 text-muted-foreground" />
               )}
               {activeLocale && (
-                <span className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold uppercase text-foreground/85">
+                <span className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold uppercase text-foreground/85">
                   {activeLocale}
                 </span>
               )}
@@ -252,7 +252,7 @@ export function WindowInspector({
                   type="button"
                   disabled={isBusy || !activeLocale}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12px] text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
                 >
                   <Upload className="size-3" />
                   {t(bannerUrl ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}

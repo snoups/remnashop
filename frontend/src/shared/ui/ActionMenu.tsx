@@ -87,7 +87,7 @@ export function ActionMenu({ items, trigger }: ActionMenuProps) {
                   setIsOpen(false);
                   item.onClick();
                 }}
-                className={`relative flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-[13px] font-medium transition-colors enabled:hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`relative flex h-9 w-full items-center gap-2.5 rounded-popover-item px-2.5 text-left text-sm font-medium transition-colors enabled:hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 ${
                   item.variant === "danger" ? "text-error" : "text-foreground"
                 }`}
               >

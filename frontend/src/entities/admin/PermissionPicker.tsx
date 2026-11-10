@@ -220,7 +220,7 @@ function PermissionRow({ permission, ...props }: { permission: Permission } & Pe
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="flex min-w-0 items-center gap-2 text-[13px] text-foreground/90">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-foreground/90">
         {props.baseline !== undefined && (
           // slot kept on every row so labels stay aligned
           <span

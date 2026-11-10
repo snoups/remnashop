@@ -302,13 +302,13 @@ export function ReferralsListPage() {
                               onClick={() => setStatsUser(referred)}
                               className={ROW_GRID_CLASSNAME}
                             >
-                              <IconCircle glyph={<span className="text-[11px] font-bold">{initials(referred?.name)}</span>} />
+                              <IconCircle glyph={<span className="text-xs font-bold">{initials(referred?.name)}</span>} />
                               <CellText
                                 title={
                                   referred ? (
                                     <span className="flex min-w-0 items-center gap-2">
                                       <span className="truncate">{userName(referred, t)}</span>
-                                      <span className="shrink-0 font-mono text-[12px] font-normal text-muted-foreground">
+                                      <span className="shrink-0 font-mono text-xs font-normal text-muted-foreground">
                                         #{referred.id}
                                       </span>
                                     </span>
@@ -321,15 +321,15 @@ export function ReferralsListPage() {
                               <span className="flex min-w-0 items-center gap-2">
                                 <CornerUpLeft className="size-3.5 shrink-0 text-muted-foreground" />
                                 <span
-                                  className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground"
+                                  className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-foreground"
                                 >
                                   {initials(item.referrer?.name)}
                                 </span>
-                                <span className="truncate text-[13px] text-foreground">
+                                <span className="truncate text-sm text-foreground">
                                   {item.referrer ? userName(item.referrer, t) : t("users.deleted.name")}
                                 </span>
                                 {item.referrer && (
-                                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                     #{item.referrer.id}
                                   </span>
                                 )}
@@ -341,19 +341,19 @@ export function ReferralsListPage() {
                               </span>
                               <span className="min-w-0 tabular-nums">
                                 <span
-                                  className={`block truncate text-[13px] ${
+                                  className={`block truncate text-sm ${
                                     rewards ? "font-semibold text-foreground" : "font-medium text-muted-foreground"
                                   }`}
                                 >
                                   {rewards ?? "—"}
                                 </span>
-                                <span className="block truncate text-[12px] text-muted-foreground">
+                                <span className="block truncate text-xs text-muted-foreground">
                                   {item.reward_count
                                     ? t("referrals.list.rewardCount", { count: item.reward_count })
                                     : t("referrals.list.noRewards")}
                                 </span>
                               </span>
-                              <span className="text-[13px] tabular-nums text-foreground">
+                              <span className="text-sm tabular-nums text-foreground">
                                 {formatTime(item.created_at, i18n.language)}
                               </span>
                               {canOpen ? <ChevronRight className="size-4 text-muted-foreground" /> : <span />}

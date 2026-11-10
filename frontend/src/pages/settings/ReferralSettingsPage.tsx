@@ -50,7 +50,7 @@ import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
 
 const INNER_CARD_CLASS = `flex flex-col gap-3 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
-const SWITCH_LABEL_CLASS = "flex items-center gap-1.5 text-[13px] font-medium text-foreground";
+const SWITCH_LABEL_CLASS = "flex items-center gap-1.5 text-sm font-medium text-foreground";
 
 type IconType = ComponentType<{ className?: string }>;
 
@@ -106,8 +106,8 @@ function OptionGroup<T extends string>({
           >
             <IconCircle icon={icon} />
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13px] font-medium text-foreground">{name(option)}</span>
-              <span className="text-[12px] leading-snug text-muted-foreground">{describe(option)}</span>
+              <span className="text-sm font-medium text-foreground">{name(option)}</span>
+              <span className="text-xs leading-snug text-muted-foreground">{describe(option)}</span>
             </div>
           </Pressable>
         );
@@ -372,8 +372,8 @@ export function ReferralSettingsPage() {
                 <CreditCard className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-foreground">{t("referrals.settings.preview.trigger")}</p>
-                <p className="text-[12px] text-accent-foreground">
+                <p className="text-sm font-medium text-foreground">{t("referrals.settings.preview.trigger")}</p>
+                <p className="text-xs text-accent-foreground">
                   {t(
                     `referrals.settings.preview.triggerText.${accrualStrategy}.${isPercent ? (`PERCENT_${rewardType}` as const) : "AMOUNT"}`,
                   )}
@@ -381,7 +381,7 @@ export function ReferralSettingsPage() {
               </div>
               {isPercent && (
                 <div className="flex shrink-0 flex-col gap-1">
-                  <label htmlFor="referrals-example" className="text-center text-[12px] text-muted-foreground">
+                  <label htmlFor="referrals-example" className="text-center text-xs text-muted-foreground">
                     {t("referrals.settings.exampleLabel")}
                   </label>
                   <Input
@@ -410,14 +410,14 @@ export function ReferralSettingsPage() {
                 <div key={level} className="flex flex-col">
                   <div className="ml-[29px] h-3.5 w-0.5 bg-white/[0.12]" />
                   <div className={`${GLASS_INNER_CARD_CLASS} flex items-center gap-3 p-3.5`}>
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-accent text-[13px] font-semibold text-primary">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-accent text-sm font-semibold text-primary">
                       {level}
                     </div>
                     <label htmlFor={`referrals-reward-${level}`} className="min-w-0 flex-1">
-                      <span className="block text-[13px] font-medium text-foreground">
+                      <span className="block text-sm font-medium text-foreground">
                         {t(`referrals.settings.preview.who.${level}`)}
                       </span>
-                      <span className="block text-[12px] text-muted-foreground">
+                      <span className="block text-xs text-muted-foreground">
                         {t("referrals.settings.levelGets")}{" "}
                         <span className="font-medium text-primary">
                           +{reward} {rewardUnit(reward)}
@@ -449,7 +449,7 @@ export function ReferralSettingsPage() {
           {maxLevel < LEVELS.length && (
             <div className="flex gap-2.5 rounded-2xl border border-dashed border-white/[0.12] p-3.5">
               <Info className="mt-px size-4 shrink-0 text-muted-foreground" />
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {t("referrals.settings.levelsUnusedNote", { count: maxLevel })}
               </p>
             </div>
@@ -457,7 +457,7 @@ export function ReferralSettingsPage() {
 
           <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/[0.05] p-3.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+              <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Gift className="size-4 text-primary" />
                 {t("referrals.settings.invitee.title")}
               </span>
@@ -501,7 +501,7 @@ export function ReferralSettingsPage() {
                   />
                 </div>
                 {inviteeRewardType === "POINTS" && (
-                  <p className="text-[12px] text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
+                  <p className="text-xs text-warning">{t("referrals.settings.invitee.pointsWarning")}</p>
                 )}
               </>
             )}

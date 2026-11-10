@@ -22,7 +22,7 @@ function PlatformRow({ platform }: { platform: ClientApps["platforms"][number] }
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3 text-[13px]">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="font-semibold text-foreground">{platform.platform}</span>
         <span className="tabular-nums text-muted-foreground">{platform.total.toLocaleString(i18n.language)}</span>
       </div>
@@ -32,7 +32,7 @@ function PlatformRow({ platform }: { platform: ClientApps["platforms"][number] }
             <div key={segment.label} className={segment.tone} style={{ width: `${(segment.count / sum) * 100}%` }} />
           ))}
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {segments.map((segment) => (
           <span key={segment.label} className="flex items-center gap-1.5">
             <span className={`size-2 rounded-full ${segment.tone}`} />

@@ -306,7 +306,7 @@ function ValueEditor({ current, max = Number.MAX_SAFE_INTEGER, suffix, hint, chi
           </ChoiceChip>
         ))}
       </div>
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {isValid && resolved !== current ? (
           <>
             {t("users.details.balance.willBe")}{" "}
@@ -347,7 +347,7 @@ function LastChange({
     <Pressable
       type="button"
       onClick={() => onOpen(entry)}
-      className="truncate border-t border-white/[0.08] pt-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+      className="truncate border-t border-white/[0.08] pt-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
     >
       {t("users.details.balance.lastChange", {
         name: initiatorLabel(entry, t),
@@ -365,7 +365,7 @@ function LoyaltyEditor({ userId, onExcluded }: { userId: number; onExcluded: (di
 
   if (state.kind === "loading") return <Spinner />;
   if (state.kind === "error") {
-    return <p className="text-[12px] text-error">{t("users.details.loyalty.loadError")}</p>;
+    return <p className="text-xs text-error">{t("users.details.loyalty.loadError")}</p>;
   }
 
   const loyalty = state.data;
@@ -391,10 +391,10 @@ function LoyaltyEditor({ userId, onExcluded }: { userId: number; onExcluded: (di
     <div className="flex flex-col gap-2.5">
       {loyalty.is_program_active ? (
         <div className="flex flex-col gap-0.5">
-          <p className="text-[13px] font-medium text-foreground">
+          <p className="text-sm font-medium text-foreground">
             {t("users.details.loyalty.spent", { amount: money(spent) })}
           </p>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {loyalty.next_tier
               ? t("users.details.loyalty.toNext", {
                   amount: money(Number(loyalty.next_tier.threshold) - spent),
@@ -404,10 +404,10 @@ function LoyaltyEditor({ userId, onExcluded }: { userId: number; onExcluded: (di
           </p>
         </div>
       ) : (
-        <p className="text-[13px] font-medium text-muted-foreground">{t("users.details.loyalty.inactive")}</p>
+        <p className="text-sm font-medium text-muted-foreground">{t("users.details.loyalty.inactive")}</p>
       )}
       <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] pt-2.5">
-        <span className="text-[13px] font-medium text-foreground">{t("users.details.loyalty.exclude")}</span>
+        <span className="text-sm font-medium text-foreground">{t("users.details.loyalty.exclude")}</span>
         <Switch checked={loyalty.excluded} onChange={(value) => void toggle(value)} disabled={isSaving} />
       </div>
     </div>

@@ -215,7 +215,7 @@ function PromocodeCreateDialogBody({
                       }`}
                     >
                       <Icon className={`size-4 ${isSelected ? "" : "text-muted-foreground"}`} />
-                      <span className="text-[13px] font-medium">{t(`promocodes.rewardTypeShort.${type}`)}</span>
+                      <span className="text-sm font-medium">{t(`promocodes.rewardTypeShort.${type}`)}</span>
                     </Pressable>
                   );
                 })}
@@ -272,7 +272,7 @@ function PromocodeCreateDialogBody({
             {(rewardType === "TRAFFIC" || rewardType === "DEVICES") && (
               <Field label={t("promocodes.create.rewardAddonLabel")} htmlFor="promo-reward-addon">
                 {matchingAddons.length === 0 ? (
-                  <p className="text-[12px] text-muted-foreground">{t("promocodes.create.rewardAddonEmpty")}</p>
+                  <p className="text-xs text-muted-foreground">{t("promocodes.create.rewardAddonEmpty")}</p>
                 ) : (
                   <SelectDropdown
                     variant="well"
@@ -295,7 +295,7 @@ function PromocodeCreateDialogBody({
               <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
                 <Field label={t("promocodes.create.rewardPlanLabel")} htmlFor="promo-reward-plan">
                   {plans.length === 0 ? (
-                    <p className="text-[12px] text-muted-foreground">{t("promocodes.create.rewardPlanEmpty")}</p>
+                    <p className="text-xs text-muted-foreground">{t("promocodes.create.rewardPlanEmpty")}</p>
                   ) : (
                     <SelectDropdown
                       variant="well"

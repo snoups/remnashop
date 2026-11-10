@@ -75,7 +75,7 @@ export function DateTimePickerField({
             toggleOpen();
           }
         }}
-        className="group flex h-9 w-full cursor-pointer items-center rounded-full border border-glass-border bg-white/[0.03] pl-9 pr-8 text-[13px] font-medium backdrop-blur-md outline-none transition-colors hover:bg-white/[0.06] focus:border-primary"
+        className="group flex h-9 w-full cursor-pointer items-center rounded-full border border-glass-border bg-white/[0.03] pl-9 pr-8 text-sm font-medium backdrop-blur-md outline-none transition-colors hover:bg-white/[0.06] focus:border-primary"
       >
         <CalendarClock className={PICKER_ICON_CLASS} />
         <span className={`truncate ${display ? "text-foreground" : "text-muted-foreground"}`}>{display || placeholder}</span>
@@ -109,7 +109,7 @@ export function DateTimePickerField({
         <MonthCalendar value={date} onPick={(picked) => onChange(`${picked}T${time || nextHour()}`)} />
         <label className="flex items-center gap-2 border-t border-white/[0.08] pt-3">
           <Clock className="size-3.5 text-muted-foreground" />
-          <span className="flex-1 text-[13px] text-muted-foreground">{t("common.time")}</span>
+          <span className="flex-1 text-sm text-muted-foreground">{t("common.time")}</span>
           {/* plain text, not type="time": no browser picker of its own */}
           <Input
             type="text"

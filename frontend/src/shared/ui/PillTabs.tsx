@@ -60,7 +60,7 @@ export function PillTabs<T extends string>({
               <span className={TAB_HOVER_CLASS} />
             )}
             <span
-              className={`relative z-10 flex h-[26px] items-center justify-center whitespace-nowrap px-3.5 text-[13px] font-medium ${activeKey === item.key ? "text-primary" : "text-foreground"}`}
+              className={`relative z-10 flex h-[26px] items-center justify-center whitespace-nowrap px-3.5 text-sm font-medium ${activeKey === item.key ? "text-primary" : "text-foreground"}`}
             >
               {item.label}
             </span>

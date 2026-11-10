@@ -129,10 +129,10 @@ export function LegalTextEditor({
             value={body}
             disabled={!canSet}
             onChange={(event) => onChange({ ...value, body: event.target.value })}
-            className="block w-full resize-none bg-transparent px-3.5 pb-10 pt-3 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            className="block w-full resize-none bg-transparent px-3.5 pb-10 pt-3 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           />
           <span
-            className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[11px] tabular-nums ${
+            className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-xs tabular-nums ${
               length > TEXT_LIMIT ? "text-error" : "text-muted-foreground"
             }`}
           >
@@ -142,7 +142,7 @@ export function LegalTextEditor({
       </Field>
       {canSet && canReaccept && (
         <div className="flex items-center gap-3">
-          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-foreground">
+          <p className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium text-foreground">
             {t("settings.legal.reaccept")}
             <FieldHint text={t("settings.legal.reacceptHint")} />
           </p>
@@ -150,7 +150,7 @@ export function LegalTextEditor({
         </div>
       )}
       {lastReacceptanceAt && (
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {t("settings.legal.lastReaccept", { date: formatDate(lastReacceptanceAt, i18n.language) })}
         </span>
       )}

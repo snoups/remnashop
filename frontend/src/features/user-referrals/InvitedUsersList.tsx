@@ -114,7 +114,7 @@ export function InvitedUsersPage({
                   <Badge tone={item.level === 1 ? "accent" : "neutral"}>
                     {t("referrals.list.levelBadge", { level: item.level })}
                   </Badge>
-                  <span className="flex w-24 shrink-0 flex-col items-end text-[12px] leading-tight tabular-nums">
+                  <span className="flex w-24 shrink-0 flex-col items-end text-xs leading-tight tabular-nums">
                     {rewards.length === 0 && <span className="text-muted-foreground">{t("common.none")}</span>}
                     {rewards.map((reward) => (
                       <span key={reward} className="max-w-full truncate font-semibold text-foreground">

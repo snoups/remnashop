@@ -11,7 +11,7 @@ import { Tag } from "@shared/ui/Tag";
 import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dashboard/runtime";
 
 const SVC_CLASS = `flex flex-col gap-2 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
-const KV_CLASS = "flex items-center justify-between gap-2 text-[13px]";
+const KV_CLASS = "flex items-center justify-between gap-2 text-sm";
 
 function Kv({ label, value }: { label: string; value: string }) {
   return (
@@ -40,7 +40,7 @@ function ProcessCard({ process, label }: { process: RuntimeProcess; label: strin
   return (
     <div className={SVC_CLASS}>
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-foreground">
+        <span className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-foreground">
           <span className="relative shrink-0">
             <IconCircle icon={Cpu} />
             <i className={`absolute -bottom-px -right-px size-2.5 rounded-full ${running ? "bg-success" : "bg-error"}`} />
@@ -103,11 +103,11 @@ function ServerCard({ host, memory }: { host: HostStats | null; memory: HostMemo
   return (
     <div className={SVC_CLASS}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+        <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Server className="size-4 text-muted-foreground" />
           {t("dashboard.runtime.server")}
         </span>
-        {sub && <span className="text-[12px] text-muted-foreground">{sub}</span>}
+        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
       <div className="mt-1 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
         {host && host.cpu_percent !== null && (

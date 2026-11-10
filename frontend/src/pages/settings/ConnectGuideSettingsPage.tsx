@@ -284,7 +284,7 @@ function AddRow({ label, disabled, onClick }: { label: ReactNode; disabled: bool
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-11 items-center gap-3 rounded-full px-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-h-11 items-center gap-3 rounded-full px-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
     >
       <IconCircle icon={Plus} />
       {label}
@@ -318,7 +318,7 @@ function StepEditor({
   return (
     <div className={BLOCK_CLASS}>
       <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.03] text-[13px] font-semibold">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-glass-border bg-white/[0.03] text-sm font-semibold">
           {index + 1}
         </span>
         <div className="w-44">
@@ -360,7 +360,7 @@ function StepEditor({
         />
       </Field>
 
-      <span className="text-[13px] font-medium text-foreground">{t("connectGuide.buttons")}</span>
+      <span className="text-sm font-medium text-foreground">{t("connectGuide.buttons")}</span>
       {step.buttons.map((button, at) => (
         <div key={button.key} className={`${GLASS_PLATE_CLASS} flex flex-col gap-2 p-3`}>
           <div className="flex flex-wrap items-center gap-2">
@@ -418,7 +418,7 @@ function StepEditor({
                 maxLength={ADDRESS_MAX_LENGTH}
                 onChange={(event) => setButton(at, { ...button, template: event.target.value })}
               />
-              <span className="w-full text-[12px] text-muted-foreground">
+              <span className="w-full text-xs text-muted-foreground">
                 {t("connectGuide.templateHint", { token: SUBSCRIPTION_LINK_TOKEN })}
               </span>
             </div>
@@ -659,13 +659,13 @@ export function ConnectGuideSettingsPage() {
 
           <div className="grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]">
             <div className="flex flex-col gap-1">
-              <span className="px-3 pb-1 text-[13px] font-medium text-foreground">{t("connectGuide.apps")}</span>
+              <span className="px-3 pb-1 text-sm font-medium text-foreground">{t("connectGuide.apps")}</span>
               {apps.map((candidate, index) => (
                 <Pressable
                   key={candidate.id}
                   type="button"
                   onClick={() => setAppIndex(index)}
-                  className={`flex h-10 items-center gap-2 rounded-full px-3 text-left text-[13px] font-medium transition-colors ${
+                  className={`flex h-10 items-center gap-2 rounded-full px-3 text-left text-sm font-medium transition-colors ${
                     index === appIndex ? "bg-accent text-primary" : "text-foreground/90 hover:bg-white/[0.04]"
                   } ${isAppInvalid(candidate) ? "ring-1 ring-inset ring-error" : ""}`}
                 >
@@ -673,7 +673,7 @@ export function ConnectGuideSettingsPage() {
                   {candidate.featured && <Star className="size-3.5 shrink-0 fill-primary text-primary" />}
                 </Pressable>
               ))}
-              {apps.length === 0 && <p className="px-3 text-[12px] text-muted-foreground">{t("connectGuide.noApps")}</p>}
+              {apps.length === 0 && <p className="px-3 text-xs text-muted-foreground">{t("connectGuide.noApps")}</p>}
               {apps.length < MAX_APPS && <AddRow label={t("connectGuide.addApp")} disabled={disabled} onClick={addApp} />}
             </div>
 
@@ -718,7 +718,7 @@ export function ConnectGuideSettingsPage() {
                   </div>
                 </div>
 
-                <span className="px-1 text-[13px] font-medium text-foreground">{t("connectGuide.steps")}</span>
+                <span className="px-1 text-sm font-medium text-foreground">{t("connectGuide.steps")}</span>
                 {app.steps.map((step, index) => (
                   <StepEditor
                     key={step.key}

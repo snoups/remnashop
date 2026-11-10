@@ -343,20 +343,20 @@ export function TransactionsPage() {
                                 >
                                   <IconCircle
                                     tone={PAYMENT_STATUS_BADGE_TONE[order.status]}
-                                    glyph={<span className="text-[13px] font-bold">{symbol}</span>}
+                                    glyph={<span className="text-sm font-bold">{symbol}</span>}
                                   />
                                   <span className="min-w-0">
                                     <span className="flex min-w-0 items-center gap-2">
-                                      <span className="truncate text-[13px] font-medium text-foreground">
+                                      <span className="truncate text-sm font-medium text-foreground">
                                         {order.plan_snapshot.name}
                                         {" · "}
                                         {t("plans.daysShort", { count: order.duration_days })}
                                       </span>
-                                      <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                         #{order.id}
                                       </span>
                                     </span>
-                                    <span className="flex min-w-0 gap-1 text-[12px] text-muted-foreground">
+                                    <span className="flex min-w-0 gap-1 text-xs text-muted-foreground">
                                       <span className="truncate">
                                         {order.user ? userName(order.user, t) : t("users.deleted.name")}
                                       </span>
@@ -364,15 +364,15 @@ export function TransactionsPage() {
                                       <span className="shrink-0">&middot; {gatewayLabel}</span>
                                     </span>
                                   </span>
-                                  <span className="truncate text-[13px] text-foreground">
+                                  <span className="truncate text-sm text-foreground">
                                     {t(`transactions.purchaseType.${order.purchase_type}`)}
                                   </span>
                                   <span className="tabular-nums">
-                                    <span className="block text-[13px] font-semibold text-foreground">
+                                    <span className="block text-sm font-semibold text-foreground">
                                       {formatMoney(order.final_price, order.currency, i18n.language, true)}
                                     </span>
                                     {hasDiscount(order) && (
-                                      <span className="block text-[12px] text-muted-foreground">
+                                      <span className="block text-xs text-muted-foreground">
                                         <span className="line-through">
                                           {formatMoney(order.base_price, order.currency, i18n.language, true)}
                                         </span>{" "}
@@ -380,7 +380,7 @@ export function TransactionsPage() {
                                       </span>
                                     )}
                                   </span>
-                                  <span className="text-[13px] tabular-nums text-foreground">
+                                  <span className="text-sm tabular-nums text-foreground">
                                     {formatTime(order.created_at, i18n.language)}
                                   </span>
                                   <span>

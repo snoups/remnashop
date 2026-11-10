@@ -88,7 +88,7 @@ const ACTIONS: { key: string; icon: ComponentType<{ className?: string }>; run: 
 
 // Tailwind resets headings and lists; the letter's look is applied by the backend
 const BODY_CLASS = [
-  "min-h-64 w-full px-3.5 py-3 text-[13px] leading-relaxed text-foreground outline-none",
+  "min-h-64 w-full px-3.5 py-3 text-sm leading-relaxed text-foreground outline-none",
   "[&_p]:my-1 [&_h1]:my-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-semibold",
   "[&_h3]:my-2 [&_h3]:text-base [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
   "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",

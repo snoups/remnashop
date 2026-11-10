@@ -206,7 +206,7 @@ function Overview({ data }: { data: Sources }) {
                   {top && (
                     <IconCircle
                       tone={KIND_TONE[row.source]}
-                      glyph={<span className="text-[11px] font-bold">{kindLabel(row.source).charAt(0).toUpperCase()}</span>}
+                      glyph={<span className="text-xs font-bold">{kindLabel(row.source).charAt(0).toUpperCase()}</span>}
                     />
                   )}
                 </span>
@@ -216,10 +216,10 @@ function Overview({ data }: { data: Sources }) {
                   mono
                   className={top ? "" : "border-l-2 border-border pl-4"}
                 />
-                <span className="text-right text-[13px] font-semibold tabular-nums">
+                <span className="text-right text-sm font-semibold tabular-nums">
                   {row.registrations.toLocaleString(language)}
                 </span>
-                <span className="text-right text-[13px] font-semibold tabular-nums">
+                <span className="text-right text-sm font-semibold tabular-nums">
                   {row.payers.toLocaleString(language)}
                 </span>
                 <span className="flex items-center gap-2 pl-6">
@@ -231,14 +231,14 @@ function Overview({ data }: { data: Sources }) {
                       }}
                     />
                   </span>
-                  <span className="w-11 text-right text-[12px] tabular-nums text-muted-foreground">
+                  <span className="w-11 text-right text-xs tabular-nums text-muted-foreground">
                     {formatPercent(row.conversion_rate, language)}
                   </span>
                 </span>
-                <span className="text-right text-[13px] font-semibold tabular-nums">
+                <span className="text-right text-sm font-semibold tabular-nums">
                   {formatMoney(row.revenue, currency, language)}
                 </span>
-                <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                <span className="text-right text-xs tabular-nums text-muted-foreground">
                   {formatMoney(row.revenue_per_payer, currency, language)}
                 </span>
               </div>
@@ -271,7 +271,7 @@ function Payback({ data }: { data: Sources }) {
             <span className={EYEBROW_CLASS}>
               {t("analytics.sources.referredRevenue")}
             </span>
-            <span className="text-[13px] font-semibold tabular-nums">
+            <span className="text-sm font-semibold tabular-nums">
               {formatMoney(
                 referral.referred_revenue,
                 data.report_currency,
@@ -286,7 +286,7 @@ function Payback({ data }: { data: Sources }) {
             <span className={EYEBROW_CLASS}>
               {t("analytics.sources.rewards")}
             </span>
-            <span className="text-[13px] font-semibold tabular-nums">
+            <span className="text-sm font-semibold tabular-nums">
               {[
                 t("analytics.sources.rewardsDays", {
                   count: referral.reward_days,
@@ -361,27 +361,27 @@ function TopReferrers({ data }: { data: Sources }) {
             onClick={() => openUser(row.user_id)}
             className="grid grid-cols-[32px_minmax(0,1fr)_auto_auto] items-center gap-3"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+            <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-foreground">
               {row.name ? initials(row.name) : <User className="size-4" />}
             </span>
             <span className="min-w-0">
               <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[13px] font-medium text-foreground">
+                <span className="truncate text-sm font-medium text-foreground">
                   {row.name || t("users.unnamed")}
                 </span>
-                <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{row.user_id}</span>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">#{row.user_id}</span>
               </span>
-              <span className="block truncate text-[12px] tabular-nums text-muted-foreground">
+              <span className="block truncate text-xs tabular-nums text-muted-foreground">
                 {t("analytics.sources.invitedPaid", {
                   invited: row.invited.toLocaleString(language),
                   paid: row.paid.toLocaleString(language),
                 })}
               </span>
             </span>
-            <span className="text-right text-[13px] font-semibold tabular-nums">
+            <span className="text-right text-sm font-semibold tabular-nums">
               {formatMoney(row.revenue, data.report_currency, language)}
             </span>
-            <span className="w-16 text-right text-[12px] tabular-nums text-muted-foreground">
+            <span className="w-16 text-right text-xs tabular-nums text-muted-foreground">
               {t("plans.daysShort", { count: row.reward_days })}
             </span>
           </ListRow>

@@ -192,7 +192,7 @@ function RateRow({
     >
       <div className="flex items-center gap-2.5">
         <IconCircle glyph={currencySymbol(rate.currency)} />
-        <span className="text-[13px] font-semibold text-foreground">{rate.currency}</span>
+        <span className="text-sm font-semibold text-foreground">{rate.currency}</span>
         {isAnchor && (
           <Badge tone="accent" className="ml-auto">
             <Anchor className="size-2.5" />

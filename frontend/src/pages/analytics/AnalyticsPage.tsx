@@ -70,7 +70,7 @@ export function AnalyticsPage() {
         </div>
         <div className="ml-auto max-w-full shrink-0">
           {activeTab?.periodIndependent ? (
-            <span className="glass-panel flex h-12 items-center rounded-full px-4 text-[13px] font-medium text-muted-foreground">
+            <span className="glass-panel flex h-12 items-center rounded-full px-4 text-sm font-medium text-muted-foreground">
               {t("analytics.periodIndependent")}
             </span>
           ) : (

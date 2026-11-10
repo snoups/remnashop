@@ -102,7 +102,7 @@ function Distribution({ data }: { data: LtvDistribution }) {
           {data.buckets.map((bucket) => (
           <div key={bucket.label} className="grid grid-cols-[minmax(0,1fr)_72px_48px] items-center gap-3 px-3.5 py-2.5">
             <span className="flex min-w-0 flex-col gap-1.5">
-              <span className="truncate text-[13px] font-medium tabular-nums text-foreground">
+              <span className="truncate text-sm font-medium tabular-nums text-foreground">
                 {bucket.upper_bound === null
                   ? `≥ ${formatMoney(bucket.lower_bound, currency, language)}`
                   : `${formatMoney(bucket.lower_bound, currency, language)} – ${formatMoney(bucket.upper_bound, currency, language)}`}
@@ -111,10 +111,10 @@ function Distribution({ data }: { data: LtvDistribution }) {
                 <span className="block h-full rounded-full bg-primary transition-[width] duration-200 ease-out" style={{ width: `${share(bucket.users) * 100}%` }} />
               </span>
             </span>
-            <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+            <span className="text-right text-sm font-semibold tabular-nums text-foreground">
               {bucket.users.toLocaleString(language)}
             </span>
-            <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+            <span className="text-right text-xs tabular-nums text-muted-foreground">
               {formatPercent(share(bucket.users), language)}
             </span>
           </div>
@@ -145,7 +145,7 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
       cells: [
         formatMoney(group.avg_ltv, currency, language),
         // a narrow card keeps the number, the word goes
-        <span key="customers" className="text-[12px] text-muted-foreground">
+        <span key="customers" className="text-xs text-muted-foreground">
           <span className="@[26rem]:hidden">{group.customers.toLocaleString(language)}</span>
           <span className="hidden @[26rem]:inline">{t("analytics.ltv.customers", { count: group.customers })}</span>
         </span>,
@@ -194,31 +194,31 @@ function Breakdown({ data }: { data: LtvBreakdown }) {
                     onClick={() => openUser(payer.user_id)}
                     className={TOP_GRID}
                   >
-                    <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-[11px] font-bold text-foreground">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-white/[0.06] text-xs font-bold text-foreground">
                       {payer.name ? initials(payer.name) : <User className="size-4" />}
                     </span>
                     <span className="min-w-0">
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-[13px] font-medium text-foreground">
+                        <span className="truncate text-sm font-medium text-foreground">
                           {payer.name || t("users.unnamed")}
                         </span>
-                        <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{payer.user_id}</span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">#{payer.user_id}</span>
                       </span>
                       {payer.username && (
-                        <span className="block truncate font-mono text-[12px] text-muted-foreground">@{payer.username}</span>
+                        <span className="block truncate font-mono text-xs text-muted-foreground">@{payer.username}</span>
                       )}
                     </span>
-                    <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm text-foreground">
                       <span className="truncate">{payer.current_plans[0] ?? t("common.none")}</span>
                       {payer.current_plans.length > 1 && <Tag>+{payer.current_plans.length - 1}</Tag>}
                     </span>
-                    <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                    <span className="text-right text-xs tabular-nums text-muted-foreground">
                       {payer.payments.toLocaleString(language)}
                     </span>
-                    <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+                    <span className="text-right text-sm font-semibold tabular-nums text-foreground">
                       {formatMoney(payer.spent, currency, language)}
                     </span>
-                    <span className="text-right text-[12px] tabular-nums text-muted-foreground">
+                    <span className="text-right text-xs tabular-nums text-muted-foreground">
                       {formatDate(payer.last_paid_at, language)}
                     </span>
                   </ListRow>

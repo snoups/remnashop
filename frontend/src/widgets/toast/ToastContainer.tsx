@@ -45,7 +45,7 @@ export function ToastContainer() {
               className="glass-dialog pointer-events-auto flex items-start gap-3 rounded-[32px] p-2 pl-4"
             >
               <Icon className={`mt-[7px] size-[18px] shrink-0 ${VARIANT_COLOR[item.variant]}`} />
-              <p className="flex-1 py-1 text-[13px] leading-6 text-foreground">{item.message}</p>
+              <p className="flex-1 py-1 text-sm leading-6 text-foreground">{item.message}</p>
               <IconButton size="8" onClick={() => dismissToast(item.id)}>
                 <X className="size-3.5" />
               </IconButton>

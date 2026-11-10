@@ -244,14 +244,14 @@ function EventDetailDialogBody({ entry }: { entry: EventLogEntry }) {
                 </div>
                 <div className="relative mt-1">
                   <pre
-                    className={`glass-well overflow-x-auto rounded-md p-2.5 font-mono text-[12px] text-foreground/80 transition-opacity ${
+                    className={`glass-well overflow-x-auto rounded-md p-2.5 font-mono text-xs text-foreground/80 transition-opacity ${
                       isCopied ? "opacity-20" : ""
                     }`}
                   >
                     {JSON.stringify(otherPayload, null, 2)}
                   </pre>
                   {isCopied && (
-                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-[12px] font-medium text-primary">
+                    <span className="absolute inset-0 flex items-center justify-center gap-1.5 text-xs font-medium text-primary">
                       <Check className="size-3.5" />
                       {t("app.copied")}
                     </span>

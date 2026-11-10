@@ -157,7 +157,7 @@ export function TextEditorPanel({
             value={draft}
             disabled={!canUpdate}
             onChange={setDraft}
-            className={`min-h-36 w-full resize-y overflow-auto rounded-lg border border-glass-border bg-white/[0.03] px-2.5 pb-9 pt-1.5 text-[13px] text-foreground outline-none transition-colors hover:bg-white/[0.06] focus:border-primary ${blurred ? "backdrop-blur-md" : ""}`}
+            className={`min-h-36 w-full resize-y overflow-auto rounded-lg border border-glass-border bg-white/[0.03] px-2.5 pb-9 pt-1.5 text-sm text-foreground outline-none transition-colors hover:bg-white/[0.06] focus:border-primary ${blurred ? "backdrop-blur-md" : ""}`}
           />
         ) : (
           <input
@@ -194,7 +194,7 @@ export function TextEditorPanel({
         </div>
       </div>
       {isTooLong && (
-        <p className="mt-1 text-[12px] text-error">
+        <p className="mt-1 text-xs text-error">
           {t("dialogs.inspector.textTooLong", { length: draftLength, max: maxLength })}
         </p>
       )}
@@ -206,7 +206,7 @@ export function TextEditorPanel({
               draft === (entry?.value ?? "") || (required && draft.trim() === "") || isTooLong
             }
             onClick={() => void handleSave()}
-            className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
+            className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-xs text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
           >
             {t(canShowReset ? "common.save" : "dialogs.inspector.textSave")}
           </Pressable>
@@ -216,7 +216,7 @@ export function TextEditorPanel({
             type="button"
             onClick={() => void handleReset()}
             disabled={isResetting}
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-[12px] text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-xs text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isResetting && <Loader2 className="size-3.5 animate-spin" />}
             {t("common.reset")}

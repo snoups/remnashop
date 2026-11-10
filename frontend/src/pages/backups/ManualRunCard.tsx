@@ -32,8 +32,8 @@ function StatCard({
     <div className={`flex min-w-0 flex-col justify-between ${INNER_CARD_CLASS}`}>
       <IconCircle icon={icon} />
       <div className="min-w-0">
-        <div className={`truncate text-[15px] font-semibold ${isAlert ? "text-error" : "text-foreground"}`}>{value}</div>
-        <div className="truncate text-[12px] text-muted-foreground">{label}</div>
+        <div className={`truncate text-base font-semibold ${isAlert ? "text-error" : "text-foreground"}`}>{value}</div>
+        <div className="truncate text-xs text-muted-foreground">{label}</div>
       </div>
     </div>
   );
@@ -82,8 +82,8 @@ export function ManualRunCard({ stats, onRunStarted }: { stats: BackupStats | nu
                   >
                     <IconCircle icon={KIND_ICON[kind]} />
                     <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-[13px] font-medium text-foreground">{t(`backups.kind.${kind}`)}</span>
-                      <span className="text-[12px] text-muted-foreground">{t(`backups.kindDescription.${kind}`)}</span>
+                      <span className="text-sm font-medium text-foreground">{t(`backups.kind.${kind}`)}</span>
+                      <span className="text-xs text-muted-foreground">{t(`backups.kindDescription.${kind}`)}</span>
                     </div>
                   </Pressable>
                 );

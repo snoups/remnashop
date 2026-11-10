@@ -30,7 +30,7 @@ function Track({ value, max }: { value: number; max: number }) {
 
 function CountryChip({ code }: { code: string }) {
   return (
-    <span className="flex h-6 items-center justify-center rounded-md bg-white/[0.06] font-mono text-[11px] font-semibold text-foreground">
+    <span className="flex h-6 items-center justify-center rounded-md bg-white/[0.06] font-mono text-xs font-semibold text-foreground">
       {code.slice(0, 2).toUpperCase()}
     </span>
   );
@@ -42,20 +42,20 @@ function NodeRows({ nodes }: { nodes: NodeCard[] }) {
   return nodes.map((node) => (
     <div key={node.name} className={ROW_CLASS}>
       <CountryChip code={node.country_code} />
-      <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
+      <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
         <span className={`size-2 shrink-0 rounded-full ${statusDot(node)}`} />
         <span className="truncate">{node.name}</span>
         {!node.is_disabled && !node.is_connected && node.last_status_change && (
-          <span className="shrink-0 text-[11px] font-normal text-error">
+          <span className="shrink-0 text-xs font-normal text-error">
             {t("dashboard.nodes.offlineSince", { time: formatRelative(node.last_status_change, i18n.language) })}
           </span>
         )}
       </span>
       <Track value={node.users_online} max={max} />
-      <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+      <span className="text-right text-sm font-semibold tabular-nums text-foreground">
         {node.is_disabled || !node.is_connected ? t("common.none") : node.users_online.toLocaleString(i18n.language)}
       </span>
-      <span className="hidden text-right text-[12px] tabular-nums text-muted-foreground sm:block">
+      <span className="hidden text-right text-xs tabular-nums text-muted-foreground sm:block">
         {node.traffic_used_bytes === null ? t("common.none") : formatBytes(node.traffic_used_bytes, i18n.language)}
       </span>
     </div>
@@ -68,7 +68,7 @@ function CountryRows({ countries }: { countries: NodesOverview["countries"] }) {
   return countries.map((country) => (
     <div key={country.country_code} className={ROW_CLASS}>
       <CountryChip code={country.country_code} />
-      <span className="min-w-0 truncate text-[13px] text-muted-foreground">
+      <span className="min-w-0 truncate text-sm text-muted-foreground">
         {t("dashboard.nodes.connected", {
           count: country.nodes,
           connected: country.connected.toLocaleString(i18n.language),
@@ -76,7 +76,7 @@ function CountryRows({ countries }: { countries: NodesOverview["countries"] }) {
         })}
       </span>
       <Track value={country.users_online} max={max} />
-      <span className="text-right text-[13px] font-semibold tabular-nums text-foreground">
+      <span className="text-right text-sm font-semibold tabular-nums text-foreground">
         {country.users_online.toLocaleString(i18n.language)}
       </span>
       <span className="hidden sm:block" />

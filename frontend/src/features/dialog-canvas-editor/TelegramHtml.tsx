@@ -19,13 +19,13 @@ function renderNodes(nodes: TgNode[]): ReactNode[] {
         return <s key={index}>{children}</s>;
       case "code":
         return (
-          <code key={index} className="font-mono text-[12.5px] text-sky-300">
+          <code key={index} className="font-mono text-sm text-sky-300">
             {children}
           </code>
         );
       case "pre":
         return (
-          <pre key={index} className="my-1 whitespace-pre-wrap rounded-md bg-black/20 p-2 font-mono text-[12.5px] text-sky-300">
+          <pre key={index} className="my-1 whitespace-pre-wrap rounded-md bg-black/20 p-2 font-mono text-sm text-sky-300">
             {children}
           </pre>
         );

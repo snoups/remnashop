@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { parseIsoDate, toIsoDate } from "@shared/lib/iso-date";
 import { IconButton } from "@shared/ui/IconButton";
+import { Ripple } from "@shared/ui/Ripple";
 import { EYEBROW_CLASS } from "@shared/ui/classes";
 
 export interface MonthCalendarProps {
@@ -45,7 +46,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
         >
           <ChevronLeft className="size-4" />
         </IconButton>
-        <span className="text-[13px] font-semibold capitalize text-foreground">{monthLabel}</span>
+        <span className="text-sm font-semibold capitalize text-foreground">{monthLabel}</span>
         <IconButton
           size="7"
           onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
@@ -72,7 +73,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
               key={iso}
               type="button"
               onClick={() => onPick(iso)}
-              className={`flex size-8 items-center justify-center rounded-full text-[13px] transition-colors ${
+              className={`relative flex size-8 items-center justify-center rounded-full text-sm transition-colors ${
                 isSelected
                   ? "bg-accent font-semibold text-primary"
                   : isInRange
@@ -82,6 +83,7 @@ export function MonthCalendar({ value, rangeEnd, onPick }: MonthCalendarProps) {
                       : "text-muted-foreground/50 hover:bg-white/[0.06]"
               } ${isToday && !isSelected ? "border-2 border-primary/40" : ""}`}
             >
+              <Ripple />
               {day.getDate()}
             </button>
           );

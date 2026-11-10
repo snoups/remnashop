@@ -64,18 +64,18 @@ export function RecentPaymentsCard({
             >
               <IconCircle
                 tone="success"
-                glyph={<span className="text-[13px] font-bold">{currencySymbol(payment.currency)}</span>}
+                glyph={<span className="text-sm font-bold">{currencySymbol(payment.currency)}</span>}
               />
               <span className="min-w-0">
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-[13px] font-medium text-foreground">
+                  <span className="truncate text-sm font-medium text-foreground">
                     {payment.plan_name}
                     {" · "}
                     {t("plans.daysShort", { count: payment.duration_days })}
                   </span>
-                  <span className="shrink-0 font-mono text-[12px] text-muted-foreground">#{payment.transaction_id}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">#{payment.transaction_id}</span>
                 </span>
-                <span className="flex min-w-0 gap-1 text-[12px] text-muted-foreground">
+                <span className="flex min-w-0 gap-1 text-xs text-muted-foreground">
                   <span className="truncate">{payment.name || t("users.unnamed")}</span>
                   <span className="shrink-0 font-mono">#{payment.user_id}</span>
                   <span className="shrink-0">
@@ -84,10 +84,10 @@ export function RecentPaymentsCard({
                 </span>
               </span>
               <span className="flex flex-col items-end tabular-nums">
-                <span className="text-[13px] font-semibold text-foreground">
+                <span className="text-sm font-semibold text-foreground">
                   {formatMoney(payment.amount, payment.currency, language, true)}
                 </span>
-                <span className="whitespace-nowrap text-[12px] text-muted-foreground">
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
                   {t(`transactions.purchaseType.${payment.purchase_type}`)} &middot; {formatPaidAt(payment.paid_at, language)}
                 </span>
               </span>

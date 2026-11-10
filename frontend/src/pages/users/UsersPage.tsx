@@ -413,7 +413,7 @@ export function UsersPage() {
                         onClick={() => setDetailsUser(user)}
                         className="absolute inset-0 cursor-pointer rounded-full" />
                       <span
-                        className={`flex size-8 items-center justify-center rounded-full text-[11px] font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
+                        className={`flex size-8 items-center justify-center rounded-full text-xs font-bold ${getAvatarClassName(user, user.id === currentUserId)}`}
                       >
                         {isDeleted ? (
                           <Trash2 className="size-4" />
@@ -426,11 +426,11 @@ export function UsersPage() {
                       <span className="min-w-0">
                         <span className="flex min-w-0 items-center gap-2">
                           <span
-                            className={`truncate text-[13px] font-medium ${isDeleted ? "text-muted-foreground" : "text-foreground"}`}
+                            className={`truncate text-sm font-medium ${isDeleted ? "text-muted-foreground" : "text-foreground"}`}
                           >
                             {displayName}
                           </span>
-                          <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                          <span className="shrink-0 font-mono text-xs text-muted-foreground">
                             #{user.id}
                           </span>
                           {user.role !== "USER" && (
@@ -439,7 +439,7 @@ export function UsersPage() {
                             </Badge>
                           )}
                         </span>
-                        <span className="block truncate text-[12px] text-muted-foreground">
+                        <span className="block truncate text-xs text-muted-foreground">
                           {userContacts(user, t)}
                         </span>
                       </span>
@@ -460,21 +460,21 @@ export function UsersPage() {
                           </Badge>
                         ))}
                         {subscriptionCounts(user).length === 0 && (
-                          <span className="text-[13px] text-muted-foreground">—</span>
+                          <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </span>
                       <span className="tabular-nums">
                         {user.created_at ? (
                           <>
-                            <span className="block text-[13px] text-foreground">
+                            <span className="block text-sm text-foreground">
                               {formatDate(user.created_at, i18n.language)}
                             </span>
-                            <span className="block text-[12px] text-muted-foreground">
+                            <span className="block text-xs text-muted-foreground">
                               {formatRelative(user.created_at, i18n.language)}
                             </span>
                           </>
                         ) : (
-                          <span className="text-[13px] text-muted-foreground">—</span>
+                          <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </span>
                       <span className="relative z-10 flex justify-end">

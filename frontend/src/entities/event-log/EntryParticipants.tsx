@@ -18,7 +18,7 @@ function Participant({ user }: { user: UserSnapshot }) {
   return (
     <>
       {participantName(user, t)}
-      {id !== undefined && <span className="ml-1.5 font-mono text-[12px] text-muted-foreground">#{id}</span>}
+      {id !== undefined && <span className="ml-1.5 font-mono text-xs text-muted-foreground">#{id}</span>}
     </>
   );
 }

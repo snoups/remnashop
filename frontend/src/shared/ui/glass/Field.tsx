@@ -21,14 +21,14 @@ interface FieldProps {
   children: ReactNode;
 }
 
-/** Label over a control (13px medium, on the type scale with the control), hint or error under it. */
+/** Label over a control (14px medium, on the type scale with the control), hint or error under it. */
 export function Field({ label, htmlFor, required = false, info, aside, hint, error, children }: FieldProps) {
   const ref = useRef<HTMLDivElement>(null);
   const nativeError = useNativeFieldError(ref);
   const shownError = error ?? nativeError;
   return (
     <div ref={ref} className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+      <label htmlFor={htmlFor} className="flex items-center gap-1.5 text-sm font-medium text-foreground">
         {label}
         {required && <span className="text-error">*</span>}
         {info && <FieldHint text={info} />}
@@ -36,9 +36,9 @@ export function Field({ label, htmlFor, required = false, info, aside, hint, err
       </label>
       <FieldRequiredContext.Provider value={required}>{children}</FieldRequiredContext.Provider>
       {shownError ? (
-        <span className="text-[12px] text-error">{shownError}</span>
+        <span className="text-xs text-error">{shownError}</span>
       ) : (
-        hint && <span className="text-[12px] text-muted-foreground">{hint}</span>
+        hint && <span className="text-xs text-muted-foreground">{hint}</span>
       )}
     </div>
   );

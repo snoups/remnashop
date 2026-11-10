@@ -28,12 +28,12 @@ export function SquadReplacementsField({ missing, value, onChange, showHolders =
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <span className="text-[13px] font-medium">{t("subscriptions.panelSync.squads.title")}</span>
-        <p className="text-[12px] text-muted-foreground">{t("subscriptions.panelSync.squads.hint")}</p>
+        <span className="text-sm font-medium">{t("subscriptions.panelSync.squads.title")}</span>
+        <p className="text-xs text-muted-foreground">{t("subscriptions.panelSync.squads.hint")}</p>
       </div>
       {missing.map((squad) => (
         <div key={squad.uuid} className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between gap-3 text-[12px]">
+          <div className="flex items-baseline justify-between gap-3 text-xs">
             <span className="font-mono">{`${squad.uuid.slice(0, 8)}…`}</span>
             {showHolders && (
               <span className="text-muted-foreground">

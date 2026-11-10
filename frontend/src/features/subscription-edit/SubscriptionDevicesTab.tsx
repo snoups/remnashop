@@ -63,7 +63,7 @@ export function SubscriptionDevicesTab({ subscriptionId, userId }: { subscriptio
               label={[device.device_model, device.platform].filter(Boolean).join(" · ") || t("common.none")}
               description={<span className="font-mono">{device.hwid}</span>}
             >
-              <span className="text-[12px] tabular-nums text-muted-foreground">{formatDate(device.created_at, i18n.language)}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{formatDate(device.created_at, i18n.language)}</span>
               {canDelete && (
                 <IconButton
                   size="8"
