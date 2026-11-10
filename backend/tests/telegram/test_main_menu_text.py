@@ -14,7 +14,11 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
 from app.telegram.dialogs.rendering import render_window_text
 from app.telegram.i18n import build_translator_hub
-from app.telegram.routers.menu.getters import menu_getter, subscription_menu_values
+from app.telegram.routers.menu.getters import (
+    menu_getter,
+    menu_subscription,
+    subscription_menu_values,
+)
 from tests.seeded_translations import seeded_fluent_source
 
 
@@ -108,7 +112,11 @@ def test_trial_header_and_none_texts() -> None:
     )
     assert "🎁 Пробная подписка" in trial["subscription_block"]
 
-    assert "Купить подписку" in _menu(status="NONE")
+    none = _menu(status="NONE")
+    assert "Купить подписку" in none
+    assert "💳 Подписка" not in none
+    assert "• У вас нет" not in none
+    assert "<blockquote>У вас нет оформленной подписки." in none
     assert "пробник" in _menu(status="NONE", trial_available=True)
 
 
@@ -203,3 +211,23 @@ def test_translated_value_rendering_only_isolation_marks_is_empty() -> None:
     assert values["subscription_traffic_limit"] == ""
     assert values["subscription_device_limit"] == ""
     assert "Traffic limit" not in values["subscription_block"]
+
+
+def test_subscription_quote_follows_its_header_without_an_invisible_line() -> None:
+    runner = _runner(Locale.RU)
+    values = subscription_menu_values(
+        runner, _subscription("ACTIVE"), extra_count=0, trial_available=False
+    )
+
+    assert "</b>:\n<blockquote>" in values["subscription_block"]
+
+
+def test_menu_shows_the_latest_expired_subscription_when_none_is_active() -> None:
+    older = _subscription("EXPIRED", expire_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    newer = _subscription("EXPIRED", expire_at=datetime(2026, 10, 17, tzinfo=timezone.utc))
+    active = _subscription("ACTIVE")
+
+    assert menu_subscription(None, [older, newer]) is newer
+    assert menu_subscription(active, [newer, active]) is active
+    assert menu_subscription(None, []) is None
+    assert "Срок действия истёк" in _menu(status="EXPIRED")

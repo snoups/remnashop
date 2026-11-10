@@ -50,6 +50,7 @@ async def send_customer_telegram_task(
     use_case: FromDishka[SendCustomerTelegramUseCase],
     buttons: Optional[list[dict[str, str]]] = None,
     notification: Optional[dict[str, Any]] = None,
+    html: bool = False,
 ) -> None:
     await use_case.system(
         SendCustomerTelegramDto(
@@ -57,6 +58,7 @@ async def send_customer_telegram_task(
             text=text,
             buttons=buttons or [],
             notification=NotifyCustomerDto(**notification) if notification else None,
+            html=html,
         )
     )
 

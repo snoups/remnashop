@@ -88,7 +88,7 @@ async def ensure_translations_seeded(
         if locale not in active_locales:
             continue
 
-        await translation_repository.seed_missing_many(locale, entries)
+        await translation_repository.sync_shipped_many(locale, entries)
 
     await _fill_locales_without_seed(
         translation_repository, active_locales - shipped_locales, en_entries

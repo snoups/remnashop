@@ -38,25 +38,33 @@ def register_referrals_metadata() -> None:
             ),
             buttons=(
                 catalog.CatalogButton(
-                    key="share",
-                    text_key="btn-referrals.share",
+                    key="about",
+                    text_key="btn-referrals.about",
                     row=0,
                     column=0,
-                    link_type=ButtonLinkType.URL,
-                    url_value="https://t.me/share/url?url=${referral_url}",
+                    link_type=ButtonLinkType.NAVIGATE,
+                    target_window_key="referrals.about",
                 ),
                 catalog.CatalogButton(
                     key="qr",
                     text_key="btn-referrals.qr",
-                    row=0,
-                    column=1,
+                    row=1,
+                    column=0,
                     link_type=ButtonLinkType.ACTION,
                     action_key="referral_qr",
                 ),
                 catalog.CatalogButton(
+                    key="share",
+                    text_key="btn-referrals.share",
+                    row=1,
+                    column=1,
+                    link_type=ButtonLinkType.URL,
+                    url_value="https://t.me/share/url?url=${referral_url}",
+                ),
+                catalog.CatalogButton(
                     key="withdraw",
                     text_key="btn-referrals.withdraw",
-                    row=1,
+                    row=2,
                     column=0,
                     link_type=ButtonLinkType.URL,
                     url_value="${support_url}",
@@ -65,7 +73,7 @@ def register_referrals_metadata() -> None:
                 catalog.CatalogButton(
                     key="redeem",
                     text_key="btn-referrals.redeem",
-                    row=1,
+                    row=2,
                     column=1,
                     link_type=ButtonLinkType.ACTION,
                     action_key="redeem_days",
@@ -74,7 +82,7 @@ def register_referrals_metadata() -> None:
                 catalog.CatalogButton(
                     key="reset_code",
                     text_key="btn-referrals.reset-code",
-                    row=2,
+                    row=3,
                     column=0,
                     link_type=ButtonLinkType.ACTION,
                     action_key="reset_referral_code",
@@ -83,10 +91,37 @@ def register_referrals_metadata() -> None:
                 catalog.CatalogButton(
                     key="back",
                     text_key="btn-back.general",
-                    row=3,
+                    row=4,
                     column=0,
                     link_type=ButtonLinkType.NAVIGATE,
                     target_window_key="menu.main",
+                ),
+            ),
+        )
+    )
+
+    catalog.register_window(
+        catalog.CatalogWindow(
+            key="referrals.about",
+            flow=DialogFlow.REFERRALS,
+            text_keys=("msg-referrals-about",),
+            banner_name=DEFAULT_BANNER_NAME,
+            text_variables=(
+                "invitee_reward_amount",
+                "invitee_reward_type",
+                "reward_terms",
+                "accrual_strategy",
+                "reward_levels",
+                "reward_type",
+            ),
+            buttons=(
+                catalog.CatalogButton(
+                    key="back",
+                    text_key="btn-back.general",
+                    row=0,
+                    column=0,
+                    link_type=ButtonLinkType.NAVIGATE,
+                    target_window_key="referrals.main",
                 ),
             ),
         )

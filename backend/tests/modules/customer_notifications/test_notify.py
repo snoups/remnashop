@@ -33,6 +33,7 @@ from app.modules.notifications.dto import PushMessage
 from app.modules.notifications.render import NotificationRenderer
 from app.modules.notifications.repository import NotificationRepository
 from app.modules.settings import SettingsRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
 from app.modules.subscriptions import SubscriptionRepository
 from app.modules.subscriptions.dto import CreateSubscriptionDto
 from app.modules.transactions import TransactionRepository
@@ -47,6 +48,13 @@ ntf-customer-open-cabinet = Open cabinet
 ntf-customer-button-renew = Renew
 ntf-customer-button-buy = Buy
 ntf-customer-button-close = Close
+ntf-customer-button-connect = Connect
+ntf-customer-button-support = Support
+ntf-customer-button-revoke-sessions = End sessions
+ntf-customer-cabinet-new-device-sign-in = Signed in from { $ip }.
+    .title = New sign-in
+ntf-customer-subscription-changed = Plan changed.
+    .title = Changed
 ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
 ntf-customer-subscription-expiring = Expires soon. { $is_trial ->
@@ -102,6 +110,7 @@ class _Fixture:
         self.email = RecordingDispatch()
         self.push = _Push()
         self.users = users
+        self.settings = settings
         self.orders = orders
         self.uow = uow
         self.feed = CustomerNotificationRepository(orders.session)
@@ -208,7 +217,7 @@ async def test_telegram_and_email_both_queued(fx: _Fixture) -> None:
     assert fx.telegram.messages == [
         {
             "user_id": user.id,
-            "text": "Activated\n\nSubscription is active.",
+            "text": "<b>🔔 Activated</b>\n\n<blockquote>Subscription is active.</blockquote>",
             "buttons": [{"text": "Close", "callback_data": "cn:close"}],
             "notification": {
                 "user_id": user.id,
@@ -219,6 +228,7 @@ async def test_telegram_and_email_both_queued(fx: _Fixture) -> None:
                 "subscription_id": None,
                 "telegram_refused": False,
             },
+            "html": True,
         }
     ]
     assert len(fx.email.messages) == 1
@@ -253,7 +263,7 @@ async def test_missing_translation_falls_back_to_default_locale(fx: _Fixture) ->
     await fx.notify(user)
 
     text = fx.telegram.messages[0]["text"]
-    assert text == "Activated\n\nSubscription is active."
+    assert text == "<b>🔔 Activated</b>\n\n<blockquote>Subscription is active.</blockquote>"
 
 
 async def test_email_only_customer_gets_only_email_for_reminder(fx: _Fixture) -> None:
@@ -497,7 +507,9 @@ async def test_expiring_trial_gets_a_buy_button(fx: _Fixture) -> None:
 
     (message,) = fx.telegram.messages
     assert message["buttons"][0] == {"text": "Buy", "callback_data": "cn:buy"}
-    assert message["text"] == "Expiring\n\nExpires soon. Buy one."
+    assert (
+        message["text"] == "<b>🔔 Expiring</b>\n\n<blockquote>Expires soon. Buy one.</blockquote>"
+    )
     (row,) = await fx.feed_rows(user)
     assert row.args == {"is_trial": "yes"}
 
@@ -508,7 +520,7 @@ async def test_hours_are_rendered_as_a_span_but_stored_as_hours(fx: _Fixture) ->
     await fx.notify(user, "SubscriptionNotConnectedEvent", subscription_id=5, args={"hours": 48})
 
     (message,) = fx.telegram.messages
-    assert message["text"] == "Connect\n\nSubscribed 2 day ago."
+    assert message["text"] == "<b>🔔 Connect</b>\n\n<blockquote>Subscribed 2 day ago.</blockquote>"
     (row,) = await fx.feed_rows(user)
     assert row.args == {"hours": 48}
 
@@ -645,3 +657,86 @@ async def test_one_outbox_event_reaches_every_customer_it_names(fx: _Fixture) ->
     assert len(fx.email.messages) == 1
     assert len(await fx.feed_rows(first)) == 1
     assert len(await fx.feed_rows(second)) == 1
+
+
+async def _subscription(fx: _Fixture, user: UserDto, remnawave_user_id: int) -> int:
+    async with fx.uow:
+        subscription = await SubscriptionRepository(fx.orders.session).create(
+            CreateSubscriptionDto(
+                user_id=user.id,
+                remnawave_user_id=remnawave_user_id,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=0,
+                device_limit=3,
+                expire_at=datetime_now() + timedelta(days=10),
+                url="https://example.test/sub",
+                plan_snapshot=make_plan_snapshot(plan_id=1, name="Pro"),
+            )
+        )
+    return subscription.id
+
+
+async def test_a_purchase_offers_to_connect_through_the_subscription_page(fx: _Fixture) -> None:
+    user = await fx.create(name="c", telegram_id=8092)
+    subscription_id = await _subscription(fx, user, 880_092)
+
+    await fx.notify(user, _PURCHASED, subscription_id=subscription_id)
+
+    (message,) = fx.telegram.messages
+    assert message["buttons"] == [
+        {"text": "Connect", "url": "https://example.test/sub"},
+        {"text": "Close", "callback_data": "cn:close"},
+    ]
+
+
+async def test_a_customer_who_never_connected_gets_connect_and_support(fx: _Fixture) -> None:
+    user = await fx.create(name="s", telegram_id=8093)
+    subscription_id = await _subscription(fx, user, 880_093)
+    async with fx.uow:
+        await fx.settings.update_shop_settings(
+            UpdateShopSettingsDto(
+                support_telegram="help_desk", fields_set=frozenset({"support_telegram"})
+            )
+        )
+
+    await fx.notify(
+        user, "SubscriptionNotConnectedEvent", subscription_id=subscription_id, args={"hours": 5}
+    )
+
+    (message,) = fx.telegram.messages
+    assert message["buttons"] == [
+        {"text": "Connect", "url": "https://example.test/sub"},
+        {"text": "Support", "url": "https://t.me/help_desk"},
+        {"text": "Close", "callback_data": "cn:close"},
+    ]
+
+
+async def test_a_plan_change_shows_the_new_plan_under_the_text(fx: _Fixture) -> None:
+    user = await fx.create(name="p", telegram_id=8094)
+    subscription_id = await _subscription(fx, user, 880_094)
+
+    await fx.notify(user, "SubscriptionChangedEvent", subscription_id=subscription_id)
+
+    (message,) = fx.telegram.messages
+    assert "📦 <b>Pro</b>:\n<blockquote>" in message["text"]
+
+
+async def test_a_new_sign_in_offers_to_end_every_session(fx: _Fixture) -> None:
+    user = await fx.create(name="n", telegram_id=8095)
+    async with fx.uow:
+        await fx.settings.update_shop_settings(
+            UpdateShopSettingsDto(
+                support_url="https://help.test", fields_set=frozenset({"support_url"})
+            )
+        )
+
+    await fx.notify(
+        user, "CabinetNewDeviceSignInEvent", args={"ip": "1.2.3.4", "browser": "Firefox"}
+    )
+
+    (message,) = fx.telegram.messages
+    assert message["buttons"] == [
+        {"text": "End sessions", "callback_data": "cn:revoke-sessions"},
+        {"text": "Support", "url": "https://help.test"},
+        {"text": "Close", "callback_data": "cn:close"},
+    ]

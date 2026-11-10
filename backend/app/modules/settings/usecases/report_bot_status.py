@@ -44,6 +44,6 @@ class ReportBotStatusUseCase(UseCase[ReportBotStatusDto, None]):
         elif data.kind is BotStatusKind.STARTED:
             event = BotStartedEvent(username=data.detail or "")
         else:
-            event = BotStoppedEvent()
+            event = BotStoppedEvent(uptime_seconds=data.uptime_seconds)
         async with self._uow:
             await self._event_publisher.publish(event)

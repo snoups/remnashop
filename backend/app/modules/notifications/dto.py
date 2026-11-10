@@ -78,6 +78,7 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
             "TransactionPartiallyRefundedEvent",
             "TransactionFulfilledManuallyEvent",
             "PaidOrderNotFulfilledEvent",
+            "SubscriptionChangedEvent",
         }
     ),
     NotificationGroup.CUSTOMERS: frozenset(
@@ -88,6 +89,7 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
             "CabinetRegistrationBlockedEvent",
             "SubscriptionFirstConnectedEvent",
             "TorrentBlockerReportEvent",
+            "PromocodeActivatedEvent",
         }
     ),
     NotificationGroup.SUBSCRIPTIONS: frozenset(
@@ -96,6 +98,8 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
             "SubscriptionTrafficLimitedEvent",
             "SubscriptionRevokedEvent",
             "SubscriptionNotConnectedEvent",
+            "SubscriptionDeviceAddedEvent",
+            "SubscriptionDeviceRemovedEvent",
         }
     ),
 }

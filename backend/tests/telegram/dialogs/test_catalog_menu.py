@@ -31,6 +31,7 @@ def test_registers_all_windows() -> None:
         "subscriptions.list",
         "subscriptions.card",
         "referrals.main",
+        "referrals.about",
     }
 
 
@@ -38,8 +39,14 @@ def test_main_menu_offers_the_customer_sections() -> None:
     register_all_flow_metadata()
     keys = {button.key for button in catalog.get_window("menu.main").buttons}
 
-    assert {"subscriptions", "purchase", "promocode", "referrals"} <= keys
-    assert "devices" not in keys
+    assert {
+        "subscriptions",
+        "subscription",
+        "devices",
+        "purchase",
+        "promocode",
+        "referrals",
+    } <= keys
     assert catalog.has_window("subscriptions.list")
     assert catalog.has_window("subscriptions.card")
     assert catalog.has_window("referrals.main")
@@ -127,6 +134,7 @@ def test_calling_twice_is_idempotent() -> None:
         "subscriptions.list",
         "subscriptions.card",
         "referrals.main",
+        "referrals.about",
     }
     assert catalog.has_action_handler("get_trial") is True
 
@@ -143,3 +151,37 @@ def test_registers_main_menu_text_variables() -> None:
     assert menu_only <= set(catalog.get_window("menu.main").text_variables)
     assert not menu_only & catalog.text_variable_keys()
     assert "user_discount" in catalog.text_variable_keys()
+
+
+def _visible_menu_buttons(**data: object) -> set[str]:
+    register_menu_metadata()
+    base: dict[str, object] = {
+        "connectable": True,
+        "connect_url": "https://sub",
+        "has_device_limit": True,
+        "subscriptions_count": 1,
+        **data,
+    }
+    window = catalog.get_window("menu.main")
+    return {
+        button.key
+        for button in window.buttons
+        if button.key in {"connect", "devices", "subscription", "subscriptions"}
+        and (
+            button.visibility_condition is None
+            or catalog.get_condition(button.visibility_condition)(base)
+        )
+    }
+
+
+def test_single_subscription_mode_keeps_it_in_the_menu() -> None:
+    assert _visible_menu_buttons(single_subscription=True) == {"connect", "devices", "subscription"}
+    assert _visible_menu_buttons(single_subscription=True, subscriptions_count=0) == {
+        "connect",
+        "devices",
+    }
+
+
+def test_several_subscriptions_go_through_the_list() -> None:
+    assert _visible_menu_buttons(single_subscription=False) == {"subscriptions"}
+    assert _visible_menu_buttons(single_subscription=False, subscriptions_count=0) == set()

@@ -3,6 +3,7 @@ from typing import Final, Optional, Union
 from loguru import logger
 
 from app.core.actor import Actor
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Role, SessionAudience
 from app.core.events import visible_event_ip
@@ -21,6 +22,8 @@ from app.modules.notifications.dto import (
 from app.modules.notifications.render import NotificationRenderer, notification_args
 from app.modules.notifications.sources import BotTokenSource, NotificationRendererFactory
 from app.modules.notifications.telegram import send_telegram_message
+from app.modules.notifications.telegram_data import CardData, TelegramCardDataLoader
+from app.modules.notifications.telegram_layout import LAYOUTS, build_telegram_card
 from app.modules.notifications.webpush import WebPushSender
 from app.modules.users import UserDto, UserRepository
 
@@ -38,6 +41,12 @@ def _wanted_channels(
     if not PermissionPolicy.has_permission(user, Permission.NOTIFICATIONS_VIEW):
         return frozenset()
     return channels_for(user, group)
+
+
+def _cut(value: Union[str, int]) -> Union[str, int]:
+    if isinstance(value, str) and len(value) > MAX_BODY_LENGTH:
+        return value[: MAX_BODY_LENGTH - 1] + "…"
+    return value
 
 
 def _coalescing_notes(
@@ -62,12 +71,30 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
         push_sender: WebPushSender,
         renderer_factory: NotificationRendererFactory,
         bot_token_source: BotTokenSource,
+        card_data_loader: TelegramCardDataLoader,
+        config: AppConfig,
     ) -> None:
         self._user_repository = user_repository
         self._uow = uow
         self._push_sender = push_sender
         self._renderer_factory = renderer_factory
         self._bot_token_source = bot_token_source
+        self._card_data_loader = card_data_loader
+        self._config = config
+
+    async def _card_data(
+        self,
+        data: DeliverNotificationDto,
+        targets: list[tuple[UserDto, frozenset[NotificationChannel]]],
+    ) -> CardData:
+        layout = LAYOUTS.get(data.event_type)
+        if layout is None or not (layout.sections or layout.load_user):
+            return CardData()
+        if not any(NotificationChannel.TELEGRAM in channels for _, channels in targets):
+            return CardData()
+        return await self._card_data_loader.load(
+            layout.sections, data.payload, load_user=layout.load_user
+        )
 
     async def _execute(self, actor: Actor, data: DeliverNotificationDto) -> None:
         group = group_of(data.event_type)
@@ -85,18 +112,21 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
         except Exception as error:
             # nothing sent yet, so running the whole task again is safe
             raise RetryableTaskError(f"Notification for {data.event_type} not sent") from error
+        card_data = await self._card_data(data, targets) if token else CardData()
         for user, channels in targets:
             ip = visible_event_ip(user, data.event_type, data.payload, data.ip_address)
             args = notification_args(data.payload, ip)
             title, body = renderer.render(user.language, data.event_type, args)
             if len(body) > MAX_BODY_LENGTH:
                 body = body[: MAX_BODY_LENGTH - 1] + "…"
-            body += _coalescing_notes(renderer, user, data)
+            notes = _coalescing_notes(renderer, user, data)
             if NotificationChannel.PUSH in channels:
                 try:
                     await self._push_sender.send(
                         user.id,
-                        PushMessage(title=title, body=body, url=PUSH_URL, tag=data.event_type),
+                        PushMessage(
+                            title=title, body=body + notes, url=PUSH_URL, tag=data.event_type
+                        ),
                         SessionAudience.DASHBOARD,
                     )
                 except Exception:
@@ -104,7 +134,22 @@ class DeliverNotificationUseCase(UseCase[DeliverNotificationDto, None]):
             if NotificationChannel.TELEGRAM in channels and token and user.telegram_id:
                 try:
                     await send_telegram_message(
-                        token, proxy, user.telegram_id, f"{title}\n\n{body}"
+                        token,
+                        proxy,
+                        user.telegram_id,
+                        build_telegram_card(
+                            renderer,
+                            user.language,
+                            event_type=data.event_type,
+                            payload=data.payload,
+                            args={k: _cut(v) for k, v in args.items()},
+                            data=card_data,
+                            build=self._config.build,
+                            title=title,
+                            body=body,
+                            notes=notes,
+                        ),
+                        html=True,
                     )
                 except Exception:
                     logger.exception(f"Telegram notification for {user.log} failed")

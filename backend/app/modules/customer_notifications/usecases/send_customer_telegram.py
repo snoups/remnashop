@@ -49,15 +49,14 @@ class SendCustomerTelegramUseCase(UseCase[SendCustomerTelegramDto, None]):
             return
         markup = (
             {
-                "inline_keyboard": [
-                    [{"text": b["text"], "callback_data": b["callback_data"]}] for b in data.buttons
-                ]
+                # a button carries callback_data or url
+                "inline_keyboard": [[dict(b)] for b in data.buttons]
             }
             if data.buttons
             else None
         )
         result = await send_telegram_text(
-            token, proxy, user.telegram_id, data.text, reply_markup=markup
+            token, proxy, user.telegram_id, data.text, reply_markup=markup, html=data.html
         )
         CUSTOMER_NOTIFICATIONS.labels(
             channel=CustomerChannel.TELEGRAM.value, result=result.value.lower()

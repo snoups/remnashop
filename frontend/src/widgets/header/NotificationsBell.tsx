@@ -9,7 +9,8 @@ import type { Announcement } from "@entities/announcements/api";
 import { AnnouncementIcon } from "@entities/announcements/AnnouncementIcon";
 import { clearNotifications, getNotifications, markNotificationsRead } from "@entities/event-log/api";
 import type { EventLogLocationState, Notifications } from "@entities/event-log/api";
-import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
+import { eventTitle } from "@entities/event-log/describe-entry";
+import { EntryParticipants } from "@entities/event-log/EntryParticipants";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
 import { pollWhileVisible } from "@shared/lib/poll-while-visible";
@@ -208,7 +209,7 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
       <IconButton size="9" tone={capsule ? "default" : "glass"} className="relative" onClick={onToggle}>
         <Bell className="size-4" />
         {unread > 0 && (
-          <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold leading-none text-primary-foreground">
+          <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold leading-none text-primary-foreground">
             {unread > MAX_BADGE ? `${MAX_BADGE}+` : unread}
           </span>
         )}
@@ -283,7 +284,11 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 </span>
                 <CellText
                   title={eventTitle(entry, t)}
-                  sub={`${describeEntry(entry, t)} · ${formatRelative(entry.occurred_at, i18n.language)}`}
+                  sub={
+                    <>
+                      <EntryParticipants entry={entry} /> · {formatRelative(entry.occurred_at, i18n.language)}
+                    </>
+                  }
                   className="flex-1"
                 />
                 {index < highlighted && <span className="size-1.5 shrink-0 self-center rounded-full bg-primary" />}

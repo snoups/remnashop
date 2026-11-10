@@ -35,20 +35,20 @@ frg-menu-subscription =
                    *[RESET] Трафик восстановится в начале следующего периода. Вы также можете оформить подписку, чтобы пользоваться сервисом без ограничений.
                 }
             }</i></blockquote>
-        [DISABLED]
+       *[DISABLED]
             <blockquote>• Ваша подписка отключена.
 
             <i>Свяжитесь с поддержкой для выяснения причины!</i></blockquote>
-       *[NONE]
-            <blockquote>• У вас нет оформленной подписки.
-
-            <i>{ $trial_available ->
-                [1] 🎁 Для вас доступен бесплатный пробник — нажмите кнопку ниже, чтобы его получить.
-               *[0] ↘️ Чтобы купить доступ, нажмите «Купить подписку».
-            }</i></blockquote>
     }
 
     Ещё подписок: { $extra_count } — смотрите «Мои подписки».
+frg-menu-no-subscription =
+    <blockquote>У вас нет оформленной подписки.
+
+    <i>{ $trial_available ->
+        [1] 🎁 Для вас доступен бесплатный пробник — нажмите кнопку ниже, чтобы его получить.
+       *[0] ↘️ Чтобы купить доступ, нажмите «Купить подписку».
+    }</i></blockquote>
 frg-subscription-status = { $status ->
         [ACTIVE] Активна
         [LIMITED] Трафик исчерпан
@@ -68,19 +68,29 @@ msg-menu-devices-confirm-reissue = Перевыпустить ссылку по�
 
 btn-menu =
     .connect = Подключиться
+    .connect-icon = 🚀
     .connect-not-available = Подключение недоступно
+    .connect-not-available-icon = ⚠️
     .trial = Попробовать бесплатно
+    .trial-icon = 🎁
     .trial-paid = Пробный период — { $trial_price }
+    .trial-paid-icon = 🚀
     .devices = Устройства
     .devices-icon = 📱
     .support = Поддержка
     .support-icon = 🆘
     .web-cabinet = Веб-кабинет
     .web-cabinet-icon = 🌐
+    .subscription = Подписка
+    .subscription-icon = 💳
     .subscriptions = Мои подписки
+    .subscriptions-icon = 💳
     .purchase = Купить подписку
+    .purchase-icon = 💸
     .promocode = Промокод
+    .promocode-icon = 🎟
     .referrals = Рефералы
+    .referrals-icon = 👥
     .legal = Документы
 
 btn-legal =
@@ -104,10 +114,15 @@ btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
     .empty = Нет подключённых устройств
     .delete-all = Удалить все устройства
+    .delete-all-icon = 🗑
     .reissue = Перевыпустить ссылку
+    .reissue-icon = 🔄
     .confirm-delete = Да, удалить
+    .confirm-delete-icon = ✅
     .confirm-reissue = Да, перевыпустить
+    .confirm-reissue-icon = ✅
     .cancel-reissue = Отмена
+    .cancel-reissue-icon = ❌
 
 msg-subscriptions-list = Ваши подписки. Выберите одну, чтобы увидеть подробности.
 msg-subscription-card =
@@ -130,31 +145,100 @@ msg-subscription-card =
        *[other] { $device_limit }
     }
 msg-referrals =
-    Приглашайте друзей и получайте награды.
+    <b>👥 Пригласить друзей</b>
 
-    1 уровень: { $referrals_level_1 }
-    2 уровень: { $referrals_level_2 }
-    Баллы: { $points }
-    Бонусные дни: { $bonus_days }
+    Делитесь вашей уникальной ссылкой и получайте награды!
 
-    { $referral_url }
+    <b>📊 Статистика</b>:
+    <blockquote>• <b>Приглашено вами</b>: { $referrals_level_1 }
+    • <b>Приглашено вашими друзьями</b>: { $referrals_level_2 }
+    • <b>Баллы</b>: { $points }
+    • <b>Бонусные дни</b>: { $bonus_days }</blockquote>
 
 btn-subscriptions =
     .purchase = Купить подписку
+    .purchase-icon = 💸
 
 btn-subscription =
     .renew = Продлить
+    .renew-icon = 🔄
     .change = Сменить план
+    .change-icon = 🔃
 
+msg-referrals-about =
+    <b>❓ Как это работает?</b>
+
+    <b>1️⃣ Поделитесь ссылкой</b>
+    <blockquote>Отправьте её другу или покажите QR-код.</blockquote>
+
+    <b>2️⃣ Друг регистрируется по ссылке</b>
+    <blockquote>{ $invitee_reward_amount ->
+        [0] И закрепляется за вами.
+       *[other] И сразу получает +{ $invitee_reward_amount } { $invitee_reward_type ->
+            [POINTS] { $invitee_reward_amount ->
+                [one] балл
+                [few] балла
+               *[other] баллов
+            }
+           *[EXTRA_DAYS] { $invitee_reward_amount ->
+                [one] бонусный день
+                [few] бонусных дня
+               *[other] бонусных дней
+            }
+        }.
+    }</blockquote>
+
+    <b>3️⃣ Друг оплачивает подписку</b>
+    <blockquote>Вы получаете { $reward_terms }. { $accrual_strategy ->
+        [EVERY_PAYMENT] За каждую его оплату: покупку, продление и смену тарифа.
+       *[FIRST_PAYMENT] Только за его первую оплату.
+    }
+    { $reward_levels }</blockquote>
+
+    { $reward_type ->
+        [POINTS] <b>4️⃣ Обменивайте баллы</b>
+        <blockquote>Нажмите «Вывести баллы» и напишите в поддержку — администратор проведёт обмен.</blockquote>
+       *[EXTRA_DAYS] <b>4️⃣ Применяйте бонусные дни</b>
+        <blockquote>Добавьте их к любой своей подписке.</blockquote>
+    }
+
+    <i>Пригласить можно только того, кто ещё не пользуется сервисом. Пробные подписки и подписки по промокоду наград не приносят. Если платёж вернут, награда за него аннулируется.</i>
+frg-referral-terms = { $reward_strategy ->
+        [PERCENT] { $reward_type ->
+            [POINTS] { $amount }% от оплаты друга баллами
+           *[EXTRA_DAYS] { $amount }% от купленных другом дней — бонусными днями
+        }
+       *[AMOUNT] { $reward_type ->
+            [POINTS] +{ $amount } { $amount ->
+                [one] балл
+                [few] балла
+               *[other] баллов
+            } за оплату друга
+           *[EXTRA_DAYS] +{ $amount } { $amount ->
+                [one] день
+                [few] дня
+               *[other] дней
+            } за оплату друга
+        }
+    }
+frg-referral-levels = Друзья ваших друзей тоже приносят награду:
+frg-referral-level = { $level } уровень — { $terms }
 msg-referrals-redeem-target = Бонусных дней: { $bonus_days }. Выберите подписку, к которой их добавить:
 
 btn-referrals =
+    .about = Как это работает?
+    .about-icon = ❓
     .copy = Скопировать ссылку
+    .copy-icon = 📋
     .share = Поделиться ссылкой
+    .share-icon = 📩
     .withdraw = Вывести баллы
+    .withdraw-icon = 💎
     .redeem = Обменять бонусные дни
     .qr = QR-код
+    .qr-icon = 🧾
     .reset-code = Новая реферальная ссылка
+    .reset-code-icon = 🔄
 
 btn-back =
     .general = Назад
@@ -209,10 +293,14 @@ btn-purchase =
     .duration = { $days } дн. — { $price } { $currency_symbol }
     .method = { $gateway } — { $price } { $currency_symbol }
     .pay = Оплатить
+    .pay-icon = 💳
     .go-to-payment = Перейти к оплате
+    .go-to-payment-icon = 💳
     .menu = Главное меню
+    .menu-icon = ↩️
     .link-renew = Продлить: { $subscription }
     .link-new = Купить новую
+    .link-new-icon = 💸
 
 msg-payment-result-success =
     <b>✅ Оплата прошла успешно!</b>
@@ -230,8 +318,10 @@ msg-payment-result-canceled = <b>Оплата отменена.</b> Заказ �
 
 btn-payment-result =
     .subscription = Моя подписка
+    .subscription-icon = 💳
     .retry = Попробовать снова
     .menu = Главное меню
+    .menu-icon = ↩️
 
 gateway-name =
     .TELEGRAM_STARS = Telegram Stars
@@ -276,11 +366,47 @@ ntf-promocode =
     .activation-failed = Не удалось активировать промокод. Попробуйте позже.
     .too-many-attempts = Слишком много попыток. Попробуйте через минуту.
 
-msg-promocode-input = Введите промокод:
-msg-promocode-target = Выберите подписку, к которой применить промокод:
-msg-promocode-confirm = Промокод: { $promo_code }
-    Награда: { $promo_reward_type } { $promo_reward }
-msg-promocode-confirm-will-replace = ⚠️ Это заменит вашу текущую подписку.
+msg-promocode-input =
+    <b>🎟 Промокод</b>
+
+    Отправьте промокод сообщением.
+msg-promocode-target =
+    <b>🎟 Промокод</b>
+
+    Выберите подписку, к которой применить промокод.
+msg-promocode-confirm =
+    <b>🎟 Промокод <code>{ $promo_code }</code></b>
+
+    🎁 Вы получите: { $promo_reward_type ->
+        [DURATION] <b>+{ $promo_reward } { $promo_reward ->
+            [one] день
+            [few] дня
+           *[other] дней
+        }</b> к сроку подписки.
+        [TRAFFIC] <b>+{ $promo_reward } ГБ</b> к лимиту трафика.
+        [DEVICES] <b>+{ $promo_reward } { $promo_reward ->
+            [one] устройство
+            [few] устройства
+           *[other] устройств
+        }</b> к лимиту устройств.
+        [SUBSCRIPTION] подписку <b>{ $promo_plan_name }</b> на <b>{ $promo_reward } { $promo_reward ->
+            [one] день
+            [few] дня
+           *[other] дней
+        }</b>.
+        [PERSONAL_DISCOUNT] постоянную <b>скидку { $promo_reward }%</b> на все покупки.
+        [PURCHASE_DISCOUNT] <b>скидку { $promo_reward }%</b> на следующую покупку.
+       *[other] награду на ваш аккаунт.
+    }
+
+    { $promo_reward_type ->
+        [TRAFFIC] ⚠️ <i>Бонус сохранится при продлении, но сгорит при смене тарифа.</i>
+        [DEVICES] ⚠️ <i>Бонус сохранится при продлении, но сгорит при смене тарифа.</i>
+       *[other] { "" }
+    }
+
+    Нажмите «Применить» для активации.
+msg-promocode-confirm-will-replace = ⚠️ <i>Промокод заменит вашу текущую подписку.</i>
 
 btn-promocode =
     .confirm = Применить
@@ -314,7 +440,9 @@ ntf-requirements =
 
 btn-requirements =
     .subscribe = Подписаться
+    .subscribe-icon = ❤️
     .check = Я подписался
+    .check-icon = ✅
 
 ntf-cabinet-login =
     .link = Нажмите кнопку, чтобы войти в веб-кабинет. Ссылка одноразовая и действует 5 минут.

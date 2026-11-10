@@ -54,6 +54,10 @@ def _level_amounts(
     }
 
 
+def _display_name(user: UserDto) -> str:
+    return user.name or f"#{user.id}"
+
+
 class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
     required_permission = None
 
@@ -237,12 +241,14 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
                     await self._user_repository.credit_bonus_days(hop.referrer_id, int(amount))
                 else:
                     await self._user_repository.credit_points(hop.referrer_id, amount)
+                buyer = await self._user_repository.find_by_id(data.user_id)
                 await self._event_publisher.publish(
                     ReferralRewardIssuedEvent(
                         user=referrer,
                         level=hop.level,
                         reward_type=reward_type,
                         amount=str(amount),
+                        invitee_name=_display_name(buyer) if buyer is not None else None,
                     )
                 )
         except ConflictError:

@@ -52,7 +52,12 @@ class AttachReferralOnRegistrationUseCase(UseCase[AttachReferralOnRegistrationDt
                     referrer_id=referrer.id, referred_id=user.id, level=level
                 )
                 await self._event_publisher.publish(
-                    ReferralAttachedEvent(user=user, referrer_id=referrer.id)
+                    ReferralAttachedEvent(
+                        user=user,
+                        referrer_id=referrer.id,
+                        rewarded=settings.enabled
+                        and any(amount > 0 for amount in settings.reward_amounts.values()),
+                    )
                 )
                 await self._reward_invitee(user, settings)
         except ConflictError:

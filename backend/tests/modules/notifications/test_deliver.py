@@ -2,11 +2,13 @@ from typing import Any, Optional
 
 import pytest
 
+from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role, SessionAudience
 from app.core.exceptions import RetryableTaskError
 from app.modules.notifications.dto import DeliverNotificationDto, PushMessage
 from app.modules.notifications.render import NotificationRenderer
+from app.modules.notifications.telegram_data import CardData
 from app.modules.notifications.usecases import DeliverNotificationUseCase
 from app.modules.notifications.usecases import deliver_notification as deliver_module
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -37,6 +39,11 @@ class FakeRendererFactory:
         return NotificationRenderer({Locale.EN: FTL}, default_locale=Locale.EN)
 
 
+class FakeCardDataLoader:
+    async def load(self, *args: Any, **kwargs: Any) -> CardData:
+        return CardData()
+
+
 class FakeBotTokenSource:
     def __init__(self, token: Optional[str]) -> None:
         self._token = token
@@ -65,7 +72,10 @@ async def _user(
 def telegram_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, str]]:
     calls: list[tuple[int, str]] = []
 
-    async def fake_send(token: str, proxy: Optional[str], chat_id: int, text: str) -> bool:
+    async def fake_send(
+        token: str, proxy: Optional[str], chat_id: int, text: str, *, html: bool = False
+    ) -> bool:
+        assert html is True
         calls.append((chat_id, text))
         if chat_id == BROKEN_CHAT:
             raise RuntimeError("unexpected client error")
@@ -84,6 +94,8 @@ def _use_case(
         push,  # type: ignore[arg-type]
         FakeRendererFactory(),  # type: ignore[arg-type]
         FakeBotTokenSource(token),  # type: ignore[arg-type]
+        FakeCardDataLoader(),  # type: ignore[arg-type]
+        AppConfig.get(),
     )
 
 
@@ -144,7 +156,11 @@ async def test_telegram_refusal_does_not_stop_other_deliveries(
 
     assert {chat for chat, _ in telegram_calls} >= {BLOCKED_CHAT, 777}
     assert {user_id for user_id, _ in push.sent} >= {blocked.id, other.id}
-    assert telegram_calls[0][1] == "Login failed\n\nWrong password for x"
+    assert telegram_calls[0][1] == (
+        "#LoginFailedEvent\n\n<b>🔅 event: Login failed</b>\n\n"
+        "ℹ️ <b>details</b>:\n<blockquote>• <b>method</b>: method-password\n"
+        "• <b>login</b>: <code>x</code>\n• <b>ip</b>: <code>—</code></blockquote>"
+    )
 
 
 async def test_no_bot_token_skips_telegram(
@@ -196,7 +212,7 @@ async def test_long_body_is_cut_for_both_channels(
 
     [(_, message)] = push.sent
     assert len(message.body) <= deliver_module.MAX_BODY_LENGTH
-    assert len(telegram_calls[0][1]) <= deliver_module.MAX_BODY_LENGTH + 100
+    assert len(telegram_calls[0][1]) <= deliver_module.MAX_BODY_LENGTH + 300
 
 
 async def test_failure_before_sending_is_retryable(
@@ -214,6 +230,8 @@ async def test_failure_before_sending_is_retryable(
         FakePush(),  # type: ignore[arg-type]
         BrokenFactory(),  # type: ignore[arg-type]
         FakeBotTokenSource("token"),  # type: ignore[arg-type]
+        FakeCardDataLoader(),  # type: ignore[arg-type]
+        AppConfig.get(),
     )
 
     with pytest.raises(RetryableTaskError):
@@ -256,3 +274,25 @@ async def test_a_merged_window_says_so_in_the_body(
 
     message = next(m for user_id, m in push.sent if user_id == owner.id)
     assert message.body == "Wrong password for x\nSources merged."
+
+
+async def test_telegram_card_shows_the_customer_but_not_the_system_actor(
+    user_repository: UserRepository, uow: UnitOfWork, telegram_calls: list[tuple[int, str]]
+) -> None:
+    await _user(user_repository, uow, "owner", Role.OWNER, telegram_id=777)
+    customer = {"id": 5, "name": "Ivan", "role": "USER", "telegram_id": 42, "username": "ivan"}
+    system = {"id": -1, "name": "SYSTEM", "role": "SYSTEM"}
+
+    for snapshot in (customer, system):
+        await _use_case(user_repository, uow, FakePush(), "token").system(
+            DeliverNotificationDto(
+                event_type="LoginFailedEvent",
+                payload={"login": "x", "user": snapshot},
+                actor_id=None,
+                ip_address=None,
+            )
+        )
+
+    shown, hidden = (text for _, text in telegram_calls)
+    assert "• <b>name</b>: Ivan\n• <b>telegram-id</b>: <code>42</code>" in shown
+    assert "SYSTEM" not in hidden

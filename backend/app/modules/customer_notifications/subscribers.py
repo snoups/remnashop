@@ -1,5 +1,8 @@
+import math
+from datetime import datetime
 from typing import Any, Final, Optional, Union, cast
 
+from app.core.actor import Actor
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent
 from app.modules.account_merge import AccountsMergedEvent
@@ -13,7 +16,11 @@ from app.modules.customer_notifications.tasks import (
     show_payment_canceled_task,
 )
 from app.modules.promocodes import PromocodeDiscountExpiringEvent
-from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
+from app.modules.referrals import (
+    InviteeRewardIssuedEvent,
+    ReferralAttachedEvent,
+    ReferralRewardIssuedEvent,
+)
 from app.modules.subscriptions import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
@@ -62,17 +69,29 @@ async def _notify(
     )
 
 
+def _yes(flag: bool) -> str:
+    return "yes" if flag else "no"
+
+
+def _display_name(user: Actor) -> str:
+    return user.name or f"#{user.id}"
+
+
 async def _on_paid(
     event: Union[SubscriptionPurchasedEvent, SubscriptionChangedEvent], entry: StoredEvent
 ) -> None:
-    await _notify(entry, event.user.id, {}, event.payment_key, event.subscription_id)
+    # a trial, promocode or referral grant has no payment behind it
+    args = {"paid": _yes(event.payment_key is not None)}
+    if isinstance(event, SubscriptionPurchasedEvent):
+        args["is_trial"] = _yes(event.is_trial)
+    await _notify(entry, event.user.id, args, event.payment_key, event.subscription_id)
 
 
 async def _on_renewed(event: SubscriptionRenewedEvent, entry: StoredEvent) -> None:
     await _notify(
         entry,
         event.user.id,
-        {"duration_days": event.duration_days},
+        {"duration_days": event.duration_days, "paid": _yes(event.payment_key is not None)},
         event.payment_key,
         event.subscription_id,
     )
@@ -139,11 +158,32 @@ async def _on_subscription(
         SubscriptionExpiredEvent,
         SubscriptionTrafficLimitedEvent,
         SubscriptionTrafficThresholdEvent,
-        TorrentBlockerReportEvent,
     ],
     entry: StoredEvent,
 ) -> None:
     await _notify(entry, event.user.id, {}, subscription_id=event.subscription_id)
+
+
+def _block_span(blocked_until: str, now: datetime) -> dict[str, Any]:
+    # fixed at the event: the bell shows "limited for 30 minutes" as it was said
+    try:
+        minutes = math.ceil((datetime.fromisoformat(blocked_until) - now).total_seconds() / 60)
+    except (TypeError, ValueError):
+        return {}
+    if minutes <= 0:
+        return {}
+    if minutes < 60:
+        return {"block_unit": "minute", "block_span": minutes}
+    return {"block_unit": "hour", "block_span": math.ceil(minutes / 60)}
+
+
+async def _on_torrent(event: TorrentBlockerReportEvent, entry: StoredEvent) -> None:
+    await _notify(
+        entry,
+        event.user.id,
+        _block_span(event.blocked_until, entry.occurred_at),
+        subscription_id=event.subscription_id,
+    )
 
 
 def _amount(value: Union[str, int]) -> Union[str, int]:
@@ -164,8 +204,17 @@ async def _on_discount_expiring(event: PromocodeDiscountExpiringEvent, entry: St
 async def _on_reward(
     event: Union[ReferralRewardIssuedEvent, InviteeRewardIssuedEvent], entry: StoredEvent
 ) -> None:
+    args: dict[str, Any] = {"reward_type": event.reward_type, "amount": _amount(event.amount)}
+    if isinstance(event, ReferralRewardIssuedEvent):
+        args.update(name=event.invitee_name or "", has_name=_yes(bool(event.invitee_name)))
+    await _notify(entry, event.user.id, args)
+
+
+async def _on_referral_attached(event: ReferralAttachedEvent, entry: StoredEvent) -> None:
     await _notify(
-        entry, event.user.id, {"reward_type": event.reward_type, "amount": _amount(event.amount)}
+        entry,
+        event.referrer_id,
+        {"name": _display_name(event.user), "rewarded": _yes(event.rewarded)},
     )
 
 
@@ -196,9 +245,10 @@ def register_subscribers(bus: EventBus) -> None:
     bus.subscribe(SubscriptionTrafficThresholdEvent, _on_subscription)
     bus.subscribe(SubscriptionNotConnectedEvent, _on_hours)
     bus.subscribe(SubscriptionExpiredAgoEvent, _on_hours)
-    bus.subscribe(TorrentBlockerReportEvent, _on_subscription)
+    bus.subscribe(TorrentBlockerReportEvent, _on_torrent)
     bus.subscribe(CabinetNewDeviceSignInEvent, _on_new_device)
     bus.subscribe(AccountsMergedEvent, _on_accounts_merged)
     bus.subscribe(ReferralRewardIssuedEvent, _on_reward)
     bus.subscribe(InviteeRewardIssuedEvent, _on_reward)
+    bus.subscribe(ReferralAttachedEvent, _on_referral_attached)
     bus.subscribe(PromocodeDiscountExpiringEvent, _on_discount_expiring)

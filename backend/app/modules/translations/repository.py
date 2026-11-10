@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Final, Optional
 
-from sqlalchemy import ARRAY, Text, any_, delete, literal, select, update
+from sqlalchemy import ARRAY, Text, any_, case, delete, literal, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -155,6 +155,39 @@ class TranslationRepository:
                 pg_insert(BotTranslation)
                 .values(rows)
                 .on_conflict_do_nothing(index_elements=["locale", "message_id", "attribute_id"])
+            )
+
+    async def sync_shipped_many(
+        self, locale: Locale, entries: Sequence[tuple[str, str, str]]
+    ) -> None:
+        # a value nobody edited follows the shipped text; an edited one keeps the
+        # admin's text and only learns the new default for a reset
+        for start in range(0, len(entries), _SEED_CHUNK):
+            rows = [
+                {
+                    "locale": locale,
+                    "message_id": message_id,
+                    "attribute_id": attribute_id,
+                    "value": value,
+                    "default_value": value,
+                }
+                for message_id, attribute_id, value in entries[start : start + _SEED_CHUNK]
+            ]
+            statement = pg_insert(BotTranslation).values(rows)
+            await self.session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=["locale", "message_id", "attribute_id"],
+                    set_={
+                        "default_value": statement.excluded.default_value,
+                        "value": case(
+                            (
+                                BotTranslation.value == BotTranslation.default_value,
+                                statement.excluded.value,
+                            ),
+                            else_=BotTranslation.value,
+                        ),
+                    },
+                )
             )
 
     async def delete_blank_messages(self, locale: Locale, message_ids: Sequence[str]) -> None:

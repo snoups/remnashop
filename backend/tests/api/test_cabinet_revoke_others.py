@@ -19,6 +19,7 @@ from app.core.enums import Locale, Role, SessionAudience
 from app.core.security import create_access_token, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
+from app.modules.auth.usecases import RevokeOtherCabinetSessionsUseCase
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.container import make_test_container
@@ -149,3 +150,15 @@ async def test_dashboard_session_revokes_other_dashboard_sessions_only(
     assert response.status_code == 204
     alive = {s.id for s in await session_repository.list_active_by_user(owner.id)}
     assert alive == {ids["current"], ids["cabinet"]}
+
+
+async def test_the_bot_button_ends_every_cabinet_session(
+    setup, session_repository: SessionRepository, uow: UnitOfWork
+) -> None:
+    user, ids, _ = setup
+    use_case = RevokeOtherCabinetSessionsUseCase(session_repository, uow)
+
+    await use_case(user, None)
+
+    alive = {s.id for s in await session_repository.list_active_by_user(user.id)}
+    assert alive == {ids["dashboard"]}

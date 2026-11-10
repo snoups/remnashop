@@ -152,3 +152,12 @@ class PromocodeActivatedUserDto:
 @dataclass(frozen=True, kw_only=True)
 class ValidatePromocodeDto:
     code: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class PromocodeRewardDto:
+    # what activating the code gives, ready to show: an add-on reward's amount
+    # lives on the add-on, a subscription reward's plan on the plan
+    reward_type: PromocodeRewardType
+    amount: Optional[int] = None
+    plan_name: Optional[str] = None

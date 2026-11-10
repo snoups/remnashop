@@ -38,3 +38,4 @@ class Promocode(StatesGroup):
 class Referrals(StatesGroup):
     MAIN = State()
     REDEEM_TARGET = State()
+    ABOUT = State()

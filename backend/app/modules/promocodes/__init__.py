@@ -9,6 +9,7 @@ from app.modules.promocodes.events import PromocodeDiscountExpiringEvent
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.promocodes.usecases import (
     ActivatePromocodeUseCase,
+    GetPromocodeRewardUseCase,
     ListPromocodeTargetsUseCase,
     ValidatePromocodeUseCase,
 )
@@ -16,6 +17,7 @@ from app.modules.promocodes.usecases import (
 __all__ = [
     "ActivatePromocodeDto",
     "ActivatePromocodeUseCase",
+    "GetPromocodeRewardUseCase",
     "ListPromocodeTargetsDto",
     "ListPromocodeTargetsUseCase",
     "PromocodeDiscountExpiringEvent",

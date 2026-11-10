@@ -29,17 +29,23 @@ class TelegramSendResult(UpperStrEnum):
 
 
 async def _send_with_retry(
-    bot: BotApi, chat_id: int, text: str, reply_markup: Optional[dict[str, Any]]
+    bot: BotApi, chat_id: int, text: str, reply_markup: Optional[dict[str, Any]], html: bool
 ) -> None:
-    # plain text: logins and error messages in the payload are user-controlled
+    # HTML only for text built by telegram_card, which escapes the payload's
+    # user-controlled values; anything else goes as plain text
+    extra: dict[str, Any] = {"parse_mode": "HTML"} if html else {}
     try:
-        await bot.call("sendMessage", chat_id=chat_id, text=text, reply_markup=reply_markup)
+        await bot.call(
+            "sendMessage", chat_id=chat_id, text=text, reply_markup=reply_markup, **extra
+        )
     except BotApiRefusedError as error:
         retry_after = error.retry_after
         if retry_after is None or retry_after > _MAX_RETRY_AFTER_S:
             raise
         await asyncio.sleep(retry_after)
-        await bot.call("sendMessage", chat_id=chat_id, text=text, reply_markup=reply_markup)
+        await bot.call(
+            "sendMessage", chat_id=chat_id, text=text, reply_markup=reply_markup, **extra
+        )
 
 
 async def send_telegram_text(
@@ -49,10 +55,11 @@ async def send_telegram_text(
     text: str,
     *,
     reply_markup: Optional[dict[str, Any]] = None,
+    html: bool = False,
 ) -> TelegramSendResult:
     try:
         async with bot_client(token, proxy, timeout=TELEGRAM_TIMEOUT_SECONDS) as bot:
-            await _send_with_retry(bot, chat_id, text, reply_markup)
+            await _send_with_retry(bot, chat_id, text, reply_markup, html)
     except BotApiRefusedError as error:
         if error.error_code == HTTPStatus.FORBIDDEN or (
             error.error_code == HTTPStatus.BAD_REQUEST
@@ -73,6 +80,8 @@ async def send_telegram_message(
     proxy: Optional[str],
     chat_id: int,
     text: str,
+    *,
+    html: bool = False,
 ) -> bool:
-    result = await send_telegram_text(token, proxy, chat_id, text)
+    result = await send_telegram_text(token, proxy, chat_id, text, html=html)
     return result is TelegramSendResult.SENT

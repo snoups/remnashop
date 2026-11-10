@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal, TypeAlias
+from typing import ClassVar, Literal, Optional, TypeAlias
 
 from app.core.enums import AppearanceTarget
 from app.core.events import ActorEvent, EventCategory, SystemEvent
@@ -69,6 +69,7 @@ class BotStartedEvent(SystemEvent):
 @dataclass(frozen=True, kw_only=True)
 class BotStoppedEvent(SystemEvent):
     category: ClassVar[EventCategory] = EventCategory.INFRASTRUCTURE
+    uptime_seconds: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

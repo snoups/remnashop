@@ -7,7 +7,12 @@ from fluentogram import TranslatorHub
 
 from app.core.constants import USER_KEY
 from app.core.enums import PromocodeRewardType
-from app.modules.promocodes import ListPromocodeTargetsDto, ListPromocodeTargetsUseCase
+from app.modules.promocodes import (
+    GetPromocodeRewardUseCase,
+    ListPromocodeTargetsDto,
+    ListPromocodeTargetsUseCase,
+    ValidatePromocodeDto,
+)
 from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
@@ -58,24 +63,27 @@ async def promocode_target_getter(
 async def promocode_confirm_getter(
     dialog_manager: DialogManager,
     list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    get_promocode_reward: FromDishka[GetPromocodeRewardUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
-    reward_type = dialog_manager.dialog_data.get("promo_reward_type", "")
+    code = dialog_manager.dialog_data.get("promo_code", "")
+    reward = await get_promocode_reward(user, ValidatePromocodeDto(code=code))
 
     will_replace = False
-    if reward_type == PromocodeRewardType.SUBSCRIPTION.value:
+    if reward.reward_type is PromocodeRewardType.SUBSCRIPTION:
         will_replace = len(await list_own_active_subscriptions(user)) > 0
 
     return {
         "confirm_message": render_window_text(
             runner,
             "msg-promocode-confirm",
-            promo_code=dialog_manager.dialog_data.get("promo_code", ""),
-            promo_reward_type=reward_type,
-            promo_reward=dialog_manager.dialog_data.get("promo_reward") or 0,
+            promo_code=code,
+            promo_reward_type=reward.reward_type.value,
+            promo_reward=reward.amount or 0,
+            promo_plan_name=reward.plan_name or "",
         ),
         "will_replace_message": render_window_text(runner, "msg-promocode-confirm-will-replace")
         if will_replace

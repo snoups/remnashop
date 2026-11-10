@@ -13,7 +13,13 @@ def register_menu_metadata() -> None:
     catalog.register_action_key("delete_device")
     catalog.register_action_key("delete_all_devices")
     catalog.register_action_key("reissue_subscription")
-    for key in ("purchase_new", "open_subscriptions", "promocode", "legal_documents"):
+    for key in (
+        "purchase_new",
+        "open_subscriptions",
+        "open_devices",
+        "promocode",
+        "legal_documents",
+    ):
         catalog.register_action_key(key)
 
     catalog.register_condition("trial_available", lambda data: bool(data.get("trial_available")))
@@ -28,6 +34,27 @@ def register_menu_metadata() -> None:
     catalog.register_condition("has_devices", lambda data: bool(data.get("has_devices")))
     catalog.register_condition(
         "has_subscriptions", lambda data: data.get("subscriptions_count", 0) > 0
+    )
+    # max one subscription: connect and devices sit in the menu, "Subscription"
+    # opens its card; otherwise "My subscriptions" opens the list
+    catalog.register_condition(
+        "single_connectable",
+        lambda data: bool(data.get("single_subscription"))
+        and bool(data.get("connectable"))
+        and bool(data.get("connect_url")),
+    )
+    catalog.register_condition(
+        "single_device_limit",
+        lambda data: bool(data.get("single_subscription")) and bool(data.get("has_device_limit")),
+    )
+    catalog.register_condition(
+        "single_has_subscription",
+        lambda data: bool(data.get("single_subscription"))
+        and data.get("subscriptions_count", 0) > 0,
+    )
+    catalog.register_condition(
+        "multi_has_subscriptions",
+        lambda data: not data.get("single_subscription") and data.get("subscriptions_count", 0) > 0,
     )
     catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
     catalog.register_condition("referral_enabled", lambda data: bool(data.get("referral_enabled")))
@@ -79,7 +106,7 @@ def register_menu_metadata() -> None:
                     column=0,
                     link_type=ButtonLinkType.URL,
                     url_value="${subscription_url}",
-                    visibility_condition="connectable",
+                    visibility_condition="single_connectable",
                 ),
                 catalog.CatalogButton(
                     key="trial",
@@ -100,13 +127,31 @@ def register_menu_metadata() -> None:
                     visibility_condition="trial_paid_available",
                 ),
                 catalog.CatalogButton(
-                    key="subscriptions",
-                    text_key="btn-menu.subscriptions",
+                    key="devices",
+                    text_key="btn-menu.devices",
                     row=2,
                     column=0,
                     link_type=ButtonLinkType.ACTION,
+                    action_key="open_devices",
+                    visibility_condition="single_device_limit",
+                ),
+                catalog.CatalogButton(
+                    key="subscription",
+                    text_key="btn-menu.subscription",
+                    row=2,
+                    column=1,
+                    link_type=ButtonLinkType.ACTION,
                     action_key="open_subscriptions",
-                    visibility_condition="has_subscriptions",
+                    visibility_condition="single_has_subscription",
+                ),
+                catalog.CatalogButton(
+                    key="subscriptions",
+                    text_key="btn-menu.subscriptions",
+                    row=2,
+                    column=2,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="open_subscriptions",
+                    visibility_condition="multi_has_subscriptions",
                 ),
                 catalog.CatalogButton(
                     key="purchase",

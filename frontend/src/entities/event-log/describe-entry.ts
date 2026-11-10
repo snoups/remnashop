@@ -51,28 +51,27 @@ export function isSystemActor(user: UserSnapshot): boolean {
   return user.role === "SYSTEM";
 }
 
-function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
+export function getMissingInitiatorKey(entry: EventLogEntry): ParseKeys {
   return ANONYMOUS_EVENT_TYPES.has(entry.event_type) ? "eventLog.detail.anonymous" : "eventLog.detail.system";
 }
 
-/** Staff by login, a customer by name or "User #id"; an API token reads as its own name. */
-function participantLabel(user: UserSnapshot, t: TFunction): string {
-  if (isSystemActor(user)) return t("eventLog.detail.system");
-  if (user.login) return user.login;
-  if (user.name) return user.name;
-  return user.id && user.id > 0 ? `${t("users.unnamed")} #${user.id}` : "—";
+/** A real account's id; none for the system, an API token (id 0) or a snapshot without one. */
+export function participantId(user: UserSnapshot): number | undefined {
+  return !isSystemActor(user) && user.id && user.id > 0 ? user.id : undefined;
 }
 
-/** Who did it: a participant label, "System" or "Anonymous". */
+/** Staff by login, a customer by name or "User"; an API token reads as its own name. */
+export function participantName(user: UserSnapshot, t: TFunction): string {
+  if (isSystemActor(user)) return t("eventLog.detail.system");
+  return user.login || user.name || (participantId(user) ? t("users.unnamed") : "—");
+}
+
+/** Who did it as plain text: a name with "#id", "System" or "Anonymous". */
 export function initiatorLabel(entry: EventLogEntry, t: TFunction): string {
   const initiator = getInitiator(entry);
-  return initiator ? participantLabel(initiator, t) : t(getMissingInitiatorKey(entry));
-}
-
-export function describeEntry(entry: EventLogEntry, t: TFunction): string {
-  const actor = initiatorLabel(entry, t);
-  const target = getUserSnapshot(entry, PAYLOAD_TARGET_KEY);
-  return target ? `${actor} → ${participantLabel(target, t)}` : actor;
+  if (!initiator) return t(getMissingInitiatorKey(entry));
+  const id = participantId(initiator);
+  return id === undefined ? participantName(initiator, t) : `${participantName(initiator, t)} #${id}`;
 }
 
 // payload field that picks `eventLog.eventVariants.<type>.<value>` over the plain title

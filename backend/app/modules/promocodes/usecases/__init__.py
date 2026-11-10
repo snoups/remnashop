@@ -3,6 +3,7 @@ from app.modules.promocodes.usecases.create_promocode import CreatePromocodeUseC
 from app.modules.promocodes.usecases.delete_promocode import DeletePromocodeUseCase
 from app.modules.promocodes.usecases.generate_promocode_code import GeneratePromocodeCodeUseCase
 from app.modules.promocodes.usecases.get_promocode import GetPromocodeUseCase
+from app.modules.promocodes.usecases.get_promocode_reward import GetPromocodeRewardUseCase
 from app.modules.promocodes.usecases.get_promocode_summary import GetPromocodeSummaryUseCase
 from app.modules.promocodes.usecases.list_promocode_activated_users import (
     ListPromocodeActivatedUsersUseCase,
@@ -23,6 +24,7 @@ __all__ = [
     "CreatePromocodeUseCase",
     "DeletePromocodeUseCase",
     "GeneratePromocodeCodeUseCase",
+    "GetPromocodeRewardUseCase",
     "GetPromocodeSummaryUseCase",
     "GetPromocodeUseCase",
     "ListPromocodeActivatedUsersUseCase",
