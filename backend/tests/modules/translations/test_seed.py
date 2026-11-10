@@ -148,3 +148,29 @@ async def test_seeding_flags_a_default_when_none_is_flagged(
     await translation_repository.remove_active_locale(Locale.EN)
     await ensure_translations_seeded(seed_config, translation_repository)
     assert await translation_repository.find_default_locale() is Locale.RU
+
+
+async def test_seeding_updates_untouched_values_and_every_default(
+    tmp_path: Path,
+    config: AppConfig,
+    translation_repository: TranslationRepository,
+    settings_repository: SettingsRepository,
+) -> None:
+    seed_config = _seed_config(config, tmp_path)
+    await ensure_translations_seeded(seed_config, translation_repository)
+    await translation_repository.update_value(Locale.RU, "command", "menu", "Правка админа")
+    (tmp_path / "translations" / "en" / "commands.ftl").write_text(
+        "command =\n    .menu = Main menu\n"
+    )
+    (tmp_path / "translations" / "ru" / "commands.ftl").write_text(
+        "command =\n    .menu = Главное меню\n"
+    )
+
+    await ensure_translations_seeded(seed_config, translation_repository)
+
+    untouched = await translation_repository.get(Locale.EN, "command", "menu")
+    edited = await translation_repository.get(Locale.RU, "command", "menu")
+    assert untouched is not None
+    assert (untouched.value, untouched.default_value) == ("Main menu", "Main menu")
+    assert edited is not None
+    assert (edited.value, edited.default_value) == ("Правка админа", "Главное меню")
