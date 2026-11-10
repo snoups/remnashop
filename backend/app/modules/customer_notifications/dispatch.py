@@ -9,6 +9,7 @@ class SendCustomerTelegramDispatch(Protocol):
         text: str,
         buttons: list[dict[str, str]],
         notification: dict[str, Any],
+        html: bool,
     ) -> object: ...
 
 

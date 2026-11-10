@@ -40,7 +40,11 @@ from app.modules.oauth.events import (
     OAuthLoginSucceededEvent,
 )
 from app.modules.promocodes.events import PromocodeDiscountExpiringEvent
-from app.modules.referrals.events import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
+from app.modules.referrals.events import (
+    InviteeRewardIssuedEvent,
+    ReferralAttachedEvent,
+    ReferralRewardIssuedEvent,
+)
 from app.modules.referrals.tasks import (
     assign_referral_rewards_task,
     attach_referral_on_registration_task,
@@ -138,6 +142,7 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
             user=_USER, level=1, reward_type=ReferralRewardType.EXTRA_DAYS, amount="7"
         ),
         InviteeRewardIssuedEvent(user=_USER, reward_type=ReferralRewardType.EXTRA_DAYS, amount=7),
+        ReferralAttachedEvent(user=_USER, referrer_id=2, rewarded=True),
         AccessSettingsChangedEvent(actor=_USER, payments_reenabled=True),
         AccountsMergedEvent(actor=_USER, target=_TARGET, source=_USER, choices={"name": "target"}),
         PromocodeDiscountExpiringEvent(

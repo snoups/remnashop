@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Optional
 
 from app.core.enums import ReferralRewardType
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
@@ -9,6 +9,8 @@ from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemE
 class ReferralAttachedEvent(UserEvent):
     category: ClassVar[EventCategory] = EventCategory.REFERRAL
     referrer_id: int
+    # the program pays the referrer for this invitee's payments
+    rewarded: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -17,6 +19,8 @@ class ReferralRewardIssuedEvent(UserEvent):
     level: int
     reward_type: ReferralRewardType
     amount: str
+    # the invitee whose payment earned it
+    invitee_name: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

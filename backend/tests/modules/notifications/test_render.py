@@ -11,6 +11,7 @@ from app.modules.notifications.render import (
     NotificationRenderer,
     message_id,
     notification_args,
+    telegram_card,
 )
 
 _TRANSLATIONS_DIR = Path(__file__).parents[3] / "assets" / "translations"
@@ -45,7 +46,7 @@ def test_args_flatten_user_snapshots_and_keep_scalars() -> None:
         {"user": {"login": None, "username": "bob", "name": "Bob"}, "amount": "500", "flag": True},
         "1.2.3.4",
     )
-    assert args == {"user": "@bob", "amount": "500", "ip": "1.2.3.4"}
+    assert args == {"user": "@bob", "amount": "500", "flag": "yes", "ip": "1.2.3.4"}
 
 
 def test_render_falls_back_to_default_locale_then_to_event_type() -> None:
@@ -89,7 +90,7 @@ def test_broadcast_completed_renders_counts() -> None:
         "BroadcastCompletedEvent",
         {"broadcast_id": 4, "sent": 10, "failed": 1, "blocked": 2, "ip": "—"},
     )
-    assert title == "Broadcast sent"
+    assert title == "Broadcast finished!"
     assert "10" in body
     assert "#4" in body
 
@@ -106,3 +107,26 @@ def test_text_falls_back_to_the_default_locale_and_misses_cleanly() -> None:
     assert renderer.text(Locale.RU, "plain") == "Привет"
     assert renderer.text(Locale.RU, "ntf-access.payments-restored") == "Back!"
     assert renderer.text(Locale.RU, "ntf-access.missing") is None
+
+
+def test_telegram_card_escapes_values_and_drops_empty_rows() -> None:
+    card = telegram_card(
+        "Sign-in <x>",
+        "From 1.2.3.4 (<script>)",
+        emoji="🔐",
+        hashtag="NewDevice-Event",
+        blocks=[
+            ("👤", "User", [("ID", "7", True), ("Name", "A&B", False), ("Email", "", False)]),
+            ("ℹ️", "Empty", [("Email", "", False)]),
+        ],
+        quote="Check <it>",
+        footer="2 more",
+    )
+
+    assert card == (
+        "#NewDeviceEvent\n\n<b>🔐 Sign-in &lt;x&gt;</b>\n\n"
+        "<blockquote>From 1.2.3.4 (&lt;script&gt;)</blockquote>\n\n"
+        "👤 <b>User</b>:\n<blockquote>• <b>ID</b>: <code>7</code>\n"
+        "• <b>Name</b>: A&amp;B</blockquote>"
+        "\n\n<blockquote>Check &lt;it&gt;</blockquote>\n\n<i>2 more</i>"
+    )

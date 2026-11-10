@@ -1,3 +1,5 @@
+from dataclasses import replace
+from datetime import timedelta
 from typing import Any
 from unittest.mock import ANY, AsyncMock, patch
 
@@ -17,7 +19,11 @@ from app.core.event_bus import EventBus
 from app.core.events import BaseEvent
 from app.modules.account_merge import AccountsMergedEvent
 from app.modules.customer_notifications.subscribers import register_subscribers
-from app.modules.referrals import InviteeRewardIssuedEvent, ReferralRewardIssuedEvent
+from app.modules.referrals import (
+    InviteeRewardIssuedEvent,
+    ReferralAttachedEvent,
+    ReferralRewardIssuedEvent,
+)
 from app.modules.subscriptions import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
@@ -72,19 +78,19 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
                 user=_user(7), plan_id=1, purchase_type=PurchaseType.NEW, **_SUB
             ),
             7,
-            {},
+            {"paid": "no", "is_trial": "no"},
         ),
         (
             SubscriptionChangedEvent(
                 user=_user(7), previous_subscription_id=2, previous_plan_snapshot={}, **_SUB
             ),
             7,
-            {},
+            {"paid": "no"},
         ),
         (
             SubscriptionRenewedEvent(user=_user(7), duration_days=30, **_SUB),
             7,
-            {"duration_days": 30},
+            {"duration_days": 30, "paid": "no"},
         ),
         (
             SubscriptionAddOnGrantedEvent(
@@ -145,14 +151,24 @@ async def _dispatch(event: BaseEvent) -> AsyncMock:
                 user=_user(7), level=1, reward_type=ReferralRewardType.EXTRA_DAYS, amount="5"
             ),
             7,
-            {"reward_type": ReferralRewardType.EXTRA_DAYS, "amount": 5},
+            {
+                "reward_type": ReferralRewardType.EXTRA_DAYS,
+                "amount": 5,
+                "name": "",
+                "has_name": "no",
+            },
         ),
         (
             ReferralRewardIssuedEvent(
                 user=_user(7), level=2, reward_type=ReferralRewardType.POINTS, amount="12.50"
             ),
             7,
-            {"reward_type": ReferralRewardType.POINTS, "amount": "12.50"},
+            {
+                "reward_type": ReferralRewardType.POINTS,
+                "amount": "12.50",
+                "name": "",
+                "has_name": "no",
+            },
         ),
         (SubscriptionNotConnectedEvent(user=_user(7), hours=24, **_SUB), 7, {"hours": 24}),
         (SubscriptionExpiredAgoEvent(user=_user(7), hours=24, **_SUB), 7, {"hours": 24}),
@@ -318,3 +334,55 @@ async def test_subscription_event_names_its_subscription(event: BaseEvent) -> No
 
     # a plan change names the new subscription, not the replaced one
     assert kiq.await_args.kwargs["subscription_id"] == 1
+
+
+@pytest.mark.parametrize(
+    ("minutes", "args"),
+    [
+        (30, {"block_unit": "minute", "block_span": 30}),
+        (90, {"block_unit": "hour", "block_span": 2}),
+        (-5, {}),
+    ],
+)
+async def test_torrent_block_says_how_long_it_lasts(minutes: int, args: dict[str, Any]) -> None:
+    event = TorrentBlockerReportEvent(
+        user=_user(7), node_name="n", destination="d", blocked_until="t", **_SUB
+    )
+    until = event.occurred_at + timedelta(minutes=minutes)
+    event = replace(event, blocked_until=until.isoformat())
+
+    kiq = await _dispatch(event)
+
+    assert kiq.await_args.kwargs["args"] == args
+
+
+@pytest.mark.parametrize("rewarded", [True, False])
+async def test_the_referrer_hears_about_the_friend_who_joined(rewarded: bool) -> None:
+    friend = _user(9)
+    event = ReferralAttachedEvent(user=friend, referrer_id=7, rewarded=rewarded)
+
+    kiq = await _dispatch(event)
+
+    kiq.assert_awaited_once_with(
+        user_id=7,
+        event_type="ReferralAttachedEvent",
+        outbox_id=5,
+        args={"name": friend.name, "rewarded": "yes" if rewarded else "no"},
+        payment_key=None,
+        subscription_id=None,
+    )
+
+
+async def test_a_reward_names_the_invitee_who_paid() -> None:
+    event = ReferralRewardIssuedEvent(
+        user=_user(7),
+        level=1,
+        reward_type=ReferralRewardType.EXTRA_DAYS,
+        amount="5",
+        invitee_name="Ivan",
+    )
+
+    kiq = await _dispatch(event)
+
+    assert kiq.await_args.kwargs["args"]["name"] == "Ivan"
+    assert kiq.await_args.kwargs["args"]["has_name"] == "yes"

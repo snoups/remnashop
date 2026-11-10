@@ -32,9 +32,9 @@ def test_every_customer_event_has_a_template(locale: Locale) -> None:
 
 
 _ARGS: dict[str, dict[str, Union[str, int]]] = {
-    "SubscriptionPurchasedEvent": {},
-    "SubscriptionRenewedEvent": {"duration_days": 1},
-    "SubscriptionChangedEvent": {},
+    "SubscriptionPurchasedEvent": {"paid": "yes", "is_trial": "no"},
+    "SubscriptionRenewedEvent": {"duration_days": 1, "paid": "yes"},
+    "SubscriptionChangedEvent": {"paid": "no"},
     "SubscriptionAddOnGrantedEvent": {"addon_type": "TRAFFIC", "amount": 10},
     "SubscriptionGrantedEvent": {"duration_days": 30},
     "TransactionRefundedEvent": {"order_id": 1, "amount": "1500.00", "currency": "RUB"},
@@ -43,12 +43,20 @@ _ARGS: dict[str, dict[str, Union[str, int]]] = {
     "SubscriptionExpiringEvent": {"hours": 24, "is_trial": "no"},
     "SubscriptionExpiredEvent": {"is_trial": "yes"},
     "SubscriptionExpiredAgoEvent": {"hours": 72, "is_trial": "no"},
-    "SubscriptionTrafficLimitedEvent": {"is_trial": "no"},
+    "SubscriptionTrafficLimitedEvent": {"is_trial": "no", "traffic_strategy": "MONTH"},
     "SubscriptionTrafficThresholdEvent": {"is_trial": "yes"},
     "SubscriptionNotConnectedEvent": {"hours": 5},
     "CabinetNewDeviceSignInEvent": {"ip": "1.2.3.4", "browser": "Firefox"},
     "PromocodeDiscountExpiringEvent": {"percent": 10, "code": "SALE", "hours": 1},
     "PaymentsRestored": {},
+    "TorrentBlockerReportEvent": {"block_unit": "minute", "block_span": 30},
+    "ReferralRewardIssuedEvent": {
+        "reward_type": "EXTRA_DAYS",
+        "amount": 7,
+        "name": "Иван",
+        "has_name": "yes",
+    },
+    "ReferralAttachedEvent": {"name": "Иван", "rewarded": "yes"},
 }
 
 
@@ -80,26 +88,28 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.RU,
             "SubscriptionExpiringEvent",
             {"hours": 23, "is_trial": "no"},
-            "Доступ сохранится ещё 23 ч. Продлите подписку, чтобы не потерять его.",
+            "Ваша подписка закончится через 23 ч. "
+            "Продлите её заранее, чтобы не терять доступ к сервису.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiringEvent",
             {"hours": 24, "is_trial": "yes"},
-            "Доступ сохранится ещё 1 день. Оформите подписку, чтобы не потерять его.",
+            "Ваш пробный период закончится через 1 день. "
+            "Оформите подписку, чтобы не терять доступ к сервису.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "no"},
-            "Доступа нет уже 2 дня. Продлите подписку, чтобы вернуть его.",
+            "Ваша подписка истекла 2 дня назад. Продлите её, чтобы снова пользоваться VPN.",
         ),
         (
             Locale.RU,
             "SubscriptionNotConnectedEvent",
             {"hours": 120},
             "Вы оформили подписку 5 дней назад, но ещё ни разу ею не воспользовались. "
-            "Настройка займёт пару минут.",
+            "Если с настройкой возникли сложности, напишите в поддержку — разберёмся вместе.",
         ),
         (
             Locale.RU,
@@ -135,13 +145,13 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.EN,
             "SubscriptionExpiringEvent",
             {"hours": 1, "is_trial": "no"},
-            "1 h left. Renew your subscription to keep your access.",
+            "Your subscription ends in 1 h. Renew it in advance to keep your access.",
         ),
         (
             Locale.EN,
             "SubscriptionRenewedEvent",
-            {"duration_days": 1},
-            "1 day added to your subscription.",
+            {"duration_days": 1, "paid": "yes"},
+            "Your subscription was extended by 1 day.",
         ),
         (
             Locale.EN,
@@ -166,37 +176,80 @@ def test_changed_template_renders(locale: Locale, event_type: str) -> None:
             Locale.RU,
             "SubscriptionExpiredEvent",
             {"is_trial": "yes"},
-            "Оформите подписку, чтобы вернуть доступ.",
+            "Ваш пробный период закончился. Оформите подписку, чтобы продолжить пользоваться VPN.",
         ),
         (
             Locale.RU,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "yes"},
-            "Доступа нет уже 2 дня. Оформите подписку, чтобы вернуть его.",
+            "Ваш пробный период закончился 2 дня назад. "
+            "Оформите подписку, чтобы снова пользоваться VPN.",
         ),
         (
             Locale.RU,
             "SubscriptionTrafficLimitedEvent",
             {"is_trial": "yes"},
-            "Оформите подписку, чтобы вернуть доступ.",
+            "Ваш трафик израсходован. Оформите подписку, чтобы продолжить пользоваться сервисом.",
+        ),
+        (
+            Locale.RU,
+            "SubscriptionTrafficLimitedEvent",
+            {"is_trial": "no", "traffic_strategy": "NO_RESET"},
+            "Ваш трафик израсходован. "
+            "Продлите подписку, чтобы сбросить трафик и продолжить пользоваться сервисом.",
+        ),
+        (
+            Locale.RU,
+            "SubscriptionTrafficLimitedEvent",
+            {"is_trial": "no", "traffic_strategy": "DAY"},
+            "Ваш трафик израсходован. "
+            "Он восстановится завтра, или продлите подписку, чтобы сбросить его сейчас.",
+        ),
+        (
+            Locale.RU,
+            "TorrentBlockerReportEvent",
+            {"block_unit": "minute", "block_span": 30},
+            "Мы заметили торрент-трафик через VPN. Торренты запрещены правилами сервиса, "
+            "поэтому подключение ограничено на 30 минут. Отключите торрент-клиент или исключите "
+            "его из VPN, чтобы это не повторялось. При повторных нарушениях доступ может быть "
+            "ограничен надолго.",
+        ),
+        (
+            Locale.RU,
+            "ReferralRewardIssuedEvent",
+            {"reward_type": "EXTRA_DAYS", "amount": 7, "name": "Иван", "has_name": "yes"},
+            "Пользователь Иван совершил платёж — вам начислено 7 бонусных дней. "
+            "Спасибо, что пригласили!",
+        ),
+        (
+            Locale.RU,
+            "ReferralRewardIssuedEvent",
+            {"reward_type": "POINTS", "amount": 2, "name": "", "has_name": "no"},
+            "вам начислено 2 балла. Спасибо, что пригласили!",
+        ),
+        (
+            Locale.RU,
+            "ReferralAttachedEvent",
+            {"name": "Иван", "rewarded": "no"},
+            "Пользователь Иван присоединился по вашей пригласительной ссылке.",
         ),
         (
             Locale.EN,
             "SubscriptionExpiredEvent",
             {"is_trial": "yes"},
-            "Get a subscription to get your access back.",
+            "Your trial has ended. Get a subscription to keep using the VPN.",
         ),
         (
             Locale.EN,
             "SubscriptionExpiredAgoEvent",
             {"hours": 48, "is_trial": "yes"},
-            "You've been without access for 2 days. Get a subscription to get it back.",
+            "Your trial ended 2 days ago. Get a subscription to use the VPN again.",
         ),
         (
             Locale.EN,
             "SubscriptionTrafficLimitedEvent",
             {"is_trial": "yes"},
-            "Get a subscription to get your access back.",
+            "You've used up your traffic. Get a subscription to keep using the service.",
         ),
     ],
 )

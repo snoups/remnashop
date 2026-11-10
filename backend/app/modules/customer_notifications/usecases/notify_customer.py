@@ -10,6 +10,7 @@ from app.core.constants import (
     CUSTOMER_NOTIFICATION_BUY_CALLBACK,
     CUSTOMER_NOTIFICATION_CLOSE_CALLBACK,
     CUSTOMER_NOTIFICATION_RENEW_PREFIX,
+    CUSTOMER_NOTIFICATION_REVOKE_SESSIONS_CALLBACK,
     REDIS_KEY_PREFIX,
     TTL_1D,
     TTL_7D,
@@ -19,6 +20,7 @@ from app.core.enums import AppearanceTarget, PaymentOutcome, PurchaseChannel, Se
 from app.core.exceptions import NotFoundError, RetryableTaskError
 from app.core.ports import BotSignals
 from app.core.usecase import UseCase
+from app.modules.cabinet_auth import CabinetNewDeviceSignInEvent
 from app.modules.customer_notifications.dispatch import SendCustomerTelegramDispatch
 from app.modules.customer_notifications.dto import NotifyCustomerDto
 from app.modules.customer_notifications.links import customer_url
@@ -34,13 +36,17 @@ from app.modules.notifications import (
     NotificationRepository,
     PushMessage,
     WebPushSender,
+    plan_summary_block,
+    telegram_card,
 )
 from app.modules.settings import SettingsRepository, push_icon_path
 from app.modules.subscriptions import (
     SubscriptionChangedEvent,
+    SubscriptionDto,
     SubscriptionExpiredAgoEvent,
     SubscriptionExpiredEvent,
     SubscriptionExpiringEvent,
+    SubscriptionNotConnectedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
     SubscriptionRepository,
@@ -73,6 +79,21 @@ _RENEWABLE: Final[frozenset[str]] = frozenset(
         SubscriptionTrafficLimitedEvent,
     )
 )
+# the subscription page is where a customer connects a device
+_CONNECT: Final[frozenset[str]] = frozenset(
+    {SubscriptionPurchasedEvent.__name__, SubscriptionNotConnectedEvent.__name__}
+)
+_SUPPORT: Final[frozenset[str]] = frozenset(
+    {
+        SubscriptionNotConnectedEvent.__name__,
+        TorrentBlockerReportEvent.__name__,
+        PaidOrderNotFulfilledEvent.__name__,
+        CabinetNewDeviceSignInEvent.__name__,
+    }
+)
+# a sign-in the customer doesn't recognize is one tap from being thrown out
+_REVOKE_SESSIONS: Final[frozenset[str]] = frozenset({CabinetNewDeviceSignInEvent.__name__})
+_SHOWS_PLAN: Final[frozenset[str]] = frozenset({SubscriptionChangedEvent.__name__})
 # a trial is told to buy a subscription, not to renew it
 _TRIAL_AWARE: Final[frozenset[str]] = _RENEWABLE | {SubscriptionTrafficThresholdEvent.__name__}
 
@@ -134,9 +155,15 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         if user is None or user.is_blocked or user.deleted_at is not None:
             return
         if data.event_type in _TRIAL_AWARE and data.subscription_id is not None:
-            is_trial = await self._is_trial(data.subscription_id)
+            subscription = await self._find_subscription(data.subscription_id)
             # stored with the feed row, the bell renders it again later
-            data = replace(data, args={**data.args, "is_trial": "yes" if is_trial else "no"})
+            args = {
+                **data.args,
+                "is_trial": "yes" if subscription and subscription.is_trial else "no",
+            }
+            if data.event_type == SubscriptionTrafficLimitedEvent.__name__ and subscription:
+                args["traffic_strategy"] = subscription.traffic_limit_strategy.value
+            data = replace(data, args=args)
         renderer = await self._renderer_factory.build()
         title, body = renderer.render(
             user.language,
@@ -248,11 +275,24 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         body: str,
     ) -> None:
         if channel is CustomerChannel.TELEGRAM:
+            args = customer_render_args(data.args, user.language)
+            emoji = renderer.emoji(user.language, f"Customer{data.event_type}", args) or "🔔"
+            subscription = (
+                await self._find_subscription(data.subscription_id)
+                if data.subscription_id is not None
+                else None
+            )
+            blocks = (
+                [plan_summary_block(renderer, user.language, subscription)]
+                if subscription is not None and data.event_type in _SHOWS_PLAN
+                else []
+            )
             await self._send_telegram.kiq(
                 user_id=user.id,
-                text=f"{title}\n\n{body}",
-                buttons=await self._telegram_buttons(data, user, renderer),
+                text=telegram_card(title, body, emoji=emoji, blocks=blocks),
+                buttons=await self._telegram_buttons(data, user, renderer, subscription),
                 notification=asdict(data),
+                html=True,
             )
             return
         if channel is CustomerChannel.PUSH:
@@ -291,32 +331,56 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         await self._send_email.kiq(to=user.email, subject=title, text=text, html=html)
 
     async def _telegram_buttons(
-        self, data: NotifyCustomerDto, user: UserDto, renderer: NotificationRenderer
+        self,
+        data: NotifyCustomerDto,
+        user: UserDto,
+        renderer: NotificationRenderer,
+        subscription: Optional[SubscriptionDto],
     ) -> list[dict[str, str]]:
-        buttons = []
+        # (label key, "callback_data" or "url", value)
+        buttons: list[tuple[str, str, str]] = []
         if data.event_type in _RENEWABLE and data.subscription_id is not None:
             # a trial isn't renewed: a purchase replaces it and keeps its link
-            if await self._is_trial(data.subscription_id):
-                buttons.append(("ntf-customer-button-buy", CUSTOMER_NOTIFICATION_BUY_CALLBACK))
+            if subscription is not None and subscription.is_trial:
+                buttons.append(
+                    ("ntf-customer-button-buy", "callback_data", CUSTOMER_NOTIFICATION_BUY_CALLBACK)
+                )
             else:
                 buttons.append(
                     (
                         "ntf-customer-button-renew",
+                        "callback_data",
                         f"{CUSTOMER_NOTIFICATION_RENEW_PREFIX}{data.subscription_id}",
                     )
                 )
-        buttons.append(("ntf-customer-button-close", CUSTOMER_NOTIFICATION_CLOSE_CALLBACK))
+        if data.event_type in _REVOKE_SESSIONS:
+            buttons.append(
+                (
+                    "ntf-customer-button-revoke-sessions",
+                    "callback_data",
+                    CUSTOMER_NOTIFICATION_REVOKE_SESSIONS_CALLBACK,
+                )
+            )
+        if data.event_type in _CONNECT and subscription is not None and subscription.url:
+            buttons.append(("ntf-customer-button-connect", "url", subscription.url))
+        if data.event_type in _SUPPORT:
+            async with self._uow:
+                support = (await self._settings_repository.get_shop_settings()).support_link
+            if support:
+                buttons.append(("ntf-customer-button-support", "url", support))
+        buttons.append(
+            ("ntf-customer-button-close", "callback_data", CUSTOMER_NOTIFICATION_CLOSE_CALLBACK)
+        )
         # Telegram refuses the whole message over one empty label
         return [
-            {"text": text, "callback_data": callback_data}
-            for key, callback_data in buttons
+            {"text": text, kind: value}
+            for key, kind, value in buttons
             if (text := renderer.text(user.language, key))
         ]
 
-    async def _is_trial(self, subscription_id: int) -> bool:
+    async def _find_subscription(self, subscription_id: int) -> Optional[SubscriptionDto]:
         async with self._uow:
             try:
-                subscription = await self._subscription_repository.get_by_id(subscription_id)
+                return await self._subscription_repository.get_by_id(subscription_id)
             except NotFoundError:
-                return False
-        return subscription.is_trial
+                return None

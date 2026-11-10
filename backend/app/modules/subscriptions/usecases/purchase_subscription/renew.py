@@ -20,7 +20,11 @@ from app.modules.subscriptions.eligibility import get_owned_target
 from app.modules.subscriptions.events import SubscriptionRenewedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
-from app.modules.subscriptions.panel import panel_update, revert_panel_to_owner
+from app.modules.subscriptions.panel import (
+    panel_update,
+    reset_traffic_if_paid,
+    revert_panel_to_owner,
+)
 from app.modules.subscriptions.repository import SubscriptionRepository
 
 
@@ -99,13 +103,21 @@ class RenewPurchase:
                 logger.exception(f"Failed to give subscription '{target.id}' its plan's tag")
 
         try:
-            return await self._finish(actor, data, target, expire_at, tag_applied=tag_applied)
+            subscription, renewed = await self._finish(
+                actor, data, target, expire_at, tag_applied=tag_applied
+            )
         except OrderNotPaidError:
             # refunded while the panel was being extended: take the extension back
             await revert_panel_to_owner(
                 self._remnawave_sdk, self._subscription_repository, self._uow, target
             )
             raise
+        if not renewed:
+            return subscription
+        # a paid renewal is the way back from an exhausted NO_RESET limit
+        return await reset_traffic_if_paid(
+            self._remnawave_sdk, self._subscription_repository, self._uow, data, subscription
+        )
 
     async def _finish(
         self,
@@ -115,12 +127,12 @@ class RenewPurchase:
         expire_at: datetime,
         *,
         tag_applied: bool,
-    ) -> SubscriptionDto:
+    ) -> tuple[SubscriptionDto, bool]:
         async with self._uow:
             if data.idempotency_key is not None:
                 finished_id = await self._idempotency.lock(data.idempotency_key, data.claim_token)
                 if finished_id is not None:
-                    return await self._subscription_repository.get_by_id(finished_id)
+                    return await self._subscription_repository.get_by_id(finished_id), False
             locked = await self._subscription_repository.get_by_id_for_update(target.id)
             if locked.status is SubscriptionStatus.DELETED:
                 # deleted by a concurrent plan change or admin while the panel
@@ -155,7 +167,7 @@ class RenewPurchase:
         logger.info(
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
         )
-        return subscription
+        return subscription, True
 
     async def _paid_in_snapshot_currency(
         self, data: PurchaseSubscriptionDto, target: SubscriptionDto

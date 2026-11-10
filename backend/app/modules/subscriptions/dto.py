@@ -294,8 +294,8 @@ class PurchaseSubscriptionDto:
     publish_event: bool = True
     # CHANGE only: keep the target's expire_at instead of now + days + credit
     keep_expire_at: bool = False
-    # CHANGE only: zero the panel's traffic counter; set for a customer's paid
-    # change, whose credit already deducts the spent traffic
+    # zero the panel's traffic counter; set for a customer's paid order (a
+    # CHANGE's credit already deducts the spent traffic), never for an admin grant
     reset_traffic: bool = False
     # RENEW only: give the subscription the snapshot's tag; set for a checkout
     # order, whose snapshot is the plan as sold now, not the target's own

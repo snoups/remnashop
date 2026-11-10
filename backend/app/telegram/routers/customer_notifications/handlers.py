@@ -6,16 +6,20 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
+from fluentogram import TranslatorHub
 
 from app.core.constants import (
     CUSTOMER_NOTIFICATION_BUY_CALLBACK,
     CUSTOMER_NOTIFICATION_CLOSE_CALLBACK,
     CUSTOMER_NOTIFICATION_RENEW_PREFIX,
+    CUSTOMER_NOTIFICATION_REVOKE_SESSIONS_CALLBACK,
 )
 from app.core.enums import PurchaseType
+from app.modules.auth import RevokeOtherCabinetSessionsUseCase
 from app.modules.subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
+from app.telegram.i18n import get_translator
 from app.telegram.states import MainMenu, Purchase
 
 router = Router(name=__name__)
@@ -54,6 +58,19 @@ async def on_notification_renew(
 async def on_notification_buy(callback: CallbackQuery, dialog_manager: DialogManager) -> None:
     await callback.answer()
     await _open_purchase(dialog_manager, {"purchase_type": PurchaseType.NEW.value})
+
+
+@router.callback_query(F.data == CUSTOMER_NOTIFICATION_REVOKE_SESSIONS_CALLBACK)
+async def on_notification_revoke_sessions(
+    callback: CallbackQuery,
+    user: UserDto,
+    i18n: FromDishka[TranslatorHub],
+    revoke_sessions: FromDishka[RevokeOtherCabinetSessionsUseCase],
+) -> None:
+    # every cabinet session, the unrecognized one included
+    await revoke_sessions(user, None)
+    runner = get_translator(i18n, user)
+    await callback.answer(runner.get("ntf-customer-sessions-revoked"), show_alert=True)
 
 
 async def _open_purchase(dialog_manager: DialogManager, data: dict[str, Any]) -> None:

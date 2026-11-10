@@ -23,6 +23,8 @@ class SendCustomerTelegramDto:
     buttons: list[dict[str, str]] = field(default_factory=list)
     # requeued with telegram_refused when Telegram refuses the message
     notification: Optional[NotifyCustomerDto] = None
+    # built by telegram_card; a message queued before that went out as plain text
+    html: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -2066,7 +2066,7 @@
         },
         "money": {
           "title": "Transactions",
-          "description": "Purchases, renewals, refunds, manual issues and unissued orders"
+          "description": "Purchases, renewals, plan changes, refunds, manual issues and unissued orders"
         },
         "infrastructure": {
           "title": "Infrastructure",
@@ -2074,11 +2074,11 @@
         },
         "customers": {
           "title": "Customers",
-          "description": "New and blocked registrations, first connections and torrent traffic"
+          "description": "New and blocked registrations, first connections, promocodes and torrent traffic"
         },
         "subscriptions": {
           "title": "Subscriptions",
-          "description": "Expiry, traffic run out, link reissued and customers who never connected"
+          "description": "Expiry, traffic run out, link reissued, devices and customers who never connected"
         }
       },
       "channels": {

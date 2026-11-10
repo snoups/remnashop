@@ -1,28 +1,7 @@
-from decimal import Decimal
 from typing import Union
 
-from babel import Locale as BabelLocale
-from babel.numbers import format_currency
-
-from app.core.enums import Currency, Locale
-
-
-def _money(amount: str, currency: str, locale: Locale) -> str:
-    value = Decimal(amount)
-    # babel knows no symbol for Telegram Stars, and they are always whole
-    if currency == Currency.XTR:
-        return f"{int(value)} {Currency.XTR.symbol}"
-    if value != value.to_integral_value():
-        return format_currency(value, currency, locale=locale.value)
-    # the locale's own pattern without the cents: "1 500 ₽", "$12"
-    pattern = BabelLocale.parse(locale.value).currency_formats["standard"].pattern
-    return format_currency(
-        value,
-        currency,
-        format=pattern.replace(".00", ""),
-        locale=locale.value,
-        currency_digits=False,
-    )
+from app.core.enums import Locale
+from app.core.utils.money import format_money
 
 
 def customer_render_args(
@@ -37,5 +16,5 @@ def customer_render_args(
             ("day", hours // 24) if hours >= 24 else ("hour", hours)
         )
     if "amount" in args and "currency" in args:
-        rendered["money"] = _money(str(args["amount"]), str(args["currency"]), locale)
+        rendered["money"] = format_money(str(args["amount"]), str(args["currency"]), locale)
     return rendered

@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import AsyncGenerator, Final, Optional
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     container: AsyncContainer = app.state.dishka_container
     bot: Bot = app.state.bot
     endpoint: TelegramWebhookEndpoint = app.state.telegram_webhook_endpoint
+    started_at = time.monotonic()
 
     async with container(scope=Scope.REQUEST) as startup_container:
         config = await startup_container.get(AppConfig)
@@ -140,7 +142,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         async with container(scope=Scope.REQUEST) as shutdown_container:
             await (await shutdown_container.get(ReportBotStatusUseCase)).system(
-                ReportBotStatusDto(kind=BotStatusKind.STOPPED)
+                ReportBotStatusDto(
+                    kind=BotStatusKind.STOPPED,
+                    uptime_seconds=int(time.monotonic() - started_at),
+                )
             )
     except Exception:
         logger.exception("Failed to report the bot stop")

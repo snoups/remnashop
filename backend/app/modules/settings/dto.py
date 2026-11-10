@@ -71,6 +71,12 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
     support_telegram: Optional[str] = None
     support_url: Optional[str] = None
 
+    @property
+    def support_link(self) -> Optional[str]:
+        if self.support_telegram:
+            return f"https://t.me/{self.support_telegram}"
+        return self.support_url
+
 
 @dataclass(frozen=True, kw_only=True)
 class CabinetSettingsDto:
@@ -454,3 +460,4 @@ class ReportBotStatusDto:
     kind: BotStatusKind
     detail: Optional[str] = None
     channel_id: Optional[int] = None
+    uptime_seconds: Optional[int] = None

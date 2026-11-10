@@ -3748,3 +3748,57 @@ async def test_fulfilling_a_refunded_order_ends_without_a_retry(
 
     assert await fulfill.system(_paid_purchase(buyer, plan, "refunded-fulfill")) is None
     assert await subscription_repository.get_active_by_user(buyer.id) == []
+
+
+@pytest.mark.parametrize("reset_traffic", [True, False])
+async def test_a_paid_renewal_of_a_limited_subscription_resets_its_traffic(
+    reset_traffic: bool,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_store: FakeUserStore,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+) -> None:
+    buyer = await _create_buyer(user_repository, 9207 + int(reset_traffic))
+    plan = await _create_plan(plan_repository, f"limited-renew-{reset_traffic}")
+
+    def dto(purchase_type: PurchaseType, target: Optional[int] = None) -> PurchaseSubscriptionDto:
+        return PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("100"), currency=Currency.RUB, duration_days=30
+            ),
+            duration_days=30,
+            price_paid=Decimal("100"),
+            currency=Currency.RUB,
+            purchase_type=purchase_type,
+            target_subscription_id=target,
+            idempotency_key=f"renew-{reset_traffic}" if target else None,
+            reset_traffic=reset_traffic,
+        )
+
+    old = await purchase_subscription_use_case(buyer, dto(PurchaseType.NEW))
+    panel_user = remnawave_store[old.remnawave_user_id]
+    spent = 100 * 1024**3
+    panel_user["status"] = "LIMITED"
+    panel_user["userTraffic"]["usedTrafficBytes"] = spent
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == old.id)
+        .values(status=SubscriptionStatus.LIMITED)
+    )
+
+    renewed = await purchase_subscription_use_case(buyer, dto(PurchaseType.RENEW, old.id))
+
+    if not reset_traffic:
+        # an admin grant adds days and leaves the counter alone
+        assert panel_user["userTraffic"]["usedTrafficBytes"] == spent
+        assert renewed.status is SubscriptionStatus.LIMITED
+        return
+    assert panel_user["userTraffic"]["usedTrafficBytes"] == 0
+    assert renewed.status is SubscriptionStatus.ACTIVE
+
+    # the retry of a finished order must not wipe traffic used since
+    panel_user["userTraffic"]["usedTrafficBytes"] = 5
+    await purchase_subscription_use_case(buyer, dto(PurchaseType.RENEW, old.id))
+    assert panel_user["userTraffic"]["usedTrafficBytes"] == 5
