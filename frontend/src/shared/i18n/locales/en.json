@@ -4100,7 +4100,55 @@
       },
       "variants": {
         "caption": "Live copies of markup being redesigned, beside the current one. Once the new one is signed off, the copy goes.",
-        "empty": "Nothing under review."
+        "empty": "Nothing under review.",
+        "type": {
+          "title": "Type scale: current vs conventional",
+          "caption": "Right: Tailwind’s default steps (12/14/16/20/24), the same as Material 3 and GitHub use: 14px body text, 12px floor, uppercase labels at 12, 11 only for a counter. Whole pixels only. Desktop only.",
+          "now": "Now",
+          "standard": "Conventional",
+          "columns": {
+            "role": "Role",
+            "size": "px"
+          },
+          "role": {
+            "kpi": "KPI value — KPI_VALUE_CLASS",
+            "screen": "Screen title — SCREEN_TITLE_CLASS",
+            "header": "Page title in the header",
+            "cardTitle": "Card and dialog title — Section, DialogHeader",
+            "body": "Body text, fields, menu items",
+            "button": "Buttons — glass 13, secondary/sm 12.5",
+            "secondary": "Hints, meta, mono ids",
+            "eyebrow": "Labels over blocks — EYEBROW_CLASS",
+            "badge": "Badge, Tag",
+            "micro": "Counters and mini badges"
+          },
+          "sample": {
+            "kpi": "128 400 ₽",
+            "screen": "Page not found",
+            "header": "Subscriptions",
+            "cardTitle": "Notifications",
+            "body": "Subscription renewed for 30 days",
+            "button": "Save",
+            "secondary": "Updated 5 minutes ago",
+            "eyebrow": "Channel",
+            "badge": "Active",
+            "micro": "5"
+          },
+          "mock": {
+            "pageTitle": "Subscriptions",
+            "create": "Create",
+            "cardTitle": "Notifications",
+            "cardDesc": "Who gets told about events, and how",
+            "channel": "Channel",
+            "telegram": "Telegram",
+            "telegramHint": "Messages to admins in the bot",
+            "on": "On",
+            "user": "Alex Morgan",
+            "revenue": "Revenue this month",
+            "revenueValue": "128 400 ₽",
+            "revenueDelta": "+12% on last month"
+          }
+        }
       }
     }
   },

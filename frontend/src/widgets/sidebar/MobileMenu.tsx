@@ -45,7 +45,7 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
       >
         <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4">
           <BrandMark className="size-7 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-base font-bold">{brandName}</span>
+          <span className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-tight">{brandName}</span>
           <IconButton size="9" onClick={onClose}><X className="size-5" /></IconButton>
         </div>
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-3">

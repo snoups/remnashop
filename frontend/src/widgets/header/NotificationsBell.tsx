@@ -9,7 +9,8 @@ import type { Announcement } from "@entities/announcements/api";
 import { AnnouncementIcon } from "@entities/announcements/AnnouncementIcon";
 import { clearNotifications, getNotifications, markNotificationsRead } from "@entities/event-log/api";
 import type { EventLogLocationState, Notifications } from "@entities/event-log/api";
-import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
+import { eventTitle } from "@entities/event-log/describe-entry";
+import { EntryParticipants } from "@entities/event-log/EntryParticipants";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { usePermissions } from "@entities/user/use-current-user";
 import { pollWhileVisible } from "@shared/lib/poll-while-visible";
@@ -283,7 +284,11 @@ export function NotificationsBell({ isOpen, anchorRef, popoverRef, onToggle, onC
                 </span>
                 <CellText
                   title={eventTitle(entry, t)}
-                  sub={`${describeEntry(entry, t)} · ${formatRelative(entry.occurred_at, i18n.language)}`}
+                  sub={
+                    <>
+                      <EntryParticipants entry={entry} /> · {formatRelative(entry.occurred_at, i18n.language)}
+                    </>
+                  }
                   className="flex-1"
                 />
                 {index < highlighted && <span className="size-1.5 shrink-0 self-center rounded-full bg-primary" />}

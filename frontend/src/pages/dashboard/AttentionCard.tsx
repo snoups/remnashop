@@ -383,7 +383,8 @@ function AttentionRow({ item, onDismiss }: { item: AttentionItem; onDismiss: () 
 
   return (
     <>
-      <div className="relative">
+      {/* rounded like the row: the list's divider shadow lands on this wrapper */}
+      <div className="relative rounded-full">
         <ListRow className={OPEN_ROW_CLASS} onClick={() => setIsOpen(true)}>
           <IconCircle icon={KIND_ICON[item.kind]} tone={SEVERITY_TONE[item.severity]} />
           <CellText title={title} sub={sub} />

@@ -27,7 +27,8 @@ import {
   type EventLogLocationState,
   listEventLogAfter,
 } from "@entities/event-log/api";
-import { describeEntry, eventTitle } from "@entities/event-log/describe-entry";
+import { eventTitle } from "@entities/event-log/describe-entry";
+import { EntryParticipants } from "@entities/event-log/EntryParticipants";
 import { EventTypeIcon } from "@entities/event-log/EventTypeIcon";
 import { EventDetailDialog } from "@features/event-details/EventDetailDialog";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
@@ -238,7 +239,7 @@ export function EventLogPage() {
                                 {formatTime(entry.occurred_at, i18n.language)}
                               </span>
                               <span className="truncate text-[13px] text-foreground">
-                                {describeEntry(entry, t)}
+                                <EntryParticipants entry={entry} />
                               </span>
                               <span className="truncate font-mono text-[12px] text-muted-foreground">
                                 {entry.ip_address ?? "—"}

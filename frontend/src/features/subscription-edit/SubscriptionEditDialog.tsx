@@ -485,7 +485,7 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+        <div className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
           <PlanIcon
             icon={plan ?? NO_PLAN_ICON}
             size={16}
