@@ -1,3 +1,4 @@
+from app.modules.overview.usecases.check_system_health import CheckSystemHealthUseCase
 from app.modules.overview.usecases.get_attention import GetAttentionUseCase
 from app.modules.overview.usecases.get_client_apps import GetClientAppsUseCase
 from app.modules.overview.usecases.get_hourly_online import GetHourlyOnlineUseCase
@@ -9,6 +10,7 @@ from app.modules.overview.usecases.get_revenue_chart import GetRevenueChartUseCa
 from app.modules.overview.usecases.sample_remnawave_online import SampleRemnawaveOnlineUseCase
 
 __all__ = [
+    "CheckSystemHealthUseCase",
     "GetAttentionUseCase",
     "GetClientAppsUseCase",
     "GetHourlyOnlineUseCase",

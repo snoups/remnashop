@@ -34,6 +34,10 @@ COALESCED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
     }
 )
 COALESCE_WINDOW_S: Final[int] = 300
+# sent by the api's own health check: a stopped worker can't deliver its own alert
+SENDER_DELIVERED_EVENT_TYPES: Final[frozenset[str]] = frozenset(
+    {"SystemHealthDegradedEvent", "SystemHealthRestoredEvent"}
+)
 
 NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
     NotificationGroup.SECURITY: frozenset(
@@ -67,6 +71,8 @@ NOTIFICATION_GROUPS: Final[dict[NotificationGroup, frozenset[str]]] = {
             "PanelStartedEvent",
             "BotStartedEvent",
             "BotStoppedEvent",
+            "SystemHealthDegradedEvent",
+            "SystemHealthRestoredEvent",
         }
     ),
     NotificationGroup.BROADCASTS: frozenset({"BroadcastCompletedEvent", "BroadcastFailedEvent"}),

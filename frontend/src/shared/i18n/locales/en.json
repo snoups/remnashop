@@ -125,38 +125,59 @@
     },
     "attention": {
       "title": "Needs attention",
-      "description": "Errors and warnings about the shop’s operation",
+      "description": "Errors and warnings in the shop’s operation",
       "critical": "Urgent · {{value}}",
       "warning": "Attention · {{value}}",
       "processDown": {
         "title": "{{process}} is not responding",
         "worker": "Background jobs are not running",
         "scheduler": "Scheduled jobs are not starting",
-        "what": "The process has not reported it is alive for over 45 seconds: it is stopped, crashed or cannot reach Redis.",
-        "whyWorker": "The worker runs background jobs: delivering paid subscriptions, processing events, notifications, broadcasts, emails and backups. While it is down, all of this piles up in the queue.",
-        "whyScheduler": "The scheduler starts scheduled jobs: payment checks, automatic backups, scheduled broadcasts, cleanup of old data. While it is down, they do not start.",
-        "fix": "Check the container and its logs. A restart usually helps; queued jobs run on their own once the process is back."
+        "what": "The process has not sent a health signal for over 45 seconds: it is stopped, has exited with an error or has lost its connection to Redis.",
+        "whyWorker": "The worker runs background jobs: delivering paid subscriptions, processing events, notifications, broadcasts, emails and backups. While it is down, jobs accumulate in the queue.",
+        "whyScheduler": "The scheduler starts scheduled jobs: payment checks, automatic backups, scheduled broadcasts, cleanup of outdated data. While it is down, these jobs do not run.",
+        "fix": "Check the container state and its logs, and restart it if needed. Queued jobs run once the process recovers."
+      },
+      "hostDiskFull": {
+        "title": "Server disk is almost full",
+        "sub": "{{percent}}% used",
+        "what": "The server disk is 90% full or more.",
+        "why": "Without free space, the database, logs and backups cannot be written. The shop may stop and data may be corrupted.",
+        "fix": "Delete outdated backups, logs and unused Docker images (docker system prune), or increase the disk size."
+      },
+      "hostMemoryHigh": {
+        "title": "Server memory is nearly exhausted",
+        "sub": "{{percent}}% used",
+        "what": "Server memory is 95% used or more.",
+        "why": "When memory runs out, the system terminates processes: the shop, the database or Redis may stop.",
+        "fix": "Identify the processes using the most memory (docker stats). Reduce the number of worker and api processes or add memory to the server."
+      },
+      "eventLoopLag": {
+        "title": "{{process}} is responding slowly",
+        "sub": "Event loop delay above 500 ms",
+        "what": "The 99th percentile of the process’s event loop delay exceeds 500 ms.",
+        "why": "Dashboard and cabinet requests, bot replies and background jobs run slowly or time out.",
+        "fix": "Check CPU load and the process logs, and restart the process if needed. If the delay recurs under load, add processes or server resources."
       },
       "outboxStuck": {
         "title": "The event queue is not being processed",
         "sub_one": "{{formatted}} event waiting in the queue for longer than {{duration}}",
         "sub_other": "{{formatted}} events waiting in the queue for longer than {{duration}}",
-        "what": "Events, the records of what happens in the shop, have been waiting for over 5 minutes.",
-        "why": "While the queue is stuck, the event log is not updated, admin and customer notifications are not sent, referral rewards are not granted and loyalty discounts are not recalculated.",
-        "fix": "Most often the worker is down, so check it first. If it is running, look for event processing errors in its logs. Nothing is lost: events are processed once the queue moves again."
+        "what": "Shop events have been waiting for processing for over 5 minutes.",
+        "why": "Until the queue is processed, the event log is not updated, admin and customer notifications are not sent, referral rewards are not granted and loyalty discounts are not recalculated.",
+        "fix": "The most likely cause is a stopped worker. If it is running, check its logs for event processing errors. Events are not lost and will be processed once the queue recovers."
       },
       "panelUnavailable": {
         "title": "Connection to Remnawave lost",
         "sub": "The panel does not respond or the reply is not recognized",
-        "what": "The shop could not get the node list from the Remnawave panel: the panel did not respond or sent a response in an unknown format.",
-        "why": "If the panel is unavailable, subscriptions are not issued or renewed, and sync and device management stop working. If the response format changed, individual features may break.",
-        "fix": "Check that the panel opens and that the URL and token in the settings are correct. If the panel was updated recently, make sure this shop version supports it; details are in the api logs."
+        "what": "The node list could not be retrieved from the Remnawave panel: the panel did not respond or returned a response in an unknown format.",
+        "why": "While the panel is unavailable, subscriptions are not issued or renewed, and sync and device management do not work. A changed response format may break individual features.",
+        "fix": "Check that the panel is reachable and that the URL and token in the settings are correct. If the panel was updated recently, make sure this shop version supports it. Details are in the api logs."
       },
       "nodeOffline": {
         "title": "Connection to node “{{node}}” lost",
         "sub": "No connection since {{since}}",
-        "what": "The node is enabled in the Remnawave panel but is offline.",
-        "why": "Customers connected to this node cannot use the VPN, and new connections to it fail.",
+        "what": "The node is enabled in the Remnawave panel but is not connected.",
+        "why": "Customers on this node cannot use the VPN, and new connections to it are not possible.",
         "fix": "Check the node server and its status in the Remnawave panel."
       },
       "gatewayFailures": {
@@ -164,8 +185,8 @@
         "sub_one": "{{formatted}} failed payment in the last hour",
         "sub_other": "{{formatted}} failed payments in the last hour",
         "what": "5 or more payments through this gateway failed in the last hour.",
-        "why": "Customers cannot pay this way; they leave or contact support.",
-        "fix": "Check the gateway settings and its merchant dashboard: keys, shop status, limits. If the problem is on the gateway’s side, disable it for now."
+        "why": "Customers cannot pay by this method, and the shop loses revenue.",
+        "fix": "Check the gateway settings and its merchant dashboard: keys, shop status, limits. If the failure is on the gateway’s side, disable it temporarily."
       },
       "smtpFailed": {
         "title": "Email sending failure",
@@ -173,75 +194,75 @@
         "main": "Main SMTP",
         "bulk": "Broadcast SMTP",
         "what": "The last attempt to send an email through this SMTP server failed. The item clears after the first successful send or after a day, even if the error is not fixed.",
-        "why": "While emails are not sent, customers do not get cabinet sign-in codes, subscription notifications or broadcast emails.",
-        "fix": "Send a test email from the email settings; it shows the error. Common causes: a wrong password, a closed port, the provider’s sending limit."
+        "why": "Until sending works, customers do not receive cabinet sign-in codes, subscription notifications or broadcast emails.",
+        "fix": "Send a test email from the email settings to see the error. Common causes: a wrong password, a closed port, the provider’s sending limit."
       },
       "backupFailed": {
         "title": "Backup failed",
         "what": "The last backup run of this type failed.",
-        "why": "Without a fresh backup, data since the last one cannot be restored after a server or database failure.",
-        "fix": "Open backups; the run shows the error. Common causes: no disk space and folder permissions. Once fixed, start a backup manually."
+        "why": "Without a current backup, data since the last successful backup cannot be restored after a server or database failure.",
+        "fix": "Open backups: the run record shows the error. Common causes are insufficient disk space and missing folder permissions. Once fixed, start a backup manually."
       },
       "backupOverdue": {
         "title": "Backups are not being created on schedule",
         "sub": "Last successful backup: {{since}}",
         "never": "No backups since it was enabled",
-        "what": "Automatic backups are on, but there has been no successful backup for longer than the set interval.",
-        "why": "Without a fresh backup, data since the last one cannot be restored after a server or database failure.",
-        "fix": "Check that the worker and scheduler are running; they create backups. Then start a backup manually and see whether it succeeds."
+        "what": "Automatic backups are enabled, but there has been no successful backup for longer than the set interval.",
+        "why": "Without a current backup, data since the last successful backup cannot be restored after a server or database failure.",
+        "fix": "Check that the worker and scheduler are running; they create backups. Then start a backup manually and make sure it succeeds."
       },
       "broadcastFailed": {
         "title": "Broadcast “{{name}}” stopped with an error",
         "sub": "Stopped on {{since}}",
-        "what": "The broadcast stopped with an error; some recipients did not get the message.",
+        "what": "The broadcast stopped due to an error; some recipients did not receive the message.",
         "why": "Customers the broadcast did not reach will not hear about the news or offer.",
-        "fix": "Open the broadcast: it shows the cause and how many messages went out. Once fixed, sending can be retried for the rest."
+        "fix": "Open the broadcast: it shows the cause and the number of messages sent. Once the error is fixed, sending can be retried for the remaining recipients."
       },
       "broadcastStalled": {
         "title": "Broadcast “{{name}}” is stuck",
         "sub": "No progress for longer than {{duration}}",
-        "what": "The broadcast is sending but has not moved for over 15 minutes, and the automatic restart did not help.",
-        "why": "While it is stuck, the remaining recipients will not get the message.",
-        "fix": "Check the worker and scheduler; they move broadcasts forward. If they are running, look at the worker logs; the broadcast can be canceled if needed."
+        "what": "The broadcast has not progressed for over 15 minutes, and the automatic restart did not help.",
+        "why": "Until the broadcast resumes, the remaining recipients will not receive the message.",
+        "fix": "Check that the worker and scheduler are running; they process broadcasts. If they are, check the worker logs. The broadcast can be canceled if needed."
       },
       "paidNotFulfilled": {
         "title": "Paid but not delivered",
         "sub_one": "{{formatted}} order waiting for delivery over 10 minutes",
         "sub_other": "{{formatted}} orders waiting for delivery over 10 minutes",
-        "what": "The payment went through, but the subscription has not been issued for over 10 minutes.",
-        "why": "The customer paid and got no access; this is how complaints and refunds happen.",
-        "fix": "The shop retries delivery on its own. If the item does not clear, check the panel connection and the worker, then fulfill the order manually in transactions."
+        "what": "The payment was received, but the subscription has not been issued within 10 minutes.",
+        "why": "The customer paid but has no access. This leads to support requests and refunds.",
+        "fix": "The shop retries delivery automatically. If the item persists, check the panel connection and the worker, then fulfill the order manually in transactions."
       },
       "stalePending": {
         "title": "Payments awaiting confirmation",
         "sub_one": "{{formatted}} transaction without a reply for longer than 15 minutes",
         "sub_other": "{{formatted}} transactions without a reply for longer than 15 minutes",
-        "what": "5 or more transactions have been pending for longer than 15 minutes: the gateway sent neither a confirmation nor a refusal.",
-        "why": "These are usually abandoned payments. But if there are many, the gateway may not be delivering payment notifications, and paid orders will not be fulfilled.",
-        "fix": "Check in the gateway dashboard whether these payments went through and that the notification (webhook) URL is correct."
+        "what": "5 or more transactions have been pending for over 15 minutes: the gateway has sent neither a confirmation nor a refusal.",
+        "why": "These are usually abandoned payments. A large number may mean the gateway is not delivering payment notifications and paid orders are not being fulfilled.",
+        "fix": "Check the status of these payments in the gateway dashboard and verify the notification (webhook) URL."
       },
       "emailUndeliverable": {
         "title": "Emails are not reaching recipients",
         "sub_one": "{{formatted}} address rejected in the last day",
         "sub_other": "{{formatted}} addresses rejected in the last day",
         "what": "In the last day, mail servers permanently rejected emails to 10 or more addresses, usually because the mailbox does not exist or was deleted.",
-        "why": "The shop stops writing to such addresses until the customer signs in with an email code again or links the email anew. A spike often means junk sign-ups or a broadcast to an old list.",
-        "fix": "See where these users came from. If an address actually works, the mark can be cleared manually in the user’s card."
+        "why": "The shop stops sending to such addresses until the customer signs in with an email code again or links the email anew. A spike usually indicates fake sign-ups or a broadcast to an outdated list.",
+        "fix": "Check where these users signed up from. If an address is valid, the mark can be cleared manually in the user’s card."
       },
       "expiringPaid": {
         "title": "Expiring subscriptions",
         "sub_one": "{{formatted}} subscription in the next 7 days",
         "sub_other": "{{formatted}} subscriptions in the next 7 days",
         "urgent": "{{base}}, {{urgent}} of them within the next day",
-        "what": "Paid subscriptions that end in the next 7 days.",
-        "why": "Some customers will not renew unless reminded. This is revenue you can still keep.",
-        "fix": "Check retention and, if needed, send a broadcast with a reminder or a renewal promo code."
+        "what": "Paid subscriptions that expire in the next 7 days.",
+        "why": "Without a reminder, some customers will not renew. This revenue can still be retained.",
+        "fix": "Review retention and, if needed, send a broadcast with a reminder or a renewal promo code."
       },
       "apiTokenExpiring": {
         "title": "API token “{{name}}” expires soon",
         "sub": "Expires in {{duration}} · {{since}}",
         "what": "The API token expires in the next 7 days.",
-        "why": "Once it expires, integrations using it stop working.",
+        "why": "Once it expires, integrations using the token stop working.",
         "fix": "Issue a new token with the same permissions, replace it in the integration and revoke the old one."
       },
       "botWebhook": {
@@ -249,24 +270,24 @@
         "noWebhook": "Webhook is not set",
         "error": "Telegram: {{error}}",
         "what": "Telegram reports an error delivering updates to the bot, or the webhook is not set.",
-        "why": "The bot does not receive messages or button presses, so customers cannot use it.",
+        "why": "The bot does not receive messages or button presses, and customers cannot use it.",
         "fix": "Check the webhook URL in the bot settings and that the server is reachable from the internet over HTTPS. Restarting the bot usually helps."
       },
       "planSquadsMissing": {
         "title": "Plan “{{name}}” is off sale",
         "subOne": "A squad of the plan is missing in Remnawave",
         "subMany": "Squads of the plan are missing in Remnawave",
-        "what": "The plan uses squads the Remnawave panel no longer has.",
-        "why": "The panel refuses to create a user with such a squad, so the plan is hidden from sale in the bot and the cabinet, and a trial, a promocode or an admin grant on it fails.",
-        "fix": "Open the plan and replace its squads with ones the panel has. The plan is back on sale within a minute."
+        "what": "The plan uses squads that do not exist in the Remnawave panel.",
+        "why": "The panel does not create users with a nonexistent squad. The plan is hidden from sale in the bot and the cabinet; trials, promocodes and admin grants on this plan do not work.",
+        "fix": "Open the plan and replace its squads with ones that exist in the panel. The plan returns to sale within a minute."
       },
       "unratedAnchorAmounts": {
         "title": "Migrated payments without a currency rate",
         "sub_one": "{{formatted}} payment in {{currencies}} counted at face value",
         "sub_other": "{{formatted}} payments in {{currencies}} counted at face value",
-        "what": "Payments migrated from the old version in a currency other than the anchor were counted at face value: there were no currency rates at migration time.",
-        "why": "Revenue, LTV and other analytics add those amounts as if they were in the anchor currency.",
-        "fix": "Check the currency rates in the pricing settings and recalculate the old payments there."
+        "what": "Payments in a currency other than the anchor were migrated from the old version without a rate and counted at face value.",
+        "why": "Revenue, LTV and other analytics treat these amounts as if they were in the anchor currency.",
+        "fix": "Set the currency rates in the pricing settings and recalculate the migrated payments there."
       },
       "sections": {
         "what": "What happened",
@@ -858,6 +879,8 @@
       "RemnawaveUnavailableEvent": "Connection to Remnawave lost",
       "RemnawaveRestoredEvent": "Connection to Remnawave restored",
       "RemnawaveVersionMismatchEvent": "Unsupported Remnawave version",
+      "SystemHealthDegradedEvent": "Critical system state",
+      "SystemHealthRestoredEvent": "System state restored",
       "BotStartedEvent": "Bot started",
       "BotStoppedEvent": "Bot stopped",
       "TelegramWebhookFailedEvent": "Telegram webhook error",

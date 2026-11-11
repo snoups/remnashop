@@ -9,6 +9,8 @@ import {
   CreditCard,
   DatabaseBackup,
   DatabaseX,
+  Gauge,
+  HardDrive,
   Hourglass,
   Info,
   KeyRound,
@@ -16,6 +18,7 @@ import {
   MailWarning,
   MailX,
   MegaphoneOff,
+  MemoryStick,
   Network,
   PackageX,
   ServerCrash,
@@ -68,6 +71,9 @@ const SEVERITY_TONE = {
 
 const KIND_ICON: Record<AttentionKind, ComponentType<{ className?: string }>> = {
   process_down: ServerCrash,
+  host_disk_full: HardDrive,
+  host_memory_high: MemoryStick,
+  event_loop_lag: Gauge,
   outbox_stuck: ListX,
   panel_unavailable: CloudOff,
   node_offline: ServerOff,
@@ -175,6 +181,20 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
       return {
         title: t("dashboard.attention.processDown.title", { process: RUNTIME_PROCESS_LABELS[process] ?? process }),
         sub: process === "worker" || process === "scheduler" ? t(`dashboard.attention.processDown.${process}`) : null,
+      };
+    }
+    case "host_disk_full":
+    case "host_memory_high":
+      // count: the percent used
+      return {
+        title: t(`dashboard.attention.${KIND_KEY[item.kind]}.title` as ParseKeys),
+        sub: t(`dashboard.attention.${KIND_KEY[item.kind]}.sub` as ParseKeys, { percent: item.count }),
+      };
+    case "event_loop_lag": {
+      const process = item.subject ?? "";
+      return {
+        title: t("dashboard.attention.eventLoopLag.title", { process: RUNTIME_PROCESS_LABELS[process] ?? process }),
+        sub: t("dashboard.attention.eventLoopLag.sub"),
       };
     }
     case "outbox_stuck":
@@ -297,6 +317,9 @@ function itemText(item: AttentionItem, t: TFunction, language: string): { title:
 // i18n key of each kind under dashboard.attention
 const KIND_KEY: Record<AttentionKind, string> = {
   process_down: "processDown",
+  host_disk_full: "hostDiskFull",
+  host_memory_high: "hostMemoryHigh",
+  event_loop_lag: "eventLoopLag",
   outbox_stuck: "outboxStuck",
   panel_unavailable: "panelUnavailable",
   node_offline: "nodeOffline",

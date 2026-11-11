@@ -223,6 +223,20 @@ ntf-remnawave-unavailable = Соединение с Remnawave потеряно (
     .title = Ошибка при подключении к Remnawave!
 ntf-remnawave-restored = Соединение с Remnawave восстановлено.
     .title = Соединение с Remnawave восстановлено!
+ntf-system-health-degraded = { $kind ->
+        [process_down] Процесс { $subject } не отвечает.
+        [host_disk_full] Диск сервера заполнен на { $value }%.
+        [host_memory_high] Память сервера занята на { $value }%.
+       *[event_loop_lag] Процесс { $subject } работает с задержкой: p99 event loop — { $value } мс.
+    }
+    .title = Критическое состояние системы!
+ntf-system-health-restored = { $kind ->
+        [process_down] Процесс { $subject } снова работает.
+        [host_disk_full] Заполненность диска сервера вернулась к норме.
+        [host_memory_high] Использование памяти сервера вернулось к норме.
+       *[event_loop_lag] Задержка процесса { $subject } вернулась к норме.
+    }
+    .title = Состояние системы восстановлено!
 ntf-remnawave-version-mismatch = Remnawave { $version } вне поддерживаемого диапазона { $supported }.
     .title = Возможная несовместимость с Remnawave!
     .emoji = ⚠️

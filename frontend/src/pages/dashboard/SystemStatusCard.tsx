@@ -12,6 +12,15 @@ import { RUNTIME_PROCESS_LABELS, formatUptime, usageBarClass } from "@pages/dash
 
 const SVC_CLASS = `flex flex-col gap-2 p-3.5 ${GLASS_INNER_CARD_CLASS}`;
 const KV_CLASS = "flex items-center justify-between gap-2 text-sm";
+// up to 4 processes share one row, more go in rows of 3; a short last row stretches
+// (5 → 3 + 2, 6 → 3 + 3). Widths subtract the gap-3 gaps of a full row
+const ITEM_CLASS = "min-w-0 sm:grow sm:basis-[calc((100%-0.75rem)/2)]";
+const WIDE_ITEM_CLASS: Record<number, string> = {
+  1: "xl:basis-full",
+  2: "xl:basis-[calc((100%-0.75rem)/2)]",
+  3: "xl:basis-[calc((100%-1.5rem)/3)]",
+  4: "xl:basis-[calc((100%-2.25rem)/4)]",
+};
 
 function Kv({ label, value }: { label: string; value: string }) {
   return (
@@ -38,7 +47,7 @@ function ProcessCard({ process, label }: { process: RuntimeProcess; label: strin
   const running = process.pid !== null;
   const delay = (value: number | null) => (value === null ? none : `${decimals.format(value)} ${ms}`);
   return (
-    <div className={SVC_CLASS}>
+    <div className={`${SVC_CLASS} h-full`}>
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-foreground">
           <span className="relative shrink-0">
@@ -168,9 +177,14 @@ export function SystemStatusCard({
     >
       <div className="flex flex-col gap-3 pt-4">
         {runtime.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {runtime.map((process, index) => (
-              <ProcessCard key={`${process.process}-${process.instance}-${process.pid ?? index}`} process={process} label={processLabel(runtime, index)} />
+              <div
+                key={`${process.process}-${process.instance}-${process.pid ?? index}`}
+                className={`${ITEM_CLASS} ${WIDE_ITEM_CLASS[runtime.length] ?? WIDE_ITEM_CLASS[3]}`}
+              >
+                <ProcessCard process={process} label={processLabel(runtime, index)} />
+              </div>
             ))}
           </div>
         )}

@@ -9,6 +9,7 @@ from prometheus_client import REGISTRY
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.api.system_health import watch_system_health
 from app.core.broker import broker
 from app.core.config import AppConfig
 from app.core.db.crypt_key import assert_crypt_key_matches
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     runtime_heartbeat_task = asyncio.create_task(
         poll_runtime_heartbeat(redis, "api", app_config.instance_name)
     )
+    system_health_task = asyncio.create_task(watch_system_health(container, redis))
 
     try:
         async with container(scope=Scope.REQUEST) as startup_container:
@@ -80,9 +82,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         yield
     finally:
-        runtime_heartbeat_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await runtime_heartbeat_task
+        for task in (runtime_heartbeat_task, system_health_task):
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
         try:
             await broker.shutdown()
         finally:
