@@ -49,7 +49,7 @@ function KpiRow({
   const liveNodes = nodes?.available ? nodes.nodes.filter((node) => !node.is_disabled) : null;
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-5">
+    <div className="grid grid-cols-2 gap-5 md:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
       {users && (
         <KpiTile
           panel

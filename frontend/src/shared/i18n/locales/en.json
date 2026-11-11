@@ -16,7 +16,6 @@
     "cancel": "Cancel",
     "save": "Save",
     "unsavedChanges": "Unsaved changes",
-    "saving": "Saving…",
     "saved": "Saved.",
     "delete": "Delete",
     "reset": "Reset",
@@ -2954,10 +2953,10 @@
         "referrals": {
           "main": "Referral program"
         }
-      }
+      },
+      "deleteWindow": "Delete window"
     },
     "canvas": {
-      "noBanner": "No banner",
       "noText": "(no text set)",
       "emptyButtons": "This window has no buttons.",
       "newButton": "New button",
@@ -3004,9 +3003,6 @@
       "buttonsTotalLimit": "A window fits at most {{max}} buttons — Telegram’s limit.",
       "textTooLong": "{{length}} of {{max}} characters — Telegram will not send this text.",
       "buttonUrlInvalidGrid": "Fix the button link before saving.",
-      "emptySelection": "Pick the text or a button on the canvas to edit it.",
-      "tabWindow": "Window",
-      "tabElement": "Element",
       "bannerMode": {
         "none": "None",
         "shared": "Shared",
@@ -3028,7 +3024,24 @@
         "symbols": "Symbols",
         "flags": "Flags"
       },
-      "dirtyTitle": "Unsaved changes"
+      "dirtyTitle": "Unsaved changes",
+      "disabledNote": "The window is off: the bot doesn't show it.",
+      "unlinkedNote": "No button leads to this window, so users can't reach it.",
+      "bannerHintShared": "The shared banner is one for every window; the file is for “{{locale}}”.",
+      "bannerHintOwn": "This window's own banner; the file is for “{{locale}}”.",
+      "buttonStyles": {
+        "primary": "Accent",
+        "success": "Green",
+        "danger": "Red"
+      },
+      "linkTypes": {
+        "navigate": "Window",
+        "url": "Link",
+        "web_app": "Mini App"
+      },
+      "bannerMissing": "No file for “{{locale}}”: the bot sends the window without a picture.",
+      "bannerFallbackShared": "No file for “{{locale}}”: the bot shows the shared banner ({{source}}).",
+      "bannerFallbackLocale": "No file for “{{locale}}”: the bot shows the “{{source}}” banner."
     },
     "toolbar": {
       "export": "Export",
@@ -3733,23 +3746,21 @@
       "title": "Sync with the panel",
       "inSync": "The data already matches the panel",
       "squads": {
-        "title": "Squads missing in the panel",
-        "hint": "The panel won’t take a subscription with a squad it doesn’t have. Pick a replacement or drop the squad.",
         "drop": "Drop",
-        "held_one": "In {{formatted}} subscription",
-        "held_other": "In {{formatted}} subscriptions"
+        "held_one": "{{formatted}} subscription",
+        "held_other": "{{formatted}} subscriptions",
+        "replace": "Squad {{squad}} is not in the panel. Choose a replacement:"
       },
       "missing": "The panel has no user for this subscription. Taking from the panel marks it deleted, sending to the panel creates a new one.",
       "columns": {
-        "field": "Field",
-        "shop": "Shop",
-        "panel": "Panel"
+        "shop": "Remnashop",
+        "panel": "Remnawave"
       },
       "fieldNames": {
         "status": "Status",
         "expire_at": "Expires",
         "url": "Link",
-        "traffic_limit": "Traffic, GB",
+        "traffic_limit": "Traffic",
         "device_limit": "Devices",
         "traffic_limit_strategy": "Traffic reset",
         "tag": "Tag",
@@ -3758,6 +3769,11 @@
         "telegram_id": "Telegram ID",
         "email": "Email"
       },
+      "differs_one": "The subscription in Remnawave differs from Remnashop in {{count}} field.",
+      "differs_other": "The subscription in Remnawave differs from Remnashop in {{count}} fields.",
+      "gb": "{{value}} GB",
+      "earlier": "{{days}} d earlier",
+      "later": "{{days}} d later",
       "pull": "Take from panel",
       "push": "Send to panel",
       "pulled": "Taken from the panel.",

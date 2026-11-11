@@ -37,7 +37,7 @@ interface RowProps {
 }
 
 const HEAD_CLASS = {
-  md: "min-h-15 px-3.5 has-[[data-switch]:last-child]:pr-4",
+  md: "min-h-15 px-3.5 py-2 has-[[data-switch]:last-child]:pr-4",
   sm: "h-12 pl-2 pr-3.5 has-[[data-row-button]:last-child]:pr-2",
 } as const;
 
@@ -48,8 +48,9 @@ export function Row({ icon, tone, glyph, label, description, hint, children, onC
   const head = (
     <>
       {(icon || glyph) && <IconCircle icon={icon} glyph={glyph} tone={tone} />}
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="min-w-0 flex-1">
+      <div className={`flex min-w-0 flex-1 items-center gap-x-3 gap-y-2 ${small ? "" : "flex-wrap"}`}>
+        {/* basis: controls too wide to leave the text 96px wrap under it */}
+        <div className={`min-w-0 flex-1 ${small ? "" : "basis-24"}`}>
           <p className={`flex items-center gap-1.5 text-sm font-medium text-foreground ${small ? "min-w-0 leading-tight" : "leading-5"}`}>
             {small && typeof label === "string" ? <span className="truncate">{label}</span> : label}
             {hint && <FieldHint text={hint} />}
@@ -67,7 +68,7 @@ export function Row({ icon, tone, glyph, label, description, hint, children, onC
         {children && (
           // a control's click stays its own, not the row's; a badge or a date presses the row
           <div
-            className="flex shrink-0 items-center gap-2"
+            className="flex max-w-full shrink-0 items-center gap-2"
             onClick={(event) => {
               const control = (event.target as Element).closest(INTERACTIVE_SELECTOR);
               if (control && event.currentTarget.contains(control)) event.stopPropagation();

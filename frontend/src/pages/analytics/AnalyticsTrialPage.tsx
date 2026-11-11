@@ -82,7 +82,7 @@ function Overview({ data, isAll }: { data: Trial; isAll: boolean }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-5 xl:grid-cols-4">
         <KpiTile
           panel
           icon={Timer}

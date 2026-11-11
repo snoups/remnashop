@@ -24,7 +24,7 @@ export function OpenUserFooter({
   if (available.length === 0 && !children) return null;
 
   return (
-    <div className="grid shrink-0 auto-cols-fr grid-flow-col gap-2 border-t border-white/[0.08] p-4">
+    <div className="grid shrink-0 auto-cols-fr gap-2 border-t border-white/[0.08] p-4 sm:grid-flow-col">
       {available.map((link) => (
         <OpenUserButton key={link.label} {...link} />
       ))}

@@ -10,7 +10,7 @@ import { toast } from "@shared/lib/toast";
 import { initials } from "@shared/lib/initials";
 import { useReloadCurrentUser } from "@entities/user/use-current-user";
 import { Modal } from "@shared/ui/Modal";
-import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_PAD_CLASS } from "@shared/ui/classes";
 import { useModalClose } from "@shared/ui/modal-hooks";
 import { Button } from "@shared/ui/Button";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -108,7 +108,7 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
       <DialogHeader icon={Pencil} title={t("profile.edit.title")} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 p-3">
+        <div className={`flex flex-col gap-3 ${GLASS_DIALOG_PAD_CLASS}`}>
           <DialogCard variant="form">
             <div className="flex items-center gap-3">
               <div className="glass-control flex size-14 shrink-0 items-center justify-center rounded-full text-[18px] font-semibold text-foreground">
@@ -175,8 +175,8 @@ function EditProfileDialogBody({ name, login }: EditProfileDialogProps) {
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="glassAccent" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? t("common.saving") : t("common.save")}
+          <Button variant="glassAccent" type="submit" isLoading={isSubmitting}>
+            {t("common.save")}
           </Button>
         </div>
       </form>

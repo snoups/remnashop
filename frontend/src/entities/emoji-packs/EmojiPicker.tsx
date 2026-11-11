@@ -116,7 +116,7 @@ export function EmojiPicker({
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <Pressable
         ref={triggerRef}
         type="button"
         disabled={disabled}
@@ -132,7 +132,7 @@ export function EmojiPicker({
         className="flex size-[26px] cursor-pointer items-center justify-center rounded-full text-[16px] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {current ?? <Smile className="size-[18px] text-muted-foreground" />}
-      </button>
+      </Pressable>
 
       <PortalPopover
         glass

@@ -1,14 +1,13 @@
-import { ChevronRight, Plus } from "lucide-react";
+import { EyeOff, Plus, Unlink } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
-import { Collapse } from "@shared/ui/Collapse";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
+import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
 import { Pressable } from "@shared/ui/Pressable";
-import { TAB_HOVER_CLASS } from "@shared/ui/classes";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 
 interface WindowSwitcherProps {
   windows: DialogWindow[];
@@ -21,92 +20,17 @@ interface WindowSwitcherProps {
   onSelect: (key: string) => void;
   canCreate: boolean;
   isLimitReached: boolean;
-  canDelete: boolean;
   /** resolves true once created; the dialog stays open on false */
   onCreate: (name: string) => Promise<boolean>;
-  onDelete: (key: string) => void;
+  /** beside the flow pills, at the end of the line: the locale switch */
+  aside?: ReactNode;
 }
 
-const LABEL_MAX_LENGTH = 24;
+// custom windows are their own flow and sit last
+const FLOW_ORDER: DialogFlow[] = ["menu", "purchase", "renewal", "change", "subscription", "promocode", "referrals", "custom"];
 
-// Windows are grouped by the flow they belong to; custom ones are their own
-// branch and sit last.
-const FLOW_ORDER: DialogFlow[] = [
-  "menu",
-  "purchase",
-  "renewal",
-  "change",
-  "subscription",
-  "promocode",
-  "referrals",
-  "custom",
-];
-
-function StateBadge({ label }: { label: string }) {
-  return (
-    <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide text-warning">
-      {label}
-    </span>
-  );
-}
-
-function WindowChip({
-  window,
-  label,
-  isSelected,
-  isUnreachable,
-  isDirty,
-  canDelete,
-  onSelect,
-  onDelete,
-}: {
-  window: DialogWindow;
-  label: string;
-  isSelected: boolean;
-  isUnreachable: boolean;
-  isDirty: boolean;
-  canDelete: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <motion.div
-      className="group relative isolate flex items-center gap-1 rounded-full px-1"
-    >
-      {/* Only the pill behind the row scales on tap, same split as TabBar. */}
-      <motion.span
-        className={`absolute inset-0 rounded-full transition-colors ${
-          isSelected ? "bg-accent" : "group-hover:bg-white/[0.04]"
-        }`}
-      />
-      <Pressable
-        type="button"
-        onClick={onSelect}
-        className={`z-10 flex h-[30px] min-w-0 flex-1 cursor-pointer items-center gap-2 px-1.5 text-left text-sm ${
-          isSelected ? "font-medium text-primary" : "text-foreground/80"
-        } ${window.is_enabled ? "" : "opacity-55"}`}
-      >
-        <span className="min-w-0 flex-1 truncate">
-          {label.length > LABEL_MAX_LENGTH ? `${label.slice(0, LABEL_MAX_LENGTH)}…` : label}
-        </span>
-        {isDirty && <span className="size-1.5 shrink-0 rounded-full bg-warning" />}
-        {!window.is_enabled && <StateBadge label={t("dialogs.windowList.disabledBadge")} />}
-        {isUnreachable && <StateBadge label={t("dialogs.windowList.unlinkedBadge")} />}
-      </Pressable>
-      {canDelete && window.kind === "custom" ? (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="relative z-10 cursor-pointer px-1 text-sm text-muted-foreground opacity-0 transition-opacity hover:text-error group-hover:opacity-100"
-        >
-          ×
-        </button>
-      ) : null}
-    </motion.div>
-  );
-}
-
+/** Two levels: the flows as pills, the open flow's windows as underline tabs under them. A window's
+ *  state shows as an icon on its tab; the inspector spells it out. */
 export function WindowSwitcher({
   windows,
   labelOf,
@@ -116,94 +40,103 @@ export function WindowSwitcher({
   onSelect,
   canCreate,
   isLimitReached,
-  canDelete,
   onCreate,
-  onDelete,
+  aside,
 }: WindowSwitcherProps) {
   const { t } = useTranslation();
+  const underlineId = useId();
+  const wheelRef = useHorizontalWheelScroll<HTMLDivElement>();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<DialogWindow | null>(null);
-  // only what somebody clicked is remembered; everything else starts expanded
-  const [toggledFlows, setToggledFlows] = useState<Record<string, boolean>>({});
+  const selectedFlow = windows.find((window) => window.key === selectedKey)?.flow;
+  // the custom flow is picked with no window in it yet, to add the first one
+  const [emptyFlow, setEmptyFlow] = useState<DialogFlow | null>(null);
+  const flow = emptyFlow ?? selectedFlow ?? "menu";
+  const flows = FLOW_ORDER.filter((item) => windows.some((window) => window.flow === item) || (item === "custom" && canCreate));
 
-  const branches = FLOW_ORDER.map((flow) => ({
-    flow,
-    items: windows.filter((window) => window.flow === flow),
-  })).filter((branch) => branch.items.length > 0);
-
-  const isFlowCollapsed = (flow: DialogFlow) => toggledFlows[flow] ?? false;
-
-  const toggleFlow = (flow: DialogFlow) =>
-    setToggledFlows((current) => ({ ...current, [flow]: !isFlowCollapsed(flow) }));
+  const pickFlow = (next: DialogFlow) => {
+    const first = windows.find((window) => window.flow === next);
+    if (first) {
+      setEmptyFlow(null);
+      onSelect(first.key);
+    } else {
+      setEmptyFlow(next);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {branches.map(({ flow, items }) => {
-        const isCollapsed = isFlowCollapsed(flow);
-        return (
-          <div key={flow}>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedPills
+          compact
+          value={flow}
+          onChange={pickFlow}
+          options={flows.map((item) => ({ value: item, label: t(`dialogs.windowList.flows.${item}`) }))}
+        />
+        {aside}
+      </div>
+      <div ref={wheelRef} className="no-scrollbar flex gap-1 overflow-x-auto border-b border-white/[0.08] px-1">
+        {windows
+          .filter((window) => window.flow === flow)
+          .map((window) => {
+            const isActive = window.key === selectedKey;
+            return (
+              <Pressable
+                key={window.key}
+                type="button"
+                onClick={() => {
+                  setEmptyFlow(null);
+                  onSelect(window.key);
+                }}
+                className={`group relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {/* hover previews the underline the tab gets once open */}
+                {!isActive && (
+                  <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full transition-colors group-hover:bg-white/20" />
+                )}
+                <span className={`${window.is_enabled ? "" : "line-through decoration-muted-foreground/60"}`}>
+                  {labelOf(window)}
+                </span>
+                {!window.is_enabled && <EyeOff className="size-3.5 text-muted-foreground" />}
+                {unreachableKeys.has(window.key) && <Unlink className="size-3.5 text-warning" />}
+                {window.key === dirtyKey && <span className="size-1.5 rounded-full bg-warning" />}
+                {isActive && (
+                  <motion.span
+                    layoutId={underlineId}
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                    className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-primary"
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        {flow === "custom" &&
+          (canCreate ? (
             <Pressable
               type="button"
-              onClick={() => toggleFlow(flow)}
-              className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-xs uppercase leading-5 tracking-wide text-muted-foreground"
+              onClick={() => setIsCreateOpen(true)}
+              className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
-              <span className={TAB_HOVER_CLASS} />
-              <ChevronRight
-                className={`relative z-10 size-3 shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
-              />
-              <span className="relative z-10 truncate">
-                {t(`dialogs.windowList.flows.${flow}`)}
-              </span>
-              <span className="relative z-10 ml-auto text-xs tabular-nums opacity-70">
-                {items.length}
-              </span>
+              <Plus className="size-3.5" />
+              {t("dialogs.windowList.addWindow")}
             </Pressable>
-            <Collapse open={!isCollapsed} className="ml-[13px] mt-1 flex flex-col gap-0.5 border-l border-white/[0.08] pl-1.5">
-              {items.map((window) => (
-                <WindowChip
-                  key={window.key}
-                  window={window}
-                  label={labelOf(window)}
-                  isSelected={window.key === selectedKey}
-                  isUnreachable={unreachableKeys.has(window.key)}
-                  isDirty={window.key === dirtyKey}
-                  canDelete={canDelete}
-                  onSelect={() => onSelect(window.key)}
-                  onDelete={() => setDeleteTarget(window)}
-                />
-              ))}
-            </Collapse>
-          </div>
-        );
-      })}
-      {canCreate && (
-        <Pressable
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="mt-1 flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-sm text-foreground/70 transition-colors hover:bg-white/[0.06]"
-        >
-          <Plus className="size-3.5" />
-          {t("dialogs.windowList.addWindow")}
-        </Pressable>
-      )}
-      {isLimitReached && (
-        <span className="mt-1 text-xs text-muted-foreground">
-          {t("dialogs.windowList.limitReached")}
-        </span>
-      )}
-      {isCreateOpen && <CreateWindowDialog onCreate={onCreate} onClose={() => setIsCreateOpen(false)} />}
-      {deleteTarget && (
-        <ConfirmDialog
-          title={t("dialogs.windowList.deleteWindowTitle")}
-          message={t("dialogs.windowList.deleteWindowConfirm", { name: labelOf(deleteTarget) })}
-          confirmLabel={t("common.delete")}
-          cancelLabel={t("common.cancel")}
-          danger
-          onConfirm={() => {
-            onDelete(deleteTarget.key);
-            setDeleteTarget(null);
+          ) : (
+            isLimitReached && (
+              <span className="flex h-11 shrink-0 items-center px-3 text-xs text-muted-foreground">
+                {t("dialogs.windowList.limitReached")}
+              </span>
+            )
+          ))}
+      </div>
+      {isCreateOpen && (
+        <CreateWindowDialog
+          onCreate={async (name) => {
+            const created = await onCreate(name);
+            if (created) setEmptyFlow(null);
+            return created;
           }}
-          onCancel={() => setDeleteTarget(null)}
+          onClose={() => setIsCreateOpen(false)}
         />
       )}
     </div>

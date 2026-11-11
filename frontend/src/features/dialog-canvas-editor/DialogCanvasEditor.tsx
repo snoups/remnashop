@@ -1,17 +1,8 @@
-import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Download,
-  MessagesSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Plus,
-  RotateCcw,
-  Upload,
-} from "lucide-react";
+import { Download, MessagesSquare, RotateCcw, Upload } from "lucide-react";
 
-import { fetchBannerImageBlob } from "@entities/banners/api";
+import { fetchBannerPreview } from "@entities/banners/api";
 import {
   buttonKey,
   createCustomWindow,
@@ -45,11 +36,14 @@ import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { usePermissions } from "@entities/user/use-current-user";
 import { ButtonInspector } from "@features/dialog-canvas-editor/ButtonInspector";
 import { DialogCanvas } from "@features/dialog-canvas-editor/DialogCanvas";
-import { EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { InspectorDivider, InspectorHeader } from "@features/dialog-canvas-editor/InspectorParts";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
-import { PillTabs } from "@shared/ui/PillTabs";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
+import { SaveFooter } from "@shared/ui/SaveFooter";
+import { GLASS_INNER_CARD_CLASS } from "@shared/ui/classes";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
 import { WindowInspector } from "@features/dialog-canvas-editor/WindowInspector";
+import type { ShownBanner } from "@features/dialog-canvas-editor/WindowInspector";
 import { WindowSwitcher } from "@features/dialog-canvas-editor/WindowSwitcher";
 import { getErrorMessage } from "@shared/api/http";
 import { localeLabel } from "@shared/i18n/locale-label";
@@ -58,12 +52,9 @@ import { toast } from "@shared/lib/toast";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
-import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { Button } from "@shared/ui/Button";
-import { IconButton } from "@shared/ui/IconButton";
 import { Section } from "@shared/ui/glass/Section";
 import { Badge } from "@shared/ui/Badge";
-import { Pressable } from "@shared/ui/Pressable";
 
 export type Selection =
   { kind: "text" } | { kind: "button"; buttonKey: string };
@@ -76,17 +67,8 @@ function useSelectedWindow(
   return windows.find((window) => window.key === selectedKey) ?? null;
 }
 
-const TREE_FOLDED_KEY = "remnashop_dialogs_tree_folded";
-
 export function DialogCanvasEditor() {
   const { t, i18n } = useTranslation();
-  // the window list folded away (desktop): remembered per browser
-  const [isTreeFolded, setIsTreeFolded] = useState(() => readStorage(TREE_FOLDED_KEY) === "1");
-  const toggleTree = () =>
-    setIsTreeFolded((folded) => {
-      writeStorage(TREE_FOLDED_KEY, folded ? "0" : "1");
-      return !folded;
-    });
   const permissions = usePermissions();
   const [windowsState, reloadWindows, setWindowsData] =
     useAsyncResource(listWindows);
@@ -98,11 +80,8 @@ export function DialogCanvasEditor() {
     catalogState.kind === "ready" ? catalogState.data : null;
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [inspectorTab, setInspectorTab] = useState<"window" | "element">(
-    "window",
-  );
   const [previewLocale, setPreviewLocale] = useState<string | null>(null);
-  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [banner, setBanner] = useState<ShownBanner | null>(null);
   // Bumped after an upload or delete: the URL depends on bytes the effect
   // below cannot otherwise know changed.
   const [bannerNonce, setBannerNonce] = useState(0);
@@ -113,6 +92,7 @@ export function DialogCanvasEditor() {
     null,
   );
   const [isResetAllConfirmOpen, setIsResetAllConfirmOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [pendingImport, setPendingImport] =
     useState<DialogExportPayload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,35 +125,30 @@ export function DialogCanvasEditor() {
 
   useEffect(() => {
     setSelection(null);
-    setInspectorTab("window");
     setPendingButtons(null);
   }, [selectedKey]);
 
   useEffect(() => {
     if (!selectedWindow?.banner_name || !previewLocale) {
-      setBannerUrl(null);
+      setBanner(null);
       return;
     }
     const controller = new AbortController();
     let objectUrl: string | null = null;
-    fetchBannerImageBlob(
-      selectedWindow.banner_name,
-      previewLocale,
-      controller.signal,
-    )
-      .then((blob) => {
+    fetchBannerPreview(selectedWindow.banner_name, previewLocale, controller.signal)
+      .then((preview) => {
         if (controller.signal.aborted) return;
-        objectUrl = URL.createObjectURL(blob);
-        setBannerUrl(objectUrl);
+        objectUrl = URL.createObjectURL(preview.blob);
+        setBanner({ url: objectUrl, name: preview.name, locale: preview.locale });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setBannerUrl(null);
+        if (!controller.signal.aborted) setBanner(null);
       });
     return () => {
       controller.abort();
       if (objectUrl) {
         // a revoked URL left in state shows a broken image until the next banner loads
-        setBannerUrl(null);
+        setBanner(null);
         URL.revokeObjectURL(objectUrl);
       }
     };
@@ -262,10 +237,6 @@ export function DialogCanvasEditor() {
   const isDirty = pendingButtons !== null;
   const canEditButtons = permissions.includes("DIALOGS_WINDOWS_BUTTONS_UPDATE");
 
-  const handleSelect = (next: Selection) => {
-    setSelection(next);
-    setInspectorTab("element");
-  };
 
   const handleButtonChange = (updated: DialogButtonItem) => {
     const key = buttonKey(updated);
@@ -282,6 +253,7 @@ export function DialogCanvasEditor() {
 
   const handleSaveButtons = async () => {
     if (!selectedWindow) return;
+    setIsSaving(true);
     try {
       const updated = await replaceButtons(
         selectedWindow.key,
@@ -293,6 +265,8 @@ export function DialogCanvasEditor() {
       toast.success(t("common.saved"));
     } catch (err) {
       toast.error(getErrorMessage(err, t("common.errors.generic")));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -307,7 +281,6 @@ export function DialogCanvasEditor() {
     ? invalidUrlButton(buttons, catalog.variable_keys)
     : null;
   const limitProblem = buttonLimitProblem(buttons);
-  const canDeleteWindow = permissions.includes("DIALOGS_WINDOWS_DELETE");
   const canResetAll = permissions.includes("DIALOGS_WINDOWS_RESET_ALL");
 
   const handleCreateWindow = async (name: string): Promise<boolean> => {
@@ -364,6 +337,7 @@ export function DialogCanvasEditor() {
       is_system: false,
     };
     setPendingButtons([...buttons, newButton]);
+    setSelection({ kind: "button", buttonKey: buttonKey(newButton) });
   };
 
   const handleSelectWindow = (key: string) => {
@@ -374,15 +348,16 @@ export function DialogCanvasEditor() {
     setSelectedKey(key);
   };
 
-  function renderElementInspector() {
-    if (!selectedWindow || selection === null) return null;
-    if (previewLocale === null || entriesState.kind !== "ready") return null;
-    if (selection.kind === "text") {
+  const backToWindow = () => setSelection(null);
+
+  function renderInspector() {
+    if (!selectedWindow) return null;
+    const button = selection?.kind === "button" ? buttons.find((b) => buttonKey(b) === selection.buttonKey) : undefined;
+    if (selection?.kind === "text" && previewLocale !== null && entriesState.kind === "ready") {
       return (
-        <div className={`${EDITOR_PANEL_CLASSNAME} w-full p-4`}>
-          <h3 className="mb-3 text-sm font-semibold text-foreground">
-            {t("dialogs.inspector.textTitle")}
-          </h3>
+        <>
+          <InspectorHeader title={t("dialogs.inspector.textTitle")} subtitle={windowLabel(selectedWindow)} onBack={backToWindow} />
+          <InspectorDivider />
           <TextEditorPanel
             textKey={selectedWindow.text_keys[0] ?? ""}
             entries={entries}
@@ -403,24 +378,41 @@ export function DialogCanvasEditor() {
             canReset={permissions.includes("TRANSLATIONS_RESET")}
             onSaved={handleEntrySaved}
           />
-        </div>
+        </>
       );
     }
-    const button = buttons.find((b) => buttonKey(b) === selection.buttonKey);
-    if (!button || catalog === null) return null;
+    if (button && catalog !== null && previewLocale !== null && entriesState.kind === "ready") {
+      return (
+        <ButtonInspector
+          button={button}
+          windowLabel={windowLabel(selectedWindow)}
+          windowLabelOf={(key) => {
+            const target = windows.find((w) => w.key === key);
+            return target ? windowLabel(target) : key;
+          }}
+          catalog={catalog}
+          entries={entries}
+          activeLocale={previewLocale}
+          canEditText={permissions.includes("DIALOGS_TEXT_UPDATE")}
+          canResetText={permissions.includes("TRANSLATIONS_RESET")}
+          canEditButtons={canEditButtons}
+          onEntrySaved={handleEntrySaved}
+          onChange={handleButtonChange}
+          onDelete={handleButtonDelete}
+          onBack={backToWindow}
+        />
+      );
+    }
     return (
-      <ButtonInspector
-        button={button}
-        windowKind={selectedWindow.kind}
-        catalog={catalog}
-        entries={entries}
+      <WindowInspector
+        window={selectedWindow}
+        label={windowLabel(selectedWindow)}
         activeLocale={previewLocale}
-        canEditText={permissions.includes("DIALOGS_TEXT_UPDATE")}
-        canResetText={permissions.includes("TRANSLATIONS_RESET")}
-        canEditButtons={canEditButtons}
-        onEntrySaved={handleEntrySaved}
-        onChange={handleButtonChange}
-        onDelete={handleButtonDelete}
+        banner={banner}
+        isUnreachable={unreachableKeys.has(selectedWindow.key)}
+        onBannerChanged={() => setBannerNonce((nonce) => nonce + 1)}
+        onWindowUpdated={(updated) => setWindowsData(windows.map((w) => (w.key === updated.key ? updated : w)))}
+        onDelete={() => void handleDeleteWindow(selectedWindow.key)}
       />
     );
   }
@@ -474,12 +466,6 @@ export function DialogCanvasEditor() {
     }
   };
 
-  const elementInspector = renderElementInspector();
-  const inspectorTabs: { key: "window" | "element"; label: string }[] = [
-    { key: "window", label: t("dialogs.inspector.tabWindow") },
-    { key: "element", label: t("dialogs.inspector.tabElement") },
-  ];
-
   return (
     <Section
       flush
@@ -516,151 +502,74 @@ export function DialogCanvasEditor() {
         </>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex min-h-0 flex-1 flex-col pt-4 lg:flex-row">
-          <aside
-            className={`overflow-y-auto border-b border-white/[0.08] px-4 pb-4 lg:border-b-0 lg:pr-2 ${
-              isTreeFolded ? "lg:flex-none" : "lg:flex-1 lg:basis-0"
-            }`}
-          >
-            {/* desktop: the list folds to its toggle, the preview takes the room */}
-            <div className={`hidden lg:flex ${isTreeFolded ? "" : "mb-2 justify-end"}`}>
-              <IconButton size="8" tone="glass" onClick={toggleTree}>
-                {isTreeFolded ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
-              </IconButton>
-            </div>
-            <div className={isTreeFolded ? "lg:hidden" : ""}>
-            <WindowSwitcher
-              windows={windows}
-              labelOf={windowLabel}
-              selectedKey={selectedKey}
-              onSelect={handleSelectWindow}
-              canCreate={canCreateWindow && !isWindowLimitReached}
-              isLimitReached={isWindowLimitReached}
-              canDelete={canDeleteWindow}
-              unreachableKeys={unreachableKeys}
-              dirtyKey={isDirty ? selectedKey : null}
-              onCreate={handleCreateWindow}
-              onDelete={(key) => void handleDeleteWindow(key)}
-            />
-            </div>
-          </aside>
-
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4 lg:flex-[1.6] lg:basis-0">
-            {activeLocales.length > 1 && (
-              <div className={`w-full ${isTreeFolded ? "lg:max-w-md" : ""} max-w-sm`}>
-                <PillTabs
-                  items={activeLocales.map((locale) => ({
-                    key: locale,
-                    label: localeLabel(locale, i18n.language),
-                  }))}
-                  activeKey={previewLocale}
-                  onSelect={setPreviewLocale}
-                  blurred={false}
-                />
-              </div>
-            )}
-            {selectedWindow ? (
-              <DialogCanvas
-                window={selectedWindow}
-                buttons={buttons}
-                textByKey={textByKey}
-                bannerUrl={bannerUrl}
-                selection={selection}
-                onSelect={handleSelect}
-                canEditButtons={canEditButtons}
-                onReorderButtons={setPendingButtons}
-                wide={isTreeFolded}
+      <div className="flex flex-col gap-4 p-4">
+        <WindowSwitcher
+          windows={windows}
+          labelOf={windowLabel}
+          selectedKey={selectedKey}
+          onSelect={handleSelectWindow}
+          canCreate={canCreateWindow && !isWindowLimitReached}
+          isLimitReached={isWindowLimitReached}
+          unreachableKeys={unreachableKeys}
+          dirtyKey={isDirty ? selectedKey : null}
+          onCreate={handleCreateWindow}
+          aside={
+            activeLocales.length > 1 &&
+            previewLocale !== null && (
+              <SegmentedPills
+                compact
+                value={previewLocale}
+                onChange={setPreviewLocale}
+                options={activeLocales.map((locale) => ({ value: locale, label: localeLabel(locale, i18n.language) }))}
               />
-            ) : null}
-            {canEditButtons && catalog && (
-              <Pressable
-                type="button"
-                onClick={handleAddButton}
-                className={`flex h-9 w-full max-w-sm cursor-pointer items-center ${isTreeFolded ? "lg:max-w-md" : ""} justify-center gap-1.5 rounded-full border border-dashed border-white/[0.12] px-4 text-sm text-foreground/70 transition-colors hover:bg-white/[0.06]`}
-              >
-                <Plus className="size-3.5" />
-                {t("dialogs.inspector.buttonAdd")}
-              </Pressable>
-            )}
-          </div>
-
-          <aside className="flex flex-col gap-3 overflow-y-auto border-t border-white/[0.08] px-4 pb-4 lg:flex-1 lg:basis-0 lg:border-t-0 lg:pl-2">
-            <PillTabs
-              items={inspectorTabs}
-              activeKey={inspectorTab}
-              onSelect={setInspectorTab}
-              blurred={false}
+            )
+          }
+        />
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+          {selectedWindow ? (
+            <DialogCanvas
+              window={selectedWindow}
+              buttons={buttons}
+              textByKey={textByKey}
+              bannerUrl={banner?.url ?? null}
+              selection={selection}
+              onSelect={setSelection}
+              canEditButtons={canEditButtons}
+              onReorderButtons={setPendingButtons}
+              onAddButton={canEditButtons && catalog ? handleAddButton : undefined}
             />
-            {inspectorTab === "window"
-              ? selectedWindow && (
-                  <WindowInspector
-                    window={selectedWindow}
-                    label={windowLabel(selectedWindow)}
-                    activeLocale={previewLocale}
-                    bannerUrl={bannerUrl}
-                    onBannerChanged={() => setBannerNonce((nonce) => nonce + 1)}
-                    onWindowUpdated={(updated) => {
-                      setWindowsData(
-                        windows.map((w) =>
-                          w.key === updated.key ? updated : w,
-                        ),
-                      );
-                    }}
+          ) : (
+            <div />
+          )}
+          {selectedWindow && (
+            <div className={`${GLASS_INNER_CARD_CLASS} flex flex-col gap-4 p-4`}>
+              {renderInspector()}
+              {isDirty && canEditButtons && (
+                <div className="-mx-4 flex flex-col gap-2 border-t border-white/[0.08] px-4">
+                  <SaveFooter
+                    dirty
+                    saving={isSaving}
+                    disabled={brokenUrlButton !== null || limitProblem !== null}
+                    onSave={() => void handleSaveButtons()}
+                    beside={
+                      <Button variant="glass" onClick={handleDiscardButtons}>
+                        {t("dialogs.inspector.buttonsDiscard")}
+                      </Button>
+                    }
                   />
-                )
-              : (elementInspector ?? (
-                  <p className="rounded-xl border border-dashed border-white/[0.12] p-4 text-sm text-muted-foreground">
-                    {t("dialogs.inspector.emptySelection")}
-                  </p>
-                ))}
-          </aside>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {isDirty && canEditButtons && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-warning/25 bg-warning/[0.07] px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="size-[7px] rounded-full bg-warning" />
-                  <span className="text-sm text-foreground">
-                    {t("dialogs.inspector.dirtyTitle")}
-                  </span>
-                  {brokenUrlButton !== null && (
-                    <span className="text-sm text-error">
-                      {t("dialogs.inspector.buttonUrlInvalidGrid")}
-                    </span>
-                  )}
+                  {brokenUrlButton !== null && <p className="text-xs text-error">{t("dialogs.inspector.buttonUrlInvalidGrid")}</p>}
                   {limitProblem !== null && (
-                    <span className="text-sm text-error">
+                    <p className="text-xs text-error">
                       {limitProblem.kind === "row"
                         ? t("dialogs.inspector.buttonsRowLimit", { max: limitProblem.max })
                         : t("dialogs.inspector.buttonsTotalLimit", { max: limitProblem.max })}
-                    </span>
+                    </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="glass" onClick={handleDiscardButtons}>
-                    {t("dialogs.inspector.buttonsDiscard")}
-                  </Button>
-                  <Button
-                    variant="glassAccent"
-                    disabled={brokenUrlButton !== null || limitProblem !== null}
-                    onClick={() => void handleSaveButtons()}
-                  >
-                    {t("common.save")}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
+              )}
+            </div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
 
       {pendingWindowSwitch && (

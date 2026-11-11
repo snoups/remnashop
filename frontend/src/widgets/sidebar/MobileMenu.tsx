@@ -1,16 +1,16 @@
 import { X } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { useMatch, useResolvedPath } from "react-router-dom";
 
 import { BrandMark } from "@entities/appearance/BrandMark";
 import { useBrandName } from "@entities/appearance/use-appearance";
 import { usePermissions } from "@entities/user/use-current-user";
 import { IconButton } from "@shared/ui/IconButton";
 import { useDialogFocus } from "@shared/ui/modal-hooks";
-import { Ripple } from "@shared/ui/Ripple";
+import { Pressable } from "@shared/ui/Pressable";
 import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
@@ -51,17 +51,10 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
         </div>
         <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-3">
           {NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map(({ key, to, end, icon: Icon }) => (
-            <NavLink
-              key={key}
-              to={to}
-              end={end}
-              onClick={onClose}
-              className={({ isActive }) => `relative flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm font-medium ${isActive ? "bg-accent text-primary" : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"}`}
-            >
-              <Ripple />
+            <MobileNavLink key={key} to={to} end={end} onClick={onClose}>
               <Icon className="size-5 shrink-0" />
               {t(`sidebar.${key}`)}
-            </NavLink>
+            </MobileNavLink>
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-3 border-t border-border px-3 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
@@ -72,5 +65,20 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
       </motion.div>
     </div>,
     document.body,
+  );
+}
+
+function MobileNavLink({ to, end, onClick, children }: { to: string; end?: boolean; onClick: () => void; children: ReactNode }) {
+  // NavLink's rule: the path itself, or below it unless `end`
+  const isActive = useMatch({ path: useResolvedPath(to).pathname, end: end ?? false }) !== null;
+  return (
+    <Pressable
+      as="link"
+      to={to}
+      onClick={onClick}
+      className={`flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm font-medium ${isActive ? "bg-accent text-primary" : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"}`}
+    >
+      {children}
+    </Pressable>
   );
 }

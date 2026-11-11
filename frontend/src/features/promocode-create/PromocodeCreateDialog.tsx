@@ -198,7 +198,7 @@ function PromocodeCreateDialogBody({
 
           <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("promocodes.sections.reward")}>
-              <div className="grid auto-rows-fr grid-cols-3 gap-2">
+              <div className="grid auto-rows-fr grid-cols-2 gap-2 sm:grid-cols-3">
                 {REWARD_TYPES.map((type) => {
                   const Icon = REWARD_TYPE_ICON[type];
                   const isSelected = rewardType === type;

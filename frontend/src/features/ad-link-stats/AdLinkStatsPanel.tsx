@@ -1,4 +1,4 @@
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
@@ -7,6 +7,7 @@ import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
+import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { KpiTile } from "@shared/ui/KpiTile";
 import { DAY_MS } from "@shared/lib/period";
@@ -30,11 +31,7 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
   const [state] = useAsyncResource((signal) => getAdLinkStats(adLink.id, createdFrom, signal));
 
   if (state.kind === "loading") {
-    return (
-      <div className="flex justify-center py-6 text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-      </div>
-    );
+    return <Spinner size="card" />;
   }
   if (state.kind === "error") {
     return (

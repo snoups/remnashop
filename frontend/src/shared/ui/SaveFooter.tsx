@@ -27,10 +27,11 @@ export function SaveFooter({ dirty, saving, disabled = false, hasWork = false, o
         variant="glassAccent"
         className="w-fit"
         type={onSave ? "button" : "submit"}
-        disabled={saving || !(dirty || hasWork) || disabled}
+        disabled={!(dirty || hasWork) || disabled}
+        isLoading={saving}
         onClick={onSave}
       >
-        {saving ? t("common.saving") : t("common.save")}
+        {t("common.save")}
       </Button>
       {beside}
       {dirty && (

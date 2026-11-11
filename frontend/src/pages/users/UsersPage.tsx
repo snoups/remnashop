@@ -210,7 +210,7 @@ export function UsersPage() {
             onChange={setSearchInput}
           />
         </div>
-        <div className="w-56 min-w-0">
+        <div className="min-w-40 flex-1 md:w-56 md:min-w-0 md:flex-none">
           <SelectDropdown
             id="users-blocked-by"
             value={blockedBy}
@@ -227,7 +227,7 @@ export function UsersPage() {
             ]}
           />
         </div>
-        <div className="w-56 min-w-0">
+        <div className="min-w-40 flex-1 md:w-56 md:min-w-0 md:flex-none">
           <SelectDropdown
             id="users-subscription"
             value={subscription}
@@ -243,7 +243,7 @@ export function UsersPage() {
             ]}
           />
         </div>
-        <div className="w-56 min-w-0">
+        <div className="min-w-40 flex-1 md:w-56 md:min-w-0 md:flex-none">
           <SelectDropdown
             id="users-trial"
             value={trial}

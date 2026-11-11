@@ -21,6 +21,19 @@ export function deleteBanner(name: string, locale: string): Promise<null> {
   return apiDelete<null>(`/banners/${name}/${locale}`);
 }
 
-export async function fetchBannerImageBlob(name: string, locale: string, signal?: AbortSignal): Promise<Blob> {
-  return (await apiGetRaw(`/banners/${name}/${locale}/image`, signal)).blob();
+/** The file the bot sends for this banner and language, and which one that is: the shared banner
+ *  or the default language's stand in when this exact file is missing. */
+export interface BannerPreview {
+  blob: Blob;
+  name: string;
+  locale: string;
+}
+
+export async function fetchBannerPreview(name: string, locale: string, signal?: AbortSignal): Promise<BannerPreview> {
+  const response = await apiGetRaw(`/banners/${name}/${locale}/image?fallback=true`, signal);
+  return {
+    blob: await response.blob(),
+    name: response.headers.get("X-Banner-Name") ?? name,
+    locale: response.headers.get("X-Banner-Locale") ?? locale,
+  };
 }

@@ -1,4 +1,4 @@
-import { Image as ImageIcon, RotateCcw, Trash2, Upload } from "lucide-react";
+import { EyeOff, Image as ImageIcon, RotateCcw, Trash2, Unlink, Upload } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,19 +6,29 @@ import { deleteBanner, restoreDefaultBanner, uploadBanner } from "@entities/bann
 import type { BannerMode, DialogWindow } from "@entities/dialogs/api";
 import { bannerMode, bannerNameForMode, resetWindow, updateWindow } from "@entities/dialogs/api";
 import { usePermissions } from "@entities/user/use-current-user";
+import { InspectorDivider, InspectorHeader, InspectorNote, SwitchRow } from "@features/dialog-canvas-editor/InspectorParts";
 import { getErrorMessage } from "@shared/api/http";
+import { localeLabel } from "@shared/i18n/locale-label";
 import { copyToClipboard } from "@shared/lib/clipboard";
 import { toast } from "@shared/lib/toast";
-import { PillTabs } from "@shared/ui/PillTabs";
-import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
-import { Switch } from "@shared/ui/glass/Switch";
 import { Button } from "@shared/ui/Button";
-import { EDITOR_FIELD_CLASSNAME, EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { IconButton } from "@shared/ui/IconButton";
 import { Pressable } from "@shared/ui/Pressable";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 
 const ACCEPTED_FILE_TYPES = "image/jpeg,image/png,image/gif,image/webp";
 
 const MODES: BannerMode[] = ["none", "shared", "own"];
+
+/** The banner file the bot sends for this window in the preview's language: its own, or one it fell back to. */
+export interface ShownBanner {
+  url: string;
+  name: string;
+  locale: string;
+}
 
 interface WindowInspectorProps {
   window: DialogWindow;
@@ -26,27 +36,34 @@ interface WindowInspectorProps {
   label: string;
   /** The locale the preview is showing: a banner file belongs to one. */
   activeLocale: string | null;
-  bannerUrl: string | null;
+  banner: ShownBanner | null;
+  /** a custom window no button leads to: unreachable in the bot */
+  isUnreachable: boolean;
   onWindowUpdated: (window: DialogWindow) => void;
   onBannerChanged: () => void;
+  onDelete: () => void;
 }
 
 export function WindowInspector({
   window,
   label,
   activeLocale,
-  bannerUrl,
+  banner,
+  isUnreachable,
   onWindowUpdated,
   onBannerChanged,
+  onDelete,
 }: WindowInspectorProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const permissions = usePermissions();
   const canUpdate = permissions.includes("DIALOGS_WINDOWS_UPDATE");
   const canUpload = permissions.includes("BANNERS_UPLOAD");
   const canDeleteBanner = permissions.includes("BANNERS_DELETE");
   const canRestoreDefault = permissions.includes("BANNERS_RESTORE_DEFAULT");
   const canReset = permissions.includes("DIALOGS_WINDOWS_RESET");
+  const canDelete = window.kind === "custom" && permissions.includes("DIALOGS_WINDOWS_DELETE");
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nameDraft, setNameDraft] = useState(window.name ?? "");
@@ -56,6 +73,20 @@ export function WindowInspector({
   }, [window.key, window.name]);
 
   const mode = bannerMode(window.banner_name);
+  // a file for exactly this banner and language: the one an upload replaces and a delete removes
+  const isOwnFile = banner !== null && banner.name === window.banner_name && banner.locale === activeLocale;
+  const bannerHint = (): string | undefined => {
+    if (mode === "none" || !activeLocale) return undefined;
+    const locale = localeLabel(activeLocale, i18n.language);
+    if (isOwnFile) {
+      return t(mode === "shared" ? "dialogs.inspector.bannerHintShared" : "dialogs.inspector.bannerHintOwn", { locale });
+    }
+    if (banner === null) return t("dialogs.inspector.bannerMissing", { locale });
+    const source = localeLabel(banner.locale, i18n.language);
+    return bannerMode(banner.name) === "shared"
+      ? t("dialogs.inspector.bannerFallbackShared", { locale, source })
+      : t("dialogs.inspector.bannerFallbackLocale", { locale, source });
+  };
 
   const handleModeChange = async (next: BannerMode) => {
     if (next === mode) return;
@@ -148,37 +179,39 @@ export function WindowInspector({
     }
   };
 
+  const copyKey = () =>
+    void copyToClipboard(window.key).then((copied) => {
+      if (copied) toast.success(t("dialogs.inspector.keyCopied"));
+    });
+
   return (
-    <div className={`${EDITOR_PANEL_CLASSNAME} flex w-full flex-col gap-4 p-4`}>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-foreground">{label}</span>
-          {window.kind === "seed" && (
-            <span className="shrink-0 rounded-full border border-border bg-white/[0.04] px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("dialogs.windowList.seedBadge")}
-            </span>
-          )}
+    <>
+      <InspectorHeader
+        title={label}
+        subtitle={
+          <Pressable as="div" onClick={copyKey} className="w-fit cursor-pointer font-mono transition-colors hover:text-foreground">
+            {window.key}
+          </Pressable>
+        }
+      />
+      {(!window.is_enabled || isUnreachable) && (
+        <div className="flex flex-col gap-1.5">
+          {!window.is_enabled && <InspectorNote icon={EyeOff} text={t("dialogs.inspector.disabledNote")} />}
+          {isUnreachable && <InspectorNote icon={Unlink} warning text={t("dialogs.inspector.unlinkedNote")} />}
         </div>
-        <Pressable
-          type="button"
-          onClick={() => {
-            void copyToClipboard(window.key).then((copied) => {
-              if (copied) toast.success(t("dialogs.inspector.keyCopied"));
-            });
-          }}
-          className="block max-w-full truncate text-left font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {window.key}
-        </Pressable>
-      </div>
+      )}
+      <InspectorDivider />
+
+      <SwitchRow
+        label={t("dialogs.inspector.enabledLabel")}
+        checked={window.is_enabled}
+        onChange={(value) => void handleEnabledChange(value)}
+        disabled={!canUpdate || window.kind === "seed"}
+      />
 
       {window.kind === "custom" && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-foreground/80">
-            {t("dialogs.inspector.nameLabel")}
-          </span>
-          <input
-            type="text"
+        <Field label={t("dialogs.inspector.nameLabel")} hint={t("dialogs.windowList.addWindowNameHint")}>
+          <Input
             value={nameDraft}
             maxLength={128}
             disabled={!canUpdate}
@@ -187,115 +220,87 @@ export function WindowInspector({
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
             }}
-            className={`${EDITOR_FIELD_CLASSNAME} border-glass-border`}
           />
-        </div>
+        </Field>
       )}
 
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium text-foreground/80">
-            {t("dialogs.inspector.enabledLabel")}
-          </span>
-          <Switch
-            checked={window.is_enabled}
-            onChange={(value) => void handleEnabledChange(value)}
-            disabled={!canUpdate || window.kind === "seed"}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-foreground/80">
-          {t("dialogs.inspector.bannerLabel")}
-        </span>
-        <PillTabs
-          items={MODES.map((item) => ({
-            key: item,
-            label: t(`dialogs.inspector.bannerMode.${item}`),
-          }))}
-          activeKey={mode}
-          onSelect={(item) => void handleModeChange(item)}
+      <Field
+        label={t("dialogs.inspector.bannerLabel")}
+        hint={bannerHint()}
+      >
+        <SegmentedPills
+          stretch
+          compact
           disabled={!canUpdate}
+          value={mode}
+          onChange={(item) => void handleModeChange(item)}
+          options={MODES.map((item) => ({ value: item, label: t(`dialogs.inspector.bannerMode.${item}`) }))}
         />
-
         {mode !== "none" && (
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-input/60 p-2">
-            {/* With a banner the slot takes the picture's own ratio; empty, it
-                holds 16:9 so the box does not sit there squashed. */}
-            <div
-              className={`relative flex items-center justify-center overflow-hidden rounded-lg ${
-                bannerUrl ? "" : "aspect-video bg-white/[0.04]"
-              }`}
-            >
-              {bannerUrl ? (
-                <img src={bannerUrl} alt="" className="block w-full" />
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_FILE_TYPES}
+              className="hidden"
+              onChange={(event) => void handleFileChange(event)}
+            />
+            {/* the picture itself shows on the preview; here only enough to tell it is there */}
+            <div className="flex h-9 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04]">
+              {banner ? (
+                <img src={banner.url} alt="" className={`size-full object-cover ${isOwnFile ? "" : "opacity-50"}`} />
               ) : (
-                <ImageIcon className="size-5 text-muted-foreground" />
-              )}
-              {activeLocale && (
-                <span className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold uppercase text-foreground/85">
-                  {activeLocale}
-                </span>
+                <ImageIcon className="size-4 text-muted-foreground" />
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPTED_FILE_TYPES}
-                className="hidden"
-                onChange={(event) => void handleFileChange(event)}
-              />
-              {canUpload && (
-                <Pressable
-                  type="button"
-                  disabled={isBusy || !activeLocale}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-foreground/80 transition-colors hover:bg-white/[0.06] disabled:opacity-40"
-                >
-                  <Upload className="size-3" />
-                  {t(bannerUrl ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
-                </Pressable>
-              )}
-              {canDeleteBanner && bannerUrl && (
-                <Pressable
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => void handleBannerDelete()}
-                  className="ml-auto flex size-6 cursor-pointer items-center justify-center rounded-full border border-error/20 bg-error/[0.08] text-error transition-colors hover:bg-error/15 disabled:opacity-40"
-                >
-                  <Trash2 className="size-3" />
-                </Pressable>
-              )}
-              {mode === "shared" && canRestoreDefault && (
-                <Pressable
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => void handleRestoreDefault()}
-                  className={`flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-foreground/70 transition-colors hover:bg-white/[0.06] disabled:opacity-40 ${
-                    canDeleteBanner && bannerUrl ? "" : "ml-auto"
-                  }`}
-                >
-                  <RotateCcw className="size-3" />
-                </Pressable>
-              )}
-            </div>
+            {canUpload && (
+              <Button
+                variant="glass"
+                icon={Upload}
+                className="flex-1"
+                disabled={!activeLocale}
+                isLoading={isBusy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {t(isOwnFile ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
+              </Button>
+            )}
+            {mode === "shared" && canRestoreDefault && (
+              <IconButton size="9" disabled={isBusy} onClick={() => void handleRestoreDefault()}>
+                <RotateCcw className="size-4" />
+              </IconButton>
+            )}
+            {canDeleteBanner && isOwnFile && (
+              <IconButton size="9" tone="danger" disabled={isBusy} onClick={() => void handleBannerDelete()}>
+                <Trash2 className="size-4" />
+              </IconButton>
+            )}
           </div>
         )}
-      </div>
+      </Field>
 
-      {canReset ? (
-        <Button variant="outline" className="mt-auto" onClick={() => setIsResetConfirmOpen(true)}>
-          <RotateCcw className="size-3.5" />
-          {t("dialogs.inspector.resetWindow")}
-        </Button>
-      ) : null}
+      {(canReset || canDelete) && (
+        <>
+          <InspectorDivider />
+          <div className="flex flex-wrap gap-2">
+            {canReset && (
+              <Button variant="glassDanger" icon={RotateCcw} onClick={() => setIsResetConfirmOpen(true)}>
+                {t("dialogs.inspector.resetWindow")}
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="glassDanger" icon={Trash2} onClick={() => setIsDeleteConfirmOpen(true)}>
+                {t("dialogs.windowList.deleteWindow")}
+              </Button>
+            )}
+          </div>
+        </>
+      )}
 
       {isResetConfirmOpen && (
         <ConfirmDialog
           title={t("dialogs.inspector.resetWindowTitle")}
-          message={t("dialogs.inspector.resetWindowConfirm", { name: label })}
+          message={t("dialogs.inspector.resetWindowConfirm", { key: label })}
           confirmLabel={t("common.reset")}
           cancelLabel={t("common.cancel")}
           danger
@@ -303,6 +308,20 @@ export function WindowInspector({
           onCancel={() => setIsResetConfirmOpen(false)}
         />
       )}
-    </div>
+      {isDeleteConfirmOpen && (
+        <ConfirmDialog
+          title={t("dialogs.windowList.deleteWindowTitle")}
+          message={t("dialogs.windowList.deleteWindowConfirm", { key: label })}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
+          danger
+          onConfirm={() => {
+            setIsDeleteConfirmOpen(false);
+            onDelete();
+          }}
+          onCancel={() => setIsDeleteConfirmOpen(false)}
+        />
+      )}
+    </>
   );
 }

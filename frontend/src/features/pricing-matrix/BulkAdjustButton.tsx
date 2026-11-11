@@ -156,7 +156,7 @@ export function BulkAdjustButton({
       </Button>
 
       {step === "form" && (
-        <Modal onClose={() => setStep("closed")} size="md" scrollable>
+        <Modal onClose={() => setStep("closed")} size="lg" scrollable>
           <BulkAdjustFormBody
             form={form}
             planGroups={planGroups}

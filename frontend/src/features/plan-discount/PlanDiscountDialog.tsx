@@ -10,7 +10,7 @@ import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { toast } from "@shared/lib/toast";
 import { Badge } from "@shared/ui/Badge";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_PAD_CLASS } from "@shared/ui/classes";
 import { DatePickerField } from "@shared/ui/DatePickerField";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
@@ -77,7 +77,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
       <DialogHeader icon={BadgePercent} title={t("plans.discount.title")} subtitle={plan.name} />
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
+        <div className={`flex flex-col gap-3 ${GLASS_DIALOG_PAD_CLASS}`}>
           <div className={GLASS_DIALOG_CARD_CLASS}>
             <Field label={t("plans.discount.percentLabel")} htmlFor="plan-discount-percent" hint={t("plans.discount.percentHint")}>
               <Input
@@ -100,6 +100,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
                   value={startsOn}
                   onChange={setStartsOn}
                   placeholder={t("plans.discount.startsPlaceholder")}
+                  variant="well"
                 />
               </Field>
               <Field
@@ -112,6 +113,7 @@ function PlanDiscountDialogBody({ plan, onSaved }: Pick<PlanDiscountDialogProps,
                   value={lastDay}
                   onChange={setLastDay}
                   placeholder={t("plans.discount.endsPlaceholder")}
+                  variant="well"
                 />
               </Field>
             </div>

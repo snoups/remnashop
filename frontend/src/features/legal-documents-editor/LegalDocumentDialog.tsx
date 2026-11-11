@@ -24,7 +24,7 @@ import { toast } from "@shared/lib/toast";
 import { useMeasuredHeight } from "@shared/lib/use-measured-height";
 import { Button } from "@shared/ui/Button";
 import { DialogTabs } from "@shared/ui/DialogTabs";
-import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_SCROLL_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Field } from "@shared/ui/glass/Field";
 import { ToggleCapsule } from "@shared/ui/glass/ToggleCapsule";
@@ -130,7 +130,7 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
   return (
     <>
       <DialogHeader icon={KIND_ICONS[document.kind]} title={t(`settings.legal.kinds.${document.kind}`)} />
-      <div className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-4">
+      <div className={`${GLASS_DIALOG_SCROLL_CLASS} p-4`}>
         {/* eases like the other dialogs when the reaccept switch or the channel's own-text row comes and goes */}
         {/* the height animation clips; 4px of room on every side (given back by the negative margin)
             keeps the fields' 2px focus ring inside the clip */}
@@ -233,10 +233,11 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
           {(canSet || canUpdate) && (
             <Button
               variant="glassAccent"
-              disabled={busy || (pending.length === 0 && !visibilityChanged) || pending.some(({ item }) => !isValid(item))}
+              disabled={(pending.length === 0 && !visibilityChanged) || pending.some(({ item }) => !isValid(item))}
+              isLoading={busy}
               onClick={() => void save()}
             >
-              {busy ? t("common.saving") : t("common.save")}
+              {t("common.save")}
             </Button>
           )}
         </div>

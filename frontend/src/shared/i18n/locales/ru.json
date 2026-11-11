@@ -16,7 +16,6 @@
     "cancel": "Отмена",
     "save": "Сохранить",
     "unsavedChanges": "Есть несохранённые изменения",
-    "saving": "Сохранение…",
     "saved": "Сохранено.",
     "delete": "Удалить",
     "reset": "Сбросить",
@@ -3044,10 +3043,10 @@
         "referrals": {
           "main": "Реферальная программа"
         }
-      }
+      },
+      "deleteWindow": "Удалить окно"
     },
     "canvas": {
-      "noBanner": "Нет баннера",
       "noText": "(текст не задан)",
       "emptyButtons": "В этом окне нет кнопок.",
       "newButton": "Новая кнопка",
@@ -3094,9 +3093,6 @@
       "buttonsTotalLimit": "В окне не больше {{max}} кнопок — это лимит Telegram.",
       "textTooLong": "{{length}} из {{max}} символов — Telegram не отправит такой текст.",
       "buttonUrlInvalidGrid": "Исправьте ссылку кнопки перед сохранением.",
-      "emptySelection": "Выберите текст или кнопку на макете, чтобы изменить их.",
-      "tabWindow": "Окно",
-      "tabElement": "Элемент",
       "bannerMode": {
         "none": "Нет",
         "shared": "Общий",
@@ -3118,7 +3114,24 @@
         "symbols": "Знаки",
         "flags": "Флаги"
       },
-      "dirtyTitle": "Несохранённые изменения"
+      "dirtyTitle": "Несохранённые изменения",
+      "disabledNote": "Окно выключено: в боте его не видно.",
+      "unlinkedNote": "Ни одна кнопка не ведёт в это окно — пользователь до него не доберётся.",
+      "bannerHintShared": "Общий баннер один на все окна, файл — для языка «{{locale}}».",
+      "bannerHintOwn": "Баннер только этого окна, файл — для языка «{{locale}}».",
+      "buttonStyles": {
+        "primary": "Акцент",
+        "success": "Зелёная",
+        "danger": "Красная"
+      },
+      "linkTypes": {
+        "navigate": "Окно",
+        "url": "Ссылка",
+        "web_app": "Mini App"
+      },
+      "bannerMissing": "Файла для языка «{{locale}}» нет — бот отправит окно без картинки.",
+      "bannerFallbackShared": "Файла для языка «{{locale}}» нет — бот покажет общий баннер ({{source}}).",
+      "bannerFallbackLocale": "Файла для языка «{{locale}}» нет — бот покажет баннер языка «{{source}}»."
     },
     "toolbar": {
       "export": "Экспортировать",
@@ -3841,25 +3854,23 @@
       "title": "Синхронизация с панелью",
       "inSync": "Данные уже совпадают с панелью",
       "squads": {
-        "title": "Сквадов нет в панели",
-        "hint": "Панель не примет подписку со сквадом, которого у неё нет. Выберите замену или уберите сквад.",
         "drop": "Убрать",
-        "held_one": "В {{formatted}} подписке",
-        "held_few": "В {{formatted}} подписках",
-        "held_many": "В {{formatted}} подписках",
-        "held_other": "В {{formatted}} подписки"
+        "held_one": "{{formatted}} подписка",
+        "held_few": "{{formatted}} подписки",
+        "held_many": "{{formatted}} подписок",
+        "held_other": "{{formatted}} подписки",
+        "replace": "Сквада {{squad}} нет в панели. Выберите, чем заменить:"
       },
       "missing": "В панели нет пользователя для этой подписки. При загрузке из панели подписка будет помечена удалённой, при отправке в панель будет создан новый.",
       "columns": {
-        "field": "Поле",
-        "shop": "Магазин",
-        "panel": "Панель"
+        "shop": "Remnashop",
+        "panel": "Remnawave"
       },
       "fieldNames": {
         "status": "Статус",
         "expire_at": "Истекает",
         "url": "Ссылка",
-        "traffic_limit": "Трафик, ГБ",
+        "traffic_limit": "Трафик",
         "device_limit": "Устройства",
         "traffic_limit_strategy": "Сброс трафика",
         "tag": "Тег",
@@ -3868,6 +3879,13 @@
         "telegram_id": "Telegram ID",
         "email": "Почта"
       },
+      "differs_one": "Подписка в Remnawave отличается от Remnashop в {{count}} поле.",
+      "differs_few": "Подписка в Remnawave отличается от Remnashop в {{count}} полях.",
+      "differs_many": "Подписка в Remnawave отличается от Remnashop в {{count}} полях.",
+      "differs_other": "Подписка в Remnawave отличается от Remnashop в {{count}} полях.",
+      "gb": "{{value}} ГБ",
+      "earlier": "на {{days}} дн. раньше",
+      "later": "на {{days}} дн. позже",
       "pull": "Взять из панели",
       "push": "Отправить в панель",
       "pulled": "Данные взяты из панели.",

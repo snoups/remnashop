@@ -124,7 +124,7 @@ export function FieldHint({ text, content, side = "top", align = "center", error
         <span
           ref={bubbleRef}
           // above everything: Modal (z-50), PortalPopover (z-60), toasts and the debug bar (z-50)
-          className={`${error ? ERROR_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-[100] cursor-text select-text whitespace-pre-line`}
+          className={`${error ? ERROR_HINT_BUBBLE_CLASS : HINT_BUBBLE_CLASS} z-100 cursor-text select-text whitespace-pre-line`}
           // open, it takes the pointer: hovering it keeps it, its text can be selected
           style={{ position: "fixed", ...position, opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
           onPointerEnter={(event) => event.pointerType === "mouse" && show()}

@@ -10,6 +10,7 @@ import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatDateTime } from "@shared/lib/relative-time";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
+import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Pressable } from "@shared/ui/Pressable";
 
 export function LegalAcceptancesCard({ userId }: { userId: number }) {
@@ -20,9 +21,7 @@ export function LegalAcceptancesCard({ userId }: { userId: number }) {
   if (state.kind === "loading" || (state.kind === "ready" && state.data.items.length === 0)) return null;
   return (
     <DialogCard collapsible title={t("users.legalAcceptances.title")} icon={Scale}>
-      {state.kind === "error" && (
-        <p className="px-3 py-2 text-sm text-muted-foreground">{t("common.loadError")}</p>
-      )}
+      {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
       {state.kind === "ready" &&
         state.data.items.map((item) => (
           <AcceptanceRow

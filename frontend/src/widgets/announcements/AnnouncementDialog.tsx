@@ -6,6 +6,7 @@ import type { Announcement } from "@entities/announcements/api";
 import { AnnouncementIcon } from "@entities/announcements/AnnouncementIcon";
 import { formatRelative } from "@shared/lib/relative-time";
 import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_SCROLL_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 
@@ -28,8 +29,8 @@ export function AnnouncementDialog({ announcement, onClose }: AnnouncementDialog
         title={localized(announcement.title, i18n.language)}
       />
 
-      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
-        {text && <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">{text}</p>}
+      <div className={`${GLASS_DIALOG_SCROLL_CLASS} flex flex-col gap-2 p-4`}>
+        {text && <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/80">{text}</p>}
         <p className="text-xs text-muted-foreground">
           {critical && `${t("announcements.critical")} · `}
           {formatRelative(announcement.notify_at, i18n.language)}
@@ -37,7 +38,7 @@ export function AnnouncementDialog({ announcement, onClose }: AnnouncementDialog
       </div>
 
       {url && (
-        <div className="flex shrink-0 justify-end border-t border-white/[0.08] p-4">
+        <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 justify-end`}>
           <Button variant="glassAccent" onClick={() => window.open(url, "_blank", "noopener,noreferrer")}>
             {localized(announcement.url_label, i18n.language) || t("announcements.openLink")}
             <ExternalLink className="size-4" />

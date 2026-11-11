@@ -10,7 +10,7 @@ import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
 import { ChoiceChip } from "@shared/ui/ChoiceChip";
-import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
@@ -98,7 +98,7 @@ function RecapBody() {
     <>
       <DialogHeader icon={Sparkles} title={t("recap.title")} />
       {/* plates in the body: 12px in, 12px corners nested in the dialog's 24px */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]">
+      <div className={GLASS_DIALOG_BODY_CLASS}>
         {state.kind === "loading" && <Spinner size="card" />}
         {state.kind === "error" && <ErrorState text={t("common.loadError")} />}
         {state.kind === "ready" && (

@@ -18,6 +18,7 @@ export function SegmentedPills<T extends string | number>({
   stretch = false,
   compact = false,
   panel = false,
+  disabled = false,
 }: {
   value: T;
   onChange: (value: T) => void;
@@ -28,6 +29,7 @@ export function SegmentedPills<T extends string | number>({
   compact?: boolean;
   /** the glass TabBar's 48px glass-panel capsule, 36px options: beside it in a page's floating bar */
   panel?: boolean;
+  disabled?: boolean;
 }) {
   const pillId = useId();
 
@@ -42,8 +44,9 @@ export function SegmentedPills<T extends string | number>({
         <motion.button
           key={option.value}
           type="button"
+          disabled={disabled}
           onClick={() => onChange(option.value)}
-          className={`group relative isolate whitespace-nowrap rounded-full ${stretch ? "flex-1" : "shrink-0"}`}
+          className={`group relative isolate whitespace-nowrap rounded-full disabled:cursor-not-allowed disabled:opacity-50 ${stretch ? "flex-1" : "shrink-0"}`}
         >
           {/* only the pill scales, so the label stays crisp */}
           {value === option.value ? (

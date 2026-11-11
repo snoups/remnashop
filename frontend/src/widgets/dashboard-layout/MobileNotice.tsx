@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { readStorage, writeStorage } from "@shared/lib/safe-storage";
 import { Button } from "@shared/ui/Button";
+import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
 import { useModalClose } from "@shared/ui/modal-hooks";
@@ -45,7 +46,7 @@ function MobileNoticeBody() {
     <>
       <DialogHeader icon={Monitor} title={t("mobileNotice.title")} closable={false} />
       <p className="p-4 text-sm leading-relaxed text-foreground/80">{t("mobileNotice.description")}</p>
-      <div className="border-t border-white/[0.08] p-4">
+      <div className={GLASS_DIALOG_FOOTER_CLASS}>
         <Button variant="glassAccent" className="w-full" onClick={close}>
           {t("mobileNotice.continueButton")}
         </Button>

@@ -74,8 +74,12 @@ export const PAGE_SCROLL_UNDER_BAR_CLASS = `${PAGE_SCROLL_BASE_CLASS} mt-1 pt-2 
 /** Scroller of a page without a bar (data-under-header): the header's 20px padding moves in here. */
 export const PAGE_SCROLL_CLASS = `${PAGE_SCROLL_BASE_CLASS} md:pt-5 md:scroll-pt-5`;
 
-/** A glass dialog's scrolling body: 12px in, for cards with 12px corners. */
-export const GLASS_DIALOG_BODY_CLASS = "scroll-fade-y min-h-0 flex-1 overflow-y-auto p-3 [--dialog-pad:0.75rem]";
+/** A glass dialog's body that holds cards or plates: 12px in, for their 12px corners. */
+export const GLASS_DIALOG_PAD_CLASS = "p-3 [--dialog-pad:0.75rem]";
+/** A glass dialog's scroller; padding is the caller's (p-4 for plain text). */
+export const GLASS_DIALOG_SCROLL_CLASS = "scroll-fade-y min-h-0 flex-1 overflow-y-auto";
+/** A glass dialog's scrolling body of cards. */
+export const GLASS_DIALOG_BODY_CLASS = `${GLASS_DIALOG_SCROLL_CLASS} ${GLASS_DIALOG_PAD_CLASS}`;
 /** A glass dialog's footer, 16px in; alignment and shrink-0 are the caller's. */
 export const GLASS_DIALOG_FOOTER_CLASS = "flex gap-2 border-t border-white/[0.08] p-4";
 

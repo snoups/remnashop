@@ -157,7 +157,7 @@ export function BroadcastsPage() {
             onChange={setSearchInput}
           />
         </div>
-        <div className="w-56 min-w-0">
+        <div className="min-w-40 flex-1 md:w-56 md:min-w-0 md:flex-none">
           <SelectDropdown
             id="broadcasts-status"
             value={filterKey}

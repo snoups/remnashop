@@ -11,7 +11,7 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { Button } from "@shared/ui/Button";
-import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_PAD_CLASS } from "@shared/ui/classes";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { Modal } from "@shared/ui/Modal";
@@ -79,7 +79,7 @@ function GrantSubscriptionBody({ plans, userId, onGranted }: Omit<GrantSubscript
     <>
       <DialogHeader icon={Captions} title={t("subscriptions.grant.title")} />
       <form onSubmit={(event) => void handleSubmit(event)} className="flex min-h-0 flex-1 flex-col">
-        <div className="p-3 [--dialog-pad:0.75rem]">
+        <div className={GLASS_DIALOG_PAD_CLASS}>
           {/* the custom-days field comes and goes */}
           <AnimatedHeight>
             <div className={GLASS_DIALOG_CARD_CLASS}>

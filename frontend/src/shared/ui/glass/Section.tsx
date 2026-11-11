@@ -30,12 +30,13 @@ export function Section({ id, icon, title, description, aside, footer, flush = f
     <section id={id} className={`glass-panel flex flex-col rounded-3xl ${flush ? "overflow-hidden" : "p-4"} ${className}`}>
       <header className={`flex flex-wrap items-center gap-3 ${flush ? "px-4 pt-4" : ""}`}>
         <IconCircle icon={icon} header />
-        <div className="min-w-0 flex-1">
+        {/* basis: actions too wide to leave the text 144px wrap under it */}
+        <div className="min-w-0 flex-1 basis-36">
           <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight text-foreground">{title}</h2>
           {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
         </div>
         {/* shrink-0: a w-full control (PillTabs) would otherwise share the line with the title */}
-        {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
+        {aside && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{aside}</div>}
       </header>
       <div className={`mt-4 border-t border-white/[0.08] ${flush ? "" : "-mx-4"}`} />
       {stretched ? (

@@ -11,6 +11,7 @@ import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
 import {
   GLASS_DIALOG_CARD_CLASS,
   GLASS_DIALOG_CLASS,
+  GLASS_DIALOG_PAD_CLASS,
   GLASS_LINK_BUTTON_CLASS,
   GLASS_SOLID_LINK_BUTTON_CLASS,
 } from "@shared/ui/classes";
@@ -40,7 +41,7 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`fixed inset-0 ${mobile ? "z-[60]" : "z-40"} flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4`}
+            className={`fixed inset-0 ${mobile ? "z-60" : "z-40"} flex items-center justify-center bg-black/55 backdrop-blur-3xl p-4`}
           >
             <button
               type="button"
@@ -52,7 +53,7 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
             <DonatePanel onEscape={() => setIsOpen(false)}>
               <DialogHeader icon={Crown} title={t("donate.title")} />
 
-              <div className="flex flex-col gap-3 p-3 [--dialog-pad:0.75rem]">
+              <div className={`flex flex-col gap-3 ${GLASS_DIALOG_PAD_CLASS}`}>
                 <div className={GLASS_DIALOG_CARD_CLASS}>
                   <p className="text-sm text-foreground">{t("donate.description")}</p>
                   <div className="flex gap-2">

@@ -37,7 +37,7 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
     <>
       <DialogHeader icon={Undo2} danger title={t("transactions.refund.title")} />
 
-      <div className="flex flex-col gap-3 p-4 text-sm text-foreground/80">
+      <div className="flex flex-col gap-3 p-4 text-sm leading-relaxed text-foreground/80">
         {!preview.refundable ? (
           <p>{t(`transactions.refund.notRefundable.${preview.reason}` as ParseKeys)}</p>
         ) : (

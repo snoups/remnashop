@@ -1,4 +1,4 @@
-import { GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_PAD_CLASS } from "@shared/ui/classes";
 import { startRegistration } from "@simplewebauthn/browser";
 import { Fingerprint, KeyRound, Link2, Pencil, Trash2 } from "lucide-react";
 import { useState, type ComponentType, type FormEvent } from "react";
@@ -279,7 +279,7 @@ function PasskeyAddDialogBody({ onAdded }: { onAdded: () => void }) {
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="glassAccent" type="submit" disabled={isAdding}>
+          <Button variant="glassAccent" type="submit" isLoading={isAdding}>
             {isAdding ? t("profile.passkeys.adding") : t("common.add")}
           </Button>
         </div>
@@ -329,7 +329,7 @@ function PasskeysManageDialogBody({ passkeys, onChange }: PasskeysManageDialogBo
     <>
       <DialogHeader icon={Fingerprint} title={t("profile.passkeys.title")} />
 
-      <div className="p-3">
+      <div className={GLASS_DIALOG_PAD_CLASS}>
         <DialogCard>
           {passkeys.length === 0 && <EmptyState text={t("profile.passkeys.empty")} />}
           <SectionRows flush>

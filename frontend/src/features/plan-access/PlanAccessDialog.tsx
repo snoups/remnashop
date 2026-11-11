@@ -74,7 +74,7 @@ function PlanAccessDialogBody({ plan, onSaved }: Pick<PlanAccessDialogProps, "pl
         <div className={`${GLASS_DIALOG_FOOTER_CLASS} shrink-0 items-center`}>
           <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {availability === "ALLOWED" ? (
-              <span className="font-semibold text-violet-300">
+              <span className="font-semibold text-primary">
                 {t("plans.access.recipients", { count: value.telegramIds.length + value.emails.length })}
               </span>
             ) : (

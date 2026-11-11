@@ -3,10 +3,11 @@ from pathlib import Path
 import pytest
 
 from app.core.config import AppConfig
+from app.core.constants import DEFAULT_BANNER_NAME
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Locale, Role
 from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
-from app.modules.banners.dto import BannerKeyDto, UploadBannerFileDto
+from app.modules.banners.dto import BannerImageQueryDto, BannerKeyDto, UploadBannerFileDto
 from app.modules.banners.repository import BannerRepository
 from app.modules.banners.usecases import (
     DeleteBannerUseCase,
@@ -214,7 +215,7 @@ async def test_get_banner_image_returns_bytes_and_content_type(
     upload_use_case = UploadBannerUseCase(
         banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
     )
-    get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
+    get_use_case = GetBannerImageUseCase(banner_repository, translation_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
@@ -223,7 +224,7 @@ async def test_get_banner_image_returns_bytes_and_content_type(
         ),
     )
 
-    result = await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
+    result = await get_use_case(OWNER, BannerImageQueryDto(name="menu", locale=Locale.RU))
     data, content_type = result.data, result.content_type
     assert data == FAKE_JPEG
     assert content_type == "image/jpeg"
@@ -231,14 +232,48 @@ async def test_get_banner_image_returns_bytes_and_content_type(
 
 async def test_get_banner_image_missing_raises_not_found(
     banner_repository: BannerRepository,
+    translation_repository: TranslationRepository,
     config: AppConfig,
     tmp_path: Path,
     uow: UnitOfWork,
 ) -> None:
-    use_case = GetBannerImageUseCase(banner_repository, _config(config, tmp_path), uow)
+    use_case = GetBannerImageUseCase(
+        banner_repository, translation_repository, _config(config, tmp_path), uow
+    )
 
     with pytest.raises(NotFoundError):
-        await use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
+        await use_case(OWNER, BannerImageQueryDto(name="menu", locale=Locale.RU))
+
+
+async def test_get_banner_image_fallback_serves_what_the_bot_sends(
+    banner_repository: BannerRepository,
+    translation_repository: TranslationRepository,
+    config: AppConfig,
+    uow: UnitOfWork,
+    tmp_path: Path,
+) -> None:
+    await _seed_locales(translation_repository)
+    await translation_repository.set_default_locale(Locale.EN)
+    cfg = _config(config, tmp_path)
+    upload_use_case = UploadBannerUseCase(
+        banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
+    )
+    get_use_case = GetBannerImageUseCase(banner_repository, translation_repository, cfg, uow)
+    await upload_use_case(
+        OWNER,
+        UploadBannerFileDto(
+            name=DEFAULT_BANNER_NAME, locale=Locale.EN, content_type="image/png", data=FAKE_PNG
+        ),
+    )
+
+    # a window's own banner with no file in any language: the shared one of the default language
+    image = await get_use_case(
+        OWNER, BannerImageQueryDto(name="menu", locale=Locale.RU, fallback=True)
+    )
+    assert (image.name, image.locale, image.data) == (DEFAULT_BANNER_NAME, Locale.EN, FAKE_PNG)
+
+    with pytest.raises(NotFoundError):
+        await get_use_case(OWNER, BannerImageQueryDto(name="menu", locale=Locale.RU))
 
 
 async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
@@ -253,7 +288,7 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
     upload_use_case = UploadBannerUseCase(
         banner_repository, translation_repository, cfg, uow, RecordingEventPublisher()
     )
-    get_use_case = GetBannerImageUseCase(banner_repository, cfg, uow)
+    get_use_case = GetBannerImageUseCase(banner_repository, translation_repository, cfg, uow)
 
     await upload_use_case(
         OWNER,
@@ -264,7 +299,7 @@ async def test_get_banner_image_raises_not_found_when_file_missing_on_disk(
     (tmp_path / "banners" / "menu_ru.jpg").unlink()
 
     with pytest.raises(NotFoundError):
-        await get_use_case(OWNER, BannerKeyDto(name="menu", locale=Locale.RU))
+        await get_use_case(OWNER, BannerImageQueryDto(name="menu", locale=Locale.RU))
 
 
 async def test_upload_rejects_content_not_matching_declared_type(

@@ -38,7 +38,7 @@ export function FullScreenMessage({ icon: Icon, tone, code, title, description, 
           <Icon className="size-8" />
         </span>
         <div className="flex flex-col gap-2">
-          {code && <span className="font-mono text-[28px] font-bold tracking-tight text-foreground">{code}</span>}
+          {code && <span className="font-mono text-2xl font-bold tracking-tight text-foreground">{code}</span>}
           <h1 className={SCREEN_TITLE_CLASS}>{title}</h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>

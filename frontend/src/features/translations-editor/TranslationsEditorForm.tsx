@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
-import { GLASS_INNER_CARD_CLASS, TAB_HOVER_CLASS } from "@shared/ui/classes";
+import { EYEBROW_CLASS, GLASS_INNER_CARD_CLASS, TAB_HOVER_CLASS } from "@shared/ui/classes";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
@@ -249,7 +249,7 @@ export function TranslationsEditorForm() {
                   <Pressable
                     type="button"
                     onClick={() => toggleGroup(group)}
-                    className="group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left text-xs uppercase leading-5 tracking-wide text-muted-foreground"
+                    className={`group relative isolate flex h-[30px] w-full cursor-pointer items-center gap-1 rounded-full px-1.5 text-left leading-5 ${EYEBROW_CLASS}`}
                   >
                     <span className={TAB_HOVER_CLASS} />
                     <ChevronRight
@@ -330,7 +330,6 @@ export function TranslationsEditorForm() {
                 activeLocale={activeLocale}
                 variables={[]}
                 multiline
-                blurred={false}
                 emojiInsert
                 canUpdate={permissions.includes("TRANSLATIONS_UPDATE")}
                 canReset={permissions.includes("TRANSLATIONS_RESET")}

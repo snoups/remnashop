@@ -38,8 +38,8 @@ export function GuideDialog({
         <span className="contents" onClick={(event) => event.stopPropagation()}>
           <Modal onClose={() => setIsOpen(false)} size="lg" scrollable>
             <DialogHeader icon={CircleHelp} title={title} />
-            {/* each step group under a line, 20px apart; body 14px at 1.6 so long instructions don't run together */}
-            <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm leading-[1.6] text-foreground/85 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
+            {/* each step group under a line, 20px apart; body 14px, relaxed leading so long instructions don't run together */}
+            <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm leading-relaxed text-foreground/80 [&>*+*]:border-t [&>*+*]:border-white/[0.08] [&>*+*]:pt-5">
               {children}
             </div>
           </Modal>

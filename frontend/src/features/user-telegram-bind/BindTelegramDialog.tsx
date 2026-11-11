@@ -104,7 +104,7 @@ function BindTelegramForm({ user, onBound, onMergeWith }: Omit<BindTelegramDialo
           <Button variant="glass" type="button" onClick={close}>
             {t("common.cancel")}
           </Button>
-          <Button variant="glassAccent" type="submit" disabled={isSubmitting || telegramId === null || error !== null}>
+          <Button variant="glassAccent" type="submit" disabled={telegramId === null || error !== null} isLoading={isSubmitting}>
             {t("common.save")}
           </Button>
         </div>

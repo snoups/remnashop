@@ -142,7 +142,7 @@ function ImageSlot({ target, kind, hasImage, label, hint, canUpload, canDelete, 
         ) : (
           <>
             <BrandLogo className="size-1/2 text-primary" />
-            <span className="absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-2 py-0.5 text-xs text-muted-foreground">
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/40 px-2 py-0.5 text-xs text-muted-foreground">
               {t("settings.appearance.defaultImage")}
             </span>
           </>

@@ -49,7 +49,7 @@ function TimelineItem({
   detail?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className="flex min-w-0 flex-1 basis-44 items-center gap-2.5">
       <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${tone}`}>
         <Icon className="size-4" />
       </div>

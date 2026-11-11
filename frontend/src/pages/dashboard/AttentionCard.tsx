@@ -342,7 +342,7 @@ const KIND_KEY: Record<AttentionKind, string> = {
 function ExplainBlock({ icon, title, text }: { icon: ComponentType<{ className?: string }>; title: string; text: string }) {
   return (
     <DialogCard variant="form" title={title} icon={icon}>
-      <p className="text-sm leading-[1.6] text-foreground/85">{text}</p>
+      <p className="text-sm leading-relaxed text-foreground/80">{text}</p>
     </DialogCard>
   );
 }

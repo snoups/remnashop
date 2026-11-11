@@ -77,7 +77,7 @@ function Overview({ data, isAll }: { data: Analytics; isAll: boolean }) {
         {!isAll &&
           ` · ${t("analytics.metrics.comparedWith", { range: rangeLabel(data.period.previous_start, data.period.previous_end, language) })}`}
       </p>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-5 xl:grid-cols-4">
         <KpiTile
           panel
           icon={CreditCard}
@@ -136,7 +136,7 @@ function Overview({ data, isAll }: { data: Analytics; isAll: boolean }) {
       </div>
 
       <p className={EYEBROW_CLASS}>{t("analytics.metrics.nowSection")}</p>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-5 xl:grid-cols-4">
         <KpiTile
           panel
           icon={TrendingUp}

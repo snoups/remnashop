@@ -1,10 +1,10 @@
+import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { DialogButtonItem, DialogWindow } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 import { ButtonGrid } from "@features/dialog-canvas-editor/ButtonGrid";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
-import { EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { Pressable } from "@shared/ui/Pressable";
 
 interface DialogCanvasProps {
@@ -16,8 +16,8 @@ interface DialogCanvasProps {
   onSelect: (selection: Selection) => void;
   canEditButtons: boolean;
   onReorderButtons: (next: DialogButtonItem[]) => void;
-  /** 448px instead of 384px: the window list is folded away and the preview takes its room */
-  wide?: boolean;
+  /** set: a dashed "add a button" under the keyboard */
+  onAddButton?: () => void;
 }
 
 export function DialogCanvas({
@@ -29,47 +29,55 @@ export function DialogCanvas({
   onSelect,
   canEditButtons,
   onReorderButtons,
-  wide = false,
+  onAddButton,
 }: DialogCanvasProps) {
   const { t } = useTranslation();
 
   return (
-    <div className={`w-full ${wide ? "max-w-md" : "max-w-sm"} ${EDITOR_PANEL_CLASSNAME} p-2.5`}>
-      <div className="flex flex-col gap-1.5">
-        {/* Preview only; the banner is picked on the inspector's window tab.
-            No fixed height and no object-cover: whatever was uploaded shows
-            whole, in its own ratio, the way Telegram sends it. */}
-        {bannerUrl ? (
-          <img src={bannerUrl} alt="" className="block w-full rounded-xl" />
-        ) : (
-          <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-white/[0.12] bg-white/[0.02]">
-            <span className="text-sm text-muted-foreground">{t("dialogs.canvas.noBanner")}</span>
-          </div>
-        )}
-        <Pressable
-          type="button"
-          onClick={() => onSelect({ kind: "text" })}
-          className={`block w-full cursor-pointer whitespace-pre-line rounded-lg px-2.5 py-2 text-left text-sm leading-relaxed text-foreground transition-colors ${
-            selection?.kind === "text" ? "ring-2 ring-inset ring-primary" : "hover:bg-white/[0.06]"
+    // a chat backdrop under the message, the way the bot shows it
+    <div className="glass-well flex w-full flex-col items-center rounded-2xl bg-[radial-gradient(circle_at_30%_20%,rgb(96_165_250/0.10),transparent_60%)] px-4 py-6">
+      <div className="flex w-full max-w-sm flex-col gap-1.5">
+        <div
+          className={`overflow-hidden rounded-2xl rounded-bl-md border border-white/[0.08] bg-white/[0.06] shadow-lg ${
+            window.is_enabled ? "" : "opacity-60"
           }`}
         >
-          {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
-            <TelegramHtml value={textByKey[window.text_keys[0]]} />
-          ) : (
-            <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
-          )}
-        </Pressable>
+          {/* whatever was uploaded shows whole, in its own ratio, the way Telegram sends it */}
+          {bannerUrl && <img src={bannerUrl} alt="" className="block w-full" />}
+          <Pressable
+            as="div"
+            onClick={() => onSelect({ kind: "text" })}
+            className={`m-1 cursor-pointer whitespace-pre-line rounded-xl px-2.5 py-2 text-sm leading-relaxed text-foreground transition-colors ${
+              selection?.kind === "text" ? "bg-primary/10 ring-1 ring-inset ring-primary" : "hover:bg-white/[0.05]"
+            }`}
+          >
+            {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
+              <TelegramHtml value={textByKey[window.text_keys[0]]} />
+            ) : (
+              <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
+            )}
+          </Pressable>
+        </div>
+        <ButtonGrid
+          buttons={buttons}
+          textByKey={textByKey}
+          selection={selection}
+          onSelect={onSelect}
+          emptyLabel={t("dialogs.canvas.emptyButtons")}
+          canEdit={canEditButtons}
+          onReorder={onReorderButtons}
+        />
+        {onAddButton && (
+          <Pressable
+            type="button"
+            onClick={onAddButton}
+            className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.14] text-sm text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+          >
+            <Plus className="size-3.5" />
+            {t("dialogs.inspector.buttonAdd")}
+          </Pressable>
+        )}
       </div>
-      <div className="my-2.5 h-px bg-white/[0.08]" />
-      <ButtonGrid
-        buttons={buttons}
-        textByKey={textByKey}
-        selection={selection}
-        onSelect={onSelect}
-        emptyLabel={t("dialogs.canvas.emptyButtons")}
-        canEdit={canEditButtons}
-        onReorder={onReorderButtons}
-      />
     </div>
   );
 }

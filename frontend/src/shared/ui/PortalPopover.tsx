@@ -79,7 +79,7 @@ export function PortalPopover({
   return createPortal(
     <>
       {/* a click outside only closes the popover, nothing behind it reacts; same z, earlier in the DOM: under it */}
-      {modal && open && <div className="fixed inset-0 z-[60]" />}
+      {modal && open && <div className="fixed inset-0 z-60" />}
       <AnimatePresence>
         {open && anchor && (
           <motion.div
@@ -91,7 +91,7 @@ export function PortalPopover({
               ...style,
             }}
             // above Modal's z-50, so a popover opened inside a dialog draws over it
-            className={`${solid ? (glass ? SOLID_GLASS_POPOVER_CLASS : SOLID_POPOVER_CLASS) : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-[60] ${className}`}
+            className={`${solid ? (glass ? SOLID_GLASS_POPOVER_CLASS : SOLID_POPOVER_CLASS) : glass ? GLASS_POPOVER_CLASS : POPOVER_CLASS} fixed z-60 ${className}`}
           >
             {/* a popover opened from a required Field has fields of its own */}
             <FieldRequiredContext.Provider value={false}>{children}</FieldRequiredContext.Provider>

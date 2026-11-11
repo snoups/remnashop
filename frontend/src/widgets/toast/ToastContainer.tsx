@@ -25,7 +25,7 @@ export function ToastContainer() {
 
   return (
     // above dialogs (z-50), below FieldHint (z-100)
-    <div className="pointer-events-none fixed right-4 top-3 z-[90] flex w-80 flex-col gap-2 min-[1792px]:w-[min(20rem,50vw_-_41rem)]">
+    <div className="pointer-events-none fixed right-4 top-3 z-90 flex w-80 flex-col gap-2 min-[1792px]:w-[min(20rem,50vw_-_41rem)]">
       <AnimatePresence>
         {toasts.map((item) => {
           const Icon = VARIANT_ICON[item.variant];

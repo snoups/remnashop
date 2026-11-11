@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, Link2, Palette } from "lucide-react";
+import { ArrowRight, Eye, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -20,8 +20,10 @@ import { getErrorMessage } from "@shared/api/http";
 import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
-import { Switch } from "@shared/ui/glass/Switch";
-import { EDITOR_FIELD_CLASSNAME, EDITOR_PANEL_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
+import { InspectorDivider, InspectorHeader, SwitchRow } from "@features/dialog-canvas-editor/InspectorParts";
+import { Field } from "@shared/ui/glass/Field";
+import { Input } from "@shared/ui/glass/Input";
+import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 import { Button } from "@shared/ui/Button";
@@ -43,9 +45,12 @@ function describeUrlError(
   return t("dialogs.inspector.buttonUrlVariable", { name: problem.name });
 }
 
+const STYLES = ["none", "primary", "success", "danger"] as const;
+// an action is bound by the catalog, never picked here: an action button only changes style, place and visibility
+const LINK_TYPES = ["navigate", "url", "web_app"] as const;
+
 interface ButtonInspectorProps {
   button: DialogButtonItem;
-  windowKind: "seed" | "custom";
   catalog: DialogCatalog;
   entries: TranslationEntry[];
   activeLocale: string;
@@ -53,13 +58,16 @@ interface ButtonInspectorProps {
   canResetText: boolean;
   canEditButtons: boolean;
   onEntrySaved: (entry: TranslationEntry) => void;
+  /** the window the button sits in, for the header */
+  windowLabel: string;
+  windowLabelOf: (key: string) => string;
   onChange: (updated: DialogButtonItem) => void;
   onDelete: () => void;
+  onBack: () => void;
 }
 
 export function ButtonInspector({
   button,
-  windowKind,
   catalog,
   entries,
   activeLocale,
@@ -67,14 +75,13 @@ export function ButtonInspector({
   canResetText,
   canEditButtons,
   onEntrySaved,
+  windowLabel,
+  windowLabelOf,
   onChange,
   onDelete,
+  onBack,
 }: ButtonInspectorProps) {
   const { t } = useTranslation();
-  const linkTypeOptions: DialogButtonItem["link_type"][] =
-    windowKind === "custom"
-      ? ["navigate", "url", "web_app"]
-      : ["action", "navigate", "url", "web_app"];
   const { messageId } = splitTextKey(button.text_key);
   const isTextSeeded = entries.some((e) => e.message_id === messageId);
   const urlError = describeUrlError(button, catalog.variable_keys, t);
@@ -125,168 +132,132 @@ export function ButtonInspector({
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className={`${EDITOR_PANEL_CLASSNAME} p-4`}>
-        <div className="mb-4 min-w-0">
-          <span className="block truncate text-sm font-semibold text-foreground">
-            {t("dialogs.inspector.buttonTitle")}
-          </span>
-          <span className="block truncate font-mono text-xs text-muted-foreground">
-            {button.text_key}
-          </span>
-        </div>
+    <>
+      <InspectorHeader title={t("dialogs.inspector.buttonTitle")} subtitle={windowLabel} onBack={onBack} />
+      <InspectorDivider />
 
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-sm font-medium text-foreground/80">
-            {t("dialogs.inspector.enabledLabel")}
-          </span>
-          <Switch
-            checked={!button.is_hidden}
-            onChange={(value) => onChange({ ...button, is_hidden: !value })}
-            disabled={!canEditButtons || button.is_system}
-          />
-        </div>
+      <SwitchRow
+        label={t("dialogs.inspector.enabledLabel")}
+        checked={!button.is_hidden}
+        onChange={(value) => onChange({ ...button, is_hidden: !value })}
+        disabled={!canEditButtons || button.is_system}
+      />
 
-        <div className="mb-3">
-          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonLabel")}</span>
-          <TextEditorPanel
-            textKey={button.text_key}
-            entries={entries}
-            activeLocale={activeLocale}
-            variables={variableOptions(catalog, catalog.text_variable_keys)}
-            canUpdate={isTextSeeded && canEditText}
-            canReset={canResetText}
-            onSaved={onEntrySaved}
-            required
-            fieldAction={
-              <EmojiPicker
-                current={
-                  iconId ? (
-                    <EmojiThumbnail glyph={iconGlyph} customEmojiId={iconId} />
-                  ) : (
-                    iconGlyph || null
-                  )
-                }
-                disabled={!canEditText}
-                onPick={(picked) => void handleIconPick(picked)}
-                onClear={() => void handleIconPick({ glyph: "" })}
-              />
-            }
-          />
-          {!isTextSeeded && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("dialogs.inspector.buttonLabelPending")}
-            </p>
-          )}
-        </div>
-
-        <div className="mb-3">
-          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonStyle")}</span>
-          <SelectDropdown
-            size="compact"
-            icon={Palette}
-            value={button.style ?? ""}
-            disabled={!canEditButtons}
-            placeholder={t("dialogs.inspector.buttonStyleNone")}
-            options={[
-              { value: "", label: t("dialogs.inspector.buttonStyleNone") },
-              { value: "primary", label: "primary" },
-              { value: "success", label: "success" },
-              { value: "danger", label: "danger" },
-            ]}
-            onChange={(value) =>
-              onChange({ ...button, style: value === "" ? null : (value as DialogButtonItem["style"]) })
-            }
-          />
-        </div>
-
-        <div className="mb-3">
-          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonCondition")}</span>
-          <SelectDropdown
-            size="compact"
-            icon={Eye}
-            value={button.visibility_condition ?? ""}
-            disabled={!canEditButtons}
-            placeholder={t("dialogs.inspector.buttonConditionNone")}
-            options={[
-              { value: "", label: t("dialogs.inspector.buttonConditionNone") },
-              ...catalog.condition_keys.map((key) => ({ value: key, label: key })),
-            ]}
-            onChange={(value) => onChange({ ...button, visibility_condition: value || null })}
-          />
-        </div>
-
-        <div className="mb-3">
-          <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonLinkType")}</span>
-          <SelectDropdown
-            size="compact"
-            icon={Link2}
-            value={button.link_type}
-            disabled={!canEditButtons || button.link_type === "action"}
-            placeholder={button.link_type}
-            options={linkTypeOptions.map((type) => ({ value: type, label: type }))}
-            onChange={(value) => onChange({ ...button, link_type: value as DialogButtonItem["link_type"] })}
-          />
-        </div>
-
-        {button.link_type === "action" && (
-          <p className="mb-3 text-xs text-muted-foreground">
-            {t("dialogs.inspector.buttonActionHint", { key: button.action_key ?? "" })}
-          </p>
-        )}
-
-        {button.link_type === "navigate" && (
-          <div className="mb-3">
-            <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonTarget")}</span>
-            <SelectDropdown
-              size="compact"
-              icon={ArrowRight}
-              value={button.target_window_key ?? ""}
-              disabled={!canEditButtons}
-              placeholder={t("dialogs.inspector.buttonTargetNone")}
-              options={catalog.navigable_window_keys.map((key) => ({ value: key, label: key }))}
-              onChange={(value) => onChange({ ...button, target_window_key: value || null })}
+      <Field label={t("dialogs.inspector.buttonLabel")} required hint={isTextSeeded ? undefined : t("dialogs.inspector.buttonLabelPending")}>
+        <TextEditorPanel
+          textKey={button.text_key}
+          entries={entries}
+          activeLocale={activeLocale}
+          variables={variableOptions(catalog, catalog.text_variable_keys)}
+          canUpdate={isTextSeeded && canEditText}
+          canReset={canResetText}
+          onSaved={onEntrySaved}
+          required
+          fieldAction={
+            <EmojiPicker
+              current={iconId ? <EmojiThumbnail glyph={iconGlyph} customEmojiId={iconId} /> : iconGlyph || null}
+              disabled={!canEditText}
+              onPick={(picked) => void handleIconPick(picked)}
+              onClear={() => void handleIconPick({ glyph: "" })}
             />
-          </div>
-        )}
+          }
+        />
+      </Field>
 
-        {isLinkButton(button.link_type) && (
-          <div className="mb-3">
-            <span className="mb-1 block text-sm font-medium text-foreground/80">{t("dialogs.inspector.buttonUrl")}</span>
-            <div className="relative mb-1.5">
-              <input
-                ref={urlFieldRef}
-                type="text"
-                value={button.url_value ?? ""}
-                disabled={!canEditButtons}
-                onChange={(event) => onChange({ ...button, url_value: event.target.value })}
-                className={`${EDITOR_FIELD_CLASSNAME} pr-10 ${
-                  urlError === null ? "border-glass-border" : "border-error/60"
-                }`}
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+      <Field label={t("dialogs.inspector.buttonStyle")}>
+        <SegmentedPills
+          stretch
+          compact
+          disabled={!canEditButtons}
+          value={button.style ?? "none"}
+          onChange={(style) => onChange({ ...button, style: style === "none" ? null : style })}
+          options={STYLES.map((style) => ({
+            value: style,
+            label: style === "none" ? t("dialogs.inspector.buttonStyleNone") : t(`dialogs.inspector.buttonStyles.${style}`),
+          }))}
+        />
+      </Field>
+      <InspectorDivider />
+
+      <Field label={t("dialogs.inspector.buttonLinkType")}>
+        {button.link_type === "action" ? (
+          <span className="text-xs text-muted-foreground">
+            {t("dialogs.inspector.buttonActionHint", { key: button.action_key ?? "" })}
+          </span>
+        ) : (
+          <SegmentedPills
+            stretch
+            compact
+            disabled={!canEditButtons}
+            value={button.link_type}
+            onChange={(link_type) => onChange({ ...button, link_type })}
+            options={LINK_TYPES.map((type) => ({ value: type, label: t(`dialogs.inspector.linkTypes.${type}`) }))}
+          />
+        )}
+      </Field>
+
+      {button.link_type === "navigate" && (
+        <Field label={t("dialogs.inspector.buttonTarget")}>
+          <SelectDropdown
+            variant="well"
+            size="compact"
+            icon={ArrowRight}
+            value={button.target_window_key ?? ""}
+            disabled={!canEditButtons}
+            placeholder={t("dialogs.inspector.buttonTargetNone")}
+            options={catalog.navigable_window_keys.map((key) => ({ value: key, label: windowLabelOf(key) }))}
+            onChange={(value) => onChange({ ...button, target_window_key: value || null })}
+          />
+        </Field>
+      )}
+
+      {isLinkButton(button.link_type) && (
+        <Field label={t("dialogs.inspector.buttonUrl")} required error={urlError}>
+          <Input
+            ref={urlFieldRef}
+            mono
+            value={button.url_value ?? ""}
+            disabled={!canEditButtons}
+            aria-invalid={urlError !== null || undefined}
+            onChange={(event) => onChange({ ...button, url_value: event.target.value })}
+            end={
+              <span className="pr-0.5">
                 <VariablePicker
                   variables={variableOptions(catalog, catalog.variable_keys)}
                   format={(name) => `\${${name}}`}
                   onPick={insertIntoUrl}
                   disabled={!canEditButtons}
                 />
-              </div>
-            </div>
-            {urlError !== null && <p className="mb-1.5 text-xs text-error">{urlError}</p>}
-          </div>
-        )}
-
-      </div>
-      {canEditButtons && (
-        <Button
-          variant="danger"
-          type="button"
-          onClick={onDelete}
-        >
-          {t("dialogs.inspector.buttonDelete")}
-        </Button>
+              </span>
+            }
+          />
+        </Field>
       )}
-    </div>
+
+      <Field label={t("dialogs.inspector.buttonCondition")}>
+        <SelectDropdown
+          variant="well"
+          size="compact"
+          icon={Eye}
+          value={button.visibility_condition ?? ""}
+          disabled={!canEditButtons}
+          placeholder={t("dialogs.inspector.buttonConditionNone")}
+          options={[
+            { value: "", label: t("dialogs.inspector.buttonConditionNone") },
+            ...catalog.condition_keys.map((key) => ({ value: key, label: key })),
+          ]}
+          onChange={(value) => onChange({ ...button, visibility_condition: value || null })}
+        />
+      </Field>
+
+      {canEditButtons && (
+        <>
+          <InspectorDivider />
+          <Button variant="glassDanger" icon={Trash2} className="w-fit" onClick={onDelete}>
+            {t("dialogs.inspector.buttonDelete")}
+          </Button>
+        </>
+      )}
+    </>
   );
 }

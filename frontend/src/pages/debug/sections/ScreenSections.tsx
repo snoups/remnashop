@@ -23,7 +23,7 @@ type ScreenKey = keyof typeof SCREENS;
 // a screen over the whole window, as it shows; the cross in the corner closes it
 function ScreenOverlay({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-canvas">
+    <div className="fixed inset-0 z-100 overflow-y-auto bg-canvas">
       <div className="absolute left-4 top-4 z-10">
         <IconButton size="9" onClick={onClose}>
           <X className="size-4" />

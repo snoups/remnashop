@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,14 +9,12 @@ import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
-import { EDITOR_FIELD_CLASSNAME } from "@features/dialog-canvas-editor/field-classname";
 import { FormatToolbar } from "@features/dialog-canvas-editor/FormatToolbar";
 import { RichTextField, type RichTextFieldHandle } from "@features/dialog-canvas-editor/RichTextField";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
-import { Pressable } from "@shared/ui/Pressable";
-
-// right padding a one-line field reserves for the 26px pickers inside it
-const ACTION_PADDING = ["", "pr-10", "pr-[68px]"] as const;
+import { Button } from "@shared/ui/Button";
+import { TEXT_TOOLBAR_CLASS, TEXT_TOOLBAR_DIVIDER_CLASS } from "@shared/ui/classes";
+import { Input } from "@shared/ui/glass/Input";
 
 interface TextEditorPanelProps {
   textKey: string;
@@ -30,13 +28,10 @@ interface TextEditorPanelProps {
   multiline?: boolean;
   /** The text is Telegram HTML: formatting toolbar, length counted without tags. */
   html?: boolean;
-  /** false: the multiline field without backdrop blur */
-  blurred?: boolean;
   /** Text takes emoji inline, at the cursor. A premium one becomes the markup
    * the bot turns into a custom_emoji entity. */
   emojiInsert?: boolean;
-  /** Rendered inside the field, in the corner the text never reaches; the
-   * button label puts its icon picker there. */
+  /** Replaces the emoji picker inside the field; the button label puts its icon picker there. */
   fieldAction?: ReactNode;
   /** Telegram rejects a button, or a message without a banner, with no text. */
   required?: boolean;
@@ -63,7 +58,6 @@ export function TextEditorPanel({
   canReset,
   multiline = false,
   html = false,
-  blurred = true,
   emojiInsert = false,
   fieldAction,
   required = false,
@@ -108,8 +102,24 @@ export function TextEditorPanel({
   }, [textKey, activeLocale, entry?.value]);
 
   const hasVariables = variables.length > 0;
-  const actionCount = Number(hasVariables) + Number(Boolean(fieldAction) || emojiInsert);
+  const emoji =
+    fieldAction ??
+    (emojiInsert && <EmojiPicker current={null} disabled={!canUpdate} onPick={handleEmojiPick} onClear={() => undefined} />);
+  const pickers = (hasVariables || emoji) && (
+    <>
+      {hasVariables && (
+        <VariablePicker
+          variables={variables}
+          format={(name) => `{ $${name} }`}
+          onPick={insertAtCursor}
+          disabled={!canUpdate}
+        />
+      )}
+      {emoji}
+    </>
+  );
 
+  const isChanged = draft !== (entry?.value ?? "");
   const canShowReset = canReset && entry !== undefined && entry.value !== entry.default_value;
 
   const handleSave = async () => {
@@ -144,85 +154,69 @@ export function TextEditorPanel({
   };
 
   return (
-    <div>
-      {html && (
-        <div className="mb-1 flex flex-wrap items-center gap-0.5">
-          <FormatToolbar fieldRef={richFieldRef} disabled={!canUpdate} />
-        </div>
-      )}
-      <div className="relative">
-        {multiline ? (
+    <div className="flex flex-col gap-2">
+      {multiline ? (
+        <div className="glass-well relative overflow-hidden rounded-[18px] ring-inset focus-within:ring-1 focus-within:ring-primary">
+          <div className={TEXT_TOOLBAR_CLASS}>
+            {html && (
+              <>
+                <FormatToolbar fieldRef={richFieldRef} disabled={!canUpdate} />
+                <span className={TEXT_TOOLBAR_DIVIDER_CLASS} />
+              </>
+            )}
+            {pickers}
+          </div>
           <RichTextField
             ref={richFieldRef}
             value={draft}
             disabled={!canUpdate}
             onChange={setDraft}
-            className={`min-h-36 w-full resize-y overflow-auto rounded-lg border border-glass-border bg-white/[0.03] px-2.5 pb-9 pt-1.5 text-sm text-foreground outline-none transition-colors hover:bg-white/[0.06] focus:border-primary ${blurred ? "backdrop-blur-md" : ""}`}
+            className="min-h-40 w-full px-3.5 pb-10 pt-3 text-sm leading-relaxed text-foreground outline-none"
           />
-        ) : (
-          <input
-            ref={fieldRef}
-            type="text"
-            value={draft}
-            disabled={!canUpdate}
-            onChange={(event) => setDraft(event.target.value)}
-            className={`${EDITOR_FIELD_CLASSNAME} border-glass-border ${ACTION_PADDING[actionCount]}`}
-          />
-        )}
-        {/* Anchored where the text cannot reach it: the field reserves that
-            padding above. right-5 on the multi-line field keeps the resize grip clear. */}
-        <div
-          className={`absolute flex items-center gap-1 ${multiline ? "bottom-2 right-5" : "right-2 top-1/2 -translate-y-1/2"}`}
-        >
-          {hasVariables && (
-            <VariablePicker
-              variables={variables}
-              format={(name) => `{ $${name} }`}
-              onPick={insertAtCursor}
-              disabled={!canUpdate}
-            />
+          {maxLength !== undefined && (
+            <span
+              className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-xs tabular-nums ${
+                isTooLong ? "text-error" : "text-muted-foreground"
+              }`}
+            >
+              {`${draftLength} / ${maxLength}`}
+            </span>
           )}
-          {fieldAction ??
-            (emojiInsert && (
-              <EmojiPicker
-                current={null}
-                disabled={!canUpdate}
-                onPick={handleEmojiPick}
-                onClear={() => undefined}
-              />
-            ))}
         </div>
-      </div>
+      ) : (
+        <Input
+          ref={fieldRef}
+          value={draft}
+          disabled={!canUpdate}
+          aria-invalid={isTooLong || undefined}
+          onChange={(event) => setDraft(event.target.value)}
+          end={pickers && <span className="flex items-center gap-0.5 pr-0.5">{pickers}</span>}
+        />
+      )}
       {isTooLong && (
-        <p className="mt-1 text-xs text-error">
+        <p className="text-xs text-error">
           {t("dialogs.inspector.textTooLong", { length: draftLength, max: maxLength })}
         </p>
       )}
-      <div className="mt-2 flex gap-2">
-        {canUpdate && (
-          <Pressable
-            type="button"
-            disabled={
-              draft === (entry?.value ?? "") || (required && draft.trim() === "") || isTooLong
-            }
-            onClick={() => void handleSave()}
-            className="h-9 flex-1 rounded-full border border-white/[0.12] px-3 text-xs text-foreground/80 hover:bg-white/[0.06] disabled:opacity-30"
-          >
-            {t(canShowReset ? "common.save" : "dialogs.inspector.textSave")}
-          </Pressable>
-        )}
-        {canShowReset && (
-          <Pressable
-            type="button"
-            onClick={() => void handleReset()}
-            disabled={isResetting}
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/[0.12] px-3 text-xs text-foreground/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isResetting && <Loader2 className="size-3.5 animate-spin" />}
-            {t("common.reset")}
-          </Pressable>
-        )}
-      </div>
+      {/* nothing to save or reset: no buttons under the field */}
+      {((canUpdate && isChanged) || canShowReset) && (
+        <div className="flex gap-2">
+          {canUpdate && isChanged && (
+            <Button
+              variant="glassAccent"
+              disabled={(required && draft.trim() === "") || isTooLong}
+              onClick={() => void handleSave()}
+            >
+              {t(canShowReset ? "common.save" : "dialogs.inspector.textSave")}
+            </Button>
+          )}
+          {canShowReset && (
+            <Button variant="glass" icon={RotateCcw} isLoading={isResetting} onClick={() => void handleReset()}>
+              {t("common.reset")}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

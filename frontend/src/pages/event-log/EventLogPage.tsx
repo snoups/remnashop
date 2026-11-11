@@ -150,7 +150,7 @@ export function EventLogPage() {
           />
         </div>
 
-        <div className="w-48 min-w-0">
+        <div className="min-w-40 flex-1 md:w-48 md:min-w-0 md:flex-none">
           <SelectDropdown
             id="event-log-category"
             value={category}
@@ -170,7 +170,7 @@ export function EventLogPage() {
           />
         </div>
 
-        <div className="w-40 min-w-0">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-none">
           <DatePickerField
             id="event-log-date-from"
             value={dateFromInput}
@@ -179,7 +179,7 @@ export function EventLogPage() {
           />
         </div>
 
-        <div className="w-40 min-w-0">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-none">
           <DatePickerField
             id="event-log-date-to"
             value={dateToInput}

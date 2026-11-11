@@ -47,10 +47,11 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.3" } } }),
 };
 
+// Telegram's keyboard buttons: a translucent fill over the chat, tinted by style
 const STYLE_CLASSNAME: Record<string, string> = {
-  primary: "border-primary/40 bg-primary/20",
-  success: "border-emerald-500/40 bg-emerald-500/20",
-  danger: "border-red-500/40 bg-red-500/20",
+  primary: "bg-primary/25",
+  success: "bg-success/25",
+  danger: "bg-error/25",
 };
 
 const buttonId = buttonKey;
@@ -110,14 +111,14 @@ function ButtonFace({
   className: string;
 }) {
   const { label, isUnlabelled } = useButtonLabel(button, textByKey);
-  const styleClassName = button.style ? STYLE_CLASSNAME[button.style] : "border-white/[0.12]";
+  const styleClassName = button.style ? STYLE_CLASSNAME[button.style] : "bg-white/[0.08]";
   const icon = textByKey[iconTextKey(button.text_key)];
   // a premium icon keeps its plain glyph, drawn if the thumbnail fails
   const iconId = textByKey[iconIdTextKey(button.text_key)];
 
   return (
     <span
-      className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-center text-sm ${styleClassName} ${className}`}
+      className={`flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 text-center text-sm font-medium text-foreground backdrop-blur-md ${styleClassName} ${className}`}
     >
       {iconId ? (
         <span className="text-sm">
@@ -127,9 +128,6 @@ function ButtonFace({
         <span className="text-sm">{icon}</span>
       ) : null}
       <span className={`truncate ${isUnlabelled ? "italic text-muted-foreground" : ""}`}>{label}</span>
-      {button.visibility_condition ? (
-        <span className="text-[11px] text-muted-foreground">({button.visibility_condition})</span>
-      ) : null}
     </span>
   );
 }
@@ -167,18 +165,18 @@ function CanvasButton({
       onClick={() => onClick()}
       {...attributes}
       {...listeners}
-      className={`flex flex-1 ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+      className={`flex min-w-0 flex-1 rounded-xl ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <ButtonFace
         button={button}
         textByKey={textByKey}
-        className={`w-full transition ${isEffectivelyHidden ? "opacity-40 hover:opacity-70" : ""} ${
+        className={`w-full transition ${isEffectivelyHidden ? "opacity-45 outline-1 -outline-offset-1 outline-dashed outline-white/25 hover:opacity-70" : ""} ${
           isDragging
             ? // The real button stays as the gap the overlay will drop back into.
               "opacity-25"
             : isSelected
               ? "ring-2 ring-primary"
-              : "hover:ring-1 hover:ring-white/25"
+              : "hover:bg-white/[0.12]"
         }`}
       />
     </button>
@@ -205,7 +203,7 @@ function Row({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-10 gap-1.5 rounded-lg transition-colors ${
+      className={`flex min-h-10 gap-1.5 rounded-xl transition-colors ${
         isOver ? "bg-primary/10 ring-1 ring-primary/40" : ""
       }`}
     >
@@ -335,7 +333,7 @@ export function ButtonGrid({
               <ButtonFace
                 button={dragged.button}
                 textByKey={textByKey}
-                className="w-full bg-surface shadow-lg shadow-black/40 ring-2 ring-primary/60"
+                className="w-full shadow-lg shadow-black/40 ring-2 ring-primary/60"
               />
             </div>
           )}

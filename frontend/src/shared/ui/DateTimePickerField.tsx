@@ -13,6 +13,11 @@ import { PortalPopover } from "@shared/ui/PortalPopover";
 // header + weekday row + 6 week rows, the time row under them, with padding
 const POPOVER_MAX_HEIGHT = 380;
 
+const SURFACE_CLASS = {
+  glass: "border border-glass-border bg-white/[0.03] backdrop-blur-md transition-colors hover:bg-white/[0.06] font-medium",
+  well: "glass-well ring-inset focus:ring-1 focus:ring-primary",
+} as const;
+
 // a date picked with no time yet: the next full hour
 function nextHour(): string {
   const hour = (new Date().getHours() + 1) % 24;
@@ -20,16 +25,19 @@ function nextHour(): string {
 }
 
 /** A local date and time as <input type="datetime-local"> holds it ("2026-10-08T18:30", "" for none),
- *  picked on the app's calendar: the glass filter field's look, 36px, a glass popover. */
+ *  picked on the app's calendar: 36px, a glass popover. */
 export function DateTimePickerField({
   value,
   onChange,
   placeholder,
+  variant = "glass",
   className = "",
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  /** glass is for filters; well: a glass dialog's form, the sunken well of its Input */
+  variant?: keyof typeof SURFACE_CLASS;
   /** layout only (a width) */
   className?: string;
 }) {
@@ -75,7 +83,7 @@ export function DateTimePickerField({
             toggleOpen();
           }
         }}
-        className="group flex h-9 w-full cursor-pointer items-center rounded-full border border-glass-border bg-white/[0.03] pl-9 pr-8 text-sm font-medium backdrop-blur-md outline-none transition-colors hover:bg-white/[0.06] focus:border-primary"
+        className={`group flex h-9 w-full cursor-pointer items-center rounded-full ${SURFACE_CLASS[variant]} pl-9 pr-8 text-sm outline-none focus:border-primary`}
       >
         <CalendarClock className={PICKER_ICON_CLASS} />
         <span className={`truncate ${display ? "text-foreground" : "text-muted-foreground"}`}>{display || placeholder}</span>

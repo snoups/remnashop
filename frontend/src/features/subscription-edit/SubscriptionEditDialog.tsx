@@ -72,7 +72,7 @@ import { useModalClose } from "@shared/ui/modal-hooks";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { Button } from "@shared/ui/Button";
 import { CardPill } from "@shared/ui/CardPill";
-import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS } from "@shared/ui/classes";
+import { GLASS_DIALOG_BODY_CLASS, GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_FOOTER_CLASS, KPI_VALUE_CLASS } from "@shared/ui/classes";
 import { DateTimePickerField } from "@shared/ui/DateTimePickerField";
 import { AnimatedHeight } from "@shared/ui/glass/AnimatedHeight";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
@@ -493,12 +493,12 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
           />
           <span className="truncate">{subscription.plan_snapshot.name}</span>
         </div>
-        <span className="shrink-0 font-mono text-xs tracking-[0.12em] text-muted-foreground">#{subscription.id}</span>
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">#{subscription.id}</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className={`text-2xl font-bold leading-[1.1] tracking-tight tabular-nums ${TEXT_TONE[trafficTone]}`}>
+          <span className={`${KPI_VALUE_CLASS} ${TEXT_TONE[trafficTone]}`}>
             {limitGb === 0
               ? "∞"
               : used === null
@@ -688,6 +688,7 @@ function SubscriptionParamsForm({
                 value={expireAt}
                 onChange={setExpireAt}
                 placeholder={t("subscriptions.edit.expireAtLabel")}
+                variant="well"
                 className="min-w-0 flex-1"
               />
               {QUICK_EXTEND_DAYS.map((days) => (
