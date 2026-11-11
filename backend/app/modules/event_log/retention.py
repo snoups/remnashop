@@ -40,6 +40,8 @@ SHORT_RETENTION_EVENT_TYPES: Final[frozenset[str]] = frozenset(
         "RemnawaveUnavailableEvent",
         "RemnawaveVersionMismatchEvent",
         "RequiredChannelCheckFailedEvent",
+        "SystemHealthDegradedEvent",
+        "SystemHealthRestoredEvent",
         "TelegramWebhookFailedEvent",
     }
 )

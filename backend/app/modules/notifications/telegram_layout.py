@@ -215,6 +215,8 @@ LAYOUTS: Final[dict[str, CardLayout]] = {
     ),
     "RemnawaveUnavailableEvent": CardLayout(details=(_ERROR,)),
     "RemnawaveRestoredEvent": CardLayout(),
+    "SystemHealthDegradedEvent": CardLayout(),
+    "SystemHealthRestoredEvent": CardLayout(),
     "RemnawaveVersionMismatchEvent": CardLayout(
         details=(("version", _arg("version"), True), ("supported", _arg("supported"), True))
     ),

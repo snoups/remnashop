@@ -143,6 +143,9 @@ export interface ClientApps {
 
 export type AttentionKind =
   | "process_down"
+  | "host_disk_full"
+  | "host_memory_high"
+  | "event_loop_lag"
   | "outbox_stuck"
   | "panel_unavailable"
   | "node_offline"

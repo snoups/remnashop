@@ -13,7 +13,6 @@ from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import BackupKind, BackupRunStatus
 from app.core.exceptions import RemnawavePanelUnavailableError
-from app.core.runtime_heartbeat import read_runtime_heartbeats
 from app.core.security.permissions import Permission, PermissionPolicy
 from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
@@ -23,6 +22,7 @@ from app.modules.broadcasts import BroadcastRepository
 from app.modules.email import read_smtp_failure
 from app.modules.event_log import EventOutboxRepository
 from app.modules.overview.dto import AttentionDto, AttentionItemDto, AttentionKind
+from app.modules.overview.system_health import read_health_problems
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.settings import (
     BotSettingsDto,
@@ -49,7 +49,6 @@ _STALE_PENDING_SPIKE: Final[int] = 5
 _BOT_ERROR_WINDOW: Final[timedelta] = timedelta(hours=1)
 _EXPIRING_WITHIN: Final[timedelta] = timedelta(days=7)
 _EXPIRING_URGENT: Final[timedelta] = timedelta(hours=24)
-_WATCHED_PROCESSES: Final[tuple[str, ...]] = ("worker", "scheduler")
 # the sweep runs every minute
 _OUTBOX_STUCK_AFTER: Final[timedelta] = timedelta(minutes=5)
 # the scheduled check runs hourly
@@ -112,7 +111,7 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
 
     async def _execute(self, actor: Actor, data: None) -> AttentionDto:
         perms = PermissionPolicy.effective_permissions(actor)
-        items: list[AttentionItemDto] = await self._processes_down()
+        items: list[AttentionItemDto] = await self._system_health()
         items += await self._smtp_failed(perms)
         async with self._uow:
             items += await self._outbox_stuck()
@@ -288,14 +287,16 @@ class GetAttentionUseCase(UseCase[None, AttentionDto]):
             )
         ]
 
-    async def _processes_down(self) -> list[AttentionItemDto]:
-        alive = {hb.process for hb in await read_runtime_heartbeats(self._redis)}
+    async def _system_health(self) -> list[AttentionItemDto]:
         return [
             AttentionItemDto(
-                kind=AttentionKind.PROCESS_DOWN, severity="critical", count=1, subject=process
+                kind=p.kind,
+                severity="warning" if p.kind == AttentionKind.EVENT_LOOP_LAG else "critical",
+                # host items: the percent, so a hidden item returns once it grows
+                count=1 if p.subject else p.value or 1,
+                subject=p.subject,
             )
-            for process in _WATCHED_PROCESSES
-            if process not in alive
+            for p in await read_health_problems(self._redis)
         ]
 
     async def _outbox_stuck(self) -> list[AttentionItemDto]:

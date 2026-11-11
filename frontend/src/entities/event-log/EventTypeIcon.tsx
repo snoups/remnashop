@@ -1,4 +1,6 @@
 import {
+  Activity,
+  HeartPulse,
   Anchor,
   ArrowLeftRight,
   BadgePercent,
@@ -222,6 +224,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   RemnawaveUnavailableEvent: ServerOff,
   RemnawaveRestoredEvent: Server,
   RemnawaveVersionMismatchEvent: TriangleAlert,
+  SystemHealthDegradedEvent: HeartPulse,
+  SystemHealthRestoredEvent: Activity,
   BotStartedEvent: Bot,
   BotStoppedEvent: BotOff,
   TelegramWebhookFailedEvent: TriangleAlert,

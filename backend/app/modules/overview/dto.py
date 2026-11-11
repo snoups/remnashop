@@ -204,6 +204,9 @@ class ClientAppsDto:
 
 class AttentionKind(StrEnum):
     PROCESS_DOWN = "process_down"
+    HOST_DISK_FULL = "host_disk_full"
+    HOST_MEMORY_HIGH = "host_memory_high"
+    EVENT_LOOP_LAG = "event_loop_lag"
     OUTBOX_STUCK = "outbox_stuck"
     PANEL_UNAVAILABLE = "panel_unavailable"
     NODE_OFFLINE = "node_offline"

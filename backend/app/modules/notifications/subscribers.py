@@ -3,7 +3,7 @@ from typing import Final, cast
 from app.core.event_bus import EventBus
 from app.core.events import StoredEvent
 from app.modules.notifications.dispatch import DeliverNotificationDispatch
-from app.modules.notifications.dto import NOTIFICATION_GROUPS
+from app.modules.notifications.dto import NOTIFICATION_GROUPS, SENDER_DELIVERED_EVENT_TYPES
 from app.modules.notifications.tasks import deliver_notification_task
 
 _deliver_notification: Final[DeliverNotificationDispatch] = cast(
@@ -25,5 +25,5 @@ async def _deliver(entry: StoredEvent) -> None:
 
 def register_subscribers(bus: EventBus) -> None:
     for event_types in NOTIFICATION_GROUPS.values():
-        for event_type in event_types:
+        for event_type in event_types - SENDER_DELIVERED_EVENT_TYPES:
             bus.subscribe_stored(event_type, _deliver)

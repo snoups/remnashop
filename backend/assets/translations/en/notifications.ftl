@@ -214,6 +214,20 @@ ntf-remnawave-unavailable = Connection to Remnawave lost ({ $error }).
     .title = Remnawave connection error!
 ntf-remnawave-restored = Connection to Remnawave restored.
     .title = Remnawave connection restored!
+ntf-system-health-degraded = { $kind ->
+        [process_down] The { $subject } process is not responding.
+        [host_disk_full] The server disk is { $value }% full.
+        [host_memory_high] Server memory is { $value }% used.
+       *[event_loop_lag] The { $subject } process is responding slowly: event loop p99 is { $value } ms.
+    }
+    .title = Critical system state!
+ntf-system-health-restored = { $kind ->
+        [process_down] The { $subject } process is running again.
+        [host_disk_full] Server disk usage is back to normal.
+        [host_memory_high] Server memory usage is back to normal.
+       *[event_loop_lag] The { $subject } process delay is back to normal.
+    }
+    .title = System state restored!
 ntf-remnawave-version-mismatch = Remnawave { $version } is outside the supported range { $supported }.
     .title = Possible Remnawave incompatibility!
     .emoji = ⚠️

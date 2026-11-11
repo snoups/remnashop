@@ -5,7 +5,7 @@ import pytest
 
 from app.core.event_bus import EventBus
 from app.core.events import EventCategory, StoredEvent
-from app.modules.notifications.dto import NOTIFICATION_GROUPS
+from app.modules.notifications.dto import NOTIFICATION_GROUPS, SENDER_DELIVERED_EVENT_TYPES
 from app.modules.notifications.subscribers import register_subscribers
 from app.modules.notifications.tasks import deliver_notification_task
 
@@ -13,7 +13,8 @@ from app.modules.notifications.tasks import deliver_notification_task
 def test_subscribes_to_exactly_the_grouped_event_types() -> None:
     bus = EventBus()
     register_subscribers(bus)
-    assert set(bus._handlers) == frozenset().union(*NOTIFICATION_GROUPS.values())
+    grouped = frozenset().union(*NOTIFICATION_GROUPS.values())
+    assert set(bus._handlers) == grouped - SENDER_DELIVERED_EVENT_TYPES
 
 
 async def test_subscriber_passes_the_outbox_id(monkeypatch: pytest.MonkeyPatch) -> None:

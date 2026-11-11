@@ -1,6 +1,7 @@
 from dishka import Provider, Scope, provide_all
 
 from app.modules.overview.usecases import (
+    CheckSystemHealthUseCase,
     GetAttentionUseCase,
     GetClientAppsUseCase,
     GetHourlyOnlineUseCase,
@@ -26,6 +27,7 @@ class OverviewProvider(Provider):
         GetOnlineChartUseCase,
         GetHourlyOnlineUseCase,
         SampleRemnawaveOnlineUseCase,
+        CheckSystemHealthUseCase,
     )
 
 
