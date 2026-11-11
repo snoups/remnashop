@@ -14,7 +14,7 @@ from app.modules.overview.usecases import SampleRemnawaveOnlineUseCase
 class _System:
     def __init__(self) -> None:
         self.fail = False
-        self.version = "2.7.3"
+        self.version = "3.0.0"
 
     async def get_stats(self) -> Any:
         if self.fail:
