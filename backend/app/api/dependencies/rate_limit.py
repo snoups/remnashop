@@ -149,11 +149,13 @@ async def global_rate_limit(
     redis: FromDishka[Redis],
     config: FromDishka[AppConfig],
 ) -> None:
-    if request.url.path in _RATE_LIMIT_EXEMPT_PATHS:
+    # the routed path: request.url is rebuilt from the Host header
+    path: str = request.scope["path"]
+    if path in _RATE_LIMIT_EXEMPT_PATHS:
         return
 
     # only the art loads: an admin's DELETE stays in the ordinary bucket
-    if request.method == "GET" and request.url.path.startswith(_EMOJI_PREFIX):
+    if request.method == "GET" and path.startswith(_EMOJI_PREFIX):
         identity = f"ip:{ip_rate_bucket(resolve_client_ip(request))}"
         bucket, limit = "emoji", _EMOJI_RATE_LIMIT
     else:

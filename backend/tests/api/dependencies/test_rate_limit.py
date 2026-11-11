@@ -99,6 +99,27 @@ async def test_global_rate_limit_skips_exempt_paths_entirely(
     assert await redis.get(key) is None  # never touched
 
 
+async def test_global_rate_limit_ignores_an_exempt_path_smuggled_in_the_host_header(
+    redis: RedisClient, config: AppConfig
+) -> None:
+    scope = {
+        "type": "http",
+        "headers": [(b"host", b"x/health?")],
+        "client": ("203.0.113.12", 12345),
+        "method": "GET",
+        "path": "/api/v1/auth/login",
+    }
+    request = Request(scope)
+    assert request.url.path == "/health"
+    key = "remnashop:ratelimit:global:ip:203.0.113.12"
+    await redis.delete(key)
+
+    await global_rate_limit.__dishka_orig_func__(request, redis, config)
+
+    assert await redis.get(key) is not None
+    await redis.delete(key)
+
+
 def test_resolve_identity_uses_user_id_with_a_valid_token() -> None:
     token = create_access_token(user_id=42, session_id=1, secret=JWT_SECRET)
     request = _make_request(headers={"authorization": f"Bearer {token}"})
