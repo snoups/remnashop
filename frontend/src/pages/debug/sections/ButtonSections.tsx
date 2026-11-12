@@ -17,13 +17,6 @@ export function ButtonsSection() {
 
   return (
     <DebugSection id="buttons">
-      <Specimen name="outline · danger" usage={k("u.primary")}>
-        <Button variant="outline">{k("s.cancel")}</Button>
-        <Button variant="danger">
-          <Trash2 className="size-3.5" />
-          {k("s.delete")}
-        </Button>
-      </Specimen>
       <Specimen name="secondary" usage={k("u.secondary")}>
         <Button variant="secondary">
           <RefreshCw className="size-3.5" />
@@ -37,10 +30,10 @@ export function ButtonsSection() {
         <Button variant="glassDanger">{k("s.delete")}</Button>
       </Specimen>
       <Specimen name='size="sm | md | field"' usage={k("u.sizes")}>
-        <Button variant="outline" size="sm">
+        <Button variant="glass" size="sm">
           sm
         </Button>
-        <Button variant="outline">md</Button>
+        <Button variant="glass">md</Button>
         <TextInput placeholder="38px" className="w-24" />
         <Button variant="secondary" size="field">
           field

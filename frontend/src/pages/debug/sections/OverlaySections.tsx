@@ -79,7 +79,7 @@ function DemoModalBody() {
       <DialogHeader icon={Layers} title="Modal" />
       <div className="flex flex-col gap-4 p-4">
         <p className="text-sm text-muted-foreground">{k("s.modalText")}</p>
-        <Button variant="outline" onClick={close}>
+        <Button variant="glass" onClick={close}>
           {k("s.close")}
         </Button>
       </div>
@@ -132,10 +132,10 @@ export function DialogsSection() {
         </div>
       </Specimen>
       <Specimen name='Modal · size="sm | lg"' usage={k("u.modal")}>
-        <Button variant="outline" onClick={() => setModalSize("sm")}>
+        <Button variant="glass" onClick={() => setModalSize("sm")}>
           sm
         </Button>
-        <Button variant="outline" onClick={() => setModalSize("lg")}>
+        <Button variant="glass" onClick={() => setModalSize("lg")}>
           lg
         </Button>
       </Specimen>
@@ -143,7 +143,7 @@ export function DialogsSection() {
         <Button variant="glassAccent" onClick={() => setConfirm("accent")}>
           {k("s.save")}
         </Button>
-        <Button variant="danger" onClick={() => setConfirm("danger")}>
+        <Button variant="glassDanger" onClick={() => setConfirm("danger")}>
           <Trash2 className="size-3.5" />
           {k("s.delete")}
         </Button>
@@ -164,7 +164,7 @@ export function DialogsSection() {
         </Button>
       </Specimen>
       <Specimen name="AnnouncementsCarousel" usage={k("u.announcementsCarousel")}>
-        <Button variant="outline" onClick={() => setCarouselOpen(true)}>
+        <Button variant="glass" onClick={() => setCarouselOpen(true)}>
           {k("s.openCarousel")}
         </Button>
       </Specimen>
@@ -318,7 +318,7 @@ export function StatesSection() {
         <LabeledDivider>{k("s.or")}</LabeledDivider>
       </Specimen>
       <Specimen name="Collapse" usage={k("u.collapse")} stage="stretch">
-        <Button variant="outline" className="w-fit" onClick={() => setIsOpen((value) => !value)}>
+        <Button variant="glass" className="w-fit" onClick={() => setIsOpen((value) => !value)}>
           {isOpen ? k("s.hide") : k("s.show")}
         </Button>
         <Collapse open={isOpen}>

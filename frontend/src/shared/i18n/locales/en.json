@@ -3920,7 +3920,6 @@
       },
       "u": {
         "announcementsCarousel": "Developer shorts: story carousel over the dashboard.",
-        "primary": "Neutral and destructive actions outside the glass design. 14px.",
         "secondary": "Card headers and beside fields. 14px semibold, same height as pills.",
         "glass": "PillTabs capsule fill, 14px medium, for actions beside one; glassAccent is its primary action, glassDanger its destructive one.",
         "sizes": "sm 32 — list rows, md 36, field 38 — beside a field.",
