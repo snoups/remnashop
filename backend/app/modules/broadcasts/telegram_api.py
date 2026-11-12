@@ -15,6 +15,7 @@ from app.core.telegram_api import (
     bot_api_error_text,
     bot_client,
 )
+from app.modules.broadcasts.mp4 import video_meta
 
 _TIMEOUT_SECONDS: Final[float] = 30.0
 _HTML: Final[str] = "HTML"
@@ -81,6 +82,14 @@ def _media_file_id(message: dict[str, Any], media_type: BroadcastMediaType) -> O
     return media.get("file_id") if media else None
 
 
+def _video_params(path: Path) -> dict[str, Any]:
+    # without them Telegram shows the video as a square until a client downloads it
+    meta = video_meta(path)
+    if meta is None:
+        return {}
+    return {"width": meta.width, "height": meta.height, "duration": meta.duration}
+
+
 async def send_broadcast_message(
     bot: BotApi,
     chat_id: int,
@@ -112,6 +121,8 @@ async def send_broadcast_message(
             message = await bot.call(method, **params, **{field: media.file_id})
         else:
             assert media.path is not None
+            if media.media_type is BroadcastMediaType.VIDEO:
+                params |= _video_params(media.path)
             message = await bot.upload(method, field, media.path, **params)
     except BOT_API_ERRORS as error:
         return _failure(error)
