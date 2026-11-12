@@ -1,3 +1,6 @@
+from app.modules.transactions.usecases.check_transaction_payment import (
+    CheckTransactionPaymentUseCase,
+)
 from app.modules.transactions.usecases.confirm_stars_payment import ConfirmStarsPaymentUseCase
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
@@ -39,6 +42,7 @@ from app.modules.transactions.usecases.validate_stars_pre_checkout import (
 )
 
 __all__ = [
+    "CheckTransactionPaymentUseCase",
     "ConfirmStarsPaymentUseCase",
     "CreateCheckoutUseCase",
     "CreateTestPaymentUseCase",

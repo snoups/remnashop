@@ -14,6 +14,7 @@ from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.tasks import confirm_stars_payment_task
 from app.modules.transactions.usecases import (
+    CheckTransactionPaymentUseCase,
     ConfirmStarsPaymentUseCase,
     CreateCheckoutUseCase,
     CreateTestPaymentUseCase,
@@ -59,6 +60,7 @@ class TransactionsProvider(Provider):
         QuoteCheckoutUseCase,
         RateUnratedAnchorAmountsUseCase,
         CreateTestPaymentUseCase,
+        CheckTransactionPaymentUseCase,
         FulfillTransactionUseCase,
         GetTestPaymentStatusUseCase,
         ListTransactionsUseCase,

@@ -32,6 +32,8 @@ _INCOMING: Final[str] = "in"
 class YooMoneyGateway(PaymentGateway[YooMoneySettings]):
     settings_model = YooMoneySettings
     currency = Currency.RUB
+    # a payment is found only by the operation id its notification carries
+    supports_status_check = False
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payload = {

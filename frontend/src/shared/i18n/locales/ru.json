@@ -885,6 +885,7 @@
       "SubscriptionConfigSyncedEvent": "Настройки подписки обновлены из панели",
       "TransactionPartiallyRefundedEvent": "Транзакция возвращена частично",
       "TransactionFulfilledManuallyEvent": "Заказ выдан вручную",
+      "TransactionPaymentConfirmedEvent": "Оплата подтверждена в шлюзе",
       "TransactionRefundedManuallyEvent": "Stars возвращены вручную",
       "BackupFailedEvent": "Ошибка резервного копирования",
       "BonusDaysRenewalStuckEvent": "Бонусные дни не применены",
@@ -2392,6 +2393,7 @@
     "TRANSACTIONS_DETAIL_VIEW": "Просмотр транзакции",
     "TRANSACTIONS_GATEWAYS_VIEW": "Просмотр шлюзов в транзакциях",
     "TRANSACTIONS_FULFILL": "Ручная выдача заказов",
+    "TRANSACTIONS_PAYMENT_CHECK": "Проверка оплаты в шлюзе",
     "TRANSACTIONS_REFUND": "Возврат Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Предпросмотр возврата Telegram Stars",
     "TRANSACTIONS_UNRATED_VIEW": "Просмотр перенесённых оплат без курса",
@@ -3612,6 +3614,12 @@
       "success": "Выдача запущена — подписка появится у клиента через несколько секунд.",
       "error": "Не удалось выдать подписку."
     },
+    "checkPayment": {
+      "action": "Проверить оплату",
+      "paid": "Шлюз подтвердил оплату — подписка появится у клиента через несколько секунд.",
+      "notPaid": "Шлюз не подтвердил оплату.",
+      "error": "Не удалось проверить оплату."
+    },
     "refund": {
       "button": "Вернуть Stars",
       "title": "Возврат Telegram Stars",
@@ -4518,6 +4526,7 @@
     "PASSWORD_LOGIN_DISABLED": "Вход по паролю отключён.",
     "PAYLOAD_TOO_LARGE": "Запрос слишком большой.",
     "PAYMENT_GATEWAY_ERROR": "Платёжный шлюз вернул ошибку.",
+    "PAYMENT_ORDER_NOT_CHECKABLE": "Оплату этой транзакции нельзя проверить в шлюзе.",
     "PAYMENT_ORDER_NOT_FOUND": "Заказ не найден.",
     "PAYMENT_ORDER_NOT_FULFILLABLE": "По этой транзакции нельзя выдать подписку.",
     "PAYMENTS_DISABLED": "Оплата временно недоступна.",

@@ -12,6 +12,7 @@ import {
   PackageCheck,
   Receipt,
   Repeat,
+  SearchCheck,
   Send,
   ShoppingCart,
   Smartphone,
@@ -28,8 +29,10 @@ import {
   PAYMENT_STATUS_BADGE_TONE,
   type RefundPreview,
   type TransactionItem,
+  canCheckTransactionPayment,
   canFulfillTransaction,
   canRefundTransaction,
+  checkTransactionPayment,
   fulfillTransaction,
   getRefundPreview,
   hasDiscount,
@@ -78,6 +81,7 @@ function TransactionDetailsDialogBody({
   const [order, setOrder] = useState(initialOrder);
   const [isConfirmingFulfill, setIsConfirmingFulfill] = useState(false);
   const [isFulfilling, setIsFulfilling] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const [refundPreview, setRefundPreview] = useState<RefundPreview | null>(null);
   const [isRefunding, setIsRefunding] = useState(false);
   const permissions = usePermissions();
@@ -86,6 +90,7 @@ function TransactionDetailsDialogBody({
     permissions.includes("TRANSACTIONS_REFUND_PREVIEW") &&
     canRefundTransaction(order);
   const canFulfill = permissions.includes("TRANSACTIONS_FULFILL") && canFulfillTransaction(order);
+  const canCheckPayment = permissions.includes("TRANSACTIONS_PAYMENT_CHECK") && canCheckTransactionPayment(order);
   const money = (amount: string) => formatMoney(amount, order.currency, i18n.language, true);
   const symbol = currencySymbol(order.currency);
   const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
@@ -103,6 +108,21 @@ function TransactionDetailsDialogBody({
       toast.error(getErrorMessage(err, t("transactions.fulfill.error")));
     } finally {
       setIsFulfilling(false);
+    }
+  };
+
+  const handleCheckPayment = async () => {
+    setIsChecking(true);
+    try {
+      const result = await checkTransactionPayment(order.id);
+      setOrder(result.transaction);
+      onChanged?.(result.transaction);
+      if (result.paid) toast.success(t("transactions.checkPayment.paid"));
+      else toast.info(t("transactions.checkPayment.notPaid"));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("transactions.checkPayment.error")));
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -272,6 +292,12 @@ function TransactionDetailsDialogBody({
           <Button variant="glassDanger" onClick={() => void openRefund()} isLoading={isRefunding}>
             <Undo2 className="size-4" />
             {t("transactions.refund.button")}
+          </Button>
+        )}
+        {canCheckPayment && (
+          <Button variant="glass" onClick={() => void handleCheckPayment()} isLoading={isChecking}>
+            <SearchCheck className="size-4" />
+            {t("transactions.checkPayment.action")}
           </Button>
         )}
         {canFulfill && (

@@ -817,6 +817,7 @@
       "SubscriptionConfigSyncedEvent": "Subscription settings updated from panel",
       "TransactionPartiallyRefundedEvent": "Transaction partially refunded",
       "TransactionFulfilledManuallyEvent": "Order issued manually",
+      "TransactionPaymentConfirmedEvent": "Payment confirmed with the gateway",
       "TransactionRefundedManuallyEvent": "Stars refunded manually",
       "BackupFailedEvent": "Backup failed",
       "BonusDaysRenewalStuckEvent": "Bonus days not applied",
@@ -2308,6 +2309,7 @@
     "TRANSACTIONS_DETAIL_VIEW": "View transaction details",
     "TRANSACTIONS_GATEWAYS_VIEW": "View gateways used in transactions",
     "TRANSACTIONS_FULFILL": "Issue orders manually",
+    "TRANSACTIONS_PAYMENT_CHECK": "Check payments with the gateway",
     "TRANSACTIONS_REFUND": "Refund Telegram Stars",
     "TRANSACTIONS_REFUND_PREVIEW": "Preview a Telegram Stars refund",
     "TRANSACTIONS_UNRATED_VIEW": "View migrated payments without a currency rate",
@@ -3508,6 +3510,12 @@
       "success": "Issuing started — the subscription will appear for the customer in a few seconds.",
       "error": "Failed to issue the subscription."
     },
+    "checkPayment": {
+      "action": "Check payment",
+      "paid": "The gateway confirmed the payment — the subscription will appear for the customer in a few seconds.",
+      "notPaid": "The gateway didn’t confirm the payment.",
+      "error": "Failed to check the payment."
+    },
     "refund": {
       "button": "Refund Stars",
       "title": "Refund Telegram Stars",
@@ -4404,6 +4412,7 @@
     "PASSWORD_LOGIN_DISABLED": "Password sign-in is disabled.",
     "PAYLOAD_TOO_LARGE": "The request is too large.",
     "PAYMENT_GATEWAY_ERROR": "The payment gateway returned an error.",
+    "PAYMENT_ORDER_NOT_CHECKABLE": "This transaction’s payment can’t be checked with the gateway.",
     "PAYMENT_ORDER_NOT_FOUND": "Order not found.",
     "PAYMENT_ORDER_NOT_FULFILLABLE": "This transaction can’t be fulfilled.",
     "PAYMENTS_DISABLED": "Payments are temporarily unavailable.",

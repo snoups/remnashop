@@ -14,6 +14,7 @@ from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.transactions.api.schemas import (
     CreateTestPaymentRequest,
+    PaymentCheckResponse,
     PaymentWaitlistCountResponse,
     RefundPreviewResponse,
     RefundTransactionRequest,
@@ -28,6 +29,7 @@ from app.modules.transactions.api.schemas import (
     UnratedAnchorCountResponse,
 )
 from app.modules.transactions.dto import (
+    CheckTransactionPaymentDto,
     FulfillTransactionDto,
     GetTransactionSummaryDto,
     ListTransactionsDto,
@@ -37,6 +39,7 @@ from app.modules.transactions.dto import (
     UnratedAnchorCountDto,
 )
 from app.modules.transactions.usecases import (
+    CheckTransactionPaymentUseCase,
     CreateTestPaymentUseCase,
     FulfillTransactionUseCase,
     GetPaymentWaitlistCountUseCase,
@@ -236,6 +239,27 @@ async def fulfill_transaction(
         FulfillTransactionDto(transaction_id=transaction_id, client_ip=resolve_client_ip(request)),
     )
     return _to_response(item)
+
+
+@router.post(
+    "/{transaction_id:int}/actions/check-payment",
+    response_model=PaymentCheckResponse,
+    responses=error_responses(404, 409, 502),
+)
+@inject
+async def check_transaction_payment(
+    transaction_id: int,
+    request: Request,
+    use_case: FromDishka[CheckTransactionPaymentUseCase],
+    actor: Actor = Depends(require_admin),
+) -> PaymentCheckResponse:
+    result = await use_case(
+        actor,
+        CheckTransactionPaymentDto(
+            transaction_id=transaction_id, client_ip=resolve_client_ip(request)
+        ),
+    )
+    return PaymentCheckResponse(transaction=_to_response(result.transaction), paid=result.paid)
 
 
 @router.get(

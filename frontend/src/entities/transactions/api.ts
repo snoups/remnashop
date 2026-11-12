@@ -182,6 +182,26 @@ export function canFulfillTransaction(order: TransactionItem): boolean {
   return order.status === "PAID" && order.fulfilled_subscription_id === null;
 }
 
+// a payment found only through its notification: no lookup by order
+const NO_STATUS_CHECK_GATEWAYS: ReadonlySet<string> = new Set(["TELEGRAM_STARS", "YOOMONEY"]);
+
+export function canCheckTransactionPayment(order: TransactionItem): boolean {
+  const unpaid = order.status === "PENDING" || order.status === "FAILED" || order.status === "CANCELED";
+  return unpaid && !NO_STATUS_CHECK_GATEWAYS.has(order.gateway_type);
+}
+
+export interface PaymentCheckResult {
+  transaction: TransactionItem;
+  paid: boolean;
+}
+
+export function checkTransactionPayment(transactionId: number): Promise<PaymentCheckResult> {
+  return apiPost<PaymentCheckResult, Record<string, never>>(
+    `/transactions/${transactionId}/actions/check-payment`,
+    {},
+  );
+}
+
 /** Gateway types that appear in at least one (non-test) order. */
 export function listTransactionGateways(signal?: AbortSignal): Promise<string[]> {
   return apiGet<ListResponse<string>>("/transactions/gateways", signal).then((response) => response.items);

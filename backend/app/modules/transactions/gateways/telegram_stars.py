@@ -42,6 +42,8 @@ def stars_amount(order: TransactionDto) -> int:
 class TelegramStarsGateway(PaymentGateway[StarsRuntimeSettings]):
     settings_model = StarsRuntimeSettings
     currency = Currency.XTR
+    # paid inside Telegram: no status lookup by order
+    supports_status_check = False
 
     async def _call(self, method: str, **params: Any) -> Any:
         try:

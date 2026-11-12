@@ -177,3 +177,30 @@ async def test_confirm_rejects_unpaid_refund_or_foreign_transactions(
     signal = await _gateway(http=http.client).parse_webhook(webhook(raw, headers))
     assert signal is not None
     assert await _gateway(http=http.client).confirm(make_order(), signal) is None
+
+
+async def test_check_payment_searches_by_order_id_and_takes_the_paid_try() -> None:
+    items = [_transaction(id="tx-declined", status="Declined"), _transaction(id="tx-paid")]
+    http = HttpRecorder(lambda request: httpx.Response(200, json={"items": items}))
+
+    payment = await _gateway(http=http.client).check_payment(make_order())
+
+    assert payment is not None and payment.provider_payment_id == "tx-paid"
+    assert http.last.url.path == "/api/h2h/v2/transactions"
+    assert http.last.url.params["orderId"] == ORDER_REF
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        [],
+        [_transaction(status="Declined")],
+        [_transaction(kind="Refund")],
+        [_transaction(orderId="someone-else")],
+    ],
+)
+async def test_check_payment_without_a_paid_transaction_of_the_order_is_none(
+    items: list[dict[str, object]],
+) -> None:
+    http = HttpRecorder(lambda request: httpx.Response(200, json={"items": items}))
+    assert await _gateway(http=http.client).check_payment(make_order()) is None
