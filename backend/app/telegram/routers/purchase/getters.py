@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 
 from aiogram_dialog import DialogManager
 from dishka import FromDishka
@@ -7,15 +7,25 @@ from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
-from app.core.enums import Currency, PurchaseChannel, PurchaseType
+from app.core.enums import Currency, DiscountSource, PurchaseChannel, PurchaseType
+from app.core.exceptions import AppError
 from app.modules.legal import ListVisibleLegalDocumentsUseCase
-from app.modules.subscriptions import ListActivePlansUseCase, ListOwnSubscriptionsUseCase
+from app.modules.subscriptions import (
+    CatalogPlanDto,
+    ListActivePlansUseCase,
+    ListOwnSubscriptionsUseCase,
+    SubscriptionDto,
+)
+from app.modules.transactions import QuoteCheckoutUseCase
 from app.modules.users import UserDto
+from app.telegram.dialogs.context import selected_subscription_id
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
-from app.telegram.i18n import format_date, format_price, get_translator
+from app.telegram.i18n import format_date, format_period, format_price, get_translator
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
+    PLAN_CODE_KEY,
     catalog_query,
+    checkout_quoter,
     plans_for,
     price_in,
     selected_plan,
@@ -40,6 +50,75 @@ def _runner(dialog_manager: DialogManager, i18n: TranslatorHub) -> TranslatorRun
     return get_translator(i18n, user)
 
 
+def _purchase_type(dialog_manager: DialogManager) -> PurchaseType:
+    return PurchaseType(dialog_manager.dialog_data["purchase_type"])
+
+
+async def _renewed(
+    dialog_manager: DialogManager, list_own_subscriptions: ListOwnSubscriptionsUseCase
+) -> Optional[SubscriptionDto]:
+    if _purchase_type(dialog_manager) is not PurchaseType.RENEW:
+        return None
+    target_id = selected_subscription_id(dialog_manager)
+    owned = await list_own_subscriptions(dialog_manager.middleware_data[USER_KEY])
+    return next((s for s in owned if s.id == target_id), None)
+
+
+def _plan_details(runner: TranslatorRunner, plan: CatalogPlanDto, period: str = "") -> TrustedHtml:
+    return TrustedHtml(
+        render_window_text(
+            runner,
+            "frg-purchase-plan",
+            plan_name=plan.name,
+            # its own blank line after it, gone with it when there is none
+            description=f"{plan.description}\n" if plan.description else "",
+            traffic_limit=plan.traffic_limit,
+            device_limit=plan.device_limit,
+            period=period,
+        )
+    )
+
+
+def _plan_changed_notice(
+    runner: TranslatorRunner, plan: CatalogPlanDto, renewed: Optional[SubscriptionDto]
+) -> str:
+    # a paid renewal moves the subscription to the plan's terms as sold now
+    if renewed is None:
+        return ""
+    sold = renewed.plan_snapshot
+    if (sold.traffic_limit, sold.device_limit, sold.traffic_limit_strategy) == (
+        plan.traffic_limit,
+        plan.device_limit,
+        plan.traffic_limit_strategy,
+    ):
+        return ""
+    return TrustedHtml(render_window_text(runner, "frg-purchase-plan-changed"))
+
+
+def _discount_notice(runner: TranslatorRunner, percent: int, source: DiscountSource) -> str:
+    if percent <= 0 or source is DiscountSource.NONE:
+        return ""
+    return TrustedHtml(render_window_text(runner, "frg-purchase-discount", percent=percent))
+
+
+def _type_notice(runner: TranslatorRunner, purchase_type: PurchaseType) -> str:
+    if purchase_type is PurchaseType.NEW:
+        return ""
+    return TrustedHtml(
+        render_window_text(runner, "frg-purchase-type-notice", purchase_type=purchase_type.value)
+    )
+
+
+def _duration_back_key(dialog_manager: DialogManager) -> str:
+    # a renewal or a plan link has no plan list behind it: back leaves the purchase
+    if (
+        dialog_manager.dialog_data.get(PLAN_CODE_KEY) is not None
+        or _purchase_type(dialog_manager) is PurchaseType.RENEW
+    ):
+        return "btn-back.general"
+    return "btn-purchase.back-plans"
+
+
 @inject
 async def plan_getter(
     dialog_manager: DialogManager,
@@ -55,7 +134,14 @@ async def plan_getter(
     plans = plans_for(PurchaseType(data["purchase_type"]), catalog, data.get("current_plan_id"))
     return {
         "window_text": render_window_text(runner, "msg-purchase-plan"),
-        "plans": [{"id": plan.id, "label": plan.name} for plan in plans],
+        "plans": [
+            {
+                "id": plan.id,
+                "label": plan.name,
+                "badge": plan.badge.value if plan.badge is not None else "",
+            }
+            for plan in plans
+        ],
         "back_text": label_with_icon(runner, "btn-back.general"),
     }
 
@@ -64,46 +150,88 @@ async def plan_getter(
 async def duration_getter(
     dialog_manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
+    quote_checkout: FromDishka[QuoteCheckoutUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     runner = _runner(dialog_manager, i18n)
-    catalog = await list_active_plans(
-        dialog_manager.middleware_data[USER_KEY], catalog_query(dialog_manager)
-    )
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    catalog = await list_active_plans(user, catalog_query(dialog_manager))
     plan = selected_plan(catalog, dialog_manager.dialog_data)
-    durations = plan.durations if plan is not None else []
-    return {
-        "window_text": render_window_text(runner, "msg-purchase-duration", plan_name=plan.name)
-        if plan is not None
+    back_text = label_with_icon(runner, _duration_back_key(dialog_manager))
+    if plan is None:
         # dropped from the catalog while the window stayed open
-        else render_window_text(runner, "msg-window-gone"),
-        "durations": [
+        return {
+            "window_text": render_window_text(runner, "msg-window-gone"),
+            "durations": [],
+            "back_text": back_text,
+        }
+    renewed = await _renewed(dialog_manager, list_own_subscriptions)
+    quote = checkout_quoter(user, dialog_manager, quote_checkout)
+    currency = catalog.anchor_currency
+    durations = []
+    discount_notice = ""
+    for duration in plan.durations:
+        # the price checkout would charge, personal discounts included
+        try:
+            quoted = await quote(duration.days, currency)
+            price = quoted.final_price
+            discount_notice = discount_notice or _discount_notice(
+                runner, quoted.discount_percent, quoted.discount_source
+            )
+        except AppError:
+            price = price_in(duration, currency)
+        durations.append(
             {
                 "days": duration.days,
                 "label": runner.get(
                     "btn-purchase.duration",
-                    days=duration.days,
-                    price=format_price(price_in(duration, catalog.anchor_currency)),
-                    currency_symbol=catalog.anchor_currency.symbol,
+                    period=format_period(runner, duration.days),
+                    price=format_price(price),
+                    currency_symbol=currency.symbol,
                 ),
             }
-            for duration in durations
-        ],
-        "back_text": label_with_icon(runner, "btn-back.general"),
+        )
+    return {
+        "window_text": render_window_text(
+            runner,
+            "msg-purchase-duration",
+            plan_details=_plan_details(runner, plan),
+            discount_notice=discount_notice,
+            plan_changed_notice=_plan_changed_notice(runner, plan, renewed),
+        ),
+        "durations": durations,
+        "back_text": back_text,
     }
 
 
 @inject
 async def method_getter(
     dialog_manager: DialogManager,
+    list_active_plans: FromDishka[ListActivePlansUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     runner = _runner(dialog_manager, i18n)
     data = dialog_manager.dialog_data
+    catalog = await list_active_plans(
+        dialog_manager.middleware_data[USER_KEY], catalog_query(dialog_manager)
+    )
+    plan = selected_plan(catalog, data)
     return {
-        "window_text": render_window_text(runner, "msg-purchase-method"),
+        "window_text": render_window_text(
+            runner,
+            "msg-purchase-method",
+            plan_details=_plan_details(runner, plan, format_period(runner, data["duration_days"]))
+            if plan is not None
+            else "",
+            discount_notice=_discount_notice(
+                runner,
+                data.get("discount_percent", 0),
+                DiscountSource(data.get("discount_source", DiscountSource.NONE.value)),
+            ),
+        ),
         "methods": [
             {
                 "id": method["gateway_type"],
@@ -116,13 +244,15 @@ async def method_getter(
             }
             for method in data.get("methods", [])
         ],
-        "back_text": label_with_icon(runner, "btn-back.general"),
+        "back_text": label_with_icon(runner, "btn-purchase.back-duration"),
     }
 
 
 @inject
 async def confirm_getter(
     dialog_manager: DialogManager,
+    list_active_plans: FromDishka[ListActivePlansUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
@@ -134,20 +264,37 @@ async def confirm_getter(
     terms_notice = (
         TrustedHtml(render_window_text(runner, "frg-purchase-terms-notice")) if documents else ""
     )
+    catalog = await list_active_plans(user, catalog_query(dialog_manager))
+    plan = selected_plan(catalog, data)
+    renewed = await _renewed(dialog_manager, list_own_subscriptions)
+    purchase_type = _purchase_type(dialog_manager)
+    # an empty value drops its line, as for a plan gone from the catalog
+    traffic_limit: object = plan.traffic_limit if plan is not None else ""
+    device_limit: object = plan.device_limit if plan is not None else ""
     return {
         "window_text": render_window_text(
             runner,
             "msg-purchase-confirm",
+            purchase_type=purchase_type.value,
             plan_name=data["plan_name"],
-            duration_days=data["duration_days"],
+            traffic_limit=traffic_limit,
+            device_limit=device_limit,
+            period=format_period(runner, data["duration_days"]),
             price=_price(data["prices"], data["currency"]),
             original_price=_original_price(data),
             currency_symbol=Currency(data["currency"]).symbol,
             method=runner.get(f"gateway-name.{data['gateway_type']}"),
+            type_notice=_type_notice(runner, purchase_type),
+            plan_changed_notice=_plan_changed_notice(runner, plan, renewed) if plan else "",
             terms_notice=terms_notice,
         ),
         "pay_text": label_with_icon(runner, "btn-purchase.pay"),
-        "back_text": label_with_icon(runner, "btn-back.general"),
+        "back_text": label_with_icon(
+            runner,
+            "btn-purchase.back-duration"
+            if data.get("method_skipped")
+            else "btn-purchase.back-method",
+        ),
     }
 
 

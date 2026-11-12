@@ -104,8 +104,11 @@ class _FakeGateway:
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         self.create_payment_calls.append(order)
+        # a later payment gets its own id, as the provider's would
+        calls = len(self.create_payment_calls)
         return PaymentIntent(
-            confirmation_url=self.confirmation_url, provider_payment_id="yk-fake-id"
+            confirmation_url=self.confirmation_url,
+            provider_payment_id="yk-fake-id" if calls == 1 else f"yk-fake-id-{calls}",
         )
 
 
@@ -1635,3 +1638,62 @@ def test_unknown_legal_locale_in_a_checkout_request_is_ignored() -> None:
     }
     assert CreateCheckoutRequest(**body, legal_locale="xx").legal_locale is None  # type: ignore[arg-type]
     assert CreateCheckoutRequest(**body, legal_locale="ru").legal_locale is Locale.RU  # type: ignore[arg-type]
+
+
+async def test_a_checkout_replacing_an_unpaid_order_frees_its_slot_and_discount(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    uow: UnitOfWork,
+) -> None:
+    # two of the default three slots taken: the first unpaid order holds the last one
+    for index in range(2):
+        await _seed_subscription(
+            subscription_repository,
+            user_id=actor.id,
+            remnawave_user_id=820_000 + index,
+            plan_id=plan.id,
+        )
+    async with uow:
+        await user_repository.update_fields(actor.id, UpdateUserDto(purchase_discount=20))
+    first = await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+
+    with pytest.raises(ValidationError) as error:
+        await create_checkout_use_case(actor, _checkout_dto(actor, plan))
+    assert error.value.code is ErrorCode.SUBSCRIPTION_LIMIT_REACHED
+
+    second = await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), replaces_order_id=first.order_id)
+    )
+
+    old = await transaction_repository.get_by_id(first.order_id)
+    new = await transaction_repository.get_by_id(second.order_id)
+    assert old.status is TransactionStatus.CANCELED
+    assert new.status is TransactionStatus.PENDING
+    assert new.discount_source is DiscountSource.PURCHASE and new.discount_percent == 20
+    user = await user_repository.find_by_id(actor.id)
+    assert user is not None and user.purchase_discount == 0
+
+
+async def test_a_checkout_leaves_an_order_it_does_not_own_alone(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    other = await user_repository.create(CreateUserDto(name="other", telegram_id=99_001))
+    theirs = await create_checkout_use_case(other, _checkout_dto(other, plan))
+
+    await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), replaces_order_id=theirs.order_id)
+    )
+
+    assert (await transaction_repository.get_by_id(theirs.order_id)).status is (
+        TransactionStatus.PENDING
+    )

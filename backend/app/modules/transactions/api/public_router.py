@@ -63,6 +63,7 @@ async def create_checkout(
             plan_code=payload.plan_code,
             legal_locale=payload.legal_locale,
             expected_price=payload.expected_price,
+            replaces_order_id=payload.replaces_order_id,
             client_ip=resolve_client_ip(request),
             return_to="cabinet" if auth.audience is SessionAudience.CABINET else "default",
         ),

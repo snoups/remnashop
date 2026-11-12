@@ -17,6 +17,7 @@ from app.telegram.routers.customer_notifications import handlers as customer_not
 from app.telegram.routers.legal import handlers as legal_handlers
 from app.telegram.routers.payments import handlers as payments_handlers
 from app.telegram.routers.purchase import deeplink as plan_link
+from app.telegram.routers.referrals import inline as referral_inline
 from app.telegram.routers.requirements import handlers as requirements_handlers
 
 
@@ -31,6 +32,7 @@ def setup_routers(router: Router) -> None:
         customer_notifications_handlers.router,
         plan_link.router,
         legal_handlers.router,
+        referral_inline.router,
         menu.handlers.router,
         menu.dialog.router,
         subscriptions.dialog.router,

@@ -133,6 +133,24 @@ def configure_for_plan(
     )
 
 
+def configure_for_renewal(
+    subscription: SubscriptionDto, plan: PlanSnapshot
+) -> UpdateUserRequestDto:
+    """The plan's current terms for a renewed subscription; its add-ons stay on top."""
+    traffic_bonus = subscription.effective_traffic_limit - subscription.traffic_limit
+    device_bonus = subscription.effective_device_limit - subscription.device_limit
+    return panel_update(
+        id=subscription.remnawave_user_id,
+        # 0 = unlimited; an add-on on top must not turn it into a finite cap
+        traffic_limit_bytes=(plan.traffic_limit and plan.traffic_limit + traffic_bonus)
+        * GB_TO_BYTES,
+        hwid_device_limit=plan.device_limit and plan.device_limit + device_bonus,
+        traffic_limit_strategy=plan.traffic_limit_strategy,
+        active_internal_squads=plan.internal_squads or None,
+        external_squad_uuid=plan.external_squad,
+    )
+
+
 def restore(subscription: SubscriptionDto, owner: Optional[UserDto] = None) -> UpdateUserRequestDto:
     """Puts a panel user back to the configuration its subscription row holds;
     with `owner`, also to the owner's Telegram and email where the shop knows them."""

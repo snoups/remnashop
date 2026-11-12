@@ -295,6 +295,19 @@ class TransactionRepository:
         )
         return cast(CursorResult, result).rowcount > 0
 
+    async def cancel_own_pending(self, order_id: int, user_id: int) -> Optional[TransactionDto]:
+        row = await self.session.scalar(
+            update(Transaction)
+            .where(
+                Transaction.id == order_id,
+                Transaction.user_id == user_id,
+                Transaction.status == TransactionStatus.PENDING,
+            )
+            .values(status=TransactionStatus.CANCELED, updated_at=NOW_FUNC)
+            .returning(Transaction)
+        )
+        return self._to_dto(row) if row is not None else None
+
     async def cancel_expired_pending(self, cutoff: datetime) -> list[TransactionDto]:
         rows = await self.session.scalars(
             update(Transaction)

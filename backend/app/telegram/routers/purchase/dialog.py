@@ -1,8 +1,11 @@
-from aiogram.enums import ParseMode
+from aiogram.enums import ButtonStyle, ParseMode
 from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.kbd import Button, Cancel, ListGroup, Row, Start, SwitchTo, Url
+from aiogram_dialog.widgets.style import Style
 from aiogram_dialog.widgets.text import Format
+from magic_filter import F
 
+from app.core.enums import PlanBadge
 from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.getters import (
     confirm_getter,
@@ -30,7 +33,16 @@ register_purchase_catalog()
 plan = Window(
     Format("{window_text}"),
     ListGroup(
-        Button(text=Format("{item[label]}"), id="plan", on_click=on_plan_selected),
+        Button(
+            text=Format("{item[label]}"),
+            id="plan",
+            on_click=on_plan_selected,
+            # a badged plan stands out: "best value" blue, "popular" green
+            style=Style(
+                style=ButtonStyle.PRIMARY, when=F["item"]["badge"] == PlanBadge.BEST_VALUE.value
+            )
+            | Style(style=ButtonStyle.SUCCESS, when=F["item"]["badge"] == PlanBadge.POPULAR.value),
+        ),
         id="plans",
         item_id_getter=lambda item: item["id"],
         items="plans",

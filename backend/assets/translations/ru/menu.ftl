@@ -343,20 +343,65 @@ ntf-purchase =
 
 msg-purchase-plan = <b>💳 Выберите тариф</b>
 msg-purchase-duration =
-    <b>⏳ { $plan_name }</b>
+    <b>⏳ Выберите длительность</b>
 
-    Выберите срок подписки:
-msg-purchase-method = <b>💳 Выберите способ оплаты</b>
+    { $plan_details }
+
+    { $discount_notice }
+
+    { $plan_changed_notice }
+msg-purchase-method =
+    <b>💳 Выберите способ оплаты</b>
+
+    { $plan_details }
+
+    { $discount_notice }
+frg-purchase-plan =
+    <b>{ $plan_name }</b>:
+    <blockquote>
+    { $description }
+    • <b>Лимит трафика</b>: { $traffic_limit ->
+        [0] Безлимит
+       *[other] { $traffic_limit } ГБ
+    }
+    • <b>Лимит устройств</b>: { $device_limit ->
+        [0] Безлимит
+       *[other] { $device_limit }
+    }
+    • <b>Длительность</b>: { $period }
+    </blockquote>
+frg-purchase-discount = <i>Цены указаны с учётом вашей скидки { $percent }%</i>
+frg-purchase-plan-changed = <i>ℹ️ Условия тарифа изменились с момента покупки. После продления подписка перейдёт на новые условия — они указаны выше.</i>
+frg-purchase-type-notice = { $purchase_type ->
+        [RENEW] <i>⚠️ Текущая подписка будет <u>продлена</u> на выбранный срок.</i>
+       *[other] <i>⚠️ Текущая подписка будет <u>заменена</u> выбранным тарифом. Неиспользованная часть оплаты добавится к новому сроку.</i>
+    }
 msg-purchase-confirm =
-    <b>🧾 Проверьте заказ</b>
+    <b>🛒 { $purchase_type ->
+        [RENEW] Подтверждение продления
+        [CHANGE] Подтверждение смены тарифа
+       *[other] Подтверждение покупки
+    }</b>
 
     <blockquote>
     • <b>Тариф</b>: { $plan_name }
-    • <b>Срок</b>: { $duration_days } дн.
+    • <b>Лимит трафика</b>: { $traffic_limit ->
+        [0] Безлимит
+       *[other] { $traffic_limit } ГБ
+    }
+    • <b>Лимит устройств</b>: { $device_limit ->
+        [0] Безлимит
+       *[other] { $device_limit }
+    }
+    • <b>Длительность</b>: { $period }
     • <b>Способ оплаты</b>: { $method }
     • <b>Без скидки</b>: <s>{ $original_price } { $currency_symbol }</s>
     • <b>К оплате</b>: { $price } { $currency_symbol }
     </blockquote>
+
+    { $type_notice }
+
+    { $plan_changed_notice }
 
     { $terms_notice }
 frg-purchase-terms-notice = <i>Оплачивая, вы принимаете условия — /terms</i>
@@ -364,7 +409,13 @@ msg-purchase-pay = Заказ создан. Нажмите кнопку ниже
 msg-purchase-link-choice = У вас уже есть подписка { $plan_name }. Продлить её или купить ещё одну?
 
 btn-purchase =
-    .duration = { $days } дн. — { $price } { $currency_symbol }
+    .duration = { $period } — { $price } { $currency_symbol }
+    .back-plans = Назад к выбору тарифа
+    .back-plans-icon = ⬅️
+    .back-duration = Изменить длительность
+    .back-duration-icon = ⬅️
+    .back-method = Изменить способ оплаты
+    .back-method-icon = ⬅️
     .method = { $gateway } — { $price } { $currency_symbol }
     .pay = Оплатить
     .pay-icon = 💳
@@ -383,7 +434,7 @@ msg-payment-result-success =
     { $purchase_type ->
     [RENEW] Подписка { $plan_name } продлена.
     [CHANGE] Тариф изменён на { $plan_name }.
-    *[NEW] Подписка { $plan_name } активирована.
+    *[NEW] Подписка { $plan_name } активирована. Чтобы начать пользоваться сервисом, нажмите «Подключиться» и следуйте инструкциям!
     }
 msg-payment-result-failed =
     <b>❌ Произошла ошибка!</b>
@@ -543,5 +594,27 @@ time-unit =
         [few] { $value } дня
        *[other] { $value } дней
     }
+    .month = { $value ->
+        [one] { $value } месяц
+        [few] { $value } месяца
+       *[other] { $value } месяцев
+    }
+    .year = { $value ->
+        [one] { $value } год
+        [few] { $value } года
+       *[other] { $value } лет
+    }
     .hour = { $value } ч
     .minute = { $value } мин
+
+inline-invite =
+    .title = Пригласить друга
+    .description = Нажмите, чтобы отправить пригласительную ссылку!
+    .message =
+        🚀 Привет! Хочешь стабильный и быстрый VPN?
+
+        { $bot_name } — поможет тебе с этим!
+
+        ↘️ ЖМИ КНОПКУ И ПОПРОБУЙ БЕСПЛАТНО!
+    .start = Присоединиться
+    .start-icon = 🚀

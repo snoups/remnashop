@@ -139,7 +139,10 @@ def test_every_catalog_action_has_a_bound_handler() -> None:
         register_purchase_catalog()
         register_referrals_catalog()
         assert {
-            key for key in catalog.action_keys() if not catalog.has_action_handler(key)
+            key
+            for key in catalog.action_keys()
+            # an inline action opens the chat picker, nothing to call back
+            if not catalog.has_action_handler(key) and catalog.inline_query_for(key) is None
         } == set()
     finally:
         catalog._reset_for_tests()

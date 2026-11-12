@@ -339,20 +339,65 @@ ntf-purchase =
 
 msg-purchase-plan = <b>💳 Choose a plan</b>
 msg-purchase-duration =
-    <b>⏳ { $plan_name }</b>
+    <b>⏳ Choose a duration</b>
 
-    Choose a subscription period:
-msg-purchase-method = <b>💳 Choose a payment method</b>
+    { $plan_details }
+
+    { $discount_notice }
+
+    { $plan_changed_notice }
+msg-purchase-method =
+    <b>💳 Choose a payment method</b>
+
+    { $plan_details }
+
+    { $discount_notice }
+frg-purchase-plan =
+    <b>{ $plan_name }</b>:
+    <blockquote>
+    { $description }
+    • <b>Traffic limit</b>: { $traffic_limit ->
+        [0] Unlimited
+       *[other] { $traffic_limit } GB
+    }
+    • <b>Device limit</b>: { $device_limit ->
+        [0] Unlimited
+       *[other] { $device_limit }
+    }
+    • <b>Duration</b>: { $period }
+    </blockquote>
+frg-purchase-discount = <i>Prices include your { $percent }% discount</i>
+frg-purchase-plan-changed = <i>ℹ️ The plan's terms have changed since your purchase. After renewal your subscription moves to the new terms shown above.</i>
+frg-purchase-type-notice = { $purchase_type ->
+        [RENEW] <i>⚠️ Your current subscription will be <u>extended</u> by the chosen term.</i>
+       *[other] <i>⚠️ Your current subscription will be <u>replaced</u> with the chosen plan. The unused part of your payment is added to the new term.</i>
+    }
 msg-purchase-confirm =
-    <b>🧾 Check your order</b>
+    <b>🛒 { $purchase_type ->
+        [RENEW] Confirm renewal
+        [CHANGE] Confirm plan change
+       *[other] Confirm purchase
+    }</b>
 
     <blockquote>
     • <b>Plan</b>: { $plan_name }
-    • <b>Period</b>: { $duration_days } d
+    • <b>Traffic limit</b>: { $traffic_limit ->
+        [0] Unlimited
+       *[other] { $traffic_limit } GB
+    }
+    • <b>Device limit</b>: { $device_limit ->
+        [0] Unlimited
+       *[other] { $device_limit }
+    }
+    • <b>Duration</b>: { $period }
     • <b>Payment method</b>: { $method }
     • <b>Without discount</b>: <s>{ $original_price } { $currency_symbol }</s>
     • <b>To pay</b>: { $price } { $currency_symbol }
     </blockquote>
+
+    { $type_notice }
+
+    { $plan_changed_notice }
 
     { $terms_notice }
 frg-purchase-terms-notice = <i>By paying you accept the terms — /terms</i>
@@ -360,7 +405,13 @@ msg-purchase-pay = Your order is ready. Tap the button below to pay.
 msg-purchase-link-choice = You already have a { $plan_name } subscription. Renew it or buy another one?
 
 btn-purchase =
-    .duration = { $days } d — { $price } { $currency_symbol }
+    .duration = { $period } — { $price } { $currency_symbol }
+    .back-plans = Back to plans
+    .back-plans-icon = ⬅️
+    .back-duration = Change duration
+    .back-duration-icon = ⬅️
+    .back-method = Change payment method
+    .back-method-icon = ⬅️
     .method = { $gateway } — { $price } { $currency_symbol }
     .pay = Pay
     .pay-icon = 💳
@@ -379,7 +430,7 @@ msg-payment-result-success =
     { $purchase_type ->
     [RENEW] Subscription { $plan_name } renewed.
     [CHANGE] Plan changed to { $plan_name }.
-    *[NEW] Subscription { $plan_name } activated.
+    *[NEW] Subscription { $plan_name } activated. To start using the service, tap “Connect” and follow the instructions!
     }
 msg-payment-result-failed =
     <b>❌ Something went wrong!</b>
@@ -535,5 +586,25 @@ time-unit =
         [one] { $value } day
        *[other] { $value } days
     }
+    .month = { $value ->
+        [one] { $value } month
+       *[other] { $value } months
+    }
+    .year = { $value ->
+        [one] { $value } year
+       *[other] { $value } years
+    }
     .hour = { $value } h
     .minute = { $value } min
+
+inline-invite =
+    .title = Invite a friend
+    .description = Tap to send your invitation link!
+    .message =
+        🚀 Hi! Looking for a fast and reliable VPN?
+
+        { $bot_name } can help you with that!
+
+        ↘️ TAP THE BUTTON AND TRY IT FOR FREE!
+    .start = Join
+    .start-icon = 🚀

@@ -1,4 +1,4 @@
-from app.core.constants import DEFAULT_BANNER_NAME
+from app.core.constants import DEFAULT_BANNER_NAME, INLINE_INVITE_QUERY
 from app.core.enums import ButtonLinkType, DialogFlow
 from app.modules.dialogs import catalog
 
@@ -10,6 +10,7 @@ def register_referrals_metadata() -> None:
     catalog.register_action_key("redeem_days")
     catalog.register_action_key("referral_qr")
     catalog.register_action_key("reset_referral_code")
+    catalog.register_inline_action("invite_friend", INLINE_INVITE_QUERY)
 
     catalog.register_condition("has_points", lambda data: bool(data.get("has_points")))
     catalog.register_condition(
@@ -61,8 +62,8 @@ def register_referrals_metadata() -> None:
                     text_key="btn-referrals.share",
                     row=1,
                     column=1,
-                    link_type=ButtonLinkType.URL,
-                    url_value="https://t.me/share/url?url=${referral_url}",
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="invite_friend",
                 ),
                 catalog.CatalogButton(
                     key="withdraw",

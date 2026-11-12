@@ -29,6 +29,7 @@ class CreateCheckoutRequest(BaseModel):
     plan_code: Optional[str] = Field(default=None, max_length=64)
     legal_locale: Optional[Locale] = None
     expected_price: Optional[Decimal] = None
+    replaces_order_id: Optional[int] = None
 
     _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 

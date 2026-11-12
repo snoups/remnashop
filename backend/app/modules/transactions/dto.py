@@ -143,6 +143,9 @@ class CreateCheckoutDto:
     client_ip: Optional[str] = None
     # the total the customer was shown; None skips the check
     expected_price: Optional[Decimal] = None
+    # the customer's earlier unpaid order this one replaces, e.g. after going back
+    # to pick another duration: it would otherwise hold the slot and the discount
+    replaces_order_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

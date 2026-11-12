@@ -78,6 +78,8 @@ _CONDITIONS: Final[dict[str, Resolver]] = {}
 _VARIABLES: Final[dict[str, Resolver]] = {}
 # variable -> the group the editor's picker lists it under ("user", "subscription", ...)
 _VARIABLE_CATEGORIES: Final[dict[str, str]] = {}
+# action keys a button carries out by opening Telegram's chat picker with this inline query
+_INLINE_QUERIES: Final[dict[str, str]] = {}
 
 
 def _register(registry: dict[str, object], key: str, value: object, label: str) -> None:
@@ -94,6 +96,15 @@ def register_action_key(key: str) -> None:
     if key in _ACTION_KEYS:
         raise ValueError(f"Duplicate action key: {key}")
     _ACTION_KEYS.add(key)
+
+
+def register_inline_action(key: str, query: str) -> None:
+    register_action_key(key)
+    _INLINE_QUERIES[key] = query
+
+
+def inline_query_for(action_key: Optional[str]) -> Optional[str]:
+    return _INLINE_QUERIES.get(action_key) if action_key is not None else None
 
 
 def bind_action_handler(key: str, handler: Resolver) -> None:
@@ -253,3 +264,4 @@ def _reset_for_tests() -> None:
     _CONDITIONS.clear()
     _VARIABLES.clear()
     _VARIABLE_CATEGORIES.clear()
+    _INLINE_QUERIES.clear()

@@ -45,6 +45,22 @@ class PlanSnapshot:
     credit_paid: Optional[Decimal] = None
     credit_days: Optional[int] = None
 
+    def terms_differ(self, other: "PlanSnapshot") -> bool:
+        """Whether the two sell different service: limits, traffic strategy or squads."""
+        return (
+            self.traffic_limit,
+            self.device_limit,
+            self.traffic_limit_strategy,
+            sorted(self.internal_squads),
+            self.external_squad,
+        ) != (
+            other.traffic_limit,
+            other.device_limit,
+            other.traffic_limit_strategy,
+            sorted(other.internal_squads),
+            other.external_squad,
+        )
+
     @property
     def effective_credit_paid(self) -> Decimal:
         return self.credit_paid if self.credit_paid is not None else self.price_paid
@@ -297,9 +313,10 @@ class PurchaseSubscriptionDto:
     # zero the panel's traffic counter; set for a customer's paid order (a
     # CHANGE's credit already deducts the spent traffic), never for an admin grant
     reset_traffic: bool = False
-    # RENEW only: give the subscription the snapshot's tag; set for a checkout
-    # order, whose snapshot is the plan as sold now, not the target's own
-    apply_plan_tag: bool = False
+    # RENEW only: give the subscription the snapshot's tag and, when the plan was
+    # edited since the target was sold, its limits, strategy and squads; set for a
+    # checkout order, whose snapshot is the plan as sold now, not the target's own
+    apply_current_plan: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

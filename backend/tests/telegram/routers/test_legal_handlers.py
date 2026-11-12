@@ -11,10 +11,11 @@ from redis.asyncio import Redis
 
 from app.core.config import AppConfig
 from app.core.constants import USER_KEY
-from app.core.enums import LegalDocumentKind, Locale, PurchaseChannel
+from app.core.enums import Currency, LegalDocumentKind, Locale, PurchaseChannel
 from app.modules.legal import LegalRevisionDto, PendingLegalDocumentsDto
 from app.modules.settings import BotRequirementsDto
 from app.modules.settings.bot_commands import BOT_COMMANDS
+from app.modules.subscriptions import PlanCatalogDto
 from app.modules.users import UserDto
 from app.telegram.i18n import build_translator_hub
 from app.telegram.legal_gate import LegalAcceptCallback, LegalDocumentCallback, gate_message_key
@@ -185,6 +186,8 @@ async def test_confirm_window_shows_terms_notice_only_with_documents(locale: Loc
     manager = MagicMock()
     manager.middleware_data = {USER_KEY: SimpleNamespace(id=1, language=locale)}
     manager.dialog_data = {
+        "plan_id": 10,
+        "purchase_type": "NEW",
         "prices": {"USD": "2.5"},
         "plan_name": "Plan",
         "duration_days": 30,
@@ -195,7 +198,13 @@ async def test_confirm_window_shows_terms_notice_only_with_documents(locale: Loc
 
     async def _text(documents: list[LegalRevisionDto]) -> str:
         data = await confirm_getter.__dishka_orig_func__(
-            manager, list_visible_legal_documents=_visible(documents), i18n=hub
+            manager,
+            list_active_plans=AsyncMock(
+                return_value=PlanCatalogDto(plans=[], anchor_currency=Currency.USD)
+            ),
+            list_own_subscriptions=AsyncMock(return_value=[]),
+            list_visible_legal_documents=_visible(documents),
+            i18n=hub,
         )
         return str(data["window_text"])
 

@@ -31,6 +31,7 @@ from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.i18n import format_price
 from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.handlers import (
+    ORDER_ID_KEY,
     PAYMENT_URL_KEY,
     checkout_error_key,
     on_confirm,
@@ -673,3 +674,22 @@ async def test_a_refused_quote_answers_an_alert() -> None:
         "ntf-purchase.plan-unavailable"
     )
     manager.switch_to.assert_not_awaited()
+
+
+async def test_a_new_selection_replaces_the_order_this_window_created() -> None:
+    manager = _manager(dialog_data={**_confirm_data("NEW"), ORDER_ID_KEY: 7})
+    create_checkout = AsyncMock(
+        return_value=CheckoutResultDto(order_id=8, confirmation_url="https://pay")
+    )
+
+    await on_confirm.__dishka_orig_func__(
+        MagicMock(),
+        MagicMock(),
+        manager,
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
+    )
+
+    assert create_checkout.await_args.args[1].replaces_order_id == 7
+    assert manager.dialog_data[ORDER_ID_KEY] == 8

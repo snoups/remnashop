@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -7,7 +8,7 @@ from aiogram.types import Message
 from aiogram_dialog import StartMode
 
 from app.core.constants import USER_KEY
-from app.core.enums import Currency, PurchaseType
+from app.core.enums import Currency, DiscountSource, PurchaseType
 from app.modules.subscriptions import ListActivePlansDto, PlanCatalogDto
 from app.modules.transactions.dto import CheckoutResultDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
@@ -164,10 +165,18 @@ async def test_confirm_sends_the_link_code_to_checkout() -> None:
 
 async def test_getters_ask_the_catalog_for_the_linked_plan() -> None:
     list_active_plans = AsyncMock(return_value=_catalog(10))
-    manager = _getter_manager({"plan_id": 10, PLAN_CODE_KEY: "Ab12Cd34"})
+    manager = _getter_manager({"plan_id": 10, "purchase_type": "NEW", PLAN_CODE_KEY: "Ab12Cd34"})
 
     await duration_getter.__dishka_orig_func__(
-        manager, list_active_plans=list_active_plans, i18n=_getter_i18n()
+        manager,
+        list_active_plans=list_active_plans,
+        list_own_subscriptions=AsyncMock(return_value=[]),
+        quote_checkout=AsyncMock(
+            return_value=MagicMock(
+                final_price=Decimal("1"), discount_percent=0, discount_source=DiscountSource.NONE
+            )
+        ),
+        i18n=_getter_i18n(),
     )
 
     assert list_active_plans.await_args.args[1] == ListActivePlansDto(plan_code="Ab12Cd34")

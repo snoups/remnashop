@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from app.core.enums import Currency, PaymentGatewayType, TransactionStatus
 from app.core.events import ActorEvent, ActorTargetEvent, EventCategory, SystemEvent, UserEvent
@@ -67,6 +67,8 @@ class CheckoutCreatedEvent(UserEvent):
     gateway_type: PaymentGatewayType
     amount: str
     currency: Currency
+    # the unpaid order this one canceled in its place
+    replaced_order_id: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)

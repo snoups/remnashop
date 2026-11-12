@@ -74,6 +74,15 @@ class ConfigKeyboard(Keyboard):
                             icon_custom_emoji_id=icon_id,
                         )
                     )
+                elif query := catalog.inline_query_for(button["action_key"]):
+                    rendered_row.append(
+                        InlineKeyboardButton(
+                            text=text,
+                            switch_inline_query=query,
+                            style=button["style"],
+                            icon_custom_emoji_id=icon_id,
+                        )
+                    )
                 else:
                     rendered_row.append(
                         InlineKeyboardButton(

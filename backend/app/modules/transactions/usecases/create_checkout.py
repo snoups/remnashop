@@ -136,12 +136,29 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 f"Trial is not available for user '{user_id}'", code=ErrorCode.TRIAL_NOT_AVAILABLE
             )
 
+    async def _cancel_replaced(self, user_id: int, order_id: Optional[int]) -> Optional[int]:
+        """Cancels the customer's own unpaid order this checkout replaces, before the
+        quote and the cap check see it. Own transaction: the order was abandoned
+        either way, even if this checkout fails. A payment arriving for it later is
+        settled as for an expired one."""
+        if order_id is None:
+            return None
+        async with self._uow:
+            replaced = await self._transaction_repository.cancel_own_pending(order_id, user_id)
+            if replaced is None:
+                return None
+            await give_back_purchase_discount(self._user_repository, replaced)
+        logger.info(f"Order '{order_id}' of user '{user_id}' canceled, replaced by a new checkout")
+        return order_id
+
     async def _execute(self, actor: UserDto, data: CreateCheckoutDto) -> CheckoutResultDto:
         if not (await self._get_access_settings_use_case.system()).payments_enabled:
             # own transaction, so the refusal below doesn't roll it back
             async with self._uow:
                 await self._waitlist_repository.add(actor.id)
             raise PermissionDeniedError("Payments are disabled", code=ErrorCode.PAYMENTS_DISABLED)
+
+        replaced_order_id = await self._cancel_replaced(actor.id, data.replaces_order_id)
 
         async with self._uow:
             gateway_settings = await self._load_gateway_settings(actor.id, data)
@@ -210,6 +227,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                     gateway_type=order.gateway_type,
                     amount=str(order.final_price),
                     currency=order.currency,
+                    replaced_order_id=replaced_order_id,
                 )
             )
 

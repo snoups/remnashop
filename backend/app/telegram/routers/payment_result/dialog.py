@@ -1,6 +1,6 @@
 from aiogram.enums import ParseMode
 from aiogram_dialog import Dialog, StartMode, Window
-from aiogram_dialog.widgets.kbd import Button, Start
+from aiogram_dialog.widgets.kbd import Button, Start, Url
 from aiogram_dialog.widgets.text import Format
 
 from app.telegram.routers.payment_result.getters import (
@@ -18,6 +18,7 @@ def _menu() -> Start:
 
 success = Window(
     Format("{window_text}"),
+    Url(Format("{connect_text}"), Format("{connect_url}"), when="connect_url"),
     Button(
         Format("{subscription_text}"),
         id="subscription",

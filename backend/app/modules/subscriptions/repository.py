@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any, Final, Literal, Optional
 
@@ -439,6 +440,29 @@ class SubscriptionRepository:
                     AddOnEntitlement.type.in_(data.removed_addon_types),
                 )
             )
+        await self.session.flush()
+        await self.session.refresh(row)
+        entitlements_by_subscription = await self._load_entitlements([row.id])
+        return self._to_dto(row, entitlements_by_subscription.get(row.id, []))
+
+    async def apply_plan_terms(self, subscription_id: int, plan: PlanSnapshot) -> SubscriptionDto:
+        # local row only; the renewal pushed the same terms to the panel first
+        row = await self._get_or_raise(subscription_id)
+        row.traffic_limit = plan.traffic_limit
+        row.device_limit = plan.device_limit
+        row.traffic_limit_strategy = plan.traffic_limit_strategy
+        row.internal_squads = list(plan.internal_squads)
+        row.external_squad = plan.external_squad
+        sold = PlanSnapshot.from_json(dict(row.plan_snapshot))
+        row.plan_snapshot = replace(
+            sold,
+            traffic_limit=plan.traffic_limit,
+            device_limit=plan.device_limit,
+            traffic_limit_strategy=plan.traffic_limit_strategy,
+            internal_squads=list(plan.internal_squads),
+            external_squad=plan.external_squad,
+        ).to_json()
+
         await self.session.flush()
         await self.session.refresh(row)
         entitlements_by_subscription = await self._load_entitlements([row.id])

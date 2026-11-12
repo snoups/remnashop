@@ -177,6 +177,10 @@ class OwnSubscriptionResponse(BaseModel):
     traffic_limit_strategy: TrafficLimitStrategy
     plan_name: str
     plan_id: int
+    # the terms it was sold with: a renewal moves it to the plan's current ones
+    plan_traffic_limit: int
+    plan_device_limit: int
+    plan_traffic_limit_strategy: TrafficLimitStrategy
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
     used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
@@ -192,6 +196,9 @@ class OwnSubscriptionResponse(BaseModel):
                 **subscription.model_dump(),
                 "plan_name": subscription.plan_snapshot.name,
                 "plan_id": subscription.plan_snapshot.plan_id,
+                "plan_traffic_limit": subscription.plan_snapshot.traffic_limit,
+                "plan_device_limit": subscription.plan_snapshot.device_limit,
+                "plan_traffic_limit_strategy": subscription.plan_snapshot.traffic_limit_strategy,
                 "used_traffic": used_traffic,
                 "connect_signature": sign_subscription_url(subscription.url, secret),
             }

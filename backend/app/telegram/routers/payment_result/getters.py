@@ -6,6 +6,8 @@ from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
 
 from app.core.constants import USER_KEY
+from app.core.enums import PurchaseType
+from app.modules.subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.transactions import GetOwnTransactionUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
@@ -17,13 +19,28 @@ from app.telegram.routers.payment_result.handlers import order_id
 async def success_getter(
     dialog_manager: DialogManager,
     get_own_transaction: FromDishka[GetOwnTransactionUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
     order = await get_own_transaction(user, order_id(dialog_manager))
+    connect_url = ""
+    # a new subscription is connected from right here, as the text says
+    if order.purchase_type is PurchaseType.NEW and order.fulfilled_subscription_id is not None:
+        subscription = next(
+            (
+                s
+                for s in await list_own_subscriptions(user)
+                if s.id == order.fulfilled_subscription_id
+            ),
+            None,
+        )
+        connect_url = subscription.url if subscription is not None else ""
     return {
+        "connect_url": connect_url,
+        "connect_text": label_with_icon(runner, "btn-menu.connect"),
         "window_text": render_window_text(
             runner,
             "msg-payment-result-success",

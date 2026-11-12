@@ -53,7 +53,10 @@ def _order(**overrides: Any) -> MagicMock:
 
 async def test_success_getter_renders_the_order() -> None:
     data = await success_getter.__dishka_orig_func__(
-        _manager(), get_own_transaction=AsyncMock(return_value=_order()), i18n=_i18n()
+        _manager(),
+        get_own_transaction=AsyncMock(return_value=_order()),
+        list_own_subscriptions=AsyncMock(return_value=[]),
+        i18n=_i18n(),
     )
 
     assert "Pro" in data["window_text"]
@@ -65,10 +68,27 @@ async def test_success_getter_hides_the_subscription_button_without_one() -> Non
     order = _order(fulfilled_subscription_id=None)
 
     data = await success_getter.__dishka_orig_func__(
-        _manager(), get_own_transaction=AsyncMock(return_value=order), i18n=_i18n()
+        _manager(),
+        get_own_transaction=AsyncMock(return_value=order),
+        list_own_subscriptions=AsyncMock(return_value=[]),
+        i18n=_i18n(),
     )
 
     assert data["has_subscription"] is False
+
+
+async def test_a_new_subscription_is_connected_from_the_success_window() -> None:
+    order = _order(purchase_type=PurchaseType.NEW)
+    subscription = MagicMock(id=order.fulfilled_subscription_id, url="https://sub.example/x")
+
+    data = await success_getter.__dishka_orig_func__(
+        _manager(),
+        get_own_transaction=AsyncMock(return_value=order),
+        list_own_subscriptions=AsyncMock(return_value=[subscription]),
+        i18n=_i18n(),
+    )
+
+    assert data["connect_url"] == "https://sub.example/x"
 
 
 async def test_failed_getter_has_text_and_menu() -> None:

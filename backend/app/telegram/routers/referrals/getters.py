@@ -89,9 +89,13 @@ async def referrals_getter(
     data["has_bonus_days"] = stats.bonus_days > 0
     shop = await get_shop_settings.system()
     data["referral_reset_enabled"] = shop.referral_reset_enabled
-    data[UNAVAILABLE_BUTTONS_KEY] = (
-        set() if shop.referral_reset_enabled else {"reset_referral_code"}
-    )
+    unavailable: set[str] = set()
+    if not shop.referral_reset_enabled:
+        unavailable.add("reset_referral_code")
+    # inline mode is switched on in BotFather; without it the picker opens to nothing
+    if not me.supports_inline_queries or not stats.referral_code:
+        unavailable.add("invite_friend")
+    data[UNAVAILABLE_BUTTONS_KEY] = unavailable
     data["support_url"] = (
         f"https://t.me/{shop.support_telegram}" if shop.support_telegram else shop.support_url or ""
     )

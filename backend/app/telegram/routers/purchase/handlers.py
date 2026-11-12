@@ -40,6 +40,8 @@ from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu, Purchase
 
 PAYMENT_URL_KEY: Final[str] = "payment_url"
+# the last order this window created: a new selection's order replaces it
+ORDER_ID_KEY: Final[str] = "order_id"
 PLAN_CODE_KEY: Final[str] = "plan_code"
 RETRY_PLAN_KEY: Final[str] = "retry_plan_id"
 RETRY_DURATION_KEY: Final[str] = "retry_duration_days"
@@ -217,6 +219,10 @@ async def select_duration(
     # what checkout charges, and the price before discounts beside it
     data["prices"] = {c.value: str(q.final_price) for c, q in quotes.items()}
     data["base_prices"] = {c.value: str(q.base_price) for c, q in quotes.items()}
+    # the same discount whatever the currency
+    first = quotes[methods[0].currency]
+    data["discount_percent"] = first.discount_percent
+    data["discount_source"] = first.discount_source.value
     data["methods"] = [
         {"gateway_type": m.gateway_type.value, "currency": m.currency.value} for m in methods
     ]
@@ -413,6 +419,7 @@ async def on_confirm(
                 if purchase_type is PurchaseType.NEW
                 else selected_subscription_id(dialog_manager),
                 plan_code=data.get(PLAN_CODE_KEY),
+                replaces_order_id=data.get(ORDER_ID_KEY),
             ),
         )
     except AppError as error:
@@ -428,5 +435,6 @@ async def on_confirm(
         await callback.answer()
         await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
         return
+    data[ORDER_ID_KEY] = result.order_id
     data[PAYMENT_URL_KEY] = result.confirmation_url
     await dialog_manager.switch_to(Purchase.PAY)

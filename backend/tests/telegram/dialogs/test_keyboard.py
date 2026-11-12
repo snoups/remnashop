@@ -597,3 +597,31 @@ async def test_render_keyboard_opens_a_web_app_over_https_only(url: str, rendere
     assert isinstance(button, InlineKeyboardButton)
     assert button.url is None
     assert button.web_app is not None and button.web_app.url == url
+
+
+async def test_render_keyboard_opens_the_chat_picker_for_an_inline_action() -> None:
+    catalog._reset_for_tests()
+    try:
+        catalog.register_inline_action("invite_friend", "invite")
+        widget = ConfigKeyboard(window_key="referrals.main")
+        data = {
+            "buttons": [
+                [
+                    {
+                        "id": 1,
+                        "text": "Invite",
+                        "style": None,
+                        "icon_custom_emoji_id": None,
+                        "link_type": ButtonLinkType.ACTION,
+                        "action_key": "invite_friend",
+                        "target_window_key": None,
+                        "url_value": None,
+                    }
+                ]
+            ]
+        }
+        keyboard = await widget._render_keyboard(data, MagicMock())
+        assert keyboard[0][0].switch_inline_query == "invite"
+        assert keyboard[0][0].callback_data is None
+    finally:
+        catalog._reset_for_tests()

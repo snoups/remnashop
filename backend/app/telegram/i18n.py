@@ -73,6 +73,15 @@ def format_price(price: Decimal) -> str:
     return f"{price:.2f}".removesuffix(".00")
 
 
+def format_period(runner: TranslatorRunner, days: int) -> str:
+    """A plan duration as it reads: years or months when it divides evenly, else days."""
+    if days % 365 == 0:
+        return runner.get("time-unit.year", value=days // 365)
+    if days % 30 == 0:
+        return runner.get("time-unit.month", value=days // 30)
+    return runner.get("time-unit.day", value=days)
+
+
 def format_wait(runner: TranslatorRunner, until: datetime) -> str:
     """How long until `until`: days and hours, or hours and minutes under a day."""
     minutes = max(1, math.ceil((until - datetime_now()).total_seconds() / 60))

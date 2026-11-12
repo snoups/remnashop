@@ -21,6 +21,7 @@ from app.modules.subscriptions.events import SubscriptionRenewedEvent
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.panel import (
+    configure_for_renewal,
     panel_update,
     reset_traffic_if_paid,
     revert_panel_to_owner,
@@ -90,21 +91,11 @@ class RenewPurchase:
                 target, data.idempotency_key, data.claim_token, data.duration_days, keep_key
             )
 
-        tag_applied = False
-        if data.apply_plan_tag and data.plan_snapshot.tag != target.tag:
-            # a renewal takes the plan's current tag, as a new purchase would;
-            # the days are paid for, a tag left behind must not hold them back
-            try:
-                await self._remnawave_sdk.users.update_user(
-                    panel_update(id=target.remnawave_user_id, tag=data.plan_snapshot.tag)
-                )
-                tag_applied = True
-            except Exception:
-                logger.exception(f"Failed to give subscription '{target.id}' its plan's tag")
+        tag_applied, terms_applied = await self._apply_current_plan(data, target)
 
         try:
             subscription, renewed = await self._finish(
-                actor, data, target, expire_at, tag_applied=tag_applied
+                actor, data, target, expire_at, tag_applied=tag_applied, terms_applied=terms_applied
             )
         except OrderNotPaidError:
             # refunded while the panel was being extended: take the extension back
@@ -127,6 +118,7 @@ class RenewPurchase:
         expire_at: datetime,
         *,
         tag_applied: bool,
+        terms_applied: bool,
     ) -> tuple[SubscriptionDto, bool]:
         async with self._uow:
             if data.idempotency_key is not None:
@@ -151,6 +143,10 @@ class RenewPurchase:
                 subscription = await self._subscription_repository.set_tag(
                     subscription.id, data.plan_snapshot.tag
                 )
+            if terms_applied:
+                subscription = await self._subscription_repository.apply_plan_terms(
+                    subscription.id, data.plan_snapshot
+                )
             if data.idempotency_key is not None:
                 await self._idempotency.link(
                     data.idempotency_key, subscription.id, data.claim_token
@@ -168,6 +164,36 @@ class RenewPurchase:
             f"{actor.log} Renewed subscription '{subscription.id}' by {data.duration_days}d"
         )
         return subscription, True
+
+    async def _apply_current_plan(
+        self, data: PurchaseSubscriptionDto, target: SubscriptionDto
+    ) -> tuple[bool, bool]:
+        """(tag applied, terms applied) in the panel; the row follows only what landed.
+        The days are paid for: a failure here must not hold them back."""
+        if not data.apply_current_plan:
+            return False, False
+        tag_applied = False
+        # a renewal takes the plan's current tag, as a new purchase would
+        if data.plan_snapshot.tag != target.tag:
+            try:
+                await self._remnawave_sdk.users.update_user(
+                    panel_update(id=target.remnawave_user_id, tag=data.plan_snapshot.tag)
+                )
+                tag_applied = True
+            except Exception:
+                logger.exception(f"Failed to give subscription '{target.id}' its plan's tag")
+        terms_applied = False
+        # the plan was edited since this subscription was sold: the renewal is paid at the
+        # new price, so it moves to the new terms too
+        if target.plan_snapshot.terms_differ(data.plan_snapshot):
+            try:
+                await self._remnawave_sdk.users.update_user(
+                    configure_for_renewal(target, data.plan_snapshot)
+                )
+                terms_applied = True
+            except Exception:
+                logger.exception(f"Failed to give subscription '{target.id}' its plan's terms")
+        return tag_applied, terms_applied
 
     async def _paid_in_snapshot_currency(
         self, data: PurchaseSubscriptionDto, target: SubscriptionDto
