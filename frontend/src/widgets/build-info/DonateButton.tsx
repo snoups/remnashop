@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
-import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
+import { LABEL_CLASSNAME, MOBILE_NAV_ROW_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
 import {
   GLASS_DIALOG_CARD_CLASS,
@@ -28,10 +28,10 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
       <Pressable
         type="button"
         onClick={() => setIsOpen(true)}
-        className={mobile ? "flex size-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-glass-border bg-white/[0.05] px-2 text-sm font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
+        className={mobile ? MOBILE_NAV_ROW_CLASSNAME : SIDEBAR_PILL_CLASSNAME}
       >
-        {mobile ? <Crown className="size-5" /> : <Crown className="size-4 shrink-0" />}
-        {!mobile && <span className={LABEL_CLASSNAME}>{t("donate.button")}</span>}
+        <Crown className="size-4 shrink-0" />
+        <span className={mobile ? "truncate" : LABEL_CLASSNAME}>{t("donate.button")}</span>
       </Pressable>
 
       {renderOverlay(<AnimatePresence>

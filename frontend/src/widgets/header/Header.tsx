@@ -140,7 +140,7 @@ export function Header({ onLogout }: HeaderProps) {
         <div className={mobile ? "contents" : "flex min-w-0 items-center gap-1"}>
         {!mobile && permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
-        {!mobile && <HeaderSearch />}
+        <HeaderSearch mobile={mobile} />
 
         {!mobile && isOverviewPage && permissions.includes("OVERVIEW_RECAP_VIEW") && (
           <IconButton size="9" onClick={() => setIsRecapOpen(true)}>
@@ -167,12 +167,12 @@ export function Header({ onLogout }: HeaderProps) {
           <Pressable
             type="button"
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}
-            className="group relative isolate flex h-9 items-center gap-2.5 rounded-full pr-1 md:pl-0.5 md:pr-2.5"
+            className="group relative isolate flex h-9 items-center gap-2.5 rounded-full md:pl-0.5 md:pr-2.5"
           >
             <span
               className={TAB_HOVER_CLASS}
             />
-            <div className="glass-control relative z-10 flex size-8.5 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-foreground md:size-8">
+            <div className="glass-control relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-foreground md:size-8">
               {login ? initials(login) : <UserIcon className="size-4" />}
             </div>
             <div className="relative z-10 hidden text-left leading-tight md:block">

@@ -359,9 +359,11 @@ textarea::-webkit-resizer {
 
 /* A page with its own scroller (data-fills-main: settings) fades its content itself; main's fade
    would dim the page's floating tab bar instead. */
-.scroll-fade-top:has([data-fills-main]) {
-  -webkit-mask-image: none;
-  mask-image: none;
+@media (width >= 768px) {
+  .scroll-fade-top:has([data-fills-main]) {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 /* Both edges of a dialog's scrolling body. The fades fit inside the body's

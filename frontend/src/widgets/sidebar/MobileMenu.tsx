@@ -15,6 +15,7 @@ import { BuildInfoBadge } from "@widgets/build-info/BuildInfoBadge";
 import { DonateButton } from "@widgets/build-info/DonateButton";
 import { LanguagePicker } from "@widgets/language-picker/LanguagePicker";
 import { isNavItemVisible, NAV_ITEMS } from "./nav-items";
+import { MOBILE_NAV_ROW_CLASSNAME } from "./nav-pill";
 
 export function MobileMenu({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -38,29 +39,33 @@ export function MobileMenu({ onClose }: { onClose: () => void }) {
       <motion.div
         ref={panelRef}
         tabIndex={-1}
-        initial={{ x: "-100%" }}
+        initial={{ x: "-110%" }}
         animate={{ x: 0 }}
-        exit={{ x: "-100%", transition: { duration: 0.2, ease: "easeIn" } }}
+        exit={{ x: "-110%", transition: { duration: 0.2, ease: "easeIn" } }}
         transition={{ type: "spring", stiffness: 400, damping: 36 }}
-        className="relative flex h-dvh w-[min(320px,85vw)] flex-col border-r border-glass-border bg-surface/50 pt-[env(safe-area-inset-top)] text-foreground shadow-[0_24px_48px_-20px_rgba(4,8,20,0.6),inset_-1px_0_0_rgba(232,236,251,0.08)] outline-none backdrop-blur-[28px] backdrop-saturate-150"
+        // a floating card 8px off the screen, as the header bar
+        className="absolute bottom-[calc(8px+env(safe-area-inset-bottom))] left-2 top-[calc(8px+env(safe-area-inset-top))] flex w-[min(320px,85vw)] flex-col overflow-hidden rounded-card border border-glass-border bg-surface/50 text-foreground shadow-2xl outline-none backdrop-blur-[28px] backdrop-saturate-150"
       >
-        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4">
-          <BrandMark className="size-7 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-base font-bold tracking-tight">{brandName}</span>
-          <IconButton size="9" onClick={onClose}><X className="size-5" /></IconButton>
+        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border pl-4 pr-3">
+          <BrandMark className="size-8 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-base font-bold leading-[22px] tracking-tight">{brandName}</span>
+            <span className="block truncate text-xs font-medium leading-4 text-muted-foreground">{t("sidebar.tagline")}</span>
+          </div>
+          <IconButton size="9" tone="glass" onClick={onClose}><X className="size-4" /></IconButton>
         </div>
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain p-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain p-3">
           {NAV_ITEMS.filter((item) => isNavItemVisible(item, permissions)).map(({ key, to, end, icon: Icon }) => (
             <MobileNavLink key={key} to={to} end={end} onClick={onClose}>
-              <Icon className="size-5 shrink-0" />
+              <Icon className="size-4 shrink-0" />
               {t(`sidebar.${key}`)}
             </MobileNavLink>
           ))}
         </nav>
-        <div className="flex shrink-0 items-center gap-3 border-t border-border px-3 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex shrink-0 flex-col gap-0.5 border-t border-border p-3">
+          <LanguagePicker row />
           <BuildInfoBadge mobile />
           <DonateButton mobile />
-          <LanguagePicker iconOnly />
         </div>
       </motion.div>
     </div>,
@@ -76,7 +81,7 @@ function MobileNavLink({ to, end, onClick, children }: { to: string; end?: boole
       as="link"
       to={to}
       onClick={onClick}
-      className={`flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm font-medium ${isActive ? "bg-accent text-primary" : "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"}`}
+      className={isActive ? "flex min-h-11 shrink-0 items-center gap-2.5 rounded-full bg-accent px-3.5 text-sm font-semibold text-primary" : MOBILE_NAV_ROW_CLASSNAME}
     >
       {children}
     </Pressable>

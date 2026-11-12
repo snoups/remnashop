@@ -14,7 +14,7 @@ import { InfoRow } from "@shared/ui/InfoRow";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
 import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
 import { Tag } from "@shared/ui/Tag";
-import { LABEL_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
+import { LABEL_CLASSNAME, MOBILE_NAV_ROW_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { GLASS_DIALOG_CARD_CLASS, GLASS_DIALOG_CLASS, GLASS_DIALOG_FOOTER_CLASS, GLASS_DIALOG_PAD_CLASS, GLASS_LINK_BUTTON_CLASS, GLASS_PLATE_CLASS } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -116,11 +116,11 @@ export function BuildInfoBadge({ mobile = false }: { mobile?: boolean }) {
         onPointerUp={cancelLongPress}
         onPointerLeave={cancelLongPress}
         onContextMenu={(event) => event.preventDefault()}
-        className={mobile ? "flex h-11 min-w-0 flex-1 items-center justify-center gap-3 rounded-full border border-glass-border bg-white/[0.05] px-4 text-sm font-medium text-muted-foreground hover:bg-white/[0.07] hover:text-foreground" : SIDEBAR_PILL_CLASSNAME}
+        className={mobile ? MOBILE_NAV_ROW_CLASSNAME : SIDEBAR_PILL_CLASSNAME}
       >
-        {mobile ? <Info className="size-5 shrink-0" /> : <Info className="size-4 shrink-0" />}
+        <Info className="size-4 shrink-0" />
         <span className={`${labelClass} font-mono`}>{currentVersion}</span>
-        {!mobile && isUpdateAvailable && release && (
+        {isUpdateAvailable && release && (
           <span
             className={`${labelClass} ml-auto rounded-full border border-primary/40 bg-accent px-2 py-1 font-mono text-[11px] font-semibold leading-none text-primary shadow-[0_0_10px_color-mix(in_srgb,var(--color-primary)_40%,transparent)]`}
           >

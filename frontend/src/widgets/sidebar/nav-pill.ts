@@ -9,4 +9,8 @@ export const SIDEBAR_PILL_CLASSNAME = `${SIDEBAR_PILL_SHAPE_CLASSNAME} font-medi
 
 // Labels show from `xl` up, and only while the sidebar is expanded
 // (`data-expanded` on its aside); below that it's an icon rail.
+// The mobile menu's row: the sidebar's row at a 44px touch height, the footer buttons included.
+export const MOBILE_NAV_ROW_CLASSNAME =
+  "flex min-h-11 w-full shrink-0 items-center gap-2.5 rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground";
+
 export const LABEL_CLASSNAME = "hidden whitespace-nowrap xl:group-data-expanded/sidebar:inline";

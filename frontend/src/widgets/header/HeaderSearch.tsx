@@ -70,7 +70,8 @@ function highlight(text: string, tokens: string[]) {
 const COLLAPSED_WIDTH = 36;
 const EXPANDED_WIDTH = 320;
 
-export function HeaderSearch() {
+/** mobile: a bordered icon as the bar's bell; opened, the field lies over the whole bar */
+export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openUser, openOrder, openSubscription, openPromocode, openPlan } = useOpenEntity();
@@ -279,10 +280,16 @@ export function HeaderSearch() {
     <motion.div
       ref={rootRef}
       initial={false}
-      animate={{ width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      animate={mobile ? { width: "auto" } : { width: isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+      transition={{ duration: mobile ? 0 : 0.2, ease: "easeOut" }}
       onAnimationComplete={() => setIsFieldShown(isExpanded)}
-      className="relative flex min-w-9 shrink justify-end"
+      className={
+        mobile
+          ? isFieldShown
+            ? "absolute inset-x-3 z-10 flex rounded-full bg-surface"
+            : "relative flex shrink-0"
+          : "relative flex min-w-9 shrink justify-end"
+      }
     >
       {!isFieldShown && (
         <Pressable
@@ -291,7 +298,7 @@ export function HeaderSearch() {
             setIsExpanded(true);
             setIsFieldShown(true);
           }}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          className={`flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground ${mobile ? "border border-glass-border bg-white/[0.05]" : ""}`}
         >
           <Search className="size-4 shrink-0" />
         </Pressable>
@@ -349,7 +356,7 @@ export function HeaderSearch() {
         transition={{ duration: 0.15, ease: "easeOut" }}
         glass
         extraGap={4}
-        className="w-80 p-1.5"
+        className={mobile ? "w-[calc(100vw-2.5rem)] p-1.5" : "w-80 p-1.5"}
       >
         {/* scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded corners */}

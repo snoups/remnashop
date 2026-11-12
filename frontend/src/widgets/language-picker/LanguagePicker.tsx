@@ -7,6 +7,7 @@ import { useClickOutside } from "@shared/lib/use-click-outside";
 import { useCloseOnScroll } from "@shared/lib/use-close-on-scroll";
 import { PortalPopover } from "@shared/ui/PortalPopover";
 import { Pressable } from "@shared/ui/Pressable";
+import { MOBILE_NAV_ROW_CLASSNAME } from "@widgets/sidebar/nav-pill";
 
 const POPOVER_MAX_HEIGHT = 120;
 
@@ -15,8 +16,9 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   ru: "Русский",
 };
 
-/** capsule: an icon-only item of the header's glass capsule (36px, like the bell), no fill or edge */
-export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly?: boolean; capsule?: boolean }) {
+/** capsule: an icon-only item of the header's glass capsule (36px, like the bell), no fill or edge;
+ *  row: a row of the mobile menu */
+export function LanguagePicker({ row = false, capsule = false }: { row?: boolean; capsule?: boolean }) {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,29 +42,28 @@ export function LanguagePicker({ iconOnly = false, capsule = false }: { iconOnly
         className={
           capsule
             ? "flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-            : iconOnly
-              ? "flex size-11 shrink-0 items-center justify-center rounded-full bg-white/[0.05] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+            : row
+              ? MOBILE_NAV_ROW_CLASSNAME
               : "glass-panel flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.06]"
         }
       >
-        <Languages className={`${iconOnly ? "size-5" : "size-4"} shrink-0`} />
-        {!iconOnly && !capsule && LANGUAGE_LABELS[currentLanguage]}
+        <Languages className="size-4 shrink-0" />
+        {!capsule && LANGUAGE_LABELS[currentLanguage]}
       </Pressable>
-      {iconOnly && <span className="pointer-events-none absolute inset-0 rounded-full border border-glass-border" />}
 
       <PortalPopover
         open={isOpen}
         triggerRef={ref}
         popoverRef={popoverRef}
-        align="right"
+        align={row ? "left" : "right"}
         maxHeight={POPOVER_MAX_HEIGHT}
-        // 12px off the trigger: the mobile menu's big icon and the header capsule's
-        extraGap={iconOnly || capsule ? 4 : 0}
+        // 12px off the trigger in the header capsule
+        extraGap={capsule ? 4 : 0}
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.85 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
-        glass={!iconOnly}
+        glass={!row}
         className="min-w-44 p-1.5"
       >
         {SUPPORTED_LANGUAGES.map((language) => (
