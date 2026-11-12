@@ -4,6 +4,7 @@ from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
+from loguru import logger
 
 from app.api.dependencies.public import forbid_cabinet_proxy
 from app.api.dependencies.rate_limit import rate_limit
@@ -204,7 +205,11 @@ async def logout(
             config.jwt_secret.get_secret_value(),
             csrf_cookie=SESSION_COOKIES[audience].csrf,
         )
-        await use_case.execute(refresh_token=refresh_token, audience=audience)
+        try:
+            await use_case.execute(refresh_token=refresh_token, audience=audience)
+        except Exception:
+            # the browser is signed out regardless; the session row lives out its TTL
+            logger.exception("Logout could not revoke the session; cookies cleared anyway")
     # both: a cookie of the other audience has no business on this host
     for audience in SESSION_COOKIES:
         clear_audience_cookies(response, audience)
