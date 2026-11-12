@@ -439,7 +439,7 @@ async def delete_subscription_device(
 
 @router.post(
     "/{subscription_id:int}/devices/bulk/delete",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=SubscriptionResponse,
     responses=error_responses(400, 404, 503),
 )
 @inject
@@ -447,8 +447,10 @@ async def delete_all_subscription_devices(
     subscription_id: int,
     use_case: FromDishka[AdminDeleteAllDevicesUseCase],
     actor: Actor = Depends(require_admin),
-) -> None:
-    await use_case(actor, subscription_id)
+) -> SubscriptionResponse:
+    return SubscriptionResponse.model_validate(
+        await use_case(actor, subscription_id), from_attributes=True
+    )
 
 
 @router.get("/squads", response_model=PanelSquadListResponse, responses=error_responses(503))

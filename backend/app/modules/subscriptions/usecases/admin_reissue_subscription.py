@@ -9,6 +9,7 @@ from app.core.usecase import UseCase
 from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.link_reissue import reissue_link
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
@@ -36,15 +37,12 @@ class AdminReissueSubscriptionUseCase(UseCase[int, SubscriptionDto]):
                 self._subscription_repository, self._user_repository, actor, data
             )
 
-        panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
-            subscription.remnawave_user_id
+        updated = await reissue_link(
+            self._remnawave_sdk, self._subscription_repository, self._uow, subscription
         )
 
         # link_reset_at stays: it is the client's own cooldown
         async with self._uow:
-            updated = await self._subscription_repository.set_url(
-                subscription.id, panel_user.subscription_url
-            )
             subscriber = await subscription_owner(self._user_repository, updated)
             await self._event_publisher.publish(
                 SubscriptionEditedEvent(

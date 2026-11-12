@@ -3740,7 +3740,7 @@
       "deleted": "Device deleted.",
       "deleteAll": "Delete all devices",
       "deleteAllTitle": "Delete all devices?",
-      "deleteAllConfirm": "Every device will have to connect again.",
+      "deleteAllConfirm": "The subscription link changes, every device loses access and has to connect again with the new link.",
       "allDeleted": "All devices deleted.",
       "error": "Failed to delete the device."
     },

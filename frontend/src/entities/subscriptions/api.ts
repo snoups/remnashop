@@ -237,8 +237,8 @@ export function deleteSubscriptionDevice(subscriptionId: number, hwid: string): 
   return apiDelete<void>(`/subscriptions/${subscriptionId}/devices/${encodeURIComponent(hwid)}`);
 }
 
-export function deleteAllSubscriptionDevices(subscriptionId: number): Promise<void> {
-  return apiPost<void, Record<string, never>>(`/subscriptions/${subscriptionId}/devices/bulk/delete`, {});
+export function deleteAllSubscriptionDevices(subscriptionId: number): Promise<SubscriptionListItem> {
+  return apiPost<SubscriptionListItem, Record<string, never>>(`/subscriptions/${subscriptionId}/devices/bulk/delete`, {});
 }
 
 export type PanelSyncDirection = "FROM_PANEL" | "TO_PANEL";

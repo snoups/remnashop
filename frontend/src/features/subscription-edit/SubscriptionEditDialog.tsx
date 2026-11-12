@@ -193,7 +193,7 @@ function SubscriptionEditDialogBody({
 
   const handleDeleteDevices = async () => {
     try {
-      await deleteAllSubscriptionDevices(current.id);
+      apply(await deleteAllSubscriptionDevices(current.id));
       toast.success(t("subscriptions.devices.allDeleted"));
       setDevicesVersion((version) => version + 1);
     } catch (err) {

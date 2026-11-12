@@ -1,19 +1,20 @@
 from loguru import logger
 from remnapy import RemnawaveSDK
-from remnapy.models import DeleteUserAllHwidDeviceRequestDto
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
+from app.modules.subscriptions.dto import SubscriptionDto
 from app.modules.subscriptions.eligibility import get_manageable_subscription, subscription_owner
 from app.modules.subscriptions.events import SubscriptionEditedEvent
+from app.modules.subscriptions.link_reissue import reissue_link
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserRepository
 
 
-class AdminDeleteAllDevicesUseCase(UseCase[int, None]):
+class AdminDeleteAllDevicesUseCase(UseCase[int, SubscriptionDto]):
     required_permission = Permission.SUBSCRIPTIONS_DEVICES_DELETE_ALL
 
     def __init__(
@@ -30,13 +31,13 @@ class AdminDeleteAllDevicesUseCase(UseCase[int, None]):
         self._event_publisher = event_publisher
         self._uow = uow
 
-    async def _execute(self, actor: Actor, data: int) -> None:
+    async def _execute(self, actor: Actor, data: int) -> SubscriptionDto:
         async with self._uow:
             subscription = await get_manageable_subscription(
                 self._subscription_repository, self._user_repository, actor, data
             )
-        await self._remnawave_sdk.hwid.delete_all_hwid_user(
-            DeleteUserAllHwidDeviceRequestDto(user_id=subscription.remnawave_user_id)
+        updated = await reissue_link(
+            self._remnawave_sdk, self._subscription_repository, self._uow, subscription
         )
         async with self._uow:
             subscriber = await subscription_owner(self._user_repository, subscription)
@@ -49,3 +50,4 @@ class AdminDeleteAllDevicesUseCase(UseCase[int, None]):
                 )
             )
         logger.info(f"{actor.log} Deleted all devices of subscription '{subscription.id}'")
+        return updated

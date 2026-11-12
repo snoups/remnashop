@@ -425,4 +425,5 @@ async def test_owner_can_list_subscription_devices(
     assert listed.status_code == 200
     assert listed.json() == {"items": [], "total": 0}
     assert deleted.status_code == 204
-    assert bulk.status_code == 204
+    assert bulk.status_code == 200
+    assert bulk.json()["url"] != created.url
