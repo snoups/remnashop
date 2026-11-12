@@ -69,9 +69,9 @@ async def test_everyone_reachable(session: AsyncSession, people: dict[str, int])
     found = await _match(session, BroadcastAudienceDto())
     # channels are chosen at materialization, so a customer without telegram still matches
     assert found >= {
-        people[k] for k in ("active", "trial", "expired", "none", "no_tg", "opted_out")
+        people[k] for k in ("active", "trial", "expired", "none", "no_tg", "opted_out", "admin")
     }
-    assert not found & {people[k] for k in ("blocked", "deleted", "admin")}
+    assert not found & {people[k] for k in ("blocked", "deleted")}
 
 
 async def test_marketing_skips_opted_out(session: AsyncSession, people: dict[str, int]) -> None:
