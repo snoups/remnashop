@@ -35,7 +35,6 @@ from app.core.enums import (
     BroadcastDelivery,
     BroadcastRecipientStatus,
     BroadcastStatus,
-    Role,
     SubscriptionStatus,
 )
 from app.core.error_codes import ErrorCode
@@ -845,7 +844,6 @@ class BroadcastRepository:
             )
         )
         customers = (
-            User.role == Role.USER,
             User.deleted_at.is_(None),
             User.is_blocked.is_(False),
         )

@@ -14,7 +14,6 @@ from app.core.enums import (
     BroadcastChannel,
     BroadcastDelivery,
     BroadcastSubscriptionFilter,
-    Role,
     SubscriptionStatus,
     TransactionStatus,
 )
@@ -155,7 +154,6 @@ def audience_predicate(
     audience: BroadcastAudienceDto, category: BroadcastCategory, now: datetime
 ) -> ColumnElement[bool]:
     conditions: list[ColumnElement[bool]] = [
-        User.role == Role.USER,
         User.deleted_at.is_(None),
         User.is_blocked.is_(False),
     ]
