@@ -1,5 +1,7 @@
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from typing import Final
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from aiogram.types import User
 
 from app.modules.users import UserDto
 from app.telegram.routers.broadcasts.handlers import (
@@ -8,6 +10,8 @@ from app.telegram.routers.broadcasts.handlers import (
     parse_broadcast_id,
     parse_start_broadcast_id,
 )
+
+_HANDLERS: Final[str] = "app.telegram.routers.broadcasts.handlers"
 
 
 def test_parse_broadcast_id() -> None:
@@ -23,18 +27,25 @@ def test_parse_start_broadcast_id() -> None:
     assert parse_start_broadcast_id("ref_12") is None
 
 
-async def test_promocode_button_answers_with_start_deep_link() -> None:
+def _press(data: str) -> AsyncMock:
     callback = AsyncMock()
-    callback.data = "bc:promo:12"
-    bot = AsyncMock()
-    bot.me.return_value = SimpleNamespace(username="shop_bot")
+    callback.data = data
+    callback.from_user = User(id=777, is_bot=False, first_name="c")
+    return callback
+
+
+async def test_promocode_button_replays_the_start_deep_link_in_the_chat() -> None:
+    callback = _press("bc:promo:12")
     get_code = AsyncMock(return_value="SALE")
     user = UserDto(name="c")
 
-    await on_broadcast_promocode(callback, bot, get_code, AsyncMock(), user=user)
+    with patch(f"{_HANDLERS}.replay_later") as replay:
+        await on_broadcast_promocode(callback, MagicMock(), get_code, AsyncMock(), user=user)
 
     get_code.assert_awaited_once_with(user, 12)
-    callback.answer.assert_awaited_once_with(url="https://t.me/shop_bot?start=bc_12")
+    callback.answer.assert_awaited_once_with()
+    message = replay.call_args.args[2]
+    assert (message.text, message.chat.id) == ("/start bc_12", 777)
 
 
 async def test_promocode_button_alerts_when_code_is_gone() -> None:
@@ -50,14 +61,15 @@ async def test_promocode_button_alerts_when_code_is_gone() -> None:
     callback.answer.assert_awaited_once_with("gone")
 
 
-async def test_menu_button_answers_with_start_deep_link() -> None:
-    callback = AsyncMock()
-    bot = AsyncMock()
-    bot.me.return_value = SimpleNamespace(username="shop_bot")
+async def test_menu_button_replays_the_menu_start_in_the_chat() -> None:
+    callback = _press("bc:menu")
 
-    await on_broadcast_menu(callback, bot, AsyncMock(), user=UserDto(name="c"))
+    with patch(f"{_HANDLERS}.replay_later") as replay:
+        await on_broadcast_menu(callback, MagicMock(), AsyncMock(), user=UserDto(name="c"))
 
-    callback.answer.assert_awaited_once_with(url="https://t.me/shop_bot?start=menu")
+    callback.answer.assert_awaited_once_with()
+    message = replay.call_args.args[2]
+    assert (message.text, message.from_user.id) == ("/start menu", 777)
 
 
 def test_broadcast_ids_reject_non_ascii_digits_and_values_beyond_int32() -> None:
