@@ -124,26 +124,32 @@ btn-devices =
     .cancel-reissue = Cancel
     .cancel-reissue-icon = ❌
 
-msg-subscriptions-list = Your subscriptions. Pick one to see its details.
+msg-subscriptions-list =
+    <b>💳 My subscriptions</b>
+
+    <blockquote>Pick a subscription to connect, renew it or change its plan.</blockquote>
 msg-subscription-card =
-    Plan: { $plan_name }
-    Status: { $status ->
-        [ACTIVE] Active
-        [LIMITED] Traffic limit reached
-        [EXPIRED] Expired
-        [DISABLED] Disabled
+    { $is_trial ->
+        [1] <b>🎁 Trial subscription · { $plan_name }</b>
+       *[0] <b>💳 Subscription · { $plan_name }</b>
+    }
+    <blockquote>• <b>Status</b>: { $status ->
+        [ACTIVE] 🟢 Active
+        [LIMITED] 🟡 Traffic limit reached
+        [EXPIRED] 🔴 Expired
+        [DISABLED] ⚫ Disabled
         [DELETED] Deleted
        *[other] { $status }
     }
-    Expires: { $expire_at }
-    Traffic: { $traffic_limit ->
+    • <b>Traffic limit</b>: { $traffic_limit ->
         [0] Unlimited
        *[other] { $traffic_limit } GB
     }
-    Devices: { $device_limit ->
+    • <b>Device limit</b>: { $device_limit ->
         [0] Unlimited
        *[other] { $device_limit }
     }
+    • <b>Valid until</b>: { $expire_at }</blockquote>
 msg-referrals =
     <b>👥 Invite friends</b>
 
@@ -158,6 +164,13 @@ msg-referrals =
 btn-subscriptions =
     .purchase = Buy a subscription
     .purchase-icon = 💸
+    .item = { $status ->
+        [ACTIVE] 🟢 { $plan_name } · until { $expire_at }
+        [LIMITED] 🟡 { $plan_name } · traffic used up
+        [EXPIRED] 🔴 { $plan_name } · expired { $expire_at }
+        [DISABLED] ⚫ { $plan_name } · disabled
+       *[other] { $plan_name } · { $expire_at }
+    }
 
 btn-subscription =
     .renew = Renew
@@ -261,6 +274,7 @@ ntf-common =
     .unknown-error = Something went wrong. Please try again.
     .cooldown-active = You can repeat this action after { $available_at }.
     .trial-unavailable = Trial is not available.
+    .trial-activated = Trial subscription activated.
     .connect-not-available = Connection is not available.
     .access-restricted = Access is restricted.
 
@@ -275,13 +289,23 @@ ntf-purchase =
     .no-plans = No plans are available.
     .no-methods = No payment methods are available.
 
-msg-purchase-plan = Choose a plan:
-msg-purchase-duration = { $plan_name }: choose a period:
-msg-purchase-method = Choose a payment method:
+msg-purchase-plan = <b>💳 Choose a plan</b>
+msg-purchase-duration =
+    <b>⏳ { $plan_name }</b>
+
+    Choose a subscription period:
+msg-purchase-method = <b>💳 Choose a payment method</b>
 msg-purchase-confirm =
-    { $plan_name } · { $duration_days } d · { $price } { $currency_symbol } · { $method }
+    <b>🧾 Check your order</b>
+
+    <blockquote>• <b>Plan</b>: { $plan_name }
+    • <b>Period</b>: { $duration_days } d
+    • <b>Payment method</b>: { $method }
+    • <b>Without discount</b>: <s>{ $original_price } { $currency_symbol }</s>
+    • <b>To pay</b>: { $price } { $currency_symbol }</blockquote>
+
     { $terms_notice }
-frg-purchase-terms-notice = By paying you accept the terms — /terms
+frg-purchase-terms-notice = <i>By paying you accept the terms — /terms</i>
 msg-purchase-pay = Your order is ready. Tap the button below to pay.
 msg-purchase-link-choice = You already have a { $plan_name } subscription. Renew it or buy another one?
 

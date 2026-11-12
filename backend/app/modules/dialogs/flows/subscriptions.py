@@ -58,6 +58,7 @@ def register_subscriptions_metadata() -> None:
             text_variables=(
                 "plan_name",
                 "status",
+                "is_trial",
                 "expire_at",
                 "traffic_limit",
                 "device_limit",

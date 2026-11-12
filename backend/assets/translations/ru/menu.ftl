@@ -124,26 +124,32 @@ btn-devices =
     .cancel-reissue = Отмена
     .cancel-reissue-icon = ❌
 
-msg-subscriptions-list = Ваши подписки. Выберите одну, чтобы увидеть подробности.
+msg-subscriptions-list =
+    <b>💳 Мои подписки</b>
+
+    <blockquote>Выберите подписку, чтобы подключиться, продлить её или сменить план.</blockquote>
 msg-subscription-card =
-    План: { $plan_name }
-    Статус: { $status ->
-        [ACTIVE] Активна
-        [LIMITED] Трафик исчерпан
-        [EXPIRED] Истекла
-        [DISABLED] Отключена
+    { $is_trial ->
+        [1] <b>🎁 Пробная подписка · { $plan_name }</b>
+       *[0] <b>💳 Подписка · { $plan_name }</b>
+    }
+    <blockquote>• <b>Статус</b>: { $status ->
+        [ACTIVE] 🟢 Активна
+        [LIMITED] 🟡 Трафик исчерпан
+        [EXPIRED] 🔴 Истекла
+        [DISABLED] ⚫ Отключена
         [DELETED] Удалена
        *[other] { $status }
     }
-    Действует до: { $expire_at }
-    Трафик: { $traffic_limit ->
+    • <b>Лимит трафика</b>: { $traffic_limit ->
         [0] Безлимит
        *[other] { $traffic_limit } ГБ
     }
-    Устройства: { $device_limit ->
+    • <b>Лимит устройств</b>: { $device_limit ->
         [0] Безлимит
        *[other] { $device_limit }
     }
+    • <b>Действует до</b>: { $expire_at }</blockquote>
 msg-referrals =
     <b>👥 Пригласить друзей</b>
 
@@ -158,6 +164,13 @@ msg-referrals =
 btn-subscriptions =
     .purchase = Купить подписку
     .purchase-icon = 💸
+    .item = { $status ->
+        [ACTIVE] 🟢 { $plan_name } · до { $expire_at }
+        [LIMITED] 🟡 { $plan_name } · трафик исчерпан
+        [EXPIRED] 🔴 { $plan_name } · истекла { $expire_at }
+        [DISABLED] ⚫ { $plan_name } · отключена
+       *[other] { $plan_name } · { $expire_at }
+    }
 
 btn-subscription =
     .renew = Продлить
@@ -265,6 +278,7 @@ ntf-common =
     .unknown-error = Что-то пошло не так. Попробуйте ещё раз.
     .cooldown-active = Повторить это действие можно после { $available_at }.
     .trial-unavailable = Пробный период недоступен.
+    .trial-activated = Пробная подписка активирована.
     .connect-not-available = Подключение недоступно.
     .access-restricted = Доступ ограничен.
 
@@ -279,13 +293,23 @@ ntf-purchase =
     .no-plans = Нет доступных тарифов.
     .no-methods = Нет доступных способов оплаты.
 
-msg-purchase-plan = Выберите тариф:
-msg-purchase-duration = { $plan_name }: выберите срок:
-msg-purchase-method = Выберите способ оплаты:
+msg-purchase-plan = <b>💳 Выберите тариф</b>
+msg-purchase-duration =
+    <b>⏳ { $plan_name }</b>
+
+    Выберите срок подписки:
+msg-purchase-method = <b>💳 Выберите способ оплаты</b>
 msg-purchase-confirm =
-    { $plan_name } · { $duration_days } дн. · { $price } { $currency_symbol } · { $method }
+    <b>🧾 Проверьте заказ</b>
+
+    <blockquote>• <b>Тариф</b>: { $plan_name }
+    • <b>Срок</b>: { $duration_days } дн.
+    • <b>Способ оплаты</b>: { $method }
+    • <b>Без скидки</b>: <s>{ $original_price } { $currency_symbol }</s>
+    • <b>К оплате</b>: { $price } { $currency_symbol }</blockquote>
+
     { $terms_notice }
-frg-purchase-terms-notice = Оплачивая, вы принимаете условия — /terms
+frg-purchase-terms-notice = <i>Оплачивая, вы принимаете условия — /terms</i>
 msg-purchase-pay = Заказ создан. Нажмите кнопку ниже, чтобы оплатить.
 msg-purchase-link-choice = У вас уже есть подписка { $plan_name }. Продлить её или купить ещё одну?
 

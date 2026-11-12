@@ -231,3 +231,17 @@ def test_menu_shows_the_latest_expired_subscription_when_none_is_active() -> Non
     assert menu_subscription(active, [newer, active]) is active
     assert menu_subscription(None, []) is None
     assert "Срок действия истёк" in _menu(status="EXPIRED")
+
+
+def test_menu_holds_no_subscription_when_they_are_listed_elsewhere() -> None:
+    runner = _runner(Locale.RU)
+    values = subscription_menu_values(
+        runner, _subscription("ACTIVE"), extra_count=1, trial_available=False, listed_elsewhere=True
+    )
+    text = render_window_text(
+        runner, "msg-main-menu", user_id="1", user_name="Ivan", user_discount="", **values
+    )
+
+    assert "Подписка" not in text
+    assert text.endswith("</blockquote>")
+    assert "Профиль" in text

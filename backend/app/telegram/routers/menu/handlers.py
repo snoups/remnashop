@@ -16,9 +16,10 @@ from app.modules.subscriptions import (
     GetAvailableTrialUseCase,
 )
 from app.modules.users import UserDto
+from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.i18n import get_translator
 from app.telegram.routers.purchase.handlers import PLAN_CODE_KEY
-from app.telegram.states import MainMenu, Purchase
+from app.telegram.states import MainMenu, Purchase, Subscriptions
 
 router = Router(name=__name__)
 
@@ -67,10 +68,16 @@ async def on_get_trial(
         return
 
     try:
-        await activate_trial_subscription(user)
+        subscription = await activate_trial_subscription(user)
     except (NotFoundError, ValidationError):
         logger.exception(f"{user.log} Trial activation failed")
         await callback.answer(runner.get("ntf-common.trial-unavailable"), show_alert=True)
         return
 
-    await dialog_manager.switch_to(state=MainMenu.MAIN)
+    await callback.answer(runner.get("ntf-common.trial-activated"))
+    # its card, where "Connect" is, whatever the menu shows
+    await dialog_manager.start(
+        Subscriptions.CARD,
+        data={SELECTED_SUBSCRIPTION_KEY: subscription.id},
+        mode=StartMode.RESET_STACK,
+    )

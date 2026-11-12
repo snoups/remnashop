@@ -51,6 +51,7 @@ def subscription_menu_values(
     *,
     extra_count: int,
     trial_available: bool,
+    listed_elsewhere: bool = False,
 ) -> dict[str, Any]:
     """menu.main's subscription_* text variables. They need the translator,
     which catalog resolvers don't get, so they are rendered here."""
@@ -60,6 +61,9 @@ def subscription_menu_values(
         "subscription_device_limit": "",
         "subscription_expire_at": "",
     }
+    if listed_elsewhere:
+        # several subscriptions allowed: they sit behind "My subscriptions"
+        return {**values, "subscription_block": ""}
     if subscription is not None:
         # limits go in as strings, so Fluent doesn't group the digits
         traffic = subscription.effective_traffic_limit
@@ -140,8 +144,12 @@ async def menu_getter(
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
         single_subscription=single_subscription,
+        owned_count=len(owned),
     )
-    data["subscriptions_count"] = len(owned)
+    shop = await get_shop_settings.system()
+    data["support_url"] = (
+        f"https://t.me/{shop.support_telegram}" if shop.support_telegram else shop.support_url or ""
+    )
     data["legal_available"] = bool(
         await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     )
@@ -150,6 +158,7 @@ async def menu_getter(
         menu_subscription(data["subscription"], owned),
         extra_count=len(active) - 1,
         trial_available=data["trial_available"],
+        listed_elsewhere=not single_subscription and bool(owned),
     )
     data["menu_text"] = render_window_text(
         runner, "msg-main-menu", **subscription_values, **resolve_variable_kwargs(data)

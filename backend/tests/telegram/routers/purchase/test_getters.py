@@ -127,6 +127,7 @@ async def test_confirm_shows_the_chosen_method_price() -> None:
         plan_name="Plan 10",
         duration_days=30,
         price="2.50",
+        original_price=_EMPTY,
         currency_symbol="$",
         method="gateway-name.CRYPTOMUS",
         terms_notice=_EMPTY,

@@ -1,12 +1,15 @@
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
+from aiogram_dialog import StartMode
+
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, PurchaseType
 from app.modules.subscriptions.dto import GetAvailableTrialDto
+from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.menu.handlers import on_get_trial
 from app.telegram.routers.purchase.handlers import PLAN_CODE_KEY
-from app.telegram.states import MainMenu, Purchase
+from app.telegram.states import Purchase, Subscriptions
 
 
 def _manager() -> MagicMock:
@@ -28,7 +31,7 @@ def _trial(price: Decimal) -> GetAvailableTrialDto:
 
 async def test_a_free_trial_is_activated_on_the_spot() -> None:
     manager = _manager()
-    activate = AsyncMock()
+    activate = AsyncMock(return_value=MagicMock(id=7))
 
     await on_get_trial.__dishka_orig_func__(
         MagicMock(answer=AsyncMock()),
@@ -40,8 +43,10 @@ async def test_a_free_trial_is_activated_on_the_spot() -> None:
     )
 
     activate.assert_awaited_once()
-    manager.switch_to.assert_awaited_once_with(state=MainMenu.MAIN)
-    manager.start.assert_not_awaited()
+    # the card holds "Connect", which the menu lacks when several subscriptions are allowed
+    manager.start.assert_awaited_once_with(
+        Subscriptions.CARD, data={SELECTED_SUBSCRIPTION_KEY: 7}, mode=StartMode.RESET_STACK
+    )
 
 
 async def test_a_paid_trial_opens_its_purchase() -> None:

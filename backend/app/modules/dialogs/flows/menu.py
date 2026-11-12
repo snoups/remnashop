@@ -17,6 +17,7 @@ def register_menu_metadata() -> None:
         "purchase_new",
         "open_subscriptions",
         "open_devices",
+        "devices_back",
         "promocode",
         "legal_documents",
     ):
@@ -57,9 +58,17 @@ def register_menu_metadata() -> None:
         lambda data: not data.get("single_subscription") and data.get("subscriptions_count", 0) > 0,
     )
     catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
+    # with several subscriptions allowed, buying moves into "My subscriptions"
+    # once there is one to list
+    catalog.register_condition(
+        "menu_can_purchase",
+        lambda data: bool(data.get("can_purchase"))
+        and (bool(data.get("single_subscription")) or data.get("subscriptions_count", 0) == 0),
+    )
     catalog.register_condition("referral_enabled", lambda data: bool(data.get("referral_enabled")))
     catalog.register_condition("legal_available", lambda data: bool(data.get("legal_available")))
     catalog.register_condition("cabinet_available", lambda data: bool(data.get("cabinet_url")))
+    catalog.register_condition("support_available", lambda data: bool(data.get("support_url")))
 
     # the first active subscription's; a user with several gets that one
     catalog.register_variable(
@@ -160,7 +169,7 @@ def register_menu_metadata() -> None:
                     column=0,
                     link_type=ButtonLinkType.ACTION,
                     action_key="purchase_new",
-                    visibility_condition="can_purchase",
+                    visibility_condition="menu_can_purchase",
                 ),
                 catalog.CatalogButton(
                     key="promocode",
@@ -187,6 +196,15 @@ def register_menu_metadata() -> None:
                     link_type=ButtonLinkType.ACTION,
                     action_key="legal_documents",
                     visibility_condition="legal_available",
+                ),
+                catalog.CatalogButton(
+                    key="support",
+                    text_key="btn-menu.support",
+                    row=5,
+                    column=1,
+                    link_type=ButtonLinkType.URL,
+                    url_value="${support_url}",
+                    visibility_condition="support_available",
                 ),
                 catalog.CatalogButton(
                     key="cabinet",
@@ -231,8 +249,8 @@ def register_menu_metadata() -> None:
                     text_key="btn-back.general",
                     row=2,
                     column=0,
-                    link_type=ButtonLinkType.NAVIGATE,
-                    target_window_key="subscriptions.card",
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="devices_back",
                 ),
             ),
         )

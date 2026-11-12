@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram_dialog import StartMode
+from dishka.integrations.aiogram_dialog import CONTAINER_NAME
 
 from app.core.constants import USER_KEY
 from app.core.enums import Locale
@@ -10,7 +11,9 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.subscriptions.handlers import (
+    DEVICES_FROM_MENU_KEY,
     on_device_delete_confirm,
+    on_devices_back,
     on_reissue_subscription_confirm,
     on_subscription_card_back,
     on_subscription_selected,
@@ -21,9 +24,19 @@ from app.telegram.states import MainMenu, Subscriptions
 _LOCALES_DIR = Path(__file__).parents[4] / "assets" / "translations"
 
 
-def _manager(dialog_data: dict, start_data: object = None) -> AsyncMock:
+def _container(max_active: object) -> MagicMock:
+    get_shop_settings = MagicMock(
+        system=AsyncMock(return_value=MagicMock(max_active_subscriptions=max_active))
+    )
+    return MagicMock(get=AsyncMock(return_value=get_shop_settings))
+
+
+def _manager(dialog_data: dict, start_data: object = None, max_active: object = 1) -> AsyncMock:
     manager = AsyncMock()
-    manager.middleware_data = {USER_KEY: MagicMock(id=1, language=Locale.EN)}
+    manager.middleware_data = {
+        USER_KEY: MagicMock(id=1, language=Locale.EN),
+        CONTAINER_NAME: _container(max_active),
+    }
     manager.dialog_data = dialog_data
     manager.start_data = start_data
     return manager
@@ -35,12 +48,43 @@ def _i18n() -> MagicMock:
     return i18n
 
 
-async def test_open_subscriptions_with_one_goes_straight_to_the_card() -> None:
-    manager = AsyncMock()
+async def test_open_subscriptions_with_the_only_one_allowed_goes_straight_to_the_card() -> None:
+    manager = _manager({})
     await open_subscriptions(manager, [MagicMock(id=7)])
     manager.start.assert_awaited_once_with(
         Subscriptions.CARD, data={SELECTED_SUBSCRIPTION_KEY: 7}, mode=StartMode.RESET_STACK
     )
+
+
+@pytest.mark.parametrize("max_active", [3, None])
+async def test_open_subscriptions_with_room_for_more_shows_the_list(max_active: object) -> None:
+    # buying one more starts from the list, so one subscription doesn't skip it
+    manager = _manager({}, max_active=max_active)
+    await open_subscriptions(manager, [MagicMock(id=7)])
+    manager.start.assert_awaited_once_with(Subscriptions.LIST, mode=StartMode.RESET_STACK)
+
+
+async def test_card_back_with_room_for_more_returns_to_the_list() -> None:
+    manager = _manager({}, max_active=3)
+    list_own = AsyncMock(return_value=[MagicMock(id=7)])
+
+    await on_subscription_card_back.__dishka_orig_func__(
+        MagicMock(), MagicMock(), manager, list_own_subscriptions=list_own
+    )
+
+    manager.start.assert_awaited_once_with(Subscriptions.LIST, mode=StartMode.RESET_STACK)
+
+
+async def test_devices_opened_from_the_menu_go_back_to_it() -> None:
+    manager = _manager({}, start_data={DEVICES_FROM_MENU_KEY: True})
+    await on_devices_back(MagicMock(), MagicMock(), manager)
+    manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+
+
+async def test_devices_opened_from_a_card_go_back_to_it() -> None:
+    manager = _manager({}, start_data={SELECTED_SUBSCRIPTION_KEY: 7})
+    await on_devices_back(MagicMock(), MagicMock(), manager)
+    manager.switch_to.assert_awaited_once_with(Subscriptions.CARD)
 
 
 async def test_open_subscriptions_with_several_shows_the_list() -> None:

@@ -81,12 +81,21 @@ async def subscriptions_list_getter(
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
         single_subscription=single_subscription,
+        owned_count=len(subscriptions),
     )
     data["banner"] = await _window_banner(
         "subscriptions.list", dialog_config_cache, get_banner, config, user
     )
     data["subscriptions"] = [
-        {"id": s.id, "label": f"{s.plan_snapshot.name} — {format_date(s.expire_at)}"}
+        {
+            "id": s.id,
+            "label": runner.get(
+                "btn-subscriptions.item",
+                status=s.status.value,
+                plan_name=s.plan_snapshot.name,
+                expire_at=format_date(s.expire_at),
+            ),
+        }
         for s in subscriptions
     ]
     data["window_text"] = render_window_text(
@@ -131,6 +140,7 @@ async def subscription_card_getter(
             "msg-subscription-card",
             plan_name=subscription.plan_snapshot.name,
             status=subscription.status.value,
+            is_trial=int(subscription.is_trial),
             expire_at=format_date(subscription.expire_at),
             traffic_limit=subscription.effective_traffic_limit,
             device_limit=subscription.effective_device_limit,

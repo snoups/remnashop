@@ -3,14 +3,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from dishka import Provider, Scope, make_async_container
 from fluentogram import TranslatorHub
 from redis.asyncio import Redis
 
 from app.core.constants import USER_KEY
+from app.core.enums import Locale, PromocodeRewardType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError, ValidationError
 from app.modules.promocodes import ListPromocodeTargetsUseCase, ValidatePromocodeUseCase
+from app.telegram.routers.promocode.getters import promocode_confirm_getter
 from app.telegram.routers.promocode.handlers import (
     _NOTIFICATION_BY_CODE,
     PROMOCODE_INPUT_LIMIT,
@@ -87,3 +90,27 @@ async def test_promocode_action_opens_the_input() -> None:
     manager = AsyncMock()
     await on_promocode(MagicMock(), MagicMock(), manager)
     manager.start.assert_awaited_once_with(Promocode.INPUT)
+
+
+@pytest.mark.parametrize(("is_trial", "warned"), [(True, True), (False, False)])
+async def test_confirm_warns_about_replacement_only_for_a_trial(
+    is_trial: bool, warned: bool
+) -> None:
+    runner = MagicMock()
+    runner.get.side_effect = lambda key, **kwargs: key
+    i18n = MagicMock()
+    i18n.get_translator_by_locale.return_value = runner
+    manager = MagicMock(
+        dialog_data={"promo_code": "CODE"},
+        middleware_data={USER_KEY: MagicMock(language=Locale.EN)},
+    )
+    reward = MagicMock(reward_type=PromocodeRewardType.SUBSCRIPTION, amount=None, plan_name="P")
+
+    data = await promocode_confirm_getter.__dishka_orig_func__(
+        manager,
+        list_own_subscriptions=AsyncMock(return_value=[MagicMock(is_trial=is_trial)]),
+        get_promocode_reward=AsyncMock(return_value=reward),
+        i18n=i18n,
+    )
+
+    assert bool(data["will_replace_message"]) is warned

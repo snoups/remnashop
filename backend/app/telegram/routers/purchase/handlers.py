@@ -1,5 +1,6 @@
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, TypeAlias
 
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import Data, DialogManager, StartMode
@@ -26,6 +27,9 @@ from app.modules.transactions import (
     CreateCheckoutUseCase,
     ListPaymentMethodsUseCase,
     PaymentMethodDto,
+    PriceQuote,
+    QuoteCheckoutDto,
+    QuoteCheckoutUseCase,
 )
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
@@ -57,8 +61,13 @@ def bot_payment_methods(user: UserDto, methods: list[PaymentMethodDto]) -> list[
     return [m for m in methods if not (m.requires_email and user.email is None)]
 
 
+Quoter: TypeAlias = Callable[[int, Currency], Awaitable[PriceQuote]]
+
+
 def price_in(duration: CatalogDurationDto, currency: Currency) -> Decimal:
-    return next(p.price for p in duration.prices if p.currency is currency)
+    # the plan's own promotion off; a personal discount shows from the quote on
+    price = next(p for p in duration.prices if p.currency is currency)
+    return price.price if price.discounted_price is None else price.discounted_price
 
 
 def plans_for(
@@ -81,6 +90,27 @@ def catalog_query(manager: DialogManager) -> ListActivePlansDto:
     return ListActivePlansDto(plan_code=code, renew_subscription_id=renew_id)
 
 
+def checkout_quoter(
+    user: UserDto, manager: DialogManager, quote_checkout: QuoteCheckoutUseCase
+) -> Quoter:
+    """What checkout would charge for the selected plan, discounts applied."""
+
+    async def quote(days: int, currency: Currency) -> PriceQuote:
+        query = catalog_query(manager)
+        return await quote_checkout(
+            user,
+            QuoteCheckoutDto(
+                plan_id=manager.dialog_data["plan_id"],
+                duration_days=days,
+                currency=currency,
+                plan_code=query.plan_code,
+                renew_subscription_id=query.renew_subscription_id,
+            ),
+        )
+
+    return quote
+
+
 def selected_plan(catalog: PlanCatalogDto, dialog_data: dict[str, Any]) -> Optional[CatalogPlanDto]:
     return next((p for p in catalog.plans if p.id == dialog_data.get("plan_id")), None)
 
@@ -90,9 +120,10 @@ async def start_purchase_steps(
     catalog: PlanCatalogDto,
     subscriptions: list[SubscriptionDto],
     methods: Optional[list[PaymentMethodDto]] = None,
+    quote: Optional[Quoter] = None,
 ) -> Optional[str]:
     """Returns a notification key when the purchase can't start. A retry
-    (`methods` given) skips to the order's duration instead of the first step."""
+    (`methods` and `quote` given) skips to the order's duration instead of the first step."""
     start = manager.start_data if isinstance(manager.start_data, dict) else {}
     purchase_type = PurchaseType(start.get("purchase_type", PurchaseType.NEW.value))
     manager.dialog_data["purchase_type"] = purchase_type.value
@@ -108,8 +139,10 @@ async def start_purchase_steps(
         if not any(plan.id == target.plan_snapshot.plan_id for plan in catalog.plans):
             return "ntf-purchase.plan-unavailable"
         manager.dialog_data["plan_id"] = target.plan_snapshot.plan_id
-        if methods is not None:
-            return await select_duration(manager, catalog, start[RETRY_DURATION_KEY], methods)
+        if methods is not None and quote is not None:
+            return await select_duration(
+                manager, catalog, start[RETRY_DURATION_KEY], methods, quote
+            )
         await manager.switch_to(Purchase.DURATION)
         return None
     current = target.plan_snapshot.plan_id if target is not None else None
@@ -117,11 +150,11 @@ async def start_purchase_steps(
     offered = plans_for(purchase_type, catalog, current)
     if not offered:
         return "ntf-purchase.no-plans"
-    if methods is not None:
+    if methods is not None and quote is not None:
         if not any(plan.id == start[RETRY_PLAN_KEY] for plan in offered):
             return "ntf-purchase.plan-unavailable"
         manager.dialog_data["plan_id"] = start[RETRY_PLAN_KEY]
-        return await select_duration(manager, catalog, start[RETRY_DURATION_KEY], methods)
+        return await select_duration(manager, catalog, start[RETRY_DURATION_KEY], methods, quote)
     await manager.switch_to(Purchase.PLAN)
     return None
 
@@ -154,7 +187,11 @@ def _store_method(dialog_data: dict[str, Any], method: dict[str, str]) -> None:
 
 
 async def select_duration(
-    manager: DialogManager, catalog: PlanCatalogDto, days: int, methods: list[PaymentMethodDto]
+    manager: DialogManager,
+    catalog: PlanCatalogDto,
+    days: int,
+    methods: list[PaymentMethodDto],
+    quote: Quoter,
 ) -> Optional[str]:
     """Returns a notification key when the duration can't be bought."""
     plan = selected_plan(catalog, manager.dialog_data)
@@ -163,16 +200,25 @@ async def select_duration(
         return "ntf-purchase.plan-unavailable"
     if not methods:
         return "ntf-purchase.no-methods"
+    try:
+        quotes = {
+            currency: await quote(days, currency)
+            for currency in dict.fromkeys(method.currency for method in methods)
+        }
+    except AppError:
+        return "ntf-purchase.plan-unavailable"
     data = manager.dialog_data
     data.pop(PAYMENT_URL_KEY, None)
     data["duration_days"] = days
     data["plan_name"] = plan.name
-    data["prices"] = {p.currency.value: str(p.price) for p in duration.prices}
+    # what checkout charges, and the price before discounts beside it
+    data["prices"] = {c.value: str(q.final_price) for c, q in quotes.items()}
+    data["base_prices"] = {c.value: str(q.base_price) for c, q in quotes.items()}
     data["methods"] = [
         {"gateway_type": m.gateway_type.value, "currency": m.currency.value} for m in methods
     ]
     # checkout validates the gateway even for a free order, so one is picked silently
-    data["method_skipped"] = len(methods) == 1 or price_in(duration, catalog.anchor_currency) == 0
+    data["method_skipped"] = len(methods) == 1 or quotes[methods[0].currency].final_price == 0
     if data["method_skipped"]:
         _store_method(data, data["methods"][0])
         await manager.switch_to(Purchase.CONFIRM)
@@ -216,6 +262,7 @@ async def on_purchase_start(
     list_active_plans: FromDishka[ListActivePlansUseCase],
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_payment_methods: FromDishka[ListPaymentMethodsUseCase],
+    quote_checkout: FromDishka[QuoteCheckoutUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = manager.middleware_data[USER_KEY]
@@ -227,7 +274,9 @@ async def on_purchase_start(
     subscriptions = await list_own_subscriptions(user) if needs_subscriptions else []
     catalog = await list_active_plans(user, catalog_query(manager))
     methods = bot_payment_methods(user, await list_payment_methods(user)) if retry else None
-    key = await start_purchase_steps(manager, catalog, subscriptions, methods)
+    key = await start_purchase_steps(
+        manager, catalog, subscriptions, methods, checkout_quoter(user, manager, quote_checkout)
+    )
     if key is None:
         return
     text = get_translator(i18n, user).get(key)
@@ -256,6 +305,7 @@ async def on_duration_selected(
     dialog_manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],
     list_payment_methods: FromDishka[ListPaymentMethodsUseCase],
+    quote_checkout: FromDishka[QuoteCheckoutUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
@@ -264,6 +314,7 @@ async def on_duration_selected(
         await list_active_plans(user, catalog_query(dialog_manager)),
         int(dialog_manager.item_id),  # type: ignore[attr-defined]
         bot_payment_methods(user, await list_payment_methods(user)),
+        checkout_quoter(user, dialog_manager, quote_checkout),
     )
     if key is not None:
         await callback.answer(get_translator(i18n, user).get(key), show_alert=True)

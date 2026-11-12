@@ -154,3 +154,20 @@ async def test_device_confirm_getter_routes_message_text_through_resolve_variabl
     )
 
     assert "user_name" in captured_kwargs
+
+
+async def test_a_trial_is_not_offered_to_an_owner_of_a_subscription() -> None:
+    offered = AsyncMock(
+        return_value=MagicMock(
+            is_trial_available=True, plan=MagicMock(), is_free=True, currency=None
+        )
+    )
+
+    newcomer = await build_condition_data(_user(), [], offered, cabinet_url="")
+    # an expired subscription is not in `active`, and still counts
+    owner = await build_condition_data(_user(), [], offered, cabinet_url="", owned_count=1)
+
+    assert newcomer["trial_available"] is True
+    assert owner["trial_available"] is False
+    assert owner["trial_paid_available"] is False
+    assert owner["subscriptions_count"] == 1

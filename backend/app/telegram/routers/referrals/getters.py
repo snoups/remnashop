@@ -61,8 +61,9 @@ async def referrals_getter(
     runner = get_translator(i18n, user)
     active = await list_own_active_subscriptions(user)
     # the purchase cap counts an expired subscription too, as checkout does
+    owned = await list_own_subscriptions(user)
     can_purchase, referral_enabled, single_subscription = await menu_flags(
-        await list_own_subscriptions(user), get_shop_settings, get_referral_settings
+        owned, get_shop_settings, get_referral_settings
     )
     data: dict[str, Any] = await build_condition_data(
         user,
@@ -72,6 +73,7 @@ async def referrals_getter(
         can_purchase=can_purchase,
         referral_enabled=referral_enabled,
         single_subscription=single_subscription,
+        owned_count=len(owned),
     )
     window = await dialog_config_cache.get_window("referrals.main")
     data["banner"] = (

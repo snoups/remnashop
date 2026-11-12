@@ -3,13 +3,14 @@ from typing import Final
 from aiogram.types import CallbackQuery
 from aiogram_dialog import DialogManager, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
-from dishka import FromDishka
-from dishka.integrations.aiogram_dialog import inject
+from dishka import AsyncContainer, FromDishka
+from dishka.integrations.aiogram_dialog import CONTAINER_NAME, inject
 from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, CooldownError, NotFoundError, ValidationError
+from app.modules.settings import GetShopSettingsUseCase
 from app.modules.subscriptions import (
     DeleteAllDevicesUseCase,
     DeleteDeviceDto,
@@ -33,10 +34,24 @@ _RESET_DISABLED_CODES: Final[frozenset[ErrorCode]] = frozenset(
 )
 
 
+# set by the menu's own "Devices" button, so "back" returns there
+DEVICES_FROM_MENU_KEY: Final[str] = "devices_from_menu"
+
+
+async def _only_subscription(manager: DialogManager, subscriptions: list[SubscriptionDto]) -> bool:
+    """One subscription and no room for another: the list is skipped. With
+    several allowed it stays, since buying one more starts there."""
+    if len(subscriptions) != 1:
+        return False
+    container: AsyncContainer = manager.middleware_data[CONTAINER_NAME]
+    get_shop_settings = await container.get(GetShopSettingsUseCase)
+    return (await get_shop_settings.system()).max_active_subscriptions == 1
+
+
 async def open_subscriptions(manager: DialogManager, subscriptions: list[SubscriptionDto]) -> None:
     if not subscriptions:
         await manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
-    elif len(subscriptions) == 1:
+    elif await _only_subscription(manager, subscriptions):
         await manager.start(
             Subscriptions.CARD,
             data={SELECTED_SUBSCRIPTION_KEY: subscriptions[0].id},
@@ -72,9 +87,19 @@ async def on_open_devices(
         return
     await dialog_manager.start(
         Subscriptions.DEVICES,
-        data={SELECTED_SUBSCRIPTION_KEY: active[0].id},
+        data={SELECTED_SUBSCRIPTION_KEY: active[0].id, DEVICES_FROM_MENU_KEY: True},
         mode=StartMode.RESET_STACK,
     )
+
+
+async def on_devices_back(
+    callback: CallbackQuery, widget: Keyboard, dialog_manager: DialogManager
+) -> None:
+    start = dialog_manager.start_data
+    if isinstance(start, dict) and start.get(DEVICES_FROM_MENU_KEY):
+        await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
+    else:
+        await dialog_manager.switch_to(Subscriptions.CARD)
 
 
 @inject
@@ -86,8 +111,8 @@ async def on_subscription_card_back(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     subscriptions = await list_own_subscriptions(user)
-    # with one subscription the list is skipped, so going "back" to it would reopen this card
-    if len(subscriptions) == 1:
+    # the list was skipped, so going "back" to it would reopen this card
+    if await _only_subscription(dialog_manager, subscriptions):
         await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
     else:
         await open_subscriptions(dialog_manager, subscriptions)

@@ -92,6 +92,7 @@ async def test_link_to_an_unavailable_plan_answers_and_opens_the_menu() -> None:
         list_active_plans=list_active_plans,
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
+        quote_checkout=AsyncMock(),
         i18n=_i18n(),
     )
 

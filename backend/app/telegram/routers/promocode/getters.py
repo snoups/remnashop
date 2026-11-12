@@ -13,7 +13,7 @@ from app.modules.promocodes import (
     ListPromocodeTargetsUseCase,
     ValidatePromocodeDto,
 )
-from app.modules.subscriptions import ListOwnActiveSubscriptionsUseCase
+from app.modules.subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
 from app.telegram.i18n import format_datetime, get_translator
@@ -62,7 +62,7 @@ async def promocode_target_getter(
 @inject
 async def promocode_confirm_getter(
     dialog_manager: DialogManager,
-    list_own_active_subscriptions: FromDishka[ListOwnActiveSubscriptionsUseCase],
+    list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     get_promocode_reward: FromDishka[GetPromocodeRewardUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
@@ -74,7 +74,8 @@ async def promocode_confirm_getter(
 
     will_replace = False
     if reward.reward_type is PromocodeRewardType.SUBSCRIPTION:
-        will_replace = len(await list_own_active_subscriptions(user)) > 0
+        # a granted plan takes over a trial, expired or not; a paid subscription stays
+        will_replace = any(s.is_trial for s in await list_own_subscriptions(user))
 
     return {
         "confirm_message": render_window_text(

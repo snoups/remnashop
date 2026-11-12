@@ -26,6 +26,15 @@ def _price(prices: dict[str, str], currency: str) -> str:
     return format_price(Decimal(prices[currency]))
 
 
+def _original_price(data: dict[str, Any]) -> str:
+    # empty without a discount: the confirm text drops the line
+    currency = data["currency"]
+    base = data.get("base_prices", {}).get(currency)
+    if base is None or Decimal(base) == Decimal(data["prices"][currency]):
+        return ""
+    return format_price(Decimal(base))
+
+
 def _runner(dialog_manager: DialogManager, i18n: TranslatorHub) -> TranslatorRunner:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     return get_translator(i18n, user)
@@ -132,6 +141,7 @@ async def confirm_getter(
             plan_name=data["plan_name"],
             duration_days=data["duration_days"],
             price=_price(data["prices"], data["currency"]),
+            original_price=_original_price(data),
             currency_symbol=Currency(data["currency"]).symbol,
             method=runner.get(f"gateway-name.{data['gateway_type']}"),
             terms_notice=terms_notice,

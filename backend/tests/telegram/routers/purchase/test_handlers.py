@@ -19,7 +19,7 @@ from app.core.enums import (
     PurchaseType,
 )
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import PaymentGatewayError, PermissionDeniedError
+from app.core.exceptions import PaymentGatewayError, PermissionDeniedError, ValidationError
 from app.modules.dialogs import catalog
 from app.modules.subscriptions import CatalogDurationDto, CatalogPlanDto, PlanCatalogDto
 from app.modules.subscriptions.dto import CatalogPriceDto
@@ -82,6 +82,13 @@ def _manager(start_data: object = None, dialog_data: Optional[dict] = None) -> A
     manager.start_data = start_data
     manager.dialog_data = dialog_data if dialog_data is not None else {}
     return manager
+
+
+def _quote(final: str = "199", base: str = "199") -> AsyncMock:
+    return AsyncMock(return_value=MagicMock(final_price=Decimal(final), base_price=Decimal(base)))
+
+
+_quote_checkout = _quote
 
 
 def _i18n() -> MagicMock:
@@ -177,6 +184,7 @@ async def test_start_failure_answers_the_callback_and_closes() -> None:
         ),
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
+        quote_checkout=_quote_checkout(),
         i18n=_i18n(),
     )
 
@@ -196,6 +204,7 @@ async def test_new_purchase_start_does_not_list_subscriptions() -> None:
         ),
         list_own_subscriptions=list_own,
         list_payment_methods=AsyncMock(),
+        quote_checkout=_quote_checkout(),
         i18n=_i18n(),
     )
 
@@ -213,7 +222,7 @@ async def test_one_method_skips_the_method_step() -> None:
     manager = _manager(dialog_data={"plan_id": 10})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
 
-    assert await select_duration(manager, catalog_dto, 30, [_RUB_METHOD]) is None
+    assert await select_duration(manager, catalog_dto, 30, [_RUB_METHOD], _quote()) is None
 
     assert manager.dialog_data["gateway_type"] == "YOOKASSA"
     assert manager.dialog_data["currency"] == "RUB"
@@ -225,7 +234,10 @@ async def test_several_methods_open_the_method_step() -> None:
     manager = _manager(dialog_data={"plan_id": 10})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
 
-    assert await select_duration(manager, catalog_dto, 30, [_RUB_METHOD, _STARS_METHOD]) is None
+    assert (
+        await select_duration(manager, catalog_dto, 30, [_RUB_METHOD, _STARS_METHOD], _quote())
+        is None
+    )
 
     assert "gateway_type" not in manager.dialog_data
     manager.switch_to.assert_awaited_once_with(Purchase.METHOD)
@@ -236,7 +248,7 @@ async def test_a_free_duration_picks_the_first_method_silently() -> None:
     free = _plan(id=10, durations=[_duration(rub="0", usd="0")])
     catalog_dto = PlanCatalogDto(plans=[free], anchor_currency=Currency.RUB)
 
-    await select_duration(manager, catalog_dto, 30, [_STARS_METHOD, _RUB_METHOD])
+    await select_duration(manager, catalog_dto, 30, [_STARS_METHOD, _RUB_METHOD], _quote("0"))
 
     assert manager.dialog_data["gateway_type"] == "TELEGRAM_STARS"
     manager.switch_to.assert_awaited_once_with(Purchase.CONFIRM)
@@ -246,7 +258,9 @@ async def test_no_methods_answer_an_alert() -> None:
     manager = _manager(dialog_data={"plan_id": 10})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
 
-    assert await select_duration(manager, catalog_dto, 30, []) == "ntf-purchase.no-methods"
+    assert (
+        await select_duration(manager, catalog_dto, 30, [], _quote()) == "ntf-purchase.no-methods"
+    )
     manager.switch_to.assert_not_awaited()
 
 
@@ -254,7 +268,7 @@ async def test_a_duration_gone_from_the_catalog_answers_an_alert() -> None:
     manager = _manager(dialog_data={"plan_id": 10})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
 
-    assert await select_duration(manager, catalog_dto, 90, [_RUB_METHOD]) == (
+    assert await select_duration(manager, catalog_dto, 90, [_RUB_METHOD], _quote()) == (
         "ntf-purchase.plan-unavailable"
     )
 
@@ -365,7 +379,7 @@ async def test_selecting_a_duration_again_forgets_the_created_order(
     manager = _manager(dialog_data={"plan_id": 10, PAYMENT_URL_KEY: "https://pay"})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
 
-    await select_duration(manager, catalog_dto, 30, methods)
+    await select_duration(manager, catalog_dto, 30, methods, _quote())
 
     assert PAYMENT_URL_KEY not in manager.dialog_data
 
@@ -387,6 +401,7 @@ async def test_duration_hides_receipt_gateways_from_a_user_without_email() -> No
         manager,
         list_active_plans=list_active_plans,
         list_payment_methods=AsyncMock(return_value=[receipt, _STARS_METHOD]),
+        quote_checkout=_quote_checkout(),
         i18n=_i18n(),
     )
 
@@ -491,6 +506,7 @@ async def _retry_start(manager: AsyncMock, methods: list[PaymentMethodDto], plan
         ),
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(return_value=methods),
+        quote_checkout=_quote_checkout(),
         i18n=_i18n(),
     )
 
@@ -535,10 +551,13 @@ async def test_retry_of_a_renewal_checks_the_target() -> None:
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
     manager = _manager(start_data=start)
 
-    assert await start_purchase_steps(manager, catalog_dto, [], [_RUB_METHOD]) == (
+    assert await start_purchase_steps(manager, catalog_dto, [], [_RUB_METHOD], _quote()) == (
         "ntf-subscription.gone"
     )
-    assert await start_purchase_steps(manager, catalog_dto, [_target()], [_RUB_METHOD]) is None
+    assert (
+        await start_purchase_steps(manager, catalog_dto, [_target()], [_RUB_METHOD], _quote())
+        is None
+    )
     manager.switch_to.assert_awaited_once_with(Purchase.CONFIRM)
 
 
@@ -547,7 +566,32 @@ async def test_retry_of_a_change_to_the_current_plan_is_unavailable() -> None:
     catalog_dto = PlanCatalogDto(plans=[_plan(id=10), _plan(id=11)], anchor_currency=Currency.RUB)
     manager = _manager(start_data=start)
 
-    assert await start_purchase_steps(manager, catalog_dto, [_target(10)], [_RUB_METHOD]) == (
+    assert await start_purchase_steps(
+        manager, catalog_dto, [_target(10)], [_RUB_METHOD], _quote()
+    ) == ("ntf-purchase.plan-unavailable")
+    assert (
+        await start_purchase_steps(manager, catalog_dto, [_target(11)], [_RUB_METHOD], _quote())
+        is None
+    )
+
+
+async def test_duration_stores_the_price_checkout_will_charge() -> None:
+    # a personal discount is in the quote, not in the catalog
+    manager = _manager(dialog_data={"plan_id": 10})
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+
+    await select_duration(manager, catalog_dto, 30, [_RUB_METHOD], _quote("159.2", "199"))
+
+    assert manager.dialog_data["prices"] == {"RUB": "159.2"}
+    assert manager.dialog_data["base_prices"] == {"RUB": "199"}
+
+
+async def test_a_refused_quote_answers_an_alert() -> None:
+    manager = _manager(dialog_data={"plan_id": 10})
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+    quote = AsyncMock(side_effect=ValidationError("gone", code=ErrorCode.PLAN_NOT_AVAILABLE))
+
+    assert await select_duration(manager, catalog_dto, 30, [_RUB_METHOD], quote) == (
         "ntf-purchase.plan-unavailable"
     )
-    assert await start_purchase_steps(manager, catalog_dto, [_target(11)], [_RUB_METHOD]) is None
+    manager.switch_to.assert_not_awaited()

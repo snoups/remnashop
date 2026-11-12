@@ -170,9 +170,9 @@ async def test_confirm_window_shows_terms_notice_only_with_documents(locale: Loc
     with_documents = await _text([_revision(LegalDocumentKind.OFFER)])
     without = await _text([])
 
-    assert with_documents.splitlines()[1].strip("\u2068\u2069").endswith("/terms")
+    assert "/terms" in with_documents.splitlines()[-1]
     assert "/terms" not in without
-    assert len(without.splitlines()) == 1
+    assert without.endswith("</blockquote>")
 
 
 @pytest.mark.parametrize("locale", [Locale.EN, Locale.RU])

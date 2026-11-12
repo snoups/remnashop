@@ -185,3 +185,22 @@ def test_single_subscription_mode_keeps_it_in_the_menu() -> None:
 def test_several_subscriptions_go_through_the_list() -> None:
     assert _visible_menu_buttons(single_subscription=False) == {"subscriptions"}
     assert _visible_menu_buttons(single_subscription=False, subscriptions_count=0) == set()
+
+
+def _condition(key: str, **data: object) -> bool:
+    register_menu_metadata()
+    return bool(catalog.get_condition(key)(data))
+
+
+def test_menu_offers_buying_until_there_is_a_list_to_buy_from() -> None:
+    register_menu_metadata()
+    purchase = next(b for b in catalog.get_window("menu.main").buttons if b.key == "purchase")
+    assert purchase.visibility_condition == "menu_can_purchase"
+    multi = {"can_purchase": True, "single_subscription": False}
+    assert _condition("menu_can_purchase", **multi, subscriptions_count=0)
+    assert not _condition("menu_can_purchase", **multi, subscriptions_count=1)
+    # one subscription allowed: a trial is upgraded from the menu itself
+    assert _condition(
+        "menu_can_purchase", can_purchase=True, single_subscription=True, subscriptions_count=1
+    )
+    assert not _condition("menu_can_purchase", can_purchase=False, subscriptions_count=0)

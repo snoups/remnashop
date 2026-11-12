@@ -43,6 +43,7 @@ async def build_condition_data(
     can_purchase: bool = False,
     referral_enabled: bool = False,
     single_subscription: bool = False,
+    owned_count: Optional[int] = None,
 ) -> dict[str, Any]:
     """What catalog conditions and variables resolve against, so a button an
     admin configures behaves the same whichever window they put it in. Device
@@ -52,8 +53,11 @@ async def build_condition_data(
         subscription = active[0] if active else None
     else:
         subscription = next((s for s in active if s.id == selected_id), None)
+    # expired ones included, where the caller has them
+    count = len(active) if owned_count is None else owned_count
     trial = await get_available_trial(user)
-    offers_trial = trial.is_trial_available and trial.plan is not None
+    # a trial is the way in: with a subscription of any kind it is not offered
+    offers_trial = trial.is_trial_available and trial.plan is not None and count == 0
     # the discount checkout applies next: transactions' pricing takes the
     # largest of the three, capped at 100
     discount = min(max(user.personal_discount, user.purchase_discount, user.loyalty_discount), 100)
@@ -64,10 +68,11 @@ async def build_condition_data(
         "discount": str(discount) if discount > 0 else "",
         "points": str(user.points),
         "bonus_days": user.bonus_days,
-        "subscriptions_count": len(active),
+        "subscriptions_count": count,
         "can_purchase": can_purchase,
         "referral_enabled": referral_enabled,
-        # max one subscription: the menu shows it directly instead of a list
+        # max one subscription: the menu shows it directly; otherwise the menu
+        # holds no subscription, they all sit behind "My subscriptions"
         "single_subscription": single_subscription,
         "subscription": subscription,
         "has_subscription": subscription is not None,
