@@ -10,6 +10,7 @@ from app.core.usecase import UseCase
 from app.modules.settings import SettingsRepository
 from app.modules.subscriptions.dto import SubscriptionRefDto
 from app.modules.subscriptions.eligibility import get_owned_live_target
+from app.modules.subscriptions.link_reissue import reissue_link
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.users import UserDto
 
@@ -48,8 +49,8 @@ class ReissueSubscriptionUseCase(UseCase[SubscriptionRefDto, None, UserDto]):
             )
 
         try:
-            panel_user = await self._remnawave_sdk.users.revoke_user_subscription(
-                subscription.remnawave_user_id
+            await reissue_link(
+                self._remnawave_sdk, self._subscription_repository, self._uow, subscription
             )
         except Exception:
             async with self._uow:
@@ -57,7 +58,3 @@ class ReissueSubscriptionUseCase(UseCase[SubscriptionRefDto, None, UserDto]):
                     subscription.id, "link_reset_at", previous
                 )
             raise
-        async with self._uow:
-            await self._subscription_repository.set_url(
-                subscription.id, panel_user.subscription_url
-            )

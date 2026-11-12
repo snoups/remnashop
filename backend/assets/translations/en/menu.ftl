@@ -75,7 +75,7 @@ msg-window-gone = This screen is no longer available.
 msg-paysupport = To request a refund, contact support.
 msg-menu-devices = Your devices ({ $devices_current }/{ $devices_max })
 msg-menu-devices-confirm-delete = Delete this device?
-msg-menu-devices-confirm-delete-all = Delete every device? Each one has to be connected again.
+msg-menu-devices-confirm-delete-all = Delete every device? The connection link changes and every device loses access — each one has to be connected again with the new link.
 msg-menu-devices-confirm-reissue = Reissue the connection link? The old link will stop working.
 
 btn-menu =

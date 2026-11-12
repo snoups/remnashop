@@ -599,7 +599,9 @@ async def test_admin_device_list_and_delete(
 
     await delete_all(OWNER, granted.id)
     assert await list_devices(OWNER, granted.id) == []
-    assert (await subscription_repository.get_by_id(granted.id)).device_all_reset_at is None
+    after = await subscription_repository.get_by_id(granted.id)
+    assert after.device_all_reset_at is None
+    assert after.url != granted.url
 
 
 async def test_change_plan_of_disabled_subscription_stays_disabled(

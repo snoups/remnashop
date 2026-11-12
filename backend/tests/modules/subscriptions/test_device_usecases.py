@@ -212,16 +212,20 @@ async def test_rejects_within_cooldown(
         await use_case(actor, DeleteDeviceDto(subscription_id=subscription.id, hwid="second"))
 
 
-async def test_deletes_all_devices(
+async def test_deleting_all_devices_reissues_the_link(
     subscription_repository: SubscriptionRepository,
     user_repository: UserRepository,
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
     remnawave_hwid_store: dict,
     uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="device-deleter-all"))
     subscription = await _create_active_subscription(subscription_repository, actor.id, 7005)
+    remnawave_store[7005] = _user_payload(
+        user_id=7005, username="delete-all-test", expire_at=datetime_now()
+    )
     remnawave_hwid_store[7005] = [
         _device("a", 7005),
         _device("b", 7005),
@@ -234,6 +238,7 @@ async def test_deletes_all_devices(
 
     assert remnawave_hwid_store[7005] == []
     reloaded = await subscription_repository.get_by_id(subscription.id)
+    assert reloaded.url != subscription.url
     assert reloaded.device_all_reset_at is not None
 
 
@@ -243,6 +248,7 @@ async def test_reissues_the_subscription_link(
     settings_repository: SettingsRepository,
     remnawave_sdk: RemnawaveSDK,
     remnawave_store: FakeUserStore,
+    remnawave_hwid_store: dict,
     uow: UnitOfWork,
 ) -> None:
     actor = await user_repository.create(CreateUserDto(name="reissuer"))
@@ -250,6 +256,7 @@ async def test_reissues_the_subscription_link(
     remnawave_store[7006] = _user_payload(
         user_id=7006, username="reissue-test", expire_at=datetime_now()
     )
+    remnawave_hwid_store[7006] = [_device("a", 7006)]
     use_case = ReissueSubscriptionUseCase(
         subscription_repository, remnawave_sdk, settings_repository, uow
     )
@@ -259,6 +266,7 @@ async def test_reissues_the_subscription_link(
     reloaded = await subscription_repository.get_by_id(subscription.id)
     assert reloaded.url != subscription.url
     assert reloaded.link_reset_at is not None
+    assert remnawave_hwid_store[7006] == []
 
 
 async def test_a_failed_panel_call_hands_the_cooldown_back(
