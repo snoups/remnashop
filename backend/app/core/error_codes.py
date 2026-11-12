@@ -202,6 +202,7 @@ class ErrorCode(UpperStrEnum):
     PASSWORD_LOGIN_DISABLED = auto()
     PAYLOAD_TOO_LARGE = auto()
     PAYMENT_GATEWAY_ERROR = auto()
+    PAYMENT_ORDER_NOT_CHECKABLE = auto()
     PAYMENT_ORDER_NOT_FOUND = auto()
     PAYMENT_ORDER_NOT_FULFILLABLE = auto()
     PAYMENTS_DISABLED = auto()

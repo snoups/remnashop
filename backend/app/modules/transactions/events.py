@@ -47,6 +47,14 @@ class TransactionFulfilledManuallyEvent(ActorTargetEvent):
 
 
 @dataclass(frozen=True, kw_only=True)
+class TransactionPaymentConfirmedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    order_id: int
+    previous_status: TransactionStatus
+    gateway_type: PaymentGatewayType
+
+
+@dataclass(frozen=True, kw_only=True)
 class TransactionRefundedManuallyEvent(ActorTargetEvent):
     category: ClassVar[EventCategory] = EventCategory.PAYMENT
     order_id: int

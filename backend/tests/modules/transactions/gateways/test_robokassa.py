@@ -122,3 +122,17 @@ async def test_confirm_rejects_an_invoice_of_another_order() -> None:
     signal = await _gateway(http=http.client).parse_webhook(webhook(_result_url()))
     assert signal is not None
     assert await _gateway(http=http.client).confirm(make_order(), signal) is None
+
+
+async def test_check_payment_reads_op_state_ext_without_a_notification() -> None:
+    http = HttpRecorder(lambda request: _xml_response())
+
+    payment = await _gateway(http=http.client).check_payment(make_order())
+
+    assert payment is not None and payment.amount == Decimal("500")
+    assert http.last.url.params["InvoiceID"] == "42"
+
+
+async def test_check_payment_rejects_an_unfinished_operation() -> None:
+    http = HttpRecorder(lambda request: _xml_response(state=5))
+    assert await _gateway(http=http.client).check_payment(make_order()) is None

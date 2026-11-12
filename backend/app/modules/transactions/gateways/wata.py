@@ -113,7 +113,7 @@ class WataGateway(PaymentGateway[WataSettings]):
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
         if not signal.provider_payment_id:
-            return NOT_PAID
+            return await self._find_paid(order)
         response = await self._http.get(
             f"{_API_BASE}/transactions/{signal.provider_payment_id}",
             headers=self._headers(),
@@ -127,6 +127,35 @@ class WataGateway(PaymentGateway[WataSettings]):
             currency=data.get("currency"),
             reference=str(data.get("orderId") or ""),
             provider_payment_id=str(data.get("id") or signal.provider_payment_id),
+        )
+
+    async def _find_paid(self, order: TransactionDto) -> ProviderPayment:
+        # a link creates no id of its own we keep; a declined try and a retry
+        # are two transactions under one orderId
+        response = await self._http.get(
+            f"{_API_BASE}/v2/transactions",
+            params={"orderId": order.idempotency_key},
+            headers=self._headers(),
+            timeout=PROVIDER_API_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        items = orjson.loads(response.content).get("items") or []
+        paid = next(
+            (
+                item
+                for item in items
+                if item.get("status") == _PAID_STATUS and item.get("kind") == _PAYMENT_KIND
+            ),
+            None,
+        )
+        if paid is None:
+            return NOT_PAID
+        return ProviderPayment(
+            paid=True,
+            amount=to_decimal(paid.get("amount")),
+            currency=paid.get("currency"),
+            reference=str(paid.get("orderId") or ""),
+            provider_payment_id=str(paid["id"]) if paid.get("id") else None,
         )
 
     async def _public_key(self) -> RSAPublicKey:

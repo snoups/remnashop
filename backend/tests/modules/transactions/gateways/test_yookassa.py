@@ -211,3 +211,12 @@ async def test_confirm_reported_checks_a_cancel_against_the_api(
 
 async def test_confirm_reported_without_a_stored_payment_id_is_ignored() -> None:
     assert await _gateway().confirm_reported(make_order(), _refund_signal()) is None
+
+
+async def test_check_payment_finds_the_payment_by_its_stored_id() -> None:
+    http = HttpRecorder(json_response(_payment()))
+
+    payment = await _gateway(http=http.client).check_payment(make_order(external_payment_id="yk-1"))
+
+    assert payment is not None and payment.provider_payment_id == "yk-1"
+    assert http.last.url.path == "/v3/payments/yk-1"

@@ -83,6 +83,8 @@ class PaymentGateway(ABC, Generic[S]):
     # Source networks of a provider that doesn't sign its notifications; empty
     # means the signature (or the confirm() re-fetch) is the only check.
     trusted_networks: ClassVar[tuple[str, ...]] = ()
+    # False where the status API needs data only a notification carries
+    supports_status_check: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -146,6 +148,16 @@ class PaymentGateway(ABC, Generic[S]):
         if payment.currency is not None and payment.currency.upper() != order.currency.value:
             return None
         return payment
+
+    async def check_payment(self, order: TransactionDto) -> Optional[ProviderPayment]:
+        """The payment as the provider's API reports it, found from the order
+        alone: an admin's check for a notification that never arrived."""
+        signal = WebhookSignal(
+            reference=order.idempotency_key,
+            claims_paid=True,
+            provider_payment_id=order.external_payment_id,
+        )
+        return await self.confirm(order, signal)
 
     async def confirm_reported(
         self, order: TransactionDto, signal: WebhookSignal

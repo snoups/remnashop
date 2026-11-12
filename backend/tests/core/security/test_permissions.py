@@ -304,6 +304,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.TRANSACTIONS_DETAIL_VIEW,
         Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.TRANSACTIONS_FULFILL,
+        Permission.TRANSACTIONS_PAYMENT_CHECK,
         Permission.TRANSACTIONS_UNRATED_VIEW,
         Permission.REFERRALS_VIEW,
         Permission.REFERRALS_INVITED_VIEW,

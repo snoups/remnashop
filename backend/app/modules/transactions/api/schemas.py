@@ -166,6 +166,11 @@ class RefundTransactionRequest(BaseModel):
     rollback_subscription: bool
 
 
+class PaymentCheckResponse(BaseModel):
+    transaction: TransactionResponse
+    paid: bool
+
+
 class RefundTransactionResponse(BaseModel):
     transaction: TransactionResponse
     rollback_failed: bool

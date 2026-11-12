@@ -95,6 +95,14 @@ class RobokassaGateway(PaymentGateway[RobokassaSettings]):
             amount=to_decimal(out_sum),
         )
 
+    async def check_payment(self, order: TransactionDto) -> Optional[ProviderPayment]:
+        # OpStateExt reports a net sum; the order's own price stands in, since
+        # the payment link signs OutSum and the buyer can't pay a different one
+        signal = WebhookSignal(
+            reference=order.idempotency_key, claims_paid=True, amount=order.final_price
+        )
+        return await self.confirm(order, signal)
+
     def webhook_ack(self, signal: Optional[WebhookSignal]) -> WebhookAck:
         inv_id = signal.provider_payment_id if signal is not None else None
         return WebhookAck(body=f"OK{inv_id or ''}")

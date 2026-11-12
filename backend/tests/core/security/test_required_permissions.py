@@ -47,6 +47,7 @@ from app.modules.promocodes.usecases import GetPromocodeUseCase
 from app.modules.settings.usecases import GetBotCommandsUseCase
 from app.modules.subscriptions.usecases import GetSubscriptionUseCase
 from app.modules.transactions.usecases import (
+    CheckTransactionPaymentUseCase,
     CreateTestPaymentUseCase,
     FulfillTransactionUseCase,
     GetTestPaymentStatusUseCase,
@@ -100,6 +101,7 @@ from app.modules.users.usecases import GetUserUseCase, SetUserDiscountUseCase
         (ListTransactionGatewaysUseCase, Permission.TRANSACTIONS_GATEWAYS_VIEW),
         (GetTransactionUseCase, Permission.TRANSACTIONS_DETAIL_VIEW),
         (FulfillTransactionUseCase, Permission.TRANSACTIONS_FULFILL),
+        (CheckTransactionPaymentUseCase, Permission.TRANSACTIONS_PAYMENT_CHECK),
         (
             SetPlanDurationBasePriceUseCase,
             Permission.PLANS_DURATION_BASE_PRICE_MANAGE,

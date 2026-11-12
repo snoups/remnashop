@@ -202,6 +202,7 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_DETAIL_VIEW = auto()
     TRANSACTIONS_GATEWAYS_VIEW = auto()
     TRANSACTIONS_FULFILL = auto()
+    TRANSACTIONS_PAYMENT_CHECK = auto()
     TRANSACTIONS_REFUND = auto()
     TRANSACTIONS_REFUND_PREVIEW = auto()
     TRANSACTIONS_UNRATED_VIEW = auto()
@@ -460,6 +461,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
+    Permission.TRANSACTIONS_PAYMENT_CHECK: PermissionMeta(resource="transactions", kind="write"),
     Permission.TRANSACTIONS_REFUND: PermissionMeta(resource="transactions", kind="write"),
     Permission.TRANSACTIONS_REFUND_PREVIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_UNRATED_VIEW: PermissionMeta(resource="transactions", kind="read"),
@@ -785,6 +787,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.TRANSACTIONS_DETAIL_VIEW,
             Permission.TRANSACTIONS_GATEWAYS_VIEW,
             Permission.TRANSACTIONS_FULFILL,
+            Permission.TRANSACTIONS_PAYMENT_CHECK,
             Permission.TRANSACTIONS_UNRATED_VIEW,
             Permission.REFERRALS_VIEW,
             Permission.REFERRALS_INVITED_VIEW,

@@ -310,6 +310,18 @@ class FulfillTransactionDto:
 
 
 @dataclass(frozen=True, kw_only=True)
+class CheckTransactionPaymentDto:
+    transaction_id: int
+    client_ip: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class PaymentCheckResultDto:
+    transaction: TransactionWithUserDto
+    paid: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class RefundTransactionDto:
     transaction_id: int
     rollback_subscription: bool
