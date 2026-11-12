@@ -1,8 +1,10 @@
 msg-main-menu =
     <b>👤 Profile</b>:
-    <blockquote>• <b>ID</b>: <code>{ $user_id }</code>
+    <blockquote>
+    • <b>ID</b>: <code>{ $user_id }</code>
     • <b>Name</b>: { $user_name }
-    • <b>Discount</b>: { $user_discount }%</blockquote>
+    • <b>Discount</b>: { $user_discount }%
+    </blockquote>
 
     { $subscription_block }
 frg-menu-subscription =
@@ -12,18 +14,23 @@ frg-menu-subscription =
     }
     { $status ->
         [ACTIVE]
-            <blockquote>• <b>Traffic limit</b>: { $traffic_limit }
+            <blockquote>
+            • <b>Traffic limit</b>: { $traffic_limit }
             • <b>Device limit</b>: { $device_limit }
-            • <b>Expires</b>: { $expire_at }</blockquote>
+            • <b>Expires</b>: { $expire_at }
+            </blockquote>
         [EXPIRED]
-            <blockquote>• Your subscription has expired.
+            <blockquote>
+            • Your subscription has expired.
 
             <i>{ $is_trial ->
                 [0] Renew it to keep using the service!
                *[1] Your free trial has ended. Buy a subscription to keep using the service!
-            }</i></blockquote>
+            }</i>
+            </blockquote>
         [LIMITED]
-            <blockquote>• Your traffic is used up.
+            <blockquote>
+            • Your traffic is used up.
 
             <i>{ $is_trial ->
                 [0] { $traffic_strategy ->
@@ -34,21 +41,26 @@ frg-menu-subscription =
                     [NO_RESET] Buy a subscription to keep using the service!
                    *[RESET] Traffic is restored at the start of the next period. You can also buy a subscription to use the service without limits.
                 }
-            }</i></blockquote>
+            }</i>
+            </blockquote>
        *[DISABLED]
-            <blockquote>• Your subscription is disabled.
+            <blockquote>
+            • Your subscription is disabled.
 
-            <i>Contact support to find out why.</i></blockquote>
+            <i>Contact support to find out why.</i>
+            </blockquote>
     }
 
     More subscriptions: { $extra_count } — see “My subscriptions”.
 frg-menu-no-subscription =
-    <blockquote>You have no subscription.
+    <blockquote>
+    You have no subscription.
 
     <i>{ $trial_available ->
         [1] 🎁 A free trial is available to you — tap the button below to get it.
        *[0] ↘️ To get access, tap “Buy a subscription”.
-    }</i></blockquote>
+    }</i>
+    </blockquote>
 frg-subscription-status = { $status ->
         [ACTIVE] Active
         [LIMITED] Traffic limit reached
@@ -69,7 +81,11 @@ msg-menu-devices-confirm-reissue = Reissue the connection link? The old link wil
 btn-menu =
     .connect = Connect
     .connect-icon = 🚀
-    .connect-not-available = Connection unavailable
+    .connect-not-available = { $subscription_problem ->
+        [LIMITED] TRAFFIC LIMIT REACHED
+        [EXPIRED] SUBSCRIPTION EXPIRED
+       *[other] YOUR SUBSCRIPTION IS NOT WORKING
+    }
     .connect-not-available-icon = ⚠️
     .trial = Try for free
     .trial-icon = 🎁
@@ -92,6 +108,7 @@ btn-menu =
     .referrals = Referrals
     .referrals-icon = 👥
     .legal = Documents
+    .legal-icon = 📄
 
 btn-legal =
     .OFFER = Public offer
@@ -99,7 +116,6 @@ btn-legal =
     .PRIVACY_POLICY = Privacy policy
 
 msg-legal-list = Legal documents. Pick one to read it.
-msg-legal-empty = No documents have been published yet.
 msg-legal-gate =
     <b>Before you start</b>
     To use the bot, read the documents below and accept them.
@@ -112,7 +128,6 @@ btn-legal-gate =
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
-    .empty = No connected devices
     .delete-all = Delete all devices
     .delete-all-icon = 🗑
     .reissue = Reissue link
@@ -127,13 +142,16 @@ btn-devices =
 msg-subscriptions-list =
     <b>💳 My subscriptions</b>
 
-    <blockquote>Pick a subscription to connect, renew it or change its plan.</blockquote>
+    <blockquote>
+    Pick a subscription to connect, renew it or change its plan.
+    </blockquote>
 msg-subscription-card =
     { $is_trial ->
         [1] <b>🎁 Trial subscription · { $plan_name }</b>
        *[0] <b>💳 Subscription · { $plan_name }</b>
     }
-    <blockquote>• <b>Status</b>: { $status ->
+    <blockquote>
+    • <b>Status</b>: { $status ->
         [ACTIVE] 🟢 Active
         [LIMITED] 🟡 Traffic limit reached
         [EXPIRED] 🔴 Expired
@@ -149,17 +167,20 @@ msg-subscription-card =
         [0] Unlimited
        *[other] { $device_limit }
     }
-    • <b>Valid until</b>: { $expire_at }</blockquote>
+    • <b>Valid until</b>: { $expire_at }
+    </blockquote>
 msg-referrals =
     <b>👥 Invite friends</b>
 
     Share your unique link and get rewards!
 
     <b>📊 Statistics</b>:
-    <blockquote>• <b>Invited by you</b>: { $referrals_level_1 }
+    <blockquote>
+    • <b>Invited by you</b>: { $referrals_level_1 }
     • <b>Invited by your friends</b>: { $referrals_level_2 }
     • <b>Points</b>: { $points }
-    • <b>Bonus days</b>: { $bonus_days }</blockquote>
+    • <b>Bonus days</b>: { $bonus_days }
+    </blockquote>
 
 btn-subscriptions =
     .purchase = Buy a subscription
@@ -182,10 +203,13 @@ msg-referrals-about =
     <b>❓ How does it work?</b>
 
     <b>1️⃣ Share your link</b>
-    <blockquote>Send it to a friend or show the QR code.</blockquote>
+    <blockquote>
+    Send it to a friend or show the QR code.
+    </blockquote>
 
     <b>2️⃣ Your friend signs up with it</b>
-    <blockquote>{ $invitee_reward_amount ->
+    <blockquote>
+    { $invitee_reward_amount ->
         [0] And becomes your referral.
        *[other] And gets +{ $invitee_reward_amount } { $invitee_reward_type ->
             [POINTS] { $invitee_reward_amount ->
@@ -197,20 +221,27 @@ msg-referrals-about =
                *[other] bonus days
             }
         } right away.
-    }</blockquote>
+    }
+    </blockquote>
 
     <b>3️⃣ Your friend pays for a subscription</b>
-    <blockquote>You get { $reward_terms }. { $accrual_strategy ->
+    <blockquote>
+    You get { $reward_terms }. { $accrual_strategy ->
         [EVERY_PAYMENT] For each of their payments: a purchase, a renewal and a plan change.
        *[FIRST_PAYMENT] For their first payment only.
     }
-    { $reward_levels }</blockquote>
+    { $reward_levels }
+    </blockquote>
 
     { $reward_type ->
         [POINTS] <b>4️⃣ Exchange your points</b>
-        <blockquote>Tap “Withdraw points” and message support — an administrator will make the exchange.</blockquote>
+        <blockquote>
+        Tap “Withdraw points” and message support — an administrator will make the exchange.
+        </blockquote>
        *[EXTRA_DAYS] <b>4️⃣ Apply your bonus days</b>
-        <blockquote>Add them to any of your subscriptions.</blockquote>
+        <blockquote>
+        Add them to any of your subscriptions.
+        </blockquote>
     }
 
     <i>You can only invite someone who doesn't use the service yet. Trial subscriptions and ones from a promo code earn no reward. If a payment is refunded, its reward is cancelled.</i>
@@ -244,6 +275,7 @@ btn-referrals =
     .withdraw = Withdraw points
     .withdraw-icon = 💎
     .redeem = Redeem bonus days
+    .redeem-icon = 🎁
     .qr = QR code
     .qr-icon = 🧾
     .reset-code = New referral link
@@ -254,40 +286,56 @@ btn-back =
     .general-icon = ⬅️
 
 ntf-subscription =
-    .gone = This subscription is no longer available.
+    .gone = ❌ This subscription is no longer available.
 
 ntf-devices =
-    .deleted = Device deleted.
-    .all-deleted = All devices deleted.
-    .reissued = Connection link reissued.
-    .reset-disabled = This action is turned off right now.
-    .failed = Something went wrong. Please try again later.
+    .deleted = ✅ Device deleted.
+    .all-deleted = ✅ All devices deleted.
+    .reissued = ✅ Connection link reissued.
+    .failed = ❌ Something went wrong. Please try again later.
+    .delete-cooldown = ⏳ You can delete a device again in { $wait }.
+    .delete-all-cooldown = ⏳ You can delete all devices again in { $wait }.
+    .reissue-cooldown = ⏳ You can reissue the connection link again in { $wait }.
 
 ntf-access =
-    .restricted = The service is temporarily closed for maintenance. Please come back later.
-    .registration-disabled = Sign-ups are closed right now.
-    .invite-only = Sign-up is by invitation only. Ask a friend for their referral link.
-    .payments-disabled = Payments are temporarily unavailable. We'll message you when they're back.
+    .restricted = 🚧 Maintenance in progress. Please try again later.
+    .registration-disabled = ❌ The service isn't available to new users.
+    .invite-only = ❌ The service is available by invitation only.
+    .payments-disabled = 🚧 Payments are temporarily unavailable! You'll be notified once they're back.
 
 ntf-common =
-    .lost-context = The menu was refreshed, carry on from here.
-    .unknown-error = Something went wrong. Please try again.
-    .cooldown-active = You can repeat this action after { $available_at }.
-    .trial-unavailable = Trial is not available.
-    .trial-activated = Trial subscription activated.
-    .connect-not-available = Connection is not available.
-    .access-restricted = Access is restricted.
+    .unknown-error = ❌ Something went wrong. Please try again.
+    .trial-unavailable = ⚠️ Trial is not available.
+    .trial-activated = ✅ Trial subscription activated.
+    .connect-not-available = ⚠️ { $status ->
+        [LIMITED] You've used up all your traffic. { $is_trial ->
+            [1] { $reset_in ->
+                [none] Get a subscription to keep using the service!
+               *[other] It will be restored in { $reset_in }. You can also get a subscription to use the service without limits.
+            }
+           *[0] { $reset_in ->
+                [none] Renew your subscription to reset the traffic and keep using the service!
+               *[other] It will be restored in { $reset_in }. You can also renew your subscription to reset it now.
+            }
+        }
+        [EXPIRED] { $is_trial ->
+            [1] Your free trial has ended. Get a subscription to keep using the service.
+           *[0] Your subscription has expired. Renew it or get a new one.
+        }
+       *[other] We couldn't check your subscription or it has been disabled. Please contact support.
+    }
+    .access-restricted = ❌ Access is restricted.
 
 ntf-purchase =
     .stars-rejected = This order can't be paid any more. Please start the purchase again.
-    .payments-disabled = Payments are temporarily unavailable.
-    .plan-unavailable = This plan is no longer available — please pick another one.
-    .limit-reached = You've reached the subscription limit.
-    .method-unavailable = This payment method is unavailable right now.
-    .retry = Please try again.
-    .failed = Couldn't create the payment. Please try again later.
-    .no-plans = No plans are available.
-    .no-methods = No payment methods are available.
+    .plan-unavailable = ❌ This plan is no longer available — please pick another one.
+    .renew-plan-unavailable = ❌ Your current plan is outdated and can't be renewed.
+    .limit-reached = ❌ You've reached the subscription limit.
+    .method-unavailable = ❌ This payment method is unavailable right now.
+    .discount-used = ⚠️ The discount has already been used — check the new price.
+    .failed = ❌ Couldn't create the payment. Please try again later.
+    .no-plans = ❌ No plans are available.
+    .no-methods = ❌ No payment methods are available.
 
 msg-purchase-plan = <b>💳 Choose a plan</b>
 msg-purchase-duration =
@@ -298,11 +346,13 @@ msg-purchase-method = <b>💳 Choose a payment method</b>
 msg-purchase-confirm =
     <b>🧾 Check your order</b>
 
-    <blockquote>• <b>Plan</b>: { $plan_name }
+    <blockquote>
+    • <b>Plan</b>: { $plan_name }
     • <b>Period</b>: { $duration_days } d
     • <b>Payment method</b>: { $method }
     • <b>Without discount</b>: <s>{ $original_price } { $currency_symbol }</s>
-    • <b>To pay</b>: { $price } { $currency_symbol }</blockquote>
+    • <b>To pay</b>: { $price } { $currency_symbol }
+    </blockquote>
 
     { $terms_notice }
 frg-purchase-terms-notice = <i>By paying you accept the terms — /terms</i>
@@ -319,6 +369,7 @@ btn-purchase =
     .menu = Main menu
     .menu-icon = ↩️
     .link-renew = Renew: { $subscription }
+    .link-renew-icon = 🔄
     .link-new = Buy a new one
     .link-new-icon = 💸
 
@@ -340,6 +391,7 @@ btn-payment-result =
     .subscription = My subscription
     .subscription-icon = 💳
     .retry = Try again
+    .retry-icon = 🔄
     .menu = Main menu
     .menu-icon = ↩️
 
@@ -369,22 +421,22 @@ gateway-name =
     .PAYPEAR = PayPear
 
 ntf-referrals =
-    .no-subscription = You have no active subscription to add the days to.
-    .days-redeemed = { $days } bonus days added to your subscription.
-    .redeem-failed = Bonus days can't be added to this subscription.
-    .code-reset = Your referral link has been replaced. The old one no longer works.
-    .reset-disabled = Changing the referral link is turned off.
+    .no-subscription = ❌ You have no subscription the bonus days can be added to.
+    .days-redeemed = ✅ Bonus days have been added to your subscription.
+    .redeem-failed = ❌ Bonus days can't be added to this subscription.
+    .code-reset = ✅ Your referral link has been updated. The old one will no longer work.
+    .reset-cooldown = ⏳ You can update your referral link again in { $wait }.
 
 ntf-promocode =
-    .not-found = Promocode not found.
-    .expired = This promocode has expired.
-    .already-activated = You've already activated this promocode.
-    .discount-not-better = You already have an equal or bigger discount, so the promocode was not applied.
-    .not-available = This promocode isn't available to you.
-    .no-target-subscription = You have no active subscription to apply this promocode to.
-    .activated = Promocode activated!
-    .activation-failed = Failed to activate the promocode. Please try again later.
-    .too-many-attempts = Too many attempts. Try again in a minute.
+    .not-found = ❌ Promocode not found.
+    .expired = ❌ This promocode has expired.
+    .already-activated = ❌ You've already activated this promocode.
+    .discount-not-better = ⚠️ The promocode wasn't applied: your current discount is the same or bigger.
+    .not-available = ❌ This promocode isn't available to you.
+    .no-target-subscription = ❌ You have no active subscription to apply this promocode to.
+    .activated = ✅ Promocode activated!
+    .activation-failed = ❌ Failed to activate the promocode. Please try again later.
+    .too-many-attempts = ⏳ Too many attempts. Try again in a minute.
 
 msg-promocode-input =
     <b>🎟 Promo code</b>
@@ -442,16 +494,17 @@ platform-icon =
 btn-broadcast =
     .unsubscribe = Unsubscribe from these emails
     .resubscribe = Get offers again
+    .resubscribe-icon = 🔔
 
 ntf-broadcast =
     .unsubscribed = You won't receive offers anymore. Service messages will still arrive.
-    .resubscribed = You'll receive offers again.
-    .promo-gone = This offer is no longer available.
+    .resubscribed = ✅ You'll receive offers again.
+    .promo-gone = ❌ This offer is no longer available.
     .start-required = Press /start to continue.
 
 ntf-requirements =
     .channel = Subscribe to our channel to continue.
-    .channel-not-found = We can't see your subscription yet. Subscribe and try again.
+    .channel-not-found = ⚠️ We can't see your subscription yet. Subscribe and try again.
     .trial-paused = You left our channel, so your trial is paused. Subscribe again to continue.
     .trial-resumed = You're back in our channel, so your trial is running again.
 
@@ -463,10 +516,11 @@ btn-requirements =
 
 ntf-cabinet-login =
     .link = Tap the button to sign in to the web cabinet. The link works once and expires in 5 minutes.
-    .expired = This sign-in link has expired. Request a new one in the cabinet.
+    .expired = ⚠️ This sign-in link has expired. Request a new one in the cabinet.
 
 btn-cabinet-login =
     .open = Sign in to the cabinet
+    .open-icon = 🌐
 
 ntf-cabinet-link =
     .link = Tap the button to link this Telegram to your web cabinet account. The link is single-use and valid for 5 minutes.
@@ -474,3 +528,12 @@ ntf-cabinet-link =
 
 btn-cabinet-link =
     .open = Link to cabinet
+    .open-icon = 🔗
+
+time-unit =
+    .day = { $value ->
+        [one] { $value } day
+       *[other] { $value } days
+    }
+    .hour = { $value } h
+    .minute = { $value } min

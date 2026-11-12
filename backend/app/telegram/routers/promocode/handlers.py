@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from functools import partial
 from typing import Final
 
 from aiogram.types import CallbackQuery, Message
@@ -26,6 +27,7 @@ from app.modules.promocodes import (
 )
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu, Promocode
 
 PROMOCODE_INPUT_LIMIT: Final[int] = 10
@@ -109,7 +111,7 @@ async def on_promocode_input(
 
     key = f"{REDIS_KEY_PREFIX}ratelimit:bot_promocode:user:{user.id}"
     if await hit_counter(redis, key, PROMOCODE_INPUT_WINDOW_S) > PROMOCODE_INPUT_LIMIT:
-        await message.answer(runner.get("ntf-promocode.too-many-attempts"))
+        await answer_notice(message, runner.get("ntf-promocode.too-many-attempts"))
         return
 
     await continue_with_code(
@@ -118,7 +120,7 @@ async def on_promocode_input(
         dialog_manager,
         validate_promocode,
         list_promocode_targets,
-        reply=message.answer,
+        reply=partial(answer_notice, message),
         runner=runner,
     )
 
@@ -153,12 +155,12 @@ async def on_promocode_confirm(
             user, ActivatePromocodeDto(code=code, target_subscription_id=target_id)
         )
     except (NotFoundError, ValidationError) as error:
-        await callback.answer(runner.get(_refusal_key(error)), show_alert=True)
+        await answer_notice(callback, runner.get(_refusal_key(error)))
         return
     except Exception:
         logger.exception(f"{user.log} Promocode activation failed unexpectedly")
-        await callback.answer(runner.get("ntf-promocode.activation-failed"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-promocode.activation-failed"))
         return
 
-    await callback.answer(runner.get("ntf-promocode.activated"))
+    await answer_notice(callback, runner.get("ntf-promocode.activated"))
     await dialog_manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)

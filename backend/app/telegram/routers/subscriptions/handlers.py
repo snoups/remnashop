@@ -23,7 +23,8 @@ from app.modules.subscriptions import (
 )
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
-from app.telegram.i18n import format_datetime, get_translator
+from app.telegram.i18n import format_wait, get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu, Subscriptions
 
 _GONE_CODES: Final[frozenset[ErrorCode]] = frozenset(
@@ -36,6 +37,7 @@ _RESET_DISABLED_CODES: Final[frozenset[ErrorCode]] = frozenset(
 
 # set by the menu's own "Devices" button, so "back" returns there
 DEVICES_FROM_MENU_KEY: Final[str] = "devices_from_menu"
+SINGLE_RESET_KEY: Final[str] = "single_reset_enabled"
 
 
 async def _only_subscription(manager: DialogManager, subscriptions: list[SubscriptionDto]) -> bool:
@@ -127,12 +129,9 @@ async def on_subscription_selected(
 
 
 async def _answer_cooldown(
-    callback: CallbackQuery, runner: TranslatorRunner, error: CooldownError
+    callback: CallbackQuery, runner: TranslatorRunner, key: str, error: CooldownError
 ) -> None:
-    await callback.answer(
-        runner.get("ntf-common.cooldown-active", available_at=format_datetime(error.available_at)),
-        show_alert=True,
-    )
+    await answer_notice(callback, runner.get(key, wait=format_wait(runner, error.available_at)))
 
 
 async def _subscription_gone(
@@ -142,7 +141,7 @@ async def _subscription_gone(
     list_own_subscriptions: ListOwnSubscriptionsUseCase,
     user: UserDto,
 ) -> None:
-    await callback.answer(runner.get("ntf-subscription.gone"), show_alert=True)
+    await answer_notice(callback, runner.get("ntf-subscription.gone"))
     await open_subscriptions(dialog_manager, await list_own_subscriptions(user))
 
 
@@ -157,9 +156,10 @@ async def _answer_refusal(
     if isinstance(error, NotFoundError) or error.code in _GONE_CODES:
         await _subscription_gone(callback, runner, dialog_manager, list_own_subscriptions, user)
     elif error.code in _RESET_DISABLED_CODES:
-        await callback.answer(runner.get("ntf-devices.reset-disabled"), show_alert=True)
+        # switched off while the window was open: redrawn without the button
+        await dialog_manager.switch_to(state=Subscriptions.DEVICES)
     else:
-        await callback.answer(runner.get("ntf-devices.failed"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-devices.failed"))
 
 
 async def on_device_delete_request(
@@ -170,7 +170,7 @@ async def on_device_delete_request(
     selected_index = int(dialog_manager.item_id)  # type: ignore[attr-defined]
     hwid_map = dialog_manager.dialog_data.get("hwid_map", [])
     device = hwid_map[selected_index] if selected_index < len(hwid_map) else None
-    if not device:
+    if not device or not dialog_manager.dialog_data.get(SINGLE_RESET_KEY, True):
         return
     dialog_manager.dialog_data["selected_hwid"] = device["hwid"]
     await dialog_manager.switch_to(state=Subscriptions.DEVICE_CONFIRM_DELETE)
@@ -197,12 +197,12 @@ async def on_device_delete_confirm(
     try:
         await delete_device(user, DeleteDeviceDto(subscription_id=subscription_id, hwid=hwid))
     except CooldownError as e:
-        await _answer_cooldown(callback, runner, e)
+        await _answer_cooldown(callback, runner, "ntf-devices.delete-cooldown", e)
         return
     except (NotFoundError, ValidationError) as error:
         await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
-    await callback.answer(runner.get("ntf-devices.deleted"))
+    await answer_notice(callback, runner.get("ntf-devices.deleted"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)
 
 
@@ -224,12 +224,12 @@ async def on_device_delete_all_confirm(
     try:
         await delete_all_devices(user, SubscriptionRefDto(subscription_id=subscription_id))
     except CooldownError as e:
-        await _answer_cooldown(callback, runner, e)
+        await _answer_cooldown(callback, runner, "ntf-devices.delete-all-cooldown", e)
         return
     except (NotFoundError, ValidationError) as error:
         await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
-    await callback.answer(runner.get("ntf-devices.all-deleted"))
+    await answer_notice(callback, runner.get("ntf-devices.all-deleted"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)
 
 
@@ -251,10 +251,10 @@ async def on_reissue_subscription_confirm(
     try:
         await reissue_subscription(user, SubscriptionRefDto(subscription_id=subscription_id))
     except CooldownError as e:
-        await _answer_cooldown(callback, runner, e)
+        await _answer_cooldown(callback, runner, "ntf-devices.reissue-cooldown", e)
         return
     except (NotFoundError, ValidationError) as error:
         await _answer_refusal(callback, runner, error, dialog_manager, list_own_subscriptions, user)
         return
-    await callback.answer(runner.get("ntf-devices.reissued"))
+    await answer_notice(callback, runner.get("ntf-devices.reissued"))
     await dialog_manager.switch_to(state=Subscriptions.DEVICES)

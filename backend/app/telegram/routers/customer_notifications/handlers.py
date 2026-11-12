@@ -20,6 +20,7 @@ from app.modules.subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.i18n import get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu, Purchase
 
 router = Router(name=__name__)
@@ -70,7 +71,8 @@ async def on_notification_revoke_sessions(
     # every cabinet session, the unrecognized one included
     await revoke_sessions(user, None)
     runner = get_translator(i18n, user)
-    await callback.answer(runner.get("ntf-customer-sessions-revoked"), show_alert=True)
+    # asks to contact support, so it stays readable
+    await answer_notice(callback, runner.get("ntf-customer-sessions-revoked"), keep=True)
 
 
 async def _open_purchase(dialog_manager: DialogManager, data: dict[str, Any]) -> None:

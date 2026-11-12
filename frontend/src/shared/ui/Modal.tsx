@@ -59,6 +59,8 @@ interface ModalProps {
   /** false: render in place, for a caller that wants the backdrop bounded by its own
    * container (see DialogPortal). */
   portal?: boolean;
+  /** the page behind is dimmed and blurred away, as behind the donate dialog: a notice, not a step of the page */
+  frosted?: boolean;
   children: ReactNode;
 }
 
@@ -68,6 +70,7 @@ export function Modal({
   scrollable = false,
   dismissable = true,
   portal = true,
+  frosted = false,
   children,
 }: ModalProps) {
   const [open, setOpen] = useState(true);
@@ -118,7 +121,7 @@ export function Modal({
                 isNested
                   ? "absolute inset-0 z-50 flex items-center justify-center p-4"
                   : // the glass panel frosts the page itself, so the backdrop only dims
-                    "fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4"
+                    `fixed inset-0 z-40 flex items-center justify-center p-4 ${frosted ? "bg-black/55 backdrop-blur-3xl" : "bg-black/30"}`
               }
             >
               {dismissable && (

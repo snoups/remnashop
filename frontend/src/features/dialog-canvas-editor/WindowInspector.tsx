@@ -15,7 +15,6 @@ import { Button } from "@shared/ui/Button";
 import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
-import { IconButton } from "@shared/ui/IconButton";
 import { Pressable } from "@shared/ui/Pressable";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 
@@ -75,6 +74,8 @@ export function WindowInspector({
   const mode = bannerMode(window.banner_name);
   // a file for exactly this banner and language: the one an upload replaces and a delete removes
   const isOwnFile = banner !== null && banner.name === window.banner_name && banner.locale === activeLocale;
+  // drops this language's own file first; with none left, a shared banner goes back to the default
+  const canResetBanner = isOwnFile ? canDeleteBanner : mode === "shared" ? canRestoreDefault : canDeleteBanner;
   const bannerHint = (): string | undefined => {
     if (mode === "none" || !activeLocale) return undefined;
     const locale = localeLabel(activeLocale, i18n.language);
@@ -237,7 +238,7 @@ export function WindowInspector({
           options={MODES.map((item) => ({ value: item, label: t(`dialogs.inspector.bannerMode.${item}`) }))}
         />
         {mode !== "none" && (
-          <div className="flex items-center gap-2">
+          <div className="mt-0.5 flex items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -246,34 +247,37 @@ export function WindowInspector({
               onChange={(event) => void handleFileChange(event)}
             />
             {/* the picture itself shows on the preview; here only enough to tell it is there */}
-            <div className="flex h-9 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04]">
+            <div className="flex aspect-video h-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04]">
               {banner ? (
                 <img src={banner.url} alt="" className={`size-full object-cover ${isOwnFile ? "" : "opacity-50"}`} />
               ) : (
                 <ImageIcon className="size-4 text-muted-foreground" />
               )}
             </div>
-            {canUpload && (
-              <Button
-                variant="glass"
-                icon={Upload}
-                className="flex-1"
-                disabled={!activeLocale}
-                isLoading={isBusy}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {t(isOwnFile ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
-              </Button>
-            )}
-            {mode === "shared" && canRestoreDefault && (
-              <IconButton size="9" disabled={isBusy} onClick={() => void handleRestoreDefault()}>
-                <RotateCcw className="size-4" />
-              </IconButton>
-            )}
-            {canDeleteBanner && isOwnFile && (
-              <IconButton size="9" tone="danger" disabled={isBusy} onClick={() => void handleBannerDelete()}>
-                <Trash2 className="size-4" />
-              </IconButton>
+            {(canUpload || canResetBanner) && (
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {canUpload && (
+                  <Button
+                    variant="glass"
+                    icon={Upload}
+                    disabled={!activeLocale}
+                    isLoading={isBusy}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {t(isOwnFile ? "dialogs.inspector.bannerReplace" : "dialogs.inspector.bannerUpload")}
+                  </Button>
+                )}
+                {canResetBanner && (
+                  <Button
+                    variant="glassDanger"
+                    icon={RotateCcw}
+                    disabled={isBusy || (!isOwnFile && mode !== "shared")}
+                    onClick={() => void (isOwnFile ? handleBannerDelete() : handleRestoreDefault())}
+                  >
+                    {t("common.reset")}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         )}

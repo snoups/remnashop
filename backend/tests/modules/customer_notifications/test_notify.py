@@ -654,6 +654,9 @@ async def test_one_outbox_event_reaches_every_customer_it_names(fx: _Fixture) ->
     await fx.notify(second, event_type="PaymentsRestored", outbox_id=77)
 
     assert len(fx.telegram.messages) == 1
+    # a one-line italic notice, not a card
+    text = fx.telegram.messages[0]["text"]
+    assert text.startswith("<i>") and text.endswith("</i>") and "<b>" not in text
     assert len(fx.email.messages) == 1
     assert len(await fx.feed_rows(first)) == 1
     assert len(await fx.feed_rows(second)) == 1

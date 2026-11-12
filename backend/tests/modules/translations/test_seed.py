@@ -9,7 +9,7 @@ from app.core.db.models.bot_translation import BotTranslation
 from app.core.enums import Locale
 from app.modules.settings.repository import SettingsRepository
 from app.modules.translations.repository import TranslationRepository
-from app.modules.translations.seed import ensure_translations_seeded
+from app.modules.translations.seed import _parse_seed_file, ensure_translations_seeded
 
 
 def _seed_config(config: AppConfig, tmp_path: Path) -> AppConfig:
@@ -174,3 +174,10 @@ async def test_seeding_updates_untouched_values_and_every_default(
     assert (untouched.value, untouched.default_value) == ("Main menu", "Main menu")
     assert edited is not None
     assert (edited.value, edited.default_value) == ("Правка админа", "Главное меню")
+
+
+def test_value_under_the_key_line_loses_its_indent(tmp_path: Path) -> None:
+    path = tmp_path / "menu.ftl"
+    path.write_text("msg-main =\n    <b>Profile</b>:\n    • ID\n")
+
+    assert _parse_seed_file(path) == [("msg-main", "", "<b>Profile</b>:\n• ID")]

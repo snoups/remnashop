@@ -138,6 +138,11 @@ class DialogRepository:
                 for raw in default_snapshot.get("buttons", []):
                     self.session.add(self._button_from_snapshot(existing.id, raw))
             existing.default_snapshot = default_snapshot
+            # a system button's condition belongs to the catalog, edited layout or not
+            conditions = _system_conditions(existing)
+            for button in existing.buttons:
+                if button.text_key in conditions:
+                    button.visibility_condition = conditions[button.text_key]
             await self.session.flush()
             await self.session.refresh(existing)
             return False
@@ -264,8 +269,8 @@ class DialogRepository:
         stmt = select(DialogButton.id).where(DialogButton.text_key == text_key).limit(1)
         return await self.session.scalar(stmt) is not None
 
-    async def system_text_keys(self, key: str) -> set[str]:
-        return _system_text_keys(await self._get_row_or_raise(key))
+    async def system_conditions(self, key: str) -> dict[str, Optional[str]]:
+        return _system_conditions(await self._get_row_or_raise(key))
 
     async def reset_to_snapshot(self, key: str) -> DialogWindowDto:
         row = await self.session.scalar(
@@ -295,9 +300,17 @@ class DialogRepository:
 
 
 def _system_text_keys(row: DialogWindow) -> set[str]:
+    return set(_system_conditions(row))
+
+
+def _system_conditions(row: DialogWindow) -> dict[str, Optional[str]]:
+    # a seed window's catalog buttons, by text key, with the condition the catalog gave them
     if row.kind != DialogWindowKind.SEED:
-        return set()
-    return {b["text_key"] for b in row.default_snapshot.get("buttons", [])}
+        return {}
+    return {
+        b["text_key"]: b.get("visibility_condition")
+        for b in row.default_snapshot.get("buttons", [])
+    }
 
 
 def _layout(buttons: list[DialogButton]) -> set[tuple[object, ...]]:

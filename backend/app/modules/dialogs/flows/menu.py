@@ -20,6 +20,7 @@ def register_menu_metadata() -> None:
         "devices_back",
         "promocode",
         "legal_documents",
+        "show_connect_problem",
     ):
         catalog.register_action_key(key)
 
@@ -57,6 +58,11 @@ def register_menu_metadata() -> None:
         "multi_has_subscriptions",
         lambda data: not data.get("single_subscription") and data.get("subscriptions_count", 0) > 0,
     )
+    # the menu's subscription exists but doesn't work: the warning stands where "Connect" would
+    catalog.register_condition(
+        "single_connect_problem",
+        lambda data: bool(data.get("single_subscription")) and bool(data.get("connect_problem")),
+    )
     catalog.register_condition("can_purchase", lambda data: bool(data.get("can_purchase")))
     # with several subscriptions allowed, buying moves into "My subscriptions"
     # once there is one to list
@@ -76,6 +82,12 @@ def register_menu_metadata() -> None:
     )
     catalog.register_variable(
         "cabinet_url", lambda data: data.get("cabinet_url", ""), category="other"
+    )
+    # LIMITED, EXPIRED or DISABLED for a menu subscription that doesn't work, empty otherwise
+    catalog.register_variable(
+        "subscription_problem",
+        lambda data: data.get("connect_problem", ""),
+        category="subscription",
     )
     catalog.register_variable("user_name", lambda data: data.get("name", ""), category="user")
     catalog.register_variable("user_points", lambda data: data.get("points", ""), category="user")
@@ -116,6 +128,15 @@ def register_menu_metadata() -> None:
                     link_type=ButtonLinkType.URL,
                     url_value="${subscription_url}",
                     visibility_condition="single_connectable",
+                ),
+                catalog.CatalogButton(
+                    key="connect_problem",
+                    text_key="btn-menu.connect-not-available",
+                    row=0,
+                    column=1,
+                    link_type=ButtonLinkType.ACTION,
+                    action_key="show_connect_problem",
+                    visibility_condition="single_connect_problem",
                 ),
                 catalog.CatalogButton(
                     key="trial",

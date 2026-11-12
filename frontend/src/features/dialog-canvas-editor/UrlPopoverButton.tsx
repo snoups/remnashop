@@ -70,7 +70,7 @@ export function UrlPopoverButton({ icon: Icon, pattern, disabled, onInsert }: Ur
             type="text"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="https://"
+            placeholder={t("common.urlPlaceholder")}
             className="min-w-0 flex-1"
           />
           <Button variant="secondary" size="field" type="submit">

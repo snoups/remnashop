@@ -33,7 +33,8 @@
     "loadError": "Failed to load",
     "notEnoughData": "Not enough data",
     "time": "Time",
-    "timePlaceholder": "hh:mm"
+    "timePlaceholder": "hh:mm",
+    "urlPlaceholder": "https://"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -1323,7 +1324,8 @@
       "unbindTitle": "Unbind Telegram?",
       "unbindConfirm": "{{name}} will lose Telegram sign-in, and the bot will create a new user the next time this Telegram writes to it.",
       "unbound": "Telegram unbound.",
-      "unbindError": "Failed to unbind Telegram."
+      "unbindError": "Failed to unbind Telegram.",
+      "idPlaceholder": "E.g. 123456789"
     },
     "registration": {
       "title": "Registration",
@@ -1425,7 +1427,7 @@
       "secretTokenHint": "Sent back by Telegram in every webhook request’s header; the API checks it matches before trusting the request, so only Telegram can reach your webhook.",
       "generateSecretToken": "Generate",
       "secretTokenCopied": "Copied",
-      "placeholder": "Leave blank to keep the current value",
+      "placeholder": "Leave blank to keep",
       "errorInvalidToken": "Invalid bot token format.",
       "dropPendingUpdatesLabel": "Drop pending updates when setting the webhook",
       "dropPendingUpdatesHint": "Discards any updates Telegram queued up before the webhook was set, instead of delivering that backlog once it goes live.",
@@ -1438,8 +1440,8 @@
       "logsLoadError": "Failed to load logs.",
       "proxyLabel": "Telegram proxy",
       "proxyHint": "Every Telegram API request goes through it: the bot itself and the dashboard (status, commands, emoji packs). Supports socks5, socks5h and http as scheme://[user:password@]host:port. The bot picks it up after a restart.",
-      "proxyPlaceholder": "socks5://user:password@host:1080",
-      "proxyConfiguredPlaceholder": "Proxy is set — leave empty to keep it",
+      "proxyPlaceholder": "E.g. socks5://user:password@host:1080",
+      "proxyConfiguredPlaceholder": "Set — leave blank to keep",
       "removeProxy": "Remove",
       "proxyRemoved": "Proxy removed.",
       "copyLogs": "Copy",
@@ -1513,7 +1515,7 @@
         "originTitle": "Origin",
         "originBody": "The exact URL the dashboard loads from, protocol included — for example https://example.com."
       },
-      "placeholder": "Leave blank to keep the current value",
+      "placeholder": "Leave blank to keep",
       "telegramGuide": {
         "title": "Telegram OAuth2",
         "intro": "Setting up “Sign in with Telegram” requires a Telegram bot, and that bot needs some extra configuration for the feature to work correctly.",
@@ -1588,16 +1590,16 @@
       "referralResetLabel": "Referral link reset",
       "hoursSuffix": "h",
       "supportTelegramLabel": "Support on Telegram",
-      "supportTelegramPlaceholder": "@support or t.me/support",
+      "supportTelegramPlaceholder": "E.g. @support or t.me/support",
       "supportUrlLabel": "Support in the browser",
-      "supportUrlPlaceholder": "https://example.com/support",
+      "supportUrlPlaceholder": "E.g. https://example.com/support",
       "supportTelegramInvalid": "A @username or a t.me link.",
       "supportUrlInvalid": "The link must start with https://."
     },
     "gateways": {
       "configured": "configured",
       "notConfigured": "not configured",
-      "placeholder": "Leave blank to keep the current value",
+      "placeholder": "Leave blank to keep",
       "webhookLabel": "Webhook URL",
       "toggleError": "Failed to update gateway status.",
       "testPayment": "Test payment",
@@ -1691,7 +1693,7 @@
       "notConfigured": "Not configured",
       "publicKey": "Public key",
       "contact": "Contact email",
-      "contactPlaceholder": "admin@example.com",
+      "contactPlaceholder": "E.g. admin@example.com",
       "test": "Test notification",
       "regenerate": "Regenerate keys",
       "confirmAction": "Regenerate",
@@ -1722,7 +1724,8 @@
       "trialChannelGuardHint": "Leaving the channel pauses the customer’s trial, coming back resumes it",
       "channelUrlInvalid": "A t.me, telegram.me or telegram.dog link.",
       "channelIdInvalid": "Digits only, a minus in front allowed.",
-      "channelHint": "The bot serves customers only while they’re subscribed to the channel"
+      "channelHint": "The bot serves customers only while they’re subscribed to the channel",
+      "channelUrlPlaceholder": "E.g. https://t.me/channel"
     },
     "email": {
       "title": "Mail server",
@@ -1939,7 +1942,8 @@
           ]
         }
       },
-      "domainsList": "List"
+      "domainsList": "List",
+      "allowedDomainsPlaceholder": "Domain, Enter to add"
     },
     "legal": {
       "title": "Legal documents",
@@ -1985,7 +1989,7 @@
     "createTitle": "Create API token",
     "createNotice": "The token secret is shown only once, right after creation — save it somewhere safe.",
     "nameLabel": "Name",
-    "namePlaceholder": "e.g. ci-deploy",
+    "namePlaceholder": "E.g. ci-deploy",
     "permissionsLabel": "Permissions",
     "presets": "Presets",
     "fullAccess": "Full access",
@@ -2046,7 +2050,7 @@
       "adding": "Waiting for your device…",
       "manage": "Manage",
       "namePrompt": "Name this passkey",
-      "namePlaceholder": "For example, MacBook or iPhone",
+      "namePlaceholder": "E.g. MacBook or iPhone",
       "nameHint": "Optional. Helps tell your keys apart.",
       "deleteConfirm": "This device will no longer be able to sign in with this passkey.",
       "lastUsed": "Last used {{date}}",
@@ -2062,7 +2066,7 @@
     "accountSecurity": {
       "title": "IP allowlist",
       "description": "Restrict your own account to specific IP addresses or CIDR ranges",
-      "placeholder": "e.g. 203.0.113.5 or 203.0.113.0/24, one per line",
+      "placeholder": "E.g. 203.0.113.5 or 203.0.113.0/24, one per line",
       "saveError": "Failed to save.",
       "currentIp": "Your current IP: {{ip}}",
       "invalidEntries": "Not an IP address or CIDR range: {{entries}}",
@@ -2473,7 +2477,7 @@
       "roundingModeLabel": "Rounding",
       "charmEndingLabel": "Price ending",
       "charmEndingHint": "A calculated price is rounded up to the nearest value with this ending. For example, with ending 99 a price of 249 becomes 299. Pinned prices are not affected. Leave empty to disable.",
-      "charmEndingPlaceholder": "e.g. 99",
+      "charmEndingPlaceholder": "E.g. 99",
       "saved": "Rate updated.",
       "saveError": "Failed to update the rate.",
       "previewError": "Failed to preview the rate change.",
@@ -2593,7 +2597,9 @@
       "confirmMessage": "Prices to change: {{count}}",
       "apply": "Apply",
       "applied": "Base prices updated.",
-      "applyError": "Failed to adjust base prices."
+      "applyError": "Failed to adjust base prices.",
+      "bulkPercentPlaceholder": "10",
+      "markupPlaceholder": "0"
     },
     "diff": {
       "old": "Old",
@@ -2616,15 +2622,15 @@
       "searchPlaceholder": "Search entries",
       "filterAll": "All",
       "noResults": "Nothing found",
-      "valuePlaceholder": "243323533 or name@example.com",
+      "valuePlaceholder": "E.g. 243323533 or name@example.com",
       "valueInvalid": "Enter a Telegram ID (a number) or an email."
     },
     "sources": {
       "errorBadge": "Error",
       "title": "Sources",
       "description": "External lists synced automatically",
-      "urlPlaceholder": "https://example.com/list.txt",
-      "namePlaceholder": "e.g. Remnashop",
+      "urlPlaceholder": "E.g. https://example.com/list.txt",
+      "namePlaceholder": "E.g. Remnashop",
       "removeConfirmTitle": "Remove source?",
       "removeConfirm": "Remove the source “{{name}}”?\nThe entries it contributed leave the blacklist immediately. Users already blocked stay blocked.",
       "entriesCount": "Entries: {{count}}",
@@ -2758,9 +2764,9 @@
       "button": "New link",
       "title": "New advertising link",
       "nameLabel": "Name",
-      "namePlaceholder": "e.g. Telegram post",
+      "namePlaceholder": "E.g. Telegram post",
       "codeLabel": "Code",
-      "codePlaceholder": "e.g. spring_launch",
+      "codePlaceholder": "E.g. spring_launch",
       "generate": "Generate",
       "costLabel": "Cost",
       "currencyLabel": "Currency",
@@ -2917,7 +2923,7 @@
     },
     "windowList": {
       "addWindow": "Add window",
-      "addWindowTitlePlaceholder": "e.g. Weekly deal",
+      "addWindowTitlePlaceholder": "E.g. Instructions",
       "addWindowTitle": "New window",
       "addWindowNameLabel": "Window name",
       "addWindowNameHint": "Shown only in the editor, users never see it",
@@ -2951,7 +2957,8 @@
           "card": "Subscription"
         },
         "referrals": {
-          "main": "Referral program"
+          "main": "Referral program",
+          "about": "How it works"
         }
       },
       "deleteWindow": "Delete window"
@@ -3002,6 +3009,7 @@
       "buttonsRowLimit": "A row fits at most {{max}} buttons — Telegram’s limit.",
       "buttonsTotalLimit": "A window fits at most {{max}} buttons — Telegram’s limit.",
       "textTooLong": "{{length}} of {{max}} characters — Telegram will not send this text.",
+      "textOverCaption": "Over {{max}} characters — the bot will send this window without its banner.",
       "buttonUrlInvalidGrid": "Fix the button link before saving.",
       "bannerMode": {
         "none": "None",
@@ -3175,7 +3183,7 @@
       "levelHint": "Users at level {{level}}: {{count}}",
       "search": "User",
       "searchPlaceholder": "Name, @username, ID or email",
-      "rewardStatusAll": "Any",
+      "rewardStatusAll": "All statuses",
       "rewardStatusWith": "With rewards",
       "rewardStatusWithout": "No rewards",
       "rewardTypeAll": "All types",
@@ -3232,7 +3240,7 @@
     "create": {
       "button": "New promocode",
       "title": "New promocode",
-      "codePlaceholder": "e.g. WELCOME30",
+      "codePlaceholder": "E.g. WELCOME30",
       "generate": "Generate",
       "rewardDaysLabel": "Days to add",
       "rewardPercentLabel": "Discount (%)",
@@ -3290,7 +3298,7 @@
     "limits": {
       "availabilityLabel": "Who can use it",
       "allowedUserIdsLabel": "Allowed user IDs",
-      "allowedUserIdsPlaceholder": "Type an ID and press Enter",
+      "allowedUserIdsPlaceholder": "ID, Enter to add",
       "plansLabel": "Which plans it applies to",
       "plansAll": "All",
       "plansPromocodesOff": "Grayed-out plans don’t accept promocodes",
@@ -3446,7 +3454,7 @@
       "recipients_one": "Access: {{count}} recipient",
       "recipients_other": "Access: {{count}} recipients",
       "telegramIdsPlaceholder": "Telegram ID, Enter to add",
-      "emailsPlaceholder": "email, Enter to add",
+      "emailsPlaceholder": "Email, Enter to add",
       "trialUnavailable": "Not available for a trial plan"
     },
     "discount": {
@@ -3606,8 +3614,8 @@
     "until": "until {{date}}",
     "filters": {
       "search": "Search",
-      "searchPlaceholder": "Subscription ID, user ID, tag, or plan",
-      "all": "All"
+      "searchPlaceholder": "Subscription ID, user ID, tag or plan",
+      "all": "All statuses"
     },
     "status": {
       "ACTIVE": "Active",
@@ -3624,7 +3632,7 @@
     "edit": {
       "toUser": "To user",
       "tagLabel": "Tag",
-      "tagPlaceholder": "e.g. vip",
+      "tagPlaceholder": "E.g. vip",
       "trafficLabel": "Traffic limit (GB)",
       "trafficHint": "0 = unlimited",
       "deviceLabel": "Device limit",
@@ -4006,7 +4014,7 @@
         "add": "Add",
         "disabled": "Disabled",
         "name": "Name",
-        "namePlaceholder": "For example, Month",
+        "namePlaceholder": "E.g. Month",
         "nameHint": "Shown to users in the bot.",
         "code": "Code",
         "codeError": "Latin letters and digits only.",
@@ -4287,6 +4295,7 @@
     "DIALOG_CUSTOM_WINDOW_ACTION": "Custom windows can’t have action buttons.",
     "DIALOG_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",
     "DIALOG_ROW_BUTTON_LIMIT_REACHED": "Too many buttons in one row.",
+    "DIALOG_SYSTEM_BUTTON_CONDITION_LOCKED": "A system button’s visibility condition can’t be changed.",
     "DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE": "A system button can’t be hidden.",
     "DIALOG_TARGET_WINDOW_UNKNOWN": "The target window doesn’t exist.",
     "DIALOG_TEXT_EMPTY": "Window text can’t be empty without a banner.",
@@ -4693,10 +4702,10 @@
         "byFilters": "By filters",
         "byUsers": "Selected customers",
         "search": "Find a customer",
-        "searchPlaceholder": "Name, username, Telegram ID",
+        "searchPlaceholder": "Name, @username or Telegram ID",
         "userIds": "Customers",
         "userIdsHint": "Customer IDs; paste a list or pick from the search",
-        "userIdsPlaceholder": "Customer ID",
+        "userIdsPlaceholder": "ID, Enter to add",
         "any": "All",
         "all": "All",
         "withinDays_one": "≤ {{count}} day",

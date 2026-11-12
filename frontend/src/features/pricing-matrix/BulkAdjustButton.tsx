@@ -274,7 +274,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
                   id="pricing-bulk-percent"
                   type="number"
                   step="any"
-                  placeholder="10"
+                  placeholder={t("pricing.matrix.bulkPercentPlaceholder")}
                   value={form.percent}
                   onChange={(event) => update({ percent: event.target.value })}
                   aria-invalid={form.percent.trim() !== "" && !isValidPercent(form.percent)}
@@ -335,7 +335,7 @@ function BulkAdjustFormBody({ form, planGroups, anchorCurrency, isLoading, onCha
                           step="any"
                           min={-MAX_MARKUP}
                           max="99.99"
-                          placeholder="0"
+                          placeholder={t("pricing.matrix.markupPlaceholder")}
                           value={form.ladder[days] ?? ""}
                           onChange={(event) => update({ ladder: { ...form.ladder, [days]: event.target.value } })}
                           aria-invalid={!isValidDiscount(form.ladder[days])}

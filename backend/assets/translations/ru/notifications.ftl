@@ -54,7 +54,7 @@ ntf-customer-button-close = ❌ Закрыть
 ntf-customer-button-connect = 🚀 Подключиться
 ntf-customer-button-support = 📩 Перейти в поддержку
 ntf-customer-button-revoke-sessions = 🔒 Завершить все сессии
-ntf-customer-sessions-revoked = Все сессии в личном кабинете завершены.
+ntf-customer-sessions-revoked = ✅ Мы завершили все сеансы в личном кабинете. Если это были не вы, напишите в поддержку — разберёмся вместе.
 ntf-customer-subscription-purchased = Чтобы начать пользоваться сервисом, подключите устройство и следуйте инструкциям — это займёт пару минут.
     .title = { $is_trial ->
         [yes] Пробная подписка активирована
@@ -318,7 +318,7 @@ ntf-customer-promocode-discount-expiring = { $percent }% по промокоду
     }. Успейте оформить покупку.
     .title = Скидка скоро сгорит
     .emoji = ⏳
-ntf-customer-payments-restored = Теперь можно оформить или продлить подписку.
+ntf-customer-payments-restored = Возможность оплаты восстановлена! Теперь вы можете купить или продлить подписку. Спасибо за ожидание.
     .title = Оплата снова доступна
     .emoji = ❇️
 ntf-telegram-label =

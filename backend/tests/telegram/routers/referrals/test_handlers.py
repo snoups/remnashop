@@ -54,7 +54,7 @@ async def test_redeem_with_one_subscription_redeems_all_days() -> None:
 
     redeem.assert_awaited_once()
     assert redeem.await_args.args[1] == RedeemBonusDaysDto(subscription_id=4, days=12)
-    callback.answer.assert_awaited_once_with("ntf-referrals.days-redeemed{'days': 12}")
+    callback.answer.assert_awaited_once_with("ntf-referrals.days-redeemed")
     manager.switch_to.assert_awaited_once_with(Referrals.MAIN)
 
 
@@ -72,7 +72,7 @@ async def test_redeem_without_a_subscription_alerts() -> None:
     )
 
     redeem.assert_not_awaited()
-    callback.answer.assert_awaited_once_with("ntf-referrals.no-subscription", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-referrals.no-subscription")
 
 
 async def test_redeem_with_several_subscriptions_asks_for_the_target() -> None:
@@ -115,7 +115,7 @@ async def test_redeem_refusal_is_reported() -> None:
         _i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-referrals.redeem-failed", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-referrals.redeem-failed")
 
 
 def test_every_referral_notification_exists_in_each_locale() -> None:

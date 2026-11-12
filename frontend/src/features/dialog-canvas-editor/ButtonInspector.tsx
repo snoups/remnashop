@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, Trash2 } from "lucide-react";
+import { ArrowRight, Eye } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -26,7 +26,6 @@ import { Input } from "@shared/ui/glass/Input";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
-import { Button } from "@shared/ui/Button";
 
 function describeUrlError(
   button: DialogButtonItem,
@@ -62,7 +61,6 @@ interface ButtonInspectorProps {
   windowLabel: string;
   windowLabelOf: (key: string) => string;
   onChange: (updated: DialogButtonItem) => void;
-  onDelete: () => void;
   onBack: () => void;
 }
 
@@ -78,7 +76,6 @@ export function ButtonInspector({
   windowLabel,
   windowLabelOf,
   onChange,
-  onDelete,
   onBack,
 }: ButtonInspectorProps) {
   const { t } = useTranslation();
@@ -240,7 +237,7 @@ export function ButtonInspector({
           size="compact"
           icon={Eye}
           value={button.visibility_condition ?? ""}
-          disabled={!canEditButtons}
+          disabled={!canEditButtons || button.is_system}
           placeholder={t("dialogs.inspector.buttonConditionNone")}
           options={[
             { value: "", label: t("dialogs.inspector.buttonConditionNone") },
@@ -249,15 +246,6 @@ export function ButtonInspector({
           onChange={(value) => onChange({ ...button, visibility_condition: value || null })}
         />
       </Field>
-
-      {canEditButtons && (
-        <>
-          <InspectorDivider />
-          <Button variant="glassDanger" icon={Trash2} className="w-fit" onClick={onDelete}>
-            {t("dialogs.inspector.buttonDelete")}
-          </Button>
-        </>
-      )}
     </>
   );
 }

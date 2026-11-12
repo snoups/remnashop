@@ -85,7 +85,7 @@ function MergePicker({
     <div className={`${GLASS_DIALOG_BODY_CLASS} flex flex-col gap-3`}>
       <SearchField
         id="merge-search"
-        placeholder={t("users.merge.search")}
+        placeholder={t("users.filters.searchPlaceholder")}
         value={query}
         onChange={setQuery}
       />

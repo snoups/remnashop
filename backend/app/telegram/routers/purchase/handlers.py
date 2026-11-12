@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from typing import Any, Final, Optional, TypeAlias
 
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery
 from aiogram_dialog import Data, DialogManager, StartMode
 from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
@@ -13,6 +13,7 @@ from app.core.constants import USER_KEY
 from app.core.enums import Currency, PaymentGatewayType, PurchaseChannel, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError
+from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.subscriptions import (
     CatalogDurationDto,
     CatalogPlanDto,
@@ -25,6 +26,7 @@ from app.modules.subscriptions import (
 from app.modules.transactions import (
     CreateCheckoutDto,
     CreateCheckoutUseCase,
+    JoinPaymentWaitlistUseCase,
     ListPaymentMethodsUseCase,
     PaymentMethodDto,
     PriceQuote,
@@ -34,6 +36,7 @@ from app.modules.transactions import (
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
 from app.telegram.i18n import get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu, Purchase
 
 PAYMENT_URL_KEY: Final[str] = "payment_url"
@@ -43,12 +46,12 @@ RETRY_DURATION_KEY: Final[str] = "retry_duration_days"
 # the link offered renew-or-new, so its back buttons return there
 LINK_CHOICE_KEY: Final[str] = "link_choice"
 _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
-    ErrorCode.PAYMENTS_DISABLED: "ntf-purchase.payments-disabled",
+    ErrorCode.PAYMENTS_DISABLED: "ntf-access.payments-disabled",
     ErrorCode.PLAN_NOT_FOUND: "ntf-purchase.plan-unavailable",
     ErrorCode.SUBSCRIPTION_LIMIT_REACHED: "ntf-purchase.limit-reached",
     ErrorCode.GATEWAY_NOT_AVAILABLE: "ntf-purchase.method-unavailable",
     ErrorCode.GATEWAY_EMAIL_REQUIRED: "ntf-purchase.method-unavailable",
-    ErrorCode.PURCHASE_DISCOUNT_USED: "ntf-purchase.retry",
+    ErrorCode.PURCHASE_DISCOUNT_USED: "ntf-purchase.discount-used",
 }
 
 
@@ -137,7 +140,7 @@ async def start_purchase_steps(
     if purchase_type is PurchaseType.RENEW:
         assert target is not None
         if not any(plan.id == target.plan_snapshot.plan_id for plan in catalog.plans):
-            return "ntf-purchase.plan-unavailable"
+            return "ntf-purchase.renew-plan-unavailable"
         manager.dialog_data["plan_id"] = target.plan_snapshot.plan_id
         if methods is not None and quote is not None:
             return await select_duration(
@@ -263,6 +266,8 @@ async def on_purchase_start(
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_payment_methods: FromDishka[ListPaymentMethodsUseCase],
     quote_checkout: FromDishka[QuoteCheckoutUseCase],
+    get_access_settings: FromDishka[GetAccessSettingsUseCase],
+    join_payment_waitlist: FromDishka[JoinPaymentWaitlistUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = manager.middleware_data[USER_KEY]
@@ -270,6 +275,12 @@ async def on_purchase_start(
     retry = start.get(RETRY_PLAN_KEY) is not None
     is_new = start.get("purchase_type", PurchaseType.NEW.value) == PurchaseType.NEW.value
     by_link = start.get(PLAN_CODE_KEY) is not None
+    if not (await get_access_settings.system()).payments_enabled:
+        await join_payment_waitlist(user)
+        text = get_translator(i18n, user).get("ntf-access.payments-disabled")
+        await answer_notice(manager.event, text)
+        await _leave_purchase(manager, nothing_below=by_link or retry)
+        return
     needs_subscriptions = by_link or not is_new
     subscriptions = await list_own_subscriptions(user) if needs_subscriptions else []
     catalog = await list_active_plans(user, catalog_query(manager))
@@ -279,13 +290,12 @@ async def on_purchase_start(
     )
     if key is None:
         return
-    text = get_translator(i18n, user).get(key)
-    if isinstance(manager.event, CallbackQuery):
-        await manager.event.answer(text, show_alert=True)
-    elif isinstance(manager.event, Message):
-        await manager.event.answer(text)
-    if by_link or retry:
-        # nothing below to return to
+    await answer_notice(manager.event, get_translator(i18n, user).get(key))
+    await _leave_purchase(manager, nothing_below=by_link or retry)
+
+
+async def _leave_purchase(manager: DialogManager, *, nothing_below: bool) -> None:
+    if nothing_below:
         await manager.start(MainMenu.MAIN, mode=StartMode.RESET_STACK)
     else:
         await manager.done()
@@ -317,7 +327,7 @@ async def on_duration_selected(
         checkout_quoter(user, dialog_manager, quote_checkout),
     )
     if key is not None:
-        await callback.answer(get_translator(i18n, user).get(key), show_alert=True)
+        await answer_notice(callback, get_translator(i18n, user).get(key))
 
 
 async def on_duration_back(
@@ -378,6 +388,7 @@ async def on_confirm(
     widget: Button,
     dialog_manager: DialogManager,
     create_checkout: FromDishka[CreateCheckoutUseCase],
+    join_payment_waitlist: FromDishka[JoinPaymentWaitlistUseCase],
     i18n: FromDishka[TranslatorHub],
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
@@ -405,7 +416,13 @@ async def on_confirm(
             ),
         )
     except AppError as error:
-        await callback.answer(runner.get(checkout_error_key(error)), show_alert=True)
+        if error.code is ErrorCode.PAYMENTS_DISABLED:
+            # the text promises a message once payments are back
+            await join_payment_waitlist(user)
+        await answer_notice(callback, runner.get(checkout_error_key(error)))
+        if error.code is ErrorCode.PURCHASE_DISCOUNT_USED:
+            # the shown price had the spent discount in it; picking a duration quotes again
+            await dialog_manager.switch_to(Purchase.DURATION)
         return
     if result.confirmation_url is None:
         await callback.answer()

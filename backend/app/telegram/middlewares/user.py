@@ -1,7 +1,7 @@
 from typing import Any, Awaitable, Callable
 
 from aiogram.enums import ChatType
-from aiogram.types import CallbackQuery, Chat, Message, TelegramObject
+from aiogram.types import Chat, TelegramObject
 from dishka import AsyncContainer
 from fluentogram import TranslatorHub
 
@@ -23,6 +23,7 @@ from app.telegram.middlewares._codes import (
     parse_webauth_token,
 )
 from app.telegram.middlewares.base import EventTypedMiddleware
+from app.telegram.notice import answer_notice
 
 
 class UserMiddleware(EventTypedMiddleware):
@@ -83,10 +84,7 @@ class UserMiddleware(EventTypedMiddleware):
             text = hub.get_translator_by_locale(language.value).get(
                 f"ntf-access.{denial.value.lower().replace('_', '-')}"
             )
-            if isinstance(event, Message):
-                await event.answer(text)
-            elif isinstance(event, CallbackQuery):
-                await event.answer(text, show_alert=True)
+            await answer_notice(event, text)
             return None
 
         data[USER_KEY] = await use_case.system(

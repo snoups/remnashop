@@ -399,7 +399,7 @@ function StepEditor({
           </div>
           {button.kind === "external" && (
             <Input
-              placeholder="https://"
+              placeholder={t("common.urlPlaceholder")}
               value={button.url}
               disabled={disabled}
               aria-invalid={isUrlInvalid(button.url)}

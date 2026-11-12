@@ -26,6 +26,7 @@ from app.telegram.middlewares.requirements import (
     channel_member_key,
     is_channel_member,
 )
+from app.telegram.notice import answer_notice
 from app.telegram.states import MainMenu
 
 router = Router(name=__name__)
@@ -121,9 +122,8 @@ async def on_channel_check(
     if user.telegram_id is not None and requirements.channel_id is not None:
         await redis.delete(channel_member_key(requirements.channel_id, user.telegram_id))
     if not await _is_subscribed(callback, user, requirements, redis, report):
-        await callback.answer(
-            get_translator(i18n, user).get("ntf-requirements.channel-not-found"),
-            show_alert=True,
+        await answer_notice(
+            callback, get_translator(i18n, user).get("ntf-requirements.channel-not-found")
         )
         return
     await callback.answer()

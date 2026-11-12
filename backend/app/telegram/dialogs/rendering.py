@@ -18,6 +18,10 @@ from app.telegram.dialogs.config_cache import DialogConfigCache
 
 _T = TypeVar("_T")
 
+# getter data: action keys and target windows of features switched off, hidden
+# whatever condition an admin left on the button
+UNAVAILABLE_BUTTONS_KEY: Final[str] = "unavailable_buttons"
+
 
 class TrustedHtml(str):
     """Markup render_window_text inserts unescaped: blocks built from ftl fragments."""
@@ -30,6 +34,11 @@ _EMPTY: Final[str] = "\x00empty\x00"
 _VALUE_NEWLINE: Final[str] = "\x00nl\x00"
 _TAG_RE: Final[re.Pattern[str]] = re.compile(r"<[^<>]*>")
 _BLANK_RUN_RE: Final[re.Pattern[str]] = re.compile(r"\n{3,}")
+# tags on lines of their own read better in the editor; inside the quote those
+# line breaks would show as an empty first and last line
+_QUOTE_EDGE_NEWLINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"(<blockquote[^>]*>)\n|\n(</blockquote>)"
+)
 
 
 def _prepare_value(value: Any) -> Any:
@@ -80,7 +89,9 @@ def render_window_text(runner: TranslatorRunner, key: str, **kwargs: Any) -> str
     # Rendered as HTML: the template is admin-edited markup, values are escaped
     # so a user's display name holding "<b>" stays literal.
     prepared = {name: _prepare_value(value) for name, value in kwargs.items()}
-    text = _drop_empty_lines(strip_serializer_escapes(runner.get(key, **prepared)))
+    text = _QUOTE_EDGE_NEWLINE_RE.sub(
+        r"\1\2", _drop_empty_lines(strip_serializer_escapes(runner.get(key, **prepared)))
+    )
     if html_text_length(text) == 0:
         # Telegram refuses an empty message, so the lines stay with their values empty
         prepared = {name: "" if value == _EMPTY else value for name, value in prepared.items()}
@@ -135,11 +146,11 @@ def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
     return {key: catalog.get_variable(key)(getter_data) for key in catalog.variable_keys()}
 
 
-def label_with_icon(runner: TranslatorRunner, text_key: str) -> str:
+def label_with_icon(runner: TranslatorRunner, text_key: str, **kwargs: Any) -> str:
     """A label for a button the bot hardcodes rather than renders from config.
     Those never reach ConfigKeyboard, so the icon has to be glued on here or it
     would silently never show."""
-    label = runner.get(text_key)
+    label = runner.get(text_key, **kwargs)
     icon = _optional_translation(runner, catalog.icon_text_key(text_key))
     return f"{icon} {label}" if icon else label
 
@@ -155,6 +166,10 @@ async def render_dialog_buttons(
     rows: dict[int, list[dict[str, Any]]] = {}
     for button in window.buttons:
         if button.is_hidden:
+            continue
+        if {button.action_key, button.target_window_key} & getter_data.get(
+            UNAVAILABLE_BUTTONS_KEY, set()
+        ):
             continue
         if button.visibility_condition:
             if button.visibility_condition not in catalog.condition_keys():

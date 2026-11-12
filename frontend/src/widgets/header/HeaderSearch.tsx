@@ -71,7 +71,14 @@ const COLLAPSED_WIDTH = 36;
 const EXPANDED_WIDTH = 320;
 
 /** mobile: a bordered icon as the bar's bell; opened, the field lies over the whole bar */
-export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
+export function HeaderSearch({
+  mobile = false,
+  onFieldShownChange,
+}: {
+  mobile?: boolean;
+  /** mobile: the open field lies over the bar, so the bar hides what it covers */
+  onFieldShownChange?: (shown: boolean) => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { openUser, openOrder, openSubscription, openPromocode, openPlan } = useOpenEntity();
@@ -92,7 +99,14 @@ export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
   const [promocodes, setPromocodes] = useState<Promocode[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  useClickOutside([rootRef, popoverRef], open, () => setOpen(false));
+  // mobile: the open field covers the whole bar, so a tap elsewhere folds it even with text in it
+  useClickOutside([rootRef, popoverRef], open || (mobile && isExpanded), () => {
+    setOpen(false);
+    if (mobile) setIsExpanded(false);
+  });
+  // mobile has no width animation, so onAnimationComplete never folds the field
+  const showsField = mobile ? isExpanded : isFieldShown;
+  useEffect(() => onFieldShownChange?.(showsField), [showsField, onFieldShownChange]);
 
   const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS);
   const [isFetching, setIsFetching] = useState(false);
@@ -285,13 +299,13 @@ export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
       onAnimationComplete={() => setIsFieldShown(isExpanded)}
       className={
         mobile
-          ? isFieldShown
-            ? "absolute inset-x-3 z-10 flex rounded-full bg-surface"
+          ? showsField
+            ? "absolute inset-x-3 z-10 flex"
             : "relative flex shrink-0"
           : "relative flex min-w-9 shrink justify-end"
       }
     >
-      {!isFieldShown && (
+      {!showsField && (
         <Pressable
           type="button"
           onClick={() => {
@@ -303,7 +317,7 @@ export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
           <Search className="size-4 shrink-0" />
         </Pressable>
       )}
-      {isFieldShown && (
+      {showsField && (
       <motion.label
         className={`group relative flex h-9 w-full items-center gap-2.5 rounded-full border px-3 transition-colors ${isExpanded ? "border-glass-border bg-white/[0.03] not-focus-within:hover:bg-white/[0.06] focus-within:border-primary" : "border-transparent"}`}
       >

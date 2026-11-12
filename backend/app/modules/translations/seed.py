@@ -21,10 +21,11 @@ def _parse_seed_file(path: Path) -> list[tuple[str, str, str]]:
         # multi-line values stay exactly as authored
         raw = source[pattern.span.start : pattern.span.end]
         first, separator, rest = raw.partition("\n")
-        # The slice carries the .ftl's continuation indent; store the value
-        # without it, so an editor shows the text the reader sees and
-        # serialize_to_fluent() is the only thing that decides indentation.
-        return first + separator + dedent(rest) if separator else raw
+        # The slice carries the .ftl's continuation indent (the first line's too,
+        # when the value starts under `key =`); store the value without it, so an
+        # editor shows the text the reader sees and serialize_to_fluent() is the
+        # only thing that decides indentation.
+        return first.lstrip(" ") + separator + dedent(rest) if separator else raw
 
     source = path.read_text()
     resource = FluentParser().parse(source)

@@ -28,6 +28,7 @@ export function MobileNotice() {
 
   return (
     <Modal
+      frosted
       onClose={() => {
         writeStorage(DISMISSED_KEY, "1", "session");
         setDismissed(true);

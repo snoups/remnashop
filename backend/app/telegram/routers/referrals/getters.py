@@ -28,6 +28,7 @@ from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags
 from app.telegram.dialogs.rendering import (
+    UNAVAILABLE_BUTTONS_KEY,
     label_with_icon,
     render_dialog_buttons,
     render_window_text,
@@ -88,9 +89,14 @@ async def referrals_getter(
     data["has_bonus_days"] = stats.bonus_days > 0
     shop = await get_shop_settings.system()
     data["referral_reset_enabled"] = shop.referral_reset_enabled
+    data[UNAVAILABLE_BUTTONS_KEY] = (
+        set() if shop.referral_reset_enabled else {"reset_referral_code"}
+    )
     data["support_url"] = (
         f"https://t.me/{shop.support_telegram}" if shop.support_telegram else shop.support_url or ""
     )
+    # withdrawing goes through support: a whole point to withdraw and somewhere to ask
+    data["can_withdraw_points"] = stats.points >= 1 and bool(data["support_url"])
     data["referral_url"] = (
         referral_url(me.username, stats.referral_code)
         if stats.referral_code and me.username
@@ -104,7 +110,8 @@ async def referrals_getter(
         # a zero line is dropped; level 1 always shows
         referrals_level_1=stats.counts_by_level.get(1, 0),
         referrals_level_2=stats.counts_by_level.get(2) or "",
-        points=str(stats.points) if stats.points else "",
+        # a fraction of a point can't be withdrawn, so it isn't shown either
+        points=str(stats.points) if stats.points >= 1 else "",
         bonus_days=stats.bonus_days or "",
         **resolve_variable_kwargs(data),
     )

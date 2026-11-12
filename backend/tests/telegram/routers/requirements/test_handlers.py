@@ -100,7 +100,7 @@ async def test_channel_check_rechecks_past_the_cache(redis: Redis) -> None:
     callback, start = await _check(bot, redis)
 
     assert bot.calls == 1
-    callback.answer.assert_awaited_once_with("ntf-requirements.channel-not-found", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-requirements.channel-not-found")
     start.assert_not_awaited()
 
 

@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.enums import DialogWindowKind, Locale
@@ -107,13 +109,21 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
             if window.kind == DialogWindowKind.SEED
             else set()
         )
+        system_conditions = await self._dialog_repository.system_conditions(window.key)
+        # a system button's condition is the catalog's, whatever an older export says
+        buttons = [
+            replace(button, visibility_condition=system_conditions[button.text_key])
+            if button.text_key in system_conditions
+            else button
+            for button in window.buttons
+        ]
         validate_buttons(
-            window.buttons,
+            buttons,
             window_key=window.key,
             window_kind=window.kind,
             navigable=navigable,
             seed_actions=seed_actions,
-            system_text_keys=await self._dialog_repository.system_text_keys(window.key),
+            system_conditions=system_conditions,
         )
         await self._dialog_repository.update_window(
             window.key,
@@ -124,7 +134,7 @@ class ImportDialogsUseCase(UseCase[DialogExportDto, None]):
                 is_enabled=True if window.kind == DialogWindowKind.SEED else window.is_enabled,
             ),
         )
-        await self._dialog_repository.replace_buttons(window.key, window.buttons)
+        await self._dialog_repository.replace_buttons(window.key, buttons)
 
     async def _apply_texts(self, data: DialogExportDto, text_keys: set[str]) -> None:
         active = set(await self._translation_repository.list_active_locales())

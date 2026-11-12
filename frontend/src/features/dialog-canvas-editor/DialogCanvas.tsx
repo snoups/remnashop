@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { DialogButtonItem, DialogWindow } from "@entities/dialogs/api";
 import type { Selection } from "@features/dialog-canvas-editor/DialogCanvasEditor";
 import { ButtonGrid } from "@features/dialog-canvas-editor/ButtonGrid";
+import { resolveSelects } from "@features/dialog-canvas-editor/fluent-select";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
 import { Pressable } from "@shared/ui/Pressable";
 
@@ -13,7 +14,8 @@ interface DialogCanvasProps {
   textByKey: Record<string, string>;
   bannerUrl: string | null;
   selection: Selection | null;
-  onSelect: (selection: Selection) => void;
+  /** null: the window itself */
+  onSelect: (selection: Selection | null) => void;
   canEditButtons: boolean;
   onReorderButtons: (next: DialogButtonItem[]) => void;
   /** set: a dashed "add a button" under the keyboard */
@@ -43,7 +45,11 @@ export function DialogCanvas({
           }`}
         >
           {/* whatever was uploaded shows whole, in its own ratio, the way Telegram sends it */}
-          {bannerUrl && <img src={bannerUrl} alt="" className="block w-full" />}
+          {bannerUrl && (
+            <Pressable as="div" onClick={() => onSelect(null)} className="cursor-pointer transition-opacity hover:opacity-90">
+              <img src={bannerUrl} alt="" className="block w-full" />
+            </Pressable>
+          )}
           <Pressable
             as="div"
             onClick={() => onSelect({ kind: "text" })}
@@ -52,7 +58,7 @@ export function DialogCanvas({
             }`}
           >
             {window.text_keys[0] && textByKey[window.text_keys[0]] ? (
-              <TelegramHtml value={textByKey[window.text_keys[0]]} />
+              <TelegramHtml value={resolveSelects(textByKey[window.text_keys[0]])} />
             ) : (
               <span className="text-muted-foreground">{t("dialogs.canvas.noText")}</span>
             )}

@@ -80,7 +80,7 @@ export function ButtonsEditor({
           type="text"
           value={button.url ?? ""}
           disabled={disabled}
-          placeholder="https://"
+          placeholder={t("common.urlPlaceholder")}
           onChange={(event) => onChange(setButtonUrl(form, index, event.target.value))}
           className="w-full"
         />

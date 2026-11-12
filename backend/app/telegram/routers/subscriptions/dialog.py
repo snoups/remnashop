@@ -50,7 +50,6 @@ subscription_card = Window(
 devices = Window(
     DynamicMedia("banner"),
     Format("{devices_header}"),
-    Button(text=Format("{empty_text}"), id="devices_empty", when=~F["has_devices"]),
     ListGroup(
         Button(text=Format("{item[label]}"), id="device_item", on_click=on_device_delete_request),
         id="devices_list",

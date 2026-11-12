@@ -10,7 +10,9 @@ from app.core.constants import WEBAUTH_START_PREFIX
 from app.core.enums import Locale
 from app.modules.cabinet_auth import IssueBotSignInLinkUseCase, TelegramProfileDto
 from app.modules.users import UserDto
+from app.telegram.dialogs.rendering import label_with_icon
 from app.telegram.i18n import get_translator, telegram_locale
+from app.telegram.notice import answer_notice
 
 _WEBAUTH_PAYLOAD: Final[str] = rf"^{WEBAUTH_START_PREFIX}[A-Za-z0-9_-]{{20,64}}$"
 
@@ -44,14 +46,18 @@ async def on_start_webauth(
         ),
     )
     if link is None:
-        await message.answer(runner.get("ntf-cabinet-login.expired"))
+        await answer_notice(message, runner.get("ntf-cabinet-login.expired"))
         return
     prefix = "cabinet-link" if link.is_link else "cabinet-login"
     await message.answer(
         runner.get(f"ntf-{prefix}.link"),
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text=runner.get(f"btn-{prefix}.open"), url=link.url)]
+                [
+                    InlineKeyboardButton(
+                        text=label_with_icon(runner, f"btn-{prefix}.open"), url=link.url
+                    )
+                ]
             ]
         ),
     )

@@ -25,6 +25,7 @@ from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags
 from app.telegram.dialogs.rendering import (
+    UNAVAILABLE_BUTTONS_KEY,
     TrustedHtml,
     banner_within_caption,
     render_dialog_buttons,
@@ -43,6 +44,12 @@ def menu_subscription(
         return active
     expired = [s for s in owned if s.status == SubscriptionStatus.EXPIRED]
     return max(expired, key=lambda s: s.expire_at, default=None)
+
+
+def connect_problem(subscription: Optional[SubscriptionDto]) -> str:
+    if subscription is None or subscription.status is SubscriptionStatus.ACTIVE:
+        return ""
+    return subscription.status.value
 
 
 def subscription_menu_values(
@@ -153,9 +160,12 @@ async def menu_getter(
     data["legal_available"] = bool(
         await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     )
+    data[UNAVAILABLE_BUTTONS_KEY] = set() if data["legal_available"] else {"legal_documents"}
+    shown = menu_subscription(data["subscription"], owned)
+    data["connect_problem"] = connect_problem(shown)
     subscription_values = subscription_menu_values(
         runner,
-        menu_subscription(data["subscription"], owned),
+        shown,
         extra_count=len(active) - 1,
         trial_available=data["trial_available"],
         listed_elsewhere=not single_subscription and bool(owned),

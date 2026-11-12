@@ -53,7 +53,7 @@ async def test_start_sends_a_one_time_sign_in_button(
 
     assert message.sent[0]["text"] == "ntf-cabinet-login.link"
     button = message.sent[0]["markup"].inline_keyboard[0][0]
-    assert button.text == "btn-cabinet-login.open"
+    assert button.text == "btn-cabinet-login.open-icon btn-cabinet-login.open"
     assert button.url.startswith("https://cabinet.example.com/login/bot#token=")
     signin = button.url.split("token=", 1)[1]
     grant = await store.take_signin(signin)
@@ -143,5 +143,5 @@ async def test_link_start_sends_the_linking_wording(
 
     assert message.sent[0]["text"] == "ntf-cabinet-link.link"
     button = message.sent[0]["markup"].inline_keyboard[0][0]
-    assert button.text == "btn-cabinet-link.open"
+    assert button.text == "btn-cabinet-link.open-icon btn-cabinet-link.open"
     assert button.url.startswith("https://cabinet.example.com/link/bot#token=")

@@ -91,6 +91,7 @@ async def test_getter_builds_the_link_and_flags() -> None:
 
     assert data["referral_url"] == "https://t.me/shop_bot?start=ref_ABC"
     assert data["has_points"] is True
+    assert data["can_withdraw_points"] is True
     assert data["has_bonus_days"] is False
     assert data["window_text"] == "msg-referrals"
 
@@ -162,3 +163,20 @@ def test_about_without_invitee_gift_or_deeper_levels() -> None:
     assert "Friends of your friends" not in text
     assert "Exchange your points" in text
     validate_telegram_html(text, code=ErrorCode.TRANSLATION_HTML_INVALID)
+
+
+async def test_a_fraction_of_a_point_is_neither_shown_nor_withdrawable() -> None:
+    i18n = MagicMock()
+    seen: dict = {}
+
+    def _get(key: str, **kwargs: object) -> str:
+        if key == "msg-referrals":
+            seen.update(kwargs)
+        return key
+
+    i18n.get_translator_by_locale.return_value = MagicMock(get=_get)
+
+    data = await _render("ABC", Decimal("0.5"), 0, i18n)
+
+    assert data["can_withdraw_points"] is False
+    assert "0.5" not in str(seen["points"])

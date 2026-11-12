@@ -12,6 +12,9 @@ def register_referrals_metadata() -> None:
     catalog.register_action_key("reset_referral_code")
 
     catalog.register_condition("has_points", lambda data: bool(data.get("has_points")))
+    catalog.register_condition(
+        "can_withdraw_points", lambda data: bool(data.get("can_withdraw_points"))
+    )
     catalog.register_condition("has_bonus_days", lambda data: bool(data.get("has_bonus_days")))
     catalog.register_condition(
         "referral_reset_enabled", lambda data: bool(data.get("referral_reset_enabled"))
@@ -68,7 +71,7 @@ def register_referrals_metadata() -> None:
                     column=0,
                     link_type=ButtonLinkType.URL,
                     url_value="${support_url}",
-                    visibility_condition="has_points",
+                    visibility_condition="can_withdraw_points",
                 ),
                 catalog.CatalogButton(
                     key="redeem",

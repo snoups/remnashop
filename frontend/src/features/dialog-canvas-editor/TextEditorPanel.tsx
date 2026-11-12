@@ -2,13 +2,14 @@ import { RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { sentHtmlLength, sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
+import { sentTextLength, splitTextKey, updateDialogText } from "@entities/dialogs/api";
 import type { VariableOption } from "@entities/dialogs/api";
 import { getErrorMessage } from "@shared/api/http";
 import { resetTranslation } from "@entities/translations/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { toast } from "@shared/lib/toast";
 import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
+import { windowTextLength } from "@features/dialog-canvas-editor/fluent-select";
 import { FormatToolbar } from "@features/dialog-canvas-editor/FormatToolbar";
 import { RichTextField, type RichTextFieldHandle } from "@features/dialog-canvas-editor/RichTextField";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
@@ -37,6 +38,8 @@ interface TextEditorPanelProps {
   required?: boolean;
   /** Telegram's limit for this text, counted the way it counts. */
   maxLength?: number;
+  /** A banner's caption limit: past it the bot sends the window without the banner, so only a warning. */
+  captionLength?: number;
   /** Dialog texts go through the dialogs endpoint, which allows newlines and
    * rejects keys outside the catalog; everything else goes through the general
    * translations one. */
@@ -62,6 +65,7 @@ export function TextEditorPanel({
   fieldAction,
   required = false,
   maxLength,
+  captionLength,
   save = updateDialogText,
   onSaved,
 }: TextEditorPanelProps) {
@@ -71,8 +75,11 @@ export function TextEditorPanel({
     (e) => e.locale === activeLocale && e.message_id === messageId && e.attribute_id === attributeId,
   );
   const [draft, setDraft] = useState(entry?.value ?? "");
-  const draftLength = html ? sentHtmlLength(draft) : sentTextLength(draft);
+  const draftLength = html ? windowTextLength(draft) : sentTextLength(draft);
   const isTooLong = maxLength !== undefined && draftLength > maxLength;
+  const isOverCaption = !isTooLong && captionLength !== undefined && draftLength > captionLength;
+  // the caption limit until the text passes it, then the hard one
+  const shownLimit = captionLength !== undefined && !isOverCaption && !isTooLong ? captionLength : maxLength;
   const fieldRef = useRef<HTMLInputElement>(null);
   const richFieldRef = useRef<RichTextFieldHandle>(null);
 
@@ -176,10 +183,10 @@ export function TextEditorPanel({
           {maxLength !== undefined && (
             <span
               className={`glass-control pointer-events-none absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-xs tabular-nums ${
-                isTooLong ? "text-error" : "text-muted-foreground"
+                isTooLong ? "text-error" : isOverCaption ? "text-warning" : "text-muted-foreground"
               }`}
             >
-              {`${draftLength} / ${maxLength}`}
+              {`${draftLength} / ${shownLimit}`}
             </span>
           )}
         </div>
@@ -197,6 +204,9 @@ export function TextEditorPanel({
         <p className="text-xs text-error">
           {t("dialogs.inspector.textTooLong", { length: draftLength, max: maxLength })}
         </p>
+      )}
+      {isOverCaption && (
+        <p className="text-xs text-warning">{t("dialogs.inspector.textOverCaption", { max: captionLength })}</p>
       )}
       {/* nothing to save or reset: no buttons under the field */}
       {((canUpdate && isChanged) || canShowReset) && (

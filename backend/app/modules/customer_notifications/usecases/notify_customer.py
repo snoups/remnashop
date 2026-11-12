@@ -1,4 +1,5 @@
 from dataclasses import asdict, replace
+from html import escape
 from typing import Final, Optional
 
 from loguru import logger
@@ -28,6 +29,7 @@ from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.render_args import customer_render_args
 from app.modules.customer_notifications.repository import CustomerNotificationRepository
 from app.modules.customer_notifications.routing import CustomerChannel, channels_for
+from app.modules.customer_notifications.waitlist import PAYMENTS_RESTORED
 from app.modules.email import SendEmailDispatch, load_email_brand, render_email
 from app.modules.notifications import (
     BotTokenSource,
@@ -287,9 +289,15 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
                 if subscription is not None and data.event_type in _SHOWS_PLAN
                 else []
             )
+            text = (
+                # a one-line notice, like the bot's own "payments are off"
+                f"<i>{escape(f'{emoji} {body}')}</i>"
+                if data.event_type == PAYMENTS_RESTORED
+                else telegram_card(title, body, emoji=emoji, blocks=blocks)
+            )
             await self._send_telegram.kiq(
                 user_id=user.id,
-                text=telegram_card(title, body, emoji=emoji, blocks=blocks),
+                text=text,
                 buttons=await self._telegram_buttons(data, user, renderer, subscription),
                 notification=asdict(data),
                 html=True,

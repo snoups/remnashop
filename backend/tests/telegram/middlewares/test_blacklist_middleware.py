@@ -84,7 +84,7 @@ async def test_blacklist_middleware_bounces_blocked_user_callback_query() -> Non
     handler_called = await _run_middleware(callback, data)
 
     assert handler_called is False
-    assert answered == [("Access is restricted.", {"show_alert": True})]
+    assert answered == [("Access is restricted.", {})]
 
 
 async def test_blacklist_middleware_passes_through_non_blocked_user() -> None:

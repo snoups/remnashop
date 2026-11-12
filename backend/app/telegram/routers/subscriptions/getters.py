@@ -26,11 +26,13 @@ from app.telegram.banners import get_banner_media
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags, selected_subscription_id
 from app.telegram.dialogs.rendering import (
+    UNAVAILABLE_BUTTONS_KEY,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
 )
 from app.telegram.i18n import format_date, get_translator
+from app.telegram.routers.subscriptions.handlers import SINGLE_RESET_KEY
 
 _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows", "macos", "linux"})
 
@@ -157,12 +159,21 @@ async def devices_getter(
     dialog_manager: DialogManager,
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_devices: FromDishka[ListDevicesUseCase],
+    get_shop_settings: FromDishka[GetShopSettingsUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     runner = get_translator(i18n, user)
+    shop = await get_shop_settings.system()
+    # a tap on a device opens nothing while single resets are off
+    dialog_manager.dialog_data[SINGLE_RESET_KEY] = shop.device_single_reset_enabled
+    unavailable: set[str] = set()
+    if not shop.device_all_reset_enabled:
+        unavailable |= {"menu.device_confirm_delete_all", "delete_all_devices"}
+    if not shop.link_reset_enabled:
+        unavailable |= {"menu.device_confirm_reissue", "reissue_subscription"}
 
     subscription_id = selected_subscription_id(dialog_manager)
     subscription = next(
@@ -207,7 +218,7 @@ async def devices_getter(
             # handlers send the customer back to the subscriptions
             else render_window_text(runner, "msg-window-gone")
         ),
-        "empty_text": runner.get("btn-devices.empty"),
+        UNAVAILABLE_BUTTONS_KEY: unavailable,
     }
     data["buttons"] = await render_dialog_buttons("menu.devices", dialog_config_cache, runner, data)
     return data

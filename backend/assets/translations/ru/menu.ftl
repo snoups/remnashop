@@ -1,8 +1,10 @@
 msg-main-menu =
     <b>👤 Профиль</b>:
-    <blockquote>• <b>ID</b>: <code>{ $user_id }</code>
+    <blockquote>
+    • <b>ID</b>: <code>{ $user_id }</code>
     • <b>Имя</b>: { $user_name }
-    • <b>Скидка</b>: { $user_discount }%</blockquote>
+    • <b>Скидка</b>: { $user_discount }%
+    </blockquote>
 
     { $subscription_block }
 frg-menu-subscription =
@@ -12,18 +14,23 @@ frg-menu-subscription =
     }
     { $status ->
         [ACTIVE]
-            <blockquote>• <b>Лимит трафика</b>: { $traffic_limit }
+            <blockquote>
+            • <b>Лимит трафика</b>: { $traffic_limit }
             • <b>Лимит устройств</b>: { $device_limit }
-            • <b>Действует до</b>: { $expire_at }</blockquote>
+            • <b>Действует до</b>: { $expire_at }
+            </blockquote>
         [EXPIRED]
-            <blockquote>• Срок действия истёк.
+            <blockquote>
+            • Срок действия истёк.
 
             <i>{ $is_trial ->
                 [0] Ваша подписка истекла. Продлите её, чтобы продолжить пользоваться сервисом!
                *[1] Ваш бесплатный пробный период закончился. Оформите подписку, чтобы продолжить пользоваться сервисом!
-            }</i></blockquote>
+            }</i>
+            </blockquote>
         [LIMITED]
-            <blockquote>• Ваш трафик израсходован.
+            <blockquote>
+            • Ваш трафик израсходован.
 
             <i>{ $is_trial ->
                 [0] { $traffic_strategy ->
@@ -34,21 +41,26 @@ frg-menu-subscription =
                     [NO_RESET] Оформите подписку, чтобы продолжить пользоваться сервисом!
                    *[RESET] Трафик восстановится в начале следующего периода. Вы также можете оформить подписку, чтобы пользоваться сервисом без ограничений.
                 }
-            }</i></blockquote>
+            }</i>
+            </blockquote>
        *[DISABLED]
-            <blockquote>• Ваша подписка отключена.
+            <blockquote>
+            • Ваша подписка отключена.
 
-            <i>Свяжитесь с поддержкой для выяснения причины!</i></blockquote>
+            <i>Свяжитесь с поддержкой для выяснения причины!</i>
+            </blockquote>
     }
 
     Ещё подписок: { $extra_count } — смотрите «Мои подписки».
 frg-menu-no-subscription =
-    <blockquote>У вас нет оформленной подписки.
+    <blockquote>
+    У вас нет оформленной подписки.
 
     <i>{ $trial_available ->
         [1] 🎁 Для вас доступен бесплатный пробник — нажмите кнопку ниже, чтобы его получить.
        *[0] ↘️ Чтобы купить доступ, нажмите «Купить подписку».
-    }</i></blockquote>
+    }</i>
+    </blockquote>
 frg-subscription-status = { $status ->
         [ACTIVE] Активна
         [LIMITED] Трафик исчерпан
@@ -69,7 +81,11 @@ msg-menu-devices-confirm-reissue = Перевыпустить ссылку по�
 btn-menu =
     .connect = Подключиться
     .connect-icon = 🚀
-    .connect-not-available = Подключение недоступно
+    .connect-not-available = { $subscription_problem ->
+        [LIMITED] ПРЕВЫШЕН ЛИМИТ ТРАФИКА
+        [EXPIRED] СРОК ДЕЙСТВИЯ ИСТЁК
+       *[other] ВАША ПОДПИСКА НЕ РАБОТАЕТ
+    }
     .connect-not-available-icon = ⚠️
     .trial = Попробовать бесплатно
     .trial-icon = 🎁
@@ -92,6 +108,7 @@ btn-menu =
     .referrals = Рефералы
     .referrals-icon = 👥
     .legal = Документы
+    .legal-icon = 📄
 
 btn-legal =
     .OFFER = Публичная оферта
@@ -99,7 +116,6 @@ btn-legal =
     .PRIVACY_POLICY = Политика конфиденциальности
 
 msg-legal-list = Правовые документы. Выберите, какой прочитать.
-msg-legal-empty = Документы ещё не опубликованы.
 msg-legal-gate =
     <b>Перед началом работы</b>
     Чтобы пользоваться ботом, ознакомьтесь с документами ниже и примите их.
@@ -112,7 +128,6 @@ btn-legal-gate =
 
 btn-devices =
     .item = { $platform_icon } { $platform } ({ $device_model }) — { $created_at }
-    .empty = Нет подключённых устройств
     .delete-all = Удалить все устройства
     .delete-all-icon = 🗑
     .reissue = Перевыпустить ссылку
@@ -127,13 +142,16 @@ btn-devices =
 msg-subscriptions-list =
     <b>💳 Мои подписки</b>
 
-    <blockquote>Выберите подписку, чтобы подключиться, продлить её или сменить план.</blockquote>
+    <blockquote>
+    Выберите подписку, чтобы подключиться, продлить её или сменить план.
+    </blockquote>
 msg-subscription-card =
     { $is_trial ->
         [1] <b>🎁 Пробная подписка · { $plan_name }</b>
        *[0] <b>💳 Подписка · { $plan_name }</b>
     }
-    <blockquote>• <b>Статус</b>: { $status ->
+    <blockquote>
+    • <b>Статус</b>: { $status ->
         [ACTIVE] 🟢 Активна
         [LIMITED] 🟡 Трафик исчерпан
         [EXPIRED] 🔴 Истекла
@@ -149,17 +167,20 @@ msg-subscription-card =
         [0] Безлимит
        *[other] { $device_limit }
     }
-    • <b>Действует до</b>: { $expire_at }</blockquote>
+    • <b>Действует до</b>: { $expire_at }
+    </blockquote>
 msg-referrals =
     <b>👥 Пригласить друзей</b>
 
     Делитесь вашей уникальной ссылкой и получайте награды!
 
     <b>📊 Статистика</b>:
-    <blockquote>• <b>Приглашено вами</b>: { $referrals_level_1 }
+    <blockquote>
+    • <b>Приглашено вами</b>: { $referrals_level_1 }
     • <b>Приглашено вашими друзьями</b>: { $referrals_level_2 }
     • <b>Баллы</b>: { $points }
-    • <b>Бонусные дни</b>: { $bonus_days }</blockquote>
+    • <b>Бонусные дни</b>: { $bonus_days }
+    </blockquote>
 
 btn-subscriptions =
     .purchase = Купить подписку
@@ -182,10 +203,13 @@ msg-referrals-about =
     <b>❓ Как это работает?</b>
 
     <b>1️⃣ Поделитесь ссылкой</b>
-    <blockquote>Отправьте её другу или покажите QR-код.</blockquote>
+    <blockquote>
+    Отправьте её другу или покажите QR-код.
+    </blockquote>
 
     <b>2️⃣ Друг регистрируется по ссылке</b>
-    <blockquote>{ $invitee_reward_amount ->
+    <blockquote>
+    { $invitee_reward_amount ->
         [0] И закрепляется за вами.
        *[other] И сразу получает +{ $invitee_reward_amount } { $invitee_reward_type ->
             [POINTS] { $invitee_reward_amount ->
@@ -199,20 +223,27 @@ msg-referrals-about =
                *[other] бонусных дней
             }
         }.
-    }</blockquote>
+    }
+    </blockquote>
 
     <b>3️⃣ Друг оплачивает подписку</b>
-    <blockquote>Вы получаете { $reward_terms }. { $accrual_strategy ->
+    <blockquote>
+    Вы получаете { $reward_terms }. { $accrual_strategy ->
         [EVERY_PAYMENT] За каждую его оплату: покупку, продление и смену тарифа.
        *[FIRST_PAYMENT] Только за его первую оплату.
     }
-    { $reward_levels }</blockquote>
+    { $reward_levels }
+    </blockquote>
 
     { $reward_type ->
         [POINTS] <b>4️⃣ Обменивайте баллы</b>
-        <blockquote>Нажмите «Вывести баллы» и напишите в поддержку — администратор проведёт обмен.</blockquote>
+        <blockquote>
+        Нажмите «Вывести баллы» и напишите в поддержку — администратор проведёт обмен.
+        </blockquote>
        *[EXTRA_DAYS] <b>4️⃣ Применяйте бонусные дни</b>
-        <blockquote>Добавьте их к любой своей подписке.</blockquote>
+        <blockquote>
+        Добавьте их к любой своей подписке.
+        </blockquote>
     }
 
     <i>Пригласить можно только того, кто ещё не пользуется сервисом. Пробные подписки и подписки по промокоду наград не приносят. Если платёж вернут, награда за него аннулируется.</i>
@@ -248,6 +279,7 @@ btn-referrals =
     .withdraw = Вывести баллы
     .withdraw-icon = 💎
     .redeem = Обменять бонусные дни
+    .redeem-icon = 🎁
     .qr = QR-код
     .qr-icon = 🧾
     .reset-code = Новая реферальная ссылка
@@ -258,40 +290,56 @@ btn-back =
     .general-icon = ⬅️
 
 ntf-subscription =
-    .gone = Эта подписка больше недоступна.
+    .gone = ❌ Эта подписка больше недоступна.
 
 ntf-devices =
-    .deleted = Устройство удалено.
-    .all-deleted = Все устройства удалены.
-    .reissued = Ссылка подключения перевыпущена.
-    .reset-disabled = Это действие сейчас отключено.
-    .failed = Что-то пошло не так. Попробуйте позже.
+    .deleted = ✅ Устройство удалено.
+    .all-deleted = ✅ Все устройства удалены.
+    .reissued = ✅ Ссылка подключения перевыпущена.
+    .failed = ❌ Что-то пошло не так. Попробуйте позже.
+    .delete-cooldown = ⏳ Удалить устройство можно будет через { $wait }.
+    .delete-all-cooldown = ⏳ Удалить все устройства можно будет через { $wait }.
+    .reissue-cooldown = ⏳ Перевыпустить ссылку подключения можно будет через { $wait }.
 
 ntf-access =
-    .restricted = Сервис временно закрыт на техработы. Загляните позже.
-    .registration-disabled = Регистрация сейчас закрыта.
-    .invite-only = Регистрация только по приглашению. Попросите у друга реферальную ссылку.
-    .payments-disabled = Оплата временно недоступна. Мы напишем, когда она вернётся.
+    .restricted = 🚧 Технические работы. Попробуйте позже.
+    .registration-disabled = ❌ Сервис недоступен для новых пользователей.
+    .invite-only = ❌ Сервис доступен только по приглашениям.
+    .payments-disabled = 🚧 Оплата временно недоступна! Вы получите уведомление после восстановления.
 
 ntf-common =
-    .lost-context = Меню обновлено, продолжите отсюда.
-    .unknown-error = Что-то пошло не так. Попробуйте ещё раз.
-    .cooldown-active = Повторить это действие можно после { $available_at }.
-    .trial-unavailable = Пробный период недоступен.
-    .trial-activated = Пробная подписка активирована.
-    .connect-not-available = Подключение недоступно.
-    .access-restricted = Доступ ограничен.
+    .unknown-error = ❌ Что-то пошло не так. Попробуйте ещё раз.
+    .trial-unavailable = ⚠️ Пробный период недоступен.
+    .trial-activated = ✅ Пробная подписка активирована.
+    .connect-not-available = ⚠️ { $status ->
+        [LIMITED] Вы израсходовали весь доступный объём трафика. { $is_trial ->
+            [1] { $reset_in ->
+                [none] Оформите подписку, чтобы продолжить пользоваться сервисом!
+               *[other] Трафик будет восстановлен через { $reset_in }. Вы также можете оформить подписку, чтобы пользоваться сервисом без ограничений.
+            }
+           *[0] { $reset_in ->
+                [none] Продлите подписку, чтобы сбросить трафик и продолжить пользоваться сервисом!
+               *[other] Трафик будет восстановлен через { $reset_in }. Вы также можете продлить подписку, чтобы сбросить трафик.
+            }
+        }
+        [EXPIRED] { $is_trial ->
+            [1] Бесплатный пробный период завершён. Оформите подписку, чтобы продолжить пользоваться сервисом.
+           *[0] Срок действия вашей подписки истёк. Продлите подписку или оформите новую.
+        }
+       *[other] Произошла ошибка при проверке статуса или подписка была отключена. Обратитесь в поддержку.
+    }
+    .access-restricted = ❌ Доступ ограничен.
 
 ntf-purchase =
     .stars-rejected = Этот заказ уже нельзя оплатить. Начните покупку заново.
-    .payments-disabled = Платежи временно недоступны.
-    .plan-unavailable = Этот тариф больше недоступен — выберите другой.
-    .limit-reached = Достигнут лимит подписок.
-    .method-unavailable = Этот способ оплаты сейчас недоступен.
-    .retry = Попробуйте ещё раз.
-    .failed = Не удалось создать платёж. Попробуйте позже.
-    .no-plans = Нет доступных тарифов.
-    .no-methods = Нет доступных способов оплаты.
+    .plan-unavailable = ❌ Этот тариф больше недоступен — выберите другой.
+    .renew-plan-unavailable = ❌ Текущий план устарел и недоступен для продления.
+    .limit-reached = ❌ Достигнут лимит подписок.
+    .method-unavailable = ❌ Этот способ оплаты сейчас недоступен.
+    .discount-used = ⚠️ Скидка уже использована — проверьте новую цену.
+    .failed = ❌ Не удалось создать платёж. Попробуйте позже.
+    .no-plans = ❌ Нет доступных тарифов.
+    .no-methods = ❌ Нет доступных способов оплаты.
 
 msg-purchase-plan = <b>💳 Выберите тариф</b>
 msg-purchase-duration =
@@ -302,11 +350,13 @@ msg-purchase-method = <b>💳 Выберите способ оплаты</b>
 msg-purchase-confirm =
     <b>🧾 Проверьте заказ</b>
 
-    <blockquote>• <b>Тариф</b>: { $plan_name }
+    <blockquote>
+    • <b>Тариф</b>: { $plan_name }
     • <b>Срок</b>: { $duration_days } дн.
     • <b>Способ оплаты</b>: { $method }
     • <b>Без скидки</b>: <s>{ $original_price } { $currency_symbol }</s>
-    • <b>К оплате</b>: { $price } { $currency_symbol }</blockquote>
+    • <b>К оплате</b>: { $price } { $currency_symbol }
+    </blockquote>
 
     { $terms_notice }
 frg-purchase-terms-notice = <i>Оплачивая, вы принимаете условия — /terms</i>
@@ -323,6 +373,7 @@ btn-purchase =
     .menu = Главное меню
     .menu-icon = ↩️
     .link-renew = Продлить: { $subscription }
+    .link-renew-icon = 🔄
     .link-new = Купить новую
     .link-new-icon = 💸
 
@@ -344,6 +395,7 @@ btn-payment-result =
     .subscription = Моя подписка
     .subscription-icon = 💳
     .retry = Попробовать снова
+    .retry-icon = 🔄
     .menu = Главное меню
     .menu-icon = ↩️
 
@@ -373,22 +425,22 @@ gateway-name =
     .PAYPEAR = PayPear
 
 ntf-referrals =
-    .no-subscription = У вас нет активной подписки, к которой можно добавить дни.
-    .days-redeemed = Бонусные дни добавлены к подписке: { $days }.
-    .redeem-failed = Бонусные дни нельзя добавить к этой подписке.
-    .code-reset = Реферальная ссылка обновлена. Старая больше не работает.
-    .reset-disabled = Смена реферальной ссылки отключена.
+    .no-subscription = ❌ У вас нет подписки, к которой можно добавить бонусные дни.
+    .days-redeemed = ✅ Бонусные дни успешно добавлены к вашей подписке.
+    .redeem-failed = ❌ Бонусные дни нельзя добавить к этой подписке.
+    .code-reset = ✅ Ваша реферальная ссылка обновлена. Старая больше не будет работать.
+    .reset-cooldown = ⏳ Обновить реферальную ссылку можно будет через { $wait }.
 
 ntf-promocode =
-    .not-found = Промокод не найден.
-    .expired = Срок действия промокода истёк.
-    .already-activated = Вы уже активировали этот промокод.
-    .discount-not-better = У вас уже есть скидка не меньше этой — промокод не применён.
-    .not-available = Этот промокод вам недоступен.
-    .no-target-subscription = У вас нет активной подписки, к которой можно применить этот промокод.
-    .activated = Промокод активирован!
-    .activation-failed = Не удалось активировать промокод. Попробуйте позже.
-    .too-many-attempts = Слишком много попыток. Попробуйте через минуту.
+    .not-found = ❌ Промокод не найден.
+    .expired = ❌ Срок действия промокода истёк.
+    .already-activated = ❌ Вы уже активировали этот промокод.
+    .discount-not-better = ⚠️ Промокод не применён: ваша текущая скидка такая же или больше.
+    .not-available = ❌ Этот промокод вам недоступен.
+    .no-target-subscription = ❌ У вас нет активной подписки, к которой можно применить этот промокод.
+    .activated = ✅ Промокод активирован!
+    .activation-failed = ❌ Не удалось активировать промокод. Попробуйте позже.
+    .too-many-attempts = ⏳ Слишком много попыток. Попробуйте через минуту.
 
 msg-promocode-input =
     <b>🎟 Промокод</b>
@@ -449,16 +501,17 @@ platform-icon =
 btn-broadcast =
     .unsubscribe = Отписаться от рассылки
     .resubscribe = Снова получать акции
+    .resubscribe-icon = 🔔
 
 ntf-broadcast =
     .unsubscribed = Вы больше не будете получать акции. Сервисные сообщения продолжат приходить.
-    .resubscribed = Вы снова будете получать акции.
-    .promo-gone = Это предложение больше недоступно.
+    .resubscribed = ✅ Вы снова будете получать акции.
+    .promo-gone = ❌ Это предложение больше недоступно.
     .start-required = Нажмите /start, чтобы продолжить.
 
 ntf-requirements =
     .channel = Чтобы продолжить, подпишитесь на наш канал.
-    .channel-not-found = Пока не видим подписку. Подпишитесь и попробуйте ещё раз.
+    .channel-not-found = ⚠️ Пока не видим подписку. Подпишитесь и попробуйте ещё раз.
     .trial-paused = Вы отписались от канала, поэтому пробный период приостановлен. Подпишитесь снова, чтобы продолжить.
     .trial-resumed = Вы снова подписаны на канал — пробный период возобновлён.
 
@@ -470,10 +523,11 @@ btn-requirements =
 
 ntf-cabinet-login =
     .link = Нажмите кнопку, чтобы войти в веб-кабинет. Ссылка одноразовая и действует 5 минут.
-    .expired = Ссылка для входа устарела. Запросите новую в кабинете.
+    .expired = ⚠️ Ссылка для входа устарела. Запросите новую в кабинете.
 
 btn-cabinet-login =
     .open = Войти в кабинет
+    .open-icon = 🌐
 
 ntf-cabinet-link =
     .link = Нажмите кнопку, чтобы привязать этот Telegram к аккаунту в веб-кабинете. Ссылка одноразовая и действует 5 минут.
@@ -481,3 +535,13 @@ ntf-cabinet-link =
 
 btn-cabinet-link =
     .open = Привязать к кабинету
+    .open-icon = 🔗
+
+time-unit =
+    .day = { $value ->
+        [one] { $value } день
+        [few] { $value } дня
+       *[other] { $value } дней
+    }
+    .hour = { $value } ч
+    .minute = { $value } мин

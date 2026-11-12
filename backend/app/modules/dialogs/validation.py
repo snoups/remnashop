@@ -1,24 +1,64 @@
 from collections import Counter
-from typing import Final
+from typing import Final, Optional
+
+from fluent.syntax import FluentParser
+from fluent.syntax.ast import (
+    Message,
+    Pattern,
+    Placeable,
+    SelectExpression,
+    StringLiteral,
+    TextElement,
+)
 
 from app.core.enums import ButtonLinkType, DialogWindowKind, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.utils.telegram_text import (
-    TELEGRAM_CAPTION_LIMIT,
     TELEGRAM_TEXT_LIMIT,
     html_text_length,
     validate_telegram_html,
 )
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import DialogButtonInputDto
+from app.modules.translations import fluent_value_source
 
 # Telegram's limits; going over any of them fails the whole message.
 MAX_BUTTONS_PER_ROW: Final[int] = 8
 MAX_BUTTONS: Final[int] = 100
 MAX_TEXT_LENGTH: Final[int] = TELEGRAM_TEXT_LIMIT
-# A window with a banner goes out as a photo, and this is the caption limit.
-MAX_CAPTION_LENGTH: Final[int] = TELEGRAM_CAPTION_LIMIT
+
+
+def _longest_text(pattern: Pattern) -> str:
+    parts: list[str] = []
+    for element in pattern.elements:
+        if isinstance(element, TextElement):
+            parts.append(element.value)
+            continue
+        assert isinstance(element, Placeable)
+        expression = element.expression
+        if isinstance(expression, SelectExpression):
+            parts.append(
+                max(
+                    (_longest_text(variant.value) for variant in expression.variants),
+                    key=html_text_length,
+                )
+            )
+        elif isinstance(expression, StringLiteral):
+            parts.append(expression.parse()["value"])
+        elif isinstance(expression, Placeable) and isinstance(expression.expression, StringLiteral):
+            parts.append(expression.expression.parse()["value"])
+        # a variable expands only at render time, so it isn't counted
+    return "".join(parts)
+
+
+def window_text_length(value: str) -> int:
+    """The visible length of the longest message the template can produce:
+    each select at its longest variant, variables and tags not counted."""
+    entry = FluentParser().parse(f"k = {fluent_value_source(value)}\n").body[0]
+    if not isinstance(entry, Message) or entry.value is None:
+        return html_text_length(value)
+    return html_text_length(_longest_text(entry.value))
 
 
 def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> None:
@@ -28,15 +68,13 @@ def validate_window_text(value: str, *, has_banner: bool, locale: Locale) -> Non
             code=ErrorCode.DIALOG_TEXT_EMPTY,
         )
     validate_telegram_html(value, code=ErrorCode.DIALOG_TEXT_HTML_INVALID)
-    # Telegram counts UTF-16 code units of the visible text, where premium
-    # emoji markup is just its glyph. Placeables count as written: what a
-    # variable expands to is only known at render time.
-    length = html_text_length(value)
-    limit = MAX_CAPTION_LENGTH if has_banner else MAX_TEXT_LENGTH
-    if length > limit:
+    # Telegram counts UTF-16 code units of the visible text, where premium emoji
+    # markup is just its glyph. Past the caption limit the bot sends the window
+    # without its banner, so only the message limit is a hard one.
+    length = window_text_length(value)
+    if length > MAX_TEXT_LENGTH:
         raise ValidationError(
-            f"Window text ({locale}) is {length} characters long, the limit is {limit}"
-            + (" with a banner" if has_banner else ""),
+            f"Window text ({locale}) is {length} characters long, the limit is {MAX_TEXT_LENGTH}",
             code=ErrorCode.DIALOG_TEXT_TOO_LONG,
         )
 
@@ -66,7 +104,7 @@ def validate_buttons(
     window_kind: DialogWindowKind,
     navigable: set[str],
     seed_actions: set[str],
-    system_text_keys: set[str],
+    system_conditions: dict[str, Optional[str]],
 ) -> None:
     shown = [button for button in buttons if not button.is_hidden]
     if len(shown) > MAX_BUTTONS:
@@ -101,11 +139,17 @@ def validate_buttons(
                 f"'{button.text_key}' is not an editable dialog text key",
                 code=ErrorCode.DIALOG_TEXT_KEY_NOT_EDITABLE,
             )
-        if button.is_hidden and button.text_key in system_text_keys:
-            raise ValidationError(
-                f"System button '{button.text_key}' cannot be hidden",
-                code=ErrorCode.DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE,
-            )
+        if button.text_key in system_conditions:
+            if button.is_hidden:
+                raise ValidationError(
+                    f"System button '{button.text_key}' cannot be hidden",
+                    code=ErrorCode.DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE,
+                )
+            if button.visibility_condition != system_conditions[button.text_key]:
+                raise ValidationError(
+                    f"System button '{button.text_key}' keeps its visibility condition",
+                    code=ErrorCode.DIALOG_SYSTEM_BUTTON_CONDITION_LOCKED,
+                )
         _validate_button(button, window_kind, navigable, seed_actions)
 
 

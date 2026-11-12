@@ -18,7 +18,7 @@ export function InspectorHeader({
     <div className="flex items-center gap-3">
       {onBack && (
         <IconButton size="9" tone="glass" onClick={onBack}>
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4 text-foreground" />
         </IconButton>
       )}
       <div className="min-w-0 flex-1">

@@ -76,6 +76,9 @@ export function Header({ onLogout }: HeaderProps) {
   const role = userState.kind === "ready" ? userState.data.role : null;
   const [openPopover, setOpenPopover] = useState<"user" | "notifications" | null>(null);
   const [isRecapOpen, setIsRecapOpen] = useState(false);
+  const [isSearchShown, setIsSearchShown] = useState(false);
+  // the open mobile search lies over the bar: what it covers goes invisible, keeping its place
+  const coveredClass = mobile && isSearchShown ? "invisible" : "";
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const menuPopoverRef = useRef<HTMLDivElement>(null);
@@ -103,7 +106,7 @@ export function Header({ onLogout }: HeaderProps) {
       : "px-4 py-3 md:px-5 md:py-5"}>
       {/* desktop: one 48px glass capsule across the page, title in it, 36px items 6px in; mobile: the bar is the frame */}
       <div className={mobile ? "contents" : "glass-panel flex h-12 items-center justify-between gap-5 rounded-full p-1.5"}>
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className={`flex min-w-0 items-center gap-2.5 ${coveredClass}`}>
         {mobile && <IconButton size="9" tone="glass" onClick={() => { setOpenPopover(null); setMenuOpen(true); }}><Menu className="size-4" /></IconButton>}
         {!mobile && !isOverviewPage && <IconCircle icon={PageIcon} header />}
         {!mobile && isOverviewPage && (
@@ -140,7 +143,7 @@ export function Header({ onLogout }: HeaderProps) {
         <div className={mobile ? "contents" : "flex min-w-0 items-center gap-1"}>
         {!mobile && permissions.includes("ACCESS_SETTINGS_VIEW") && <MaintenanceBadge />}
 
-        <HeaderSearch mobile={mobile} />
+        <HeaderSearch mobile={mobile} onFieldShownChange={setIsSearchShown} />
 
         {!mobile && isOverviewPage && permissions.includes("OVERVIEW_RECAP_VIEW") && (
           <IconButton size="9" onClick={() => setIsRecapOpen(true)}>
@@ -150,7 +153,7 @@ export function Header({ onLogout }: HeaderProps) {
 
         {!mobile && <LanguagePicker capsule />}
 
-        <div ref={notifRef} className="relative shrink-0">
+        <div ref={notifRef} className={`relative shrink-0 ${coveredClass}`}>
           <NotificationsBell
             isOpen={openPopover === "notifications"}
             anchorRef={notifRef}
@@ -163,7 +166,7 @@ export function Header({ onLogout }: HeaderProps) {
 
         {!mobile && <span className="mx-1 h-5 w-px shrink-0 bg-white/[0.08]" />}
 
-        <div ref={menuRef} className="relative shrink-0">
+        <div ref={menuRef} className={`relative shrink-0 ${coveredClass}`}>
           <Pressable
             type="button"
             onClick={() => setOpenPopover((open) => (open === "user" ? null : "user"))}

@@ -301,7 +301,7 @@ export function TranslationsEditorForm() {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-2 pb-4">
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-4 pt-4 pb-4 lg:px-2 lg:pt-0">
           {entriesState.kind === "loading" && <Spinner size="card" />}
           {entriesState.kind === "error" && (
             <ErrorState text={t("common.loadError")} />
@@ -340,7 +340,7 @@ export function TranslationsEditorForm() {
           )}
         </div>
 
-        <aside className="flex shrink-0 flex-col gap-3 border-t border-white/[0.08] pr-4 pb-4 lg:w-[27.7%] lg:border-t-0">
+        <aside className="flex shrink-0 flex-col gap-3 border-t border-white/[0.08] px-4 pt-4 pb-4 lg:w-[27.7%] lg:border-t-0 lg:pl-0 lg:pt-0">
           {localesState.kind === "ready" && (
             <div>
               <LocalesManager

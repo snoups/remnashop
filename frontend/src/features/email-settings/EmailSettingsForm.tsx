@@ -282,11 +282,14 @@ function EmailSettingsBody({ settings, onSaved }: { settings: EmailSettings; onS
           description={t("settings.email.description")}
           aside={
             <>
-              <PillTabs
-                items={PROFILES.map((profile) => ({ key: profile, label: t(`settings.email.tabs.${profile}`) }))}
-                activeKey={tab}
-                onSelect={setTab}
-              />
+              {/* w-max: the capsule hugs its tabs, so the status pill stays on the same line */}
+              <div className="w-max">
+                <PillTabs
+                  items={PROFILES.map((profile) => ({ key: profile, label: t(`settings.email.tabs.${profile}`) }))}
+                  activeKey={tab}
+                  onSelect={setTab}
+                />
+              </div>
               <StatusPill tone={(showsBulk ? bulk : main).isConfigured ? "success" : "warning"}>
                 {t((showsBulk ? bulk : main).isConfigured ? "settings.email.configured" : "settings.email.notConfigured")}
               </StatusPill>

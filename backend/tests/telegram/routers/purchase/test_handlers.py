@@ -9,6 +9,7 @@ from aiogram_dialog import StartMode
 from fluent.syntax import FluentParser, ast
 from remnapy.enums import TrafficLimitStrategy
 
+import app.telegram.routers.purchase.handlers as purchase_handlers
 from app.core.constants import USER_KEY
 from app.core.enums import (
     Currency,
@@ -91,6 +92,12 @@ def _quote(final: str = "199", base: str = "199") -> AsyncMock:
 _quote_checkout = _quote
 
 
+def _access(payments_enabled: bool = True) -> MagicMock:
+    access = MagicMock()
+    access.system = AsyncMock(return_value=MagicMock(payments_enabled=payments_enabled))
+    return access
+
+
 def _i18n() -> MagicMock:
     i18n = MagicMock()
     i18n.get_translator_by_locale.return_value = MagicMock(get=lambda key, **kwargs: key)
@@ -108,14 +115,14 @@ async def test_renew_skips_the_plan_step() -> None:
     manager.switch_to.assert_awaited_once_with(Purchase.DURATION)
 
 
-async def test_renew_of_a_plan_gone_from_the_catalog_answers_an_alert() -> None:
+async def test_renew_of_a_plan_gone_from_the_catalog_says_it_cant_be_renewed() -> None:
     manager = _manager(start_data={"purchase_type": "RENEW", SELECTED_SUBSCRIPTION_KEY: 3})
     catalog_dto = PlanCatalogDto(plans=[_plan(id=11)], anchor_currency=Currency.RUB)
     subscriptions = [MagicMock(id=3, plan_snapshot=MagicMock(plan_id=10))]
 
     assert (
         await start_purchase_steps(manager, catalog_dto, subscriptions)
-        == "ntf-purchase.plan-unavailable"
+        == "ntf-purchase.renew-plan-unavailable"
     )
 
 
@@ -154,7 +161,7 @@ async def test_change_hides_the_current_plan() -> None:
 
 async def test_checkout_error_maps_to_a_notification_key() -> None:
     assert checkout_error_key(PermissionDeniedError("x", code=ErrorCode.PAYMENTS_DISABLED)) == (
-        "ntf-purchase.payments-disabled"
+        "ntf-access.payments-disabled"
     )
     assert checkout_error_key(PaymentGatewayError("x")) == "ntf-purchase.failed"
 
@@ -185,11 +192,42 @@ async def test_start_failure_answers_the_callback_and_closes() -> None:
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
         quote_checkout=_quote_checkout(),
+        get_access_settings=_access(),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
-    manager.event.answer.assert_awaited_once_with("ntf-subscription.gone", show_alert=True)
+    manager.event.answer.assert_awaited_once_with("ntf-subscription.gone")
     manager.done.assert_awaited_once()
+
+
+async def test_start_with_payments_off_joins_the_waitlist_and_closes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    notice = AsyncMock()
+    monkeypatch.setattr(purchase_handlers, "answer_notice", notice)
+    manager = _manager(start_data={"purchase_type": "CHANGE", SELECTED_SUBSCRIPTION_KEY: 3})
+    manager.event = MagicMock(spec=CallbackQuery)
+    manager.event.answer = AsyncMock()
+    list_active_plans = AsyncMock()
+    join = AsyncMock()
+
+    await on_purchase_start.__dishka_orig_func__(
+        manager.start_data,
+        manager,
+        list_active_plans=list_active_plans,
+        list_own_subscriptions=AsyncMock(),
+        list_payment_methods=AsyncMock(),
+        quote_checkout=_quote_checkout(),
+        get_access_settings=_access(payments_enabled=False),
+        join_payment_waitlist=join,
+        i18n=_i18n(),
+    )
+
+    join.assert_awaited_once_with(manager.middleware_data[USER_KEY])
+    notice.assert_awaited_once_with(manager.event, "ntf-access.payments-disabled")
+    manager.done.assert_awaited_once()
+    list_active_plans.assert_not_awaited()
 
 
 async def test_new_purchase_start_does_not_list_subscriptions() -> None:
@@ -205,6 +243,8 @@ async def test_new_purchase_start_does_not_list_subscriptions() -> None:
         list_own_subscriptions=list_own,
         list_payment_methods=AsyncMock(),
         quote_checkout=_quote_checkout(),
+        get_access_settings=_access(),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -292,7 +332,12 @@ async def test_confirm_with_a_payment_link_opens_the_pay_step() -> None:
     )
 
     await on_confirm.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, create_checkout=create_checkout, i18n=_i18n()
+        MagicMock(),
+        MagicMock(),
+        manager,
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
     )
 
     create_checkout.assert_awaited_once_with(
@@ -318,7 +363,12 @@ async def test_confirm_of_a_new_purchase_has_no_target() -> None:
     )
 
     await on_confirm.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, create_checkout=create_checkout, i18n=_i18n()
+        MagicMock(),
+        MagicMock(),
+        manager,
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
     )
 
     assert create_checkout.await_args.args[1].target_subscription_id is None
@@ -334,6 +384,7 @@ async def test_confirm_of_a_free_order_returns_to_the_menu() -> None:
         MagicMock(),
         manager,
         create_checkout=AsyncMock(return_value=CheckoutResultDto(order_id=1)),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -352,12 +403,32 @@ async def test_confirm_refusal_answers_its_key_and_stays() -> None:
         MagicMock(),
         manager,
         create_checkout=AsyncMock(side_effect=error),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-purchase.limit-reached", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-purchase.limit-reached")
     manager.switch_to.assert_not_awaited()
     manager.start.assert_not_awaited()
+
+
+async def test_confirm_with_a_spent_discount_returns_to_the_durations() -> None:
+    manager = _manager(dialog_data=_confirm_data("NEW"))
+    callback = MagicMock()
+    callback.answer = AsyncMock()
+    error = ValidationError("x", code=ErrorCode.PURCHASE_DISCOUNT_USED)
+
+    await on_confirm.__dishka_orig_func__(
+        callback,
+        MagicMock(),
+        manager,
+        create_checkout=AsyncMock(side_effect=error),
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
+    )
+
+    callback.answer.assert_awaited_once_with("ntf-purchase.discount-used")
+    manager.switch_to.assert_awaited_once_with(Purchase.DURATION)
 
 
 async def test_confirm_again_reuses_the_created_order() -> None:
@@ -365,7 +436,12 @@ async def test_confirm_again_reuses_the_created_order() -> None:
     create_checkout = AsyncMock()
 
     await on_confirm.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, create_checkout=create_checkout, i18n=_i18n()
+        MagicMock(),
+        MagicMock(),
+        manager,
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
     )
 
     create_checkout.assert_not_awaited()
@@ -452,11 +528,11 @@ def test_catalog_binds_the_purchase_actions() -> None:
 
 _NOTIFICATION_ATTRIBUTES = (
     "stars-rejected",
-    "payments-disabled",
     "plan-unavailable",
+    "renew-plan-unavailable",
     "limit-reached",
     "method-unavailable",
-    "retry",
+    "discount-used",
     "failed",
     "no-plans",
     "no-methods",
@@ -507,6 +583,8 @@ async def _retry_start(manager: AsyncMock, methods: list[PaymentMethodDto], plan
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(return_value=methods),
         quote_checkout=_quote_checkout(),
+        get_access_settings=_access(),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -538,7 +616,7 @@ async def test_retry_with_unavailable_plan_alerts() -> None:
 
     await _retry_start(manager, [_RUB_METHOD], [_plan(id=11)])
 
-    manager.event.answer.assert_awaited_once_with("ntf-purchase.plan-unavailable", show_alert=True)
+    manager.event.answer.assert_awaited_once_with("ntf-purchase.plan-unavailable")
     manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
 
 

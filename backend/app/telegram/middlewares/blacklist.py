@@ -1,6 +1,6 @@
 from typing import Any, Awaitable, Callable, Optional
 
-from aiogram.types import CallbackQuery, Message, TelegramObject
+from aiogram.types import TelegramObject
 from dishka import AsyncContainer
 from fluentogram import TranslatorHub
 
@@ -9,6 +9,7 @@ from app.core.enums import MiddlewareEventType
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
+from app.telegram.notice import answer_notice
 
 
 class BlacklistMiddleware(EventTypedMiddleware):
@@ -30,10 +31,5 @@ class BlacklistMiddleware(EventTypedMiddleware):
         container: AsyncContainer = data[CONTAINER_KEY]
         i18n: TranslatorHub = await container.get(TranslatorHub)
         runner = get_translator(i18n, user)
-        text = runner.get("ntf-common.access-restricted")
-
-        if isinstance(event, Message):
-            await event.answer(text)
-        elif isinstance(event, CallbackQuery):
-            await event.answer(text, show_alert=True)
+        await answer_notice(event, runner.get("ntf-common.access-restricted"))
         return None

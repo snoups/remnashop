@@ -1,6 +1,6 @@
 from typing import Any, Awaitable, Callable, Optional
 
-from aiogram.types import CallbackQuery, Message, TelegramObject
+from aiogram.types import TelegramObject
 from dishka import AsyncContainer
 from fluentogram import TranslatorHub
 
@@ -11,6 +11,7 @@ from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.users import UserDto
 from app.telegram.i18n import get_translator
 from app.telegram.middlewares.base import EventTypedMiddleware, is_successful_payment
+from app.telegram.notice import answer_notice
 
 
 class AccessMiddleware(EventTypedMiddleware):
@@ -35,8 +36,5 @@ class AccessMiddleware(EventTypedMiddleware):
             return await handler(event, data)
 
         text = get_translator(await container.get(TranslatorHub), user).get("ntf-access.restricted")
-        if isinstance(event, Message):
-            await event.answer(text)
-        elif isinstance(event, CallbackQuery):
-            await event.answer(text, show_alert=True)
+        await answer_notice(event, text)
         return None

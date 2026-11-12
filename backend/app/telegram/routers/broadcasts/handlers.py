@@ -1,5 +1,6 @@
 import re
 from collections.abc import Awaitable, Callable
+from functools import partial
 from typing import Final, Optional
 
 from aiogram import Bot, F, Router
@@ -21,7 +22,9 @@ from app.telegram.broadcast_callbacks import (
     START_PREFIX,
     UNSUBSCRIBE_CALLBACK,
 )
+from app.telegram.dialogs.rendering import label_with_icon
 from app.telegram.i18n import get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.routers.promocode.handlers import continue_with_code
 from app.telegram.states import MainMenu, Promocode
 
@@ -106,10 +109,10 @@ async def on_start_broadcast(
         get_broadcast_promocode,
         validate_promocode,
         list_promocode_targets,
-        message.answer,
+        partial(answer_notice, message),
     )
     if not opened:
-        await message.answer(runner.get("ntf-broadcast.promo-gone"))
+        await answer_notice(message, runner.get("ntf-broadcast.promo-gone"))
 
 
 @router.callback_query(F.data.startswith(PROMO_PREFIX))
@@ -127,7 +130,7 @@ async def on_broadcast_promocode(
     code = await get_broadcast_promocode(user, broadcast_id) if broadcast_id is not None else None
     if code is None:
         runner = get_translator(i18n, user)
-        await callback.answer(runner.get("ntf-broadcast.promo-gone"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-broadcast.promo-gone"))
         return
     # the client opens the private chat and sends /start bc_<id>; the dialog must not touch the post
     await callback.answer(
@@ -156,7 +159,7 @@ async def on_broadcast_unsubscribe(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text=runner.get("btn-broadcast.resubscribe"),
+                        text=label_with_icon(runner, "btn-broadcast.resubscribe"),
                         callback_data=RESUBSCRIBE_CALLBACK,
                     )
                 ]
@@ -176,9 +179,7 @@ async def on_broadcast_resubscribe(
         await _answer_unknown_user(callback, i18n)
         return
     await set_marketing_opt_out(user, SetMarketingOptOutDto(opted_out=False))
-    await callback.answer(
-        get_translator(i18n, user).get("ntf-broadcast.resubscribed"), show_alert=True
-    )
+    await answer_notice(callback, get_translator(i18n, user).get("ntf-broadcast.resubscribed"))
 
 
 @router.callback_query(F.data == MENU_CALLBACK)

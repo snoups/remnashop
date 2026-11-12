@@ -190,7 +190,8 @@ async def link_choice_getter(
         "subscriptions": [
             {
                 "id": s.id,
-                "label": runner.get(
+                "label": label_with_icon(
+                    runner,
                     "btn-purchase.link-renew",
                     subscription=f"{s.plan_snapshot.name} — {format_date(s.expire_at)}",
                 ),

@@ -107,6 +107,7 @@ async def test_update_buttons_accepts_a_real_action_from_metadata_alone(
                     text_key="btn-menu.trial",
                     link_type=ButtonLinkType.ACTION,
                     action_key="get_trial",
+                    visibility_condition="trial_available",
                 )
             ],
         ),

@@ -53,7 +53,7 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, Dia
                 else set()
             )
 
-            system_text_keys = await self._dialog_repository.system_text_keys(data.key)
+            system_conditions = await self._dialog_repository.system_conditions(data.key)
 
             validate_buttons(
                 data.buttons,
@@ -61,7 +61,7 @@ class UpdateDialogWindowButtonsUseCase(UseCase[UpdateDialogWindowButtonsDto, Dia
                 window_kind=window.kind,
                 navigable=navigable,
                 seed_actions=seed_actions,
-                system_text_keys=system_text_keys,
+                system_conditions=system_conditions,
             )
 
             locales = await self._translation_repository.list_active_locales()

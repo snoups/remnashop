@@ -28,6 +28,7 @@ from tests.telegram.routers.purchase.test_getters import _get
 from tests.telegram.routers.purchase.test_getters import _i18n as _getter_i18n
 from tests.telegram.routers.purchase.test_getters import _manager as _getter_manager
 from tests.telegram.routers.purchase.test_handlers import (
+    _access,
     _confirm_data,
     _i18n,
     _manager,
@@ -93,6 +94,8 @@ async def test_link_to_an_unavailable_plan_answers_and_opens_the_menu() -> None:
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_payment_methods=AsyncMock(),
         quote_checkout=AsyncMock(),
+        get_access_settings=_access(),
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
@@ -148,7 +151,12 @@ async def test_confirm_sends_the_link_code_to_checkout() -> None:
     )
 
     await on_confirm.__dishka_orig_func__(
-        MagicMock(), MagicMock(), manager, create_checkout=create_checkout, i18n=_i18n()
+        MagicMock(),
+        MagicMock(),
+        manager,
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
     )
 
     assert create_checkout.await_args.args[1].plan_code == "Ab12Cd34"
@@ -178,6 +186,6 @@ async def test_link_choice_lists_only_subscriptions_on_that_plan() -> None:
     )
 
     assert [item["id"] for item in data["subscriptions"]] == [3]
-    assert data["subscriptions"][0]["label"] == _get(
+    assert data["subscriptions"][0]["label"] == "btn-purchase.link-renew-icon " + _get(
         "btn-purchase.link-renew", subscription="Plan 10 — 01.11.2026"
     )

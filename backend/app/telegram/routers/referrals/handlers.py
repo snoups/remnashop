@@ -20,7 +20,8 @@ from app.modules.referrals import (
     ResetOwnReferralCodeUseCase,
 )
 from app.modules.users import UserDto
-from app.telegram.i18n import format_datetime, get_translator
+from app.telegram.i18n import format_wait, get_translator
+from app.telegram.notice import answer_notice
 from app.telegram.routers.referrals.getters import referral_url
 from app.telegram.states import Referrals
 
@@ -60,17 +61,18 @@ async def on_reset_referral_code(
     try:
         await reset_own_referral_code(user)
     except CooldownError as error:
-        await callback.answer(
+        await answer_notice(
+            callback,
             runner.get(
-                "ntf-common.cooldown-active", available_at=format_datetime(error.available_at)
+                "ntf-referrals.reset-cooldown", wait=format_wait(runner, error.available_at)
             ),
-            show_alert=True,
         )
         return
     except ValidationError:
-        await callback.answer(runner.get("ntf-referrals.reset-disabled"), show_alert=True)
+        # switched off while the window was open: redrawn without the button
+        await dialog_manager.show()
         return
-    await callback.answer(runner.get("ntf-referrals.code-reset"), show_alert=True)
+    await answer_notice(callback, runner.get("ntf-referrals.code-reset"))
 
 
 async def _redeem(
@@ -87,16 +89,16 @@ async def _redeem(
     days = min(user.bonus_days, MAX_BONUS_DAYS)
     # a button left on an old screen; the usecase would renew by zero days
     if days <= 0:
-        await callback.answer(runner.get("ntf-referrals.redeem-failed"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-referrals.redeem-failed"))
         return
     try:
         await redeem_bonus_days(
             user, RedeemBonusDaysDto(subscription_id=subscription_id, days=days)
         )
     except (NotFoundError, ValidationError):
-        await callback.answer(runner.get("ntf-referrals.redeem-failed"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-referrals.redeem-failed"))
         return
-    await callback.answer(runner.get("ntf-referrals.days-redeemed", days=days))
+    await answer_notice(callback, runner.get("ntf-referrals.days-redeemed"))
     await dialog_manager.switch_to(Referrals.MAIN)
 
 
@@ -114,7 +116,7 @@ async def on_redeem_days(
     targets = await list_bonus_days_targets(user)
     if not targets:
         runner = get_translator(i18n, user)
-        await callback.answer(runner.get("ntf-referrals.no-subscription"), show_alert=True)
+        await answer_notice(callback, runner.get("ntf-referrals.no-subscription"))
     elif len(targets) == 1:
         await _redeem(callback, dialog_manager, redeem_bonus_days, i18n, targets[0].id)
     else:

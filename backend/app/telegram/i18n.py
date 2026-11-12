@@ -1,3 +1,4 @@
+import math
 from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional
@@ -8,6 +9,7 @@ from fluentogram import FluentTranslator, TranslatorHub, TranslatorRunner
 from app.core.config import AppConfig
 from app.core.db.standalone import standalone_session
 from app.core.enums import Locale
+from app.core.utils.time import datetime_now
 from app.modules.translations import TranslationRepository
 from app.modules.users import UserDto
 
@@ -69,3 +71,12 @@ def format_date(value: Optional[datetime]) -> str:
 
 def format_price(price: Decimal) -> str:
     return f"{price:.2f}".removesuffix(".00")
+
+
+def format_wait(runner: TranslatorRunner, until: datetime) -> str:
+    """How long until `until`: days and hours, or hours and minutes under a day."""
+    minutes = max(1, math.ceil((until - datetime_now()).total_seconds() / 60))
+    days, minutes = divmod(minutes, 24 * 60)
+    hours, minutes = divmod(minutes, 60)
+    parts = (("day", days), ("hour", hours)) if days else (("hour", hours), ("minute", minutes))
+    return " ".join(runner.get(f"time-unit.{unit}", value=value) for unit, value in parts if value)

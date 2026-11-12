@@ -7,6 +7,7 @@ from app.modules.dialogs import catalog
 from app.modules.dialogs.repository import DialogRepository
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.rendering import (
+    UNAVAILABLE_BUTTONS_KEY,
     TrustedHtml,
     _resolve_variables,
     banner_within_caption,
@@ -363,3 +364,28 @@ def test_a_variable_inside_a_url_is_encoded() -> None:
     )
     # a variable that is the whole URL stays as it is
     assert _resolve_variables("${subscription.url}", data) == "https://example.com/sub"
+
+
+def test_quote_tags_on_their_own_lines_add_no_empty_lines() -> None:
+    tpl = "<b>P</b>:\n<blockquote>\n• id { $id }\n• d { $d }%\n</blockquote>\n\nnext"
+    out = render_window_text(_runner(tpl), "k", id="7", d="")
+    assert out == "<b>P</b>:\n<blockquote>• id 7</blockquote>\n\nnext"
+
+
+async def test_hides_button_of_an_unavailable_action_despite_its_condition(
+    session, dialog_repository: DialogRepository
+) -> None:
+    cache = await _cache(session, dialog_repository)
+    rows = await render_dialog_buttons(
+        "menu.main",
+        cache,
+        _FakeRunner(),
+        {
+            "trial_available": True,
+            "subscription_url": "https://x",
+            UNAVAILABLE_BUTTONS_KEY: {"get_trial"},
+        },
+    )
+    texts = [b["text"] for row in rows for b in row]
+    assert "[btn-menu.trial]" not in texts
+    assert "[btn-menu.connect]" in texts

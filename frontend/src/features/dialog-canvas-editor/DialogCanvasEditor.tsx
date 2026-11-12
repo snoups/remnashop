@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, MessagesSquare, RotateCcw, Upload } from "lucide-react";
+import { Download, MessagesSquare, RotateCcw, Trash2, Upload } from "lucide-react";
 
 import { fetchBannerPreview } from "@entities/banners/api";
 import {
@@ -53,6 +53,7 @@ import { ConfirmDialog } from "@shared/ui/ConfirmDialog";
 import { Spinner } from "@shared/ui/Spinner";
 import { Tooltip } from "@shared/ui/Tooltip";
 import { Button } from "@shared/ui/Button";
+import { IconButton } from "@shared/ui/IconButton";
 import { Section } from "@shared/ui/glass/Section";
 import { Badge } from "@shared/ui/Badge";
 
@@ -350,9 +351,16 @@ export function DialogCanvasEditor() {
 
   const backToWindow = () => setSelection(null);
 
+  const selectedButton =
+    selection?.kind === "button" ? buttons.find((b) => buttonKey(b) === selection.buttonKey) : undefined;
+
+  // the same check the button inspector renders under
+  const showsButtonDelete =
+    selectedButton !== undefined && catalog !== null && previewLocale !== null && entriesState.kind === "ready";
+
   function renderInspector() {
     if (!selectedWindow) return null;
-    const button = selection?.kind === "button" ? buttons.find((b) => buttonKey(b) === selection.buttonKey) : undefined;
+    const button = selectedButton;
     if (selection?.kind === "text" && previewLocale !== null && entriesState.kind === "ready") {
       return (
         <>
@@ -373,7 +381,8 @@ export function DialogCanvasEditor() {
             // Without a banner the window is a plain message, which cannot be
             // empty; with one it is a photo caption, which is shorter.
             required={!selectedWindow.banner_name}
-            maxLength={selectedWindow.banner_name ? MAX_CAPTION_LENGTH : MAX_TEXT_LENGTH}
+            maxLength={MAX_TEXT_LENGTH}
+            captionLength={selectedWindow.banner_name ? MAX_CAPTION_LENGTH : undefined}
             canUpdate={permissions.includes("DIALOGS_TEXT_UPDATE")}
             canReset={permissions.includes("TRANSLATIONS_RESET")}
             onSaved={handleEntrySaved}
@@ -398,7 +407,6 @@ export function DialogCanvasEditor() {
           canEditButtons={canEditButtons}
           onEntrySaved={handleEntrySaved}
           onChange={handleButtonChange}
-          onDelete={handleButtonDelete}
           onBack={backToWindow}
         />
       );
@@ -544,19 +552,35 @@ export function DialogCanvasEditor() {
           {selectedWindow && (
             <div className={`${GLASS_INNER_CARD_CLASS} flex flex-col gap-4 p-4`}>
               {renderInspector()}
-              {isDirty && canEditButtons && (
+              {(isDirty || showsButtonDelete) && canEditButtons && (
                 <div className="-mx-4 flex flex-col gap-2 border-t border-white/[0.08] px-4">
-                  <SaveFooter
-                    dirty
-                    saving={isSaving}
-                    disabled={brokenUrlButton !== null || limitProblem !== null}
-                    onSave={() => void handleSaveButtons()}
-                    beside={
-                      <Button variant="glass" onClick={handleDiscardButtons}>
-                        {t("dialogs.inspector.buttonsDiscard")}
+                  {isDirty ? (
+                    <SaveFooter
+                      dirty
+                      saving={isSaving}
+                      disabled={brokenUrlButton !== null || limitProblem !== null}
+                      onSave={() => void handleSaveButtons()}
+                      beside={
+                        <>
+                          <Button variant="glass" onClick={handleDiscardButtons}>
+                            {t("dialogs.inspector.buttonsDiscard")}
+                          </Button>
+                          {/* folds to an icon so the row keeps Save and Discard on one line */}
+                          {showsButtonDelete && (
+                            <IconButton size="9" tone="glass" onClick={handleButtonDelete}>
+                              <Trash2 className="size-4 text-error" />
+                            </IconButton>
+                          )}
+                        </>
+                      }
+                    />
+                  ) : (
+                    <div className="mt-4">
+                      <Button variant="glassDanger" icon={Trash2} className="w-fit" onClick={handleButtonDelete}>
+                        {t("dialogs.inspector.buttonDelete")}
                       </Button>
-                    }
-                  />
+                    </div>
+                  )}
                   {brokenUrlButton !== null && <p className="text-xs text-error">{t("dialogs.inspector.buttonUrlInvalidGrid")}</p>}
                   {limitProblem !== null && (
                     <p className="text-xs text-error">

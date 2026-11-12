@@ -24,6 +24,7 @@ from app.telegram.routers.legal.handlers import (
     on_legal_document,
     on_terms_command,
 )
+from app.telegram.routers.legal.keyboard import legal_keyboard
 from app.telegram.routers.purchase.getters import confirm_getter
 from tests.fakes.aiogram_bot import FakeAiogramSession
 from tests.seeded_translations import seeded_fluent_source
@@ -101,15 +102,12 @@ async def test_terms_lists_visible_documents() -> None:
     assert buttons[0].callback_data == LegalDocumentCallback(kind=LegalDocumentKind.OFFER).pack()
 
 
-async def test_terms_without_documents_says_so() -> None:
+async def test_terms_without_documents_sends_nothing() -> None:
     session = FakeAiogramSession({"SendMessage": True})
-    hub = _hub()
 
-    await on_terms_command(_message(_bot(session)), _USER, _visible([]), hub)
+    await on_terms_command(_message(_bot(session)), _USER, _visible([]), _hub())
 
-    [sent] = session.called("SendMessage")
-    assert sent.text == hub.get_translator_by_locale("en").get("msg-legal-empty")
-    assert sent.reply_markup is None
+    assert session.called("SendMessage") == []
 
 
 async def test_document_callback_sends_rich_message() -> None:
@@ -131,21 +129,55 @@ async def test_document_callback_sends_rich_message() -> None:
     assert sent.rich_message.markdown == "# Public offer\n\n**1.** Terms"
 
 
-async def test_document_gone_by_the_tap_says_so() -> None:
-    session = FakeAiogramSession({"AnswerCallbackQuery": True})
-    hub = _hub()
+def _list_callback(bot: Bot, kind: LegalDocumentKind) -> CallbackQuery:
+    keyboard = legal_keyboard(_hub().get_translator_by_locale("en"), [_revision(kind)])
+    message = Message(
+        message_id=5,
+        date=datetime.now(timezone.utc),
+        chat=Chat(id=9, type="private"),
+        reply_markup=keyboard,
+    ).as_(bot)
+    return CallbackQuery(
+        id="c1",
+        from_user=User(id=9, is_bot=False, first_name="Ann"),
+        chat_instance="i",
+        data=LegalDocumentCallback(kind=kind).pack(),
+        message=message,
+    ).as_(bot)
+
+
+async def test_document_gone_by_the_tap_redraws_the_list_silently() -> None:
+    session = FakeAiogramSession({"AnswerCallbackQuery": True, "EditMessageReplyMarkup": True})
 
     await on_legal_document(
-        _callback(_bot(session), LegalDocumentKind.OFFER),
+        _list_callback(_bot(session), LegalDocumentKind.OFFER),
         LegalDocumentCallback(kind=LegalDocumentKind.OFFER),
         _USER,
         _visible([_revision(LegalDocumentKind.PRIVACY_POLICY)]),
-        hub,
+        _hub(),
     )
 
     assert session.called("SendRichMessage") == []
     [answer] = session.called("AnswerCallbackQuery")
-    assert answer.text == hub.get_translator_by_locale("en").get("msg-legal-empty")
+    assert answer.text is None
+    [edit] = session.called("EditMessageReplyMarkup")
+    assert [row[0].callback_data for row in edit.reply_markup.inline_keyboard] == [
+        LegalDocumentCallback(kind=LegalDocumentKind.PRIVACY_POLICY).pack()
+    ]
+
+
+async def test_last_document_gone_by_the_tap_removes_the_list() -> None:
+    session = FakeAiogramSession({"AnswerCallbackQuery": True, "DeleteMessage": True})
+
+    await on_legal_document(
+        _list_callback(_bot(session), LegalDocumentKind.OFFER),
+        LegalDocumentCallback(kind=LegalDocumentKind.OFFER),
+        _USER,
+        _visible([]),
+        _hub(),
+    )
+
+    assert len(session.called("DeleteMessage")) == 1
 
 
 @pytest.mark.parametrize("locale", [Locale.EN, Locale.RU])
@@ -180,7 +212,6 @@ def test_legal_texts_exist_in_each_locale(locale: Locale) -> None:
     runner = _hub(locale).get_translator_by_locale(locale.value)
     for key in (
         "msg-legal-list",
-        "msg-legal-empty",
         "frg-purchase-terms-notice",
         "btn-menu.legal",
         "command.terms",

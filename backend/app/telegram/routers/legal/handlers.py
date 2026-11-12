@@ -1,14 +1,16 @@
+from contextlib import suppress
 from typing import Union
 
 from aiogram import Bot, Dispatcher, Router
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InaccessibleMessage, InputRichMessage, Message
 from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
-from fluentogram import TranslatorHub
+from fluentogram import TranslatorHub, TranslatorRunner
 from loguru import logger
 from redis.asyncio import Redis
 
@@ -17,6 +19,7 @@ from app.core.enums import PurchaseChannel
 from app.modules.legal import (
     AcceptLegalDocumentsDto,
     AcceptLegalDocumentsUseCase,
+    LegalRevisionDto,
     ListVisibleLegalDocumentsUseCase,
 )
 from app.modules.settings import GetBotRequirementsUseCase, ReportBotStatusUseCase
@@ -40,19 +43,17 @@ async def send_legal_list(
     user: UserDto,
     list_visible_legal_documents: ListVisibleLegalDocumentsUseCase,
     i18n: TranslatorHub,
-) -> None:
+) -> bool:
     runner = get_translator(i18n, user)
     documents = await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     if not documents:
-        await message.answer(
-            render_window_text(runner, "msg-legal-empty"), parse_mode=ParseMode.HTML
-        )
-        return
+        return False
     await message.answer(
         render_window_text(runner, "msg-legal-list"),
         parse_mode=ParseMode.HTML,
         reply_markup=legal_keyboard(runner, documents),
     )
+    return True
 
 
 @router.message(Command("terms"))
@@ -77,7 +78,9 @@ async def on_legal_documents(
     if callback.message is None:
         return
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
-    await send_legal_list(callback.message, user, list_visible_legal_documents, i18n)
+    if not await send_legal_list(callback.message, user, list_visible_legal_documents, i18n):
+        # all of them unpublished since the menu was drawn: redrawn without the button
+        await dialog_manager.show()
 
 
 @router.callback_query(LegalDocumentCallback.filter())
@@ -91,7 +94,8 @@ async def on_legal_document(
     documents = await list_visible_legal_documents.execute(PurchaseChannel.BOT, user.language)
     document = next((d for d in documents if d.kind == callback_data.kind), None)
     if document is None:
-        await callback.answer(get_translator(i18n, user).get("msg-legal-empty"), show_alert=True)
+        await callback.answer()
+        await _refresh_list(callback, documents, get_translator(i18n, user))
         return
     bot: Bot = callback.bot  # type: ignore[assignment]
     await bot.send_rich_message(
@@ -99,6 +103,26 @@ async def on_legal_document(
         rich_message=InputRichMessage(markdown=f"# {document.title}\n\n{document.body}"),
     )
     await callback.answer()
+
+
+async def _refresh_list(
+    callback: CallbackQuery, documents: list[LegalRevisionDto], runner: TranslatorRunner
+) -> None:
+    message = callback.message
+    if not isinstance(message, Message) or message.reply_markup is None:
+        return
+    # the acceptance prompt has its own flow; only the plain list is redrawn
+    if any(
+        (button.callback_data or "").startswith(f"{LegalAcceptCallback.__prefix__}:")
+        for row in message.reply_markup.inline_keyboard
+        for button in row
+    ):
+        return
+    with suppress(TelegramAPIError):
+        if documents:
+            await message.edit_reply_markup(reply_markup=legal_keyboard(runner, documents))
+        else:
+            await message.delete()
 
 
 @router.callback_query(LegalAcceptCallback.filter())

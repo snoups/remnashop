@@ -12,7 +12,9 @@ from app.core.exceptions import NotFoundError, ValidationError
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.subscriptions.handlers import (
     DEVICES_FROM_MENU_KEY,
+    SINGLE_RESET_KEY,
     on_device_delete_confirm,
+    on_device_delete_request,
     on_devices_back,
     on_reissue_subscription_confirm,
     on_subscription_card_back,
@@ -165,7 +167,7 @@ async def test_device_delete_on_a_gone_subscription_reopens_the_subscriptions() 
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-subscription.gone", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-subscription.gone")
     manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
 
 
@@ -184,7 +186,7 @@ async def test_device_delete_without_a_selected_subscription_reopens_the_subscri
     )
 
     delete_device.assert_not_awaited()
-    callback.answer.assert_awaited_once_with("ntf-subscription.gone", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-subscription.gone")
     manager.start.assert_awaited_once_with(Subscriptions.LIST, mode=StartMode.RESET_STACK)
 
 
@@ -206,11 +208,11 @@ async def test_device_delete_on_a_deleted_or_foreign_subscription_reopens_the_su
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-subscription.gone", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-subscription.gone")
     manager.start.assert_awaited_once_with(MainMenu.MAIN, mode=StartMode.RESET_STACK)
 
 
-async def test_device_delete_turned_off_by_the_admin_stays_in_the_window() -> None:
+async def test_device_delete_turned_off_by_the_admin_redraws_the_devices() -> None:
     manager = _manager({"selected_hwid": "hw", SELECTED_SUBSCRIPTION_KEY: 7})
     callback = AsyncMock()
     error = ValidationError("off", code=ErrorCode.DEVICE_RESET_DISABLED)
@@ -224,12 +226,12 @@ async def test_device_delete_turned_off_by_the_admin_stays_in_the_window() -> No
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-devices.reset-disabled", show_alert=True)
+    callback.answer.assert_not_awaited()
     manager.start.assert_not_awaited()
-    manager.switch_to.assert_not_awaited()
+    manager.switch_to.assert_awaited_once_with(state=Subscriptions.DEVICES)
 
 
-async def test_reissue_turned_off_by_the_admin_stays_in_the_window() -> None:
+async def test_reissue_turned_off_by_the_admin_redraws_the_devices() -> None:
     manager = _manager({SELECTED_SUBSCRIPTION_KEY: 7})
     callback = AsyncMock()
     error = ValidationError("off", code=ErrorCode.LINK_RESET_DISABLED)
@@ -243,8 +245,9 @@ async def test_reissue_turned_off_by_the_admin_stays_in_the_window() -> None:
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-devices.reset-disabled", show_alert=True)
+    callback.answer.assert_not_awaited()
     manager.start.assert_not_awaited()
+    manager.switch_to.assert_awaited_once_with(state=Subscriptions.DEVICES)
 
 
 async def test_device_delete_other_refusal_answers_generically_and_stays() -> None:
@@ -261,7 +264,7 @@ async def test_device_delete_other_refusal_answers_generically_and_stays() -> No
         i18n=_i18n(),
     )
 
-    callback.answer.assert_awaited_once_with("ntf-devices.failed", show_alert=True)
+    callback.answer.assert_awaited_once_with("ntf-devices.failed")
     manager.start.assert_not_awaited()
 
 
@@ -269,5 +272,16 @@ def test_gone_notification_exists_in_each_locale() -> None:
     for menu in _LOCALES_DIR.glob("*/menu.ftl"):
         text = menu.read_text()
         assert "ntf-subscription =\n    .gone =" in text, menu
-        assert "    .reset-disabled =" in text, menu
         assert "    .failed =" in text, menu
+
+
+@pytest.mark.parametrize(("enabled", "opened"), [(True, True), (False, False)])
+async def test_device_tap_opens_the_confirm_only_while_single_resets_are_on(
+    enabled: bool, opened: bool
+) -> None:
+    manager = _manager({"hwid_map": [{"hwid": "hw"}], SINGLE_RESET_KEY: enabled})
+    manager.item_id = "0"
+
+    await on_device_delete_request(MagicMock(), MagicMock(), manager)
+
+    assert (manager.switch_to.await_count == 1) is opened

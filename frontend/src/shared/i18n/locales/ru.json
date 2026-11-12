@@ -33,7 +33,8 @@
     "loadError": "Не удалось загрузить",
     "notEnoughData": "Недостаточно данных",
     "time": "Время",
-    "timePlaceholder": "чч:мм"
+    "timePlaceholder": "чч:мм",
+    "urlPlaceholder": "https://"
   },
   "errors": {
     "notFoundTitle": "Страница не найдена",
@@ -1403,7 +1404,8 @@
       "unbindTitle": "Отвязать Telegram?",
       "unbindConfirm": "{{name}} потеряет вход через Telegram, а бот при следующем сообщении с этого Telegram создаст нового пользователя.",
       "unbound": "Telegram отвязан.",
-      "unbindError": "Не удалось отвязать Telegram."
+      "unbindError": "Не удалось отвязать Telegram.",
+      "idPlaceholder": "Например, 123456789"
     },
     "registration": {
       "title": "Регистрация",
@@ -1505,7 +1507,7 @@
       "secretTokenHint": "Telegram будет отправлять токен в заголовке каждого запроса вебхука. API сверяет значение, прежде чем доверять запросу, — так вебхук доступен только Telegram.",
       "generateSecretToken": "Сгенерировать",
       "secretTokenCopied": "Скопировано",
-      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "placeholder": "Оставьте пустым, чтобы не менять",
       "errorInvalidToken": "Неверный формат токена бота.",
       "dropPendingUpdatesLabel": "Пропускать необработанные запросы при установке вебхука",
       "dropPendingUpdatesHint": "Необработанные вебхуки обновления от Telegram будут пропущены, после запуска бота.",
@@ -1518,8 +1520,8 @@
       "logsLoadError": "Не удалось загрузить логи.",
       "proxyLabel": "Прокси для Telegram",
       "proxyHint": "Все обращения к Telegram API пойдут через заданный прокси. Поддерживаются socks5, socks5h и http в формате scheme://[user:password@]host:port. Бот подхватит прокси только после перезапуска.",
-      "proxyPlaceholder": "socks5://user:password@host:1080",
-      "proxyConfiguredPlaceholder": "Прокси задан — оставьте пустым, чтобы сохранить текущий",
+      "proxyPlaceholder": "Например, socks5://user:password@host:1080",
+      "proxyConfiguredPlaceholder": "Задано — оставьте пустым, чтобы не менять",
       "removeProxy": "Удалить",
       "proxyRemoved": "Прокси удалён.",
       "copyLogs": "Скопировать",
@@ -1593,7 +1595,7 @@
         "originTitle": "Origin",
         "originBody": "Точный URL, с которого загружается панель управления, включая протокол — например, https://example.com."
       },
-      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "placeholder": "Оставьте пустым, чтобы не менять",
       "telegramGuide": {
         "title": "Telegram OAuth2",
         "intro": "Для работы функции «Вход через Telegram» необходим Telegram-бот, который нужно дополнительно настроить.",
@@ -1668,16 +1670,16 @@
       "referralResetLabel": "Смена реферальной ссылки",
       "hoursSuffix": "ч",
       "supportTelegramLabel": "Поддержка в Telegram",
-      "supportTelegramPlaceholder": "@support или t.me/support",
+      "supportTelegramPlaceholder": "Например, @support или t.me/support",
       "supportUrlLabel": "Поддержка в браузере",
-      "supportUrlPlaceholder": "https://example.com/support",
+      "supportUrlPlaceholder": "Например, https://example.com/support",
       "supportTelegramInvalid": "Укажите @username или ссылку t.me.",
       "supportUrlInvalid": "Ссылка должна начинаться с https://."
     },
     "gateways": {
       "configured": "настроен",
       "notConfigured": "не настроен",
-      "placeholder": "Оставьте пустым, чтобы сохранить текущее значение",
+      "placeholder": "Оставьте пустым, чтобы не менять",
       "webhookLabel": "URL вебхука",
       "toggleError": "Не удалось изменить статус шлюза.",
       "testPayment": "Тестовый платёж",
@@ -1771,7 +1773,7 @@
       "notConfigured": "Не настроены",
       "publicKey": "Публичный ключ",
       "contact": "Контактный email",
-      "contactPlaceholder": "admin@example.com",
+      "contactPlaceholder": "Например, admin@example.com",
       "test": "Тестовое уведомление",
       "regenerate": "Перегенерировать ключи",
       "confirmAction": "Перегенерировать",
@@ -1804,7 +1806,8 @@
       "trialChannelGuardHint": "Пробный период приостанавливается, пока клиент не подписан на канал",
       "channelUrlInvalid": "Нужна ссылка на t.me, telegram.me или telegram.dog.",
       "channelIdInvalid": "Только цифры, впереди можно минус.",
-      "channelHint": "Бот работает с клиентом, только пока тот подписан на канал"
+      "channelHint": "Бот работает с клиентом, только пока тот подписан на канал",
+      "channelUrlPlaceholder": "Например, https://t.me/channel"
     },
     "email": {
       "title": "Почтовый сервер",
@@ -1829,7 +1832,7 @@
       },
       "usernameLabel": "Имя пользователя",
       "passwordLabel": "Пароль",
-      "passwordSet": "Задан — оставьте пустым, чтобы не менять",
+      "passwordSet": "Задано — оставьте пустым, чтобы не менять",
       "passwordUnset": "Не задан",
       "fromAddressLabel": "Адрес отправителя",
       "fromNameLabel": "Имя отправителя",
@@ -2021,7 +2024,8 @@
           ]
         }
       },
-      "domainsList": "Список"
+      "domainsList": "Список",
+      "allowedDomainsPlaceholder": "Домен, Enter — добавить"
     },
     "legal": {
       "title": "Юридические документы",
@@ -2067,7 +2071,7 @@
     "createTitle": "Создать API-токен",
     "createNotice": "Токен показывается только один раз, сразу после создания — сохраните его в надёжном месте.",
     "nameLabel": "Название",
-    "namePlaceholder": "например, ci-deploy",
+    "namePlaceholder": "Например, ci-deploy",
     "permissionsLabel": "Права",
     "presets": "Пресеты",
     "fullAccess": "Полный доступ",
@@ -2146,7 +2150,7 @@
     "accountSecurity": {
       "title": "Список разрешённых IP",
       "description": "Ограничьте доступ к своему аккаунту конкретными IP-адресами или CIDR-диапазонами",
-      "placeholder": "например, 203.0.113.5 или 203.0.113.0/24, по одному на строку",
+      "placeholder": "Например, 203.0.113.5 или 203.0.113.0/24, по одному на строку",
       "saveError": "Не удалось сохранить список разрешённых IP.",
       "currentIp": "Ваш текущий IP: {{ip}}",
       "invalidEntries": "Не IP-адрес и не CIDR-диапазон: {{entries}}",
@@ -2557,7 +2561,7 @@
       "roundingModeLabel": "Округление",
       "charmEndingLabel": "Окончание цены",
       "charmEndingHint": "Рассчитанная цена округляется вверх до ближайшего значения с этим окончанием. Например, при окончании 99 цена 249 станет 299. Не действует на закреплённые цены. Оставьте пустым, чтобы отключить.",
-      "charmEndingPlaceholder": "например, 99",
+      "charmEndingPlaceholder": "Например, 99",
       "saved": "Курс обновлён.",
       "saveError": "Не удалось обновить курс.",
       "previewError": "Не удалось получить предпросмотр изменения курса.",
@@ -2681,7 +2685,9 @@
       "confirmMessage": "Будут изменены цены ({{count}}):",
       "apply": "Применить",
       "applied": "Базовые цены обновлены.",
-      "applyError": "Не удалось изменить базовые цены."
+      "applyError": "Не удалось изменить базовые цены.",
+      "bulkPercentPlaceholder": "10",
+      "markupPlaceholder": "0"
     },
     "diff": {
       "old": "Было",
@@ -2704,15 +2710,15 @@
       "searchPlaceholder": "Поиск по записям",
       "filterAll": "Все",
       "noResults": "Ничего не найдено",
-      "valuePlaceholder": "243323533 или name@example.com",
+      "valuePlaceholder": "Например, 243323533 или name@example.com",
       "valueInvalid": "Введите Telegram ID (число) или email."
     },
     "sources": {
       "errorBadge": "Ошибка",
       "title": "Источники",
       "description": "Внешние списки с автоматической синхронизацией",
-      "urlPlaceholder": "https://example.com/list.txt",
-      "namePlaceholder": "например, Remnashop",
+      "urlPlaceholder": "Например, https://example.com/list.txt",
+      "namePlaceholder": "Например, Remnashop",
       "removeConfirmTitle": "Удалить источник?",
       "removeConfirm": "Удалить источник «{{name}}»?\nЕго записи сразу исчезнут из чёрного списка. Уже заблокированные пользователи останутся заблокированными.",
       "entriesCount": "записей: {{count}}",
@@ -2848,9 +2854,9 @@
       "button": "Новая ссылка",
       "title": "Новая рекламная ссылка",
       "nameLabel": "Название",
-      "namePlaceholder": "например, пост в Telegram",
+      "namePlaceholder": "Например, пост в Telegram",
       "codeLabel": "Код",
-      "codePlaceholder": "например, spring_launch",
+      "codePlaceholder": "Например, spring_launch",
       "generate": "Сгенерировать",
       "costLabel": "Стоимость размещения",
       "currencyLabel": "Валюта",
@@ -2996,7 +3002,7 @@
     "emojiPacks": {
       "title": "Наборы эмодзи",
       "description": "Премиум-эмодзи из Telegram",
-      "linkPlaceholder": "t.me/addemoji/...",
+      "linkPlaceholder": "t.me/addemoji/…",
       "linkInvalid": "Вставьте ссылку вида t.me/addemoji/название или само название набора.",
       "adding": "Добавление…",
       "imported": "Набор «{{title}}» добавлен.",
@@ -3007,7 +3013,7 @@
     },
     "windowList": {
       "addWindow": "Добавить окно",
-      "addWindowTitlePlaceholder": "например, Акция недели",
+      "addWindowTitlePlaceholder": "Например, Инструкция",
       "addWindowTitle": "Новое окно",
       "addWindowNameLabel": "Название окна",
       "addWindowNameHint": "Видно только в редакторе, пользователи его не увидят",
@@ -3041,7 +3047,8 @@
           "card": "Подписка"
         },
         "referrals": {
-          "main": "Реферальная программа"
+          "main": "Реферальная программа",
+          "about": "Как это работает"
         }
       },
       "deleteWindow": "Удалить окно"
@@ -3092,6 +3099,7 @@
       "buttonsRowLimit": "В одном ряду не больше {{max}} кнопок — это лимит Telegram.",
       "buttonsTotalLimit": "В окне не больше {{max}} кнопок — это лимит Telegram.",
       "textTooLong": "{{length}} из {{max}} символов — Telegram не отправит такой текст.",
+      "textOverCaption": "Длиннее {{max}} символов — бот отправит окно без баннера.",
       "buttonUrlInvalidGrid": "Исправьте ссылку кнопки перед сохранением.",
       "bannerMode": {
         "none": "Нет",
@@ -3100,7 +3108,7 @@
       },
       "bannerUpload": "Загрузить",
       "bannerReplace": "Заменить",
-      "variableSearch": "Поиск переменных",
+      "variableSearch": "Поиск по переменным",
       "variableEmpty": "Ничего не найдено",
       "emojiClear": "Убрать эмодзи",
       "emojiGroup": {
@@ -3267,7 +3275,7 @@
       "levelHint": "Пользователей на уровне {{level}}: {{count}}",
       "search": "Пользователь",
       "searchPlaceholder": "Имя, @username, ID или email",
-      "rewardStatusAll": "Любые",
+      "rewardStatusAll": "Все статусы",
       "rewardStatusWith": "С наградами",
       "rewardStatusWithout": "Без наград",
       "rewardTypeAll": "Все типы",
@@ -3330,7 +3338,7 @@
     "create": {
       "button": "Новый промокод",
       "title": "Новый промокод",
-      "codePlaceholder": "например, WELCOME30",
+      "codePlaceholder": "Например, WELCOME30",
       "generate": "Сгенерировать",
       "rewardDaysLabel": "Сколько дней добавить",
       "rewardPercentLabel": "Скидка, %",
@@ -3388,7 +3396,7 @@
     "limits": {
       "availabilityLabel": "Кому доступен",
       "allowedUserIdsLabel": "ID пользователей",
-      "allowedUserIdsPlaceholder": "Введите ID и нажмите Enter",
+      "allowedUserIdsPlaceholder": "ID, Enter — добавить",
       "plansLabel": "На какие планы действует",
       "plansAll": "Все",
       "plansPromocodesOff": "Неактивные планы не принимают промокоды",
@@ -3550,7 +3558,7 @@
       "recipients_many": "Доступ: {{count}} получателей",
       "recipients_other": "Доступ: {{count}} получателя",
       "telegramIdsPlaceholder": "Telegram ID, Enter — добавить",
-      "emailsPlaceholder": "email, Enter — добавить",
+      "emailsPlaceholder": "Email, Enter — добавить",
       "trialUnavailable": "Недоступно для пробного плана"
     },
     "discount": {
@@ -3713,7 +3721,7 @@
     "filters": {
       "search": "Поиск",
       "searchPlaceholder": "ID подписки, ID пользователя, тег или план",
-      "all": "Все"
+      "all": "Все статусы"
     },
     "status": {
       "ACTIVE": "Активна",
@@ -3730,7 +3738,7 @@
     "edit": {
       "toUser": "К пользователю",
       "tagLabel": "Тег",
-      "tagPlaceholder": "например, vip",
+      "tagPlaceholder": "Например, vip",
       "trafficLabel": "Лимит трафика, ГБ",
       "trafficHint": "0 — без ограничений",
       "deviceLabel": "Лимит устройств",
@@ -4401,6 +4409,7 @@
     "DIALOG_CUSTOM_WINDOW_ACTION": "В пользовательских окнах не может быть кнопок-действий.",
     "DIALOG_EXPORT_VERSION_UNSUPPORTED": "Неподдерживаемая версия файла экспорта.",
     "DIALOG_ROW_BUTTON_LIMIT_REACHED": "Слишком много кнопок в одном ряду.",
+    "DIALOG_SYSTEM_BUTTON_CONDITION_LOCKED": "У системной кнопки нельзя менять условие видимости.",
     "DIALOG_SYSTEM_BUTTON_NOT_HIDEABLE": "Системную кнопку нельзя скрыть.",
     "DIALOG_TARGET_WINDOW_UNKNOWN": "Окно перехода не существует.",
     "DIALOG_TEXT_EMPTY": "Текст окна не может быть пустым без баннера.",
@@ -4821,10 +4830,10 @@
         "byFilters": "По фильтрам",
         "byUsers": "Выбранным клиентам",
         "search": "Найти клиента",
-        "searchPlaceholder": "Имя, username, Telegram ID",
+        "searchPlaceholder": "Имя, @username или Telegram ID",
         "userIds": "Клиенты",
         "userIdsHint": "ID клиентов; вставьте список или выберите в поиске",
-        "userIdsPlaceholder": "ID клиента",
+        "userIdsPlaceholder": "ID, Enter — добавить",
         "any": "Все",
         "all": "Все",
         "withinDays_one": "≤ {{count}} дн.",

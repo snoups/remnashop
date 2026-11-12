@@ -169,7 +169,7 @@ export function BotRequirementsForm() {
                   id={`${id}-channel-url`}
                   type="text"
                   inputMode="url"
-                  placeholder="https://t.me/channel"
+                  placeholder={t("settings.botRequirements.channelUrlPlaceholder")}
                   value={channelUrl}
                   onChange={(event) => setChannelUrl(event.target.value)}
                   onBlur={validation.touch("channelUrl")}

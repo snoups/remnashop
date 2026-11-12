@@ -111,8 +111,6 @@ async def load_unsubscribe_labels(
     labels: dict[Locale, str] = {}
     for locale, text in texts.items():
         bundle = FluentBundle.from_string(locale.value, text, use_isolating=False)  # type: ignore[no-untyped-call]
-        if not bundle.has_message("btn-broadcast"):
-            continue
         try:
             value, errors = bundle.format(UNSUBSCRIBE_KEY, {})
         except KeyError:

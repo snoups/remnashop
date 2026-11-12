@@ -4,10 +4,24 @@ import { parseTelegramHtml, renderVariablesSample } from "@entities/broadcasts/t
 import type { TgNode } from "@entities/broadcasts/telegram-html";
 import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 
+// tags on lines of their own read better in the editor; the bot drops those line breaks
+function trimQuoteEdges(children: TgNode[]): TgNode[] {
+  const out = [...children];
+  if (typeof out[0] === "string" && out[0].startsWith("\n")) out[0] = out[0].slice(1);
+  const last = out.length - 1;
+  if (typeof out[last] === "string" && out[last].endsWith("\n")) out[last] = out[last].slice(0, -1);
+  return out;
+}
+
 function renderNodes(nodes: TgNode[]): ReactNode[] {
   return nodes.map((node, index) => {
-    if (typeof node === "string") return node;
-    const children = renderNodes(node.children);
+    if (typeof node === "string") {
+      // a block already ends its line; the newline after it would add an empty one Telegram doesn't show
+      const previous = nodes[index - 1];
+      const afterBlock = typeof previous === "object" && (previous.tag === "blockquote" || previous.tag === "pre");
+      return afterBlock && node.startsWith("\n") ? node.slice(1) : node;
+    }
+    const children = renderNodes(node.tag === "blockquote" ? trimQuoteEdges(node.children) : node.children);
     switch (node.tag) {
       case "b":
         return <b key={index}>{children}</b>;

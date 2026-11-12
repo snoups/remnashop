@@ -82,7 +82,7 @@ async def test_public_mode_passes() -> None:
     assert await _run(UserDto(name="c"), AccessMode.PUBLIC, []) is True
 
 
-async def test_restricted_mode_alerts_on_a_button_press() -> None:
+async def test_restricted_mode_answers_a_button_press() -> None:
     answered: list[Any] = []
 
     async def _answer(text: str, **kwargs: Any) -> None:
@@ -100,7 +100,7 @@ async def test_restricted_mode_alerts_on_a_button_press() -> None:
     await AccessMiddleware().middleware_logic(handler, callback, data)
 
     assert called is False
-    assert answered == [("Maintenance.", {"show_alert": True})]
+    assert answered == [("Maintenance.", {})]
 
 
 async def test_restricted_mode_lets_a_successful_payment_through() -> None:

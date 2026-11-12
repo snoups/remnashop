@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import type { DialogFlow, DialogWindow } from "@entities/dialogs/api";
 import { CreateWindowDialog } from "@features/dialog-canvas-editor/CreateWindowDialog";
 import { useHorizontalWheelScroll } from "@shared/lib/use-horizontal-wheel-scroll";
-import { Pressable } from "@shared/ui/Pressable";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
 
 interface WindowSwitcherProps {
@@ -80,14 +79,15 @@ export function WindowSwitcher({
           .map((window) => {
             const isActive = window.key === selectedKey;
             return (
-              <Pressable
+              // no ripple: a tab strip, like PillTabs
+              <button
                 key={window.key}
                 type="button"
                 onClick={() => {
                   setEmptyFlow(null);
                   onSelect(window.key);
                 }}
-                className={`group relative flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors ${
+                className={`group relative flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors ${
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -108,19 +108,19 @@ export function WindowSwitcher({
                     className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-primary"
                   />
                 )}
-              </Pressable>
+              </button>
             );
           })}
         {flow === "custom" &&
           (canCreate ? (
-            <Pressable
+            <button
               type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:text-primary"
+              className="flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
               <Plus className="size-3.5" />
               {t("dialogs.windowList.addWindow")}
-            </Pressable>
+            </button>
           ) : (
             isLimitReached && (
               <span className="flex h-11 shrink-0 items-center px-3 text-xs text-muted-foreground">

@@ -83,7 +83,7 @@ function BindTelegramForm({ user, onBound, onMergeWith }: Omit<BindTelegramDialo
                 setError(null);
                 setOwner(null);
               }}
-              placeholder="123456789"
+              placeholder={t("users.telegram.idPlaceholder")}
               mono
               aria-invalid={error !== null}
             />

@@ -54,7 +54,7 @@ ntf-customer-button-close = ❌ Close
 ntf-customer-button-connect = 🚀 Connect
 ntf-customer-button-support = 📩 Contact support
 ntf-customer-button-revoke-sessions = 🔒 End all sessions
-ntf-customer-sessions-revoked = All sessions in your account have been ended.
+ntf-customer-sessions-revoked = ✅ We've signed you out of every session in your account. If that sign-in wasn't you, contact support and we'll look into it.
 ntf-customer-subscription-purchased = To start using the service, connect a device and follow the instructions — it takes a couple of minutes.
     .title = { $is_trial ->
         [yes] Trial activated
@@ -307,7 +307,7 @@ ntf-customer-promocode-discount-expiring = Your { $percent }% off with promocode
     }. Make your purchase before it’s gone.
     .title = Your discount is about to expire
     .emoji = ⏳
-ntf-customer-payments-restored = You can get or renew a subscription now.
+ntf-customer-payments-restored = Payments are back! You can now buy or renew a subscription. Thanks for waiting.
     .title = Payments are back
     .emoji = ❇️
 ntf-telegram-label =

@@ -47,7 +47,7 @@ async def test_promocode_button_alerts_when_code_is_gone() -> None:
         callback, AsyncMock(), AsyncMock(return_value=None), i18n, user=UserDto(name="c")
     )
 
-    callback.answer.assert_awaited_once_with("gone", show_alert=True)
+    callback.answer.assert_awaited_once_with("gone")
 
 
 async def test_menu_button_answers_with_start_deep_link() -> None:

@@ -1075,7 +1075,7 @@ async def test_update_dialog_text_rejects_an_empty_button_label(
         )
 
 
-async def test_banner_cannot_be_set_over_text_too_long_for_a_caption(
+async def test_banner_can_be_set_over_text_too_long_for_a_caption(
     dialog_repository: DialogRepository, translation_repository, settings_repository, uow, redis
 ) -> None:
     catalog.register_window(
@@ -1099,11 +1099,11 @@ async def test_banner_cannot_be_set_over_text_too_long_for_a_caption(
         OWNER,
         ConfigureDialogWindowDto(key="menu.main", banner_name=None, banner_name_provided=True),
     )
-    with pytest.raises(ValidationError):
-        await use_case(
-            OWNER,
-            ConfigureDialogWindowDto(key="menu.main", banner_name="x", banner_name_provided=True),
-        )
+    # the bot sends such a window without its banner
+    await use_case(
+        OWNER,
+        ConfigureDialogWindowDto(key="menu.main", banner_name="x", banner_name_provided=True),
+    )
 
 
 async def test_update_dialog_text_rejects_invalid_html(

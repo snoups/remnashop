@@ -190,3 +190,30 @@ async def test_reset_rejects_custom_window(dialog_repository: DialogRepository) 
 async def test_get_by_key_or_raise_missing(dialog_repository: DialogRepository) -> None:
     with pytest.raises(NotFoundError):
         await dialog_repository.get_by_key_or_raise("nope")
+
+
+async def test_reseed_gives_edited_system_buttons_the_catalog_condition(
+    dialog_repository: DialogRepository,
+) -> None:
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", _SNAPSHOT)
+    # moved, so the layout counts as edited, and given a condition of its own
+    await dialog_repository.replace_buttons(
+        "menu.main",
+        [
+            DialogButtonInputDto(
+                row=2,
+                column=0,
+                text_key="btn-menu.subscription",
+                link_type=ButtonLinkType.NAVIGATE,
+                target_window_key="subscription.main",
+                visibility_condition="trial_available",
+            )
+        ],
+    )
+    [button] = _SNAPSHOT["buttons"]
+    gated = {**_SNAPSHOT, "buttons": [{**button, "visibility_condition": "has_subscriptions"}]}
+
+    await dialog_repository.upsert_seed("menu.main", DialogFlow.MENU, "menu", gated)
+
+    window = await dialog_repository.get_by_key_or_raise("menu.main")
+    assert [(b.row, b.visibility_condition) for b in window.buttons] == [(2, "has_subscriptions")]
