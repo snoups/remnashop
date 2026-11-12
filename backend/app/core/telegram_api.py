@@ -13,6 +13,8 @@ from app.core.config.bot import BotConfig
 
 _API_URL: Final[str] = BotConfig().api_url.rstrip("/")
 _DEFAULT_TIMEOUT_S: Final[float] = 10.0
+# a file up to the Bot API's 50 MB over a slow uplink, plus Telegram processing it before replying
+_UPLOAD_TIMEOUT_S: Final[float] = 180.0
 
 
 class BotApiError(Exception):
@@ -112,7 +114,11 @@ class BotSession:
                     for name, value in params.items():
                         form.add_field(name, _form_value(value))
                     form.add_field(field, file, filename=path.name)
-                    async with self._client().post(url, data=form) as response:
+                    async with self._client().post(
+                        url,
+                        data=form,
+                        timeout=aiohttp.ClientTimeout(total=max(self.timeout, _UPLOAD_TIMEOUT_S)),
+                    ) as response:
                         status = response.status
                         payload = await response.json(content_type=None)
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as error:

@@ -1,3 +1,4 @@
+import struct
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
@@ -179,3 +180,26 @@ def ok_response(request: BotRequest) -> httpx.Response:
     elif request.method == "getMe":
         result = BOT_USER
     return httpx.Response(200, json={"ok": True, "result": result})
+
+
+_IDENTITY: Final[tuple[int, ...]] = (0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000)
+QUARTER_TURN: Final[tuple[int, ...]] = (0, 0x10000, 0, -0x10000, 0, 0, 0, 0, 0x40000000)
+
+
+def box(kind: bytes, payload: bytes) -> bytes:
+    return struct.pack(">I4s", 8 + len(payload), kind) + payload
+
+
+def mvhd(timescale: int, duration: int) -> bytes:
+    return box(b"mvhd", bytes(4) + struct.pack(">IIII", 0, 0, timescale, duration) + bytes(80))
+
+
+def tkhd(width: int, height: int, matrix: tuple[int, ...] = _IDENTITY) -> bytes:
+    payload = bytes(24) + bytes(16) + struct.pack(">9i", *matrix)
+    return box(b"tkhd", payload + struct.pack(">II", width << 16, height << 16))
+
+
+def mp4(*tracks: bytes, duration: int = 2350) -> bytes:
+    moov = box(b"moov", mvhd(100, duration) + b"".join(box(b"trak", t) for t in tracks))
+    # moov after the media data, as most encoders write it
+    return box(b"ftyp", b"isom" + bytes(4)) + box(b"mdat", bytes(64)) + moov

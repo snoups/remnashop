@@ -12,7 +12,13 @@ from app.modules.broadcasts.telegram_api import (
     delete_telegram_message,
     send_broadcast_message,
 )
-from tests.modules.broadcasts.factories import BotRequest, MockTelegram, message_result
+from tests.modules.broadcasts.factories import (
+    BotRequest,
+    MockTelegram,
+    message_result,
+    mp4,
+    tkhd,
+)
 
 _TOKEN = "123:abc"
 
@@ -101,6 +107,26 @@ async def test_first_photo_upload_returns_file_id(tmp_path: Path) -> None:
     assert (result.outcome, result.message_id, result.file_id) == (SendOutcome.SENT, 9, "big")
     [sent] = telegram.requests
     assert sent.method == "sendPhoto" and sent.params["photo"] == file
+
+
+async def test_first_video_upload_carries_its_size(tmp_path: Path) -> None:
+    file = tmp_path / "1.mp4"
+    file.write_bytes(mp4(tkhd(3840, 2160)))
+    video = {"file_id": "F", "file_unique_id": "u", "width": 3840, "height": 2160, "duration": 24}
+    telegram = MockTelegram(_reply(200, {"ok": True, "result": message_result(1, video=video)}))
+    media = OutgoingMedia(
+        media_type=BroadcastMediaType.VIDEO, file_id=None, path=file, content_type="video/mp4"
+    )
+
+    async with telegram.open(_TOKEN, None) as bot:
+        await send_broadcast_message(bot, 1, "c", None, media)
+
+    [sent] = telegram.requests
+    assert (sent.params["width"], sent.params["height"], sent.params["duration"]) == (
+        3840,
+        2160,
+        24,
+    )
 
 
 async def test_a_missing_media_file_is_not_a_network_failure(tmp_path: Path) -> None:

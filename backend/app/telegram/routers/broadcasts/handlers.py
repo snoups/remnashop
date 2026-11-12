@@ -3,14 +3,14 @@ from collections.abc import Awaitable, Callable
 from functools import partial
 from typing import Final, Optional
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
 from fluentogram import TranslatorHub, TranslatorRunner
 
-from app.core.constants import INT32_MAX, T_ME
+from app.core.constants import INT32_MAX
 from app.modules.broadcasts import GetBroadcastPromocodeUseCase
 from app.modules.promocodes import ListPromocodeTargetsUseCase, ValidatePromocodeUseCase
 from app.modules.users import SetMarketingOptOutDto, SetMarketingOptOutUseCase, UserDto
@@ -25,6 +25,7 @@ from app.telegram.broadcast_callbacks import (
 from app.telegram.dialogs.rendering import label_with_icon
 from app.telegram.i18n import get_translator
 from app.telegram.notice import answer_notice
+from app.telegram.replay import replay_later, start_command
 from app.telegram.routers.promocode.handlers import continue_with_code
 from app.telegram.states import MainMenu, Promocode
 
@@ -118,7 +119,7 @@ async def on_start_broadcast(
 @router.callback_query(F.data.startswith(PROMO_PREFIX))
 async def on_broadcast_promocode(
     callback: CallbackQuery,
-    bot: Bot,
+    dispatcher: Dispatcher,
     get_broadcast_promocode: FromDishka[GetBroadcastPromocodeUseCase],
     i18n: FromDishka[TranslatorHub],
     user: Optional[UserDto] = None,
@@ -132,10 +133,11 @@ async def on_broadcast_promocode(
         runner = get_translator(i18n, user)
         await answer_notice(callback, runner.get("ntf-broadcast.promo-gone"))
         return
-    # the client opens the private chat and sends /start bc_<id>; the dialog must not touch the post
-    await callback.answer(
-        url=f"{T_ME}{(await bot.me()).username}?start={START_PREFIX}{broadcast_id}"
-    )
+    await callback.answer()
+    # through /start bc_<id>: a dialog opened from this callback would take the post for its window
+    if callback.bot is not None:
+        command = start_command(callback, f"{START_PREFIX}{broadcast_id}")
+        replay_later(dispatcher, callback.bot, command)
 
 
 @router.callback_query(F.data == UNSUBSCRIBE_CALLBACK)
@@ -185,11 +187,13 @@ async def on_broadcast_resubscribe(
 @router.callback_query(F.data == MENU_CALLBACK)
 async def on_broadcast_menu(
     callback: CallbackQuery,
-    bot: Bot,
+    dispatcher: Dispatcher,
     i18n: FromDishka[TranslatorHub],
     user: Optional[UserDto] = None,
 ) -> None:
     if user is None:
         await _answer_unknown_user(callback, i18n)
         return
-    await callback.answer(url=f"{T_ME}{(await bot.me()).username}?start={MENU_START_PAYLOAD}")
+    await callback.answer()
+    if callback.bot is not None:
+        replay_later(dispatcher, callback.bot, start_command(callback, MENU_START_PAYLOAD))
