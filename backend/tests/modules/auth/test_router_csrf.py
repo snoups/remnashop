@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from app.core.config import AppConfig
 from app.core.constants import API_V1, CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from app.core.security.session_token import derive_csrf_token
+from app.modules.auth.usecases import LogoutUseCase
 
 _BOOTSTRAP_PASSWORD = "Sup3rSecurePassword12345"
 
@@ -105,3 +106,20 @@ async def test_refresh_rejection_carries_an_error_code(
 
     assert response.status_code == 401
     assert response.json()["code"]
+
+
+async def test_logout_clears_cookies_when_the_revoke_fails(
+    auth_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert (await _bootstrap(auth_client)).status_code == 201
+    csrf_token = auth_client.cookies.get("csrf_token")
+    assert csrf_token
+
+    async def database_down(*_args: object, **_kwargs: object) -> None:
+        raise ConnectionError("database is down")
+
+    monkeypatch.setattr(LogoutUseCase, "execute", database_down)
+    response = await auth_client.post(f"{API_V1}/auth/logout", headers={"X-Csrf-Token": csrf_token})
+
+    assert response.status_code == 204
+    assert auth_client.cookies.get(REFRESH_COOKIE_NAME) is None
