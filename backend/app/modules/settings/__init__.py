@@ -21,7 +21,11 @@ from app.modules.settings.dto import (
 from app.modules.settings.events import AccessSettingsChangedEvent
 from app.modules.settings.ports import AudienceSessionRevoker, OidcIdentityCleaner
 from app.modules.settings.repository import SettingsRepository
-from app.modules.settings.telegram_status import fetch_bot_status, fetch_bot_username
+from app.modules.settings.telegram_status import (
+    fetch_bot_status,
+    fetch_bot_username,
+    is_channel_member,
+)
 from app.modules.settings.usecases import (
     GetAccessSettingsUseCase,
     GetBotCommandsUseCase,
@@ -61,6 +65,7 @@ __all__ = [
     "fetch_bot_status",
     "fetch_bot_username",
     "get_settings_providers",
+    "is_channel_member",
     "push_icon_path",
     "read_bot_settings",
 ]

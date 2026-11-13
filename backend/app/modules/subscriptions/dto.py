@@ -173,6 +173,12 @@ class SubscriptionDto(BaseDto, TimestampMixin):
 
 
 @dataclass(frozen=True, kw_only=True)
+class ActivateTrialDto:
+    # the cabinet opened inside Telegram; the bot's own gate covers the bot
+    mini_app: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
 class OwnSubscriptionUsageDto:
     subscription: SubscriptionDto
     used_traffic: Optional[int]

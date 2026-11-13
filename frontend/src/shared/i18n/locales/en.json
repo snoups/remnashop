@@ -4528,6 +4528,7 @@
     "TRANSLATION_HTML_INVALID": "The text has invalid formatting.",
     "TRANSLATION_NOT_FOUND": "Translation not found.",
     "TRIAL_NOT_AVAILABLE": "The trial isn’t available.",
+    "TRIAL_CHANNEL_REQUIRED": "Join the channel to get the trial.",
     "UNSUBSCRIBE_TOKEN_INVALID": "The unsubscribe link is invalid.",
     "URL_HOST_NOT_PUBLIC": "The URL must point to a public address.",
     "URL_HOST_UNRESOLVABLE": "The URL host can’t be resolved.",

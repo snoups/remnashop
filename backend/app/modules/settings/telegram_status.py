@@ -12,6 +12,7 @@ _USERNAME_CACHE: Final[dict[str, str]] = {}
 # would otherwise wait out the full timeout
 _USERNAME_FAILED_UNTIL: Final[dict[str, float]] = {}
 _FAILURE_TTL_SECONDS: Final[float] = 60.0
+_LEFT_STATUSES: Final[frozenset[str]] = frozenset({"left", "kicked"})
 _CHANNEL_ADMIN_STATUSES: Final[frozenset[str]] = frozenset({"administrator", "creator"})
 
 
@@ -59,6 +60,18 @@ async def is_bot_channel_admin(token: str, proxy: Optional[str], channel_id: int
     except BOT_API_ERRORS:
         return False
     return member.get("status") in _CHANNEL_ADMIN_STATUSES
+
+
+async def is_channel_member(
+    token: str, proxy: Optional[str], channel_id: int, telegram_id: int
+) -> bool:
+    try:
+        async with bot_client(token, proxy, timeout=_TIMEOUT_SECONDS) as bot:
+            member = await bot.call("getChatMember", chat_id=channel_id, user_id=telegram_id)
+    except BOT_API_ERRORS:
+        # a broken channel setup or Telegram outage must not lock the customer out
+        return True
+    return member.get("status") not in _LEFT_STATUSES
 
 
 def _unix_time(value: Optional[int]) -> Optional[datetime]:

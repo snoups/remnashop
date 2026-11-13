@@ -88,6 +88,8 @@ class CabinetSettingsDto:
     device_all_reset_cooldown_hours: int
     link_reset_enabled: bool
     bot_username: Optional[str]
+    # the required channel, for the paused-trial hint; None without a bot
+    channel_url: Optional[str]
     support_telegram: Optional[str]
     support_url: Optional[str]
     payments_enabled: bool

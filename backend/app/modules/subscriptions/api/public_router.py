@@ -8,6 +8,7 @@ from app.api.dependencies.public import get_current_user
 from app.api.errors import error_responses
 from app.core.config import AppConfig
 from app.modules.subscriptions.api.schemas import (
+    ActivateTrialRequest,
     DeviceListResponse,
     DeviceResponse,
     OwnSubscriptionListResponse,
@@ -18,6 +19,7 @@ from app.modules.subscriptions.api.schemas import (
     TrialResponse,
 )
 from app.modules.subscriptions.dto import (
+    ActivateTrialDto,
     DeleteDeviceDto,
     ListActivePlansDto,
     SubscriptionRefDto,
@@ -106,10 +108,12 @@ async def get_own_trial(
 async def activate_own_trial(
     activate: FromDishka[ActivateTrialSubscriptionUseCase],
     config: FromDishka[AppConfig],
+    body: Optional[ActivateTrialRequest] = None,
     actor: UserDto = Depends(get_current_user),
 ) -> OwnSubscriptionResponse:
+    data = ActivateTrialDto(mini_app=body is not None and body.mini_app)
     return OwnSubscriptionResponse.from_dto(
-        await activate(actor), secret=config.jwt_secret.get_secret_value()
+        await activate(actor, data), secret=config.jwt_secret.get_secret_value()
     )
 
 

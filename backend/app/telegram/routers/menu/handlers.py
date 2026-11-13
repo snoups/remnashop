@@ -18,6 +18,7 @@ from app.core.enums import PurchaseType
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions import (
+    ActivateTrialDto,
     ActivateTrialSubscriptionUseCase,
     GetAvailableTrialUseCase,
     ListOwnActiveSubscriptionsUseCase,
@@ -78,7 +79,7 @@ async def on_get_trial(
         return
 
     try:
-        subscription = await activate_trial_subscription(user)
+        subscription = await activate_trial_subscription(user, ActivateTrialDto())
     except (NotFoundError, ValidationError):
         logger.exception(f"{user.log} Trial activation failed")
         await answer_notice(callback, runner.get("ntf-common.trial-unavailable"))
