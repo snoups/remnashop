@@ -4350,11 +4350,6 @@
           "nav": "Экраны",
           "title": "Экраны",
           "meta": "FullScreenMessage · PageRouteError"
-        },
-        "overview": {
-          "nav": "Обзор",
-          "title": "Пары карточек обзора",
-          "meta": "FollowHeight"
         }
       },
       "variants": {
