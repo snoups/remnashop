@@ -6,12 +6,14 @@ from uuid import uuid4
 from loguru import logger
 
 from app.core.config import AppConfig
+from app.core.constants import T_ME
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     DiscountSource,
     LegalAcceptanceTrigger,
     LegalDocumentKind,
     PaymentGatewayType,
+    PurchaseChannel,
     PurchaseType,
     SubscriptionStatus,
     TransactionStatus,
@@ -31,7 +33,7 @@ from app.core.utils.time import datetime_now
 from app.modules.gateways import REQUIRE_PAID_PURCHASE_FIELD_KEY, GatewayRepository, gateway_flags
 from app.modules.legal import LegalAcceptanceRecorder
 from app.modules.plans import PlanDto
-from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository
+from app.modules.settings import GetAccessSettingsUseCase, SettingsRepository, fetch_bot_username
 from app.modules.subscriptions import (
     PlanSnapshot,
     PurchaseEligibility,
@@ -98,7 +100,16 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         self._event_publisher = event_publisher
         self._legal_recorder = legal_recorder
 
-    def _return_url(self, data: CreateCheckoutDto, order_id: int) -> Optional[str]:
+    async def _return_url(self, data: CreateCheckoutDto, order_id: int) -> Optional[str]:
+        if data.channel is PurchaseChannel.BOT:
+            async with self._uow:
+                bot_settings = await self._settings_repository.get_bot_settings()
+            if bot_settings.token is None:
+                return None
+            username = await fetch_bot_username(
+                bot_settings.token.get_secret_value(), bot_settings.proxy
+            )
+            return f"{T_ME}{username}" if username else None
         cabinet_url = self._config.cabinet.url
         if data.return_to != "cabinet" or not cabinet_url:
             return None
@@ -240,8 +251,9 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 )
                 return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
+        return_url = await self._return_url(data, order.id)
         gateway = self._gateway_factory.build(
-            data.gateway_type, gateway_settings, self._return_url(data, order.id), customer=user
+            data.gateway_type, gateway_settings, return_url, customer=user
         )
         try:
             intent = await gateway.create_payment(order)
