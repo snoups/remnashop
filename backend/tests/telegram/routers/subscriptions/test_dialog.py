@@ -21,6 +21,7 @@ def test_subscriptions_dialog_includes_list_card_and_device_windows() -> None:
     assert states == {
         Subscriptions.LIST,
         Subscriptions.CARD,
+        Subscriptions.RECURRING_TERMS,
         Subscriptions.DEVICES,
         Subscriptions.DEVICE_CONFIRM_DELETE,
         Subscriptions.DEVICE_CONFIRM_DELETE_ALL,

@@ -27,6 +27,7 @@ from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
     ConfirmStarsPaymentUseCase,
     CreateCheckoutUseCase,
+    GetCheckoutRecurringTermsUseCase,
     GetOwnRecurringPaymentUseCase,
     GetOwnTransactionUseCase,
     JoinPaymentWaitlistUseCase,
@@ -41,6 +42,7 @@ __all__ = [
     "ConfirmStarsPaymentUseCase",
     "CreateCheckoutDto",
     "CreateCheckoutUseCase",
+    "GetCheckoutRecurringTermsUseCase",
     "GetOwnRecurringPaymentUseCase",
     "GetOwnTransactionUseCase",
     "JoinPaymentWaitlistUseCase",

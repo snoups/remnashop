@@ -9,7 +9,7 @@ import httpx
 import pytest
 from sqlalchemy import func, select, text, update
 
-from app.core.db.models import RecurringPayment, Subscription, Transaction
+from app.core.db.models import RecurringConsent, RecurringPayment, Subscription, Transaction
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -22,6 +22,7 @@ from app.core.enums import (
 )
 from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
+from app.modules.account_merge.repository import AccountMergeRepository
 from app.modules.plans.dto import (
     CreatePlanDto,
     SetPlanDurationDto,
@@ -44,6 +45,7 @@ from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.recurring_dto import SetRecurringPaymentDto
 from app.modules.transactions.recurring_repository import RecurringPaymentRepository
+from app.modules.transactions.recurring_terms import build_recurring_terms
 from app.modules.transactions.usecases import (
     GetOwnRecurringPaymentUseCase,
     HandlePaymentWebhookUseCase,
@@ -171,6 +173,23 @@ async def case(
             },
         )
         await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+        consent_id = await RecurringPaymentRepository(session).record_consent(
+            build_recurring_terms(
+                config=config,
+                user_id=user.id,
+                plan_id=plan.id,
+                target_subscription_id=None,
+                purchase_type=PurchaseType.NEW,
+                initial_amount=Decimal("400"),
+                amount_limit=Decimal("500"),
+                currency=Currency.RUB,
+                duration_days=30,
+                locale=user.language,
+            ),
+            channel=PurchaseChannel.BOT,
+            telegram_id=user.telegram_id,
+            event_id="initial-checkbox",
+        )
         source = await transaction_repository.create(
             CreateTransactionDto(
                 user_id=user.id,
@@ -192,6 +211,7 @@ async def case(
                 idempotency_key=uuid4().hex,
                 expires_at=datetime_now(),
                 recurring_consent=True,
+                recurring_consent_id=consent_id,
             )
         )
         await transaction_repository.mark_status(source.id, TransactionStatus.PAID)
@@ -308,7 +328,12 @@ async def test_customer_can_disable_and_enable_auto_renew(case, uow) -> None:
     assert not case.provider.posts
     assert (await case.get_state(case.user, case.subscription.id)).customer_disabled
     await case.set_state(
-        case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=True)
+        case.user,
+        SetRecurringPaymentDto(
+            subscription_id=case.subscription.id,
+            enabled=True,
+            terms_id=(await case.get_state(case.user, case.subscription.id)).terms.terms_id,
+        ),
     )
     await _tick_again(case, uow)
     assert len(case.provider.posts) == 1
@@ -646,7 +671,7 @@ async def _lose_recurring_payment(case, session, uow):
     return order_id
 
 
-async def _manual_renewal(case, transaction_repository, session, uow):
+async def _manual_renewal(case, transaction_repository, session, uow, *, consent=True):
     values = {
         field.name: getattr(case.source, field.name) for field in fields(CreateTransactionDto)
     }
@@ -661,6 +686,28 @@ async def _manual_renewal(case, transaction_repository, session, uow):
         plan_snapshot=replace(case.source.plan_snapshot, price_paid=Decimal("500")),
     )
     async with uow:
+        values["recurring_consent"] = consent
+        values["recurring_consent_id"] = (
+            await case.repository.record_consent(
+                build_recurring_terms(
+                    config=case.worker._config,
+                    user_id=case.user.id,
+                    plan_id=case.source.plan_id,
+                    target_subscription_id=case.subscription.id,
+                    purchase_type=PurchaseType.RENEW,
+                    initial_amount=Decimal("500"),
+                    amount_limit=Decimal("500"),
+                    currency=Currency.RUB,
+                    duration_days=30,
+                    locale=case.user.language,
+                ),
+                channel=PurchaseChannel.BOT,
+                telegram_id=case.user.telegram_id,
+                event_id="fresh-checkbox",
+            )
+            if consent
+            else None
+        )
         order = await transaction_repository.create(CreateTransactionDto(**values))
         await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
         await transaction_repository.remember_payment_method(order.id, "fresh-method", "1000")
@@ -878,8 +925,124 @@ async def test_toggling_preference_cannot_erase_an_unknown_payment(
         )
     await _manual_renewal(case, transaction_repository, session, uow)
     state = await case.get_state(case.user, case.subscription.id)
-    assert state.customer_disabled and not state.enabled and state.available
-    enabled = await case.set_state(
-        case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=True)
+    assert not state.customer_disabled and state.enabled and state.available
+
+
+async def test_a_legacy_mandate_without_explicit_consent_is_not_charged(case, session, uow):
+    async with uow:
+        await session.execute(
+            update(RecurringPayment)
+            .where(RecurringPayment.subscription_id == case.subscription.id)
+            .values(consent_id=None, enabled=True)
+        )
+    await case.worker.system()
+    state = await case.get_state(case.user, case.subscription.id)
+    assert not case.provider.posts
+    assert not state.enabled and state.available
+    assert state.last_error == "consent_required"
+
+
+async def test_reenabling_requires_fresh_confirmation_of_current_terms(case):
+    await case.set_state(
+        case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=False)
     )
-    assert enabled.enabled
+    with pytest.raises(ValidationError):
+        await case.set_state(
+            case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=True)
+        )
+    assert not (await case.get_state(case.user, case.subscription.id)).enabled
+
+
+async def test_withdrawal_is_recorded_once_and_reenrollment_has_its_own_record(case, session):
+    before = await case.repository.get(case.subscription.id)
+    off = SetRecurringPaymentDto(
+        subscription_id=case.subscription.id,
+        enabled=False,
+        channel=PurchaseChannel.BOT,
+        event_id="disable-click",
+    )
+    await case.set_state(case.user, off)
+    revoked = await session.get(RecurringConsent, before.consent_id, populate_existing=True)
+    assert revoked.revoked_at is not None
+    revoked_at = revoked.revoked_at
+    assert revoked.revoked_channel == PurchaseChannel.BOT.value
+    assert revoked.revoked_event_id == "disable-click"
+    await case.set_state(case.user, off)
+    await session.refresh(revoked)
+    assert revoked.revoked_at == revoked_at
+    state = await case.get_state(case.user, case.subscription.id)
+    await case.set_state(
+        case.user,
+        SetRecurringPaymentDto(
+            subscription_id=case.subscription.id,
+            enabled=True,
+            terms_id=state.terms.terms_id,
+            channel=PurchaseChannel.BOT,
+            event_id="new-consent",
+        ),
+    )
+    after = await case.repository.get(case.subscription.id)
+    assert after.enabled and after.consent_id != before.consent_id
+    fresh = await session.get(RecurringConsent, after.consent_id)
+    assert fresh.event_id == "new-consent" and fresh.revoked_at is None
+    assert fresh.terms == state.terms.model_dump(mode="json")
+
+
+async def test_a_manual_payment_without_consent_does_not_restore_withdrawn_authorization(
+    case,
+    transaction_repository,
+    session,
+    uow,
+):
+    await case.set_state(
+        case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=False)
+    )
+    await _manual_renewal(case, transaction_repository, session, uow, consent=False)
+    state = await case.get_state(case.user, case.subscription.id)
+    assert not state.enabled and state.customer_disabled
+    assert (await case.repository.get(case.subscription.id)).consent_id is None
+
+
+async def test_a_new_policy_requires_new_consent_even_if_the_saved_method_works(case):
+    case.worker._config.recurring.lead_minutes += 1
+    await case.worker.system()
+    state = await case.get_state(case.user, case.subscription.id)
+    assert not state.enabled and state.last_error == "consent_required"
+    assert not case.provider.posts
+
+
+async def test_an_ambiguous_request_is_not_retried_beyond_the_agreed_overdue_window(
+    case,
+    session,
+    uow,
+):
+    case.provider.lose_response = True
+    await case.worker.system()
+    async with uow:
+        await session.execute(
+            update(Subscription)
+            .where(Subscription.id == case.subscription.id)
+            .values(expire_at=datetime_now() - timedelta(hours=25))
+        )
+    await _tick_again(case, uow)
+    assert len(case.provider.posts) == 1
+    assert not (await case.repository.get(case.subscription.id)).enabled
+
+
+async def test_account_merge_keeps_consent_history_but_requires_new_authorization(
+    case,
+    user_repository,
+    session,
+    uow,
+):
+    original = await case.repository.get(case.subscription.id)
+    async with uow:
+        target = await user_repository.create(CreateUserDto(name="merged customer"))
+        await AccountMergeRepository(session).reassign(case.user.id, target.id, {})
+    await case.worker.system()
+    mandate = await case.repository.get(case.subscription.id)
+    assert not mandate.enabled and mandate.last_error == "consent_required"
+    assert not case.provider.posts
+    consent = await session.get(RecurringConsent, original.consent_id, populate_existing=True)
+    assert consent.user_id == case.user.id
+    assert consent.terms["user_id"] == case.user.id

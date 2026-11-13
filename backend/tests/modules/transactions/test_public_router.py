@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.constants import API_V1
+from app.core.db.models import RecurringConsent, Transaction
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -412,3 +413,120 @@ async def test_own_transactions_list_and_detail(
     assert foreign.json()["code"] == "PAYMENT_ORDER_NOT_FOUND"
 
     assert (await client.get(f"{API_V1}/checkout/methods", headers=mine)).status_code == 200
+
+
+@pytest.mark.parametrize("consent", [False, True])
+async def test_checkout_requires_explicit_consent_and_records_the_exact_terms(
+    client,
+    plan,
+    auth_headers,
+    gateway_repository,
+    session,
+    consent,
+):
+    await gateway_repository.update_settings(
+        PaymentGatewayType.YOOKASSA,
+        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+    )
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+    payload = {
+        "plan_id": plan.id,
+        "duration_days": 30,
+        "currency": "RUB",
+        "purchase_type": "NEW",
+        "gateway_type": "YOOKASSA",
+    }
+    response = await client.post(
+        f"{API_V1}/checkout/recurring-terms", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    terms = response.json()
+    assert terms["text"] and terms["amount_limit"] == "500"
+    payload.update(recurring_consent=consent, recurring_terms_id=terms["terms_id"])
+    response = await client.post(f"{API_V1}/checkout", json=payload, headers=auth_headers)
+    assert response.status_code == 201
+    order = await session.get(Transaction, response.json()["order_id"])
+    assert order.recurring_consent is consent
+    assert _YOOKASSA_REQUESTS[-1]["save_payment_method"] is consent
+    if consent:
+        recorded = await session.get(RecurringConsent, order.recurring_consent_id)
+        assert recorded.terms == terms
+        assert recorded.user_id == order.user_id
+        assert recorded.accepted_at is not None and recorded.revoked_at is None
+        assert recorded.ip_address == "127.0.0.1"
+    else:
+        assert order.recurring_consent_id is None
+
+
+@pytest.mark.parametrize("terms_id", [None, "0" * 64])
+async def test_checkout_rejects_unconfirmed_or_changed_renewal_terms(
+    client,
+    plan,
+    auth_headers,
+    gateway_repository,
+    terms_id,
+):
+    await gateway_repository.update_settings(
+        PaymentGatewayType.YOOKASSA,
+        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+    )
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+    before = len(_YOOKASSA_REQUESTS)
+    response = await client.post(
+        f"{API_V1}/checkout",
+        headers=auth_headers,
+        json={
+            "plan_id": plan.id,
+            "duration_days": 30,
+            "currency": "RUB",
+            "purchase_type": "NEW",
+            "gateway_type": "YOOKASSA",
+            "recurring_consent": True,
+            "recurring_terms_id": terms_id,
+        },
+    )
+    assert response.status_code == 409
+    assert len(_YOOKASSA_REQUESTS) == before
+
+
+async def test_replacing_a_recurring_checkout_revokes_its_authorization(
+    client,
+    plan,
+    auth_headers,
+    gateway_repository,
+    session,
+):
+    await gateway_repository.update_settings(
+        PaymentGatewayType.YOOKASSA,
+        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+    )
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+    payload = {
+        "plan_id": plan.id,
+        "duration_days": 30,
+        "currency": "RUB",
+        "purchase_type": "NEW",
+        "gateway_type": "YOOKASSA",
+    }
+    terms = (
+        await client.post(f"{API_V1}/checkout/recurring-terms", json=payload, headers=auth_headers)
+    ).json()
+    first = await client.post(
+        f"{API_V1}/checkout",
+        headers=auth_headers,
+        json={**payload, "recurring_consent": True, "recurring_terms_id": terms["terms_id"]},
+    )
+    assert first.status_code == 201
+    old_order = await session.get(Transaction, first.json()["order_id"])
+    second = await client.post(
+        f"{API_V1}/checkout",
+        headers=auth_headers,
+        json={**payload, "replaces_order_id": old_order.id},
+    )
+    assert second.status_code == 201
+    consent = await session.get(
+        RecurringConsent, old_order.recurring_consent_id, populate_existing=True
+    )
+    assert consent.revoked_at is not None
+    fresh = await session.get(Transaction, second.json()["order_id"])
+    assert not fresh.recurring_consent and fresh.recurring_consent_id is None

@@ -9,6 +9,7 @@ from app.modules.transactions.usecases.get_own_transaction import GetOwnTransact
 from app.modules.transactions.usecases.get_payment_waitlist_count import (
     GetPaymentWaitlistCountUseCase,
 )
+from app.modules.transactions.usecases.get_recurring_terms import GetCheckoutRecurringTermsUseCase
 from app.modules.transactions.usecases.get_test_payment_status import GetTestPaymentStatusUseCase
 from app.modules.transactions.usecases.get_transaction import GetTransactionUseCase
 from app.modules.transactions.usecases.get_transaction_summary import GetTransactionSummaryUseCase
@@ -54,6 +55,7 @@ __all__ = [
     "CreateCheckoutUseCase",
     "CreateTestPaymentUseCase",
     "FulfillTransactionUseCase",
+    "GetCheckoutRecurringTermsUseCase",
     "GetOwnRecurringPaymentUseCase",
     "GetOwnTransactionUseCase",
     "GetPaymentWaitlistCountUseCase",

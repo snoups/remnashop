@@ -1,10 +1,11 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from loguru import logger
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PaymentGatewayType, SubscriptionStatus, TransactionStatus
+from app.core.enums import PaymentGatewayType, PurchaseType, SubscriptionStatus, TransactionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.security.permissions import Permission
@@ -13,6 +14,7 @@ from app.modules.gateways import GatewayRepository
 from app.modules.subscriptions import SubscriptionRepository, get_owned_target
 from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
 from app.modules.transactions.recurring_repository import RecurringPaymentRepository
+from app.modules.transactions.recurring_terms import build_recurring_terms
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users import UserDto
 
@@ -64,9 +66,31 @@ class GetOwnRecurringPaymentUseCase(UseCase[int, RecurringPaymentState, UserDto]
             and mandate.last_error != "payment_status_unknown"
             and source.plan_snapshot.terms_differ(subscription.plan_snapshot) is False
         )
-        enabled = bool(mandate and mandate.enabled)
+        async with self._uow:
+            authorized = (
+                await self._recurring.consent_terms(mandate.consent_id) if mandate else None
+            )
+        enabled = bool(mandate and mandate.enabled and authorized)
+        terms = (
+            build_recurring_terms(
+                config=self._config,
+                user_id=actor.id,
+                plan_id=source.plan_snapshot.plan_id,
+                target_subscription_id=data,
+                purchase_type=PurchaseType.RENEW,
+                initial_amount=Decimal(0),
+                amount_limit=source.base_price,
+                currency=source.currency,
+                duration_days=source.duration_days,
+                locale=actor.language,
+            )
+            if available and source
+            else None
+        )
         return RecurringPaymentState(
             subscription_id=data,
+            terms=terms,
+            accepted_terms=authorized,
             enabled=enabled,
             available=available,
             customer_disabled=bool(mandate and mandate.customer_disabled),
@@ -106,9 +130,33 @@ class SetOwnRecurringPaymentUseCase(
                 "A saved YooKassa payment method is required; pay for the subscription first",
                 code=ErrorCode.GATEWAY_NOT_AVAILABLE,
             )
+        if data.enabled and (state.terms is None or data.terms_id != state.terms.terms_id):
+            raise ValidationError(
+                "Explicit consent to the current renewal terms is required",
+                code=ErrorCode.PRICE_CHANGED,
+            )
         async with self._uow:
             await get_owned_target(self._subscriptions, data.subscription_id, actor.id)
-            await self._recurring.set_enabled(data.subscription_id, data.enabled)
+            await self._recurring.get(data.subscription_id, for_update=True)
+            consent_id = None
+            if data.enabled and state.terms is not None:
+                consent_id = await self._recurring.record_consent(
+                    state.terms,
+                    channel=data.channel,
+                    telegram_id=actor.telegram_id,
+                    event_id=data.event_id,
+                    ip_address=data.client_ip,
+                )
+            else:
+                await self._recurring.revoke_consent(
+                    data.subscription_id,
+                    channel=data.channel,
+                    event_id=data.event_id,
+                    ip_address=data.client_ip,
+                )
+            await self._recurring.set_enabled(
+                data.subscription_id, data.enabled, consent_id=consent_id
+            )
         logger.info(
             f"{actor.log} Set auto-renewal of subscription '{data.subscription_id}' "
             f"to {data.enabled}"

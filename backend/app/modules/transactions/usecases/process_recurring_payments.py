@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
 
@@ -133,6 +134,25 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             return None
         return gateway
 
+    async def _has_consent(
+        self, mandate: RecurringPaymentDto, order: TransactionDto, amount: Decimal
+    ) -> bool:
+        terms = await self._recurring.consent_terms(mandate.consent_id)
+        authorized = bool(
+            terms
+            and terms.covers(
+                self._config,
+                user_id=order.user_id,
+                plan_id=order.plan_snapshot.plan_id,
+                amount=amount,
+                duration_days=order.duration_days,
+                currency=order.currency,
+            )
+        )
+        if not authorized:
+            await self._recurring.disable(mandate.subscription_id, "consent_required")
+        return authorized
+
     async def _reserve(self, mandate: RecurringPaymentDto) -> None:
         async with self._uow:
             if not mandate.enabled or not await self._enabled():
@@ -175,7 +195,12 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
 
         async with self._uow:
             current = await self._recurring.get(subscription.id, for_update=True)
-            if current is None or not current.enabled or current.pending_transaction_id is not None:
+            if (
+                current is None
+                or not current.enabled
+                or current.pending_transaction_id is not None
+                or not await self._has_consent(current, source, source.base_price)
+            ):
                 return
             if current.source_transaction_id != source.id or not await self._enabled():
                 await self._defer(subscription.id)
@@ -240,6 +265,7 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                     idempotency_key=uuid4().hex,
                     expires_at=now + SAFE_REPOST_WINDOW,
                     recurring_consent=True,
+                    recurring_consent_id=current.consent_id,
                     is_recurring=True,
                     yookassa_receipt_vat_code=int(vat_code) if vat_code is not None else None,
                 )
@@ -296,6 +322,9 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                 return
             if mandate.pending_transaction_id != order.id or not await self._enabled():
                 return
+            if not await self._has_consent(mandate, order, order.final_price):
+                await self._recurring.disable(subscription_id, "consent_required")
+                return
             gateway = await self._gateway()
             if mandate.shop_id != gateway.settings.shop_id:
                 return
@@ -303,6 +332,8 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             user = await self._users.find_by_id(order.user_id)
             if (
                 user is None
+                or subscription.expire_at
+                < datetime_now() - timedelta(hours=self._config.recurring.max_overdue_hours)
                 or user.is_blocked
                 or user.deleted_at is not None
                 or subscription.status in {SubscriptionStatus.DELETED, SubscriptionStatus.DISABLED}

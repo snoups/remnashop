@@ -68,6 +68,8 @@ UNTOUCHED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("broadcasts", "created_by"),
         ("legal_document_revisions", "created_by"),
         ("user_sessions", "user_id"),
+        # Payment authorization retains its original identity; a new owner must consent again.
+        ("recurring_consents", "user_id"),
     }
 )
 # ceiling on the walk up the referrers; a longer upline is left unchecked

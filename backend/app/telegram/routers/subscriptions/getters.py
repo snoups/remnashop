@@ -1,3 +1,4 @@
+import html
 from typing import Any, Awaitable, Callable, Final, Optional, TypeAlias
 
 from aiogram_dialog import DialogManager
@@ -27,11 +28,13 @@ from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags, selected_subscription_id
 from app.telegram.dialogs.rendering import (
     UNAVAILABLE_BUTTONS_KEY,
+    label_with_icon,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
 )
 from app.telegram.i18n import format_date, get_translator
+from app.telegram.recurring import consent_callback_id
 from app.telegram.routers.subscriptions.handlers import SINGLE_RESET_KEY
 
 _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows", "macos", "linux"})
@@ -123,6 +126,9 @@ async def subscription_card_getter(
     subscription: Optional[SubscriptionDto] = data["subscription"]
     data["auto_renew_on"] = False
     data["auto_renew_off"] = False
+    data["auto_renew_terms"] = False
+    data["auto_renew_choices"] = []
+    dialog_manager.dialog_data.pop("auto_renew_terms_id", None)
     if subscription is None:
         # expired or deleted while the card stayed open
         data["window_text"] = render_window_text(runner, "msg-window-gone")
@@ -130,6 +136,11 @@ async def subscription_card_getter(
         recurring = await get_own_recurring_payment(user, subscription.id)
         data["auto_renew_on"] = recurring.available and not recurring.enabled
         data["auto_renew_off"] = recurring.enabled
+        data["auto_renew_terms"] = bool(recurring.enabled and recurring.accepted_terms)
+        data["auto_renew_terms_text"] = runner.get("btn-recurring.terms")
+        if recurring.terms is not None:
+            dialog_manager.dialog_data["auto_renew_terms_id"] = recurring.terms.terms_id
+            data["auto_renew_choices"] = [{"id": consent_callback_id(recurring.terms.terms_id)}]
         data["auto_renew_text"] = runner.get(
             "btn-recurring.disable" if recurring.enabled else "btn-recurring.enable"
         )
@@ -158,6 +169,8 @@ async def subscription_card_getter(
                 currency=recurring.currency,
                 days=recurring.duration_days,
             )
+        if not recurring.enabled and recurring.terms is not None:
+            data["window_text"] += "\n\n" + html.escape(recurring.terms.summary)
     data["buttons"] = await render_dialog_buttons(
         "subscriptions.card", dialog_config_cache, runner, data
     )
@@ -265,3 +278,25 @@ device_confirm_delete_all_getter: Final[_Getter] = _confirm_getter(
 device_confirm_reissue_getter: Final[_Getter] = _confirm_getter(
     "msg-menu-devices-confirm-reissue", "menu.device_confirm_reissue"
 )
+
+
+@inject
+async def subscription_recurring_terms_getter(
+    dialog_manager: DialogManager,
+    get_own_recurring_payment: FromDishka[GetOwnRecurringPaymentUseCase],
+    i18n: FromDishka[TranslatorHub],
+    **kwargs: Any,
+) -> dict[str, Any]:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    runner = get_translator(i18n, user)
+    subscription_id = selected_subscription_id(dialog_manager)
+    terms = None
+    if subscription_id is not None:
+        state = await get_own_recurring_payment(user, subscription_id)
+        terms = state.accepted_terms
+    return {
+        "window_text": html.escape(terms.text)
+        if terms
+        else runner.get("ntf-recurring.unavailable"),
+        "back_text": label_with_icon(runner, "btn-back.general"),
+    }

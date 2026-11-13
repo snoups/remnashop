@@ -300,3 +300,17 @@ async def test_device_tap_opens_the_confirm_only_while_single_resets_are_on(
     await on_device_delete_request(MagicMock(), MagicMock(), manager)
 
     assert (manager.switch_to.await_count == 1) is opened
+
+
+async def test_a_stale_enable_button_cannot_accept_changed_subscription_terms():
+    manager = _manager({"auto_renew_terms_id": "1" * 64}, {SELECTED_SUBSCRIPTION_KEY: 7})
+    manager.item_id = "0" * 16
+    set_recurring = AsyncMock()
+    await on_auto_renew.__dishka_orig_func__(
+        AsyncMock(),
+        Button(Format("Enable"), id="auto_renew_on"),
+        manager,
+        set_recurring=set_recurring,
+        i18n=_i18n(),
+    )
+    set_recurring.assert_not_awaited()

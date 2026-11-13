@@ -6,13 +6,15 @@ from sqlalchemy import case, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db.models.recurring_consent import RecurringConsent
 from app.core.db.models.recurring_payment import RecurringPayment
 from app.core.db.models.subscription import Subscription
 from app.core.db.models.transaction import Transaction
-from app.core.enums import PaymentGatewayType, TransactionStatus
+from app.core.enums import PaymentGatewayType, PurchaseChannel, TransactionStatus
 from app.core.utils.time import datetime_now
 from app.modules.transactions.recurring_dto import RecurringPaymentDto
 from app.modules.transactions.recurring_policy import SAFE_REPOST_WINDOW
+from app.modules.transactions.recurring_terms import RecurringTerms
 
 
 class RecurringPaymentRepository:
@@ -38,6 +40,7 @@ class RecurringPaymentRepository:
             last_error=row.last_error,
             pending_transaction_id=row.pending_transaction_id,
             attempted_at=row.attempted_at,
+            consent_id=row.consent_id,
         )
 
     async def list_due(self, now: datetime, *, due_before: datetime, limit: int) -> list[int]:
@@ -56,14 +59,90 @@ class RecurringPaymentRepository:
         )
         return list(ids)
 
-    async def set_enabled(self, subscription_id: int, enabled: bool) -> None:
+    async def record_consent(
+        self,
+        terms: RecurringTerms,
+        *,
+        channel: PurchaseChannel,
+        telegram_id: Optional[int],
+        event_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> int:
+        consent = RecurringConsent(
+            user_id=terms.user_id,
+            subscription_id=terms.target_subscription_id,
+            channel=channel.value,
+            telegram_id=telegram_id,
+            event_id=event_id,
+            ip_address=ip_address,
+            terms=terms.model_dump(mode="json"),
+            accepted_at=datetime_now(),
+        )
+        self.session.add(consent)
+        await self.session.flush()
+        return consent.id
+
+    async def consent_terms(self, consent_id: Optional[int]) -> Optional[RecurringTerms]:
+        consent = (
+            await self.session.get(RecurringConsent, consent_id, populate_existing=True)
+            if consent_id is not None
+            else None
+        )
+        if consent is None or consent.revoked_at is not None:
+            return None
+        try:
+            return RecurringTerms.model_validate(consent.terms)
+        except ValueError:
+            return None
+
+    async def revoke_consent(
+        self,
+        subscription_id: int,
+        *,
+        channel: PurchaseChannel,
+        event_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> None:
+        # The mandate lock serializes withdrawal with the worker's outgoing request.
+        mandate = await self.get(subscription_id, for_update=True)
+        if mandate is None or mandate.consent_id is None:
+            return
+        await self.revoke_consent_id(
+            mandate.consent_id, channel=channel, event_id=event_id, ip_address=ip_address
+        )
+
+    async def revoke_consent_id(
+        self,
+        consent_id: Optional[int],
+        *,
+        channel: PurchaseChannel,
+        event_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> None:
+        if consent_id is None:
+            return
+        await self.session.execute(
+            update(RecurringConsent)
+            .where(RecurringConsent.id == consent_id, RecurringConsent.revoked_at.is_(None))
+            .values(
+                revoked_at=datetime_now(),
+                revoked_channel=channel.value,
+                revoked_event_id=event_id,
+                revoked_ip_address=ip_address,
+            )
+        )
+
+    async def set_enabled(
+        self, subscription_id: int, enabled: bool, *, consent_id: Optional[int] = None
+    ) -> None:
         now = datetime_now()
         # A tombstone also covers cancellation before the fulfillment event enrolls the order.
         await self.session.execute(
             insert(RecurringPayment)
             .values(
                 subscription_id=subscription_id,
-                enabled=enabled,
+                consent_id=consent_id,
+                enabled=enabled and consent_id is not None,
                 customer_disabled=not enabled,
                 disabled_at=None if enabled else now,
                 last_error=None if enabled else "customer_disabled",
@@ -74,9 +153,10 @@ class RecurringPaymentRepository:
                 set_={
                     # Only a new successful manual payment can supersede an
                     # unknown debit; toggling the preference must not erase it.
+                    "consent_id": consent_id,
                     "enabled": case(
                         (RecurringPayment.last_error == "payment_status_unknown", False),
-                        else_=enabled,
+                        else_=enabled and consent_id is not None,
                     ),
                     "customer_disabled": not enabled,
                     "disabled_at": None if enabled else now,
@@ -268,16 +348,36 @@ class RecurringPaymentRepository:
             return
         if order.status is not TransactionStatus.PAID or order.is_test:
             return
-        opted_out = row.customer_disabled
+        consent = (
+            await self.session.get(RecurringConsent, order.recurring_consent_id)
+            if order.recurring_consent_id is not None
+            else None
+        )
+        valid = bool(consent and consent.revoked_at is None and consent.user_id == order.user_id)
+        # A late paid order must not undo a withdrawal made after its confirmation.
+        opted_out = row.customer_disabled and not (
+            valid
+            and consent is not None
+            and row.disabled_at is not None
+            and consent.accepted_at > row.disabled_at
+        )
         row.source_transaction_id = order.id
         row.payment_method_id = order.saved_payment_method_id
         row.shop_id = order.payment_method_shop_id or ""
-        row.enabled = bool(row.payment_method_id) and not opted_out
+        row.consent_id = consent.id if valid and consent is not None and not opted_out else None
+        row.customer_disabled = opted_out
+        if consent is not None and valid:
+            consent.subscription_id = subscription_id
+        row.enabled = bool(row.payment_method_id) and valid and not opted_out
+        if row.enabled:
+            row.disabled_at = None
         row.last_error = (
             "customer_disabled"
             if opted_out
             else None
             if row.enabled
+            else "consent_required"
+            if not valid
             else "payment_method_not_saved"
         )
         row.next_attempt_at = now

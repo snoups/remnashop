@@ -240,7 +240,7 @@ async def test_create_checkout_creates_a_pending_order_and_returns_confirmation_
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-async def test_yookassa_checkout_follows_the_recurring_shop_default(
+async def test_yookassa_checkout_never_infers_customer_consent_from_shop_settings(
     enabled,
     create_checkout_use_case,
     _active_yookassa,
@@ -265,7 +265,7 @@ async def test_yookassa_checkout_follows_the_recurring_shop_default(
             gateway_type=PaymentGatewayType.YOOKASSA,
         ),
     )
-    assert fake_gateway.create_payment_calls[0].recurring_consent is enabled
+    assert fake_gateway.create_payment_calls[0].recurring_consent is False
 
 
 async def test_checkout_stores_channel(

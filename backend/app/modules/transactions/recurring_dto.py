@@ -5,6 +5,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.core.enums import PurchaseChannel
+from app.modules.transactions.recurring_terms import RecurringTerms
+
 
 @dataclass(frozen=True, kw_only=True)
 class RecurringPaymentDto:
@@ -17,10 +20,13 @@ class RecurringPaymentDto:
     last_error: Optional[str]
     pending_transaction_id: Optional[int]
     attempted_at: Optional[datetime]
+    consent_id: Optional[int] = None
 
 
 class RecurringPaymentState(BaseModel):
     subscription_id: int
+    terms: Optional[RecurringTerms] = None
+    accepted_terms: Optional[RecurringTerms] = None
     enabled: bool
     available: bool
     customer_disabled: bool = False
@@ -35,3 +41,7 @@ class RecurringPaymentState(BaseModel):
 class SetRecurringPaymentDto:
     subscription_id: int
     enabled: bool
+    terms_id: Optional[str] = None
+    channel: PurchaseChannel = PurchaseChannel.CABINET
+    event_id: Optional[str] = None
+    client_ip: Optional[str] = None

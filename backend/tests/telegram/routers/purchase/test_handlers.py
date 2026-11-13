@@ -322,6 +322,7 @@ def _confirm_data(purchase_type: str) -> dict:
         "duration_days": 30,
         "currency": "RUB",
         "gateway_type": "YOOKASSA",
+        "prices": {"RUB": "199"},
     }
 
 
@@ -352,6 +353,7 @@ async def test_confirm_with_a_payment_link_opens_the_pay_step() -> None:
             purchase_type=PurchaseType.RENEW,
             gateway_type=PaymentGatewayType.YOOKASSA,
             target_subscription_id=3,
+            expected_price=Decimal("199"),
         ),
     )
     assert manager.dialog_data["payment_url"] == "https://pay"

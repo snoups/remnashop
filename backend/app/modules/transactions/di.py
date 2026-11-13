@@ -45,6 +45,7 @@ from app.modules.transactions.usecases import (
     SetOwnRecurringPaymentUseCase,
     ValidateStarsPreCheckoutUseCase,
 )
+from app.modules.transactions.usecases.get_recurring_terms import GetCheckoutRecurringTermsUseCase
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
 
 
@@ -62,6 +63,7 @@ class TransactionsProvider(Provider):
     open_order_counter = alias(source=TransactionRepository, provides=OpenOrderCounter)
     use_cases = provide_all(
         CreateCheckoutUseCase,
+        GetCheckoutRecurringTermsUseCase,
         GetOwnRecurringPaymentUseCase,
         SetOwnRecurringPaymentUseCase,
         ProcessRecurringPaymentsUseCase,

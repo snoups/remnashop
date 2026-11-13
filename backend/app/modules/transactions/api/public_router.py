@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -24,8 +26,10 @@ from app.modules.transactions.dto import (
     QuoteCheckoutDto,
 )
 from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
+from app.modules.transactions.recurring_terms import RecurringTerms
 from app.modules.transactions.usecases import (
     CreateCheckoutUseCase,
+    GetCheckoutRecurringTermsUseCase,
     GetOwnTransactionUseCase,
     JoinPaymentWaitlistUseCase,
     ListOwnTransactionsUseCase,
@@ -64,11 +68,19 @@ async def get_own_recurring_payment(
 async def set_own_recurring_payment(
     subscription_id: int,
     payload: SetRecurringPaymentRequest,
+    request: Request,
     use_case: FromDishka[SetOwnRecurringPaymentUseCase],
     actor: UserDto = Depends(get_current_user),
 ) -> RecurringPaymentState:
     return await use_case(
-        actor, SetRecurringPaymentDto(subscription_id=subscription_id, enabled=payload.enabled)
+        actor,
+        SetRecurringPaymentDto(
+            subscription_id=subscription_id,
+            enabled=payload.enabled,
+            terms_id=payload.terms_id,
+            channel=PurchaseChannel.CABINET,
+            client_ip=resolve_client_ip(request),
+        ),
     )
 
 
@@ -101,11 +113,40 @@ async def create_checkout(
             legal_locale=payload.legal_locale,
             expected_price=payload.expected_price,
             replaces_order_id=payload.replaces_order_id,
+            recurring_consent=payload.recurring_consent,
+            recurring_terms_id=payload.recurring_terms_id,
             client_ip=resolve_client_ip(request),
             return_to="cabinet" if auth.audience is SessionAudience.CABINET else "default",
         ),
     )
     return CheckoutResponse.model_validate(result, from_attributes=True)
+
+
+@router.post(
+    "/checkout/recurring-terms",
+    response_model=Optional[RecurringTerms],
+    responses=error_responses(400, 404),
+)
+@inject
+async def checkout_recurring_terms(
+    payload: CreateCheckoutRequest,
+    use_case: FromDishka[GetCheckoutRecurringTermsUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> Optional[RecurringTerms]:
+    return await use_case(
+        actor,
+        CreateCheckoutDto(
+            plan_id=payload.plan_id,
+            duration_days=payload.duration_days,
+            currency=payload.currency,
+            purchase_type=payload.purchase_type,
+            channel=PurchaseChannel.CABINET,
+            gateway_type=payload.gateway_type,
+            target_subscription_id=payload.target_subscription_id,
+            plan_code=payload.plan_code,
+            legal_locale=payload.legal_locale,
+        ),
+    )
 
 
 @router.post(

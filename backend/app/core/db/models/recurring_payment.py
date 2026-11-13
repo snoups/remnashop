@@ -18,7 +18,8 @@ class RecurringPayment(BaseSql, TimestampMixin):
     source_transaction_id: Mapped[Optional[int]] = mapped_column(ForeignKey("transactions.id"))
     payment_method_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
     shop_id: Mapped[str] = mapped_column(String(128), default="", server_default="")
-    enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
+    consent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("recurring_consents.id"))
+    enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     customer_disabled: Mapped[bool] = mapped_column(default=False, server_default="false")
     disabled_at: Mapped[Optional[datetime]]
     # Codes, not provider error bodies, which can contain payment credentials.

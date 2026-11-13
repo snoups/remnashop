@@ -8,6 +8,7 @@ from dishka.integrations.aiogram_dialog import CONTAINER_NAME, inject
 from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
+from app.core.enums import PurchaseChannel
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, CooldownError, NotFoundError, ValidationError
 from app.modules.settings import GetShopSettingsUseCase
@@ -29,6 +30,7 @@ from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
 from app.telegram.i18n import format_wait, get_translator
 from app.telegram.notice import answer_notice
+from app.telegram.recurring import consent_callback_id
 from app.telegram.states import MainMenu, Subscriptions
 
 _GONE_CODES: Final[frozenset[ErrorCode]] = frozenset(
@@ -59,11 +61,20 @@ async def on_auto_renew(
         return
     if widget.widget_id not in {"auto_renew_on", "auto_renew_off"}:
         return
+    if widget.widget_id == "auto_renew_on":
+        terms_id = dialog_manager.dialog_data.get("auto_renew_terms_id")
+        if terms_id is None or dialog_manager.item_id != consent_callback_id(terms_id):  # type: ignore[attr-defined]
+            await answer_notice(callback, runner.get("ntf-recurring.terms-changed"))
+            return
     try:
         result = await set_recurring(
             user,
             SetRecurringPaymentDto(
-                subscription_id=subscription_id, enabled=widget.widget_id == "auto_renew_on"
+                subscription_id=subscription_id,
+                enabled=widget.widget_id == "auto_renew_on",
+                terms_id=dialog_manager.dialog_data.get("auto_renew_terms_id"),
+                channel=PurchaseChannel.BOT,
+                event_id=callback.id,
             ),
         )
     except AppError:
