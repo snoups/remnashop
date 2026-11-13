@@ -4642,6 +4642,7 @@
     "TRANSLATION_HTML_INVALID": "В тексте ошибка оформления.",
     "TRANSLATION_NOT_FOUND": "Перевод не найден.",
     "TRIAL_NOT_AVAILABLE": "Пробный период недоступен.",
+    "TRIAL_CHANNEL_REQUIRED": "Подпишитесь на канал, чтобы получить пробный период.",
     "UNSUBSCRIBE_TOKEN_INVALID": "Ссылка отписки недействительна.",
     "URL_HOST_NOT_PUBLIC": "URL должен указывать на публичный адрес.",
     "URL_HOST_UNRESOLVABLE": "Не удалось найти хост URL.",

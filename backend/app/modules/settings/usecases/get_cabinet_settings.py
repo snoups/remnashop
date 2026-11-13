@@ -21,6 +21,7 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
             shop = await self._settings_repository.get_shop_settings()
             bot = await self._settings_repository.get_bot_settings()
             access = await self._settings_repository.get_access_settings()
+            requirements = await self._settings_repository.get_bot_requirements()
 
         # outside the transaction: the network call must not hold a connection
         username: Optional[str] = None
@@ -33,6 +34,11 @@ class GetCabinetSettingsUseCase(UseCase[None, CabinetSettingsDto, UserDto]):
             device_all_reset_cooldown_hours=shop.device_all_reset_cooldown_hours,
             link_reset_enabled=shop.link_reset_enabled,
             bot_username=username,
+            channel_url=(
+                requirements.channel_url
+                if username is not None and requirements.channel_required
+                else None
+            ),
             support_telegram=shop.support_telegram,
             support_url=shop.support_url,
             payments_enabled=access.payments_enabled,

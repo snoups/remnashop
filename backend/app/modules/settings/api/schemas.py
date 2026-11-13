@@ -362,6 +362,7 @@ class CabinetSettingsResponse(BaseModel):
     device_all_reset_cooldown_hours: int
     link_reset_enabled: bool
     bot_username: Optional[str]
+    channel_url: Optional[str]
     support_telegram: Optional[str]
     support_url: Optional[str]
     payments_enabled: bool

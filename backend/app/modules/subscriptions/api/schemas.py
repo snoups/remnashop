@@ -184,6 +184,7 @@ class OwnSubscriptionResponse(BaseModel):
     device_all_reset_at: Optional[datetime] = None
     link_reset_at: Optional[datetime] = None
     used_traffic: Optional[int] = None  # bytes; None when the panel is unreachable
+    paused_by_channel_leave: bool
     # vouches for `url` to the cabinet's public deep link page (core/security/connect_signature)
     connect_signature: str
 
@@ -208,6 +209,10 @@ class OwnSubscriptionResponse(BaseModel):
 class OwnSubscriptionListResponse(BaseModel):
     items: list[OwnSubscriptionResponse]
     total: int
+
+
+class ActivateTrialRequest(BaseModel):
+    mini_app: bool = False
 
 
 class TrialResponse(BaseModel):

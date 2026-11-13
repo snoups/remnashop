@@ -299,6 +299,7 @@ class ErrorCode(UpperStrEnum):
     TRANSLATION_NOT_FOUND = auto()
     TRANSLATION_VARIABLE_NOT_ALLOWED = auto()
     TRIAL_NOT_AVAILABLE = auto()
+    TRIAL_CHANNEL_REQUIRED = auto()
     TRIAL_NOT_RENEWABLE = auto()
     UNSUBSCRIBE_TOKEN_INVALID = auto()
     URL_HOST_NOT_PUBLIC = auto()

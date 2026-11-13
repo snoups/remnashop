@@ -1097,6 +1097,31 @@ async def test_channel_rejoin_keeps_an_admin_disabled_trial_disabled(
     )
 
 
+async def test_admin_toggle_after_a_channel_pause_outlasts_the_rejoin(
+    grant_use_case: GrantSubscriptionUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_sdk: RemnawaveSDK,
+    event_publisher: EventPublisher,
+    session: AsyncSession,
+    uow: UnitOfWork,
+) -> None:
+    trial = await _channel_guarded_trial(
+        grant_use_case, user_repository, plan_repository, session, uow, 9705
+    )
+    use_case = _membership_use_case(subscription_repository, remnawave_sdk, event_publisher, uow)
+    leave = ChannelMembershipDto(telegram_id=9705, chat_id=-100, joined=False)
+    await use_case.system(leave)
+    toggle = _set_enabled(subscription_repository, remnawave_sdk, event_publisher, uow)
+    await toggle(OWNER, SetSubscriptionEnabledDto(subscription_id=trial.id, enabled=True))
+    await toggle(OWNER, SetSubscriptionEnabledDto(subscription_id=trial.id, enabled=False))
+
+    assert await use_case.system(replace(leave, joined=True)) is None
+    kept = await subscription_repository.get_by_id(trial.id)
+    assert kept.status is SubscriptionStatus.DISABLED and not kept.paused_by_channel_leave
+
+
 async def test_own_subscriptions_keep_an_expired_one_for_renewal(
     grant_use_case: GrantSubscriptionUseCase,
     user_repository: UserRepository,
