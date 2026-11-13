@@ -18,6 +18,7 @@ __pycache__/
 .pytest_cache/
 .import_linter_cache/
 .grimp_cache/
+graphify-out/
 
 # Coverage
 .coverage

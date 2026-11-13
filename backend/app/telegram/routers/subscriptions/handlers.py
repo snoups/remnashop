@@ -8,6 +8,7 @@ from dishka.integrations.aiogram_dialog import CONTAINER_NAME, inject
 from fluentogram import TranslatorHub, TranslatorRunner
 
 from app.core.constants import USER_KEY
+from app.core.enums import PurchaseChannel
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError, CooldownError, NotFoundError, ValidationError
 from app.modules.settings import GetShopSettingsUseCase
@@ -21,10 +22,15 @@ from app.modules.subscriptions import (
     SubscriptionDto,
     SubscriptionRefDto,
 )
+from app.modules.transactions import (
+    SetOwnRecurringPaymentUseCase,
+    SetRecurringPaymentDto,
+)
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
 from app.telegram.i18n import format_wait, get_translator
 from app.telegram.notice import answer_notice
+from app.telegram.recurring import consent_callback_id
 from app.telegram.states import MainMenu, Subscriptions
 
 _GONE_CODES: Final[frozenset[ErrorCode]] = frozenset(
@@ -38,6 +44,46 @@ _RESET_DISABLED_CODES: Final[frozenset[ErrorCode]] = frozenset(
 # set by the menu's own "Devices" button, so "back" returns there
 DEVICES_FROM_MENU_KEY: Final[str] = "devices_from_menu"
 SINGLE_RESET_KEY: Final[str] = "single_reset_enabled"
+
+
+@inject
+async def on_auto_renew(
+    callback: CallbackQuery,
+    widget: Button,
+    dialog_manager: DialogManager,
+    set_recurring: FromDishka[SetOwnRecurringPaymentUseCase],
+    i18n: FromDishka[TranslatorHub],
+) -> None:
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    runner = get_translator(i18n, user)
+    subscription_id = selected_subscription_id(dialog_manager)
+    if subscription_id is None:
+        return
+    if widget.widget_id not in {"auto_renew_on", "auto_renew_off"}:
+        return
+    if widget.widget_id == "auto_renew_on":
+        terms_id = dialog_manager.dialog_data.get("auto_renew_terms_id")
+        if terms_id is None or dialog_manager.item_id != consent_callback_id(terms_id):  # type: ignore[attr-defined]
+            await answer_notice(callback, runner.get("ntf-recurring.terms-changed"))
+            return
+    try:
+        result = await set_recurring(
+            user,
+            SetRecurringPaymentDto(
+                subscription_id=subscription_id,
+                enabled=widget.widget_id == "auto_renew_on",
+                terms_id=dialog_manager.dialog_data.get("auto_renew_terms_id"),
+                channel=PurchaseChannel.BOT,
+                event_id=callback.id,
+            ),
+        )
+    except AppError:
+        await answer_notice(callback, runner.get("ntf-recurring.unavailable"))
+        return
+    await answer_notice(
+        callback,
+        runner.get("ntf-recurring.enabled" if result.enabled else "ntf-recurring.disabled"),
+    )
 
 
 async def _only_subscription(manager: DialogManager, subscriptions: list[SubscriptionDto]) -> bool:

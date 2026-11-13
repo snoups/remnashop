@@ -83,6 +83,9 @@ class CheckTransactionPaymentUseCase(UseCase[CheckTransactionPaymentDto, Payment
                         current=frozenset({current.status}),
                         external_payment_id=payment.provider_payment_id,
                     )
+                    await self._transaction_repository.remember_payment_method(
+                        current.id, payment.saved_payment_method_id, payment.payment_method_shop_id
+                    )
                     if (
                         current.status in UNPAID_FINAL
                         and current.discount_source is DiscountSource.PURCHASE

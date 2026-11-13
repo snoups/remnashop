@@ -39,6 +39,7 @@ from app.modules.subscriptions import (
     SpentPurchaseDiscount,
 )
 from app.modules.transactions.dto import CreateTransactionDto, DailyPaidDto, TransactionDto
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 
 # Test orders never provision a subscription and must stay out of every
 # revenue/analytics/reconciliation query, and out of the admin order list.
@@ -146,6 +147,10 @@ class TransactionRepository:
             fulfilled_at=row.fulfilled_at,
             fulfilled_subscription_id=row.fulfilled_subscription_id,
             is_test=row.is_test,
+            recurring_consent_id=row.recurring_consent_id,
+            recurring_consent=row.recurring_consent,
+            is_recurring=row.is_recurring,
+            yookassa_receipt_vat_code=row.yookassa_receipt_vat_code,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -179,6 +184,9 @@ class TransactionRepository:
             idempotency_key=data.idempotency_key,
             expires_at=data.expires_at,
             is_test=data.is_test,
+            recurring_consent_id=data.recurring_consent_id,
+            is_recurring=data.is_recurring,
+            yookassa_receipt_vat_code=data.yookassa_receipt_vat_code,
         )
         self.session.add(row)
         await self.session.flush()
@@ -314,6 +322,7 @@ class TransactionRepository:
             .where(
                 Transaction.status == TransactionStatus.PENDING,
                 Transaction.expires_at <= cutoff,
+                Transaction.is_recurring.is_(False),
             )
             .values(status=TransactionStatus.CANCELED, updated_at=NOW_FUNC)
             .returning(Transaction)
@@ -349,12 +358,35 @@ class TransactionRepository:
     ) -> None:
         # updated_at is the paid-at timestamp every revenue query groups by;
         # pinned to itself, since Core update() still applies its onupdate
-        await self.session.execute(
+        row = await self.session.scalar(
             update(Transaction)
             .where(condition, Transaction.fulfilled_at.is_(None))
             .values(
                 fulfilled_at=NOW_FUNC,
                 fulfilled_subscription_id=subscription_id,
+                updated_at=Transaction.updated_at,
+            )
+            .returning(Transaction)
+        )
+        if row is not None:
+            await RecurringPaymentRepository(self.session).on_fulfilled(row, subscription_id)
+
+    async def remember_payment_method(
+        self, order_id: int, payment_method_id: Optional[str], shop_id: Optional[str]
+    ) -> None:
+        if not payment_method_id or not shop_id:
+            return
+        await self.session.execute(
+            update(Transaction)
+            .where(
+                Transaction.id == order_id,
+                Transaction.recurring_consent_id.is_not(None),
+                Transaction.is_test.is_(False),
+                Transaction.gateway_type == PaymentGatewayType.YOOKASSA,
+            )
+            .values(
+                saved_payment_method_id=payment_method_id,
+                payment_method_shop_id=shop_id,
                 updated_at=Transaction.updated_at,
             )
         )

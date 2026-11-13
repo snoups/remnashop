@@ -1,5 +1,6 @@
 from dataclasses import replace
 from typing import Final, Optional
+from urllib.parse import quote
 
 import orjson
 
@@ -32,13 +33,14 @@ _PAYMENT_MODE: Final[str] = "full_payment"
 def _build_receipt(
     order: TransactionDto, settings: YooKassaSettings
 ) -> Optional[dict[str, object]]:
-    if not order.customer_email or settings.vat_code is None:
+    vat_code = order.yookassa_receipt_vat_code if order.is_recurring else settings.vat_code
+    if not order.customer_email or vat_code is None:
         return None
     item: dict[str, object] = {
         "description": f"Subscription plan #{order.plan_id}, {order.duration_days}d",
         "quantity": "1.00",
         "amount": {"value": f"{order.final_price:.2f}", "currency": order.currency.value},
-        "vat_code": int(settings.vat_code),
+        "vat_code": int(vat_code),
         "payment_subject": _PAYMENT_SUBJECT,
         "payment_mode": _PAYMENT_MODE,
     }
@@ -74,10 +76,17 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
     def _auth(self) -> tuple[str, str]:
         return self.settings.shop_id, self.settings.api_key.get_secret_value()
 
-    async def create_payment(self, order: TransactionDto) -> PaymentIntent:
+    @staticmethod
+    def payment_matches(order: TransactionDto, payment: ProviderPayment) -> bool:
+        return (
+            payment.amount == order.final_price
+            and payment.currency == order.currency.value
+            and PaymentGateway.payment_matches(order, payment)
+        )
+
+    def _payment_body(self, order: TransactionDto) -> dict[str, object]:
         body: dict[str, object] = {
             "amount": {"value": f"{order.final_price:.2f}", "currency": order.currency.value},
-            "confirmation": {"type": "redirect", "return_url": self._return_url},
             "capture": True,
             "description": f"Order #{order.id}",
             "metadata": {"order_ref": order.idempotency_key},
@@ -85,7 +94,33 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
         receipt = _build_receipt(order, self.settings)
         if receipt is not None:
             body["receipt"] = receipt
+        return body
 
+    async def create_payment(self, order: TransactionDto) -> PaymentIntent:
+        body = self._payment_body(order)
+        body["confirmation"] = {"type": "redirect", "return_url": self._return_url}
+        # Explicit false also suppresses YooKassa's conditional-save checkbox.
+        body["save_payment_method"] = (
+            self.settings.recurring_enabled and order.recurring_consent and not order.is_test
+        )
+
+        data = await self._post_payment(order, body)
+        return PaymentIntent(
+            confirmation_url=str(data["confirmation"]["confirmation_url"]),
+            provider_payment_id=str(data["id"]),
+        )
+
+    async def create_recurring_payment(
+        self, order: TransactionDto, payment_method_id: str
+    ) -> PaymentIntent:
+        if not self.settings.recurring_enabled or not order.is_recurring or not payment_method_id:
+            raise PaymentGatewayError("Recurring payments are not enabled for this order")
+        body = self._payment_body(order)
+        body["payment_method_id"] = payment_method_id
+        data = await self._post_payment(order, body)
+        return PaymentIntent(confirmation_url=None, provider_payment_id=str(data["id"]))
+
+    async def _post_payment(self, order: TransactionDto, body: dict[str, object]) -> dict:
         response = await self._http.post(
             f"{_API_BASE}/payments",
             json=body,
@@ -94,10 +129,9 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
-        return PaymentIntent(
-            confirmation_url=str(data["confirmation"]["confirmation_url"]),
-            provider_payment_id=str(data["id"]),
-        )
+        if not isinstance(data, dict) or not isinstance(data.get("id"), str) or not data["id"]:
+            raise PaymentGatewayError("YooKassa returned no payment ID")
+        return data
 
     async def parse_webhook(self, request: WebhookRequest) -> Optional[WebhookSignal]:
         # YooKassa does not sign notifications; fetch_payment is the check.
@@ -123,22 +157,52 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
         )
 
     async def fetch_payment(self, order: TransactionDto, signal: WebhookSignal) -> ProviderPayment:
-        if not order.external_payment_id:
+        # A callback may beat the create response, or the response may be lost.
+        # The callback ID is only a lookup hint: confirm still checks the API's
+        # order reference, amount, currency and paid status before crediting it.
+        payment_id = order.external_payment_id or signal.provider_payment_id
+        if not payment_id:
             return NOT_PAID
         response = await self._http.get(
-            f"{_API_BASE}/payments/{order.external_payment_id}",
+            f"{_API_BASE}/payments/{quote(payment_id, safe='')}",
             auth=self._auth(),
             timeout=PROVIDER_API_TIMEOUT_S,
         )
         response.raise_for_status()
         data = orjson.loads(response.content)
+        if data.get("id") != payment_id:
+            raise PaymentGatewayError("YooKassa returned a different payment ID")
         amount = data.get("amount") or {}
+        method = data.get("payment_method") or {}
+        if not isinstance(amount, dict) or not isinstance(method, dict):
+            raise PaymentGatewayError("YooKassa returned malformed payment data")
+        paid_amount = to_decimal(amount.get("value"))
+        currency = amount.get("currency")
+        if paid_amount is None or not isinstance(currency, str):
+            raise PaymentGatewayError("YooKassa returned no valid amount or currency")
+        method_id = method.get("id")
+        saved_method = (
+            method_id
+            if method.get("saved") is True
+            and isinstance(method_id, str)
+            and 0 < len(method_id) <= 128
+            else None
+        )
+        cancellation = data.get("cancellation_details")
+        reason = cancellation.get("reason") if isinstance(cancellation, dict) else None
         return ProviderPayment(
+            cancellation_reason=reason if isinstance(reason, str) and len(reason) <= 64 else None,
             paid=data.get("status") == _PAID_STATUS and data.get("paid") is True,
-            amount=to_decimal(amount.get("value")),
-            currency=amount.get("currency"),
+            amount=paid_amount,
+            currency=currency,
             reference=str((data.get("metadata") or {}).get("order_ref") or ""),
             provider_payment_id=str(data.get("id") or order.external_payment_id),
+            saved_payment_method_id=saved_method,
+            payment_method_shop_id=self.settings.shop_id if saved_method else None,
+            status={
+                _PAID_STATUS: TransactionStatus.PAID,
+                _CANCELED_STATUS: TransactionStatus.CANCELED,
+            }.get(data.get("status"), TransactionStatus.PENDING),
         )
 
     async def confirm_reported(

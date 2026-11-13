@@ -41,6 +41,7 @@ from app.modules.users import UserDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY, selected_subscription_id
 from app.telegram.i18n import get_translator
 from app.telegram.notice import answer_notice
+from app.telegram.recurring import consent_callback_id
 from app.telegram.states import MainMenu, Purchase
 
 PAYMENT_URL_KEY: Final[str] = "payment_url"
@@ -51,6 +52,9 @@ RETRY_PLAN_KEY: Final[str] = "retry_plan_id"
 RETRY_DURATION_KEY: Final[str] = "retry_duration_days"
 # typed in the bot for a gateway that sends a receipt, used for this purchase only
 CUSTOMER_EMAIL_KEY: Final[str] = "customer_email"
+RECURRING_TERMS_KEY: Final[str] = "recurring_terms"
+RECURRING_ACCEPTED_KEY: Final[str] = "recurring_accepted_terms_id"
+RECURRING_EVENT_KEY: Final[str] = "recurring_consent_event_id"
 _EMAIL_ADAPTER: Final[TypeAdapter[str]] = TypeAdapter(EmailStr)
 # the link offered renew-or-new, so its back buttons return there
 LINK_CHOICE_KEY: Final[str] = "link_choice"
@@ -61,6 +65,8 @@ _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
     ErrorCode.GATEWAY_NOT_AVAILABLE: "ntf-purchase.method-unavailable",
     ErrorCode.GATEWAY_EMAIL_REQUIRED: "ntf-purchase.method-unavailable",
     ErrorCode.PURCHASE_DISCOUNT_USED: "ntf-purchase.discount-used",
+    ErrorCode.PRICE_CHANGED: "ntf-recurring.terms-changed",
+    ErrorCode.RECURRING_CONSENT_REQUIRED: "ntf-recurring.consent-required",
 }
 
 
@@ -186,12 +192,64 @@ async def _start_by_link(
     return None
 
 
+def clear_recurring_choice(data: dict[str, Any]) -> None:
+    for key in (RECURRING_TERMS_KEY, RECURRING_ACCEPTED_KEY, RECURRING_EVENT_KEY):
+        data.pop(key, None)
+
+
+def checkout_data(manager: DialogManager) -> CreateCheckoutDto:
+    data = manager.dialog_data
+    purchase_type = PurchaseType(data["purchase_type"])
+    return CreateCheckoutDto(
+        plan_id=data["plan_id"],
+        duration_days=data["duration_days"],
+        currency=Currency(data["currency"]),
+        purchase_type=purchase_type,
+        channel=PurchaseChannel.BOT,
+        gateway_type=PaymentGatewayType(data["gateway_type"]),
+        target_subscription_id=None
+        if purchase_type is PurchaseType.NEW
+        else selected_subscription_id(manager),
+        customer_email=data.get(CUSTOMER_EMAIL_KEY),
+        plan_code=data.get(PLAN_CODE_KEY),
+        replaces_order_id=data.get(ORDER_ID_KEY),
+        expected_price=Decimal(data["prices"][data["currency"]]),
+        recurring_consent=bool(data.get(RECURRING_ACCEPTED_KEY)),
+        recurring_terms_id=data.get(RECURRING_ACCEPTED_KEY),
+        consent_event_id=data.get(RECURRING_EVENT_KEY),
+    )
+
+
+async def on_recurring_choice(
+    callback: CallbackQuery, widget: Button, dialog_manager: DialogManager
+) -> None:
+    data = dialog_manager.dialog_data
+    if widget.widget_id == "recurring_on" and data.get(RECURRING_TERMS_KEY):
+        # A stale message must not authorize terms displayed by a later selection.
+        terms_id = data[RECURRING_TERMS_KEY]["terms_id"]
+        if dialog_manager.item_id != consent_callback_id(terms_id):  # type: ignore[attr-defined]
+            await callback.answer()
+            return
+        data[RECURRING_ACCEPTED_KEY] = terms_id
+        data[RECURRING_EVENT_KEY] = callback.id
+    elif widget.widget_id == "recurring_off":
+        data.pop(RECURRING_ACCEPTED_KEY, None)
+        data.pop(RECURRING_EVENT_KEY, None)
+    else:
+        return
+    data.pop(PAYMENT_URL_KEY, None)
+    await callback.answer()
+
+
 def _store_method(dialog_data: dict[str, Any], method: dict[str, Any]) -> None:
+    clear_recurring_choice(dialog_data)
     # a new selection is a new order, not the one already created
     dialog_data.pop(PAYMENT_URL_KEY, None)
     dialog_data["gateway_type"] = method["gateway_type"]
     dialog_data["currency"] = method["currency"]
     dialog_data["requires_email"] = method.get("requires_email", False)
+    dialog_data["recurring_available"] = method.get("recurring_available", False)
+    dialog_data["recurring_required"] = method.get("recurring_required", False)
 
 
 async def _after_method(manager: DialogManager) -> None:
@@ -224,8 +282,20 @@ async def select_duration(
         }
     except AppError:
         return "ntf-purchase.plan-unavailable"
+    methods = [
+        m
+        for m in methods
+        if not (
+            m.recurring_required
+            and quotes[m.currency].final_price > 0
+            and (plan.is_trial or days <= 0)
+        )
+    ]
+    if not methods:
+        return "ntf-purchase.no-methods"
     data = manager.dialog_data
     data.pop(PAYMENT_URL_KEY, None)
+    clear_recurring_choice(data)
     data["duration_days"] = days
     data["plan_name"] = plan.name
     data["plan_icon_id"] = plan.icon_emoji_id
@@ -242,6 +312,8 @@ async def select_duration(
             "gateway_type": m.gateway_type.value,
             "currency": m.currency.value,
             "requires_email": m.requires_email,
+            "recurring_available": m.recurring_available,
+            "recurring_required": m.recurring_required,
         }
         for m in methods
     ]
@@ -443,30 +515,27 @@ async def on_confirm(
     if data.get(PAYMENT_URL_KEY):
         await dialog_manager.switch_to(Purchase.PAY)
         return
-    purchase_type = PurchaseType(data["purchase_type"])
+    if (
+        data.get("recurring_required")
+        and not data.get(RECURRING_ACCEPTED_KEY)
+        and Decimal(data["prices"][data["currency"]]) > 0
+    ):
+        await answer_notice(callback, runner.get("ntf-recurring.consent-required"))
+        return
     try:
-        result = await create_checkout(
-            user,
-            CreateCheckoutDto(
-                plan_id=data["plan_id"],
-                duration_days=data["duration_days"],
-                currency=Currency(data["currency"]),
-                purchase_type=purchase_type,
-                channel=PurchaseChannel.BOT,
-                gateway_type=PaymentGatewayType(data["gateway_type"]),
-                target_subscription_id=None
-                if purchase_type is PurchaseType.NEW
-                else selected_subscription_id(dialog_manager),
-                customer_email=data.get(CUSTOMER_EMAIL_KEY),
-                plan_code=data.get(PLAN_CODE_KEY),
-                replaces_order_id=data.get(ORDER_ID_KEY),
-            ),
-        )
+        result = await create_checkout(user, checkout_data(dialog_manager))
     except AppError as error:
         if error.code is ErrorCode.PAYMENTS_DISABLED:
             # the text promises a message once payments are back
             await join_payment_waitlist(user)
         await answer_notice(callback, runner.get(checkout_error_key(error)))
+        if error.code is ErrorCode.RECURRING_CONSENT_REQUIRED:
+            data["recurring_available"] = True
+            data["recurring_required"] = True
+            clear_recurring_choice(data)
+        if error.code is ErrorCode.PRICE_CHANGED:
+            clear_recurring_choice(data)
+            await dialog_manager.switch_to(Purchase.DURATION)
         if error.code is ErrorCode.PURCHASE_DISCOUNT_USED:
             # the shown price had the spent discount in it; picking a duration quotes again
             await dialog_manager.switch_to(Purchase.DURATION)

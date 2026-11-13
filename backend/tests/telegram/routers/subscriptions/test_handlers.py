@@ -3,6 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram_dialog import StartMode
+from aiogram_dialog.widgets.kbd import Button
+from aiogram_dialog.widgets.text import Format
 from dishka.integrations.aiogram_dialog import CONTAINER_NAME
 
 from app.core.constants import USER_KEY
@@ -13,6 +15,7 @@ from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.subscriptions.handlers import (
     DEVICES_FROM_MENU_KEY,
     SINGLE_RESET_KEY,
+    on_auto_renew,
     on_device_delete_confirm,
     on_device_delete_request,
     on_devices_back,
@@ -48,6 +51,18 @@ def _i18n() -> MagicMock:
     i18n = MagicMock()
     i18n.get_translator_by_locale.return_value = MagicMock(get=lambda key, **kwargs: key)
     return i18n
+
+
+async def test_repeated_taps_on_disable_never_reenable_auto_renewal() -> None:
+    manager = _manager({}, {SELECTED_SUBSCRIPTION_KEY: 7})
+    set_recurring = AsyncMock(return_value=MagicMock(enabled=False))
+    widget = Button(Format("Disable"), id="auto_renew_off")
+    for _ in range(2):
+        await on_auto_renew.__dishka_orig_func__(
+            AsyncMock(), widget, manager, set_recurring=set_recurring, i18n=_i18n()
+        )
+    assert set_recurring.await_count == 2
+    assert all(call.args[1].enabled is False for call in set_recurring.await_args_list)
 
 
 async def test_open_subscriptions_with_the_only_one_allowed_goes_straight_to_the_card() -> None:
@@ -285,3 +300,17 @@ async def test_device_tap_opens_the_confirm_only_while_single_resets_are_on(
     await on_device_delete_request(MagicMock(), MagicMock(), manager)
 
     assert (manager.switch_to.await_count == 1) is opened
+
+
+async def test_a_stale_enable_button_cannot_accept_changed_subscription_terms():
+    manager = _manager({"auto_renew_terms_id": "1" * 64}, {SELECTED_SUBSCRIPTION_KEY: 7})
+    manager.item_id = "0" * 16
+    set_recurring = AsyncMock()
+    await on_auto_renew.__dishka_orig_func__(
+        AsyncMock(),
+        Button(Format("Enable"), id="auto_renew_on"),
+        manager,
+        set_recurring=set_recurring,
+        i18n=_i18n(),
+    )
+    set_recurring.assert_not_awaited()

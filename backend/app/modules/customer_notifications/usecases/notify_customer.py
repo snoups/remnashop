@@ -56,7 +56,13 @@ from app.modules.subscriptions import (
     SubscriptionTrafficThresholdEvent,
     TorrentBlockerReportEvent,
 )
-from app.modules.transactions import PaidOrderNotFulfilledEvent, TransactionRepository
+from app.modules.transactions import (
+    PaidOrderNotFulfilledEvent,
+    RecurringPaymentExhaustedEvent,
+    RecurringPaymentFailedEvent,
+    RecurringPaymentPausedEvent,
+    TransactionRepository,
+)
 from app.modules.users import UserDto, UserRepository
 
 # outlives the sweep's retries of one outbox row
@@ -79,6 +85,9 @@ _RENEWABLE: Final[frozenset[str]] = frozenset(
         SubscriptionExpiredEvent,
         SubscriptionExpiredAgoEvent,
         SubscriptionTrafficLimitedEvent,
+        RecurringPaymentFailedEvent,
+        RecurringPaymentPausedEvent,
+        RecurringPaymentExhaustedEvent,
     )
 )
 # the subscription page is where a customer connects a device
@@ -90,6 +99,9 @@ _SUPPORT: Final[frozenset[str]] = frozenset(
         SubscriptionNotConnectedEvent.__name__,
         TorrentBlockerReportEvent.__name__,
         PaidOrderNotFulfilledEvent.__name__,
+        RecurringPaymentFailedEvent.__name__,
+        RecurringPaymentPausedEvent.__name__,
+        RecurringPaymentExhaustedEvent.__name__,
         CabinetNewDeviceSignInEvent.__name__,
     }
 )

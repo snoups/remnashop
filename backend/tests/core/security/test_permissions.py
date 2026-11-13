@@ -300,6 +300,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.USERS_LOYALTY_MANAGE,
         Permission.TRANSACTIONS_VIEW,
         Permission.TRANSACTIONS_SUMMARY_VIEW,
+        Permission.TRANSACTIONS_RECURRING_VIEW,
         Permission.TRANSACTIONS_DETAIL_VIEW,
         Permission.TRANSACTIONS_GATEWAYS_VIEW,
         Permission.TRANSACTIONS_FULFILL,

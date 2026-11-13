@@ -23,7 +23,8 @@ class ReorderGatewaysRequest(BaseModel):
 
 class GatewayFieldSpecResponse(BaseModel):
     key: str
-    kind: Literal["text", "secret", "number", "boolean"]
+    kind: Literal["text", "secret", "number", "boolean", "choice"]
+    options: list[str] = []
     required: bool
 
 

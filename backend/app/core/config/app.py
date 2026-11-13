@@ -10,6 +10,7 @@ from app.core.config.build import BuildConfig
 from app.core.config.cabinet import CabinetConfig
 from app.core.config.database import DatabaseConfig
 from app.core.config.log import LogConfig
+from app.core.config.recurring import RecurringConfig
 from app.core.config.redis import RedisConfig
 from app.core.config.remnawave import RemnawaveConfig
 from app.core.config.validators import validate_not_change_me
@@ -40,6 +41,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+    recurring: RecurringConfig = Field(default_factory=RecurringConfig)
     build: BuildConfig = Field(default_factory=BuildConfig)
     log: LogConfig = Field(default_factory=LogConfig)
 

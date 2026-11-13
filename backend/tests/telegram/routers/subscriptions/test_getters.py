@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from decimal import Decimal
+from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock
 
@@ -7,13 +10,20 @@ from app.core.constants import USER_KEY
 from app.core.enums import Locale, SubscriptionStatus
 from app.modules.dialogs import catalog
 from app.modules.dialogs.flows.menu import register_menu_metadata
+from app.modules.transactions import RecurringPaymentState
 from app.telegram.dialogs.context import (
     SELECTED_SUBSCRIPTION_KEY,
     build_condition_data,
     menu_flags,
     selected_subscription_id,
 )
-from app.telegram.routers.subscriptions.getters import device_confirm_delete_getter
+from app.telegram.i18n import build_translator_hub
+from app.telegram.routers.subscriptions.getters import (
+    _recurring_card_notice,
+    device_confirm_delete_getter,
+    subscription_recurring_terms_getter,
+)
+from tests.seeded_translations import seeded_fluent_source
 
 
 @pytest.fixture(autouse=True)
@@ -173,3 +183,53 @@ async def test_a_trial_is_not_offered_to_an_owner_of_a_subscription() -> None:
     assert owner["trial_available"] is False
     assert owner["trial_paid_available"] is False
     assert owner["subscriptions_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("enabled", "current", "accepted", "expected"),
+    [
+        (False, "Current terms before consent", None, "Current terms before consent"),
+        (True, "Changed terms", "Accepted terms", "Accepted terms"),
+        (False, None, "Accepted paused terms", "Accepted paused terms"),
+    ],
+)
+async def test_subscription_terms_can_be_read_before_enabling_and_while_paused(
+    enabled,
+    current,
+    accepted,
+    expected,
+):
+    manager = MagicMock()
+    manager.middleware_data = {USER_KEY: _user()}
+    manager.dialog_data = {SELECTED_SUBSCRIPTION_KEY: 7}
+    manager.start_data = {}
+    state = SimpleNamespace(
+        enabled=enabled,
+        terms=SimpleNamespace(text=current) if current else None,
+        accepted_terms=SimpleNamespace(text=accepted) if accepted else None,
+    )
+    hub = MagicMock()
+    hub.get_translator_by_locale.return_value = MagicMock(get=lambda key, **kwargs: key)
+    result = await subscription_recurring_terms_getter.__dishka_orig_func__(
+        manager, get_own_recurring_payment=AsyncMock(return_value=state), i18n=hub
+    )
+    assert result["window_text"] == expected
+
+
+def test_retry_notice_shows_the_reason_and_actual_next_attempt():
+    hub = build_translator_hub([Locale.RU], {Locale.RU: seeded_fluent_source(Locale.RU)}, Locale.RU)
+    state = RecurringPaymentState(
+        subscription_id=1,
+        enabled=True,
+        available=True,
+        retrying=True,
+        next_retry_at=datetime(2026, 11, 15, 13, 0, tzinfo=timezone.utc),
+        amount_limit=Decimal("500"),
+        currency="RUB",
+        duration_days=30,
+        last_error="insufficient_funds",
+    )
+    text = _recurring_card_notice(state, hub.get_translator_by_locale(Locale.RU.value))
+    assert "повторная оплата" in text
+    assert "недостаточно средств" in text
+    assert "15.11.2026 13:00 UTC" in text

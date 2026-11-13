@@ -204,6 +204,7 @@ async def test_confirm_window_shows_terms_notice_only_with_documents(locale: Loc
             ),
             list_own_subscriptions=AsyncMock(return_value=[]),
             list_visible_legal_documents=_visible(documents),
+            get_recurring_terms=AsyncMock(return_value=None),
             i18n=hub,
         )
         return str(data["window_text"])

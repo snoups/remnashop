@@ -10,12 +10,13 @@ export interface Gateway {
   flags: Record<string, boolean>;
 }
 
-export type GatewayFieldKind = "text" | "secret" | "number" | "boolean";
+export type GatewayFieldKind = "text" | "secret" | "number" | "boolean" | "choice";
 
 export interface GatewayFieldSpec {
   key: string;
   kind: GatewayFieldKind;
   required: boolean;
+  options: string[];
 }
 
 export interface GatewayCatalogEntry {

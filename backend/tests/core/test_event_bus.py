@@ -72,6 +72,12 @@ from app.modules.transactions.events import (
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
+from app.modules.transactions.recurring_events import (
+    RecurringPaymentExhaustedEvent,
+    RecurringPaymentFailedEvent,
+    RecurringPaymentPausedEvent,
+    RecurringPaymentUpcomingEvent,
+)
 from app.modules.transactions.tasks import notify_payment_waitlist_task
 from app.modules.users.dto import UserDto
 from app.modules.users.events import CabinetUserRegisteredEvent, TelegramUserRegisteredEvent
@@ -120,6 +126,25 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
             amount="5.00",
             currency="USD",
         ),
+        RecurringPaymentUpcomingEvent(
+            user_id=1,
+            subscription_id=1,
+            amount="500",
+            currency="RUB",
+            scheduled_at="2026-11-15T12:00:00+00:00",
+        ),
+        RecurringPaymentFailedEvent(
+            user_id=1,
+            subscription_id=1,
+            order_id=1,
+            amount="500",
+            currency="RUB",
+            reason="insufficient_funds",
+            next_attempt_at="2026-11-15T13:00:00+00:00",
+            attempt=1,
+        ),
+        RecurringPaymentPausedEvent(user_id=1, subscription_id=1, reason="merchant_unavailable"),
+        RecurringPaymentExhaustedEvent(user_id=1, subscription_id=1, reason="retries_exhausted"),
         TransactionCanceledEvent(order_id=1, user_id=1),
         TransactionExpiredEvent(order_id=1, user_id=1),
         SubscriptionExpiringEvent(user=_USER, subscription_id=1, hours=72),

@@ -17,16 +17,21 @@ from app.modules.subscriptions import (
     ListOwnSubscriptionsUseCase,
     SubscriptionDto,
 )
-from app.modules.transactions import QuoteCheckoutUseCase
+from app.modules.transactions import GetCheckoutRecurringTermsUseCase, QuoteCheckoutUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import selected_subscription_id
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
 from app.telegram.i18n import format_date, format_period, format_price, get_translator
+from app.telegram.recurring import consent_callback_id
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
     PLAN_CODE_KEY,
+    RECURRING_ACCEPTED_KEY,
+    RECURRING_TERMS_KEY,
     catalog_query,
+    checkout_data,
     checkout_quoter,
+    clear_recurring_choice,
     plans_for,
     price_in,
     selected_plan,
@@ -285,6 +290,7 @@ async def confirm_getter(
     list_active_plans: FromDishka[ListActivePlansUseCase],
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
+    get_recurring_terms: FromDishka[GetCheckoutRecurringTermsUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -302,6 +308,29 @@ async def confirm_getter(
     # an empty value drops its line, as for a plan gone from the catalog
     traffic_limit: object = plan.traffic_limit if plan is not None else ""
     device_limit: object = plan.device_limit if plan is not None else ""
+    terms = None
+    if data.get("recurring_available") and plan is not None:
+        try:
+            terms = await get_recurring_terms(user, checkout_data(dialog_manager))
+        except AppError:
+            terms = None
+    previous = data.get(RECURRING_TERMS_KEY, {})
+    if terms is None or previous.get("terms_id") != terms.terms_id:
+        clear_recurring_choice(data)
+    if terms is not None:
+        data[RECURRING_TERMS_KEY] = terms.model_dump(mode="json")
+        data["prices"][data["currency"]] = str(terms.initial_amount)
+        data.setdefault("base_prices", {})[data["currency"]] = str(terms.amount_limit)
+    accepted = bool(terms and data.get(RECURRING_ACCEPTED_KEY) == terms.terms_id)
+    recurring_notice = html.escape(terms.summary) if terms else ""
+    if data.get("recurring_required") and Decimal(data["prices"][data["currency"]]) > 0:
+        recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-required"))
+    if (
+        purchase_type in {PurchaseType.RENEW, PurchaseType.CHANGE}
+        and not accepted
+        and not data.get("recurring_required")
+    ):
+        recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-preserved"))
     return {
         "window_text": render_window_text(
             runner,
@@ -320,7 +349,18 @@ async def confirm_getter(
             type_notice=_type_notice(runner, purchase_type),
             plan_changed_notice=_plan_changed_notice(runner, plan, renewed) if plan else "",
             terms_notice=terms_notice,
-        ),
+        )
+        + (f"\n\n{recurring_notice}" if recurring_notice else ""),
+        "recurring_choices": [{"id": consent_callback_id(terms.terms_id)}] if terms else [],
+        "recurring_on": terms is not None and not accepted,
+        "recurring_off": accepted,
+        "recurring_terms": terms is not None,
+        "can_pay": not data.get("recurring_required", False)
+        or accepted
+        or Decimal(data["prices"][data["currency"]]) == 0,
+        "recurring_on_text": runner.get("btn-recurring.consent-off"),
+        "recurring_off_text": runner.get("btn-recurring.consent-on"),
+        "recurring_terms_text": runner.get("btn-recurring.terms"),
         "pay_text": label_with_icon(runner, "btn-purchase.pay"),
         "back_text": label_with_icon(
             runner,
@@ -328,6 +368,21 @@ async def confirm_getter(
             if data.get("method_skipped")
             else "btn-purchase.back-method",
         ),
+    }
+
+
+@inject
+async def recurring_terms_getter(
+    dialog_manager: DialogManager, i18n: FromDishka[TranslatorHub], **kwargs: Any
+) -> dict[str, Any]:
+    data = dialog_manager.dialog_data
+    terms = data.get(RECURRING_TERMS_KEY, {})
+    runner = _runner(dialog_manager, i18n)
+    return {
+        "window_text": html.escape(terms["text"])
+        if terms
+        else runner.get("ntf-recurring.unavailable"),
+        "back_text": label_with_icon(runner, "btn-back.general"),
     }
 
 

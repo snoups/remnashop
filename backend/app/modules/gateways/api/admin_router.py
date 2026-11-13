@@ -66,6 +66,7 @@ async def get_gateway_catalog(
                     key=field_spec.key,
                     kind=field_spec.kind.value,
                     required=field_spec.required,
+                    options=list(field_spec.options),
                 )
                 for field_spec in field_specs
             ],

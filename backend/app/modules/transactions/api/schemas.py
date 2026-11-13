@@ -30,6 +30,8 @@ class CreateCheckoutRequest(BaseModel):
     legal_locale: Optional[Locale] = None
     expected_price: Optional[Decimal] = None
     replaces_order_id: Optional[int] = None
+    recurring_consent: bool = False
+    recurring_terms_id: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     _legal_locale = field_validator("legal_locale", mode="before")(known_locale)
 
@@ -229,8 +231,15 @@ class PaymentMethodResponse(BaseModel):
     currency: Currency
     requires_email: bool
     asks_email: bool
+    recurring_available: bool = False
+    recurring_required: bool = False
 
 
 class PaymentMethodListResponse(BaseModel):
     items: list[PaymentMethodResponse]
     total: int
+
+
+class SetRecurringPaymentRequest(BaseModel):
+    enabled: bool
+    terms_id: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{64}$")

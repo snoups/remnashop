@@ -1,6 +1,10 @@
 from typing import Protocol
 
 
+class ProcessRecurringPaymentDispatch(Protocol):
+    async def kiq(self, *, subscription_id: int) -> object: ...
+
+
 class ConfirmStarsPaymentDispatch(Protocol):
     async def kiq(
         self, *, telegram_id: int, payload: str, currency: str, total_amount: int, charge_id: str

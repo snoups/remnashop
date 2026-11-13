@@ -46,6 +46,8 @@ class PaymentMethodDto:
     requires_email: bool = False
     # False once the shop sends its own payment email: a customer's would be ignored
     asks_email: bool = True
+    recurring_available: bool = False
+    recurring_required: bool = False
 
 
 class TransactionDto(BaseDto, TimestampMixin):
@@ -76,6 +78,10 @@ class TransactionDto(BaseDto, TimestampMixin):
     fulfilled_at: Optional[datetime] = None
     fulfilled_subscription_id: Optional[int] = None
     is_test: bool = False
+    recurring_consent_id: Optional[int] = None
+    recurring_consent: bool = False
+    is_recurring: bool = False
+    yookassa_receipt_vat_code: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -109,6 +115,10 @@ class CreateTransactionDto:
     expires_at: datetime
     previous_plan_snapshot: Optional[PlanSnapshot] = None
     is_test: bool = False
+    recurring_consent_id: Optional[int] = None
+    recurring_consent: bool = False
+    is_recurring: bool = False
+    yookassa_receipt_vat_code: Optional[int] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -130,6 +140,9 @@ class StarsPaymentDto:
 
 @dataclass(frozen=True, kw_only=True)
 class CreateCheckoutDto:
+    recurring_consent: bool = False
+    recurring_terms_id: Optional[str] = None
+    consent_event_id: Optional[str] = None
     plan_id: int
     duration_days: int
     currency: Currency

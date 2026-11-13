@@ -20,6 +20,7 @@ from app.telegram.routers.purchase.getters import (
     method_getter,
     pay_getter,
     plan_getter,
+    recurring_terms_getter,
 )
 from app.telegram.routers.purchase.handlers import (
     on_confirm,
@@ -32,6 +33,7 @@ from app.telegram.routers.purchase.handlers import (
     on_method_selected,
     on_plan_selected,
     on_purchase_start,
+    on_recurring_choice,
 )
 from app.telegram.states import MainMenu, Purchase
 
@@ -121,12 +123,44 @@ confirm = Window(
     DynamicMedia("banner", when="banner"),
     Format("{window_text}"),
     Row(
-        Button(Format("{pay_text}"), id="pay", on_click=on_confirm),
+        Button(Format("{pay_text}"), id="pay", on_click=on_confirm, when="can_pay"),
         Button(Format("{back_text}"), id="back", on_click=on_confirm_back),
+    ),
+    ListGroup(
+        Button(
+            Format("{recurring_on_text}"),
+            id="recurring_on",
+            on_click=on_recurring_choice,
+            when="recurring_on",
+        ),
+        Button(
+            Format("{recurring_off_text}"),
+            id="recurring_off",
+            on_click=on_recurring_choice,
+            when="recurring_off",
+        ),
+        id="recurring_choice",
+        item_id_getter=lambda item: item["id"],
+        items="recurring_choices",
+    ),
+    SwitchTo(
+        Format("{recurring_terms_text}"),
+        id="recurring_terms",
+        state=Purchase.RECURRING_TERMS,
+        when="recurring_terms",
     ),
     parse_mode=ParseMode.HTML,
     state=Purchase.CONFIRM,
     getter=with_window_banner(_BANNER_WINDOW, confirm_getter),
+)
+
+# Keep the full terms independent of Telegram's media-caption limit.
+recurring_terms = Window(
+    Format("{window_text}"),
+    SwitchTo(Format("{back_text}"), id="back", state=Purchase.CONFIRM),
+    parse_mode=ParseMode.HTML,
+    state=Purchase.RECURRING_TERMS,
+    getter=recurring_terms_getter,
 )
 
 pay = Window(
@@ -156,5 +190,13 @@ link_choice = Window(
 )
 
 router = Dialog(
-    plan, duration, method, email, confirm, pay, link_choice, on_start=on_purchase_start
+    plan,
+    duration,
+    method,
+    email,
+    confirm,
+    recurring_terms,
+    pay,
+    link_choice,
+    on_start=on_purchase_start,
 )

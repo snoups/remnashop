@@ -52,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "broadcasts", to: "/dashboard/broadcasts", icon: Megaphone, anyOf: ["BROADCASTS_VIEW"] },
   { key: "referrals", to: "/dashboard/referrals", icon: Share2, anyOf: ["REFERRALS_LIST"] },
   { key: "advertising", to: "/dashboard/advertising", icon: Link2, anyOf: ["AD_LINKS_VIEW"] },
-  { key: "transactions", to: "/dashboard/transactions", icon: Receipt, anyOf: ["TRANSACTIONS_VIEW"] },
+  { key: "transactions", to: "/dashboard/transactions", icon: Receipt, anyOf: ["TRANSACTIONS_VIEW", "TRANSACTIONS_RECURRING_VIEW"] },
   { key: "admins", to: "/dashboard/admins", icon: ShieldCheck, anyOf: ["ADMINS_MANAGE"] },
   { key: "eventLog", to: "/dashboard/events", icon: ScrollText, anyOf: ["EVENT_LOG_VIEW"] },
   { key: "settings", to: "/dashboard/settings", icon: Settings },

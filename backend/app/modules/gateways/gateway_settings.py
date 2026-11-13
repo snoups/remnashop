@@ -1,6 +1,6 @@
-from typing import Final, NewType, Optional, Self
+from typing import Any, Final, Literal, NewType, Optional, Self, cast
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
+from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError, model_validator
 
 from app.core.enums import PaymentGatewayType
 from app.core.exceptions import PaymentGatewayError
@@ -31,11 +31,35 @@ class TelegramStarsSettings(GatewaySettings):
     require_paid_purchase: bool = False
 
 
+YooKassaPaymentMode = Literal["single", "recurring", "both"]
+
+
+def yookassa_payment_mode(values: dict[str, Any]) -> YooKassaPaymentMode:
+    mode = values.get("payment_mode")
+    if mode is not None:
+        return (
+            cast(YooKassaPaymentMode, mode) if mode in {"single", "recurring", "both"} else "single"
+        )
+    return "both" if values.get("recurring_enabled") in (True, "true") else "single"
+
+
 class YooKassaSettings(GatewaySettings):
     shop_id: str
     api_key: SecretStr
     vat_code: Optional[NumericStr] = None
     verify_ip: bool = True
+    payment_mode: YooKassaPaymentMode = "single"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_mode(cls, values: Any) -> Any:
+        if isinstance(values, dict) and "payment_mode" not in values:
+            return {**values, "payment_mode": yookassa_payment_mode(values)}
+        return values
+
+    @property
+    def recurring_enabled(self) -> bool:
+        return self.payment_mode != "single"
 
 
 class YooMoneySettings(GatewaySettings):
