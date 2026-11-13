@@ -29,6 +29,7 @@ class ShopSettings(BaseSql, TimestampMixin):
     referral_reset_cooldown_hours: Mapped[int] = mapped_column(default=0, server_default="0")
 
     # Where a customer reaches support, both optional: a Telegram username (without
-    # "@") and a page opened in the browser. The cabinet offers whichever is set.
-    support_telegram: Mapped[Optional[str]] = mapped_column(String(32))
+    # "@", maybe with "?direct") and a page opened in the browser. The cabinet offers
+    # whichever is set.
+    support_telegram: Mapped[Optional[str]] = mapped_column(String(40))
     support_url: Mapped[Optional[str]] = mapped_column(String(512))

@@ -7,9 +7,10 @@ from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode, CaptchaProvider, SmtpSecurity
 
 _COMMAND_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
-# a Telegram username as typed: "name", "@name", "t.me/name" or "https://t.me/name"
+# a Telegram username as typed: "name", "@name", "t.me/name" or "https://t.me/name";
+# "?direct" (a channel's direct messages) is kept with the name
 _TELEGRAM_USERNAME: Final[re.Pattern[str]] = re.compile(
-    r"^(?:@|(?:https?://)?t\.me/)?([A-Za-z0-9_]{4,32})/?$"
+    r"^(?:@|(?:https?://)?t\.me/)?([A-Za-z0-9_]{4,32})/?(\?direct)?$"
 )
 # no control characters (a line break above all): it lands in an email header
 _HEADER_TEXT: Final[str] = r"^[^\x00-\x1f\x7f]*$"
@@ -103,7 +104,7 @@ class UpdateShopSettingsRequest(BaseModel):
         match = _TELEGRAM_USERNAME.match(value.strip())
         if match is None:
             raise ValueError("support_telegram must be a Telegram username or a t.me link")
-        return match.group(1)
+        return match.group(1) + (match.group(2) or "")
 
     @model_validator(mode="after")
     def non_nullable_fields(self) -> "UpdateShopSettingsRequest":

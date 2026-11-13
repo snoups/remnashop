@@ -16,7 +16,7 @@ import { SaveFooter } from "@shared/ui/SaveFooter";
 import { Spinner } from "@shared/ui/Spinner";
 
 // what the backend takes for the support chat: "name", "@name", "t.me/name" or "https://t.me/name"
-const SUPPORT_TELEGRAM = /^(?:@|(?:https?:\/\/)?t\.me\/)?[A-Za-z0-9_]{4,32}\/?$/;
+const SUPPORT_TELEGRAM = /^(?:@|(?:https?:\/\/)?t\.me\/)?[A-Za-z0-9_]{4,32}\/?(?:\?direct)?$/;
 
 /** Where the bot's and the cabinet's "Support" leads: a Telegram chat, a web page, or both.
  *  Shop settings underneath, saved on their own (a partial PATCH). */
