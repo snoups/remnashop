@@ -431,9 +431,9 @@ ntf-telegram-oauth-provider = { $value ->
        *[other] { $value }
     }
 ntf-telegram-access-mode = { $value ->
-        [PUBLIC] 🟢 Open to everyone
-        [INVITED] 🟡 Invited only
-        [RESTRICTED] 🔴 Closed to everyone
+        [PUBLIC] open to everyone
+        [INVITED] invited only
+        [RESTRICTED] closed to everyone
        *[other] { $value }
     }
 ntf-telegram-payments = { $value ->
