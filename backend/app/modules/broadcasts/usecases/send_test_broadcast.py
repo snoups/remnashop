@@ -80,6 +80,7 @@ class SendTestBroadcastUseCase(UseCase[int, None, UserDto]):
                 "Media file is missing", code=ErrorCode.BROADCAST_TEST_FAILED
             ) from error
         if result.outcome is not SendOutcome.SENT:
+            logger.warning(f"{actor.log} Test broadcast '{data}' refused: {result.error}")
             raise ValidationError(
                 f"Telegram refused: {result.error}", code=ErrorCode.BROADCAST_TEST_FAILED
             )

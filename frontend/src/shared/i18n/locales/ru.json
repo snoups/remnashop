@@ -4389,7 +4389,7 @@
     "BROADCAST_SCHEDULE_IN_PAST": "Время отправки уже прошло.",
     "BROADCAST_BOT_NOT_CONFIGURED": "Сначала укажите токен бота.",
     "BROADCAST_TEST_NO_TELEGRAM": "Привяжите Telegram к аккаунту, чтобы получить тестовое сообщение.",
-    "BROADCAST_TEST_FAILED": "Telegram отклонил тестовое сообщение.",
+    "BROADCAST_TEST_FAILED": "Не удалось отправить тест: {{detail}}.",
     "BROADCAST_RECALL_EXPIRED": "Telegram позволяет удалять сообщения только в течение 48 часов.",
     "BROADCAST_RECALL_IN_PROGRESS": "Отзыв ещё идёт. Повторите через несколько минут.",
     "BROADCAST_TITLE_TOO_LONG": "Название слишком длинное.",

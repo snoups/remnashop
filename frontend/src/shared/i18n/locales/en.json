@@ -4275,7 +4275,7 @@
     "BROADCAST_SCHEDULE_IN_PAST": "The send time is in the past.",
     "BROADCAST_BOT_NOT_CONFIGURED": "Set the bot token first.",
     "BROADCAST_TEST_NO_TELEGRAM": "Link Telegram to your account to receive a test message.",
-    "BROADCAST_TEST_FAILED": "Telegram rejected the test message.",
+    "BROADCAST_TEST_FAILED": "Failed to send the test: {{detail}}.",
     "BROADCAST_RECALL_EXPIRED": "Telegram only allows deleting messages within 48 hours.",
     "BROADCAST_RECALL_IN_PROGRESS": "The recall is still running. Try again in a few minutes.",
     "BROADCAST_TITLE_TOO_LONG": "The title is too long.",
