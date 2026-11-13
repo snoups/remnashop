@@ -1,7 +1,7 @@
 from dishka import Provider, Scope, provide, provide_all
 
 from app.modules.pricing.repository import PricingRepository
-from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
+from app.modules.pricing.usecases import UpdateCurrencyRateUseCase
 
 
 class PricingProvider(Provider):
@@ -10,7 +10,6 @@ class PricingProvider(Provider):
     pricing_repository = provide(PricingRepository)
     use_cases = provide_all(
         UpdateCurrencyRateUseCase,
-        UpdatePricingSettingsUseCase,
     )
 
 

@@ -16,13 +16,11 @@ from app.modules.plans.dto import (
     PricingChangePreviewDto,
     PricingDiffDto,
     PricingDiffRow,
-    ScaledAmountDto,
 )
 from app.modules.plans.ports import AnchorAmountRescaler, LoyaltyThresholdRescaler
 from app.modules.plans.price_projection import (
     adjusted_base_prices,
     anchor_switch,
-    scale_unit_price,
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (
@@ -104,23 +102,14 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
     async def _with_anchor_side_effects(
         self, diff: PricingDiffDto, factor: Decimal
     ) -> PricingDiffDto:
-        settings = await self._pricing_repository.get_settings()
         return diff.model_copy(
             update={
-                "price_per_day": self._scaled(settings.price_per_day, factor),
-                "price_per_gb": self._scaled(settings.price_per_gb, factor),
                 "loyalty_thresholds": (
                     await self._loyalty_threshold_rescaler.preview_rescaled_thresholds(factor)
                 ),
                 "rescaled_transactions": await self._anchor_amount_rescaler.count_anchor_amounts(),
             }
         )
-
-    def _scaled(self, price: Optional[Decimal], factor: Decimal) -> Optional[ScaledAmountDto]:
-        new = scale_unit_price(price, factor)
-        if price is None or new is None:
-            return None
-        return ScaledAmountDto(old=price, new=new)
 
     def _diff_row(
         self,
@@ -174,7 +163,10 @@ class PreviewPricingChangeUseCase(UseCase[PricingChangePreviewDto, PricingDiffDt
                 for currency, row in table.rows.items()
             }
             return CurrencyRateTable(anchor=data.anchor, rows=rows), BasePriceAdjustmentDto(
-                plan_prices=switch.plan_base_prices, addon_prices=switch.addon_base_prices
+                plan_prices=switch.plan_base_prices,
+                addon_prices=switch.addon_base_prices,
+                plan_overrides=switch.plan_overrides,
+                addon_overrides=switch.addon_overrides,
             )
 
         assert data.adjust is not None

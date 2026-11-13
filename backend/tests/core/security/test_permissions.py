@@ -230,7 +230,6 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.PLANS_ORDER_MANAGE,
         Permission.PRICING_VIEW,
         Permission.PRICING_PREVIEW_VIEW,
-        Permission.PRICING_SETTINGS_MANAGE,
         Permission.PRICING_BASE_ADJUST_MANAGE,
         Permission.PRICING_MATRIX_MANAGE,
         Permission.SUBSCRIPTIONS_VIEW,

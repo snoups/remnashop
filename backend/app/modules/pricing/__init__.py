@@ -8,7 +8,6 @@ from app.modules.pricing.dto import (
     CurrencyRateTable,
     PricingSettingsDto,
     UpdateCurrencyRateDto,
-    UpdatePricingSettingsDto,
 )
 from app.modules.pricing.events import AnchorSwitchedEvent, BasePricesAdjustedEvent
 from app.modules.pricing.repository import PricingRepository
@@ -21,7 +20,7 @@ from app.modules.pricing.resolver import (
     round_amount,
     scale_base_price,
 )
-from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
+from app.modules.pricing.usecases import UpdateCurrencyRateUseCase
 
 __all__ = [
     "BASE_PRICE_PRECISION",
@@ -36,8 +35,6 @@ __all__ = [
     "PricingSettingsDto",
     "UpdateCurrencyRateDto",
     "UpdateCurrencyRateUseCase",
-    "UpdatePricingSettingsDto",
-    "UpdatePricingSettingsUseCase",
     "apply_discounts",
     "assert_overridable_currency",
     "convert_for_report",

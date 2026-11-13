@@ -113,19 +113,48 @@ def anchor_switch(
         for currency, row in table.rows.items()
     }
     rates[new_anchor] = _ANCHOR_RATE
+    plan_prices: dict[int, Decimal] = {}
+    plan_pins: dict[int, dict[Currency, Decimal]] = {}
+    for plan in plans:
+        for duration in plan.durations:
+            plan_prices[duration.id], pins = _switched_base(
+                duration.base_price, duration.overrides, new_anchor, factor
+            )
+            if pins is not None:
+                plan_pins[duration.id] = pins
+    addon_prices: dict[int, Decimal] = {}
+    addon_pins: dict[int, dict[Currency, Decimal]] = {}
+    for addon in addons:
+        addon_prices[addon.id], pins = _switched_base(
+            addon.base_price, addon.overrides, new_anchor, factor
+        )
+        if pins is not None:
+            addon_pins[addon.id] = pins
     return AnchorSwitchDto(
         factor=factor,
         rates=rates,
-        plan_base_prices={
-            duration.id: scale_base_price(duration.base_price, factor)
-            for plan in plans
-            for duration in plan.durations
-        },
-        addon_base_prices={
-            addon.id: scale_base_price(addon.base_price, factor) for addon in addons
-        },
+        plan_base_prices=plan_prices,
+        addon_base_prices=addon_prices,
+        plan_overrides=plan_pins,
+        addon_overrides=addon_pins,
     )
 
 
-def scale_unit_price(price: Optional[Decimal], factor: Decimal) -> Optional[Decimal]:
-    return (price * factor).quantize(BASE_PRICE_PRECISION) if price is not None else None
+def _switched_base(
+    base_price: Decimal,
+    overrides: Sequence[Union[PlanPriceOverrideDto, AddOnPriceOverrideDto]],
+    new_anchor: Currency,
+    factor: Decimal,
+) -> tuple[Decimal, Optional[dict[Currency, Decimal]]]:
+    """The base price in the new anchor and, when a pin was in it, the pins left.
+
+    The anchor column can't hold a pin, so the pinned price, which buyers paid,
+    becomes the base instead.
+    """
+    pinned = next((o.price for o in overrides if o.currency is new_anchor), None)
+    if pinned is None:
+        return scale_base_price(base_price, factor), None
+    rest = {o.currency: o.price for o in overrides if o.currency is not new_anchor}
+    if base_price == 0:
+        return base_price, rest  # a free trial stays free
+    return max(pinned, MIN_BASE_PRICE), rest

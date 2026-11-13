@@ -20,7 +20,6 @@ from app.modules.plans.api.schemas import (
     PreviewPricingChangeRequest,
     PriceBookResponse,
     PricingDiffResponse,
-    PricingSettingsResponse,
     ReorderPlansRequest,
     SetAddOnBasePriceRequest,
     SetAddOnPriceOverrideRequest,
@@ -35,7 +34,6 @@ from app.modules.plans.api.schemas import (
     UpdatePlanDiscountRequest,
     UpdatePlanRequest,
     UpdatePlanSquadsRequest,
-    UpdatePricingSettingsRequest,
 )
 from app.modules.plans.dto import (
     AdjustBasePricesDto,
@@ -87,8 +85,6 @@ from app.modules.plans.usecases import (
 from app.modules.pricing import (
     UpdateCurrencyRateDto,
     UpdateCurrencyRateUseCase,
-    UpdatePricingSettingsDto,
-    UpdatePricingSettingsUseCase,
 )
 
 # optional texts an admin can empty by sending null
@@ -520,22 +516,6 @@ async def update_currency_rate(
     )
     book = await price_book_use_case(actor)
     return PriceBookResponse.model_validate(book, from_attributes=True)
-
-
-@pricing_router.patch("/settings", response_model=PricingSettingsResponse)
-@inject
-async def update_pricing_settings(
-    payload: UpdatePricingSettingsRequest,
-    use_case: FromDishka[UpdatePricingSettingsUseCase],
-    actor: Actor = Depends(require_admin),
-) -> PricingSettingsResponse:
-    settings = await use_case(
-        actor,
-        UpdatePricingSettingsDto(
-            price_per_day=payload.price_per_day, price_per_gb=payload.price_per_gb
-        ),
-    )
-    return PricingSettingsResponse.model_validate(settings, from_attributes=True)
 
 
 @pricing_router.post(
