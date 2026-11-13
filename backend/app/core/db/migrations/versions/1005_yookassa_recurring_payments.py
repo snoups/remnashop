@@ -85,6 +85,13 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("attempted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("first_failure_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("retry_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("cycle_expire_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("pending_since", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("upcoming_notified_for", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("leased_until", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("bank_retry_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("next_attempt_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
@@ -99,7 +106,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("ALTER TABLE transactions DROP COLUMN IF EXISTS recurring_consent")
     op.drop_table("recurring_payments")
     op.drop_column("transactions", "yookassa_receipt_vat_code")
     op.drop_column("transactions", "payment_method_shop_id")
