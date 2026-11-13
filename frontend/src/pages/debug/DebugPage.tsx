@@ -5,6 +5,7 @@ import { useKit } from "@pages/debug/use-kit";
 import { ButtonsSection, IconButtonsSection } from "@pages/debug/sections/ButtonSections";
 import { CardsSection, FieldsSection, TablesSection } from "@pages/debug/sections/FormSections";
 import { DialogsSection, HintsSection, MenusSection, StatesSection } from "@pages/debug/sections/OverlaySections";
+import { OverviewSection } from "@pages/debug/sections/OverviewSections";
 import { ScreensSection } from "@pages/debug/sections/ScreenSections";
 import { BadgesSection, TabsSection } from "@pages/debug/sections/SelectionSections";
 import { TypographySection } from "@pages/debug/sections/TypographySection";
@@ -23,6 +24,7 @@ const SECTION_IDS = [
   "menus",
   "states",
   "screens",
+  "overview",
 ] as const;
 
 // Opened from the debug bar: every shared UI primitive, live, grouped like the codebase uses them.
@@ -50,6 +52,7 @@ export function DebugKitPage() {
       <MenusSection />
       <StatesSection />
       <ScreensSection />
+      <OverviewSection />
     </DebugShell>
   );
 }

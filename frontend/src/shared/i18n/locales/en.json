@@ -4019,7 +4019,9 @@
         "iconCircle": "32px circle of a list or settings row: plain, in a status badge’s tone (subscriptions, broadcasts, ad links, promocodes, API tokens, attention), or with initials and numbers in 12px bold.",
         "cellText": "A list row’s text cell: title over a muted subtitle, mono for codes and @usernames. Ad links, referrals, analytics, attention, recent payments, notifications.",
         "typeScale": "The type scale: every text size in the app is one of these steps. text-sm/text-xs set their own line height, so inside a leading-* block they override it.",
-        "typeExceptions": "The only arbitrary sizes left, each with its reason."
+        "typeExceptions": "The only arbitrary sizes left, each with its reason.",
+        "followHeightNodes": "Nodes take the online card’s height; a long list scrolls inside. Stacked on a narrow screen, each card grows.",
+        "followHeightApps": "Client apps take the recent payments’ height; a long list scrolls inside. Stacked on a narrow screen, each card grows."
       },
       "s": {
         "openCarousel": "Open carousel",
@@ -4212,6 +4214,11 @@
           "nav": "Screens",
           "title": "Screens",
           "meta": "FullScreenMessage · PageRouteError"
+        },
+        "overview": {
+          "nav": "Overview",
+          "title": "Overview pairs",
+          "meta": "FollowHeight"
         }
       },
       "variants": {

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { getClientApps } from "@entities/overview/api";
 import type { ClientApps } from "@entities/overview/api";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
+import type { AsyncState } from "@shared/lib/use-async-resource";
 import { Section } from "@shared/ui/glass/Section";
 import { EmptyState, ErrorState } from "@shared/ui/glass/EmptyState";
 import { Spinner } from "@shared/ui/Spinner";
@@ -45,14 +46,18 @@ function PlatformRow({ platform }: { platform: ClientApps["platforms"][number] }
 }
 
 export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
-  const { t } = useTranslation();
   const [state] = useAsyncResource(getClientApps, { deps: [refreshKey], keepData: true });
+  return <ClientAppsSection state={state} />;
+}
+
+export function ClientAppsSection({ state }: { state: AsyncState<ClientApps> }) {
+  const { t } = useTranslation();
   const data = state.kind === "ready" ? state.data : null;
 
   return (
     <Section
-      // an empty state fills the row to sit centred; a list eases its height
-      stretched={!data?.available || data.platforms.length === 0}
+      stretched
+      className="min-h-0 flex-1 overflow-hidden"
       icon={Smartphone}
       title={t("dashboard.clientApps.title")}
       description={t("dashboard.clientApps.description")}
@@ -66,7 +71,7 @@ export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
         <EmptyState text={t("dashboard.clientApps.empty")} />
       )}
       {data?.available && data.platforms.length > 0 && (
-        <div className="flex flex-col gap-4 pt-4">
+        <div className="-mb-4 -mr-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain pb-4 pr-[calc(1rem-var(--scrollbar-size))] [scrollbar-gutter:stable] pt-4">
           {data.platforms.map((platform) => (
             <PlatformRow key={platform.platform} platform={platform} />
           ))}
