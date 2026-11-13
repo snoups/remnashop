@@ -42,7 +42,7 @@ def quote_price(
 ) -> PriceQuote:
     base_price = _base_price(plan, duration_days, currency, rates)
     plan_discount_percent = plan.active_discount(datetime_now())
-    if plan_discount_percent >= 100:
+    if base_price == 0 or plan_discount_percent >= 100:
         # already free: a one-shot purchase discount must not be spent on it
         discount_percent, discount_source, discount_promocode_id = 0, DiscountSource.NONE, None
     else:

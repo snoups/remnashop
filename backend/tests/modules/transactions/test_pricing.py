@@ -347,3 +347,14 @@ def test_quote_price_full_plan_discount_leaves_the_users_discount_unused() -> No
     assert quote.discount_percent == 0
     assert quote.discount_source is DiscountSource.NONE
     assert quote.discount_promocode_id is None
+
+
+def test_quote_price_free_trial_stays_free_and_spends_no_discount() -> None:
+    plan = _plan(base_price=Decimal("0")).model_copy(update={"is_trial": True})
+    user = _user(personal_discount=10, purchase_discount=20, purchase_discount_promocode_id=7)
+
+    quote = quote_price(plan, 30, Currency.RUB, user, _rates())
+
+    assert quote.final_price == Decimal("0")
+    assert quote.discount_source is DiscountSource.NONE
+    assert quote.discount_promocode_id is None

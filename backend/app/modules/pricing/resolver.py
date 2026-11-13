@@ -54,7 +54,8 @@ def round_amount(amount: Decimal, rate: CurrencyRateDto, *, charm: bool = True) 
 
 def apply_discounts(price: Decimal, rate: CurrencyRateDto, *percents: int) -> Decimal:
     """The price with each percent off in turn: -20% and -10% make -28%, 100% makes it free."""
-    if any(percent >= 100 for percent in percents):
+    if price == 0 or any(percent >= 100 for percent in percents):
+        # free stays free: min_amount would otherwise lift it
         return ZERO_AMOUNT
     if not any(percents):
         return price
@@ -72,6 +73,9 @@ def resolve_price(
 ) -> Decimal:
     rate: CurrencyRateDto = rates.for_currency(currency)
 
+    if base_anchor == 0:
+        # a free trial stays free in every currency, past min_amount and pins
+        return ZERO_AMOUNT
     if override is not None:
         return max(override, rate.min_amount)
 
@@ -93,9 +97,6 @@ def price_for(
     rates: CurrencyRateTable,
 ) -> Decimal:
     # what a plan duration or add-on costs in `currency`: its pinned price, else the converted base
-    if base_price == 0:
-        # a free trial stays free in every currency, past min_amount and overrides
-        return ZERO_AMOUNT
     override = next((o.price for o in overrides if o.currency is currency), None)
     return resolve_price(base_price, currency, override, rates)
 
