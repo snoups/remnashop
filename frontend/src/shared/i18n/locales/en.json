@@ -3518,6 +3518,7 @@
     }
   },
   "transactions": {
+    "free": "Free",
     "title": "Transactions",
     "stats": {
       "orders": "Transactions",
