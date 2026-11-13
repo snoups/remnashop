@@ -147,13 +147,15 @@ async def test_device_confirm_getter_routes_message_text_through_resolve_variabl
     i18n = MagicMock()
     i18n.get_translator_by_locale.return_value = MagicMock(get=_fake_get)
 
-    await device_confirm_delete_getter.__dishka_orig_func__(
+    data = await device_confirm_delete_getter.__dishka_orig_func__(
         dialog_manager=dialog_manager,
         i18n=i18n,
         dialog_config_cache=MagicMock(),
     )
 
     assert "user_name" in captured_kwargs
+    # with_window_banner reads the text from window_text
+    assert "window_text" in data
 
 
 async def test_a_trial_is_not_offered_to_an_owner_of_a_subscription() -> None:

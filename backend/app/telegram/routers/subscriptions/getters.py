@@ -191,7 +191,7 @@ async def devices_getter(
     data: dict[str, Any] = {
         "devices": formatted,
         "has_devices": len(formatted) > 0,
-        "devices_header": (
+        "window_text": (
             render_window_text(
                 runner,
                 "msg-menu-devices",
@@ -224,7 +224,7 @@ def _confirm_getter(text_key: str, window_key: str) -> _Getter:
         user: UserDto = dialog_manager.middleware_data[USER_KEY]
         runner = get_translator(i18n, user)
         data: dict[str, Any] = {
-            "confirm_message": render_window_text(runner, text_key, **resolve_variable_kwargs({}))
+            "window_text": render_window_text(runner, text_key, **resolve_variable_kwargs({}))
         }
         data["buttons"] = await render_dialog_buttons(window_key, dialog_config_cache, runner, data)
         return data
