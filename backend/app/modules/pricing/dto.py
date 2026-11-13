@@ -7,7 +7,7 @@ from app.core.enums import Currency, RoundingMode
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 
-RATE_PRECISION: Final[Decimal] = Decimal("0.000001")
+RATE_PRECISION: Final[Decimal] = Decimal("0.0000000001")
 BASE_PRICE_PRECISION: Final[Decimal] = Decimal("0.01")
 MIN_BASE_PRICE: Final[Decimal] = Decimal("0.01")
 NON_ANCHOR_CURRENCIES: Final[frozenset[Currency]] = frozenset({Currency.XTR})

@@ -152,6 +152,6 @@ async def test_rates_seeded_after_a_migration_are_per_its_anchor(
     table = await PricingRepository(session).get_rate_table()
 
     assert table.rows[Currency.RUB].rate == Decimal("1.000000")
-    assert table.rows[Currency.USD].rate == Decimal("0.011765")
-    assert table.rows[Currency.XTR].rate == Decimal("0.905882")
+    assert table.rows[Currency.USD].rate == Decimal("0.0117647059")
+    assert table.rows[Currency.XTR].rate == Decimal("0.9058823529")
     assert resolve_price(Decimal("500"), Currency.RUB, None, table) == Decimal("500")

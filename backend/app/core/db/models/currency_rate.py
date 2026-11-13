@@ -13,7 +13,7 @@ class CurrencyRate(BaseSql, TimestampMixin):
     __tablename__ = "currency_rates"
 
     currency: Mapped[Currency] = mapped_column(primary_key=True)
-    rate: Mapped[Decimal] = mapped_column(Numeric(12, 6))
+    rate: Mapped[Decimal] = mapped_column(Numeric(16, 10))
     rounding_mode: Mapped[RoundingMode]
     charm_ending: Mapped[Optional[int]]
     min_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
