@@ -3054,6 +3054,8 @@
       "bannerReplace": "Replace",
       "variableSearch": "Search variables",
       "variableEmpty": "Nothing found",
+      "emojiSearch": "Search emoji",
+      "emojiEmpty": "Nothing found",
       "emojiClear": "Remove the emoji",
       "emojiGroup": {
         "smileys": "Smileys",
