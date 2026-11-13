@@ -3,6 +3,7 @@ import contextlib
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from functools import partial
 from typing import AsyncGenerator, Final, Optional
 
 from aiogram import Bot
@@ -26,6 +27,7 @@ from app.modules.settings import BotStatusKind, ReportBotStatusDto, ReportBotSta
 from app.modules.translations import BotCommandsSync, TranslationRepository
 from app.telegram.bot_signals import live_update_handlers, payment_outcome_handlers
 from app.telegram.dialogs.config_cache import DialogConfigCache
+from app.telegram.i18n import read_translator_hub
 from app.telegram.signal_listener import listen_for_bot_signals
 from app.telegram.webhook import TelegramWebhookEndpoint
 
@@ -100,7 +102,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis = await container.get(Redis)
     handlers = {
         **live_update_handlers(
-            await container.get(DialogConfigCache), await container.get(TranslatorHub)
+            await container.get(DialogConfigCache),
+            await container.get(TranslatorHub),
+            partial(read_translator_hub, config),
         ),
         **payment_outcome_handlers(app.state.bot, await container.get(BgManagerFactory)),
     }

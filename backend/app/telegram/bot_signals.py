@@ -1,4 +1,5 @@
 import json
+from collections.abc import Awaitable, Callable
 from typing import Final, Protocol
 
 from aiogram import Bot
@@ -27,9 +28,18 @@ class _Reloadable(Protocol):
     async def reload(self) -> None: ...
 
 
-def live_update_handlers(cache: _Reloadable, hub: TranslatorHub) -> dict[str, SignalHandler]:
+def live_update_handlers(
+    cache: _Reloadable,
+    hub: TranslatorHub,
+    load_translations: Callable[[], Awaitable[TranslatorHub]],
+) -> dict[str, SignalHandler]:
     async def reload_dialogs(_: str) -> None:
         await cache.reload()
+        # a dialog change can seed new texts (a new button's label, a custom
+        # window's body) that no translation signal carries
+        fresh = await load_translations()
+        hub.storage.add_translators(fresh.translators)
+        hub.storage.set_locales_map(hub.storage.get_locales_map())
 
     async def patch_translation(data: str) -> None:
         payload = json.loads(data)
