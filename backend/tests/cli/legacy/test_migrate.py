@@ -14,11 +14,12 @@ from app.cli.legacy import migrate as migrate_module
 from app.cli.legacy.errors import LegacyMigrationError
 from app.cli.legacy.migrate import MigrationResult, migrate, preflight, upgrade_legacy_schema
 from app.cli.legacy.panel import PanelIndex
+from app.cli.legacy.report import MigrationReport
 from app.cli.legacy.schema import LEGACY_HEAD, current_revision
 from app.core.config import AppConfig
 from app.core.db.models import User
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, Role
+from app.core.enums import Currency, Locale, Role
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.outbox_event_publisher import OutboxEventPublisher
@@ -537,3 +538,18 @@ async def test_subscription_price_comes_from_latest_completed_payment(
             text("SELECT plan_snapshot FROM subscriptions WHERE id = 4")
         )
     assert (snapshot["price_paid"], snapshot["currency"]) == ("77", "USD")
+
+
+def test_anchor_keeps_the_old_default_currency() -> None:
+    report = MigrationReport()
+    assert migrate_module._anchor(Currency.RUB, frozenset({Currency.XTR}), report) is Currency.RUB
+    assert report.notes == []
+
+
+def test_stars_as_the_old_default_fall_back_to_a_sold_anchor_currency() -> None:
+    report = MigrationReport()
+
+    sold = frozenset({Currency.XTR, Currency.RUB})
+    assert migrate_module._anchor(Currency.XTR, sold, report) is Currency.RUB
+    assert migrate_module._anchor(Currency.XTR, frozenset({Currency.XTR}), report) is Currency.USD
+    assert any("can't be the anchor" in note for note in report.notes)

@@ -56,6 +56,7 @@ from app.core.db.models import (
 )
 from app.core.db.singleton import SINGLETON_ID
 from app.core.enums import Currency, Locale, ReferralLevel, Role, SubscriptionStatus
+from app.modules.pricing import NON_ANCHOR_CURRENCIES
 
 _NEW_MIGRATIONS_DIR: Final[Path] = Path(__file__).parents[2] / "core" / "db" / "migrations"
 _DEFAULT_LOCALE: Final[Locale] = Locale.EN
@@ -188,6 +189,21 @@ def _used_currencies(
     return frozenset(active | paid)
 
 
+def _anchor(
+    old_default: Currency, used_currencies: frozenset[Currency], report: MigrationReport
+) -> Currency:
+    """The old default currency, unless it can't be an anchor (Stars): then the first
+    currency the shop sold in that can, else the default."""
+    if old_default not in NON_ANCHOR_CURRENCIES:
+        return old_default
+    anchor = next(
+        (c for c in Currency if c in used_currencies and c not in NON_ANCHOR_CURRENCIES),
+        _DEFAULT_ANCHOR,
+    )
+    report.notes.append(f"settings: {old_default} can't be the anchor currency, {anchor} is")
+    return anchor
+
+
 def _last_payments(
     transactions: Sequence[Mapping[str, Any]],
 ) -> dict[tuple[int, int], tuple[Decimal, Currency]]:
@@ -271,17 +287,20 @@ async def _transfer(
     settings = transform_settings(settings_rows[0], report) if settings_rows else None
     if settings is None:
         report.notes.append("settings: no old settings row, defaults kept")
-    anchor = settings.anchor_currency if settings else _DEFAULT_ANCHOR
-
     legacy_gateways = await _read(connection, "payment_gateways")
     legacy_transactions = await _read(connection, "transactions")
+    used_currencies = _used_currencies(legacy_gateways, legacy_transactions)
+    anchor = (
+        _anchor(settings.anchor_currency, used_currencies, report) if settings else _DEFAULT_ANCHOR
+    )
+
     legacy_plans = await _read(connection, "plans")
     plans = transform_plans(
         legacy_plans,
         await _read(connection, "plan_durations"),
         await _read(connection, "plan_prices"),
         anchor_currency=anchor,
-        used_currencies=_used_currencies(legacy_gateways, legacy_transactions),
+        used_currencies=used_currencies,
         report=report,
     )
     plan_ids = {int(plan["id"]) for plan in plans.plans}
