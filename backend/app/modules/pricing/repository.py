@@ -42,7 +42,10 @@ class PricingRepository:
     async def _get_or_create_settings(self) -> PricingSettings:
         return await get_or_create_singleton(self.session, PricingSettings, SINGLETON_ID)
 
-    async def _seed_missing_rates(self, missing: list[Currency]) -> None:
+    async def _seed_missing_rates(self, missing: list[Currency], anchor: Currency) -> None:
+        # the seed is per 1 USD: rebased so the anchor is 1, as switching the anchor
+        # leaves it (a migrated shop starts on its own anchor, RUB say)
+        per_anchor = _SEED_RATES[anchor][0]
         # ON CONFLICT DO NOTHING, not session.add: the same fresh-database race
         # get_or_create_singleton guards against
         await self.session.execute(
@@ -51,7 +54,7 @@ class PricingRepository:
                 [
                     {
                         "currency": currency,
-                        "rate": _SEED_RATES[currency][0],
+                        "rate": (_SEED_RATES[currency][0] / per_anchor).quantize(RATE_PRECISION),
                         "rounding_mode": _SEED_RATES[currency][1],
                         "charm_ending": _SEED_RATES[currency][2],
                         "min_amount": _SEED_RATES[currency][3],
@@ -66,13 +69,12 @@ class PricingRepository:
         result = await self.session.execute(select(CurrencyRate))
         rows = {row.currency: row for row in result.scalars()}
 
+        settings = await self._get_or_create_settings()
         missing = [currency for currency in _SEED_RATES if currency not in rows]
         if missing:
-            await self._seed_missing_rates(missing)
+            await self._seed_missing_rates(missing, settings.anchor_currency)
             result = await self.session.execute(select(CurrencyRate))
             rows = {row.currency: row for row in result.scalars()}
-
-        settings = await self._get_or_create_settings()
 
         return CurrencyRateTable(
             anchor=settings.anchor_currency,

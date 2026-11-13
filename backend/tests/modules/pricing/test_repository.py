@@ -7,10 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.db.models.currency_rate import CurrencyRate
 from app.core.db.models.pricing_settings import PricingSettings
+from app.core.db.singleton import SINGLETON_ID
 from app.core.enums import Currency, RoundingMode
 from app.core.exceptions import ValidationError
+from app.modules.pricing import repository as repository_module
 from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
 from app.modules.pricing.repository import PricingRepository
+from app.modules.pricing.resolver import resolve_price
 
 
 async def test_get_rate_table_seeds_three_rows(session: AsyncSession) -> None:
@@ -128,3 +131,27 @@ async def test_update_rate_takes_the_settings_lock_first(
     )
 
     assert calls == ["lock"]
+
+
+async def test_rates_seeded_after_a_migration_are_per_its_anchor(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # the production seed is per 1 USD; a migrated shop's anchor is already RUB
+    monkeypatch.setattr(
+        repository_module,
+        "_SEED_RATES",
+        {
+            Currency.USD: (Decimal("1"), RoundingMode.DECIMAL_2, None, Decimal("0.01")),
+            Currency.RUB: (Decimal("85"), RoundingMode.INTEGER, None, Decimal("10")),
+            Currency.XTR: (Decimal("77"), RoundingMode.INTEGER, None, Decimal("1")),
+        },
+    )
+    session.add(PricingSettings(id=SINGLETON_ID, anchor_currency=Currency.RUB))
+    await session.flush()
+
+    table = await PricingRepository(session).get_rate_table()
+
+    assert table.rows[Currency.RUB].rate == Decimal("1.000000")
+    assert table.rows[Currency.USD].rate == Decimal("0.011765")
+    assert table.rows[Currency.XTR].rate == Decimal("0.905882")
+    assert resolve_price(Decimal("500"), Currency.RUB, None, table) == Decimal("500")

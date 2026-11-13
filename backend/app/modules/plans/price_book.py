@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.enums import Currency
 from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import PriceBookCell, PriceBookDto, PriceBookRow
@@ -13,7 +14,10 @@ def _build_cells(
     cells = []
     for currency in Currency:
         override = overrides_by_currency.get(currency)
-        amount = resolve_price(base_price, currency, override, table)
+        # a free trial is free in every currency, as checkout prices it (price_for)
+        amount = (
+            ZERO_AMOUNT if base_price == 0 else resolve_price(base_price, currency, override, table)
+        )
         cells.append(
             PriceBookCell(currency=currency, amount=amount, is_pinned=override is not None)
         )
