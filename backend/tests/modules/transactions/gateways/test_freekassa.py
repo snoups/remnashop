@@ -102,23 +102,17 @@ async def test_create_payment_never_signs_none(monkeypatch: pytest.MonkeyPatch) 
     )
     monkeypatch.setattr(freekassa_module, "_resolve_server_ip", _fake_server_ip)
 
-    intent = await _gateway(http=http.client).create_payment(make_order(customer_email=None))
+    intent = await _gateway(http=http.client).create_payment(
+        make_order(customer_email="buyer@example.com")
+    )
 
     body = http.last_json()
     signature = body.pop("signature")
     assert None not in body.values()
     assert body["ip"] == "198.51.100.7"
-    assert body["email"] == f"user_{ORDER_REF}@telegram.org"
+    assert body["email"] == "buyer@example.com"
     assert signature == _api_signature(body)
     assert intent.provider_payment_id == "777"
-
-
-async def test_create_payment_prefers_the_order_email() -> None:
-    http = HttpRecorder(
-        json_response({"type": "success", "orderId": 1, "location": "https://pay.fk/1"}),
-    )
-    await _gateway(http=http.client).create_payment(make_order(customer_email="buyer@example.com"))
-    assert http.last_json()["email"] == "buyer@example.com"
 
 
 async def test_parse_webhook_verifies_sign_without_an_ip_check() -> None:

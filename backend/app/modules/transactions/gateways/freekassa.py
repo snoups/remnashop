@@ -70,14 +70,13 @@ class FreeKassaGateway(PaymentGateway[FreeKassaSettings]):
         return {**params, "signature": signature}
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
-        email = order.customer_email or f"user_{order.idempotency_key}@telegram.org"
         data = self._signed(
             {
                 "shopId": int(self.settings.shop_id),
                 "nonce": time.time_ns(),
                 "paymentId": order.idempotency_key,
                 "i": int(self.settings.payment_system_id),
-                "email": email,
+                "email": order.customer_email,
                 "ip": await _resolve_server_ip(self._webhook_url),
                 "amount": f"{order.final_price:.2f}",
                 "currency": order.currency.value,

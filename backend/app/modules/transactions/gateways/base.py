@@ -11,7 +11,6 @@ from app.core.enums import Currency, TransactionStatus
 from app.core.exceptions import PaymentGatewayError
 from app.modules.gateways import GatewaySettings
 from app.modules.transactions.dto import TransactionDto, WebhookRequest
-from app.modules.users import UserDto
 
 HTTP_TIMEOUT_S: Final[float] = 20.0
 # one pooled client for every provider call, owned by the DI container
@@ -93,12 +92,9 @@ class PaymentGateway(ABC, Generic[S]):
         webhook_url: str,
         return_url: str,
         http: PaymentHttpClient,
-        customer: Optional[UserDto] = None,
     ) -> None:
         self._values = settings
         self._http = http
-        # the buyer, set when a payment is being created
-        self._customer = customer
         self._webhook_url = webhook_url
         self._return_url = return_url
 
@@ -110,8 +106,8 @@ class PaymentGateway(ABC, Generic[S]):
 
     @classmethod
     def requires_customer_email(cls, settings: dict[str, str]) -> bool:
-        """True when create_payment needs a real buyer email (fiscal receipt), so
-        checkout asks the customer for one instead of sending a placeholder."""
+        """True when create_payment needs the buyer's email, so checkout asks the
+        customer for one unless the shop sets its own payment email."""
         return False
 
     def is_trusted_source(self, client_ip: str) -> bool:

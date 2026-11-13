@@ -42,6 +42,10 @@ class AntilopayGateway(PaymentGateway[AntilopaySettings]):
     settings_model = AntilopaySettings
     currency = Currency.RUB
 
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        return True
+
     def _private_key(self) -> RSAPrivateKey:
         try:
             der = base64.b64decode(self.settings.private_key.get_secret_value().strip())
@@ -83,7 +87,7 @@ class AntilopayGateway(PaymentGateway[AntilopaySettings]):
                 "product_name": f"Order #{order.id}",
                 "product_type": "services",
                 "description": f"Order #{order.id}",
-                "customer": {"email": order.customer_email or "user@vpn.bot"},
+                "customer": {"email": order.customer_email},
                 "success_url": self._return_url,
                 "fail_url": self._return_url,
             },

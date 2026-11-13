@@ -1678,6 +1678,9 @@
       "supportUrlInvalid": "Ссылка должна начинаться с https://."
     },
     "gateways": {
+      "paymentEmailLabel": "Почта для платежей",
+      "paymentEmailHint": "Уходит во все шлюзы вместо почты клиента, туда же приходят чеки. Если задана, клиентов не просят ввести почту.",
+      "paymentEmailInvalid": "Введите корректный email.",
       "configured": "настроен",
       "notConfigured": "не настроен",
       "placeholder": "Оставьте пустым, чтобы не менять",

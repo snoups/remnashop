@@ -1598,6 +1598,9 @@
       "supportUrlInvalid": "The link must start with https://."
     },
     "gateways": {
+      "paymentEmailLabel": "Payment email",
+      "paymentEmailHint": "Sent to every gateway instead of the customer’s email; receipts go there too. When set, customers aren’t asked for an email.",
+      "paymentEmailInvalid": "Enter a valid email.",
       "configured": "configured",
       "notConfigured": "not configured",
       "placeholder": "Leave blank to keep",

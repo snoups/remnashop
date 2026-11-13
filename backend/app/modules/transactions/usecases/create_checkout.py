@@ -115,11 +115,11 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             return None
         return f"{cabinet_url}/payment/result?order_id={order_id}"
 
-    @staticmethod
-    def _resolve_customer_email(
-        data: CreateCheckoutDto, user: UserDto, gateway_settings: dict[str, str]
+    async def _resolve_customer_email(
+        self, data: CreateCheckoutDto, user: UserDto, gateway_settings: dict[str, str]
     ) -> Optional[str]:
-        customer_email = data.customer_email or user.email
+        shop_settings = await self._settings_repository.get_shop_settings()
+        customer_email = shop_settings.payment_email or user.email or data.customer_email
         gateway_class = GATEWAY_REGISTRY[data.gateway_type]
         if customer_email is None and gateway_class.requires_customer_email(gateway_settings):
             raise ValidationError(
@@ -179,7 +179,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 data.plan_code,
                 data.target_subscription_id if data.purchase_type is PurchaseType.RENEW else None,
             )
-            customer_email = self._resolve_customer_email(data, user, gateway_settings)
+            customer_email = await self._resolve_customer_email(data, user, gateway_settings)
 
         previous_plan = await self._validate_provisioning_preconditions(actor.id, data)
         user = await self._pricer.drop_dead_promocode_discounts(user)
@@ -252,9 +252,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 return CheckoutResultDto(order_id=order.id, confirmation_url=None)
 
         return_url = await self._return_url(data, order.id)
-        gateway = self._gateway_factory.build(
-            data.gateway_type, gateway_settings, return_url, customer=user
-        )
+        gateway = self._gateway_factory.build(data.gateway_type, gateway_settings, return_url)
         try:
             intent = await gateway.create_payment(order)
         except Exception as error:

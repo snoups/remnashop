@@ -41,6 +41,10 @@ class SeverPayGateway(PaymentGateway[SeverPaySettings]):
     currency = Currency.RUB
     ack = WebhookAck(body='{"status": true}', media_type="application/json")
 
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        return True
+
     def _signed(self, payload: dict[str, Any]) -> dict[str, Any]:
         body = {**payload, "mid": int(self.settings.mid), "salt": uuid.uuid4().hex}
         ordered = dict(sorted(body.items()))
@@ -55,7 +59,7 @@ class SeverPayGateway(PaymentGateway[SeverPaySettings]):
                 "order_id": order.idempotency_key,
                 "amount": amount_to_float(order.final_price),
                 "currency": order.currency.value,
-                "client_email": order.customer_email or f"user{order.user_id}@vpn.local",
+                "client_email": order.customer_email,
                 "client_id": str(order.user_id),
                 "url_return": self._return_url,
                 "lifetime": link_lifetime(

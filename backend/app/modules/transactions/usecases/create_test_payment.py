@@ -22,6 +22,7 @@ from app.core.usecase import UseCase
 from app.core.utils.time import datetime_now
 from app.modules.gateways import GatewayRepository
 from app.modules.pricing import PricingRepository, convert_for_report
+from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import PlanSnapshot
 from app.modules.transactions.dto import CreateTransactionDto, TestPaymentDto
 from app.modules.transactions.events import GatewayTestPaymentCreatedEvent
@@ -44,6 +45,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
         gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
         pricing_repository: PricingRepository,
+        settings_repository: SettingsRepository,
         uow: UnitOfWork,
         gateway_factory: PaymentGatewayFactory,
         event_publisher: EventPublisher,
@@ -51,6 +53,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
         self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
         self._pricing_repository = pricing_repository
+        self._settings_repository = settings_repository
         self._uow = uow
         self._gateway_factory = gateway_factory
         self._event_publisher = event_publisher
@@ -71,8 +74,9 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                     code=ErrorCode.GATEWAY_NOT_CONFIGURED,
                 )
             settings = await self._gateway_repository.get_raw_settings(data)
+            shop_settings = await self._settings_repository.get_shop_settings()
 
-        customer_email = actor.email
+        customer_email = shop_settings.payment_email or actor.email
         if customer_email is None and gateway_class.requires_customer_email(settings):
             customer_email = _TEST_CUSTOMER_EMAIL
 
@@ -116,9 +120,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
             )
 
         try:
-            intent = await self._gateway_factory.build(
-                data, settings, customer=actor
-            ).create_payment(order)
+            intent = await self._gateway_factory.build(data, settings).create_payment(order)
         except PaymentGatewayError:
             logger.exception(f"Test payment failed on gateway '{data.value}'")
             raise

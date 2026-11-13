@@ -2,6 +2,7 @@ from app.core.db.uow import UnitOfWork
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
 from app.modules.gateways import REQUIRE_PAID_PURCHASE_FIELD_KEY, GatewayRepository, gateway_flags
+from app.modules.settings import SettingsRepository
 from app.modules.transactions.dto import PaymentMethodDto
 from app.modules.transactions.gateways.registry import GATEWAY_REGISTRY, gateway_currency
 from app.modules.transactions.repository import TransactionRepository
@@ -15,15 +16,18 @@ class ListPaymentMethodsUseCase(UseCase[None, list[PaymentMethodDto], UserDto]):
         self,
         gateway_repository: GatewayRepository,
         transaction_repository: TransactionRepository,
+        settings_repository: SettingsRepository,
         uow: UnitOfWork,
     ) -> None:
         self._gateway_repository = gateway_repository
         self._transaction_repository = transaction_repository
+        self._settings_repository = settings_repository
         self._uow = uow
 
     async def _execute(self, actor: UserDto, data: None) -> list[PaymentMethodDto]:
         methods: list[PaymentMethodDto] = []
         async with self._uow:
+            shop_settings = await self._settings_repository.get_shop_settings()
             for gateway in await self._gateway_repository.get_all():
                 if not gateway.is_active or not gateway.is_configured:
                     continue
@@ -40,7 +44,9 @@ class ListPaymentMethodsUseCase(UseCase[None, list[PaymentMethodDto], UserDto]):
                         gateway_type=gateway.type,
                         currency=gateway_currency(gateway.type, settings),
                         # the client decides: ask for an email or hide the method
-                        requires_email=gateway_class.requires_customer_email(settings),
+                        requires_email=shop_settings.payment_email is None
+                        and gateway_class.requires_customer_email(settings),
+                        asks_email=shop_settings.payment_email is None,
                     )
                 )
         return methods

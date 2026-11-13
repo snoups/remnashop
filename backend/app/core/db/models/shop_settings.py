@@ -33,3 +33,6 @@ class ShopSettings(BaseSql, TimestampMixin):
     # whichever is set.
     support_telegram: Mapped[Optional[str]] = mapped_column(String(40))
     support_url: Mapped[Optional[str]] = mapped_column(String(512))
+
+    # sent to every gateway instead of the customer's own email; set, nobody is asked for one
+    payment_email: Mapped[Optional[str]] = mapped_column(String(320))
