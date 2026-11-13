@@ -37,8 +37,5 @@ backend/logs/*
 !backend/logs/.gitkeep
 backend/media/
 
-# Local deployment
-traefik/
-
 # Worktrees
 .worktrees/
