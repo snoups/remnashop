@@ -4236,11 +4236,6 @@
           "nav": "Screens",
           "title": "Screens",
           "meta": "FullScreenMessage · PageRouteError"
-        },
-        "overview": {
-          "nav": "Overview",
-          "title": "Overview pairs",
-          "meta": "FollowHeight"
         }
       },
       "variants": {
