@@ -2356,6 +2356,7 @@
     "AD_LINKS_VIEW": "View ad links",
     "AD_LINKS_DETAIL_VIEW": "View ad link details",
     "AD_LINKS_STATS_VIEW": "View ad link stats",
+    "AD_LINKS_PAYOUT_VIEW": "View ad link partner payouts",
     "AD_LINKS_SUMMARY_VIEW": "View ad summary",
     "AD_LINKS_USERS_VIEW": "View attributed users",
     "AD_LINKS_USER_ATTRIBUTION_VIEW": "View a user’s ad source",
@@ -2800,7 +2801,8 @@
       "peak": "peak {{count}} · {{day}}",
       "channelSplit": "Telegram bot {{bot}} · Web cabinet {{web}}",
       "totalTrend": "last 30 days",
-      "periodTrend": "vs. prior {{days}} days"
+      "periodTrend": "vs. prior {{days}} days",
+      "costBreakdown": "{{fixed}} for placement + {{percent}}% of payments ({{share}})"
     },
     "columns": {
       "link": "Link",
@@ -2842,6 +2844,22 @@
       "webUnavailable": "CABINET_DOMAIN is not set",
       "loadError": "Failed to load the links.",
       "qrError": "Failed to download the QR code."
+    },
+    "revenueShare": {
+      "label": "% of payments",
+      "hint": "Share of payments by attributed users, added to the cost."
+    },
+    "payout": {
+      "title": "Partner payout",
+      "previousMonth": "Last month",
+      "currentMonth": "This month",
+      "custom": "Custom dates",
+      "from": "From",
+      "to": "To",
+      "payments": "Payments",
+      "revenue": "Paid total",
+      "toPay": "To pay ({{percent}}%)",
+      "footnote": "Payments by users from this link for {{range}}, by payment date. Refunds are excluded."
     }
   },
   "dialogs": {

@@ -2440,6 +2440,7 @@
     "AD_LINKS_VIEW": "Просмотр рекламных ссылок",
     "AD_LINKS_DETAIL_VIEW": "Просмотр рекламной ссылки",
     "AD_LINKS_STATS_VIEW": "Просмотр рекламной статистики",
+    "AD_LINKS_PAYOUT_VIEW": "Просмотр выплат партнёрам по рекламе",
     "AD_LINKS_SUMMARY_VIEW": "Просмотр сводки по рекламе",
     "AD_LINKS_USERS_VIEW": "Просмотр привлечённых пользователей",
     "AD_LINKS_USER_ATTRIBUTION_VIEW": "Просмотр рекламного источника пользователя",
@@ -2890,7 +2891,8 @@
       "peak": "пик {{count}} · {{day}}",
       "channelSplit": "Telegram-бот {{bot}} · Веб-кабинет {{web}}",
       "totalTrend": "за 30 дней",
-      "periodTrend": "к прошлым {{days}} дн."
+      "periodTrend": "к прошлым {{days}} дн.",
+      "costBreakdown": "{{fixed}} за размещение + {{percent}}% от оплат ({{share}})"
     },
     "columns": {
       "link": "Ссылка",
@@ -2932,6 +2934,22 @@
       "webUnavailable": "Не задан CABINET_DOMAIN",
       "loadError": "Не удалось загрузить ссылки.",
       "qrError": "Не удалось скачать QR-код."
+    },
+    "revenueShare": {
+      "label": "% от оплат",
+      "hint": "Доля от оплат привлечённых пользователей, добавляется к расходам."
+    },
+    "payout": {
+      "title": "Выплата партнёру",
+      "previousMonth": "Прошлый месяц",
+      "currentMonth": "Этот месяц",
+      "custom": "Свои даты",
+      "from": "С",
+      "to": "По",
+      "payments": "Оплат",
+      "revenue": "Сумма оплат",
+      "toPay": "К выплате ({{percent}}%)",
+      "footnote": "Оплаты привлечённых по ссылке за {{range}}, по дате оплаты. Возвраты не учитываются."
     }
   },
   "dialogs": {

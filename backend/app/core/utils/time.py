@@ -1,5 +1,5 @@
 from datetime import datetime, time, timedelta
-from typing import Optional
+from typing import Optional, overload
 
 from app.core.constants import TIMEZONE
 
@@ -13,6 +13,10 @@ def truncate_to_ms(value: datetime) -> datetime:
     return value.replace(microsecond=value.microsecond // 1000 * 1000)
 
 
+@overload
+def range_start_utc(value: datetime) -> datetime: ...
+@overload
+def range_start_utc(value: None) -> None: ...
 def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
     # a bare "YYYY-MM-DD" parses naive; asyncpg would read that as server
     # local time, so it's pinned to UTC
@@ -21,6 +25,10 @@ def range_start_utc(value: Optional[datetime]) -> Optional[datetime]:
     return value.replace(tzinfo=TIMEZONE)
 
 
+@overload
+def range_end_utc(value: datetime) -> datetime: ...
+@overload
+def range_end_utc(value: None) -> None: ...
 def range_end_utc(value: Optional[datetime]) -> Optional[datetime]:
     # Exclusive upper bound, compared with "<". Same UTC assumption as
     # range_start_utc(), but a bare date is the *whole* day being asked for,

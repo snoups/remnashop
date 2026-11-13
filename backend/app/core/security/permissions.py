@@ -253,6 +253,7 @@ class Permission(UpperStrEnum):
     AD_LINKS_VIEW = auto()
     AD_LINKS_DETAIL_VIEW = auto()
     AD_LINKS_STATS_VIEW = auto()
+    AD_LINKS_PAYOUT_VIEW = auto()
     AD_LINKS_SUMMARY_VIEW = auto()
     AD_LINKS_USERS_VIEW = auto()
     AD_LINKS_USER_ATTRIBUTION_VIEW = auto()
@@ -508,6 +509,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.AD_LINKS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_DETAIL_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_STATS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
+    Permission.AD_LINKS_PAYOUT_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_SUMMARY_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_USERS_VIEW: PermissionMeta(resource="ad_links", kind="read"),
     Permission.AD_LINKS_USER_ATTRIBUTION_VIEW: PermissionMeta(resource="ad_links", kind="read"),
@@ -804,6 +806,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.AD_LINKS_VIEW,
             Permission.AD_LINKS_DETAIL_VIEW,
             Permission.AD_LINKS_STATS_VIEW,
+            Permission.AD_LINKS_PAYOUT_VIEW,
             Permission.AD_LINKS_SUMMARY_VIEW,
             Permission.AD_LINKS_USERS_VIEW,
             Permission.AD_LINKS_USER_ATTRIBUTION_VIEW,

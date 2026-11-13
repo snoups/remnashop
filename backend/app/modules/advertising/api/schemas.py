@@ -14,6 +14,7 @@ class AdLinkResponse(BaseModel):
     code: str
     cost: Decimal
     cost_currency: Currency
+    revenue_share_percent: Decimal
     is_active: bool
     allow_bot: bool
     allow_webcabinet: bool
@@ -33,6 +34,7 @@ class CreateAdLinkRequest(BaseModel):
     code: str = Field(min_length=1, max_length=48, pattern=r"^[A-Za-z0-9_-]+$")
     cost: Decimal = Field(default=ZERO_AMOUNT, ge=0)
     cost_currency: Currency = Currency.USD
+    revenue_share_percent: Decimal = Field(default=ZERO_AMOUNT, ge=0, le=100, decimal_places=2)
     allow_bot: bool = True
     allow_webcabinet: bool = True
     note: Optional[str] = None
@@ -42,6 +44,7 @@ class UpdateAdLinkRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     cost: Optional[Decimal] = Field(default=None, ge=0)
     cost_currency: Optional[Currency] = None
+    revenue_share_percent: Optional[Decimal] = Field(default=None, ge=0, le=100, decimal_places=2)
     is_active: Optional[bool] = None
     allow_bot: Optional[bool] = None
     allow_webcabinet: Optional[bool] = None
@@ -70,10 +73,21 @@ class AdLinkStatsResponse(BaseModel):
     conversion_rate: Decimal
     revenue: Decimal
     cost: Decimal
+    fixed_cost: Decimal
+    revenue_share_percent: Decimal
+    revenue_share: Decimal
     report_currency: Currency
     cpa: Optional[Decimal] = None
     roi: Optional[Decimal] = None
     daily_registrations: list[DailyAttributionCountResponse]
+
+
+class AdLinkPayoutResponse(BaseModel):
+    report_currency: Currency
+    payments_count: int
+    revenue: Decimal
+    revenue_share_percent: Decimal
+    payout: Decimal
 
 
 class AdLinkMetricsResponse(BaseModel):

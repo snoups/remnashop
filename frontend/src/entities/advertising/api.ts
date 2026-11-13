@@ -8,6 +8,8 @@ export interface AdLink {
   code: string;
   cost: string;
   cost_currency: string;
+  /** "0"–"100": share of attributed users' payments added to the cost */
+  revenue_share_percent: string;
   is_active: boolean;
   allow_bot: boolean;
   allow_webcabinet: boolean;
@@ -51,6 +53,7 @@ export interface CreateAdLinkRequest {
   code: string;
   cost?: string;
   cost_currency?: string;
+  revenue_share_percent?: string;
   allow_bot?: boolean;
   allow_webcabinet?: boolean;
   note?: string | null;
@@ -64,6 +67,7 @@ export interface UpdateAdLinkRequest {
   name?: string;
   cost?: string;
   cost_currency?: string;
+  revenue_share_percent?: string;
   is_active?: boolean;
   allow_bot?: boolean;
   allow_webcabinet?: boolean;
@@ -91,7 +95,11 @@ export interface AdLinkStats {
   paid_count: number;
   conversion_rate: string;
   revenue: string;
+  /** fixed_cost + revenue_share */
   cost: string;
+  fixed_cost: string;
+  revenue_share_percent: string;
+  revenue_share: string;
   report_currency: string;
   cpa: string | null;
   roi: string | null;
@@ -107,6 +115,25 @@ export function getAdLinkStats(
   const params = new URLSearchParams();
   if (createdFrom) params.set("created_from", createdFrom);
   return apiGet<AdLinkStats>(`/advertising/links/${adLinkId}/stats?${params.toString()}`, signal);
+}
+
+export interface AdLinkPayout {
+  report_currency: string;
+  payments_count: number;
+  revenue: string;
+  revenue_share_percent: string;
+  payout: string;
+}
+
+// paidFrom/paidTo: "YYYY-MM-DD", both days included
+export function getAdLinkPayout(
+  adLinkId: number,
+  paidFrom: string,
+  paidTo: string,
+  signal?: AbortSignal,
+): Promise<AdLinkPayout> {
+  const params = new URLSearchParams({ paid_from: paidFrom, paid_to: paidTo });
+  return apiGet<AdLinkPayout>(`/advertising/links/${adLinkId}/payout?${params.toString()}`, signal);
 }
 
 export interface AdLinkMetrics {

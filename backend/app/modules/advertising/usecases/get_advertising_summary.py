@@ -65,7 +65,9 @@ class GetAdvertisingSummaryUseCase(UseCase[GetAdvertisingSummaryDto, Advertising
             user_ids = users_by_link[link.id]
             paid = [user_id for user_id in user_ids if user_id in revenue_by_user]
             revenue = sum((revenue_by_user[user_id] for user_id in paid), start=ZERO_AMOUNT)
-            cost = convert_for_report(link.cost, link.cost_currency, report_currency, rate_table)
+            cost = convert_for_report(
+                link.cost, link.cost_currency, report_currency, rate_table
+            ) + link.revenue_share(revenue)
             links.append(
                 AdLinkMetricsDto(
                     ad_link_id=link.id,

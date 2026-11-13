@@ -8,6 +8,7 @@ from pydantic import Field
 from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import AdLinkChannel, Currency
+from app.core.utils.money import round_cents
 
 
 class AdLinkDto(BaseDto, TimestampMixin):
@@ -15,11 +16,15 @@ class AdLinkDto(BaseDto, TimestampMixin):
     code: str
     cost: Decimal = ZERO_AMOUNT
     cost_currency: Currency = Currency.USD
+    revenue_share_percent: Decimal = ZERO_AMOUNT
     is_active: bool = True
     allow_bot: bool = True
     allow_webcabinet: bool = True
     note: Optional[str] = None
     created_by: Optional[int] = None
+
+    def revenue_share(self, revenue: Decimal) -> Decimal:
+        return round_cents(revenue * self.revenue_share_percent / 100)
 
     def allows(self, channel: AdLinkChannel) -> bool:
         return self.allow_bot if channel == AdLinkChannel.BOT else self.allow_webcabinet
@@ -53,7 +58,11 @@ class AdLinkStatsDto(BaseDto):
     attributions_by_channel: dict[AdLinkChannel, int] = Field(default_factory=dict)
     paid_count: int
     revenue: Decimal
+    # fixed_cost + revenue_share
     cost: Decimal
+    fixed_cost: Decimal
+    revenue_share_percent: Decimal
+    revenue_share: Decimal
     report_currency: Currency
     cpa: Optional[Decimal] = None
     roi: Optional[Decimal] = None
@@ -82,12 +91,21 @@ class AdvertisingSummaryDto(BaseDto):
     links: list[AdLinkMetricsDto] = Field(default_factory=list)
 
 
+class AdLinkPayoutDto(BaseDto):
+    report_currency: Currency
+    payments_count: int
+    revenue: Decimal
+    revenue_share_percent: Decimal
+    payout: Decimal
+
+
 @dataclass(frozen=True, kw_only=True)
 class CreateAdLinkDto:
     name: str
     code: str
     cost: Decimal = ZERO_AMOUNT
     cost_currency: Currency = Currency.USD
+    revenue_share_percent: Decimal = ZERO_AMOUNT
     allow_bot: bool = True
     allow_webcabinet: bool = True
     note: Optional[str] = None
@@ -101,6 +119,7 @@ class UpdateAdLinkDto:
     name: Optional[str] = None
     cost: Optional[Decimal] = None
     cost_currency: Optional[Currency] = None
+    revenue_share_percent: Optional[Decimal] = None
     is_active: Optional[bool] = None
     allow_bot: Optional[bool] = None
     allow_webcabinet: Optional[bool] = None
@@ -121,6 +140,14 @@ class GetAdLinkStatsDto:
     # Counts only attributions made at or after this moment; None = all time.
     created_from: Optional[datetime] = None
     created_to: Optional[datetime] = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class GetAdLinkPayoutDto:
+    ad_link_id: int
+    # payments made in [paid_from, paid_to) by everyone the link ever attributed
+    paid_from: datetime
+    paid_to: datetime
 
 
 @dataclass(frozen=True, kw_only=True)

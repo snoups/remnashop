@@ -323,6 +323,7 @@ def test_role_permissions_admin_matches_expected_defaults() -> None:
         Permission.AD_LINKS_VIEW,
         Permission.AD_LINKS_DETAIL_VIEW,
         Permission.AD_LINKS_STATS_VIEW,
+        Permission.AD_LINKS_PAYOUT_VIEW,
         Permission.AD_LINKS_SUMMARY_VIEW,
         Permission.AD_LINKS_USERS_VIEW,
         Permission.AD_LINKS_USER_ATTRIBUTION_VIEW,

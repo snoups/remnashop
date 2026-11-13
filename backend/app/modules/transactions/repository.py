@@ -592,6 +592,20 @@ class TransactionRepository:
         )
         return total or ZERO_AMOUNT
 
+    async def count_and_sum_paid_anchor_amount(
+        self, user_ids: list[int], *, paid_from: datetime, paid_to: datetime
+    ) -> tuple[int, Decimal]:
+        stmt = select(func.count(), func.sum(Transaction.anchor_final_price)).where(
+            in_ids(Transaction.user_id, user_ids),
+            Transaction.status == TransactionStatus.PAID,
+            _NOT_TEST,
+            # updated_at of a PAID row is its paid moment
+            Transaction.updated_at >= paid_from,
+            Transaction.updated_at < paid_to,
+        )
+        count, amount = (await self.session.execute(stmt)).tuples().one()
+        return count, amount or ZERO_AMOUNT
+
     async def sum_paid_promocode_discounts(self) -> tuple[int, Decimal]:
         # (paid orders, discount amount in the anchor currency)
         stmt = select(
