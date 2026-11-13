@@ -50,7 +50,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # a pre-release gets only its own tag: latest stays on the last full release
       - name: 🏗️ Build and Push Docker Image (api)
