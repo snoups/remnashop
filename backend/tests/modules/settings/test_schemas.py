@@ -117,7 +117,15 @@ def test_update_shop_settings_request_keeps_the_support_username(typed: str) -> 
     assert request.support_telegram == "shop_help"
 
 
-@pytest.mark.parametrize("typed", ["sh", "https://example.com/shop_help", "shop help"])
+@pytest.mark.parametrize("typed", ["t.me/shop_help?direct", "https://t.me/shop_help/?direct"])
+def test_update_shop_settings_request_keeps_channel_direct_messages(typed: str) -> None:
+    request = UpdateShopSettingsRequest.model_validate({"support_telegram": typed})
+    assert request.support_telegram == "shop_help?direct"
+
+
+@pytest.mark.parametrize(
+    "typed", ["sh", "https://example.com/shop_help", "shop help", "shop_help?start=1"]
+)
 def test_update_shop_settings_request_rejects_a_bad_support_username(typed: str) -> None:
     with pytest.raises(ValidationError):
         UpdateShopSettingsRequest.model_validate({"support_telegram": typed})
