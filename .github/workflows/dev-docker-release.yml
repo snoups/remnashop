@@ -13,18 +13,18 @@ jobs:
     permissions:
       contents: read
 
-  docker-build:
-    name: 🏗️ Build and Push Docker Image
+  vars:
+    name: 🏷️ Define Tags & Build Args
     needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
 
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
       telegram_image_tag: ${{ steps.vars.outputs.telegram_image_tag }}
       short_sha: ${{ steps.vars.outputs.short_sha }}
+      build_time: ${{ steps.vars.outputs.build_time }}
 
     steps:
       - name: 🧾 Checkout Repository
@@ -32,75 +32,69 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: 🛠️ Set Up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-
-      - name: 🔐 Login to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: 🏷️ Define Tags & Outputs
         id: vars
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
           BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           IMAGE_REPO="ghcr.io/${GITHUB_REPOSITORY}"
-          IMAGE_TAGS="${IMAGE_REPO}:dev,${IMAGE_REPO}:dev-${SHORT_SHA}"
-          TELEGRAM_IMAGE_TAGS="${IMAGE_REPO}:dev-telegram,${IMAGE_REPO}:dev-${SHORT_SHA}-telegram"
 
-          echo "image_tag=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
-          echo "telegram_image_tag=${TELEGRAM_IMAGE_TAGS}" >> $GITHUB_OUTPUT
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          {
+            echo "image_tag<<EOF"
+            echo "${IMAGE_REPO}:dev"
+            echo "${IMAGE_REPO}:dev-${SHORT_SHA}"
+            echo "EOF"
+            echo "telegram_image_tag<<EOF"
+            echo "${IMAGE_REPO}:dev-telegram"
+            echo "${IMAGE_REPO}:dev-${SHORT_SHA}-telegram"
+            echo "EOF"
+            echo "short_sha=${SHORT_SHA}"
+            echo "build_time=${BUILD_TIME}"
+          } >> $GITHUB_OUTPUT
 
-          echo "✅ Tags: ${IMAGE_TAGS}"
-          echo "✅ Telegram tags: ${TELEGRAM_IMAGE_TAGS}"
           echo "✅ SHA: ${SHORT_SHA}"
 
-      - name: 🏗️ Build and Push Image (api)
-        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
-        with:
-          context: .
-          push: true
-          provenance: mode=max
-          sbom: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.vars.outputs.image_tag }}
-          build-args: |
-            BUILD_TIME=${{ steps.vars.outputs.build_time }}
-            BUILD_BRANCH=${{ github.ref_name }}
-            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
-            BUILD_TAG=dev
+  api:
+    needs: vars
+    uses: ./.github/workflows/docker-image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      variant: api
+      tags: ${{ needs.vars.outputs.image_tag }}
+      build-args: |
+        BUILD_TIME=${{ needs.vars.outputs.build_time }}
+        BUILD_BRANCH=${{ github.ref_name }}
+        BUILD_COMMIT=${{ needs.vars.outputs.short_sha }}
+        BUILD_TAG=dev
 
-      - name: 🏗️ Build and Push Image (telegram)
-        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
-        with:
-          context: .
-          push: true
-          provenance: mode=max
-          sbom: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.vars.outputs.telegram_image_tag }}
-          build-args: |
-            BUILD_TIME=${{ steps.vars.outputs.build_time }}
-            BUILD_BRANCH=${{ github.ref_name }}
-            BUILD_COMMIT=${{ steps.vars.outputs.short_sha }}
-            BUILD_TAG=dev
-            UV_EXTRA=telegram
+  telegram:
+    needs: vars
+    uses: ./.github/workflows/docker-image.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      variant: telegram
+      tags: ${{ needs.vars.outputs.telegram_image_tag }}
+      build-args: |
+        BUILD_TIME=${{ needs.vars.outputs.build_time }}
+        BUILD_BRANCH=${{ github.ref_name }}
+        BUILD_COMMIT=${{ needs.vars.outputs.short_sha }}
+        BUILD_TAG=dev
+        UV_EXTRA=telegram
 
   release:
     name: 📦 Build and Publish Dev Artifact
     runs-on: ubuntu-latest
-    needs: docker-build
+    needs: [vars, api, telegram]
     permissions:
       contents: write
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SHORT_SHA: ${{ needs.docker-build.outputs.short_sha }}
+      SHORT_SHA: ${{ needs.vars.outputs.short_sha }}
 
     steps:
       - name: 🧾 Checkout Repository
