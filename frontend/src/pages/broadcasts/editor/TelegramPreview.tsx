@@ -2,6 +2,7 @@ import { Image, Save, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { BroadcastMediaType } from "@entities/broadcasts/api";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { TelegramHtml } from "@features/dialog-canvas-editor/TelegramHtml";
 import { DAY_MS } from "@shared/lib/period";
 import { Button } from "@shared/ui/Button";
@@ -79,6 +80,11 @@ export function TelegramPreview({ form, locale, mediaType, mediaName, promocodeC
                   key={index}
                   className="truncate rounded-lg border border-white/[0.12] px-3 py-2 text-center text-sm text-foreground"
                 >
+                  {form.buttons[index].icon_custom_emoji_id && (
+                    <>
+                      <EmojiThumbnail glyph="" customEmojiId={form.buttons[index].icon_custom_emoji_id} />{" "}
+                    </>
+                  )}
                   {label}
                 </span>
               ))}

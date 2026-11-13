@@ -9,7 +9,12 @@ from loguru import logger
 from app.core.constants import T_ME
 from app.core.enums import BroadcastButtonKind, Locale
 from app.modules.broadcasts.content import render_text
-from app.modules.broadcasts.dto import BroadcastContentDto, BroadcastDto, RecipientContextDto
+from app.modules.broadcasts.dto import (
+    BroadcastButtonDto,
+    BroadcastContentDto,
+    BroadcastDto,
+    RecipientContextDto,
+)
 from app.modules.broadcasts.storage import media_path
 from app.modules.broadcasts.telegram_api import OutgoingMedia
 from app.modules.translations import TranslationRepository
@@ -58,6 +63,23 @@ class BroadcastRenderer:
         default = self._broadcast.default_locale
         return default, self._broadcast.contents[default]
 
+    def _action(
+        self, button: BroadcastButtonDto, *, channel: bool, link: Optional[str]
+    ) -> Optional[dict[str, str]]:
+        if button.kind is BroadcastButtonKind.URL and button.url:
+            return {"url": button.url}
+        if button.kind is BroadcastButtonKind.PROMOCODE and self._promocode_code:
+            if not channel:
+                return {"callback_data": f"bc:promo:{self._broadcast.id}"}
+            if link:
+                return {"url": f"{link}?start=bc_{self._broadcast.id}"}
+        if button.kind is BroadcastButtonKind.MENU:
+            if not channel:
+                return {"callback_data": "bc:menu"}
+            if link:
+                return {"url": f"{link}?start={_MENU_START_PAYLOAD}"}
+        return None
+
     def _keyboard(
         self,
         labels: list[str],
@@ -68,20 +90,12 @@ class BroadcastRenderer:
         rows: list[list[dict[str, str]]] = []
         link = f"{T_ME}{bot_username}" if bot_username else None
         for button, label in zip(self._broadcast.buttons, labels, strict=True):
-            if button.kind is BroadcastButtonKind.URL and button.url:
-                rows.append([{"text": label, "url": button.url}])
-            elif button.kind is BroadcastButtonKind.PROMOCODE and self._promocode_code:
-                if not channel:
-                    rows.append(
-                        [{"text": label, "callback_data": f"bc:promo:{self._broadcast.id}"}]
-                    )
-                elif link:
-                    rows.append([{"text": label, "url": f"{link}?start=bc_{self._broadcast.id}"}])
-            elif button.kind is BroadcastButtonKind.MENU:
-                if not channel:
-                    rows.append([{"text": label, "callback_data": "bc:menu"}])
-                elif link:
-                    rows.append([{"text": label, "url": f"{link}?start={_MENU_START_PAYLOAD}"}])
+            action = self._action(button, channel=channel, link=link)
+            if action is None:
+                continue
+            if button.icon_custom_emoji_id:
+                action["icon_custom_emoji_id"] = button.icon_custom_emoji_id
+            rows.append([{"text": label, **action}])
         return {"inline_keyboard": rows} if rows else None
 
     def render(self, context: RecipientContextDto, now: datetime) -> RenderedMessage:

@@ -41,6 +41,7 @@ export interface BroadcastEmailContent {
 export interface BroadcastButton {
   kind: BroadcastButtonKind;
   url: string | null;
+  icon_custom_emoji_id: string | null;
 }
 
 export interface Broadcast {

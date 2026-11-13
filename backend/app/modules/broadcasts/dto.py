@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.constants import DEFAULT_PAGE_SIZE
 from app.core.dto import BaseDto, TimestampMixin
@@ -45,6 +45,7 @@ class BroadcastButtonDto(BaseModel):
 
     kind: BroadcastButtonKind
     url: Optional[str] = None
+    icon_custom_emoji_id: Optional[str] = Field(default=None, pattern=r"^\d{1,32}$")
 
 
 class BroadcastContentDto(BaseModel):
