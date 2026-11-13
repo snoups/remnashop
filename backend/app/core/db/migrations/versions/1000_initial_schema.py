@@ -535,7 +535,7 @@ def upgrade() -> None:
     op.create_table(
         "currency_rates",
         sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
-        sa.Column("rate", sa.Numeric(precision=12, scale=6), nullable=False),
+        sa.Column("rate", sa.Numeric(precision=16, scale=10), nullable=False),
         sa.Column(
             "rounding_mode", sa.Enum("INTEGER", "DECIMAL_2", name="roundingmode"), nullable=False
         ),
@@ -2558,6 +2558,7 @@ def upgrade() -> None:
         sa.Column("final_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_base_price", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("anchor_final_price", sa.Numeric(precision=10, scale=2), nullable=False),
+        sa.Column("anchor_unrated", sa.Boolean(), server_default="false", nullable=False),
         sa.Column("discount_promocode_id", sa.Integer(), nullable=True),
         sa.Column("customer_email", sa.String(length=255), nullable=True),
         sa.Column("idempotency_key", sa.String(length=36), nullable=False),
