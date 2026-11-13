@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Final, Optional
+from typing import Optional
 from uuid import uuid4
 
 import httpx
@@ -32,13 +32,10 @@ from app.modules.transactions.gateways.base import WebhookSignal
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.yookassa import YooKassaGateway
 from app.modules.transactions.recurring_dto import RecurringPaymentDto
+from app.modules.transactions.recurring_policy import SAFE_REPOST_WINDOW
 from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users import UserRepository
-
-# YooKassa retains idempotency keys for 24h. Never re-POST an ambiguous request
-# after that window; a new payment could otherwise debit the customer twice.
-_SAFE_REPOST_WINDOW: Final[timedelta] = timedelta(hours=23)
 
 
 class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
@@ -241,7 +238,7 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                     anchor_final_price=quote.anchor_final_price,
                     customer_email=customer_email,
                     idempotency_key=uuid4().hex,
-                    expires_at=now + _SAFE_REPOST_WINDOW,
+                    expires_at=now + SAFE_REPOST_WINDOW,
                     recurring_consent=True,
                     is_recurring=True,
                     yookassa_receipt_vat_code=int(vat_code) if vat_code is not None else None,
@@ -251,6 +248,9 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
         logger.info(f"Reserved recurring order '{order.id}' for subscription '{subscription.id}'")
 
     async def _charge_or_poll(self, subscription_id: int) -> None:
+        async with self._uow:
+            if await self._recurring.retire_pending(subscription_id):
+                return
         async with self._uow:
             mandate = await self._recurring.get(subscription_id, for_update=True)
             if mandate is None or mandate.pending_transaction_id is None:
@@ -271,12 +271,6 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             await self._defer(subscription_id)
             if order.external_payment_id is None:
                 if (
-                    order.created_at is None
-                    or datetime_now() - order.created_at >= _SAFE_REPOST_WINDOW
-                ):
-                    await self._recurring.disable(subscription_id, "payment_status_unknown")
-                    return
-                if (
                     not mandate.enabled
                     or not mandate.payment_method_id
                     or not await self._enabled()
@@ -295,6 +289,7 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
     ) -> None:
         # The durable order+key precede the HTTP call. The mandate lock serializes
         # a customer's disable action with sending the request; timeouts reuse this key.
+        unknown = False
         async with self._uow:
             mandate = await self._recurring.get(subscription_id, for_update=True)
             if mandate is None or not mandate.enabled or not mandate.payment_method_id:
@@ -324,12 +319,16 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                 if not first_attempt:
                     # A rejected retry cannot establish what happened to a
                     # previous request whose response was lost (e.g. revoked API key).
-                    await self._recurring.disable(subscription_id, "payment_status_unknown")
-                    return
-                await self._recurring.disable(subscription_id, "provider_rejected")
+                    unknown = True
+                else:
+                    await self._recurring.disable(subscription_id, "provider_rejected")
                 # Commit the refusal before marking the order, avoiding a lock
                 # inversion with the subscription fulfillment handler.
                 intent = None
+        if unknown:
+            async with self._uow:
+                await self._recurring.retire_pending(subscription_id, order.id, force_unknown=True)
+            return
         async with self._uow:
             await self._transactions.mark_status_if(
                 order.id,

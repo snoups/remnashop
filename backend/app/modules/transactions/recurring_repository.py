@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from loguru import logger
 from sqlalchemy import case, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from app.core.db.models.transaction import Transaction
 from app.core.enums import PaymentGatewayType, TransactionStatus
 from app.core.utils.time import datetime_now
 from app.modules.transactions.recurring_dto import RecurringPaymentDto
+from app.modules.transactions.recurring_policy import SAFE_REPOST_WINDOW
 
 
 class RecurringPaymentRepository:
@@ -70,10 +72,21 @@ class RecurringPaymentRepository:
             .on_conflict_do_update(
                 index_elements=[RecurringPayment.subscription_id],
                 set_={
-                    "enabled": enabled,
+                    # Only a new successful manual payment can supersede an
+                    # unknown debit; toggling the preference must not erase it.
+                    "enabled": case(
+                        (RecurringPayment.last_error == "payment_status_unknown", False),
+                        else_=enabled,
+                    ),
                     "customer_disabled": not enabled,
                     "disabled_at": None if enabled else now,
-                    "last_error": None if enabled else "customer_disabled",
+                    "last_error": case(
+                        (
+                            RecurringPayment.last_error == "payment_status_unknown",
+                            "payment_status_unknown",
+                        ),
+                        else_=None if enabled else "customer_disabled",
+                    ),
                     "next_attempt_at": now,
                     "updated_at": now,
                 },
@@ -119,6 +132,83 @@ class RecurringPaymentRepository:
             )
         )
 
+    async def retire_pending(
+        self,
+        subscription_id: int,
+        transaction_id: Optional[int] = None,
+        *,
+        force_unknown: bool = False,
+    ) -> bool:
+        if transaction_id is None:
+            current = await self.get(subscription_id)
+            if current is None or current.pending_transaction_id is None:
+                return False
+            transaction_id = current.pending_transaction_id
+        return await self._retire_pending_order(
+            subscription_id, transaction_id, force_unknown=force_unknown
+        )
+
+    async def _retire_pending_order(
+        self, subscription_id: int, transaction_id: int, *, force_unknown: bool
+    ) -> bool:
+        # Fulfillment locks the order before the mandate. Keeping that order here
+        # lets a concurrent verified webhook win without a lock inversion.
+        order = await self.session.get(
+            Transaction, transaction_id, with_for_update=True, populate_existing=True
+        )
+        if (
+            order is None
+            or not order.is_recurring
+            or order.target_subscription_id != subscription_id
+            or order.status is TransactionStatus.PAID
+        ):
+            return False
+        if order.status is TransactionStatus.PENDING and order.external_payment_id is not None:
+            return False
+        row = await self.session.scalar(
+            select(RecurringPayment)
+            .where(RecurringPayment.subscription_id == subscription_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if row is None or row.pending_transaction_id != transaction_id:
+            return False
+        now = datetime_now()
+        unknown = order.status is TransactionStatus.PENDING
+        if unknown and not (
+            force_unknown
+            or row.last_error == "payment_status_unknown"
+            or order.created_at <= now - SAFE_REPOST_WINDOW
+        ):
+            return False
+        if unknown:
+            # FAILED closes our local attempt; it does not assert a bank refusal.
+            # The order/key remain available for a late verified success webhook.
+            order.status = TransactionStatus.FAILED
+        source = (
+            await self.session.get(Transaction, row.source_transaction_id, populate_existing=True)
+            if row.source_transaction_id is not None
+            else None
+        )
+        reconnected = bool(
+            source and source.fulfilled_at is not None and source.fulfilled_at >= order.created_at
+        )
+        row.pending_transaction_id = None
+        row.attempted_at = None
+        row.next_attempt_at = now
+        if not reconnected:
+            row.enabled = False
+            row.disabled_at = now
+            row.last_error = (
+                "payment_status_unknown" if unknown else row.last_error or "payment_canceled"
+            )
+        await self.session.flush()
+        logger.warning(
+            f"Retired recurring order '{transaction_id}' for subscription '{subscription_id}'; "
+            f"provider outcome unknown: {unknown}, newer manual enrollment: {reconnected}"
+        )
+        return True
+
     async def mark_attempted(self, subscription_id: int) -> None:
         await self.session.execute(
             update(RecurringPayment)
@@ -146,6 +236,7 @@ class RecurringPaymentRepository:
                 )
             )
             return
+        await self.retire_pending(subscription_id)
         previous = (
             await self.get(order.target_subscription_id)
             if order.target_subscription_id is not None
