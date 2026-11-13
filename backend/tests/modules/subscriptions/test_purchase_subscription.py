@@ -15,6 +15,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 
 from app.core.config import AppConfig
+from app.core.constants import GB_TO_BYTES
 from app.core.db.models import (
     EventOutboxEntry,
     Plan,
@@ -599,6 +600,71 @@ async def test_a_paid_renew_of_an_edited_plan_moves_to_its_terms_and_keeps_add_o
     panel_user = await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)
     assert panel_user.hwid_device_limit == 4
     assert renewed.expire_at == original.expire_at + timedelta(days=30)
+
+
+async def test_a_renew_from_unlimited_to_a_finite_plan_keeps_add_ons(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await _create_buyer(user_repository, 4141)
+    plan = await _create_plan(plan_repository, "renew-unlimited-to-finite")
+    use_case = PurchaseSubscriptionUseCase(
+        subscription_repository,
+        make_eligibility(subscription_repository.session),
+        remnawave_sdk,
+        uow,
+        event_publisher,
+        SubscriptionLifecycleService(subscription_repository),
+        PricingRepository(subscription_repository.session),
+        idempotency_repository,
+        UserRepository(subscription_repository.session),
+        AppConfig.get(),
+    )
+    snapshot = replace(
+        snapshot_from_plan(
+            plan, price_paid=Decimal("299.00"), currency=Currency.RUB, duration_days=30
+        ),
+        traffic_limit=0,
+        device_limit=0,
+    )
+    common: dict[str, Any] = {
+        "user_id": buyer.id,
+        "duration_days": 30,
+        "price_paid": Decimal("299.00"),
+        "currency": Currency.RUB,
+    }
+    original = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(**common, plan_snapshot=snapshot, purchase_type=PurchaseType.NEW),
+    )
+    async with uow:
+        await subscription_repository.grant_entitlement(
+            subscription_id=original.id, addon_id=None, addon_type=AddOnType.TRAFFIC, amount=50
+        )
+        await subscription_repository.grant_entitlement(
+            subscription_id=original.id, addon_id=None, addon_type=AddOnType.DEVICES, amount=1
+        )
+
+    renewed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            **common,
+            plan_snapshot=replace(snapshot, traffic_limit=100, device_limit=3),
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=original.id,
+            apply_current_plan=True,
+        ),
+    )
+
+    assert (renewed.effective_traffic_limit, renewed.effective_device_limit) == (150, 4)
+    panel_user = await remnawave_sdk.users.get_user_by_id(original.remnawave_user_id)
+    assert panel_user.traffic_limit_bytes == 150 * GB_TO_BYTES
+    assert panel_user.hwid_device_limit == 4
 
 
 async def test_a_bonus_renew_of_an_edited_plan_keeps_the_old_terms(

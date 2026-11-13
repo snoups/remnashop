@@ -11,7 +11,7 @@ from remnapy.models import CreateUserRequestDto, UpdateUserRequestDto, UserRespo
 
 from app.core.constants import GB_TO_BYTES, INT32_MAX, INT64_MAX, WEB_PREFIX
 from app.core.db.uow import UnitOfWork
-from app.core.enums import SubscriptionStatus
+from app.core.enums import AddOnType, SubscriptionStatus
 from app.core.utils.time import datetime_now
 from app.modules.subscriptions.dto import (
     CreateSubscriptionDto,
@@ -137,8 +137,13 @@ def configure_for_renewal(
     subscription: SubscriptionDto, plan: PlanSnapshot
 ) -> UpdateUserRequestDto:
     """The plan's current terms for a renewed subscription; its add-ons stay on top."""
-    traffic_bonus = subscription.effective_traffic_limit - subscription.traffic_limit
-    device_bonus = subscription.effective_device_limit - subscription.device_limit
+    # from the entitlements: on an unlimited row effective - base is 0 whatever they add
+    bonus = {
+        addon_type: sum(e.amount for e in subscription.addon_entitlements if e.type is addon_type)
+        for addon_type in AddOnType
+    }
+    traffic_bonus = bonus[AddOnType.TRAFFIC]
+    device_bonus = bonus[AddOnType.DEVICES]
     return panel_update(
         id=subscription.remnawave_user_id,
         # 0 = unlimited; an add-on on top must not turn it into a finite cap
