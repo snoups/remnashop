@@ -1009,6 +1009,34 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
     assert await transaction_repository.list_paginated() == ([], 0)
 
 
+async def test_test_payment_stands_in_an_email_when_the_gateway_needs_a_receipt(
+    gateway_repository: GatewayRepository,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    uow: UnitOfWork,
+    fake_gateway: _FakeGateway,
+) -> None:
+    async with uow:
+        await gateway_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k", "vat_code": "1"}
+        )
+        await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+    owner = await user_repository.create(CreateUserDto(name="owner", role=Role.OWNER))
+    use_case = CreateTestPaymentUseCase(
+        gateway_repository,
+        transaction_repository,
+        pricing_repository,
+        uow,
+        _FakeFactory(fake_gateway),
+        RecordingEventPublisher(),
+    )
+
+    await use_case(owner, PaymentGatewayType.YOOKASSA)
+
+    assert fake_gateway.create_payment_calls[0].customer_email == "test@example.com"
+
+
 async def test_test_payment_rejects_an_unconfigured_gateway(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,

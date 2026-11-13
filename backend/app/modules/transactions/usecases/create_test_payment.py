@@ -32,6 +32,8 @@ from app.modules.users import UserDto
 
 _TEST_AMOUNT: Final[Decimal] = Decimal(2)
 _TEST_ORDER_TTL: Final[timedelta] = timedelta(minutes=30)
+# stands in for an admin without an email when the gateway wants one for a receipt
+_TEST_CUSTOMER_EMAIL: Final[str] = "test@example.com"
 
 
 class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserDto]):
@@ -70,11 +72,9 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                 )
             settings = await self._gateway_repository.get_raw_settings(data)
 
-        if actor.email is None and gateway_class.requires_customer_email(settings):
-            raise ValidationError(
-                f"Gateway '{data.value}' requires an email on your account",
-                code=ErrorCode.GATEWAY_EMAIL_REQUIRED,
-            )
+        customer_email = actor.email
+        if customer_email is None and gateway_class.requires_customer_email(settings):
+            customer_email = _TEST_CUSTOMER_EMAIL
 
         currency = gateway_currency(data, settings)
         async with self._uow:
@@ -108,7 +108,7 @@ class CreateTestPaymentUseCase(UseCase[PaymentGatewayType, TestPaymentDto, UserD
                     final_price=_TEST_AMOUNT,
                     anchor_base_price=anchor_amount,
                     anchor_final_price=anchor_amount,
-                    customer_email=actor.email,
+                    customer_email=customer_email,
                     idempotency_key=uuid4().hex,
                     expires_at=datetime_now() + _TEST_ORDER_TTL,
                     is_test=True,
