@@ -13,19 +13,11 @@ import { Spinner } from "@shared/ui/Spinner";
 
 type View = "nodes" | "countries";
 
-const ROW_CLASS = "grid grid-cols-[28px_minmax(0,1fr)_minmax(40px,96px)_auto] items-center gap-3 py-2 sm:grid-cols-[28px_minmax(0,1fr)_minmax(60px,160px)_auto_72px]";
+const ROW_CLASS = "grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 py-2 sm:grid-cols-[28px_minmax(0,1fr)_auto_72px]";
 
 function statusDot(node: NodeCard): string {
   if (node.is_disabled) return "bg-muted-foreground";
   return node.is_connected ? "bg-success" : "bg-error";
-}
-
-function Track({ value, max }: { value: number; max: number }) {
-  return (
-    <div className="h-2 overflow-hidden rounded-full glass-track">
-      <div className="h-full rounded-full bg-primary" style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
-    </div>
-  );
 }
 
 function CountryChip({ code }: { code: string }) {
@@ -38,7 +30,6 @@ function CountryChip({ code }: { code: string }) {
 
 function NodeRows({ nodes }: { nodes: NodeCard[] }) {
   const { t, i18n } = useTranslation();
-  const max = Math.max(0, ...nodes.map((node) => node.users_online));
   return nodes.map((node) => (
     <div key={node.name} className={ROW_CLASS}>
       <CountryChip code={node.country_code} />
@@ -51,7 +42,6 @@ function NodeRows({ nodes }: { nodes: NodeCard[] }) {
           </span>
         )}
       </span>
-      <Track value={node.users_online} max={max} />
       <span className="text-right text-sm font-semibold tabular-nums text-foreground">
         {node.is_disabled || !node.is_connected ? t("common.none") : node.users_online.toLocaleString(i18n.language)}
       </span>
@@ -64,7 +54,6 @@ function NodeRows({ nodes }: { nodes: NodeCard[] }) {
 
 function CountryRows({ countries }: { countries: NodesOverview["countries"] }) {
   const { t, i18n } = useTranslation();
-  const max = Math.max(0, ...countries.map((country) => country.users_online));
   return countries.map((country) => (
     <div key={country.country_code} className={ROW_CLASS}>
       <CountryChip code={country.country_code} />
@@ -75,7 +64,6 @@ function CountryRows({ countries }: { countries: NodesOverview["countries"] }) {
           nodes: country.nodes.toLocaleString(i18n.language),
         })}
       </span>
-      <Track value={country.users_online} max={max} />
       <span className="text-right text-sm font-semibold tabular-nums text-foreground">
         {country.users_online.toLocaleString(i18n.language)}
       </span>
@@ -92,8 +80,8 @@ export function NodesCard({ state }: { state: AsyncState<NodesOverview | null> }
 
   return (
     <Section
-      // an empty state fills the row to sit centred; a list eases its height
-      stretched={rows.length === 0}
+      stretched
+      className="min-h-0 flex-1 overflow-hidden"
       icon={Globe2}
       title={t("dashboard.nodes.title")}
       description={t("dashboard.nodes.description")}
@@ -117,7 +105,7 @@ export function NodesCard({ state }: { state: AsyncState<NodesOverview | null> }
         <EmptyState text={t("dashboard.nodes.empty")} />
       )}
       {data?.available && rows.length > 0 && (
-        <div className="pt-2">
+        <div className="-mb-4 -mr-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4 pr-[calc(1rem-var(--scrollbar-size))] [scrollbar-gutter:stable] pt-2">
           {view === "nodes" ? <NodeRows nodes={data.nodes} /> : <CountryRows countries={data.countries} />}
         </div>
       )}

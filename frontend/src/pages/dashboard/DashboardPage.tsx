@@ -24,6 +24,7 @@ import { KpiTile } from "@shared/ui/KpiTile";
 import { Spinner } from "@shared/ui/Spinner";
 import { AttentionCard } from "@pages/dashboard/AttentionCard";
 import { ClientAppsCard } from "@pages/dashboard/ClientAppsCard";
+import { FollowHeight, PAIR_ROW_CLASS } from "@pages/dashboard/FollowHeight";
 import { NodesCard } from "@pages/dashboard/NodesCard";
 import { OnlineCard } from "@pages/dashboard/OnlineCard";
 import { RecentPaymentsCard } from "@pages/dashboard/RecentPaymentsCard";
@@ -31,8 +32,6 @@ import { RevenueCard } from "@pages/dashboard/RevenueCard";
 import { SubscriptionsCard } from "@pages/dashboard/SubscriptionsCard";
 import { SystemStatusCard } from "@pages/dashboard/SystemStatusCard";
 
-// a lone card spans the row
-const PAIR_ROW_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))] gap-5";
 
 function KpiRow({
   overview,
@@ -187,12 +186,23 @@ export function DashboardPage() {
 
       <div className={PAIR_ROW_CLASS}>
         <OnlineCard hourlyState={hourlyOnlineState} refreshKey={refreshKey} />
-        {canViewNodes && <NodesCard state={nodesState} />}
+        {canViewNodes && (
+          <FollowHeight>
+            <NodesCard state={nodesState} />
+          </FollowHeight>
+        )}
       </div>
 
       {(showClientApps || recentPayments) && (
         <div className={PAIR_ROW_CLASS}>
-          {showClientApps && <ClientAppsCard refreshKey={refreshKey} />}
+          {showClientApps &&
+            (recentPayments ? (
+              <FollowHeight>
+                <ClientAppsCard refreshKey={refreshKey} />
+              </FollowHeight>
+            ) : (
+              <ClientAppsCard refreshKey={refreshKey} />
+            ))}
           {recentPayments && <RecentPaymentsCard payments={recentPayments} revenue={overview?.revenue_today ?? null} />}
         </div>
       )}
