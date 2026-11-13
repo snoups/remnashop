@@ -100,3 +100,11 @@ async def test_assert_panel_v3_rejects_2x() -> None:
 async def test_assert_panel_v3_accepts_3x() -> None:
     transport, _, _ = make_fake_remnawave_transport(panel_version="3.0.1")
     await assert_panel_v3(_sdk(transport))
+
+
+async def test_assert_panel_v3_names_the_token_on_401() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"message": "Unauthorized", "statusCode": 401})
+
+    with pytest.raises(LegacyMigrationError, match="REMNAWAVE_TOKEN"):
+        await assert_panel_v3(_sdk(httpx.MockTransport(handler)))

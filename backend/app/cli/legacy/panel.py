@@ -4,6 +4,7 @@ from typing import Final, Optional
 from urllib.parse import urlparse
 
 from remnapy import RemnawaveSDK
+from remnapy.exceptions import ForbiddenError, UnauthorizedError
 
 from app.cli.legacy.errors import LegacyMigrationError
 
@@ -63,6 +64,12 @@ async def assert_panel_v3(sdk: RemnawaveSDK) -> None:
     try:
         metadata = await sdk.system.get_metadata()
         major = int(metadata.version.split(".")[0])
+    except (UnauthorizedError, ForbiddenError) as error:
+        raise LegacyMigrationError(
+            f"Remnawave panel rejected the credentials: {error}. Check REMNAWAVE_TOKEN "
+            "(Settings -> API Tokens in the panel) and, if the panel sits behind a protected "
+            "proxy, REMNAWAVE_CADDY_TOKEN or REMNAWAVE_COOKIE"
+        ) from error
     except Exception as error:
         raise LegacyMigrationError(
             f"Remnawave panel is unreachable or unreadable: {error}. {_PANEL_OUTDATED}"
