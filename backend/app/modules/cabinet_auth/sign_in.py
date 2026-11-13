@@ -126,6 +126,7 @@ class CabinetSignIn:
         method: CabinetSignInMethod,
         session_ttl: int = TTL_30D,
         legal_locale: Optional[Locale] = None,
+        alert_new_device: bool = True,
     ) -> tuple[UserDto, IssuedSession]:
         if user.is_blocked:
             raise PermissionDeniedError("User is blocked", code=ErrorCode.USER_BLOCKED)
@@ -144,7 +145,7 @@ class CabinetSignIn:
             raise
         # after the commit: a device noted for a sign-in that rolled back would
         # silence the alert for the real one
-        if await self._known_devices.remember(user.id, client_ip, user_agent):
+        if alert_new_device and await self._known_devices.remember(user.id, client_ip, user_agent):
             async with self._uow:
                 await self._event_publisher.publish(
                     CabinetNewDeviceSignInEvent(
@@ -222,6 +223,8 @@ class CabinetSignIn:
             CabinetSignInMethod.TELEGRAM,
             session_ttl,
             legal_locale,
+            # the Mini App opens inside the customer's own signed-in Telegram
+            alert_new_device=source is not RegistrationSource.CABINET_MINI_APP,
         )
 
     async def email(

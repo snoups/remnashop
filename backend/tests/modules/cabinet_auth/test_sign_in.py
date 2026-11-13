@@ -298,6 +298,18 @@ async def test_new_device_sign_in_publishes_event_but_first_is_silent(
     assert event.ip_address == "198.51.100.7"
 
 
+async def test_mini_app_sign_in_never_alerts_a_new_device(
+    sign_in: CabinetSignIn, session: AsyncSession
+) -> None:
+    profile = TelegramProfileDto(telegram_id=9101, name="Ann", username=None, language="en")
+    source = RegistrationSource.CABINET_MINI_APP
+
+    await sign_in.telegram(profile, InviteCodesDto(), _IP, _FF, source=source)
+    await sign_in.telegram(profile, InviteCodesDto(), "198.51.100.7", None, source=source)
+
+    assert await _outbox(session, "CabinetNewDeviceSignInEvent") == []
+
+
 async def test_every_sign_in_publishes_its_method(
     sign_in: CabinetSignIn, user_repository: UserRepository, uow: UnitOfWork, session: AsyncSession
 ) -> None:
