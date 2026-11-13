@@ -57,6 +57,7 @@ class ProviderPayment:
     saved_payment_method_id: Optional[str] = field(default=None, repr=False)
     payment_method_shop_id: Optional[str] = None
     status: Optional[TransactionStatus] = None
+    cancellation_reason: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -480,3 +480,48 @@ ntf-customer-referral-attached = { $name } joined through your invite link.{ $re
     }
     .title = You invited a friend!
     .emoji = 🎉
+
+ntf-recurring-reason = { $reason ->
+    [merchant_unavailable] the shop cannot currently authenticate with its payment service
+    [bank_declined] the bank declined the payment
+    [permission_revoked] authorization for charges was revoked
+    [payment_method_restricted] the payment method is restricted
+    [insufficient_funds] insufficient funds
+    [issuer_unavailable] the issuing bank is temporarily unavailable
+    [provider_unavailable] the payment service is temporarily unavailable
+    [provider_auth_error] the shop cannot currently authenticate with its payment service
+    [provider_rejected] the payment service rejected the request
+    [payment_method_unavailable] the payment method is temporarily unavailable
+    [payment_method_revoked] the payment method is no longer available
+    [price_changed] the price exceeds the agreed limit
+    [subscription_changed] the subscription terms have changed
+    [shop_changed] the payment shop has changed
+    [consent_required] the renewal terms require confirmation
+    [payment_status_unknown] the previous payment outcome is still unknown
+    [pending_timeout] the payment has been awaiting confirmation too long
+    [retries_exhausted] payment retries have been exhausted
+    [customer_disabled] the customer disabled auto-renewal
+   *[other] automatic payment encountered a problem
+    }
+ntf-recurring-payment-upcoming = Subscription #{ $subscription_id }: a charge of up to { $amount } { $currency } is scheduled for { $scheduled_at }.
+    .title = Upcoming automatic payment
+ntf-recurring-payment-failed = Subscription #{ $subscription_id }, order #{ $order_id }: attempt #{ $attempt } failed because { $reason_text }.
+    .title = Automatic payment failed
+ntf-recurring-payment-paused = Subscription #{ $subscription_id }: automatic payments paused because { $reason_text }.
+    .title = Auto-renewal needs attention
+ntf-recurring-payment-exhausted = Subscription #{ $subscription_id }: payment retries ended because { $reason_text }. Manual renewal is required.
+    .title = Automatic renewal failed
+ntf-customer-recurring-payment-upcoming = An automatic charge of up to { $money } for subscription #{ $subscription_id } is scheduled for { $scheduled_at }. Check your balance. You can stop future charges in this subscription's settings in the bot or your customer account.
+    .title = Your subscription will renew soon
+ntf-customer-recurring-payment-failed = We could not automatically pay for your subscription because { $reason_text }. { $has_next_attempt ->
+    [yes] Next attempt: { $next_attempt_at }.
+   *[no] Another attempt has not been scheduled yet.
+    } Check your balance or renew manually.
+    .title = Automatic payment failed
+ntf-customer-recurring-payment-paused = Automatic renewal is paused because { $reason_text }. { $has_next_attempt ->
+    [yes] The next check is scheduled for { $next_attempt_at }.
+   *[no] Check your subscription settings or contact support.
+    } Your paid period remains available.
+    .title = Check your auto-renewal settings
+ntf-customer-recurring-payment-exhausted = We could not automatically renew your subscription because { $reason_text }. Payment retries have ended. Renew manually to keep your access.
+    .title = Your subscription needs renewal

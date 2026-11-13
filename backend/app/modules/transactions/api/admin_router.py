@@ -12,6 +12,7 @@ from app.core.constants import DEFAULT_PAGE_SIZE, INT32_MAX, MAX_PAGE_SIZE, SEAR
 from app.core.enums import PaymentGatewayType, PurchaseType, TransactionStatus
 from app.core.utils.http import resolve_client_ip
 from app.core.utils.time import range_end_utc, range_start_utc
+from app.modules.transactions.api.recurring_admin_router import router as recurring_router
 from app.modules.transactions.api.schemas import (
     CreateTestPaymentRequest,
     PaymentCheckResponse,
@@ -56,6 +57,7 @@ from app.modules.transactions.usecases import (
 from app.modules.users import UserDto
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
+router.include_router(recurring_router)
 
 
 def _to_response(item: TransactionWithUserDto) -> TransactionResponse:

@@ -37,6 +37,10 @@ from app.modules.subscriptions import (
 )
 from app.modules.transactions import (
     PaidOrderNotFulfilledEvent,
+    RecurringPaymentExhaustedEvent,
+    RecurringPaymentFailedEvent,
+    RecurringPaymentPausedEvent,
+    RecurringPaymentUpcomingEvent,
     TransactionCanceledEvent,
     TransactionExpiredEvent,
     TransactionPartiallyRefundedEvent,
@@ -228,7 +232,37 @@ async def _on_accounts_merged(event: AccountsMergedEvent, entry: StoredEvent) ->
         await _notify(entry, event.target.id, {})
 
 
+async def _on_recurring(
+    event: Union[
+        RecurringPaymentUpcomingEvent,
+        RecurringPaymentFailedEvent,
+        RecurringPaymentPausedEvent,
+        RecurringPaymentExhaustedEvent,
+    ],
+    entry: StoredEvent,
+) -> None:
+    args: dict[str, Any] = {"subscription_id": event.subscription_id}
+    if isinstance(event, RecurringPaymentUpcomingEvent):
+        args.update(amount=event.amount, currency=event.currency, scheduled_at=event.scheduled_at)
+    else:
+        args["reason"] = event.reason
+        if isinstance(event, RecurringPaymentFailedEvent):
+            args.update(
+                order_id=event.order_id,
+                amount=event.amount,
+                currency=event.currency,
+                attempt=event.attempt,
+            )
+        next_attempt = getattr(event, "next_attempt_at", None)
+        args.update(next_attempt_at=next_attempt or "", has_next_attempt=_yes(bool(next_attempt)))
+    await _notify(entry, event.user_id, args, subscription_id=event.subscription_id)
+
+
 def register_subscribers(bus: EventBus) -> None:
+    bus.subscribe(RecurringPaymentUpcomingEvent, _on_recurring)
+    bus.subscribe(RecurringPaymentFailedEvent, _on_recurring)
+    bus.subscribe(RecurringPaymentPausedEvent, _on_recurring)
+    bus.subscribe(RecurringPaymentExhaustedEvent, _on_recurring)
     bus.subscribe(SubscriptionPurchasedEvent, _on_paid)
     bus.subscribe(SubscriptionChangedEvent, _on_paid)
     bus.subscribe(SubscriptionRenewedEvent, _on_renewed)

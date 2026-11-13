@@ -123,7 +123,7 @@ confirm = Window(
     DynamicMedia("banner", when="banner"),
     Format("{window_text}"),
     Row(
-        Button(Format("{pay_text}"), id="pay", on_click=on_confirm),
+        Button(Format("{pay_text}"), id="pay", on_click=on_confirm, when="can_pay"),
         Button(Format("{back_text}"), id="back", on_click=on_confirm_back),
     ),
     ListGroup(

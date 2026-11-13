@@ -419,6 +419,7 @@ btn-recurring =
     .enable = I agree, enable auto-renewal
     .disable = Disable auto-renewal
 ntf-recurring =
+    .consent-required = Consent to auto-renewal to pay with YooKassa, or choose another payment method.
     .terms-changed = Payment or renewal terms changed. Select a duration and confirm your consent again.
     .enabled = Auto-renewal enabled.
     .disabled = Auto-renewal disabled. No new charges will be sent; a payment already submitted may still complete.
@@ -631,3 +632,13 @@ inline-invite =
         ↘️ TAP THE BUTTON AND TRY IT FOR FREE!
     .start = Join
     .start-icon = 🚀
+
+frg-purchase-recurring-required = This payment method is available with auto-renewal only. Read the terms and give separate consent before paying.
+
+frg-subscription-recurring-retrying = <b>Auto-renewal enabled, awaiting another payment attempt</b>: up to { $amount } { $currency } every { $days } days.
+frg-subscription-recurring-pending = <b>Automatic payment is being processed</b>. Awaiting YooKassa confirmation. Disabling stops new charges; a submitted payment may still complete.
+frg-subscription-recurring-reason = Reason: { $reason }.
+frg-subscription-recurring-next-retry = Next payment attempt: { $when } UTC.
+frg-subscription-recurring-next-check = Next payment check: { $when } UTC.
+
+frg-purchase-recurring-preserved = A one-time payment does not cancel previously enabled auto-renewal. You can disable it in your subscription settings.

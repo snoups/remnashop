@@ -185,7 +185,6 @@ class TransactionRepository:
             expires_at=data.expires_at,
             is_test=data.is_test,
             recurring_consent_id=data.recurring_consent_id,
-            recurring_consent=data.recurring_consent,
             is_recurring=data.is_recurring,
             yookassa_receipt_vat_code=data.yookassa_receipt_vat_code,
         )
@@ -381,7 +380,7 @@ class TransactionRepository:
             update(Transaction)
             .where(
                 Transaction.id == order_id,
-                Transaction.recurring_consent.is_(True),
+                Transaction.recurring_consent_id.is_not(None),
                 Transaction.is_test.is_(False),
                 Transaction.gateway_type == PaymentGatewayType.YOOKASSA,
             )

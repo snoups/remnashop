@@ -188,7 +188,10 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
             and 0 < len(method_id) <= 128
             else None
         )
+        cancellation = data.get("cancellation_details")
+        reason = cancellation.get("reason") if isinstance(cancellation, dict) else None
         return ProviderPayment(
+            cancellation_reason=reason if isinstance(reason, str) and len(reason) <= 64 else None,
             paid=data.get("status") == _PAID_STATUS and data.get("paid") is True,
             amount=paid_amount,
             currency=currency,

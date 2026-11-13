@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -24,6 +24,7 @@ from app.modules.settings import SettingsRepository
 from app.modules.subscriptions import (
     PlanSnapshot,
     PurchaseSubscriptionDispatch,
+    SubscriptionDto,
     SubscriptionRepository,
 )
 from app.modules.transactions.checkout_pricing import CheckoutPricer
@@ -33,13 +34,19 @@ from app.modules.transactions.gateways.base import WebhookSignal
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
 from app.modules.transactions.gateways.yookassa import YooKassaGateway
 from app.modules.transactions.recurring_dto import RecurringPaymentDto
-from app.modules.transactions.recurring_policy import SAFE_REPOST_WINDOW
+from app.modules.transactions.recurring_policy import (
+    ATTENTION_REASONS,
+    PERMANENT_CANCELLATION_REASONS,
+    SAFE_REPOST_WINDOW,
+)
 from app.modules.transactions.recurring_repository import RecurringPaymentRepository
+from app.modules.transactions.recurring_submission import RecurringSubmission, submit_recurring
+from app.modules.transactions.recurring_terms import RecurringTerms
 from app.modules.transactions.repository import TransactionRepository
-from app.modules.users import UserRepository
+from app.modules.users import UserDto, UserRepository
 
 
-class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
+class ProcessRecurringPaymentsUseCase(UseCase[Optional[int], None]):
     required_permission = None
 
     def __init__(
@@ -68,32 +75,63 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
         self._uow = uow
         self._config = config
 
-    async def _execute(self, actor: Actor, data: None) -> None:
+    async def _execute(self, actor: Actor, data: Optional[int]) -> None:
+        if data is not None:
+            await self._run_one(data)
+            return
         now = datetime_now()
         async with self._uow:
             ids = await self._recurring.list_due(
                 now,
-                due_before=now + timedelta(minutes=self._config.recurring.lead_minutes),
+                due_before=now
+                + timedelta(minutes=max(1440, self._config.recurring.notice_lead_minutes)),
                 limit=self._config.recurring.batch_size,
             )
+        # The scheduler fans out independent request scopes; this path also supports direct runs.
         for subscription_id in ids:
-            try:
-                await self._process(subscription_id)
-            except Exception as error:
-                await self._uow.rollback()
-                # Provider exception bodies may contain a saved payment method.
-                logger.error(
-                    f"Recurring payment for subscription '{subscription_id}': "
-                    f"{type(error).__name__}"
+            await self._run_one(subscription_id)
+
+    async def _run_one(self, subscription_id: int) -> None:
+        try:
+            await self._process(subscription_id)
+        except Exception as error:
+            await self._uow.rollback()
+            kind = (
+                f"HTTP {error.response.status_code}"
+                if isinstance(error, httpx.HTTPStatusError)
+                else type(error).__name__
+            )
+            logger.error(f"Recurring payment for subscription '{subscription_id}': {kind}")
+            async with self._uow:
+                mandate = await self._recurring.get(subscription_id)
+                order = (
+                    await self._transactions.get_by_id(mandate.pending_transaction_id)
+                    if mandate and mandate.pending_transaction_id
+                    else None
                 )
-                async with self._uow:
-                    await self._defer(subscription_id, "provider_unavailable")
+                terms = await self._recurring.consent_terms(mandate.consent_id) if mandate else None
+                if (
+                    mandate
+                    and order
+                    and order.external_payment_id
+                    and self._pending_expired(mandate, order, terms)
+                ):
+                    await self._recurring.pause(subscription_id, "pending_timeout")
+                else:
+                    merchant = isinstance(
+                        error, httpx.HTTPStatusError
+                    ) and error.response.status_code in {401, 403}
+                    await self._defer(
+                        subscription_id,
+                        "merchant_unavailable" if merchant else "provider_unavailable",
+                    )
 
     async def _defer(self, subscription_id: int, error: Optional[str] = None) -> None:
+        mandate = await self._recurring.get(subscription_id)
+        terms = await self._recurring.consent_terms(mandate.consent_id) if mandate else None
+        minutes = terms.retry_minutes if terms else self._config.recurring.retry_minutes
         await self._recurring.defer(
-            subscription_id,
-            datetime_now() + timedelta(minutes=self._config.recurring.retry_minutes),
-            error,
+            subscription_id, datetime_now() + timedelta(minutes=minutes), error
         )
 
     async def _gateway(self) -> YooKassaGateway:
@@ -119,6 +157,11 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             if mandate is None:
                 return
         if mandate.pending_transaction_id is None:
+            if not mandate.enabled or mandate.last_error in (
+                *ATTENTION_REASONS,
+                "retries_exhausted",
+            ):
+                return
             await self._reserve(mandate)
         await self._charge_or_poll(subscription_id)
 
@@ -127,10 +170,10 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
     ) -> Optional[YooKassaGateway]:
         gateway = await self._gateway()
         if mandate.shop_id != gateway.settings.shop_id or not mandate.payment_method_id:
-            await self._recurring.disable(mandate.subscription_id, "shop_changed")
+            await self._recurring.pause(mandate.subscription_id, "shop_changed")
             return None
         if gateway.settings.vat_code is not None and not customer_email:
-            await self._recurring.disable(mandate.subscription_id, "customer_email_required")
+            await self._recurring.pause(mandate.subscription_id, "customer_email_required")
             return None
         return gateway
 
@@ -138,6 +181,9 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
         self, mandate: RecurringPaymentDto, order: TransactionDto, amount: Decimal
     ) -> bool:
         terms = await self._recurring.consent_terms(mandate.consent_id)
+        if terms is None:
+            await self._recurring.disable(mandate.subscription_id, "consent_required")
+            return False
         authorized = bool(
             terms
             and terms.covers(
@@ -150,12 +196,15 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             )
         )
         if not authorized:
-            await self._recurring.disable(mandate.subscription_id, "consent_required")
+            await self._recurring.pause(mandate.subscription_id, "consent_required")
         return authorized
 
     async def _reserve(self, mandate: RecurringPaymentDto) -> None:
         async with self._uow:
             if not mandate.enabled or not await self._enabled():
+                await self._defer(mandate.subscription_id, "gateway_disabled")
+                return
+            if await self._recurring.has_manual_waiting(mandate.subscription_id):
                 await self._defer(mandate.subscription_id)
                 return
             source = (
@@ -190,20 +239,17 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             )
         except AppError:
             async with self._uow:
-                await self._recurring.disable(mandate.subscription_id, "plan_unavailable")
+                await self._recurring.pause(mandate.subscription_id, "plan_unavailable")
             return
 
         async with self._uow:
             current = await self._recurring.get(subscription.id, for_update=True)
+            terms = await self._reservation_terms(current, source, subscription.id)
             if (
-                current is None
-                or not current.enabled
-                or current.pending_transaction_id is not None
-                or not await self._has_consent(current, source, source.base_price)
+                terms is None
+                or current is None
+                or not await self._cycle_due(current, subscription.expire_at, terms)
             ):
-                return
-            if current.source_transaction_id != source.id or not await self._enabled():
-                await self._defer(subscription.id)
                 return
             shop = await self._settings.get_shop_settings()
             customer_email = shop.payment_email or user.email or source.customer_email
@@ -213,9 +259,7 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
             vat_code = gateway.settings.vat_code
             subscription = await self._subscriptions.get_by_id_for_update(subscription.id)
             now = datetime_now()
-            if subscription.expire_at > now + timedelta(
-                minutes=self._config.recurring.lead_minutes
-            ):
+            if subscription.expire_at > now + timedelta(minutes=terms.lead_minutes):
                 await self._defer(subscription.id)
                 return
             new_snapshot = PlanSnapshot.from_plan(
@@ -235,13 +279,12 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                 or subscription.plan_snapshot.plan_id != source.plan_id
                 or source.plan_snapshot.terms_differ(subscription.plan_snapshot)
                 or subscription.plan_snapshot.terms_differ(new_snapshot)
-                or subscription.expire_at
-                < now - timedelta(hours=self._config.recurring.max_overdue_hours)
+                or subscription.expire_at < now - timedelta(hours=terms.max_overdue_hours)
             ):
-                await self._recurring.disable(subscription.id, "subscription_changed")
+                await self._recurring.pause(subscription.id, "subscription_changed")
                 return
             if quote.final_price <= 0 or quote.final_price > source.base_price:
-                await self._recurring.disable(subscription.id, "price_changed")
+                await self._recurring.pause(subscription.id, "price_changed")
                 return
             order = await self._transactions.create(
                 CreateTransactionDto(
@@ -270,103 +313,276 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                     yookassa_receipt_vat_code=int(vat_code) if vat_code is not None else None,
                 )
             )
-            await self._recurring.set_pending(subscription.id, order.id)
+            await self._recurring.set_pending(
+                subscription.id, order.id, expire_at=subscription.expire_at
+            )
         logger.info(f"Reserved recurring order '{order.id}' for subscription '{subscription.id}'")
+
+    async def _reservation_terms(
+        self, mandate: Optional[RecurringPaymentDto], source: TransactionDto, subscription_id: int
+    ) -> Optional[RecurringTerms]:
+        if mandate is None or not mandate.enabled or mandate.pending_transaction_id is not None:
+            return None
+        if mandate.source_transaction_id != source.id or not await self._enabled():
+            await self._defer(subscription_id)
+            return None
+        if not await self._has_consent(mandate, source, source.base_price):
+            return None
+        return await self._recurring.consent_terms(mandate.consent_id)
+
+    async def _cycle_due(
+        self, mandate: RecurringPaymentDto, expire_at: datetime, terms: RecurringTerms
+    ) -> bool:
+        now = datetime_now()
+        scheduled = expire_at - timedelta(minutes=terms.lead_minutes)
+        if now < scheduled:
+            if now >= expire_at - timedelta(minutes=self._config.recurring.notice_lead_minutes):
+                await self._recurring.notify_upcoming(
+                    mandate.subscription_id, expire_at, terms, scheduled
+                )
+            await self._recurring.defer(mandate.subscription_id, scheduled)
+            return False
+        if mandate.first_failure_at is not None:
+            deadlines = [
+                value
+                for value in (mandate.bank_retry_at, mandate.next_attempt_at)
+                if value is not None
+            ]
+            deadline = max(deadlines) if deadlines else None
+            if deadline is not None and now < deadline:
+                await self._recurring.defer(mandate.subscription_id, deadline)
+                return False
+        await self._recurring.notify_upcoming(mandate.subscription_id, expire_at, terms, scheduled)
+        return True
+
+    @staticmethod
+    def _pending_expired(
+        mandate: RecurringPaymentDto, order: TransactionDto, terms: Optional[RecurringTerms]
+    ) -> bool:
+        started = mandate.pending_since or order.created_at
+        hours = terms.pending_timeout_hours if terms else 24
+        return started is not None and datetime_now() >= started + timedelta(hours=hours)
+
+    async def _pending_context(
+        self, subscription_id: int
+    ) -> Optional[tuple[RecurringPaymentDto, TransactionDto, YooKassaGateway, Optional[datetime]]]:
+        attempt_token = None
+        async with self._uow:
+            mandate = await self._recurring.get(subscription_id, for_update=True)
+            if mandate is None or mandate.pending_transaction_id is None:
+                return None
+            order = await self._transactions.get_by_id(mandate.pending_transaction_id)
+            if order.status is TransactionStatus.PAID:
+                await self._defer(subscription_id)
+                return None
+            if (
+                mandate.last_error in ATTENTION_REASONS
+                and order.status is TransactionStatus.PENDING
+            ):
+                return None
+            terms = await self._recurring.consent_terms(mandate.consent_id)
+            gateway = await self._gateway()
+            if mandate.shop_id != gateway.settings.shop_id:
+                await self._recurring.pause(
+                    subscription_id,
+                    "pending_timeout"
+                    if order.external_payment_id and self._pending_expired(mandate, order, terms)
+                    else "shop_changed",
+                )
+                return None
+            await self._defer(subscription_id)
+            if order.external_payment_id is None and order.status is TransactionStatus.PENDING:
+                if (
+                    not mandate.enabled
+                    or not mandate.payment_method_id
+                    or not await self._enabled()
+                    or await self._recurring.has_manual_waiting(subscription_id)
+                ):
+                    return None
+                attempt_token = await self._recurring.mark_attempted(subscription_id)
+        return mandate, order, gateway, attempt_token
 
     async def _charge_or_poll(self, subscription_id: int) -> None:
         async with self._uow:
             if await self._recurring.retire_pending(subscription_id):
                 return
-        async with self._uow:
-            mandate = await self._recurring.get(subscription_id, for_update=True)
-            if mandate is None or mandate.pending_transaction_id is None:
-                return
-            order = await self._transactions.get_by_id(mandate.pending_transaction_id)
-            if order.status is TransactionStatus.PAID:
-                await self._defer(subscription_id)
-                return
-            if order.status is not TransactionStatus.PENDING:
-                await self._recurring.fail_pending(subscription_id, "payment_canceled")
-                await self._defer(subscription_id, "payment_canceled")
-                return
-            gateway = await self._gateway()
-            if mandate.shop_id != gateway.settings.shop_id:
-                await self._recurring.disable(subscription_id, "shop_changed")
-                await self._defer(subscription_id, "shop_changed")
-                return
-            await self._defer(subscription_id)
-            if order.external_payment_id is None:
-                if (
-                    not mandate.enabled
-                    or not mandate.payment_method_id
-                    or not await self._enabled()
-                ):
-                    return
-                await self._recurring.mark_attempted(subscription_id)
+        context = await self._pending_context(subscription_id)
+        if context is None:
+            return
+        mandate, order, gateway, attempt_token = context
+        if order.status is not TransactionStatus.PENDING:
+            if order.external_payment_id is not None:
+                await self._poll(subscription_id, order, gateway)
+            else:
+                async with self._uow:
+                    await self._recurring.fail_pending(
+                        subscription_id, "provider_rejected", transaction_id=order.id
+                    )
+            return
         if order.external_payment_id is None:
-            await self._charge(subscription_id, order, first_attempt=mandate.attempted_at is None)
+            await self._charge(
+                subscription_id,
+                order,
+                first_attempt=mandate.attempted_at is None,
+                attempt_token=attempt_token,
+            )
             async with self._uow:
                 order = await self._transactions.get_by_id(order.id)
         if order.external_payment_id is not None:
             await self._poll(subscription_id, order, gateway)
 
-    async def _charge(
-        self, subscription_id: int, order: TransactionDto, *, first_attempt: bool
-    ) -> None:
-        # The durable order+key precede the HTTP call. The mandate lock serializes
-        # a customer's disable action with sending the request; timeouts reuse this key.
-        unknown = False
+    async def _submit_if_authorized(
+        self,
+        subscription_id: int,
+        order: TransactionDto,
+        *,
+        first_attempt: bool,
+        attempt_token: Optional[datetime] = None,
+    ) -> Optional[tuple[RecurringPaymentDto, RecurringTerms, RecurringSubmission]]:
         async with self._uow:
+            # Match fulfillment's order-before-mandate lock order. Keep both through
+            # the HTTP result and its persistence, so another task cannot rotate the key.
+            order = await self._transactions.get_by_id_for_update(order.id)
+            if (
+                order.status is not TransactionStatus.PENDING
+                or order.external_payment_id is not None
+            ):
+                return None
             mandate = await self._recurring.get(subscription_id, for_update=True)
-            if mandate is None or not mandate.enabled or not mandate.payment_method_id:
-                return
-            if mandate.pending_transaction_id != order.id or not await self._enabled():
-                return
+            if (
+                mandate is None
+                or not mandate.enabled
+                or not mandate.payment_method_id
+                or mandate.pending_transaction_id != order.id
+                or not await self._enabled()
+            ):
+                return None
+            # A later preparation may have submitted while this task was delayed.
+            # Only the still-current owner can classify a refusal as the first request.
+            first_attempt = (
+                first_attempt
+                and attempt_token is not None
+                and mandate.attempted_at == attempt_token
+            )
+            if await self._recurring.has_manual_waiting(subscription_id):
+                await self._defer(subscription_id)
+                return None
             if not await self._has_consent(mandate, order, order.final_price):
-                await self._recurring.disable(subscription_id, "consent_required")
-                return
+                return None
+            terms = await self._recurring.consent_terms(mandate.consent_id)
+            if terms is None:
+                return None
             gateway = await self._gateway()
             if mandate.shop_id != gateway.settings.shop_id:
-                return
+                await self._recurring.pause(subscription_id, "shop_changed")
+                return None
             subscription = await self._subscriptions.get_by_id(subscription_id)
-            user = await self._users.find_by_id(order.user_id)
-            if (
-                user is None
-                or subscription.expire_at
-                < datetime_now() - timedelta(hours=self._config.recurring.max_overdue_hours)
-                or user.is_blocked
-                or user.deleted_at is not None
-                or subscription.status in {SubscriptionStatus.DELETED, SubscriptionStatus.DISABLED}
-                or subscription.plan_snapshot.terms_differ(order.plan_snapshot)
-                or subscription.plan_snapshot.plan_id != order.plan_id
-            ):
-                await self._recurring.disable(subscription_id, "subscription_unavailable")
-                return
-            try:
-                intent = await gateway.create_recurring_payment(order, mandate.payment_method_id)
-            except httpx.HTTPStatusError as error:
-                if error.response.status_code not in {400, 401, 403, 404}:
-                    raise
+            if await self._cycle_superseded(mandate, subscription, order):
+                # A manual renewal supersedes this debit.
+                # A lost request must not become a new charge now.
                 if not first_attempt:
-                    # A rejected retry cannot establish what happened to a
-                    # previous request whose response was lost (e.g. revoked API key).
-                    unknown = True
-                else:
-                    await self._recurring.disable(subscription_id, "provider_rejected")
-                # Commit the refusal before marking the order, avoiding a lock
-                # inversion with the subscription fulfillment handler.
-                intent = None
-        if unknown:
-            async with self._uow:
-                await self._recurring.retire_pending(subscription_id, order.id, force_unknown=True)
-            return
-        async with self._uow:
+                    return None
+                result = RecurringSubmission("superseded")
+                await self._persist_submission(subscription_id, order, mandate, terms, result)
+                return mandate, terms, result
+            user = await self._users.find_by_id(order.user_id)
+            if self._subscription_unavailable(user, subscription, order, terms):
+                await self._recurring.pause(subscription_id, "subscription_unavailable")
+                return None
+            result = await submit_recurring(
+                gateway, order, mandate.payment_method_id, first_attempt=first_attempt
+            )
+            await self._persist_submission(subscription_id, order, mandate, terms, result)
+        return mandate, terms, result
+
+    async def _charge(
+        self,
+        subscription_id: int,
+        order: TransactionDto,
+        *,
+        first_attempt: bool,
+        attempt_token: Optional[datetime] = None,
+    ) -> None:
+        await self._submit_if_authorized(
+            subscription_id, order, first_attempt=first_attempt, attempt_token=attempt_token
+        )
+
+    async def _persist_submission(
+        self,
+        subscription_id: int,
+        order: TransactionDto,
+        mandate: RecurringPaymentDto,
+        terms: RecurringTerms,
+        result: RecurringSubmission,
+    ) -> None:
+        # The caller owns the order and current mandate until this entire outcome commits.
+        if result.outcome == "superseded":
             await self._transactions.mark_status_if(
                 order.id,
-                TransactionStatus.PENDING if intent else TransactionStatus.FAILED,
+                TransactionStatus.CANCELED,
                 current=frozenset({TransactionStatus.PENDING}),
-                external_payment_id=intent.provider_payment_id if intent else None,
             )
+            await self._recurring.release_pending(subscription_id, order.id, reason=None)
+            return
+        if result.outcome == "ambiguous":
+            await self._defer(subscription_id, "merchant_unavailable")
+            return
+        if result.outcome == "accepted":
+            moved = await self._transactions.mark_status_if(
+                order.id,
+                TransactionStatus.PENDING,
+                current=frozenset({TransactionStatus.PENDING}),
+                external_payment_id=result.payment_id,
+            )
+            if moved:
+                await self._recurring.clear_error(subscription_id)
+            return
+        moved = await self._transactions.mark_status_if(
+            order.id, TransactionStatus.FAILED, current=frozenset({TransactionStatus.PENDING})
+        )
+        if not moved:
+            return
+        if result.outcome == "merchant":
+            await self._recurring.release_pending(
+                subscription_id,
+                order.id,
+                reason="merchant_unavailable",
+                retry_minutes=terms.retry_minutes,
+            )
+        else:
+            await self._recurring.fail_pending(
+                subscription_id,
+                "provider_rejected",
+                transaction_id=order.id,
+                quiet=mandate.first_failure_at is None,
+            )
+
+    async def _cycle_superseded(
+        self, mandate: RecurringPaymentDto, subscription: SubscriptionDto, order: TransactionDto
+    ) -> bool:
+        if mandate.cycle_expire_at is not None:
+            return subscription.expire_at > mandate.cycle_expire_at
+        # Pre-upgrade orders have no anchor. A later manual fulfillment still supersedes them.
+        return await self._recurring.has_manual_after(
+            subscription.id, created_at=order.created_at, plan_id=order.plan_id
+        )
+
+    @staticmethod
+    def _subscription_unavailable(
+        user: Optional[UserDto],
+        subscription: SubscriptionDto,
+        order: TransactionDto,
+        terms: RecurringTerms,
+    ) -> bool:
+        return (
+            user is None
+            or user.is_blocked
+            or user.deleted_at is not None
+            or subscription.expire_at < datetime_now() - timedelta(hours=terms.max_overdue_hours)
+            or subscription.status in {SubscriptionStatus.DELETED, SubscriptionStatus.DISABLED}
+            or subscription.plan_snapshot.terms_differ(order.plan_snapshot)
+            or subscription.plan_snapshot.plan_id != order.plan_id
+        )
 
     async def _poll(
         self, subscription_id: int, order: TransactionDto, gateway: YooKassaGateway
@@ -374,6 +590,13 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
         payment = await gateway.fetch_payment(
             order, WebhookSignal(reference=order.idempotency_key, claims_paid=True)
         )
+        if (
+            payment.reference != order.idempotency_key
+            or payment.amount != order.final_price
+            or payment.currency != order.currency.value
+            or payment.provider_payment_id != order.external_payment_id
+        ):
+            raise PaymentGatewayError("YooKassa returned a payment for a different order")
         if gateway.payment_matches(order, payment):
             await settle_verified_payment(
                 order, payment, self._transactions, self._uow, self._dispatch
@@ -386,4 +609,20 @@ class ProcessRecurringPaymentsUseCase(UseCase[None, None]):
                     TransactionStatus.CANCELED,
                     current=frozenset({TransactionStatus.PENDING}),
                 )
-                await self._recurring.fail_pending(subscription_id, "payment_canceled")
+                reason = payment.cancellation_reason or "bank_declined"
+                await self._recurring.fail_pending(
+                    subscription_id,
+                    reason,
+                    transaction_id=order.id,
+                    permanent=reason in PERMANENT_CANCELLATION_REASONS,
+                )
+        else:
+            async with self._uow:
+                mandate = await self._recurring.get(subscription_id)
+                terms = await self._recurring.consent_terms(mandate.consent_id) if mandate else None
+                if (
+                    mandate
+                    and mandate.pending_transaction_id == order.id
+                    and self._pending_expired(mandate, order, terms)
+                ):
+                    await self._recurring.pause(subscription_id, "pending_timeout")

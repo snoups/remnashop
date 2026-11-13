@@ -895,7 +895,11 @@
       "PasskeyRenamedEvent": "Passkey renamed",
       "AdLinkAttributedEvent": "Ad link visit",
       "BackupCompletedEvent": "Backup completed",
-      "ConnectGuideChangedEvent": "Connect guide changed"
+      "ConnectGuideChangedEvent": "Connect guide changed",
+      "RecurringPaymentUpcomingEvent": "Upcoming recurring payment",
+      "RecurringPaymentFailedEvent": "Recurring payment failed",
+      "RecurringPaymentPausedEvent": "Auto-renewal paused",
+      "RecurringPaymentExhaustedEvent": "Recurring payment retries exhausted"
     },
     "eventVariants": {
       "CabinetUserRegisteredEvent": {
@@ -1630,9 +1634,9 @@
         "PAYPALYCH": "Must match the shop currency. Defaults to RUB."
       },
       "flagHints": {
-        "recurring_enabled": "New payments enable auto-renewal by default. Customers can turn it off in their subscription. First enable recurring payments for the shop in YooKassa.",
         "require_paid_purchase": "Customers see this payment method only after paying another way at least once.",
-        "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) in the reverse proxy; turn off only if that isn’t possible."
+        "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) in the reverse proxy; turn off only if that isn’t possible.",
+        "payment_mode": "Single payments do not enable auto-renewal. Recurring only requires separate customer consent before payment. Single + recurring lets customers choose whether to enable auto-renewal. Enable recurring payments for the shop in YooKassa first."
       },
       "title": "Payment gateways",
       "description": "Configure payment gateways and their availability to customers",
@@ -1688,9 +1692,14 @@
         "token": "Token",
         "vat_code": "VAT code",
         "verify_ip": "Verify webhook IP",
-        "recurring_enabled": "Recurring payments",
         "wallet_id": "Wallet ID",
-        "webhook_secret": "Webhook secret"
+        "webhook_secret": "Webhook secret",
+        "payment_mode": "Payment mode"
+      },
+      "paymentModes": {
+        "single": "Single payments only",
+        "recurring": "Recurring payments only",
+        "both": "Single + recurring payments"
       }
     },
     "webPush": {
@@ -2414,7 +2423,8 @@
     "ACCESS_SETTINGS_MANAGE": "Edit access settings",
     "BOT_REQUIREMENTS_VIEW": "View bot requirements",
     "BOT_REQUIREMENTS_MANAGE": "Edit bot requirements",
-    "PAYMENT_WAITLIST_VIEW": "View the payment waitlist"
+    "PAYMENT_WAITLIST_VIEW": "View the payment waitlist",
+    "TRANSACTIONS_RECURRING_VIEW": "View recurring payments and their statistics"
   },
   "permissionCategories": {
     "botSettings": "Telegram bot",
@@ -3642,6 +3652,62 @@
         "telegram": "Telegram"
       },
       "name": "Name"
+    },
+    "recurring": {
+      "title": "YooKassa automatic payments",
+      "description": "Subscription states and all-time recurring payment totals. Pauses, errors and pending payments are shown separately. Payment credentials are never displayed.",
+      "all": "All states",
+      "refresh": "Refresh",
+      "error": "Could not load automatic payments. Try again.",
+      "empty": "No automatic payments match this state.",
+      "subscription": "Subscription and customer",
+      "state": "State",
+      "limit": "Charge limit",
+      "next": "Next attempt",
+      "errorReason": "Reason",
+      "expiry": "Paid until",
+      "order": "Order",
+      "attempts": "Retries",
+      "total": "Found: {{count}}",
+      "previous": "Previous",
+      "nextPage": "Next",
+      "states": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "pending": "Payment pending",
+        "retrying": "Retrying",
+        "attention": "Needs attention"
+      },
+      "stats": {
+        "total": "Total subscriptions",
+        "paid": "Successful renewals",
+        "failed": "Failed attempts",
+        "revenue": "Recurring revenue"
+      },
+      "reasons": {
+        "insufficient_funds": "Insufficient funds",
+        "bank_declined": "The bank declined the payment",
+        "issuer_unavailable": "The issuing bank is temporarily unavailable",
+        "merchant_unavailable": "Shop authentication is unavailable",
+        "provider_auth_error": "Shop authentication failed",
+        "provider_unavailable": "The payment service is temporarily unavailable",
+        "provider_rejected": "The payment service rejected the request",
+        "payment_method_unavailable": "The payment method is temporarily unavailable",
+        "payment_method_revoked": "The payment method was revoked",
+        "permission_revoked": "Authorization for charges was revoked",
+        "payment_method_restricted": "The payment method is restricted",
+        "price_changed": "Price exceeds the agreed limit",
+        "subscription_changed": "Subscription terms changed",
+        "shop_changed": "YooKassa shop changed",
+        "consent_required": "Renewal terms require confirmation",
+        "payment_status_unknown": "Payment outcome is unknown",
+        "pending_timeout": "Payment confirmation is taking too long",
+        "retries_exhausted": "Payment retries exhausted",
+        "customer_disabled": "Disabled by the customer",
+        "manual_payment": "Disabled after manual payment"
+      },
+      "search": "Search",
+      "searchPlaceholder": "Customer or subscription ID"
     }
   },
   "subscriptions": {
@@ -4561,7 +4627,9 @@
     "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn’t trusted.",
     "WEBHOOK_STALE": "The webhook is outdated.",
     "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port.",
-    "TRANSLATION_VARIABLE_NOT_ALLOWED": "The text uses a variable or expression the original text doesn’t have."
+    "TRANSLATION_VARIABLE_NOT_ALLOWED": "The text uses a variable or expression the original text doesn’t have.",
+    "RECURRING_CONSENT_REQUIRED": "This payment method requires separate consent to auto-renewal.",
+    "GATEWAY_FIELD_INVALID_CHOICE": "Select an available payment mode."
   },
   "loyalty": {
     "settings": {

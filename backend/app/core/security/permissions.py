@@ -198,6 +198,7 @@ class Permission(UpperStrEnum):
     BROADCASTS_EMAIL_TEST_SEND = auto()
     TRANSACTIONS_VIEW = auto()
     TRANSACTIONS_SUMMARY_VIEW = auto()
+    TRANSACTIONS_RECURRING_VIEW = auto()
     TRANSACTIONS_DETAIL_VIEW = auto()
     TRANSACTIONS_GATEWAYS_VIEW = auto()
     TRANSACTIONS_FULFILL = auto()
@@ -457,6 +458,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.BROADCASTS_EMAIL_TEST_SEND: PermissionMeta(resource="broadcasts", kind="write"),
     Permission.TRANSACTIONS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_RECURRING_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
@@ -783,6 +785,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.USERS_LOYALTY_MANAGE,
             Permission.TRANSACTIONS_VIEW,
             Permission.TRANSACTIONS_SUMMARY_VIEW,
+            Permission.TRANSACTIONS_RECURRING_VIEW,
             Permission.TRANSACTIONS_DETAIL_VIEW,
             Permission.TRANSACTIONS_GATEWAYS_VIEW,
             Permission.TRANSACTIONS_FULFILL,

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import AppConfig
 from app.core.constants import API_V1
+from app.core.db.models import User
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     Currency,
@@ -295,3 +296,56 @@ async def test_owner_previews_and_refunds_a_stars_order(
     assert refund.status_code == 200
     assert refund.json()["rollback_failed"] is False
     assert refund.json()["transaction"]["status"] == "REFUNDED"
+
+
+async def test_recurring_dashboard_is_available_to_an_owner(client, owner_auth_headers):
+    response = await client.get(f"{API_V1}/transactions/recurring", headers=owner_auth_headers)
+    assert response.status_code == 200
+    assert response.json()["summary"]["total"] == 0
+    assert response.json()["items"] == []
+    assert response.json()["summary"]["revenue"] == "0"
+
+
+async def test_recurring_dashboard_requires_recurring_permission(
+    client,
+    admin_auth_headers,
+    user_repository,
+    session,
+    uow,
+):
+    admin = await user_repository.find_by_login("transactionsadmin")
+    async with uow:
+        row = await session.get(User, admin.id)
+        row.permission_revokes = ["TRANSACTIONS_RECURRING_VIEW"]
+        await session.flush()
+    response = await client.get(f"{API_V1}/transactions/recurring", headers=admin_auth_headers)
+    assert response.status_code == 403
+
+
+async def test_recurring_dashboard_rejects_unknown_state(client, owner_auth_headers):
+    response = await client.get(
+        f"{API_V1}/transactions/recurring?state=secret", headers=owner_auth_headers
+    )
+    assert response.status_code == 422
+
+
+async def test_recurring_permission_does_not_require_other_transaction_permissions(
+    client,
+    admin_auth_headers,
+    user_repository,
+    session,
+    uow,
+):
+    admin = await user_repository.find_by_login("transactionsadmin")
+    async with uow:
+        row = await session.get(User, admin.id)
+        row.permission_revokes = ["TRANSACTIONS_VIEW", "TRANSACTIONS_SUMMARY_VIEW"]
+        await session.flush()
+    response = await client.get(f"{API_V1}/transactions/recurring", headers=admin_auth_headers)
+    assert response.status_code == 200
+    assert (
+        await client.get(f"{API_V1}/transactions", headers=admin_auth_headers)
+    ).status_code == 403
+    assert (
+        await client.get(f"{API_V1}/transactions/summary", headers=admin_auth_headers)
+    ).status_code == 403

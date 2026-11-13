@@ -47,6 +47,7 @@ class PaymentMethodDto:
     # False once the shop sends its own payment email: a customer's would be ignored
     asks_email: bool = True
     recurring_available: bool = False
+    recurring_required: bool = False
 
 
 class TransactionDto(BaseDto, TimestampMixin):

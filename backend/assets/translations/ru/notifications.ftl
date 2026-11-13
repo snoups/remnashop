@@ -492,3 +492,48 @@ ntf-customer-referral-attached = Пользователь { $name } присое
     }
     .title = Вы пригласили друга!
     .emoji = 🎉
+
+ntf-recurring-reason = { $reason ->
+    [merchant_unavailable] магазин временно не может связаться с платёжным сервисом
+    [bank_declined] банк отклонил платёж
+    [permission_revoked] разрешение на списания отозвано
+    [payment_method_restricted] способ оплаты ограничен
+    [insufficient_funds] недостаточно средств
+    [issuer_unavailable] банк временно недоступен
+    [provider_unavailable] платёжный сервис временно недоступен
+    [provider_auth_error] магазин временно не может связаться с платёжным сервисом
+    [provider_rejected] платёжный сервис отклонил запрос
+    [payment_method_unavailable] способ оплаты временно недоступен
+    [payment_method_revoked] способ оплаты больше недоступен
+    [price_changed] цена превышает согласованный предел
+    [subscription_changed] изменились условия подписки
+    [shop_changed] изменился магазин для приёма платежей
+    [consent_required] требуется подтверждение условий автопродления
+    [payment_status_unknown] результат предыдущего платежа пока неизвестен
+    [pending_timeout] платёж слишком долго ожидает подтверждения
+    [retries_exhausted] закончились повторные попытки оплаты
+    [customer_disabled] клиент отключил автопродление
+   *[other] возникла проблема с автоматической оплатой
+    }
+ntf-recurring-payment-upcoming = Подписка #{ $subscription_id }: запланировано списание до { $amount } { $currency } в { $scheduled_at }.
+    .title = Предстоящий автоплатёж
+ntf-recurring-payment-failed = Подписка #{ $subscription_id }, заказ #{ $order_id }: неудачная попытка #{ $attempt }, { $reason_text }.
+    .title = Неудачный автоплатёж
+ntf-recurring-payment-paused = Подписка #{ $subscription_id }: автоплатежи приостановлены — { $reason_text }.
+    .title = Автопродление требует внимания
+ntf-recurring-payment-exhausted = Подписка #{ $subscription_id }: повторы автоплатежа завершены — { $reason_text }. Требуется ручная оплата.
+    .title = Автоплатёж не выполнен
+ntf-customer-recurring-payment-upcoming = Для подписки #{ $subscription_id } запланировано автоматическое списание до { $money } в { $scheduled_at }. Проверьте баланс. Отменить будущие списания можно в настройках этой подписки в боте или личном кабинете.
+    .title = Скоро автоматическое продление
+ntf-customer-recurring-payment-failed = Не удалось автоматически оплатить подписку: { $reason_text }. { $has_next_attempt ->
+    [yes] Следующая попытка: { $next_attempt_at }.
+   *[no] Новая попытка пока не назначена.
+    } Проверьте баланс или продлите подписку вручную.
+    .title = Автоплатёж не прошёл
+ntf-customer-recurring-payment-paused = Автоматическое продление подписки приостановлено: { $reason_text }. { $has_next_attempt ->
+    [yes] Повторная проверка: { $next_attempt_at }.
+   *[no] Проверьте настройки подписки или обратитесь в поддержку.
+    } Оплаченный срок сохраняется.
+    .title = Проверьте автопродление
+ntf-customer-recurring-payment-exhausted = Не удалось автоматически продлить подписку: { $reason_text }. Повторные попытки закончились. Чтобы сохранить доступ, оплатите продление вручную.
+    .title = Требуется продлить подписку

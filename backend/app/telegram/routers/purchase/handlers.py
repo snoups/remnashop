@@ -66,6 +66,7 @@ _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
     ErrorCode.GATEWAY_EMAIL_REQUIRED: "ntf-purchase.method-unavailable",
     ErrorCode.PURCHASE_DISCOUNT_USED: "ntf-purchase.discount-used",
     ErrorCode.PRICE_CHANGED: "ntf-recurring.terms-changed",
+    ErrorCode.RECURRING_CONSENT_REQUIRED: "ntf-recurring.consent-required",
 }
 
 
@@ -248,6 +249,7 @@ def _store_method(dialog_data: dict[str, Any], method: dict[str, Any]) -> None:
     dialog_data["currency"] = method["currency"]
     dialog_data["requires_email"] = method.get("requires_email", False)
     dialog_data["recurring_available"] = method.get("recurring_available", False)
+    dialog_data["recurring_required"] = method.get("recurring_required", False)
 
 
 async def _after_method(manager: DialogManager) -> None:
@@ -280,6 +282,17 @@ async def select_duration(
         }
     except AppError:
         return "ntf-purchase.plan-unavailable"
+    methods = [
+        m
+        for m in methods
+        if not (
+            m.recurring_required
+            and quotes[m.currency].final_price > 0
+            and (plan.is_trial or days <= 0)
+        )
+    ]
+    if not methods:
+        return "ntf-purchase.no-methods"
     data = manager.dialog_data
     data.pop(PAYMENT_URL_KEY, None)
     clear_recurring_choice(data)
@@ -300,6 +313,7 @@ async def select_duration(
             "currency": m.currency.value,
             "requires_email": m.requires_email,
             "recurring_available": m.recurring_available,
+            "recurring_required": m.recurring_required,
         }
         for m in methods
     ]
@@ -501,6 +515,13 @@ async def on_confirm(
     if data.get(PAYMENT_URL_KEY):
         await dialog_manager.switch_to(Purchase.PAY)
         return
+    if (
+        data.get("recurring_required")
+        and not data.get(RECURRING_ACCEPTED_KEY)
+        and Decimal(data["prices"][data["currency"]]) > 0
+    ):
+        await answer_notice(callback, runner.get("ntf-recurring.consent-required"))
+        return
     try:
         result = await create_checkout(user, checkout_data(dialog_manager))
     except AppError as error:
@@ -508,6 +529,10 @@ async def on_confirm(
             # the text promises a message once payments are back
             await join_payment_waitlist(user)
         await answer_notice(callback, runner.get(checkout_error_key(error)))
+        if error.code is ErrorCode.RECURRING_CONSENT_REQUIRED:
+            data["recurring_available"] = True
+            data["recurring_required"] = True
+            clear_recurring_choice(data)
         if error.code is ErrorCode.PRICE_CHANGED:
             clear_recurring_choice(data)
             await dialog_manager.switch_to(Purchase.DURATION)

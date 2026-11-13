@@ -1,7 +1,7 @@
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "1006"
@@ -11,6 +11,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Fresh installations get the final schema from 1005. Preserve this revision
+    # so databases stamped by the previously published consent migration upgrade.
+    if context.is_offline_mode() or sa.inspect(op.get_bind()).has_table("recurring_consents"):
+        return
     op.create_table(
         "recurring_consents",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -63,7 +67,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("recurring_payments", "consent_id")
-    op.drop_column("transactions", "recurring_consent_id")
-    op.alter_column("recurring_payments", "enabled", server_default=sa.text("true"))
-    op.drop_table("recurring_consents")
+    # 1005 now owns the complete initial schema, including the consent tables.
+    # Dropping them here would break both a fresh 1005 database and its rollback.
+    pass

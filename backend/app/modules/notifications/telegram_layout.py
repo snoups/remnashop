@@ -255,6 +255,10 @@ LAYOUTS: Final[dict[str, CardLayout]] = {
         sections=_SUBSCRIPTION,
     ),
     "PaidOrderNotFulfilledEvent": CardLayout(sections=_PAYMENT, load_user=True),
+    "RecurringPaymentUpcomingEvent": CardLayout(sections=_SUBSCRIPTION, load_user=True),
+    "RecurringPaymentFailedEvent": CardLayout(sections=_SUBSCRIPTION, load_user=True),
+    "RecurringPaymentPausedEvent": CardLayout(sections=_SUBSCRIPTION, load_user=True),
+    "RecurringPaymentExhaustedEvent": CardLayout(sections=_SUBSCRIPTION, load_user=True),
     "TelegramUserRegisteredEvent": CardLayout(
         details=(("channel", _const("channel-bot"), False), _AD_LINK, _REFERRAL_CODE),
         hashtag="UserRegisteredEvent",

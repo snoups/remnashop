@@ -109,6 +109,12 @@ class NotificationRenderer:
     def render(
         self, locale: Locale, event_type: str, args: dict[str, Union[str, int]]
     ) -> tuple[str, str]:
+        if event_type.startswith(("RecurringPayment", "CustomerRecurringPayment")):
+            reason_args = {**args, "reason": str(args.get("reason", "unknown"))}
+            args = {
+                **args,
+                "reason_text": self.text(locale, "ntf-recurring-reason", reason_args) or _EMPTY,
+            }
         key = message_id(event_type)
         for candidate in (locale, self._default_locale):
             bundle = self._bundles.get(candidate)

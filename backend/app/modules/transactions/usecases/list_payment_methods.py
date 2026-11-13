@@ -48,6 +48,7 @@ class ListPaymentMethodsUseCase(UseCase[None, list[PaymentMethodDto], UserDto]):
                         and gateway_class.requires_customer_email(settings),
                         asks_email=shop_settings.payment_email is None,
                         recurring_available=gateway.flags.get("recurring_enabled", False),
+                        recurring_required=gateway.flags.get("recurring_required", False),
                     )
                 )
         return methods

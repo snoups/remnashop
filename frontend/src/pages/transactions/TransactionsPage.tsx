@@ -1,4 +1,6 @@
 import type { ParseKeys } from "i18next";
+
+import { RecurringPaymentsPanel } from "./RecurringPaymentsPanel";
 import {
   ArrowLeftRight,
   Calculator,
@@ -58,7 +60,7 @@ const ROW_GRID_CLASSNAME = "grid grid-cols-[32px_minmax(0,1fr)_140px_150px_80px_
 
 const STATUS_FILTERS: readonly string[] = [...STATUSES, UNFULFILLED_STATUS];
 
-export function TransactionsPage() {
+function TransactionsListPage() {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   // `?status=` comes from the overview's attention links
@@ -240,6 +242,7 @@ export function TransactionsPage() {
       </div>
 
       <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
+      {permissions.includes("TRANSACTIONS_RECURRING_VIEW") && <RecurringPaymentsPanel />}
       <LoadGate>
       <LoadGateHold isLoading={state.kind === "loading" || summaryState.kind === "loading"} />
       <div className="flex flex-col gap-5">
@@ -439,4 +442,17 @@ export function TransactionsPage() {
       )}
     </div>
   );
+}
+
+
+export function TransactionsPage() {
+  const permissions = usePermissions();
+  if (!permissions.includes("TRANSACTIONS_VIEW") && permissions.includes("TRANSACTIONS_RECURRING_VIEW")) {
+    return <div data-fills-main className={PAGE_CLASS}>
+      <div className={`${PAGE_SCROLL_UNDER_BAR_CLASS} flex flex-col gap-5`}>
+        <RecurringPaymentsPanel initiallyOpen />
+      </div>
+    </div>;
+  }
+  return <TransactionsListPage />;
 }

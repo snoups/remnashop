@@ -69,12 +69,12 @@ async def _choice(manager, enabled=True):
     )
 
 
-async def test_confirmation_starts_unchecked_and_only_shows_terms_after_consent(config):
+async def test_confirmation_starts_unchecked_and_shows_terms_before_consent(config):
     manager = _checkout_manager()
     terms = _terms(config)
     before = await _render(manager, terms)
     assert before["recurring_on"] and not before["recurring_off"]
-    assert not before["recurring_terms"]
+    assert before["recurring_terms"]
     assert terms.summary in before["window_text"]
     assert not checkout_data(manager).recurring_consent
     manager.is_preview.return_value = False
@@ -82,7 +82,7 @@ async def test_confirmation_starts_unchecked_and_only_shows_terms_after_consent(
     manager.current_context.return_value.id = "test"
     keyboard = await confirm.render_kbd(before, manager)
     labels = [button.text for row in keyboard.inline_keyboard for button in row]
-    assert "btn-recurring.terms" not in labels
+    assert "btn-recurring.terms" in labels
     await _choice(manager)
     after = await _render(manager, terms)
     assert not after["recurring_on"] and after["recurring_off"] and after["recurring_terms"]
@@ -106,7 +106,7 @@ async def test_repeated_disable_clicks_do_not_restore_consent(config):
     await _choice(manager, False)
     await _choice(manager, False)
     result = await _render(manager, _terms(config))
-    assert not result["recurring_terms"] and not checkout_data(manager).recurring_consent
+    assert result["recurring_terms"] and not checkout_data(manager).recurring_consent
 
 
 async def test_changed_terms_clear_the_previous_checkbox(config):
@@ -114,7 +114,7 @@ async def test_changed_terms_clear_the_previous_checkbox(config):
     await _render(manager, _terms(config))
     await _choice(manager)
     result = await _render(manager, _terms(config, amount="600"))
-    assert not result["recurring_terms"] and not checkout_data(manager).recurring_consent
+    assert result["recurring_terms"] and not checkout_data(manager).recurring_consent
     assert "600" in result["window_text"]
 
 
@@ -171,3 +171,31 @@ async def test_a_stale_checkbox_cannot_accept_replacement_terms(config):
     )
     assert RECURRING_ACCEPTED_KEY not in manager.dialog_data
     assert not checkout_data(manager).recurring_consent
+
+
+async def test_recurring_only_hides_pay_until_the_customer_consents(config):
+    manager = _checkout_manager()
+    manager.dialog_data["recurring_required"] = True
+    before = await _render(manager, _terms(config))
+    assert before["recurring_terms"] and not before["can_pay"]
+    manager.is_preview.return_value = False
+    manager.current_context.return_value.stack_id = ""
+    manager.current_context.return_value.id = "test"
+    keyboard = await confirm.render_kbd(before, manager)
+    assert before["pay_text"] not in [
+        button.text for row in keyboard.inline_keyboard for button in row
+    ]
+    await _choice(manager)
+    after = await _render(manager, _terms(config))
+    assert after["can_pay"]
+    keyboard = await confirm.render_kbd(after, manager)
+    assert after["pay_text"] in [button.text for row in keyboard.inline_keyboard for button in row]
+
+
+async def test_terms_can_be_read_without_giving_consent(config):
+    manager = _checkout_manager()
+    terms = _terms(config)
+    await _render(manager, terms)
+    result = await recurring_terms_getter.__dishka_orig_func__(manager, i18n=_i18n())
+    assert result["window_text"] == terms.text
+    assert RECURRING_ACCEPTED_KEY not in manager.dialog_data

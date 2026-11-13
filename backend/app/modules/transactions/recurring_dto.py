@@ -21,6 +21,14 @@ class RecurringPaymentDto:
     pending_transaction_id: Optional[int]
     attempted_at: Optional[datetime]
     consent_id: Optional[int] = None
+    first_failure_at: Optional[datetime] = None
+    retry_count: int = 0
+    cycle_expire_at: Optional[datetime] = None
+    pending_since: Optional[datetime] = None
+    upcoming_notified_for: Optional[datetime] = None
+    next_attempt_at: Optional[datetime] = None
+    leased_until: Optional[datetime] = None
+    bank_retry_at: Optional[datetime] = None
 
 
 class RecurringPaymentState(BaseModel):
@@ -30,6 +38,10 @@ class RecurringPaymentState(BaseModel):
     enabled: bool
     available: bool
     customer_disabled: bool = False
+    paused: bool = False
+    retrying: bool = False
+    payment_pending: bool = False
+    next_retry_at: Optional[datetime] = None
     amount_limit: Optional[Decimal] = None
     currency: Optional[str] = None
     duration_days: Optional[int] = None

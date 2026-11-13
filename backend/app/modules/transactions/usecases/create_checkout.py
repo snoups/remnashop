@@ -315,6 +315,13 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         quote: PriceQuote,
         gateway_settings: dict[str, str],
     ) -> Optional[int]:
+        flags = gateway_flags(data.gateway_type, gateway_settings)
+        if flags.get("recurring_required", False) and quote.final_price > 0:
+            if not data.recurring_consent or plan.is_trial or data.duration_days <= 0:
+                raise ValidationError(
+                    "This payment method requires explicit consent to auto-renewal",
+                    code=ErrorCode.RECURRING_CONSENT_REQUIRED,
+                )
         recurring_allowed = (
             data.gateway_type is PaymentGatewayType.YOOKASSA
             and gateway_flags(data.gateway_type, gateway_settings).get("recurring_enabled", False)

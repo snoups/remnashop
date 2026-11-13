@@ -9,6 +9,7 @@ from app.modules.gateways.field_catalog import (
     validate_gateway_field_keys,
     validate_gateway_field_values,
 )
+from app.modules.gateways.gateway_settings import YooKassaSettings
 
 
 def test_all_gateway_types_have_a_catalog_entry() -> None:
@@ -121,10 +122,12 @@ def test_yookassa_verify_ip_defaults_on_and_reads_back() -> None:
     assert gateway_flags(PaymentGatewayType.YOOKASSA, {}) == {
         "verify_ip": True,
         "recurring_enabled": False,
+        "recurring_required": False,
     }
     assert gateway_flags(PaymentGatewayType.YOOKASSA, {"verify_ip": "false"}) == {
         "verify_ip": False,
         "recurring_enabled": False,
+        "recurring_required": False,
     }
     assert gateway_flags(PaymentGatewayType.ROBOKASSA, {}) == {}
 
@@ -133,3 +136,41 @@ def test_validate_gateway_field_values_rejects_a_non_boolean_flag() -> None:
     validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"verify_ip": "false"})
     with pytest.raises(ValidationError):
         validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"verify_ip": "no"})
+
+
+@pytest.mark.parametrize(
+    ("mode", "enabled", "required"),
+    [
+        ("single", False, False),
+        ("recurring", True, True),
+        ("both", True, False),
+    ],
+)
+def test_yookassa_payment_mode_has_explicit_catalog_options_and_safe_flags(mode, enabled, required):
+    specs = {item.key: item for item in GATEWAY_FIELD_CATALOG[PaymentGatewayType.YOOKASSA]}
+    assert specs["payment_mode"].kind.value == "choice"
+    assert specs["payment_mode"].options == ("single", "recurring", "both")
+    assert "recurring_enabled" not in specs
+    validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"payment_mode": mode})
+    flags = gateway_flags(PaymentGatewayType.YOOKASSA, {"payment_mode": mode})
+    assert flags["recurring_enabled"] is enabled and flags["recurring_required"] is required
+    settings = YooKassaSettings.from_values(
+        {"shop_id": "1", "api_key": "key", "payment_mode": mode}
+    )
+    assert settings.payment_mode == mode and settings.recurring_enabled is enabled
+
+
+@pytest.mark.parametrize(("legacy", "mode"), [("true", "both"), ("false", "single")])
+def test_existing_yookassa_recurring_flag_keeps_its_meaning(legacy, mode):
+    settings = YooKassaSettings.from_values(
+        {"shop_id": "1", "api_key": "key", "recurring_enabled": legacy}
+    )
+    assert settings.payment_mode == mode
+    assert gateway_flags(PaymentGatewayType.YOOKASSA, {"recurring_enabled": legacy})[
+        "recurring_enabled"
+    ] == (legacy == "true")
+
+
+def test_yookassa_payment_mode_rejects_unknown_choice():
+    with pytest.raises(ValidationError):
+        validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"payment_mode": "automatic"})

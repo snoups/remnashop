@@ -13,6 +13,10 @@ from app.modules.subscriptions import (
 )
 from app.modules.transactions import (
     PaidOrderNotFulfilledEvent,
+    RecurringPaymentExhaustedEvent,
+    RecurringPaymentFailedEvent,
+    RecurringPaymentPausedEvent,
+    RecurringPaymentUpcomingEvent,
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
@@ -37,6 +41,10 @@ ALWAYS_BOTH: Final[frozenset[str]] = frozenset(
         TransactionRefundedEvent,
         TransactionPartiallyRefundedEvent,
         PaidOrderNotFulfilledEvent,
+        RecurringPaymentUpcomingEvent,
+        RecurringPaymentFailedEvent,
+        RecurringPaymentPausedEvent,
+        RecurringPaymentExhaustedEvent,
         CabinetNewDeviceSignInEvent,
         AccountsMergedEvent,
     )

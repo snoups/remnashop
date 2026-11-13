@@ -28,4 +28,13 @@ class RecurringPayment(BaseSql, TimestampMixin):
         ForeignKey("transactions.id"), unique=True
     )
     attempted_at: Mapped[Optional[datetime]]
+    first_failure_at: Mapped[Optional[datetime]]
+    retry_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    # The expiry this cycle pays for; a manual extension supersedes unsent retries.
+    cycle_expire_at: Mapped[Optional[datetime]]
+    pending_since: Mapped[Optional[datetime]]
+    upcoming_notified_for: Mapped[Optional[datetime]]
+    # Queue ownership must not change the business schedule or the bank retry deadline.
+    leased_until: Mapped[Optional[datetime]]
+    bank_retry_at: Mapped[Optional[datetime]]
     next_attempt_at: Mapped[datetime] = mapped_column(index=True)

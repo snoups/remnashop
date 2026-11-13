@@ -68,12 +68,14 @@ class _YooKassa:
         self.status = "succeeded"
         self.lose_response = False
         self.reject = False
+        self.reject_code = 400
+        self.cancellation_reason = "bank_declined"
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         if request.method == "POST":
             if self.reject:
-                return httpx.Response(400, json={"code": "invalid_payment_method"})
+                return httpx.Response(self.reject_code, json={"code": "invalid_payment_method"})
             key = request.headers["Idempotence-Key"]
             payment_id = self.keys.setdefault(key, f"payment-{len(self.keys) + 1}")
             self.references[payment_id] = json.loads(request.content)["metadata"]["order_ref"]
@@ -91,6 +93,7 @@ class _YooKassa:
                 "amount": {"value": "500.00", "currency": "RUB"},
                 "metadata": {"order_ref": self.references[payment_id]},
                 "payment_method": {"id": "method-token", "saved": True},
+                "cancellation_details": {"reason": self.cancellation_reason},
             },
         )
 
@@ -414,13 +417,16 @@ async def test_blocked_customer_is_not_charged(case, user_repository, uow) -> No
     assert not case.provider.posts
 
 
-async def test_canceled_payment_disables_future_attempts(case, uow) -> None:
+async def test_canceled_payment_waits_for_the_scheduled_retry(case, uow) -> None:
     case.provider.status = "canceled"
     await case.worker.system()
     await _tick_again(case, uow)
     assert len(case.provider.posts) == 1
     assert not case.dispatch.messages
-    assert not (await case.get_state(case.user, case.subscription.id)).enabled
+    mandate = await case.repository.get(case.subscription.id)
+    assert mandate.enabled and mandate.retry_count == 1
+    assert mandate.first_failure_at is not None
+    assert mandate.next_attempt_at > datetime_now()
 
 
 async def test_plaintext_tokens_are_not_stored_or_returned(case, session) -> None:
@@ -591,10 +597,11 @@ async def test_a_rejected_retry_cannot_establish_that_the_original_was_not_paid(
     await _tick_again(case, uow)
     mandate = await case.repository.get(case.subscription.id)
     order = await transaction_repository.get_by_id(pending.pending_transaction_id)
-    assert order.status is TransactionStatus.FAILED
-    assert mandate.pending_transaction_id is None
-    assert mandate.last_error == "payment_status_unknown"
-    assert not mandate.enabled
+    assert order.status is TransactionStatus.PENDING
+    assert mandate.pending_transaction_id == order.id
+    assert mandate.last_error == "merchant_unavailable"
+    assert mandate.enabled
+    assert len(case.provider.keys) == 1
 
 
 @pytest.mark.parametrize("original_email", [None, "previous-buyer@example.com"])
@@ -1003,12 +1010,12 @@ async def test_a_manual_payment_without_consent_does_not_restore_withdrawn_autho
     assert (await case.repository.get(case.subscription.id)).consent_id is None
 
 
-async def test_a_new_policy_requires_new_consent_even_if_the_saved_method_works(case):
-    case.worker._config.recurring.lead_minutes += 1
+async def test_a_new_policy_preserves_existing_consent(case, monkeypatch):
+    monkeypatch.setattr(case.worker._config.recurring, "lead_minutes", 60)
     await case.worker.system()
     state = await case.get_state(case.user, case.subscription.id)
-    assert not state.enabled and state.last_error == "consent_required"
-    assert not case.provider.posts
+    assert state.enabled and state.last_error is None
+    assert len(case.provider.posts) == 1
 
 
 async def test_an_ambiguous_request_is_not_retried_beyond_the_agreed_overdue_window(
@@ -1022,14 +1029,18 @@ async def test_an_ambiguous_request_is_not_retried_beyond_the_agreed_overdue_win
         await session.execute(
             update(Subscription)
             .where(Subscription.id == case.subscription.id)
-            .values(expire_at=datetime_now() - timedelta(hours=25))
+            .values(
+                expire_at=datetime_now()
+                - timedelta(hours=case.worker._config.recurring.max_overdue_hours + 1)
+            )
         )
     await _tick_again(case, uow)
     assert len(case.provider.posts) == 1
-    assert not (await case.repository.get(case.subscription.id)).enabled
+    mandate = await case.repository.get(case.subscription.id)
+    assert mandate.enabled and mandate.last_error == "subscription_unavailable"
 
 
-async def test_account_merge_keeps_consent_history_but_requires_new_authorization(
+async def test_account_merge_preserves_authorized_owner_and_immutable_consent(
     case,
     user_repository,
     session,
@@ -1041,8 +1052,9 @@ async def test_account_merge_keeps_consent_history_but_requires_new_authorizatio
         await AccountMergeRepository(session).reassign(case.user.id, target.id, {})
     await case.worker.system()
     mandate = await case.repository.get(case.subscription.id)
-    assert not mandate.enabled and mandate.last_error == "consent_required"
-    assert not case.provider.posts
+    assert mandate.enabled and mandate.last_error is None
+    assert len(case.provider.posts) == 1
     consent = await session.get(RecurringConsent, original.consent_id, populate_existing=True)
+    assert consent.owner_user_id == target.id
     assert consent.user_id == case.user.id
     assert consent.terms["user_id"] == case.user.id

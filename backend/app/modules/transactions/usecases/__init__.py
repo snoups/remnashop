@@ -4,6 +4,9 @@ from app.modules.transactions.usecases.check_transaction_payment import (
 from app.modules.transactions.usecases.confirm_stars_payment import ConfirmStarsPaymentUseCase
 from app.modules.transactions.usecases.create_checkout import CreateCheckoutUseCase
 from app.modules.transactions.usecases.create_test_payment import CreateTestPaymentUseCase
+from app.modules.transactions.usecases.enqueue_recurring_payments import (
+    EnqueueRecurringPaymentsUseCase,
+)
 from app.modules.transactions.usecases.fulfill_transaction import FulfillTransactionUseCase
 from app.modules.transactions.usecases.get_own_transaction import GetOwnTransactionUseCase
 from app.modules.transactions.usecases.get_payment_waitlist_count import (
@@ -54,6 +57,7 @@ __all__ = [
     "ConfirmStarsPaymentUseCase",
     "CreateCheckoutUseCase",
     "CreateTestPaymentUseCase",
+    "EnqueueRecurringPaymentsUseCase",
     "FulfillTransactionUseCase",
     "GetCheckoutRecurringTermsUseCase",
     "GetOwnRecurringPaymentUseCase",

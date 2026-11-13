@@ -1,5 +1,5 @@
 import type { ParseKeys } from "i18next";
-import { BookOpen } from "lucide-react";
+import { BookOpen, CreditCard } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +23,7 @@ import { Row } from "@shared/ui/glass/Row";
 import { Switch } from "@shared/ui/glass/Switch";
 import { Pressable } from "@shared/ui/Pressable";
 import { SaveFooter } from "@shared/ui/SaveFooter";
+import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
 import { GATEWAY_DOCS_URLS } from "./docs-links";
 import { GATEWAY_LOGOS } from "./logos";
@@ -67,7 +68,8 @@ export function GatewaySettingsCard({
 
   const label = t(`settings.gateways.types.${gateway.type}` as ParseKeys);
   const flagFields = fields.filter((field) => field.kind === "boolean");
-  const valueFields = fields.filter((field) => field.kind !== "boolean");
+  const choiceFields = fields.filter((field) => field.kind === "choice");
+  const valueFields = fields.filter((field) => field.kind !== "boolean" && field.kind !== "choice");
   const docsUrl = GATEWAY_DOCS_URLS[gateway.type];
   const logoUrl = GATEWAY_LOGOS[gateway.type];
   const canExpand = fields.length > 0 || webhookUrl !== null;
@@ -92,6 +94,17 @@ export function GatewaySettingsCard({
       toast.error(getErrorMessage(err, t("common.errors.generic")));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleChoice = async (key: string, value: string) => {
+    setSavingFlag(key);
+    try {
+      onChanged(await updateGatewaySettings(gateway.type, { [key]: value }));
+    } catch (err) {
+      toast.error(getErrorMessage(err, t("common.errors.generic")));
+    } finally {
+      setSavingFlag(null);
     }
   };
 
@@ -205,6 +218,25 @@ export function GatewaySettingsCard({
                   disabled={!canUpdate || savingFlag === field.key}
                 />
               </div>
+            ))}
+            {choiceFields.map((field) => (
+              <Field
+                key={field.key}
+                htmlFor={`gateway-${gateway.type}-${field.key}`}
+                label={t(`settings.gateways.fields.${field.key}` as ParseKeys)}
+                info={t(`settings.gateways.flagHints.${field.key}` as ParseKeys)}
+              >
+                <SelectDropdown
+                  id={`gateway-${gateway.type}-${field.key}`}
+                  value={gateway.flags.recurring_required ? "recurring" : gateway.flags.recurring_enabled ? "both" : "single"}
+                  options={field.options.map((value) => ({ value, label: t(`settings.gateways.paymentModes.${value}` as ParseKeys) }))}
+                  placeholder={t("settings.gateways.fields.payment_mode")}
+                  icon={CreditCard}
+                  variant="well"
+                  onChange={(value) => void handleChoice(field.key, value)}
+                  disabled={!canUpdate || savingFlag === field.key}
+                />
+              </Field>
             ))}
             {valueFields.map((field) => {
               // once configured, a blank field keeps the stored value

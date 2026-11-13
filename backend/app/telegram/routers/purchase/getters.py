@@ -323,6 +323,14 @@ async def confirm_getter(
         data.setdefault("base_prices", {})[data["currency"]] = str(terms.amount_limit)
     accepted = bool(terms and data.get(RECURRING_ACCEPTED_KEY) == terms.terms_id)
     recurring_notice = html.escape(terms.summary) if terms else ""
+    if data.get("recurring_required") and Decimal(data["prices"][data["currency"]]) > 0:
+        recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-required"))
+    if (
+        purchase_type in {PurchaseType.RENEW, PurchaseType.CHANGE}
+        and not accepted
+        and not data.get("recurring_required")
+    ):
+        recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-preserved"))
     return {
         "window_text": render_window_text(
             runner,
@@ -346,7 +354,10 @@ async def confirm_getter(
         "recurring_choices": [{"id": consent_callback_id(terms.terms_id)}] if terms else [],
         "recurring_on": terms is not None and not accepted,
         "recurring_off": accepted,
-        "recurring_terms": accepted,
+        "recurring_terms": terms is not None,
+        "can_pay": not data.get("recurring_required", False)
+        or accepted
+        or Decimal(data["prices"][data["currency"]]) == 0,
         "recurring_on_text": runner.get("btn-recurring.consent-off"),
         "recurring_off_text": runner.get("btn-recurring.consent-on"),
         "recurring_terms_text": runner.get("btn-recurring.terms"),
@@ -366,11 +377,10 @@ async def recurring_terms_getter(
 ) -> dict[str, Any]:
     data = dialog_manager.dialog_data
     terms = data.get(RECURRING_TERMS_KEY, {})
-    accepted = terms.get("terms_id") == data.get(RECURRING_ACCEPTED_KEY)
     runner = _runner(dialog_manager, i18n)
     return {
         "window_text": html.escape(terms["text"])
-        if accepted and terms
+        if terms
         else runner.get("ntf-recurring.unavailable"),
         "back_text": label_with_icon(runner, "btn-back.general"),
     }

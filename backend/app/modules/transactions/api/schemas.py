@@ -232,6 +232,7 @@ class PaymentMethodResponse(BaseModel):
     requires_email: bool
     asks_email: bool
     recurring_available: bool = False
+    recurring_required: bool = False
 
 
 class PaymentMethodListResponse(BaseModel):

@@ -530,3 +530,61 @@ async def test_replacing_a_recurring_checkout_revokes_its_authorization(
     assert consent.revoked_at is not None
     fresh = await session.get(Transaction, second.json()["order_id"])
     assert not fresh.recurring_consent and fresh.recurring_consent_id is None
+
+
+@pytest.mark.parametrize(
+    ("mode", "consent", "expected"),
+    [
+        ("single", False, 201),
+        ("single", True, 409),
+        ("both", False, 201),
+        ("both", True, 201),
+        ("recurring", False, 400),
+        ("recurring", True, 201),
+    ],
+)
+async def test_yookassa_payment_mode_enforces_checkout_consent(
+    client,
+    plan,
+    auth_headers,
+    gateway_repository,
+    mode,
+    consent,
+    expected,
+):
+    await gateway_repository.update_settings(
+        PaymentGatewayType.YOOKASSA,
+        {"shop_id": "1000", "api_key": "test_key", "payment_mode": mode},
+    )
+    await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+    payload = {
+        "plan_id": plan.id,
+        "duration_days": 30,
+        "currency": "RUB",
+        "purchase_type": "NEW",
+        "gateway_type": "YOOKASSA",
+    }
+    response = await client.post(
+        f"{API_V1}/checkout/recurring-terms", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 200
+    terms = response.json()
+    assert (terms is not None) == (mode != "single")
+    methods = (await client.get(f"{API_V1}/checkout/methods", headers=auth_headers)).json()["items"]
+    method = next(item for item in methods if item["gateway_type"] == "YOOKASSA")
+    assert method["recurring_required"] == (mode == "recurring")
+    count = len(_YOOKASSA_REQUESTS)
+    response = await client.post(
+        f"{API_V1}/checkout",
+        headers=auth_headers,
+        json={
+            **payload,
+            "recurring_consent": consent,
+            "recurring_terms_id": terms["terms_id"] if terms else "0" * 64,
+        },
+    )
+    assert response.status_code == expected
+    if expected == 201:
+        assert _YOOKASSA_REQUESTS[-1]["save_payment_method"] is consent
+    else:
+        assert len(_YOOKASSA_REQUESTS) == count

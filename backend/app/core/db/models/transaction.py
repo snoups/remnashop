@@ -97,7 +97,11 @@ class Transaction(BaseSql, TimestampMixin):
     # Dashboard gateway check: never provisioned, excluded from every revenue query.
     is_test: Mapped[bool] = mapped_column(default=False, server_default="false")
     recurring_consent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("recurring_consents.id"))
-    recurring_consent: Mapped[bool] = mapped_column(default=False, server_default="false")
+
+    @property
+    def recurring_consent(self) -> bool:
+        return self.recurring_consent_id is not None
+
     is_recurring: Mapped[bool] = mapped_column(default=False, server_default="false")
     # Only filled from an authenticated provider status response, never a webhook body.
     saved_payment_method_id: Mapped[Optional[str]] = mapped_column(EncryptedString())

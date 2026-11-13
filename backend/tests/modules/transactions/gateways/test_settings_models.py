@@ -22,7 +22,10 @@ _SAMPLE: dict[GatewayFieldKind, str] = {
 
 
 def _full_form(gateway_type: PaymentGatewayType) -> dict[str, str]:
-    return {spec.key: _SAMPLE[spec.kind] for spec in GATEWAY_FIELD_CATALOG[gateway_type]}
+    return {
+        spec.key: spec.options[0] if spec.options else _SAMPLE[spec.kind]
+        for spec in GATEWAY_FIELD_CATALOG[gateway_type]
+    }
 
 
 @pytest.mark.parametrize("gateway_type", list(GATEWAY_REGISTRY), ids=lambda t: t.value)

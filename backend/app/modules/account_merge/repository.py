@@ -18,6 +18,7 @@ from app.core.db.models import (
     Promocode,
     PromocodeActivation,
     PushSubscription,
+    RecurringConsent,
     Referral,
     ReferralReward,
     Subscription,
@@ -55,6 +56,7 @@ REASSIGNED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("referrals", "referred_id"),
         ("referral_rewards", "referrer_id"),
         ("legal_acceptances", "user_id"),
+        ("recurring_consents", "owner_user_id"),
     }
 )
 # history stays as it happened; sessions are revoked through SessionRevoker
@@ -68,7 +70,7 @@ UNTOUCHED_USER_FKS: Final[frozenset[tuple[str, str]]] = frozenset(
         ("broadcasts", "created_by"),
         ("legal_document_revisions", "created_by"),
         ("user_sessions", "user_id"),
-        # Payment authorization retains its original identity; a new owner must consent again.
+        # The author stays immutable; only the separate current-owner link is reassigned.
         ("recurring_consents", "user_id"),
     }
 )
@@ -169,6 +171,7 @@ class AccountMergeRepository:
             PushSubscription.user_id,
             ReferralReward.referrer_id,
             LegalAcceptance.user_id,
+            RecurringConsent.owner_user_id,
         ):
             await self._move_owner(column, s, t)
 
