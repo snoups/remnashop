@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
+from app.core.db.encrypted_string import EncryptedString
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import (
     Currency,
@@ -95,3 +96,10 @@ class Transaction(BaseSql, TimestampMixin):
     )
     # Dashboard gateway check: never provisioned, excluded from every revenue query.
     is_test: Mapped[bool] = mapped_column(default=False, server_default="false")
+    recurring_consent: Mapped[bool] = mapped_column(default=False, server_default="false")
+    is_recurring: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # Only filled from an authenticated provider status response, never a webhook body.
+    saved_payment_method_id: Mapped[Optional[str]] = mapped_column(EncryptedString())
+    payment_method_shop_id: Mapped[Optional[str]] = mapped_column(String(128))
+    # A retried recurring request must keep its original receipt even after a settings edit.
+    yookassa_receipt_vat_code: Mapped[Optional[int]]

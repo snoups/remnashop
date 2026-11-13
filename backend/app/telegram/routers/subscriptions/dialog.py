@@ -17,6 +17,7 @@ from app.telegram.routers.subscriptions.getters import (
     subscriptions_list_getter,
 )
 from app.telegram.routers.subscriptions.handlers import (
+    on_auto_renew,
     on_device_delete_request,
     on_subscription_selected,
 )
@@ -42,6 +43,18 @@ subscriptions_list = Window(
 subscription_card = Window(
     DynamicMedia("banner", when="banner"),
     Format("{window_text}"),
+    Button(
+        Format("{auto_renew_text}"),
+        id="auto_renew_off",
+        on_click=on_auto_renew,
+        when="auto_renew_off",
+    ),
+    Button(
+        Format("{auto_renew_text}"),
+        id="auto_renew_on",
+        on_click=on_auto_renew,
+        when="auto_renew_on",
+    ),
     ConfigKeyboard(window_key="subscriptions.card"),
     parse_mode=ParseMode.HTML,
     state=Subscriptions.CARD,

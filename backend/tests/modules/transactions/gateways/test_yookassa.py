@@ -126,12 +126,21 @@ async def test_confirm_rejects_when_the_api_reports_pending() -> None:
     )
 
 
-async def test_fetch_payment_without_a_stored_id_is_not_paid() -> None:
+async def test_fetch_payment_uses_and_verifies_callback_id_when_create_response_was_lost() -> None:
+    http = HttpRecorder(json_response(_payment()))
     signal = await _gateway().parse_webhook(
         webhook({"event": "payment.succeeded", "object": _payment()})
     )
     assert signal is not None
-    assert await _gateway().confirm(make_order(), signal) is None
+    payment = await _gateway(http=http.client).confirm(make_order(), signal)
+    assert payment is not None
+    assert http.last.url.path == "/v3/payments/yk-1"
+
+
+async def test_callback_id_cannot_credit_a_payment_for_another_order() -> None:
+    http = HttpRecorder(json_response(_payment(metadata={"order_ref": "another-order"})))
+    signal = WebhookSignal(reference=ORDER_REF, claims_paid=True, provider_payment_id="yk-1")
+    assert await _gateway(http=http.client).confirm(make_order(), signal) is None
 
 
 async def test_fetch_payment_propagates_http_errors() -> None:
@@ -238,3 +247,73 @@ async def test_check_payment_finds_the_payment_by_its_stored_id() -> None:
 
     assert payment is not None and payment.provider_payment_id == "yk-1"
     assert http.last.url.path == "/v3/payments/yk-1"
+
+
+@pytest.mark.parametrize(
+    ("enabled", "consent", "is_test", "saved"),
+    [
+        (False, True, False, False),
+        (True, True, False, True),
+        (True, False, False, False),
+        (True, True, True, False),
+    ],
+)
+async def test_saving_a_method_requires_the_shop_flag_and_a_real_recurring_order(
+    enabled: bool, consent: bool, is_test: bool, saved: bool
+) -> None:
+    http = HttpRecorder(
+        json_response({"id": "yk-1", "confirmation": {"confirmation_url": "https://pay/1"}})
+    )
+    gateway = YooKassaGateway(
+        settings={**_SETTINGS, "recurring_enabled": str(enabled).lower()},
+        webhook_url=WEBHOOK_URL,
+        return_url=RETURN_URL,
+        http=http.client,
+    )
+    await gateway.create_payment(make_order(recurring_consent=consent, is_test=is_test))
+    assert http.last_json()["save_payment_method"] is saved
+
+
+async def test_recurring_charge_uses_saved_id_without_redirect_and_keeps_receipt() -> None:
+    http = HttpRecorder(json_response({"id": "yk-recurring", "status": "pending"}))
+    gateway = YooKassaGateway(
+        settings={**_SETTINGS, "recurring_enabled": "true", "vat_code": "1"},
+        webhook_url=WEBHOOK_URL,
+        return_url=RETURN_URL,
+        http=http.client,
+    )
+    order = make_order(
+        is_recurring=True, customer_email="buyer@example.com", yookassa_receipt_vat_code=1
+    )
+    first = await gateway.create_recurring_payment(order, "saved-method")
+    await gateway.create_recurring_payment(order, "saved-method")
+    body = http.last_json()
+    assert first.confirmation_url is None
+    assert first.provider_payment_id == "yk-recurring"
+    assert body["payment_method_id"] == "saved-method"
+    assert "confirmation" not in body and "save_payment_method" not in body
+    assert body["capture"] is True
+    assert body["receipt"]["customer"]["email"] == "buyer@example.com"
+    assert {r.headers["Idempotence-Key"] for r in http.requests} == {ORDER_REF}
+
+
+@pytest.mark.parametrize("saved", [True, False, "true", None])
+async def test_saved_method_is_taken_only_from_verified_api_data(saved: object) -> None:
+    http = HttpRecorder(json_response(_payment(payment_method={"id": "token", "saved": saved})))
+    payment = await _gateway(http=http.client).check_payment(make_order(external_payment_id="yk-1"))
+    assert payment is not None
+    assert payment.saved_payment_method_id == ("token" if saved is True else None)
+    assert "token" not in repr(payment)
+
+
+@pytest.mark.parametrize("amount", [{}, {"value": "NaN", "currency": "RUB"}, {"value": "500"}])
+async def test_recurring_verification_rejects_missing_or_invalid_amount(amount: dict) -> None:
+    http = HttpRecorder(json_response(_payment(amount=amount)))
+    with pytest.raises(PaymentGatewayError):
+        await _gateway(http=http.client).check_payment(make_order(external_payment_id="yk-1"))
+
+
+async def test_recurring_verification_rejects_a_different_payment_id() -> None:
+    http = HttpRecorder(json_response(_payment(id="some-other-payment")))
+    with pytest.raises(PaymentGatewayError):
+        await _gateway(http=http.client).check_payment(make_order(external_payment_id="yk-1"))

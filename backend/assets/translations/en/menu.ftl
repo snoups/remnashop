@@ -409,6 +409,17 @@ msg-purchase-confirm =
 
     { $terms_notice }
 frg-purchase-terms-notice = <i>By paying you accept the terms — /terms</i>
+frg-purchase-recurring = <b>Auto-renewal</b>: by paying you enable automatic charges of up to { $amount } { $currency_symbol } for every { $days } days before your subscription expires. A one-time discount does not apply to future charges. Turn auto-renewal off in your subscription card.
+frg-subscription-recurring = <b>Auto-renewal enabled</b>: up to { $amount } { $currency } for every { $days } days. Use the button below to stop future charges.
+frg-subscription-recurring-off = <b>Auto-renewal disabled</b>. Enabling it authorizes automatic charges of up to { $amount } { $currency } for every { $days } days before the subscription expires.
+frg-subscription-recurring-paused = <b>Auto-renewal paused</b>: automatic charges are currently unavailable. Your preference is saved; use the button below to opt out.
+btn-recurring =
+    .enable = Enable auto-renewal
+    .disable = Disable auto-renewal
+ntf-recurring =
+    .enabled = Auto-renewal enabled.
+    .disabled = Auto-renewal disabled. No new charges will be sent; a payment already submitted may still complete.
+    .unavailable = Auto-renewal is unavailable. Pay for the subscription with YooKassa or contact support.
 msg-purchase-pay = Your order is ready. Tap the button below to pay.
 msg-purchase-link-choice = You already have a { $plan_name } subscription. Renew it or buy another one?
 

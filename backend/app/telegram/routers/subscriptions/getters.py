@@ -20,6 +20,7 @@ from app.modules.subscriptions import (
     SubscriptionDto,
     SubscriptionRefDto,
 )
+from app.modules.transactions import GetOwnRecurringPaymentUseCase
 from app.modules.users import UserDto
 from app.telegram.banners import window_banner
 from app.telegram.dialogs.config_cache import DialogConfigCache
@@ -104,6 +105,7 @@ async def subscription_card_getter(
     get_available_trial: FromDishka[GetAvailableTrialUseCase],
     i18n: FromDishka[TranslatorHub],
     dialog_config_cache: FromDishka[DialogConfigCache],
+    get_own_recurring_payment: FromDishka[GetOwnRecurringPaymentUseCase],
     **kwargs: Any,
 ) -> dict[str, Any]:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
@@ -119,10 +121,18 @@ async def subscription_card_getter(
         "subscriptions.card", dialog_config_cache, get_banner, config, user
     )
     subscription: Optional[SubscriptionDto] = data["subscription"]
+    data["auto_renew_on"] = False
+    data["auto_renew_off"] = False
     if subscription is None:
         # expired or deleted while the card stayed open
         data["window_text"] = render_window_text(runner, "msg-window-gone")
     else:
+        recurring = await get_own_recurring_payment(user, subscription.id)
+        data["auto_renew_on"] = recurring.available and not recurring.enabled
+        data["auto_renew_off"] = recurring.enabled
+        data["auto_renew_text"] = runner.get(
+            "btn-recurring.disable" if recurring.enabled else "btn-recurring.enable"
+        )
         data["window_text"] = render_window_text(
             runner,
             "msg-subscription-card",
@@ -134,6 +144,20 @@ async def subscription_card_getter(
             device_limit=subscription.effective_device_limit,
             **resolve_variable_kwargs(data),
         )
+        if recurring.enabled or recurring.available:
+            state_key = "frg-subscription-recurring-off"
+            if recurring.enabled:
+                state_key = (
+                    "frg-subscription-recurring"
+                    if recurring.available
+                    else "frg-subscription-recurring-paused"
+                )
+            data["window_text"] += "\n\n" + runner.get(
+                state_key,
+                amount=str(recurring.amount_limit),
+                currency=recurring.currency,
+                days=recurring.duration_days,
+            )
     data["buttons"] = await render_dialog_buttons(
         "subscriptions.card", dialog_config_cache, runner, data
     )

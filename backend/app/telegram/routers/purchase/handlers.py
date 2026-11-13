@@ -192,6 +192,7 @@ def _store_method(dialog_data: dict[str, Any], method: dict[str, Any]) -> None:
     dialog_data["gateway_type"] = method["gateway_type"]
     dialog_data["currency"] = method["currency"]
     dialog_data["requires_email"] = method.get("requires_email", False)
+    dialog_data["recurring_available"] = method.get("recurring_available", False)
 
 
 async def _after_method(manager: DialogManager) -> None:
@@ -242,6 +243,7 @@ async def select_duration(
             "gateway_type": m.gateway_type.value,
             "currency": m.currency.value,
             "requires_email": m.requires_email,
+            "recurring_available": m.recurring_available,
         }
         for m in methods
     ]

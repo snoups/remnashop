@@ -239,6 +239,35 @@ async def test_create_checkout_creates_a_pending_order_and_returns_confirmation_
     assert len(fake_gateway.create_payment_calls) == 1
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+async def test_yookassa_checkout_follows_the_recurring_shop_default(
+    enabled,
+    create_checkout_use_case,
+    _active_yookassa,
+    gateway_repository,
+    uow,
+    actor,
+    plan,
+    fake_gateway,
+) -> None:
+    async with uow:
+        await gateway_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"recurring_enabled": str(enabled).lower()}
+        )
+    await create_checkout_use_case(
+        actor,
+        CreateCheckoutDto(
+            channel=PurchaseChannel.CABINET,
+            plan_id=plan.id,
+            duration_days=30,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+        ),
+    )
+    assert fake_gateway.create_payment_calls[0].recurring_consent is enabled
+
+
 async def test_checkout_stores_channel(
     create_checkout_use_case: CreateCheckoutUseCase,
     transaction_repository: TransactionRepository,

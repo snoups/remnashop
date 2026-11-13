@@ -36,6 +36,7 @@ class YooKassaSettings(GatewaySettings):
     api_key: SecretStr
     vat_code: Optional[NumericStr] = None
     verify_ip: bool = True
+    recurring_enabled: bool = False
 
 
 class YooMoneySettings(GatewaySettings):

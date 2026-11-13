@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Final, Optional
 
 from loguru import logger
@@ -18,7 +17,7 @@ from app.modules.transactions.events import (
     TransactionPartiallyRefundedEvent,
     TransactionRefundedEvent,
 )
-from app.modules.transactions.fulfillment import dispatch_fulfillment
+from app.modules.transactions.fulfillment import settle_verified_payment
 from app.modules.transactions.gateways.base import (
     PaymentGateway,
     ProviderPayment,
@@ -131,22 +130,12 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
     async def _mark_paid(
         self, order: TransactionDto, payment: ProviderPayment, gateway_type: PaymentGatewayType
     ) -> bool:
-        async with self._uow:
-            moved = await self._transaction_repository.mark_status_if(
-                order.id,
-                TransactionStatus.PAID,
-                current=frozenset({order.status}),
-                external_payment_id=payment.provider_payment_id or order.external_payment_id,
-            )
-            if not moved:
-                return False
-            if order.is_test:
-                logger.info(f"Test transaction '{order.id}' confirmed by {gateway_type.value}")
-            else:
-                await self._uow.after_commit(
-                    partial(dispatch_fulfillment, self._purchase_dispatch, order)
-                )
-            return True
+        moved = await settle_verified_payment(
+            order, payment, self._transaction_repository, self._uow, self._purchase_dispatch
+        )
+        if moved and order.is_test:
+            logger.info(f"Test transaction '{order.id}' confirmed by {gateway_type.value}")
+        return moved
 
     @staticmethod
     def _refuse(order: TransactionDto, gateway_type: PaymentGatewayType) -> bool:

@@ -18,11 +18,21 @@ from app.modules.transactions.usecases import (
     ConfirmStarsPaymentUseCase,
     MarkOrderFulfilledUseCase,
     NotifyPaymentWaitlistUseCase,
+    ProcessRecurringPaymentsUseCase,
     PruneExpiredTransactionsUseCase,
     ReconcilePaidTransactionsUseCase,
 )
 
 _RECONCILE_LOCK_TTL_S: Final[int] = 14 * 60
+
+
+@broker.task(schedule=[{"cron": "*/5 * * * *"}])
+@inject(patch_module=True)
+async def process_recurring_payments_task(
+    use_case: FromDishka[ProcessRecurringPaymentsUseCase],
+) -> None:
+    # Durable order keys and per-subscription DB locks also protect overlapping ticks.
+    await use_case.system()
 
 
 @broker.task(schedule=[{"cron": "*/10 * * * *"}])

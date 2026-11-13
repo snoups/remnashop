@@ -229,8 +229,13 @@ class PaymentMethodResponse(BaseModel):
     currency: Currency
     requires_email: bool
     asks_email: bool
+    recurring_available: bool = False
 
 
 class PaymentMethodListResponse(BaseModel):
     items: list[PaymentMethodResponse]
     total: int
+
+
+class SetRecurringPaymentRequest(BaseModel):
+    enabled: bool

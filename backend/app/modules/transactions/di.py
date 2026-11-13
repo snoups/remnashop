@@ -10,6 +10,7 @@ from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dispatch import ConfirmStarsPaymentDispatch
 from app.modules.transactions.gateways.base import HTTP_TIMEOUT_S, PaymentHttpClient
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.tasks import confirm_stars_payment_task
@@ -19,6 +20,7 @@ from app.modules.transactions.usecases import (
     CreateCheckoutUseCase,
     CreateTestPaymentUseCase,
     FulfillTransactionUseCase,
+    GetOwnRecurringPaymentUseCase,
     GetOwnTransactionUseCase,
     GetPaymentWaitlistCountUseCase,
     GetTestPaymentStatusUseCase,
@@ -34,11 +36,13 @@ from app.modules.transactions.usecases import (
     MarkOrderFulfilledUseCase,
     NotifyPaymentWaitlistUseCase,
     PreviewRefundUseCase,
+    ProcessRecurringPaymentsUseCase,
     PruneExpiredTransactionsUseCase,
     QuoteCheckoutUseCase,
     RateUnratedAnchorAmountsUseCase,
     ReconcilePaidTransactionsUseCase,
     RefundTransactionUseCase,
+    SetOwnRecurringPaymentUseCase,
     ValidateStarsPreCheckoutUseCase,
 )
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
@@ -48,6 +52,7 @@ class TransactionsProvider(Provider):
     scope = Scope.REQUEST
 
     transaction_repository = provide(TransactionRepository)
+    recurring_repository = provide(RecurringPaymentRepository)
     transaction_stats_repository = provide(TransactionStatsRepository)
     waitlist_repository = provide(WaitlistRepository)
     waitlist_claims = provide(WaitlistClaims, scope=Scope.APP)
@@ -57,6 +62,9 @@ class TransactionsProvider(Provider):
     open_order_counter = alias(source=TransactionRepository, provides=OpenOrderCounter)
     use_cases = provide_all(
         CreateCheckoutUseCase,
+        GetOwnRecurringPaymentUseCase,
+        SetOwnRecurringPaymentUseCase,
+        ProcessRecurringPaymentsUseCase,
         QuoteCheckoutUseCase,
         RateUnratedAnchorAmountsUseCase,
         CreateTestPaymentUseCase,

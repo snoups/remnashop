@@ -14,7 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import AppConfig
 from app.core.constants import API_V1
 from app.core.db.uow import UnitOfWork
-from app.core.enums import Locale, PaymentGatewayType, PlanType, Role, SessionAudience
+from app.core.enums import (
+    Currency,
+    Locale,
+    PaymentGatewayType,
+    PlanType,
+    Role,
+    SessionAudience,
+    SubscriptionStatus,
+)
 from app.core.security import create_access_token, hash_password, hash_refresh_token
 from app.modules.auth.dto import CreateSessionDto
 from app.modules.auth.repository import SessionRepository
@@ -28,6 +36,7 @@ from app.modules.plans.dto import (
     UpdatePlanSquadsDto,
 )
 from app.modules.plans.repository import PlanRepository
+from app.modules.subscriptions.dto import CreateSubscriptionDto, PlanSnapshot
 from app.modules.transactions.gateways.base import PaymentHttpClient
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
@@ -163,6 +172,58 @@ async def test_checkout_returns_confirmation_url_for_a_valid_plan(
 
     assert response.status_code == 201
     assert response.json()["confirmation_url"] == "https://yookassa.ru/pay/router-1"
+
+
+async def test_customer_can_manage_only_their_own_auto_renewal(
+    client,
+    auth_headers,
+    user_repository,
+    subscription_repository,
+    plan,
+) -> None:
+    user = await user_repository.find_by_login("checkoutrouter")
+    subscription = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=user.id,
+            remnawave_user_id=931110,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            url="https://example.com/own-subscription",
+            plan_snapshot=PlanSnapshot.from_plan(
+                plan, price_paid=Decimal("500"), currency=Currency.RUB, duration_days=30
+            ),
+        )
+    )
+    url = f"{API_V1}/subscriptions/me/{subscription.id}/auto-renew"
+    state = await client.get(url, headers=auth_headers)
+    assert state.status_code == 200
+    assert state.json()["enabled"] is False
+    assert state.json()["available"] is False
+    disabled = await client.put(url, json={"enabled": False}, headers=auth_headers)
+    assert disabled.status_code == 200
+    assert disabled.json()["customer_disabled"] is True
+    enabled = await client.put(url, json={"enabled": True}, headers=auth_headers)
+    assert enabled.status_code == 400
+    other = await user_repository.create(CreateUserDto(name="another customer", telegram_id=931111))
+    foreign = await subscription_repository.create(
+        CreateSubscriptionDto(
+            user_id=other.id,
+            remnawave_user_id=931111,
+            status=SubscriptionStatus.ACTIVE,
+            traffic_limit=100,
+            device_limit=3,
+            expire_at=datetime.datetime.now(timezone.utc) + timedelta(days=30),
+            url="https://example.com/foreign-subscription",
+            plan_snapshot=subscription.plan_snapshot,
+        )
+    )
+    other_url = f"{API_V1}/subscriptions/me/{foreign.id}/auto-renew"
+    assert (await client.get(other_url, headers=auth_headers)).status_code == 400
+    assert (
+        await client.put(other_url, json={"enabled": False}, headers=auth_headers)
+    ).status_code == 400
 
 
 async def test_checkout_rejects_a_currency_the_gateway_does_not_settle(

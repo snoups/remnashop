@@ -1,6 +1,6 @@
 import ipaddress
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import cached_property
 from typing import ClassVar, Final, Generic, NewType, Optional, TypeVar, cast
@@ -54,6 +54,9 @@ class ProviderPayment:
     reference: str
     currency: Optional[str] = None
     provider_payment_id: Optional[str] = None
+    saved_payment_method_id: Optional[str] = field(default=None, repr=False)
+    payment_method_shop_id: Optional[str] = None
+    status: Optional[TransactionStatus] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -135,15 +138,19 @@ class PaymentGateway(ABC, Generic[S]):
         self, order: TransactionDto, signal: WebhookSignal
     ) -> Optional[ProviderPayment]:
         payment = await self.fetch_payment(order, signal)
+        return payment if self.payment_matches(order, payment) else None
+
+    @staticmethod
+    def payment_matches(order: TransactionDto, payment: ProviderPayment) -> bool:
         if not payment.paid:
-            return None
+            return False
         if payment.reference != order.idempotency_key:
-            return None
+            return False
         if payment.amount is not None and payment.amount < order.final_price:
-            return None
+            return False
         if payment.currency is not None and payment.currency.upper() != order.currency.value:
-            return None
-        return payment
+            return False
+        return True
 
     async def check_payment(self, order: TransactionDto) -> Optional[ProviderPayment]:
         """The payment as the provider's API reports it, found from the order

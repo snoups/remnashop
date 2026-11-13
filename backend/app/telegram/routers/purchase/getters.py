@@ -17,7 +17,7 @@ from app.modules.subscriptions import (
     ListOwnSubscriptionsUseCase,
     SubscriptionDto,
 )
-from app.modules.transactions import QuoteCheckoutUseCase
+from app.modules.transactions import GetOwnRecurringPaymentUseCase, QuoteCheckoutUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import selected_subscription_id
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
@@ -285,6 +285,7 @@ async def confirm_getter(
     list_active_plans: FromDishka[ListActivePlansUseCase],
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
+    get_own_recurring_payment: FromDishka[GetOwnRecurringPaymentUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -302,6 +303,28 @@ async def confirm_getter(
     # an empty value drops its line, as for a plan gone from the catalog
     traffic_limit: object = plan.traffic_limit if plan is not None else ""
     device_limit: object = plan.device_limit if plan is not None else ""
+    recurring = bool(
+        data.get("recurring_available")
+        and plan is not None
+        and not plan.is_trial
+        and data["duration_days"] > 0
+        and Decimal(data["prices"][data["currency"]]) > 0
+    )
+    if recurring and purchase_type is not PurchaseType.NEW:
+        target_id = selected_subscription_id(dialog_manager)
+        if target_id is not None:
+            state = await get_own_recurring_payment(user, target_id)
+            recurring = not state.customer_disabled
+    recurring_notice = (
+        runner.get(
+            "frg-purchase-recurring",
+            amount=data["base_prices"][data["currency"]],
+            currency_symbol=Currency(data["currency"]).symbol,
+            days=data["duration_days"],
+        )
+        if recurring
+        else ""
+    )
     return {
         "window_text": render_window_text(
             runner,
@@ -320,7 +343,8 @@ async def confirm_getter(
             type_notice=_type_notice(runner, purchase_type),
             plan_changed_notice=_plan_changed_notice(runner, plan, renewed) if plan else "",
             terms_notice=terms_notice,
-        ),
+        )
+        + (f"\n\n{recurring_notice}" if recurring_notice else ""),
         "pay_text": label_with_icon(runner, "btn-purchase.pay"),
         "back_text": label_with_icon(
             runner,

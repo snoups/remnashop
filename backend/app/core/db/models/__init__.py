@@ -47,6 +47,7 @@ from app.core.db.models.plan_price_override import PlanPriceOverride
 from app.core.db.models.pricing_settings import PricingSettings
 from app.core.db.models.promocode import Promocode, PromocodeActivation
 from app.core.db.models.push_subscription import PushSubscription
+from app.core.db.models.recurring_payment import RecurringPayment
 from app.core.db.models.referral import Referral
 from app.core.db.models.referral_reward import ReferralReward
 from app.core.db.models.referral_settings import ReferralSettings
@@ -111,6 +112,7 @@ __all__ = [
     "Promocode",
     "PromocodeActivation",
     "PushSubscription",
+    "RecurringPayment",
     "Referral",
     "ReferralReward",
     "ReferralSettings",

@@ -21,15 +21,18 @@ from app.modules.transactions.events import (
     TransactionRefundedEvent,
 )
 from app.modules.transactions.ports import PaymentsRestoredNotifier, PromocodeLiveness
+from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
     ConfirmStarsPaymentUseCase,
     CreateCheckoutUseCase,
+    GetOwnRecurringPaymentUseCase,
     GetOwnTransactionUseCase,
     JoinPaymentWaitlistUseCase,
     ListPaymentMethodsUseCase,
     QuoteCheckoutUseCase,
+    SetOwnRecurringPaymentUseCase,
     ValidateStarsPreCheckoutUseCase,
 )
 
@@ -38,6 +41,7 @@ __all__ = [
     "ConfirmStarsPaymentUseCase",
     "CreateCheckoutDto",
     "CreateCheckoutUseCase",
+    "GetOwnRecurringPaymentUseCase",
     "GetOwnTransactionUseCase",
     "JoinPaymentWaitlistUseCase",
     "ListPaymentMethodsUseCase",
@@ -52,6 +56,9 @@ __all__ = [
     "PromocodeLiveness",
     "QuoteCheckoutDto",
     "QuoteCheckoutUseCase",
+    "RecurringPaymentState",
+    "SetOwnRecurringPaymentUseCase",
+    "SetRecurringPaymentDto",
     "StarsPaymentDto",
     "StarsPreCheckoutDto",
     "TransactionCanceledEvent",

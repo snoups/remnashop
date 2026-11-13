@@ -16,12 +16,14 @@ from app.modules.transactions.api.schemas import (
     PaymentMethodListResponse,
     PaymentMethodResponse,
     QuoteCheckoutRequest,
+    SetRecurringPaymentRequest,
 )
 from app.modules.transactions.dto import (
     CreateCheckoutDto,
     ListOwnTransactionsDto,
     QuoteCheckoutDto,
 )
+from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
 from app.modules.transactions.usecases import (
     CreateCheckoutUseCase,
     GetOwnTransactionUseCase,
@@ -30,9 +32,44 @@ from app.modules.transactions.usecases import (
     ListPaymentMethodsUseCase,
     QuoteCheckoutUseCase,
 )
+from app.modules.transactions.usecases.own_recurring_payment import (
+    GetOwnRecurringPaymentUseCase,
+    SetOwnRecurringPaymentUseCase,
+)
 from app.modules.users import UserDto
 
 router = APIRouter(tags=["transactions"])
+
+
+@router.get(
+    "/subscriptions/me/{subscription_id:int}/auto-renew",
+    response_model=RecurringPaymentState,
+    responses=error_responses(400, 404),
+)
+@inject
+async def get_own_recurring_payment(
+    subscription_id: int,
+    use_case: FromDishka[GetOwnRecurringPaymentUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> RecurringPaymentState:
+    return await use_case(actor, subscription_id)
+
+
+@router.put(
+    "/subscriptions/me/{subscription_id:int}/auto-renew",
+    response_model=RecurringPaymentState,
+    responses=error_responses(400, 404),
+)
+@inject
+async def set_own_recurring_payment(
+    subscription_id: int,
+    payload: SetRecurringPaymentRequest,
+    use_case: FromDishka[SetOwnRecurringPaymentUseCase],
+    actor: UserDto = Depends(get_current_user),
+) -> RecurringPaymentState:
+    return await use_case(
+        actor, SetRecurringPaymentDto(subscription_id=subscription_id, enabled=payload.enabled)
+    )
 
 
 @router.post(

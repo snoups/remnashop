@@ -218,7 +218,21 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
             # order, so a racing checkout finds it gone and re-quotes
             await self._spend_purchase_discount(quote, user)
             order = await self._create_order(
-                actor.id, data, plan, quote, customer_email, previous_plan
+                actor.id,
+                data,
+                plan,
+                quote,
+                customer_email,
+                previous_plan,
+                recurring_consent=(
+                    data.gateway_type is PaymentGatewayType.YOOKASSA
+                    and gateway_flags(data.gateway_type, gateway_settings).get(
+                        "recurring_enabled", False
+                    )
+                    and not plan.is_trial
+                    and data.duration_days > 0
+                    and not is_free
+                ),
             )
             # paying accepts the offer on either channel; the client's locale only picks
             # the revision, the customer's language when it sends none
@@ -327,6 +341,8 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
         quote: PriceQuote,
         customer_email: Optional[str],
         previous_plan: Optional[PlanSnapshot],
+        *,
+        recurring_consent: bool,
     ) -> TransactionDto:
         return await self._transaction_repository.create(
             CreateTransactionDto(
@@ -360,6 +376,7 @@ class CreateCheckoutUseCase(UseCase[CreateCheckoutDto, CheckoutResultDto, UserDt
                 previous_plan_snapshot=previous_plan,
                 idempotency_key=uuid4().hex,
                 expires_at=datetime_now() + _ORDER_TTL,
+                recurring_consent=recurring_consent,
             )
         )
 

@@ -1630,6 +1630,7 @@
         "PAYPALYCH": "Must match the shop currency. Defaults to RUB."
       },
       "flagHints": {
+        "recurring_enabled": "New payments enable auto-renewal by default. Customers can turn it off in their subscription. First enable recurring payments for the shop in YooKassa.",
         "require_paid_purchase": "Customers see this payment method only after paying another way at least once.",
         "verify_ip": "Accept notifications only from YooKassa addresses. If a proxy in front of the server (e.g. Cloudflare) hides the real IP, set up real IP forwarding (realip) in the reverse proxy; turn off only if that isn’t possible."
       },
@@ -1687,6 +1688,7 @@
         "token": "Token",
         "vat_code": "VAT code",
         "verify_ip": "Verify webhook IP",
+        "recurring_enabled": "Recurring payments",
         "wallet_id": "Wallet ID",
         "webhook_secret": "Webhook secret"
       }
