@@ -90,6 +90,7 @@ class AdLinkRepository:
             code=data.code,
             cost=data.cost,
             cost_currency=data.cost_currency,
+            revenue_share_percent=data.revenue_share_percent,
             allow_bot=data.allow_bot,
             allow_webcabinet=data.allow_webcabinet,
             note=data.note,

@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { type AdLink, getAdLinkStats } from "@entities/advertising/api";
 import { roiClassName } from "@entities/advertising/format";
+import { usePermissions } from "@entities/user/use-current-user";
+import { AdLinkPayoutCard } from "@features/ad-link-stats/AdLinkPayoutCard";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { GLASS_PLATE_CLASS } from "@shared/ui/classes";
@@ -28,6 +30,7 @@ function lastDays(count: number): string[] {
 
 export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStatsPanelProps) {
   const { t, i18n } = useTranslation();
+  const canViewPayout = usePermissions().includes("AD_LINKS_PAYOUT_VIEW");
   const [state] = useAsyncResource((signal) => getAdLinkStats(adLink.id, createdFrom, signal));
 
   if (state.kind === "loading") {
@@ -80,6 +83,15 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           hint={`${t("advertising.stats.cpa")} ${
             stats.cpa !== null ? formatMoney(stats.cpa, stats.report_currency, i18n.language) : none
           }`}
+          info={
+            Number(stats.revenue_share_percent) > 0
+              ? t("advertising.stats.costBreakdown", {
+                  fixed: formatMoney(stats.fixed_cost, stats.report_currency, i18n.language),
+                  percent: Number(stats.revenue_share_percent),
+                  share: formatMoney(stats.revenue_share, stats.report_currency, i18n.language),
+                })
+              : undefined
+          }
         />
         <KpiTile
           glass
@@ -95,6 +107,8 @@ export function AdLinkStatsPanel({ adLink, periodDays, createdFrom }: AdLinkStat
           }
         />
       </div>
+
+      {canViewPayout && Number(adLink.revenue_share_percent) > 0 && <AdLinkPayoutCard adLink={adLink} />}
 
       <div className={`${GLASS_PLATE_CLASS} p-3.5`}>
         <div className="flex items-baseline justify-between gap-2">

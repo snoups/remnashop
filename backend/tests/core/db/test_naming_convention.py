@@ -9,6 +9,7 @@ _POSTGRES_NAME_LIMIT: Final[int] = 63
 
 _CHECK_NAMES: Final[frozenset[str]] = frozenset(
     {
+        "ck_ad_links_revenue_share_percent_range",
         "ck_addons_base_price_positive",
         "ck_currency_rates_charm_ending_range",
         "ck_currency_rates_min_amount_nonneg",

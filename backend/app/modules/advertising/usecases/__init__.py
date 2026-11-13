@@ -2,6 +2,7 @@ from app.modules.advertising.usecases.create_ad_link import CreateAdLinkUseCase
 from app.modules.advertising.usecases.delete_ad_link import DeleteAdLinkUseCase
 from app.modules.advertising.usecases.generate_ad_link_code import GenerateAdLinkCodeUseCase
 from app.modules.advertising.usecases.get_ad_link import GetAdLinkUseCase
+from app.modules.advertising.usecases.get_ad_link_payout import GetAdLinkPayoutUseCase
 from app.modules.advertising.usecases.get_ad_link_share_urls import GetAdLinkShareUrlsUseCase
 from app.modules.advertising.usecases.get_ad_link_stats import GetAdLinkStatsUseCase
 from app.modules.advertising.usecases.get_advertising_summary import GetAdvertisingSummaryUseCase
@@ -19,6 +20,7 @@ __all__ = [
     "CreateAdLinkUseCase",
     "DeleteAdLinkUseCase",
     "GenerateAdLinkCodeUseCase",
+    "GetAdLinkPayoutUseCase",
     "GetAdLinkShareUrlsUseCase",
     "GetAdLinkStatsUseCase",
     "GetAdLinkUseCase",

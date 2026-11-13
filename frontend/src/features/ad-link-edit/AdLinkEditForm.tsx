@@ -2,6 +2,7 @@ import { Coins } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ChannelsPicker } from "@entities/advertising/ChannelsPicker";
+import { RevenueSharePercentField } from "@entities/advertising/RevenueSharePercentField";
 import { CURRENCIES } from "@entities/pricing/api";
 import { CURRENCY_ICON } from "@entities/transactions/api";
 import { AD_LINK_EDIT_FORM_ID, type AdLinkEditFormState } from "@features/ad-link-edit/use-ad-link-edit-form";
@@ -15,6 +16,7 @@ import { Input, TextArea } from "@shared/ui/glass/Input";
 export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
   const { t } = useTranslation();
   const { name, setName, cost, setCost, currency, setCurrency, note, setNote, channels, setChannels } = form;
+  const { revenueSharePercent, setRevenueSharePercent } = form;
 
   return (
     <form
@@ -70,6 +72,14 @@ export function AdLinkEditForm({ form }: { form: AdLinkEditFormState }) {
             />
           </Field>
         </div>
+      </div>
+
+      <div className={GLASS_DIALOG_CARD_CLASS}>
+        <RevenueSharePercentField
+          id="adlink-edit-revenue-share"
+          value={revenueSharePercent}
+          onChange={setRevenueSharePercent}
+        />
       </div>
 
       <div className={GLASS_DIALOG_CARD_CLASS}>
