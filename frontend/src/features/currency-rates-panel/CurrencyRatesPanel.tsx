@@ -80,7 +80,7 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
                   <RateRow
                     key={currency}
                     rate={rate}
-                    isAnchor={currency === book.settings.anchor_currency}
+                    anchorCurrency={book.settings.anchor_currency}
                     onChanged={onChanged}
                   />
                 );
@@ -106,9 +106,35 @@ interface RateRowState {
   charm_ending: string;
 }
 
-function toRowState(rate: CurrencyRate): RateRowState {
+// The stored rate is units of this currency per 1 anchor unit. The field shows whichever side reads ≥ 1:
+// with a RUB anchor the dollar's 0.011765 becomes 85 ₽ for 1 $, the reverse goes above the field.
+function isInverted(rate: CurrencyRate, isAnchor: boolean): boolean {
+  return !isAnchor && Number(rate.rate) < 1;
+}
+
+function shownRate(rate: CurrencyRate, inverted: boolean): string {
+  return toTwoDecimals(inverted ? String(1 / Number(rate.rate)) : rate.rate);
+}
+
+// back to units of this currency per 1 anchor unit, at the backend's 6 decimals
+function storedRate(shown: string, inverted: boolean): string {
+  return inverted ? (1 / Number(shown)).toFixed(6) : shown;
+}
+
+/** The other side of the field: from what's typed, or the stored rate while the field is untouched. */
+function reverseRate(typed: string | null, rate: CurrencyRate, inverted: boolean): number | null {
+  if (typed === null) return inverted ? Number(rate.rate) : 1 / Number(rate.rate);
+  const value = Number(typed);
+  return value > 0 ? 1 / value : null;
+}
+
+function formatRate(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(value);
+}
+
+function toRowState(rate: CurrencyRate, inverted: boolean): RateRowState {
   return {
-    rate: toTwoDecimals(rate.rate),
+    rate: shownRate(rate, inverted),
     rounding_mode: rate.rounding_mode,
     charm_ending: rate.charm_ending === null ? "" : String(rate.charm_ending),
   };
@@ -116,22 +142,24 @@ function toRowState(rate: CurrencyRate): RateRowState {
 
 function RateRow({
   rate,
-  isAnchor,
+  anchorCurrency,
   onChanged,
 }: {
   rate: CurrencyRate;
-  isAnchor: boolean;
+  anchorCurrency: Currency;
   onChanged: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const idPrefix = useId();
-  const [form, setForm] = useState<RateRowState>(() => toRowState(rate));
+  const isAnchor = rate.currency === anchorCurrency;
+  const inverted = isInverted(rate, isAnchor);
+  const [form, setForm] = useState<RateRowState>(() => toRowState(rate, inverted));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [diff, setDiff] = useState<PricingDiff | null>(null);
 
-  useEffect(() => setForm(toRowState(rate)), [rate]);
+  useEffect(() => setForm(toRowState(rate, isInverted(rate, rate.currency === anchorCurrency))), [rate, anchorCurrency]);
 
-  const initial = toRowState(rate);
+  const initial = toRowState(rate, inverted);
   const isDirty =
     form.rate !== initial.rate ||
     form.rounding_mode !== initial.rounding_mode ||
@@ -145,7 +173,7 @@ function RateRow({
     if (charmEnding === undefined) return undefined;
     return {
       // the field shows the rate rounded; untouched, the stored precision goes back as-is
-      rate: form.rate === initial.rate ? rate.rate : form.rate,
+      rate: form.rate === initial.rate ? rate.rate : storedRate(form.rate, inverted),
       rounding_mode: form.rounding_mode,
       charm_ending: charmEnding,
       min_amount: rate.min_amount,
@@ -184,6 +212,16 @@ function RateRow({
     }
   };
 
+  // the field's unit: the anchor when it shows 1 of this currency, this currency when it shows 1 of the anchor
+  const unit = currencySymbol(inverted || isAnchor ? anchorCurrency : rate.currency);
+  const reverse = isAnchor ? null : reverseRate(form.rate === initial.rate ? null : form.rate, rate, inverted);
+  const reverseText =
+    reverse === null
+      ? null
+      : inverted
+        ? `1 ${currencySymbol(anchorCurrency)} = ${formatRate(reverse, i18n.language)} ${currencySymbol(rate.currency)}`
+        : `1 ${currencySymbol(rate.currency)} = ${formatRate(reverse, i18n.language)} ${currencySymbol(anchorCurrency)}`;
+
   return (
     <div
       className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-3.5 transition-colors ${
@@ -205,6 +243,7 @@ function RateRow({
           label={t("pricing.rates.rateLabel")}
           htmlFor={`${idPrefix}-rate`}
           required={!isAnchor}
+          aside={reverseText && <span className="text-xs font-normal text-muted-foreground">{reverseText}</span>}
           error={isRateInvalid ? t("pricing.rates.rateInvalid") : undefined}
         >
           <Input
@@ -215,6 +254,7 @@ function RateRow({
             min="0"
             disabled={isAnchor}
             aria-invalid={isRateInvalid}
+            suffix={unit}
             value={form.rate}
             onChange={(event) => setForm((prev) => ({ ...prev, rate: event.target.value }))}
           />
