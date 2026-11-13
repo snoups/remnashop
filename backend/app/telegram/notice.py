@@ -12,10 +12,17 @@ _NOTICE_TTL_S: Final[int] = 5
 _deletions: Final[set[asyncio.Task[Any]]] = set()
 
 
-async def _delete_later(message: Message) -> None:
-    await asyncio.sleep(_NOTICE_TTL_S)
+async def _delete_after(message: Message, seconds: int) -> None:
+    await asyncio.sleep(seconds)
     with suppress(TelegramAPIError):
         await message.delete()
+
+
+def delete_later(message: Message, seconds: int) -> None:
+    """Removes a sent message after `seconds`; a restart before then leaves it in the chat."""
+    task = asyncio.create_task(_delete_after(message, seconds))
+    _deletions.add(task)
+    task.add_done_callback(_deletions.discard)
 
 
 async def answer_notice(
@@ -43,6 +50,4 @@ async def answer_notice(
         return
     if keep:
         return
-    task = asyncio.create_task(_delete_later(sent))
-    _deletions.add(task)
-    task.add_done_callback(_deletions.discard)
+    delete_later(sent, _NOTICE_TTL_S)

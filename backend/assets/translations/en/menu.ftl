@@ -568,6 +568,7 @@ btn-requirements =
 ntf-cabinet-login =
     .link = Tap the button to sign in to the web cabinet. The link works once and expires in 5 minutes.
     .expired = ⚠️ This sign-in link has expired. Request a new one in the cabinet.
+    .unavailable = ⚠️ Signing in to the cabinet with Telegram is unavailable right now. Try again later or use another sign-in method.
 
 btn-cabinet-login =
     .open = Sign in to the cabinet
