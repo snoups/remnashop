@@ -17,7 +17,6 @@ from app.modules.pricing.dto import (
     CurrencyRateTable,
     PricingSettingsDto,
     UpdateCurrencyRateDto,
-    UpdatePricingSettingsDto,
 )
 
 # rate is per 1 USD (the default anchor): RUB at Steam's in-game rate, XTR at
@@ -119,16 +118,6 @@ class PricingRepository:
         await self.session.flush()
         await self.session.refresh(row)
         return self._to_rate_dto(row)
-
-    async def update_settings(self, data: UpdatePricingSettingsDto) -> PricingSettingsDto:
-        row = await self._get_or_create_settings()
-
-        row.price_per_day = data.price_per_day
-        row.price_per_gb = data.price_per_gb
-
-        await self.session.flush()
-        await self.session.refresh(row)
-        return self._to_settings_dto(row)
 
     async def set_anchor(self, new_anchor: Currency, new_rates: dict[Currency, Decimal]) -> None:
         settings = await self._get_or_create_settings()

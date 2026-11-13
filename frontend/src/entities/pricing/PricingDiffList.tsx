@@ -20,8 +20,6 @@ export function PricingDiffList({ diff }: PricingDiffListProps) {
   const { t } = useTranslation();
 
   const extras: { label: string; old: string; new: string }[] = [
-    ...(diff.price_per_day ? [{ label: t("pricing.settings.pricePerDayLabel"), ...diff.price_per_day }] : []),
-    ...(diff.price_per_gb ? [{ label: t("pricing.settings.pricePerGbLabel"), ...diff.price_per_gb }] : []),
     ...diff.loyalty_thresholds.map((threshold) => ({ label: t("pricing.diff.loyaltyThreshold"), ...threshold })),
   ];
 

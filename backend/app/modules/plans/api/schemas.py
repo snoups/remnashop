@@ -236,8 +236,6 @@ class CurrencyRateResponse(BaseModel):
 
 class PricingSettingsResponse(BaseModel):
     anchor_currency: Currency
-    price_per_day: Optional[Decimal] = None
-    price_per_gb: Optional[Decimal] = None
 
 
 class PriceBookCellResponse(BaseModel):
@@ -269,11 +267,6 @@ class UpdateCurrencyRateRequest(BaseModel):
     rounding_mode: RoundingMode
     charm_ending: Optional[int] = Field(default=None, ge=0, le=99)
     min_amount: Decimal = Field(gt=0)
-
-
-class UpdatePricingSettingsRequest(BaseModel):
-    price_per_day: Optional[Decimal] = Field(default=None, gt=0)
-    price_per_gb: Optional[Decimal] = Field(default=None, gt=0)
 
 
 class SwitchAnchorRequest(BaseModel):
@@ -374,7 +367,5 @@ class ScaledAmountResponse(BaseModel):
 class PricingDiffResponse(BaseModel):
     changes: list[PricingDiffRowResponse]
     affected_count: int
-    price_per_day: Optional[ScaledAmountResponse] = None
-    price_per_gb: Optional[ScaledAmountResponse] = None
     loyalty_thresholds: list[ScaledAmountResponse]
     rescaled_transactions: int

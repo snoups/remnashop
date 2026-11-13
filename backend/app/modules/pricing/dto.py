@@ -43,8 +43,6 @@ class CurrencyRateTable:
 
 class PricingSettingsDto(BaseDto, TimestampMixin):
     anchor_currency: Currency
-    price_per_day: Optional[Decimal] = None
-    price_per_gb: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -54,9 +52,3 @@ class UpdateCurrencyRateDto:
     rounding_mode: RoundingMode
     charm_ending: Optional[int]
     min_amount: Decimal
-
-
-@dataclass(frozen=True, kw_only=True)
-class UpdatePricingSettingsDto:
-    price_per_day: Optional[Decimal] = None
-    price_per_gb: Optional[Decimal] = None

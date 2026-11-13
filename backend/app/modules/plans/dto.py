@@ -295,6 +295,9 @@ class AnchorSwitchDto:
     rates: dict[Currency, Decimal]
     plan_base_prices: dict[int, Decimal]
     addon_base_prices: dict[int, Decimal]
+    # the pins left on entries that had one in the new anchor currency
+    plan_overrides: dict[int, dict[Currency, Decimal]] = field(default_factory=dict)
+    addon_overrides: dict[int, dict[Currency, Decimal]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -323,8 +326,6 @@ class PricingDiffDto(BaseDto):
     changes: list[PricingDiffRow]
     affected_count: int
     # set only for an anchor switch, which rescales these along with the prices
-    price_per_day: Optional[ScaledAmountDto] = None
-    price_per_gb: Optional[ScaledAmountDto] = None
     loyalty_thresholds: list[ScaledAmountDto] = Field(default_factory=list)
     rescaled_transactions: int = 0
 

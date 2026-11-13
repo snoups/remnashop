@@ -40,6 +40,7 @@ from app.modules.plans.dto import (
     PlanDto,
     PriceBookDto,
     PricingChangePreviewDto,
+    SetAddOnPriceOverrideDto,
     SetPlanDurationDto,
     SetPlanDurationsDto,
     SetPlanPriceOverrideDto,
@@ -54,9 +55,9 @@ from app.modules.plans.usecases import (
     PreviewPricingChangeUseCase,
     SwitchAnchorCurrencyUseCase,
 )
-from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
+from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
-from app.modules.pricing.usecases import UpdateCurrencyRateUseCase, UpdatePricingSettingsUseCase
+from app.modules.pricing.usecases import UpdateCurrencyRateUseCase
 from app.modules.transactions.dto import CreateTransactionDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users.dto import CreateUserDto, UserDto
@@ -210,6 +211,64 @@ async def test_switch_anchor_keeps_derived_prices_stable(
     a_amount = next(c for c in a.cells if c.currency is Currency.RUB).amount
     assert abs(a_amount - b) <= Decimal("1")
     assert after.settings.anchor_currency is Currency.RUB
+
+
+async def test_switch_anchor_turns_a_pin_in_the_new_anchor_into_the_base_price(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    await pricing_repository.update_rate(
+        UpdateCurrencyRateDto(
+            currency=Currency.RUB,
+            rate=Decimal("95"),
+            rounding_mode=RoundingMode.INTEGER,
+            charm_ending=None,
+            min_amount=Decimal("10"),
+        )
+    )
+    plan, addon = await _seed_catalog(plan_repository, addon_repository)
+    duration_id = plan.durations[0].id
+    for currency, price in ((Currency.RUB, Decimal("250")), (Currency.XTR, Decimal("150"))):
+        await plan_repository.set_price_override(
+            SetPlanPriceOverrideDto(plan_id=plan.id, days=30, currency=currency, price=price)
+        )
+    await addon_repository.set_price_override(
+        SetAddOnPriceOverrideDto(addon_id=addon.id, currency=Currency.RUB, price=Decimal("120"))
+    )
+    transactions = TransactionRepository(session)
+    loyalty = LoyaltyRepository(session)
+
+    diff = await PreviewPricingChangeUseCase(
+        plan_repository, addon_repository, pricing_repository, transactions, loyalty, uow
+    )(OWNER, PricingChangePreviewDto(anchor=Currency.RUB))
+    await SwitchAnchorCurrencyUseCase(
+        pricing_repository,
+        plan_repository,
+        addon_repository,
+        transactions,
+        loyalty,
+        uow,
+        event_publisher,
+    )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
+    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
+
+    # the price buyers paid stays, now as the base the anchor column derives from
+    assert not [row for row in diff.changes if row.currency is Currency.RUB]
+    plan_row = next(row for row in book.plans if row.ref_id == duration_id)
+    addon_row = next(row for row in book.addons if row.ref_id == addon.id)
+    assert (plan_row.base_price, addon_row.base_price) == (Decimal("250"), Decimal("120"))
+    cells = {c.currency: c for c in plan_row.cells}
+    assert (cells[Currency.RUB].amount, cells[Currency.RUB].is_pinned) == (Decimal("250"), False)
+    assert (cells[Currency.XTR].amount, cells[Currency.XTR].is_pinned) == (Decimal("150"), True)
+    addon_rub = next(c for c in addon_row.cells if c.currency is Currency.RUB)
+    assert addon_rub.is_pinned is False
 
 
 async def test_switch_anchor_rescales_transaction_anchor_amounts(
@@ -596,16 +655,6 @@ async def test_adjust_ladder_from_a_long_base_marks_up_a_shorter_duration(
     assert prices == {30: Decimal("4.50"), 90: Decimal("9.00")}  # a third of 9.00, +50%
 
 
-async def test_update_pricing_settings_persists(
-    pricing_repository: PricingRepository, uow: UnitOfWork, event_publisher
-) -> None:
-    settings = await UpdatePricingSettingsUseCase(pricing_repository, event_publisher, uow)(
-        OWNER, UpdatePricingSettingsDto(price_per_day=Decimal("0.50"), price_per_gb=Decimal("0.30"))
-    )
-    assert settings.price_per_day == Decimal("0.50")
-    assert settings.price_per_gb == Decimal("0.30")
-
-
 async def test_anchor_switch_rechecks_the_anchor_under_the_row_lock(engine: AsyncEngine) -> None:
     # A concurrent switch commits while this one runs. Only the committed
     # settings column is touched (and restored); the switcher's own writes stay
@@ -751,9 +800,6 @@ async def test_anchor_preview_shows_the_values_the_switch_rescales(
             min_amount=Decimal("10"),
         )
     )
-    await pricing_repository.update_settings(
-        UpdatePricingSettingsDto(price_per_day=Decimal("0.10"), price_per_gb=None)
-    )
     loyalty = LoyaltyRepository(session)
     await loyalty.save_settings(
         UpdateLoyaltySettingsDto(
@@ -777,13 +823,6 @@ async def test_anchor_preview_shows_the_values_the_switch_rescales(
         event_publisher,
     )(OWNER, SwitchAnchorCurrencyDto(new_anchor=Currency.RUB))
 
-    settings = await pricing_repository.get_settings()
-    assert diff.price_per_day is not None
-    assert (diff.price_per_day.old, diff.price_per_day.new) == (
-        Decimal("0.10"),
-        settings.price_per_day,
-    )
-    assert diff.price_per_gb is None
     assert [(t.old, t.new) for t in diff.loyalty_thresholds] == [
         (Decimal("10.05"), tier.threshold) for tier in (await loyalty.get_settings()).tiers
     ]
@@ -815,7 +854,6 @@ async def test_non_anchor_preview_leaves_the_anchor_fields_empty(
     )
 
     assert diff.changes
-    assert diff.price_per_day is None
     assert diff.loyalty_thresholds == []
     assert diff.rescaled_transactions == 0
 

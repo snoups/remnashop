@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 
-import { apiGet, apiPatch, apiPost, apiPut } from "@shared/api/http";
+import { apiGet, apiPost, apiPut } from "@shared/api/http";
 
 // Decimals arrive as strings (pydantic v2's JSON mode) and stay strings, so
 // a round-trip through <input type="number"> loses no precision.
@@ -20,8 +20,6 @@ export interface CurrencyRate {
 
 export interface PricingSettings {
   anchor_currency: Currency;
-  price_per_day: string | null;
-  price_per_gb: string | null;
 }
 
 export interface PriceBookCell {
@@ -67,8 +65,6 @@ export interface PricingDiff {
   changes: PricingDiffRow[];
   affected_count: number;
   // filled only for an anchor switch
-  price_per_day: ScaledAmount | null;
-  price_per_gb: ScaledAmount | null;
   loyalty_thresholds: ScaledAmount[];
   rescaled_transactions: number;
 }
@@ -86,15 +82,6 @@ export interface UpdateCurrencyRateBody {
 
 export function updateCurrencyRate(currency: Currency, body: UpdateCurrencyRateBody): Promise<PriceBook> {
   return apiPut<PriceBook, UpdateCurrencyRateBody>(`/pricing/rates/${currency}`, body);
-}
-
-export interface UpdatePricingSettingsBody {
-  price_per_day: string | null;
-  price_per_gb: string | null;
-}
-
-export function updatePricingSettings(body: UpdatePricingSettingsBody): Promise<PricingSettings> {
-  return apiPatch<PricingSettings, UpdatePricingSettingsBody>("/pricing/settings", body);
 }
 
 export function switchAnchorCurrency(newAnchor: Currency): Promise<PriceBook> {

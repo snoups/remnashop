@@ -136,7 +136,6 @@ class Permission(UpperStrEnum):
     PRICING_PREVIEW_VIEW = auto()
     PRICING_RATES_MANAGE = auto()
     PRICING_ANCHOR_MANAGE = auto()
-    PRICING_SETTINGS_MANAGE = auto()
     PRICING_BASE_ADJUST_MANAGE = auto()
     PRICING_MATRIX_MANAGE = auto()
     SUBSCRIPTIONS_VIEW = auto()
@@ -383,7 +382,6 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.PLANS_ORDER_MANAGE: PermissionMeta(resource="plans", kind="write"),
     Permission.PRICING_VIEW: PermissionMeta(resource="pricing", kind="read"),
     Permission.PRICING_PREVIEW_VIEW: PermissionMeta(resource="pricing", kind="read"),
-    Permission.PRICING_SETTINGS_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.PRICING_BASE_ADJUST_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.PRICING_MATRIX_MANAGE: PermissionMeta(resource="pricing", kind="write"),
     Permission.SUBSCRIPTIONS_VIEW: PermissionMeta(resource="subscriptions", kind="read"),
@@ -713,7 +711,6 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.PLANS_ORDER_MANAGE,
             Permission.PRICING_VIEW,
             Permission.PRICING_PREVIEW_VIEW,
-            Permission.PRICING_SETTINGS_MANAGE,
             Permission.PRICING_BASE_ADJUST_MANAGE,
             Permission.PRICING_MATRIX_MANAGE,
             Permission.SUBSCRIPTIONS_VIEW,

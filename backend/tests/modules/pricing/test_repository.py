@@ -11,7 +11,7 @@ from app.core.db.singleton import SINGLETON_ID
 from app.core.enums import Currency, RoundingMode
 from app.core.exceptions import ValidationError
 from app.modules.pricing import repository as repository_module
-from app.modules.pricing.dto import UpdateCurrencyRateDto, UpdatePricingSettingsDto
+from app.modules.pricing.dto import UpdateCurrencyRateDto
 from app.modules.pricing.repository import PricingRepository
 from app.modules.pricing.resolver import resolve_price
 
@@ -63,28 +63,6 @@ async def test_update_rate_rejects_nonunit_anchor_rate(session: AsyncSession) ->
                 min_amount=Decimal("0.01"),
             )
         )
-
-
-async def test_update_settings_sets_dynamic_rates(session: AsyncSession) -> None:
-    repo = PricingRepository(session)
-    await repo.get_rate_table()
-    result = await repo.update_settings(
-        UpdatePricingSettingsDto(price_per_day=Decimal("0.30"), price_per_gb=Decimal("0.10"))
-    )
-    assert result.price_per_day == Decimal("0.30")
-
-
-async def test_update_settings_clears_a_field_to_null(session: AsyncSession) -> None:
-    repo = PricingRepository(session)
-    await repo.get_rate_table()
-    await repo.update_settings(
-        UpdatePricingSettingsDto(price_per_day=Decimal("0.30"), price_per_gb=Decimal("0.10"))
-    )
-    result = await repo.update_settings(
-        UpdatePricingSettingsDto(price_per_day=None, price_per_gb=Decimal("0.10"))
-    )
-    assert result.price_per_day is None
-    assert result.price_per_gb == Decimal("0.10")
 
 
 async def test_get_rate_table_survives_concurrent_seeding(engine: AsyncEngine) -> None:

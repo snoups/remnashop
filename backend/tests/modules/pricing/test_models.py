@@ -32,4 +32,3 @@ async def test_pricing_settings_singleton(session: AsyncSession) -> None:
     row = await session.get(PricingSettings, 1)
     assert row is not None
     assert row.anchor_currency is Currency.USD
-    assert row.price_per_day is None

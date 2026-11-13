@@ -11,13 +11,12 @@ from app.modules.plans.addon_repository import AddOnRepository
 from app.modules.plans.dto import PriceBookDto, SwitchAnchorCurrencyDto
 from app.modules.plans.ports import AnchorAmountRescaler, LoyaltyThresholdRescaler
 from app.modules.plans.price_book import build_price_book
-from app.modules.plans.price_projection import anchor_switch, scale_unit_price
+from app.modules.plans.price_projection import anchor_switch
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import (
     NON_ANCHOR_CURRENCIES,
     AnchorSwitchedEvent,
     PricingRepository,
-    UpdatePricingSettingsDto,
 )
 
 
@@ -69,14 +68,8 @@ class SwitchAnchorCurrencyUseCase(UseCase[SwitchAnchorCurrencyDto, PriceBookDto]
                 await self._plan_repository.set_duration_base_prices(switch.plan_base_prices)
             if switch.addon_base_prices:
                 await self._addon_repository.set_base_prices(switch.addon_base_prices)
-
-            settings = await self._pricing_repository.get_settings()
-            await self._pricing_repository.update_settings(
-                UpdatePricingSettingsDto(
-                    price_per_day=scale_unit_price(settings.price_per_day, switch.factor),
-                    price_per_gb=scale_unit_price(settings.price_per_gb, switch.factor),
-                )
-            )
+            await self._plan_repository.replace_duration_overrides(switch.plan_overrides)
+            await self._addon_repository.replace_overrides(switch.addon_overrides)
             await self._event_publisher.publish(
                 AnchorSwitchedEvent(actor=actor, old_anchor=old_anchor, new_anchor=data.new_anchor)
             )

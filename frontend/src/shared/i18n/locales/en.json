@@ -2243,7 +2243,6 @@
     "PRICING_PREVIEW_VIEW": "Preview pricing changes",
     "PRICING_RATES_MANAGE": "Manage currency rates",
     "PRICING_ANCHOR_MANAGE": "Change anchor currency",
-    "PRICING_SETTINGS_MANAGE": "Edit pricing settings",
     "PRICING_BASE_ADJUST_MANAGE": "Bulk-adjust base prices",
     "PRICING_MATRIX_MANAGE": "Save the price matrix",
     "SUBSCRIPTIONS_VIEW": "View subscriptions",
@@ -2512,15 +2511,6 @@
       "saved": "Old payments recalculated.",
       "saveError": "Failed to recalculate old payments."
     },
-    "settings": {
-      "betaHint": "Not in use yet: customers can’t buy add-ons on their own.",
-      "title": "Usage-based price",
-      "description": "Optional price per day and per GB",
-      "pricePerDayLabel": "Price per day",
-      "pricePerGbLabel": "Price per GB",
-      "saved": "Settings saved.",
-      "saveError": "Failed to update settings."
-    },
     "matrix": {
       "title": "Price matrix",
       "leave": {
@@ -2539,16 +2529,16 @@
         "anchorColumnBody": "The base price is the number you enter. The anchor currency column shows the final price for the customer, with rounding and the ending already applied. This column can’t be edited or pinned; to change it, change the base price.",
         "anchorColumnExample": "Example: base 4.20 USD, with ending 99 and rounding to 2 decimals for USD. The customer sees 4.99 $.",
         "pinTitle": "Pinned prices",
-        "pinBody": "To set your own price in a currency, type a value into its column or press the pin, which pins the current price. A pinned price doesn’t change with the rate or the base price unless a bulk change rescales or resets it, and rounding and the ending don’t apply to it. The minimum amount still does. Pressing the pin again removes it and the price follows the rate again.",
+        "pinBody": "To set your own price in a currency, type a value into its column or press the pin, which pins the current price. A pinned price doesn’t change with the rate or the base price unless a bulk change rescales or resets it. Rounding and the ending don’t apply to it; a rescaled pin is rounded by the currency’s rounding, still without the ending. The minimum amount still applies. Pressing the pin again removes it and the price follows the rate again.",
         "pinExample": "Example: you want exactly 399 ₽ a month. Type 399 into the RUB column. If the rate goes from 85 to 95, the price stays 399 ₽ while unpinned prices are recalculated.",
         "bulkTitle": "Bulk adjust",
         "bulkBody": "Changes the base prices of all plans, all add-ons or one plan. Three methods: by percent, one price for all, or a duration ladder. Pinned prices can be kept, rescaled by the same ratio as the base price, or reset to follow the rate. A list of changes with the percent difference is shown before applying.",
         "bulkExample": "Example: “by percent” with 10 raises base prices by 10%, −10 lowers them by 10%. A base of 4.99 becomes 5.49.",
         "ladderTitle": "Duration ladder",
-        "ladderBody": "Every duration is priced from one base duration: its daily price times the days, then the duration’s discount. A negative discount is a markup, for when short durations should cost more per day. The base is picked from the durations in the selection, 30 days by default.",
+        "ladderBody": "Every duration is priced from one base duration: its daily price times the days, then the duration’s discount. A negative discount is a markup, for when short durations should cost more per day. The base is picked from the durations in the selection: 30 days if there is one, otherwise the shortest. The ladder skips add-ons, which have no duration, and the free trial.",
         "ladderExample": "Example: a 30-day base at 300 ₽. With 10% off for 90 days: 300 × 3 × 0.9 = 810 ₽. With a −40% markup for 7 days: 300 × 7 / 30 × 1.4 = 98 ₽.",
         "anchorSwitchTitle": "Changing the anchor currency",
-        "anchorSwitchBody": "Base prices and rates are recalculated for the new currency, and its rate becomes 1. Final prices may shift slightly because of rounding, so you see the list of changes before applying.",
+        "anchorSwitchBody": "Base prices and rates are recalculated for the new currency, and its rate becomes 1. A price pinned in the new currency becomes the base price, since the anchor column can’t be pinned. Loyalty tier thresholds and the anchor amounts of past payments are rescaled too. Final prices may shift slightly because of rounding, so you see the list of changes before applying.",
         "anchorSwitchExample": "Example: the anchor changes from USD to RUB at a rate of 85. A base price of 4.99 becomes 424.15 and the RUB rate becomes 1."
       },
       "description": "Base prices and per-currency overrides",

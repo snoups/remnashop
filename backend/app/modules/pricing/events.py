@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar
 
 from app.core.enums import Currency, PinnedPriceAction, PriceAdjustMode, PriceAdjustScope
@@ -28,9 +28,3 @@ class BasePricesAdjustedEvent(ActorEvent):
     # the factor for MULTIPLY, the price for SET and LADDER
     value: str
     pinned: PinnedPriceAction
-
-
-@dataclass(frozen=True, kw_only=True)
-class PricingSettingsChangedEvent(ActorEvent):
-    category: ClassVar[EventCategory] = EventCategory.PRICING
-    changed_fields: list[str] = field(default_factory=list)

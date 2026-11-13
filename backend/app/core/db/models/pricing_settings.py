@@ -1,7 +1,3 @@
-from decimal import Decimal
-from typing import Optional
-
-from sqlalchemy import Numeric
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db.base import BaseSql
@@ -14,5 +10,3 @@ class PricingSettings(BaseSql, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     anchor_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
-    price_per_day: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    price_per_gb: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))

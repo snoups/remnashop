@@ -1,4 +1,4 @@
-import { Anchor, Coins, Filter, Gauge, History } from "lucide-react";
+import { Anchor, Coins, Filter, History } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,6 @@ import {
   previewPricingChange,
   switchAnchorCurrency,
   updateCurrencyRate,
-  updatePricingSettings,
   type Currency,
   type CurrencyRate,
   type PriceBook,
@@ -33,10 +32,9 @@ import { Field } from "@shared/ui/glass/Field";
 import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { Input } from "@shared/ui/glass/Input";
 import { Row } from "@shared/ui/glass/Row";
-import { Section, SectionFields, SectionRows } from "@shared/ui/glass/Section";
+import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { PillTabs } from "@shared/ui/PillTabs";
 import { SaveFooter } from "@shared/ui/SaveFooter";
-import { Tooltip } from "@shared/ui/Tooltip";
 
 const ANCHOR_CURRENCIES: Currency[] = ["USD", "RUB"];
 const ROUNDING_MODES: RoundingMode[] = ["INTEGER", "DECIMAL_2"];
@@ -89,13 +87,6 @@ export function CurrencyRatesPanel({ book, onChanged }: CurrencyRatesPanelProps)
           )}
         </Section>
       )}
-
-      <GlobalSettings
-        anchorCurrency={book.settings.anchor_currency}
-        pricePerDay={book.settings.price_per_day}
-        pricePerGb={book.settings.price_per_gb}
-        onChanged={onChanged}
-      />
     </>
   );
 }
@@ -433,95 +424,5 @@ function UnratedAnchorRow() {
         />
       )}
     </Row>
-  );
-}
-
-function GlobalSettings({
-  anchorCurrency,
-  pricePerDay,
-  pricePerGb,
-  onChanged,
-}: {
-  anchorCurrency: Currency;
-  pricePerDay: string | null;
-  pricePerGb: string | null;
-  onChanged: () => void;
-}) {
-  const { t } = useTranslation();
-  const canManage = usePermissions().includes("PRICING_SETTINGS_MANAGE");
-  const [perDay, setPerDay] = useState(toTwoDecimals(pricePerDay ?? ""));
-  const [perGb, setPerGb] = useState(toTwoDecimals(pricePerGb ?? ""));
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const dirty = perDay !== toTwoDecimals(pricePerDay ?? "") || perGb !== toTwoDecimals(pricePerGb ?? "");
-
-  useEffect(() => {
-    setPerDay(toTwoDecimals(pricePerDay ?? ""));
-    setPerGb(toTwoDecimals(pricePerGb ?? ""));
-  }, [pricePerDay, pricePerGb]);
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await updatePricingSettings({
-        price_per_day: perDay === "" ? null : perDay,
-        price_per_gb: perGb === "" ? null : perGb,
-      });
-      toast.success(t("pricing.settings.saved"));
-      onChanged();
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("pricing.settings.saveError")));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={(event) => void handleSubmit(event)}>
-      <Section
-        icon={Gauge}
-        title={
-          <>
-            {t("pricing.settings.title")}
-            <Badge tone="warning" tabIndex={0} className="group relative outline-none">
-              {t("dialogs.beta")}
-              <Tooltip text={t("pricing.settings.betaHint")} side="bottom" />
-            </Badge>
-          </>
-        }
-        description={t("pricing.settings.description")}
-        footer={canManage && <SaveFooter dirty={dirty} saving={isSubmitting} />}
-      >
-        <SectionFields>
-          <fieldset disabled={!canManage} className="grid min-w-0 gap-3 sm:grid-cols-2">
-            <Field label={t("pricing.settings.pricePerDayLabel")} htmlFor="pricing-per-day">
-              <Input
-                id="pricing-per-day"
-                type="number"
-                onKeyDown={blockNonDecimalKeys}
-                step="any"
-                min="0"
-                value={perDay}
-                onChange={(event) => setPerDay(event.target.value)}
-                suffix={anchorCurrency}
-              />
-            </Field>
-            <Field label={t("pricing.settings.pricePerGbLabel")} htmlFor="pricing-per-gb">
-              <Input
-                id="pricing-per-gb"
-                type="number"
-                onKeyDown={blockNonDecimalKeys}
-                step="any"
-                min="0"
-                value={perGb}
-                onChange={(event) => setPerGb(event.target.value)}
-                suffix={anchorCurrency}
-              />
-            </Field>
-          </fieldset>
-        </SectionFields>
-      </Section>
-    </form>
   );
 }
