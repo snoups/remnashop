@@ -42,8 +42,3 @@ traefik/
 
 # Worktrees
 .worktrees/
-
-docs
-notes.txt
-frontend/DESIGN.md
-frontend/README.md
