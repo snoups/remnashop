@@ -21,7 +21,7 @@ from app.modules.transactions.events import (
     TransactionRefundedEvent,
 )
 from app.modules.transactions.ports import PaymentsRestoredNotifier, PromocodeLiveness
-from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
+from app.modules.transactions.recurring_dto import SetRecurringPaymentDto
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
@@ -56,7 +56,6 @@ __all__ = [
     "PromocodeLiveness",
     "QuoteCheckoutDto",
     "QuoteCheckoutUseCase",
-    "RecurringPaymentState",
     "SetOwnRecurringPaymentUseCase",
     "SetRecurringPaymentDto",
     "StarsPaymentDto",
