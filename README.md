@@ -5,7 +5,7 @@
     <a href="https://github.com/remnashop/remnashop/blob/main/README.ru_RU.md"><b>РУССКИЙ</b></a>
 </p>
 
-![remnashop](https://github.com/user-attachments/assets/57ba5832-4646-45e1-b082-f8f2f5e82c3e)
+![remnashop](.github/banner.webp)
 
 **A ready-made platform for selling VPN subscriptions, built on Remnawave.**
 **Automate payment collection, VPN access delivery, and customer management — through a web dashboard or a Telegram bot.**
@@ -17,7 +17,7 @@
 <p align="center">
     <br />
     <p align="center">
-        <a href="https://remnashop.dev/docs/en/overview/releases">
+        <a href="https://remnashop.dev/docs/getting-started/installation">
             <img src="https://img.shields.io/badge/Get%20Started-%E2%86%92-0969da?style=for-the-badge&labelColor=0969da&color=0969da" alt="Get Started" width="200" height="auto">
         </a>
     </p>

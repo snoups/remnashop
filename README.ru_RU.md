@@ -5,7 +5,7 @@
     <u><b>РУССКИЙ</b></u>
 </p>
 
-![remnashop](https://github.com/user-attachments/assets/57ba5832-4646-45e1-b082-f8f2f5e82c3e)
+![remnashop](.github/banner.webp)
 
 **Готовая платформа для продажи VPN-подписок на базе Remnawave.**
 **Автоматизируйте приём платежей, выдачу VPN-доступа и управление клиентами через веб-приложение или Telegram-бота.**
@@ -17,7 +17,7 @@
 <p align="center">
     <br />
     <p align="center">
-        <a href="https://remnashop.dev/docs/ru/overview/releases">
+        <a href="https://remnashop.dev/ru/docs/getting-started/installation">
             <img src="https://img.shields.io/badge/Начать-%E2%86%92-0969da?style=for-the-badge&labelColor=0969da&color=0969da" alt="Начать" width="200" height="auto">
         </a>
     </p>
