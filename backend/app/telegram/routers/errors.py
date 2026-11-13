@@ -24,7 +24,9 @@ router = Router(name=__name__)
 
 
 @router.errors(ExceptionTypeFilter(UnknownIntent, OutdatedIntent, UnknownState))
-async def on_lost_context(event: ErrorEvent, dialog_manager: DialogManager) -> None:
+async def on_lost_context(
+    event: ErrorEvent, dialog_manager: DialogManager, user: Optional[UserDto] = None
+) -> None:
     # a button from a dialog whose state expired or was evicted: the stale
     # window gives way to a fresh menu
     callback = event.update.callback_query
@@ -33,6 +35,9 @@ async def on_lost_context(event: ErrorEvent, dialog_manager: DialogManager) -> N
             await callback.answer()
             if isinstance(callback.message, Message):
                 await callback.message.delete()
+    if user is None or user.is_blocked:
+        # raised ahead of the user and blacklist middlewares
+        return
     try:
         await dialog_manager.start(
             MainMenu.MAIN, mode=StartMode.RESET_STACK, show_mode=ShowMode.SEND

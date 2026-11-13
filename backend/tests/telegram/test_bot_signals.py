@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiogram_dialog import ShowMode, StartMode
+from fluentogram import TranslatorHub
+from fluentogram.storage import MemoryStorage
 from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -12,6 +14,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from app.core.bot_signals import RedisBotSignals
 from app.core.config import AppConfig
 from app.core.constants import (
+    DIALOG_CONFIG_CHANGED_CHANNEL,
     PAYMENT_OUTCOME_CHANNEL,
     REDIS_CONNECTION_KWARGS,
     TRANSLATION_CHANGED_CHANNEL,
@@ -36,6 +39,7 @@ class _SpyCache:
 class _SpyHub:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str]] = []
+        self.storage = MemoryStorage()
 
     async def update_translation(self, locale: str, key: str, value: str) -> bool:
         if key == "broken":
@@ -47,7 +51,9 @@ class _SpyHub:
 async def test_listener_routes_each_signal_and_survives_a_failing_handler(redis) -> None:
     cache, hub = _SpyCache(), _SpyHub()
     signals = RedisBotSignals(redis)
-    task = asyncio.create_task(listen_for_bot_signals(redis, live_update_handlers(cache, hub)))
+    task = asyncio.create_task(
+        listen_for_bot_signals(redis, live_update_handlers(cache, hub, _empty_translations))
+    )
     try:
         await asyncio.sleep(0.1)  # let the listener finish subscribing
         await signals.translation_changed(Locale.RU, "broken", "", "x")
@@ -65,15 +71,34 @@ async def test_listener_routes_each_signal_and_survives_a_failing_handler(redis)
             await task
 
 
+async def _empty_translations() -> TranslatorHub:
+    return build_translator_hub([Locale.EN], {Locale.EN: ""}, Locale.EN)
+
+
 @pytest.mark.parametrize("value", ["line1\nline2\nline3", "", "a\n[glyph](emoji:1)"])
 async def test_translation_patch_keeps_multiline_and_empty_values(value: str) -> None:
     hub = build_translator_hub([Locale.EN], {Locale.EN: "msg-a = old\n"}, Locale.EN)
-    handlers = live_update_handlers(_SpyCache(), hub)
+    handlers = live_update_handlers(_SpyCache(), hub, _empty_translations)
     await handlers[TRANSLATION_CHANGED_CHANNEL](
         json.dumps({"locale": "en", "message_id": "msg-a", "value": value})
     )
     rendered = hub.get_translator_by_locale("en").get("msg-a")
     assert strip_serializer_escapes(rendered) == value
+
+
+async def test_dialogs_change_picks_up_texts_seeded_with_it() -> None:
+    # a new button's label is seeded by the dialogs write itself, with no
+    # translation signal of its own
+    hub = build_translator_hub([Locale.EN], {Locale.EN: "msg-a = a\n"}, Locale.EN)
+
+    async def load() -> TranslatorHub:
+        return build_translator_hub(
+            [Locale.EN], {Locale.EN: "msg-a = a\nmsg-dialog-custom-x = Offer\n"}, Locale.EN
+        )
+
+    handlers = live_update_handlers(_SpyCache(), hub, load)
+    await handlers[DIALOG_CONFIG_CHANGED_CHANNEL]("")
+    assert hub.get_translator_by_locale("en").get("msg-dialog-custom-x") == "Offer"
 
 
 class _RedisDownOnce:
@@ -97,7 +122,7 @@ async def test_listener_subscribes_again_after_losing_redis(
     cache = _SpyCache()
     flaky = _RedisDownOnce(redis)
     task = asyncio.create_task(
-        listen_for_bot_signals(flaky, live_update_handlers(cache, _SpyHub()))  # type: ignore[arg-type]
+        listen_for_bot_signals(flaky, live_update_handlers(cache, _SpyHub(), _empty_translations))  # type: ignore[arg-type]
     )
     try:
         for _ in range(50):
@@ -141,7 +166,9 @@ async def test_listener_keeps_its_subscription_through_a_quiet_spell(
     counting = _CountingRedis(client)
     cache = _SpyCache()
     task = asyncio.create_task(
-        listen_for_bot_signals(counting, live_update_handlers(cache, _SpyHub()))  # type: ignore[arg-type]
+        listen_for_bot_signals(
+            counting, live_update_handlers(cache, _SpyHub(), _empty_translations)
+        )  # type: ignore[arg-type]
     )
     try:
         await asyncio.sleep(1.5)
