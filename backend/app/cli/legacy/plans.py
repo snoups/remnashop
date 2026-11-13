@@ -65,8 +65,12 @@ def transform_plans(
     prices: Sequence[Mapping[str, Any]],
     *,
     anchor_currency: Currency,
+    used_currencies: frozenset[Currency],
     report: MigrationReport,
 ) -> PlanRows:
+    """used_currencies: what the old shop took payment in. The old bot kept a price
+    in every currency, filled or not: one in a currency it never sold in is no
+    owner's choice, so it goes and the default rate prices it."""
     by_duration: dict[int, list[Mapping[str, Any]]] = defaultdict(list)
     for price in prices:
         by_duration[int(price["plan_duration_id"])].append(price)
@@ -74,14 +78,24 @@ def transform_plans(
     duration_rows: list[dict[str, Any]] = []
     overrides: list[dict[str, Any]] = []
     unanchored = 0
+    dropped: dict[Currency, int] = defaultdict(int)
     for duration in sorted(durations, key=lambda d: int(d["id"])):
         duration_id = int(duration["id"])
-        base_price = Decimal("0")
-        missing_anchor = True
-        for price in sorted(by_duration[duration_id], key=lambda p: int(p["id"])):
+        duration_prices = sorted(by_duration[duration_id], key=lambda p: int(p["id"]))
+        anchor_price = next(
+            (Decimal(p["price"]) for p in duration_prices if p["currency"] == anchor_currency),
+            None,
+        )
+        missing_anchor = anchor_price is None
+        base_price = anchor_price if anchor_price is not None else Decimal("0")
+        for price in duration_prices:
             currency = Currency(price["currency"])
             if currency is anchor_currency:
-                base_price, missing_anchor = Decimal(price["price"]), False
+                continue
+            # without an anchor price every currency's price is all there is to keep;
+            # a free trial is free everywhere, a pin on it means nothing
+            if not missing_anchor and (base_price == 0 or currency not in used_currencies):
+                dropped[currency] += 1
                 continue
             overrides.append(
                 {
@@ -113,11 +127,18 @@ def transform_plans(
         row["icon_emoji_fallback"] = DEFAULT_PLAN_ICON_EMOJI_FALLBACK
     report.count("plans", len(plans), len(plan_rows))
     report.count("plan_durations", len(durations), len(duration_rows))
-    report.count("plan_prices", len(prices), len(prices))
+    report.count("plan_prices", len(prices), len(prices) - sum(dropped.values()))
     if unanchored:
         report.notes.append(
             f"plans: {unanchored} durations without an anchor currency price, "
             "base price 0 and every currency price kept as an override"
+        )
+    if dropped:
+        listed = ", ".join(f"{currency} {count}" for currency, count in sorted(dropped.items()))
+        report.notes.append(
+            f"plans: {sum(dropped.values())} currency prices not migrated ({listed}): "
+            "a free trial's, or in a currency without an active gateway or a payment; "
+            "priced by the default rate"
         )
     if renamed:
         report.notes.append(f"plans: leading emoji removed from {renamed} plan names")

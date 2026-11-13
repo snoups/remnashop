@@ -25,6 +25,7 @@ PLAN: dict[str, Any] = {
     "is_trial": False,
 }
 DURATIONS = [{"id": 10, "plan_id": 3, "days": 30, "order_index": 1}]
+ALL: frozenset[Currency] = frozenset(Currency)
 
 
 def _price(price_id: int, currency: str, price: str, duration: int = 10) -> dict[str, Any]:
@@ -39,7 +40,12 @@ def _price(price_id: int, currency: str, price: str, duration: int = 10) -> dict
 def test_anchor_price_becomes_base_price() -> None:
     prices = [_price(1, "RUB", "900"), _price(2, "USD", "100"), _price(3, "XTR", "100")]
     rows = transform_plans(
-        [PLAN], DURATIONS, prices, anchor_currency=Currency.RUB, report=MigrationReport()
+        [PLAN],
+        DURATIONS,
+        prices,
+        anchor_currency=Currency.RUB,
+        used_currencies=ALL,
+        report=MigrationReport(),
     )
     assert rows.durations[0]["base_price"] == Decimal("900")
     assert {(o["currency"], o["price"]) for o in rows.overrides} == {
@@ -55,6 +61,7 @@ def test_ids_preserved() -> None:
         DURATIONS,
         [_price(1, "RUB", "900")],
         anchor_currency=Currency.RUB,
+        used_currencies=ALL,
         report=MigrationReport(),
     )
     assert rows.plans[0]["id"] == 3
@@ -62,16 +69,35 @@ def test_ids_preserved() -> None:
     assert (rows.durations[0]["id"], rows.durations[0]["plan_id"]) == (10, 3)
 
 
-def test_zero_trial_price_kept() -> None:
+def test_free_trial_keeps_no_currency_pins() -> None:
     rows = transform_plans(
         [PLAN],
         DURATIONS,
         [_price(1, "RUB", "0"), _price(2, "USD", "0")],
         anchor_currency=Currency.RUB,
+        used_currencies=ALL,
         report=MigrationReport(),
     )
     assert rows.durations[0]["base_price"] == Decimal("0")
-    assert rows.overrides[0]["price"] == Decimal("0")
+    assert rows.overrides == []
+
+
+def test_prices_in_currencies_the_shop_never_sold_in_are_dropped() -> None:
+    report = MigrationReport()
+    prices = [_price(1, "RUB", "900"), _price(2, "USD", "100"), _price(3, "XTR", "60")]
+
+    rows = transform_plans(
+        [PLAN],
+        DURATIONS,
+        prices,
+        anchor_currency=Currency.RUB,
+        used_currencies=frozenset({Currency.RUB, Currency.XTR}),
+        report=report,
+    )
+
+    assert {(o["currency"], o["price"]) for o in rows.overrides} == {(Currency.XTR, Decimal("60"))}
+    assert (report.counts["plan_prices"].source, report.counts["plan_prices"].migrated) == (3, 2)
+    assert any("USD 1" in note and "default rate" in note for note in report.notes)
 
 
 def test_missing_anchor_price_becomes_overrides() -> None:
@@ -81,6 +107,7 @@ def test_missing_anchor_price_becomes_overrides() -> None:
         DURATIONS,
         [_price(2, "USD", "5"), _price(3, "XTR", "100")],
         anchor_currency=Currency.RUB,
+        used_currencies=ALL,
         report=report,
     )
     assert rows.durations[0]["base_price"] == Decimal("0")
@@ -90,7 +117,9 @@ def test_missing_anchor_price_becomes_overrides() -> None:
 
 def test_counts_reported() -> None:
     report = MigrationReport()
-    transform_plans([PLAN], DURATIONS, [], anchor_currency=Currency.RUB, report=report)
+    transform_plans(
+        [PLAN], DURATIONS, [], anchor_currency=Currency.RUB, used_currencies=ALL, report=report
+    )
     assert report.counts["plans"].migrated == 1
 
 
@@ -109,6 +138,7 @@ def test_leading_emoji_stripped_and_default_icon_set() -> None:
         [],
         [],
         anchor_currency=Currency.RUB,
+        used_currencies=ALL,
         report=report,
     )
     assert [p["name"] for p in rows.plans] == [

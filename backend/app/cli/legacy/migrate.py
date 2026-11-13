@@ -175,6 +175,19 @@ async def _set_sequences(connection: AsyncConnection, tables: Iterable[str]) -> 
         )
 
 
+def _used_currencies(
+    gateways: Sequence[Mapping[str, Any]], transactions: Sequence[Mapping[str, Any]]
+) -> frozenset[Currency]:
+    """What the old shop took payment in: an active gateway's currency, or a completed payment's."""
+    active = {Currency(row["currency"]) for row in gateways if row["is_active"]}
+    paid = {
+        Currency(row["currency"])
+        for row in transactions
+        if str(row["status"]) == _COMPLETED and not row["is_test"]
+    }
+    return frozenset(active | paid)
+
+
 def _last_payments(
     transactions: Sequence[Mapping[str, Any]],
 ) -> dict[tuple[int, int], tuple[Decimal, Currency]]:
@@ -260,19 +273,21 @@ async def _transfer(
         report.notes.append("settings: no old settings row, defaults kept")
     anchor = settings.anchor_currency if settings else _DEFAULT_ANCHOR
 
+    legacy_gateways = await _read(connection, "payment_gateways")
+    legacy_transactions = await _read(connection, "transactions")
     legacy_plans = await _read(connection, "plans")
     plans = transform_plans(
         legacy_plans,
         await _read(connection, "plan_durations"),
         await _read(connection, "plan_prices"),
         anchor_currency=anchor,
+        used_currencies=_used_currencies(legacy_gateways, legacy_transactions),
         report=report,
     )
     plan_ids = {int(plan["id"]) for plan in plans.plans}
     plan_codes = {int(plan["id"]): str(plan["public_code"]) for plan in legacy_plans}
 
     legacy_users = await _read(connection, "users")
-    legacy_transactions = await _read(connection, "transactions")
     subscriptions = transform_subscriptions(
         await _read(connection, "subscriptions"),
         users={int(user["id"]): user for user in legacy_users},
@@ -358,9 +373,7 @@ async def _transfer(
         subscription_ids=subscription_ids,
         report=report,
     )
-    gateways = transform_gateways(
-        await _read(connection, "payment_gateways"), crypt_key=crypt_key, report=report
-    )
+    gateways = transform_gateways(legacy_gateways, crypt_key=crypt_key, report=report)
 
     batches: list[tuple[type[BaseSql], Sequence[Mapping[str, Any]]]] = [
         (Plan, plans.plans),
