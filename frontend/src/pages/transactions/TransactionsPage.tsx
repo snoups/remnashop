@@ -332,6 +332,8 @@ export function TransactionsPage() {
                             {group.items.map((order) => {
                               const symbol = currencySymbol(order.currency);
                               const gatewayLabel = t(`settings.gateways.types.${order.gateway_type}` as ParseKeys);
+                              // a free order never reached its gateway (old-version rows still name one)
+                              const isFree = Number(order.final_price) === 0;
 
                               return (
                                 <ListRow
@@ -361,7 +363,7 @@ export function TransactionsPage() {
                                         {order.user ? userName(order.user, t) : t("users.deleted.name")}
                                       </span>
                                       <span className="shrink-0 font-mono">#{order.user_id}</span>
-                                      <span className="shrink-0">&middot; {gatewayLabel}</span>
+                                      {!isFree && <span className="shrink-0">&middot; {gatewayLabel}</span>}
                                     </span>
                                   </span>
                                   <span className="truncate text-sm text-foreground">
@@ -369,7 +371,9 @@ export function TransactionsPage() {
                                   </span>
                                   <span className="tabular-nums">
                                     <span className="block text-sm font-semibold text-foreground">
-                                      {formatMoney(order.final_price, order.currency, i18n.language, true)}
+                                      {isFree
+                                        ? t("transactions.free")
+                                        : formatMoney(order.final_price, order.currency, i18n.language, true)}
                                     </span>
                                     {hasDiscount(order) && (
                                       <span className="block text-xs text-muted-foreground">
