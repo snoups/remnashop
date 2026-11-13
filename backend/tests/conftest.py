@@ -94,9 +94,9 @@ async def _clean_redis(config: AppConfig) -> AsyncIterator[None]:
         await client.aclose()
 
 
-@pytest.fixture
-async def engine(config: AppConfig) -> AsyncIterator[AsyncEngine]:
-    engine = create_async_engine(config.database.dsn)
+@pytest.fixture(scope="session")
+async def engine() -> AsyncIterator[AsyncEngine]:
+    engine = create_async_engine(AppConfig.get().database.dsn)
     yield engine
     await engine.dispose()
 

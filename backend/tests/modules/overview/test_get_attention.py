@@ -37,6 +37,7 @@ from app.modules.backups.dto import CreateBackupRunDto, UpdateBackupSettingsDto
 from app.modules.broadcasts import BroadcastRepository
 from app.modules.email import record_smtp_failure
 from app.modules.event_log import EventOutboxRepository
+from app.modules.overview import system_health
 from app.modules.overview.dto import AttentionItemDto
 from app.modules.overview.usecases import GetAttentionUseCase
 from app.modules.plans.dto import (
@@ -65,7 +66,10 @@ OWNER = UserDto(id=1, login="owner", name="owner", role=Role.OWNER, language=Loc
 
 
 @pytest.fixture
-async def redis_alive(_clean_redis: None, redis: Redis) -> Redis:
+async def redis_alive(_clean_redis: None, redis: Redis, monkeypatch: pytest.MonkeyPatch) -> Redis:
+    # the host running the tests may be short on disk or memory itself
+    monkeypatch.setattr(system_health, "read_host_disk", lambda path: None)
+    monkeypatch.setattr(system_health, "read_host_memory", lambda: None)
     for process in ("worker", "scheduler"):
         await publish_runtime_heartbeat(redis, process, pid=1, started_at=0.0)
     return redis
