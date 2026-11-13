@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from fluent.syntax import FluentParser
 from fluent.syntax.ast import Junk, Message
@@ -7,14 +9,16 @@ from app.core.enums import Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.translations.dto import TranslationEntryDto
+from app.modules.translations.seed import _parse_seed_file
 from app.modules.translations.serializer import (
+    assert_translation_value,
     assert_valid_bot_html,
     find_disallowed_placeable,
     serialize_to_fluent,
     split_message_key,
     strip_serializer_escapes,
 )
-from tests.seeded_translations import seeded_fluent_source
+from tests.seeded_translations import TRANSLATIONS_DIR, seeded_fluent_source
 
 
 def _entry(message_id: str, attribute_id: str, value: str) -> TranslationEntryDto:
@@ -197,3 +201,56 @@ def test_every_seeded_message_survives_the_database_round_trip(locale: Locale) -
         assert isinstance(entry, Message)
         if entry.value is not None:
             assert bundle.format(entry.id.name)[0]
+
+
+_PLURAL_DEFAULT = "{ $count ->\n    [one] { $count } day\n   *[other] { $count } days\n}"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Wrong password for { $login }. IP: { $ip }",
+        "IP: { $ip }\nfor { $login }",
+        "{ $count ->\n    [one] один { $count }\n    [few] { $count } дня\n"
+        "   *[other] { $count } дней\n}",
+        '{ "[" }fine',
+    ],
+)
+def test_translation_value_may_use_the_default_variables(value: str) -> None:
+    default = "Wrong password for { $login } from { $ip }, { $count } " + _PLURAL_DEFAULT
+    assert_translation_value("ntf-login-failed", value, default)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Hi { $name }",
+        "{ ntf-other }",
+        "{ -brand }",
+        "{ NUMBER($count) }",
+        "{ $count ->\n   *[other] { $name }\n}",
+        "{ ntf-other ->\n   *[other] x\n}",
+    ],
+)
+def test_translation_value_refuses_what_the_default_lacks(value: str) -> None:
+    with pytest.raises(ValidationError) as error:
+        assert_translation_value("ntf-login-failed", value, "{ $count } " + _PLURAL_DEFAULT)
+
+    assert error.value.code is ErrorCode.TRANSLATION_VARIABLE_NOT_ALLOWED
+
+
+def test_bot_command_descriptions_stay_single_line() -> None:
+    with pytest.raises(ValidationError) as error:
+        assert_translation_value("command", "two\nlines", "Open the menu")
+
+    assert error.value.code is ErrorCode.TRANSLATION_HAS_NEWLINES
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted(TRANSLATIONS_DIR.glob("*/*.ftl")),
+    ids=lambda path: f"{path.parent.name}/{path.name}",
+)
+def test_every_shipped_value_passes_as_its_own_edit(path: Path) -> None:
+    for message_id, _, value in _parse_seed_file(path):
+        assert_translation_value(message_id, value, value)

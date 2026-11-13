@@ -110,6 +110,11 @@ class TranslationRepository:
         row = await self._find_row(locale, message_id, attribute_id)
         return self._to_dto(row) if row is not None else None
 
+    async def get_by_key(
+        self, locale: Locale, message_id: str, attribute_id: str
+    ) -> TranslationEntryDto:
+        return self._to_dto(await self._get_row(locale, message_id, attribute_id))
+
     async def _find_row(
         self, locale: Locale, message_id: str, attribute_id: str
     ) -> Optional[BotTranslation]:

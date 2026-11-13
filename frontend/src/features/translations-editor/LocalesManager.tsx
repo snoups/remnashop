@@ -114,14 +114,14 @@ export function LocalesManager({ locales, onChange }: LocalesManagerProps) {
         open={isOpen}
         triggerRef={triggerRef}
         popoverRef={popoverRef}
-        align="stretch"
+        align="right"
         maxHeight={POPOVER_MAX_HEIGHT}
         initial={{ opacity: 0, scale: 0.96, y: -4 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: -4 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
         onKeyDown={(e) => e.key === "Escape" && setIsOpen(false)}
-        className="min-w-40 p-1.5"
+        className="w-72 p-1.5"
 >
         {/* the scroll lives inside the padding: on the popover itself the
             scrollbar column paints over the rounded right corners */}

@@ -1,7 +1,7 @@
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ValidationError
 from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -16,7 +16,7 @@ from app.modules.translations.ports import BotCommandsSync
 from app.modules.translations.repository import TranslationRepository
 from app.modules.translations.serializer import (
     assert_fluent_compiles,
-    assert_plain_translation_value,
+    assert_translation_value,
     assert_valid_bot_html,
     serialize_to_fluent,
 )
@@ -51,22 +51,23 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
         applied: list[TranslationTextExportDto] = []
         skipped = 0
         async with self._uow:
-            active = set(await self._translation_repository.list_active_locales())
+            defaults = {
+                (entry.locale, entry.message_id, entry.attribute_id): entry.default_value
+                for locale in await self._translation_repository.list_active_locales()
+                for entry in await self._translation_repository.list_by_locale(locale)
+            }
             for text in data.texts:
                 # a string this install doesn't have (a disabled locale, a key
                 # from an older catalog) is skipped; nothing would ever read it
-                if text.locale not in active:
+                default_value = defaults.get((text.locale, text.message_id, text.attribute_id))
+                if default_value is None:
                     skipped += 1
                     continue
-                assert_plain_translation_value(text.value)
+                assert_translation_value(text.message_id, text.value, default_value)
                 assert_valid_bot_html(text.message_id, text.value)
-                try:
-                    await self._translation_repository.update_value(
-                        text.locale, text.message_id, text.attribute_id, text.value
-                    )
-                except NotFoundError:
-                    skipped += 1
-                    continue
+                await self._translation_repository.update_value(
+                    text.locale, text.message_id, text.attribute_id, text.value
+                )
                 applied.append(text)
             # raising here rolls the whole import back, as a hand edit would be refused
             for locale in {text.locale for text in applied}:

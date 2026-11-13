@@ -1,9 +1,18 @@
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Final, Optional
 
 from fluent.syntax import FluentParser
-from fluent.syntax.ast import Junk, Message, Pattern, Placeable, StringLiteral, VariableReference
+from fluent.syntax.ast import (
+    Junk,
+    Message,
+    Pattern,
+    Placeable,
+    SelectExpression,
+    StringLiteral,
+    VariableReference,
+)
 from fluent_compiler.bundle import FluentBundle
 from loguru import logger
 
@@ -111,20 +120,6 @@ def serialize_to_fluent(entries: list[TranslationEntryDto]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def contains_placeable(text: str) -> bool:
-    patterns: list[Pattern] = []
-    for entry in FluentParser().parse(text).body:
-        if not isinstance(entry, Message):
-            continue
-        if entry.value is not None:
-            patterns.append(entry.value)
-        patterns.extend(attribute.value for attribute in entry.attributes)
-
-    return any(
-        isinstance(element, Placeable) for pattern in patterns for element in pattern.elements
-    )
-
-
 # Window bodies and fragments are sent with parse_mode=HTML; other keys are plain text.
 _HTML_KEY_PREFIXES: Final[tuple[str, ...]] = ("msg-", "frg-")
 
@@ -134,23 +129,85 @@ def assert_valid_bot_html(message_id: str, value: str) -> None:
         validate_telegram_html(value, code=ErrorCode.TRANSLATION_HTML_INVALID)
 
 
-def assert_plain_translation_value(value: str) -> None:
-    if "\n" in value:
-        # Kept single-line even though serialize_to_fluent() indents continuations:
-        # bot command descriptions are repushed to Telegram, which rejects
-        # multi-line ones. Dialog window bodies get their newlines through
-        # modules/dialogs' text endpoint instead.
+# Telegram rejects a multi-line bot command description; the command menu is
+# repushed on every edit.
+_SINGLE_LINE_MESSAGE_IDS: Final[frozenset[str]] = frozenset({"command"})
+
+
+def assert_translation_value(message_id: str, value: str, default_value: str) -> None:
+    """A translator may rephrase a string, reorder its variables and rewrite its
+    plural or value variants, but not reach for anything the shipped string
+    doesn't use: only the variables of `default_value`, selects over them and
+    string literals pass."""
+    if "\n" in value and message_id in _SINGLE_LINE_MESSAGE_IDS:
         raise ValidationError(
-            "Translation values cannot contain newlines", code=ErrorCode.TRANSLATION_HAS_NEWLINES
+            "Bot command descriptions cannot contain newlines",
+            code=ErrorCode.TRANSLATION_HAS_NEWLINES,
         )
-    # the value alone, not the whole locale: a seeded value with a placeable
-    # would otherwise block edits to every other key. contains_placeable parses
-    # a full "id = value" line, hence the throwaway id.
-    if contains_placeable(f"placeholder-id = {value}"):
-        raise ValidationError(
-            "Fluent placeables are not supported in translation values",
-            code=ErrorCode.TRANSLATION_HAS_PLACEABLES,
-        )
+    allowed_variables = placeable_variables(default_value)
+    disallowed = _find_disallowed(
+        value, lambda expression: _check_translation_expression(expression, allowed_variables)
+    )
+    if disallowed is not None:
+        raise ValidationError(disallowed, code=ErrorCode.TRANSLATION_VARIABLE_NOT_ALLOWED)
+
+
+def _value_patterns(text: str) -> Optional[list[Pattern]]:
+    """The patterns of a stored value, wrapped exactly as serialize_to_fluent
+    writes it; None when it parses as Junk."""
+    parsed = FluentParser().parse("placeholder-id = " + _block(text, "    "))
+    if parsed.body and isinstance(parsed.body[0], Junk):
+        return None
+    patterns: list[Pattern] = []
+    for entry in parsed.body:
+        if not isinstance(entry, Message):
+            continue
+        if entry.value is not None:
+            patterns.append(entry.value)
+        patterns.extend(attribute.value for attribute in entry.attributes)
+    return patterns
+
+
+def _placeable_expressions(pattern: Pattern) -> list[object]:
+    return [element.expression for element in pattern.elements if isinstance(element, Placeable)]
+
+
+def placeable_variables(text: str) -> frozenset[str]:
+    names: set[str] = set()
+
+    def collect(expression: object) -> None:
+        if isinstance(expression, VariableReference):
+            names.add(expression.id.name)
+        elif isinstance(expression, SelectExpression):
+            collect(expression.selector)
+            for variant in expression.variants:
+                for inner in _placeable_expressions(variant.value):
+                    collect(inner)
+
+    for pattern in _value_patterns(text) or []:
+        for expression in _placeable_expressions(pattern):
+            collect(expression)
+    return frozenset(names)
+
+
+def _check_translation_expression(
+    expression: object, allowed_variables: frozenset[str]
+) -> Optional[str]:
+    if isinstance(expression, StringLiteral):
+        return None
+    if isinstance(expression, SelectExpression):
+        if not isinstance(expression.selector, VariableReference):
+            return "Disallowed Fluent expression: a select over anything but a variable"
+        for inner in [expression.selector] + [
+            nested
+            for variant in expression.variants
+            for nested in _placeable_expressions(variant.value)
+        ]:
+            result = _check_translation_expression(inner, allowed_variables)
+            if result is not None:
+                return result
+        return None
+    return _check_placeable_expression(expression, allowed_variables)
 
 
 def _check_placeable_expression(
@@ -173,11 +230,14 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
     None. Only a bare `{ $name }` with `name` in `allowed_variables` passes;
     message and term references, functions and selects never do. A value that
     parses as Junk and holds both braces is refused too."""
-    # wrapped exactly as serialize_to_fluent writes it
-    wrapped = "placeholder-id = " + _block(text, "    ")
-    parsed = FluentParser().parse(wrapped)
+    return _find_disallowed(
+        text, lambda expression: _check_placeable_expression(expression, allowed_variables)
+    )
 
-    if parsed.body and isinstance(parsed.body[0], Junk):
+
+def _find_disallowed(text: str, check: Callable[[object], Optional[str]]) -> Optional[str]:
+    patterns = _value_patterns(text)
+    if patterns is None:
         # Braces in Junk are most likely an inline select expression: Fluent wants
         # each variant on its own indented line, so a one-line attempt parses as
         # Junk instead of a SelectExpression and would otherwise pass as "no
@@ -188,20 +248,9 @@ def find_disallowed_placeable(text: str, allowed_variables: frozenset[str]) -> O
         # allowlists placeable kinds, the caller's FluentBundle.check_messages()
         # catches broken syntax
         return None
-
-    patterns: list[Pattern] = []
-    for entry in parsed.body:
-        if not isinstance(entry, Message):
-            continue
-        if entry.value is not None:
-            patterns.append(entry.value)
-        patterns.extend(attribute.value for attribute in entry.attributes)
-
     for pattern in patterns:
-        for element in pattern.elements:
-            if not isinstance(element, Placeable):
-                continue
-            result = _check_placeable_expression(element.expression, allowed_variables)
+        for expression in _placeable_expressions(pattern):
+            result = check(expression)
             if result is not None:
                 return result
     return None

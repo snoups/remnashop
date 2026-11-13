@@ -3000,7 +3000,27 @@
       "imported": "Импортировано строк: {{applied}}, пропущено: {{skipped}}.",
       "importInvalid": "Этот файл — не выгрузка переводов.",
       "resetAllConfirm": "Сбросить все переводы активных локалей к исходным значениям? Это действие нельзя отменить.",
-      "resetAllDone": "Переводы сброшены."
+      "resetAllDone": "Переводы сброшены.",
+      "source": "{{locale}} · исходник",
+      "areas": {
+        "bot": "Бот",
+        "notifications": "Уведомления",
+        "reference": "Прочее"
+      },
+      "groups": {
+        "msg": "Сообщения",
+        "frg": "Фрагменты",
+        "btn": "Кнопки",
+        "ntf-bot": "Ответы бота",
+        "command": "Команды",
+        "inline": "Приглашение",
+        "ntf-customer": "Клиентам",
+        "ntf-admin": "Админам",
+        "ntf-telegram": "Поля карточек",
+        "gateway": "Платёжки",
+        "platform": "Платформы",
+        "time": "Единицы времени"
+      }
     },
     "emojiPacks": {
       "title": "Наборы эмодзи",
@@ -4619,7 +4639,6 @@
     "TRANSACTION_NOT_REFUNDABLE": "Эту транзакцию нельзя вернуть.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Неподдерживаемая версия файла экспорта.",
     "TRANSLATION_HAS_NEWLINES": "Текст не может содержать переносы строк.",
-    "TRANSLATION_HAS_PLACEABLES": "Подстановки Fluent здесь не поддерживаются.",
     "TRANSLATION_HTML_INVALID": "В тексте ошибка оформления.",
     "TRANSLATION_NOT_FOUND": "Перевод не найден.",
     "TRIAL_NOT_AVAILABLE": "Пробный период недоступен.",
@@ -4638,7 +4657,8 @@
     "WEBHOOK_SIGNATURE_INVALID": "Неверная подпись вебхука.",
     "WEBHOOK_SOURCE_UNTRUSTED": "Источник вебхука не доверенный.",
     "WEBHOOK_STALE": "Вебхук устарел.",
-    "BOT_PROXY_URL_INVALID": "Неверный адрес прокси: нужен socks5, socks5h или http с хостом и портом."
+    "BOT_PROXY_URL_INVALID": "Неверный адрес прокси: нужен socks5, socks5h или http с хостом и портом.",
+    "TRANSLATION_VARIABLE_NOT_ALLOWED": "В тексте есть переменная или выражение, которых нет в исходном тексте."
   },
   "loyalty": {
     "settings": {

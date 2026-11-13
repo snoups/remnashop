@@ -2910,7 +2910,27 @@
       "imported": "Imported {{applied}} strings, skipped {{skipped}}.",
       "importInvalid": "This file is not a translations export.",
       "resetAllConfirm": "Reset every active locale back to its original strings? This cannot be undone.",
-      "resetAllDone": "Translations reset."
+      "resetAllDone": "Translations reset.",
+      "source": "{{locale}} · source",
+      "areas": {
+        "bot": "Bot",
+        "notifications": "Notifications",
+        "reference": "Other"
+      },
+      "groups": {
+        "msg": "Messages",
+        "frg": "Fragments",
+        "btn": "Buttons",
+        "ntf-bot": "Bot replies",
+        "command": "Commands",
+        "inline": "Invite",
+        "ntf-customer": "To customers",
+        "ntf-admin": "To admins",
+        "ntf-telegram": "Card fields",
+        "gateway": "Gateways",
+        "platform": "Platforms",
+        "time": "Time units"
+      }
     },
     "emojiPacks": {
       "title": "Emoji packs",
@@ -4505,7 +4525,6 @@
     "TRANSACTION_NOT_REFUNDABLE": "This transaction can’t be refunded.",
     "TRANSLATION_EXPORT_VERSION_UNSUPPORTED": "Unsupported export file version.",
     "TRANSLATION_HAS_NEWLINES": "The text can’t contain line breaks.",
-    "TRANSLATION_HAS_PLACEABLES": "Fluent placeables aren’t supported here.",
     "TRANSLATION_HTML_INVALID": "The text has invalid formatting.",
     "TRANSLATION_NOT_FOUND": "Translation not found.",
     "TRIAL_NOT_AVAILABLE": "The trial isn’t available.",
@@ -4524,7 +4543,8 @@
     "WEBHOOK_SIGNATURE_INVALID": "Invalid webhook signature.",
     "WEBHOOK_SOURCE_UNTRUSTED": "The webhook source isn’t trusted.",
     "WEBHOOK_STALE": "The webhook is outdated.",
-    "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port."
+    "BOT_PROXY_URL_INVALID": "Invalid proxy address: use socks5, socks5h or http with a host and a port.",
+    "TRANSLATION_VARIABLE_NOT_ALLOWED": "The text uses a variable or expression the original text doesn’t have."
   },
   "loyalty": {
     "settings": {

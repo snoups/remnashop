@@ -111,7 +111,7 @@ async def test_update_translation_rejects_invalid_fluent_syntax(
     assert entry.value == "Open the main menu"
 
 
-async def test_update_translation_rejects_placeables(
+async def test_update_translation_rejects_a_variable_the_default_lacks(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,
     uow: UnitOfWork,
@@ -138,6 +138,38 @@ async def test_update_translation_rejects_placeables(
     entry = await translation_repository.get(Locale.EN, "command", "menu")
     assert entry is not None
     assert entry.value == "Open the main menu"
+
+
+async def test_update_translation_keeps_the_default_variables(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> None:
+    async with uow:
+        await translation_repository.add_active_locale(Locale.EN)
+        await translation_repository.seed_missing(
+            Locale.EN, "ntf-login-failed", "", "Wrong password for { $login }. IP: { $ip }"
+        )
+    use_case = UpdateTranslationUseCase(
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+
+    updated = await use_case(
+        OWNER,
+        UpdateTranslationDto(
+            locale=Locale.EN,
+            message_id="ntf-login-failed",
+            attribute_id="",
+            value="IP { $ip }\nlogin { $login }",
+        ),
+    )
+
+    assert updated.value == "IP { $ip }\nlogin { $login }"
 
 
 async def test_update_translation_raises_not_found_for_unknown_key(
@@ -362,7 +394,7 @@ async def test_import_rejects_a_foreign_export_version(
     ("value", "code"),
     [
         ("two\nlines", ErrorCode.TRANSLATION_HAS_NEWLINES),
-        ("{ $name }", ErrorCode.TRANSLATION_HAS_PLACEABLES),
+        ("{ $name }", ErrorCode.TRANSLATION_VARIABLE_NOT_ALLOWED),
         ("broken }", ErrorCode.FLUENT_SYNTAX_INVALID),
     ],
 )
