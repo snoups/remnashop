@@ -1,3 +1,5 @@
+import math
+from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Callable, Final, Optional, Union
 
@@ -25,6 +27,7 @@ from app.core.exceptions import (
     RemnawavePanelUnavailableError,
     ValidationError,
 )
+from app.core.utils.time import datetime_now
 
 _STATUS_BY_ERROR: Final[dict[type[AppError], int]] = {
     ValidationError: status.HTTP_400_BAD_REQUEST,
@@ -54,6 +57,8 @@ _REMNAWAVE_UNAVAILABLE_DETAIL: Final[str] = "Remnawave panel is temporarily unav
 class ErrorResponse(BaseModel):
     detail: str
     code: ErrorCode
+    # COOLDOWN_ACTIVE only: when the action is allowed again
+    available_at: Optional[datetime] = None
 
 
 class RequestInvalidResponse(BaseModel):
@@ -141,9 +146,13 @@ def register_error_handlers(app: FastAPI) -> None:
             if isinstance(error, RemnawavePanelUnavailableError)
             else str(error)
         )
-        return JSONResponse(
-            status_code=status_for(error), content={"detail": detail, "code": error.code}
-        )
+        content: dict[str, Any] = {"detail": detail, "code": error.code}
+        headers: Optional[dict[str, str]] = None
+        if isinstance(error, CooldownError):
+            content["available_at"] = error.available_at.isoformat()
+            wait = (error.available_at - datetime_now()).total_seconds()
+            headers = {"Retry-After": str(max(1, math.ceil(wait)))}
+        return JSONResponse(status_code=status_for(error), content=content, headers=headers)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error_handler(_: Request, error: StarletteHTTPException) -> JSONResponse:

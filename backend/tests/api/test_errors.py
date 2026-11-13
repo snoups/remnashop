@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
@@ -17,11 +18,13 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import (
     AuthenticationError,
     ConflictError,
+    CooldownError,
     NotFoundError,
     PermissionDeniedError,
     RemnawavePanelUnavailableError,
     ValidationError,
 )
+from app.core.utils.time import datetime_now
 
 _APP_DIR: Final[Path] = Path(app_package.__file__).parent
 _LOCALES_DIR: Final[Path] = _APP_DIR.parents[1] / "frontend" / "src" / "shared" / "i18n" / "locales"
@@ -120,6 +123,23 @@ def test_panel_refusal_names_the_panels_own_reason() -> None:
         "detail": "A039: Update user error",
         "code": "REMNAWAVE_REQUEST_REJECTED",
     }
+
+
+def test_cooldown_says_when_the_action_is_allowed_again() -> None:
+    app = FastAPI()
+    register_error_handlers(app)
+    available_at = datetime_now() + timedelta(seconds=90)
+
+    @app.get("/cooldown")
+    async def cooldown() -> None:
+        raise CooldownError(available_at)
+
+    response = TestClient(app).get("/cooldown")
+
+    assert response.status_code == 429
+    assert response.json()["code"] == "COOLDOWN_ACTIVE"
+    assert response.json()["available_at"] == available_at.isoformat()
+    assert 89 <= int(response.headers["retry-after"]) <= 90
 
 
 def test_unhandled_exception_hides_its_message() -> None:
