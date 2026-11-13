@@ -106,19 +106,23 @@ interface RateRowState {
   charm_ending: string;
 }
 
-// The stored rate is units of this currency per 1 anchor unit. The field shows whichever side reads ≥ 1:
-// with a RUB anchor the dollar's 0.011765 becomes 85 ₽ for 1 $, the reverse goes above the field.
-function isInverted(rate: CurrencyRate, isAnchor: boolean): boolean {
-  return !isAnchor && Number(rate.rate) < 1;
+// one unit of each, dearest first, as the default rates have it ($1 = 77 ⭐ = 85 ₽)
+const DEARER_FIRST: Currency[] = ["USD", "XTR", "RUB"];
+
+// The stored rate is units of this currency per 1 anchor unit. The field reads "1 dearer unit = N cheaper ones":
+// with a RUB anchor the dollar's 0.0117647 shows as 85 ₽ for 1 $, the reverse goes above the field. Fixed by
+// the pair, not the value, so an edit can't flip the field.
+function isInverted(currency: Currency, anchor: Currency): boolean {
+  return DEARER_FIRST.indexOf(currency) < DEARER_FIRST.indexOf(anchor);
 }
 
 function shownRate(rate: CurrencyRate, inverted: boolean): string {
   return toTwoDecimals(inverted ? String(1 / Number(rate.rate)) : rate.rate);
 }
 
-// back to units of this currency per 1 anchor unit, at the backend's 6 decimals
+// back to units of this currency per 1 anchor unit, at the backend's 10 decimals
 function storedRate(shown: string, inverted: boolean): string {
-  return inverted ? (1 / Number(shown)).toFixed(6) : shown;
+  return inverted ? (1 / Number(shown)).toFixed(10) : shown;
 }
 
 /** The other side of the field: from what's typed, or the stored rate while the field is untouched. */
@@ -152,12 +156,12 @@ function RateRow({
   const { t, i18n } = useTranslation();
   const idPrefix = useId();
   const isAnchor = rate.currency === anchorCurrency;
-  const inverted = isInverted(rate, isAnchor);
+  const inverted = isInverted(rate.currency, anchorCurrency);
   const [form, setForm] = useState<RateRowState>(() => toRowState(rate, inverted));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [diff, setDiff] = useState<PricingDiff | null>(null);
 
-  useEffect(() => setForm(toRowState(rate, isInverted(rate, rate.currency === anchorCurrency))), [rate, anchorCurrency]);
+  useEffect(() => setForm(toRowState(rate, isInverted(rate.currency, anchorCurrency))), [rate, anchorCurrency]);
 
   const initial = toRowState(rate, inverted);
   const isDirty =
