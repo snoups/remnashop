@@ -339,6 +339,7 @@ ntf-purchase =
     .failed = ❌ Couldn't create the payment. Please try again later.
     .no-plans = ❌ No plans are available.
     .no-methods = ❌ No payment methods are available.
+    .invalid-email = ❌ That doesn't look like an email address. Check it and send it again.
 
 msg-purchase-plan = <b>💳 Choose a plan</b>
 msg-purchase-duration =
@@ -349,6 +350,10 @@ msg-purchase-duration =
     { $discount_notice }
 
     { $plan_changed_notice }
+msg-purchase-email =
+    <b>📧 Enter your email</b>
+
+    Send your email address as a message — the payment receipt will be sent there.
 msg-purchase-method =
     <b>💳 Choose a payment method</b>
 

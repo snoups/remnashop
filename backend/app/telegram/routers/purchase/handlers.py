@@ -2,17 +2,21 @@ from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from typing import Any, Final, Optional, TypeAlias
 
-from aiogram.types import CallbackQuery
-from aiogram_dialog import Data, DialogManager, StartMode
+from aiogram.types import CallbackQuery, Message
+from aiogram_dialog import Data, DialogManager, ShowMode, StartMode
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Keyboard
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
+from pydantic import EmailStr, TypeAdapter
+from pydantic import ValidationError as PydanticValidationError
 
 from app.core.constants import USER_KEY
 from app.core.enums import Currency, PaymentGatewayType, PurchaseChannel, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppError
+from app.core.utils.email import normalize_email
 from app.modules.settings import GetAccessSettingsUseCase
 from app.modules.subscriptions import (
     CatalogDurationDto,
@@ -45,6 +49,9 @@ ORDER_ID_KEY: Final[str] = "order_id"
 PLAN_CODE_KEY: Final[str] = "plan_code"
 RETRY_PLAN_KEY: Final[str] = "retry_plan_id"
 RETRY_DURATION_KEY: Final[str] = "retry_duration_days"
+# typed in the bot for a gateway that sends a receipt, used for this purchase only
+CUSTOMER_EMAIL_KEY: Final[str] = "customer_email"
+_EMAIL_ADAPTER: Final[TypeAdapter[str]] = TypeAdapter(EmailStr)
 # the link offered renew-or-new, so its back buttons return there
 LINK_CHOICE_KEY: Final[str] = "link_choice"
 _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
@@ -59,11 +66,6 @@ _ERROR_KEYS: Final[dict[ErrorCode, str]] = {
 
 def checkout_error_key(error: AppError) -> str:
     return _ERROR_KEYS.get(error.code, "ntf-purchase.failed")
-
-
-def bot_payment_methods(user: UserDto, methods: list[PaymentMethodDto]) -> list[PaymentMethodDto]:
-    # the bot can't ask for an email, so such methods are not offered
-    return [m for m in methods if not (m.requires_email and user.email is None)]
 
 
 Quoter: TypeAlias = Callable[[int, Currency], Awaitable[PriceQuote]]
@@ -184,11 +186,21 @@ async def _start_by_link(
     return None
 
 
-def _store_method(dialog_data: dict[str, Any], method: dict[str, str]) -> None:
+def _store_method(dialog_data: dict[str, Any], method: dict[str, Any]) -> None:
     # a new selection is a new order, not the one already created
     dialog_data.pop(PAYMENT_URL_KEY, None)
     dialog_data["gateway_type"] = method["gateway_type"]
     dialog_data["currency"] = method["currency"]
+    dialog_data["requires_email"] = method.get("requires_email", False)
+
+
+async def _after_method(manager: DialogManager) -> None:
+    data = manager.dialog_data
+    user: UserDto = manager.middleware_data[USER_KEY]
+    if data["requires_email"] and user.email is None and not data.get(CUSTOMER_EMAIL_KEY):
+        await manager.switch_to(Purchase.EMAIL)
+    else:
+        await manager.switch_to(Purchase.CONFIRM)
 
 
 async def select_duration(
@@ -226,13 +238,18 @@ async def select_duration(
     data["discount_percent"] = first.discount_percent
     data["discount_source"] = first.discount_source.value
     data["methods"] = [
-        {"gateway_type": m.gateway_type.value, "currency": m.currency.value} for m in methods
+        {
+            "gateway_type": m.gateway_type.value,
+            "currency": m.currency.value,
+            "requires_email": m.requires_email,
+        }
+        for m in methods
     ]
     # checkout validates the gateway even for a free order, so one is picked silently
     data["method_skipped"] = len(methods) == 1 or quotes[methods[0].currency].final_price == 0
     if data["method_skipped"]:
         _store_method(data, data["methods"][0])
-        await manager.switch_to(Purchase.CONFIRM)
+        await _after_method(manager)
     else:
         await manager.switch_to(Purchase.METHOD)
     return None
@@ -292,7 +309,7 @@ async def on_purchase_start(
     needs_subscriptions = by_link or not is_new
     subscriptions = await list_own_subscriptions(user) if needs_subscriptions else []
     catalog = await list_active_plans(user, catalog_query(manager))
-    methods = bot_payment_methods(user, await list_payment_methods(user)) if retry else None
+    methods = await list_payment_methods(user) if retry else None
     key = await start_purchase_steps(
         manager, catalog, subscriptions, methods, checkout_quoter(user, manager, quote_checkout)
     )
@@ -331,7 +348,7 @@ async def on_duration_selected(
         dialog_manager,
         await list_active_plans(user, catalog_query(dialog_manager)),
         int(dialog_manager.item_id),  # type: ignore[attr-defined]
-        bot_payment_methods(user, await list_payment_methods(user)),
+        await list_payment_methods(user),
         checkout_quoter(user, dialog_manager, quote_checkout),
     )
     if key is not None:
@@ -380,6 +397,26 @@ async def on_method_selected(
     if method is None:
         return
     _store_method(dialog_manager.dialog_data, method)
+    await _after_method(dialog_manager)
+
+
+@inject
+async def on_email_input(
+    message: Message,
+    widget: MessageInput,
+    dialog_manager: DialogManager,
+    i18n: FromDishka[TranslatorHub],
+) -> None:
+    dialog_manager.show_mode = ShowMode.EDIT
+    user: UserDto = dialog_manager.middleware_data[USER_KEY]
+    try:
+        email = _EMAIL_ADAPTER.validate_python(normalize_email(message.text or ""))
+    except PydanticValidationError:
+        await answer_notice(message, get_translator(i18n, user).get("ntf-purchase.invalid-email"))
+        return
+    data = dialog_manager.dialog_data
+    data.pop(PAYMENT_URL_KEY, None)
+    data[CUSTOMER_EMAIL_KEY] = email
     await dialog_manager.switch_to(Purchase.CONFIRM)
 
 
@@ -420,6 +457,7 @@ async def on_confirm(
                 target_subscription_id=None
                 if purchase_type is PurchaseType.NEW
                 else selected_subscription_id(dialog_manager),
+                customer_email=data.get(CUSTOMER_EMAIL_KEY),
                 plan_code=data.get(PLAN_CODE_KEY),
                 replaces_order_id=data.get(ORDER_ID_KEY),
             ),

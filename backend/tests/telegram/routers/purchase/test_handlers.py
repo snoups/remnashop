@@ -31,11 +31,12 @@ from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.i18n import format_price
 from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.handlers import (
+    CUSTOMER_EMAIL_KEY,
     ORDER_ID_KEY,
     PAYMENT_URL_KEY,
     checkout_error_key,
     on_confirm,
-    on_duration_selected,
+    on_email_input,
     on_method_selected,
     on_purchase_change,
     on_purchase_new,
@@ -461,28 +462,67 @@ async def test_selecting_a_duration_again_forgets_the_created_order(
     assert PAYMENT_URL_KEY not in manager.dialog_data
 
 
-async def test_duration_hides_receipt_gateways_from_a_user_without_email() -> None:
+_RECEIPT_METHOD = PaymentMethodDto(
+    gateway_type=PaymentGatewayType.YOOKASSA, currency=Currency.RUB, requires_email=True
+)
+
+
+async def test_a_receipt_gateway_asks_a_user_without_email_for_one() -> None:
     manager = _manager(dialog_data={"plan_id": 10})
-    manager.item_id = "30"
     manager.middleware_data[USER_KEY].email = None
-    receipt = PaymentMethodDto(
-        gateway_type=PaymentGatewayType.YOOKASSA, currency=Currency.RUB, requires_email=True
-    )
-    list_active_plans = AsyncMock(
-        return_value=PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+
+    await select_duration(manager, catalog_dto, 30, [_RECEIPT_METHOD], _quote())
+
+    manager.switch_to.assert_awaited_once_with(Purchase.EMAIL)
+
+
+async def test_a_receipt_gateway_skips_the_email_step_for_a_user_with_one() -> None:
+    manager = _manager(dialog_data={"plan_id": 10})
+    manager.middleware_data[USER_KEY].email = "buyer@example.com"
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+
+    await select_duration(manager, catalog_dto, 30, [_RECEIPT_METHOD], _quote())
+
+    manager.switch_to.assert_awaited_once_with(Purchase.CONFIRM)
+
+
+@pytest.mark.parametrize(
+    ("text", "stored", "state"),
+    [(" Buyer@Example.com ", "buyer@example.com", Purchase.CONFIRM), ("not-an-email", None, None)],
+)
+async def test_email_input_keeps_a_valid_address_for_checkout(
+    text: str, stored: Optional[str], state: Optional[Purchase]
+) -> None:
+    manager = _manager(dialog_data={PAYMENT_URL_KEY: "https://pay"})
+    message = AsyncMock(text=text)
+
+    await on_email_input.__dishka_orig_func__(message, MagicMock(), manager, i18n=_i18n())
+
+    assert manager.dialog_data.get(CUSTOMER_EMAIL_KEY) == stored
+    if state is None:
+        manager.switch_to.assert_not_awaited()
+    else:
+        assert PAYMENT_URL_KEY not in manager.dialog_data
+        manager.switch_to.assert_awaited_once_with(state)
+
+
+async def test_confirm_sends_the_typed_email() -> None:
+    manager = _manager(dialog_data={**_confirm_data("NEW"), CUSTOMER_EMAIL_KEY: "a@b.co"})
+    create_checkout = AsyncMock(
+        return_value=CheckoutResultDto(order_id=1, confirmation_url="https://pay")
     )
 
-    await on_duration_selected.__dishka_orig_func__(
+    await on_confirm.__dishka_orig_func__(
         MagicMock(),
         MagicMock(),
         manager,
-        list_active_plans=list_active_plans,
-        list_payment_methods=AsyncMock(return_value=[receipt, _STARS_METHOD]),
-        quote_checkout=_quote_checkout(),
+        create_checkout=create_checkout,
+        join_payment_waitlist=AsyncMock(),
         i18n=_i18n(),
     )
 
-    assert manager.dialog_data["methods"] == [{"gateway_type": "TELEGRAM_STARS", "currency": "XTR"}]
+    assert create_checkout.await_args.args[1].customer_email == "a@b.co"
 
 
 async def test_selecting_a_method_again_forgets_the_created_order() -> None:
@@ -537,6 +577,7 @@ _NOTIFICATION_ATTRIBUTES = (
     "failed",
     "no-plans",
     "no-methods",
+    "invalid-email",
 )
 
 
@@ -568,6 +609,7 @@ def test_purchase_texts_exist_in_each_locale(locale: str) -> None:
         "msg-purchase-plan",
         "msg-purchase-duration",
         "msg-purchase-method",
+        "msg-purchase-email",
         "msg-purchase-confirm",
         "msg-purchase-pay",
         "msg-purchase-link-choice",

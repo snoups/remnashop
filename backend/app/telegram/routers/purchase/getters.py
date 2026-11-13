@@ -269,6 +269,17 @@ async def method_getter(
 
 
 @inject
+async def email_getter(
+    dialog_manager: DialogManager, i18n: FromDishka[TranslatorHub], **kwargs: Any
+) -> dict[str, Any]:
+    runner = _runner(dialog_manager, i18n)
+    return {
+        "window_text": render_window_text(runner, "msg-purchase-email"),
+        "back_text": label_with_icon(runner, "btn-back.general"),
+    }
+
+
+@inject
 async def confirm_getter(
     dialog_manager: DialogManager,
     list_active_plans: FromDishka[ListActivePlansUseCase],

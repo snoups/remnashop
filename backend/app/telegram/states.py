@@ -18,6 +18,7 @@ class Purchase(StatesGroup):
     PLAN = State()
     DURATION = State()
     METHOD = State()
+    EMAIL = State()
     CONFIRM = State()
     PAY = State()
     LINK_CHOICE = State()

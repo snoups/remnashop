@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 from aiogram.enums import ButtonStyle, ParseMode
 from aiogram_dialog import Dialog, DialogManager, StartMode, Window
+from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Cancel, ListGroup, Row, Start, SwitchTo, Url
 from aiogram_dialog.widgets.media import DynamicMedia
 from aiogram_dialog.widgets.style import BaseStyle, Style
@@ -14,6 +15,7 @@ from app.telegram.routers.purchase.catalog import register_purchase_catalog
 from app.telegram.routers.purchase.getters import (
     confirm_getter,
     duration_getter,
+    email_getter,
     link_choice_getter,
     method_getter,
     pay_getter,
@@ -24,6 +26,7 @@ from app.telegram.routers.purchase.handlers import (
     on_confirm_back,
     on_duration_back,
     on_duration_selected,
+    on_email_input,
     on_link_new,
     on_link_renew,
     on_method_selected,
@@ -104,6 +107,16 @@ method = Window(
     getter=with_window_banner(_BANNER_WINDOW, method_getter),
 )
 
+email = Window(
+    DynamicMedia("banner", when="banner"),
+    Format("{window_text}"),
+    MessageInput(on_email_input),
+    Button(Format("{back_text}"), id="back", on_click=on_confirm_back),
+    parse_mode=ParseMode.HTML,
+    state=Purchase.EMAIL,
+    getter=with_window_banner(_BANNER_WINDOW, email_getter),
+)
+
 confirm = Window(
     DynamicMedia("banner", when="banner"),
     Format("{window_text}"),
@@ -142,4 +155,6 @@ link_choice = Window(
     getter=with_window_banner(_BANNER_WINDOW, link_choice_getter),
 )
 
-router = Dialog(plan, duration, method, confirm, pay, link_choice, on_start=on_purchase_start)
+router = Dialog(
+    plan, duration, method, email, confirm, pay, link_choice, on_start=on_purchase_start
+)

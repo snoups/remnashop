@@ -343,6 +343,7 @@ ntf-purchase =
     .failed = ❌ Не удалось создать платёж. Попробуйте позже.
     .no-plans = ❌ Нет доступных тарифов.
     .no-methods = ❌ Нет доступных способов оплаты.
+    .invalid-email = ❌ Это не похоже на адрес почты. Проверьте и отправьте ещё раз.
 
 msg-purchase-plan = <b>💳 Выберите тариф</b>
 msg-purchase-duration =
@@ -353,6 +354,10 @@ msg-purchase-duration =
     { $discount_notice }
 
     { $plan_changed_notice }
+msg-purchase-email =
+    <b>📧 Укажите email</b>
+
+    Отправьте адрес почты сообщением — на него придёт чек об оплате.
 msg-purchase-method =
     <b>💳 Выберите способ оплаты</b>
 
