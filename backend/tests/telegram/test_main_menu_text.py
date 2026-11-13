@@ -47,6 +47,7 @@ def _menu(
     *,
     extra_count: int = 0,
     trial_available: bool = False,
+    trial_paid_price: str = "",
     subscription: Optional[dict[str, Any]] = None,
     **kwargs: Any,
 ) -> str:
@@ -56,6 +57,7 @@ def _menu(
         _subscription(status, **(subscription or {})),
         extra_count=extra_count,
         trial_available=trial_available,
+        trial_paid_price=trial_paid_price,
     )
     args = {"user_id": "123456789", "user_name": "Ivan", "user_discount": "", **values, **kwargs}
     text = render_window_text(runner, "msg-main-menu", **args)
@@ -118,6 +120,10 @@ def test_trial_header_and_none_texts() -> None:
     assert "• У вас нет" not in none
     assert "<blockquote>У вас нет оформленной подписки." in none
     assert "пробник" in _menu(status="NONE", trial_available=True)
+
+    paid = _menu(status="NONE", trial_paid_price="99 ₽")
+    assert "Попробуйте сервис за 99 ₽" in paid
+    assert "Купить подписку" not in paid
 
 
 def test_menu_escapes_user_name() -> None:

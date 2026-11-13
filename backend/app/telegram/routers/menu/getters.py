@@ -58,6 +58,7 @@ def subscription_menu_values(
     *,
     extra_count: int,
     trial_available: bool,
+    trial_paid_price: str = "",
     listed_elsewhere: bool = False,
 ) -> dict[str, Any]:
     """menu.main's subscription_* text variables. They need the translator,
@@ -92,7 +93,11 @@ def subscription_menu_values(
         }
     if subscription is None:
         block = render_window_text(
-            runner, "frg-menu-no-subscription", trial_available=int(trial_available)
+            runner,
+            "frg-menu-no-subscription",
+            trial_available=int(trial_available),
+            trial_paid=int(bool(trial_paid_price)),
+            trial_price=trial_paid_price,
         )
         return {**values, "subscription_block": TrustedHtml(block)}
     # no helper for the traffic reset date yet, so the RESET texts name none
@@ -168,6 +173,7 @@ async def menu_getter(
         shown,
         extra_count=len(active) - 1,
         trial_available=data["trial_available"],
+        trial_paid_price=data["trial_price"] if data["trial_paid_available"] else "",
         listed_elsewhere=not single_subscription and bool(owned),
     )
     data["menu_text"] = render_window_text(

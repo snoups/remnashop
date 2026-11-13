@@ -58,7 +58,10 @@ frg-menu-no-subscription =
 
     <i>{ $trial_available ->
         [1] 🎁 A free trial is available to you — tap the button below to get it.
-       *[0] ↘️ To get access, tap “Buy a subscription”.
+       *[0] { $trial_paid ->
+            [1] 🚀 Try the service for { $trial_price } — tap the button below.
+           *[0] ↘️ To get access, tap “Buy a subscription”.
+        }
     }</i>
     </blockquote>
 frg-subscription-status = { $status ->
