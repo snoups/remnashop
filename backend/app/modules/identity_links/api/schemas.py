@@ -21,6 +21,7 @@ class IdentityResponse(BaseModel):
     kind: IdentityKind
     linked: bool
     label: Optional[str]
+    editable: bool
 
 
 class IdentitiesResponse(BaseModel):

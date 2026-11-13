@@ -1,7 +1,7 @@
 from typing import Optional
 
 from app.core.enums import OAuthProvider
-from app.modules.identity_links.dto import IdentityDto, IdentityKind
+from app.modules.identity_links.dto import IdentityDto, IdentityKind, can_edit_identity
 from app.modules.oauth import OAuthIdentityDto
 from app.modules.settings import CabinetAuthSettingsDto
 from app.modules.users import UserDto
@@ -22,8 +22,14 @@ def build_identities(
             kind=IdentityKind.TELEGRAM,
             linked=user.telegram_id is not None,
             label=_telegram_label(user),
+            editable=can_edit_identity(user, IdentityKind.TELEGRAM),
         ),
-        IdentityDto(kind=IdentityKind.EMAIL, linked=user.email is not None, label=user.email),
+        IdentityDto(
+            kind=IdentityKind.EMAIL,
+            linked=user.email is not None,
+            label=user.email,
+            editable=can_edit_identity(user, IdentityKind.EMAIL),
+        ),
     ]
     for kind, enabled in (
         (IdentityKind.GOOGLE, cabinet.google_enabled),
@@ -37,6 +43,7 @@ def build_identities(
                     kind=kind,
                     linked=identity is not None,
                     label=identity.external_login or identity.external_id if identity else None,
+                    editable=can_edit_identity(user, kind),
                 )
             )
     return items

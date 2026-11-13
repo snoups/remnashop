@@ -5,7 +5,7 @@ from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from app.api.dependencies.public import get_cabinet_customer
+from app.api.dependencies.public import get_cabinet_customer, get_cabinet_user
 from app.api.dependencies.rate_limit import FailureLimit, failure_rate_limit, rate_limit
 from app.api.errors import error_responses, status_for
 from app.core.config import AppConfig
@@ -67,7 +67,7 @@ def _as_input_error(error: AppError) -> AppError:
 @inject
 async def list_identities(
     use_case: FromDishka[ListIdentitiesUseCase],
-    user: UserDto = Depends(get_cabinet_customer),
+    user: UserDto = Depends(get_cabinet_user),
 ) -> IdentitiesResponse:
     items = await use_case.execute(user)
     return IdentitiesResponse(
@@ -86,7 +86,7 @@ async def unlink_identity(
     kind: IdentityKind,
     request: Request,
     use_case: FromDishka[UnlinkIdentityUseCase],
-    user: UserDto = Depends(get_cabinet_customer),
+    user: UserDto = Depends(get_cabinet_user),
 ) -> None:
     await use_case.execute(user, kind, resolve_client_ip(request))
 
@@ -215,7 +215,7 @@ async def oauth_link_authorize(
     response: Response,
     use_case: FromDishka[OAuthLinkAuthorizeUseCase],
     config: FromDishka[AppConfig],
-    user: UserDto = Depends(get_cabinet_customer),
+    user: UserDto = Depends(get_cabinet_user),
 ) -> LinkOAuthAuthorizeResponse:
     try:
         url, binding = await use_case.execute(user, provider)
@@ -242,7 +242,7 @@ async def oauth_link_callback(
     request: Request,
     response: Response,
     use_case: FromDishka[OAuthLinkCallbackUseCase],
-    user: UserDto = Depends(get_cabinet_customer),
+    user: UserDto = Depends(get_cabinet_user),
     guard: FailureLimit = Depends(
         failure_rate_limit(key="cabinet_link_oauth_callback_fail", limit=20, window_seconds=TIME_1M)
     ),

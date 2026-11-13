@@ -88,6 +88,10 @@ class IdentityLinker:
                 )
                 return LinkResultDto(status="linked")
 
+        if user.is_privileged:
+            raise ConflictError(
+                "Staff account can't be merged", code=ErrorCode.MERGE_ACCOUNT_PRIVILEGED
+            )
         counts = await self._merger.check(user, owner_id)
         async with self._uow:
             other = await self._user_repository.find_by_id(owner_id)
@@ -160,8 +164,14 @@ class IdentityLinker:
             await self._adopt_provider_email(user, claim.oauth)
 
     async def _adopt_provider_email(self, user: UserDto, profile: OAuthProfile) -> None:
-        # a proven address fills an empty slot; someone else's is ignored, never merged
-        if user.email is not None or not profile.email or not profile.email_verified:
+        # a proven address fills an empty slot; someone else's is ignored, never merged;
+        # a staff member's email is the dashboard's
+        if (
+            user.is_privileged
+            or user.email is not None
+            or not profile.email
+            or not profile.email_verified
+        ):
             return
         email = normalize_email(profile.email)
         if await self._user_repository.find_by_email(email) is not None:

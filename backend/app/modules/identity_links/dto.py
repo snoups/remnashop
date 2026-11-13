@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from enum import auto
-from typing import Literal, Optional
+from typing import Final, Literal, Optional
 
 from app.core.enums import OAuthProvider, UpperStrEnum
 from app.modules.cabinet_auth import TelegramProfileDto
-from app.modules.oauth import OAuthProfile
+from app.modules.oauth import CABINET_ONLY_PROVIDERS, OAuthProfile
+from app.modules.users import UserDto
 
 
 class IdentityKind(UpperStrEnum):
@@ -23,6 +24,16 @@ def identity_kind_for(provider: OAuthProvider) -> IdentityKind:
     return IdentityKind(provider.value)
 
 
+# no dashboard sign-in behind them: the only methods staff change from the cabinet
+STAFF_EDITABLE_KINDS: Final[frozenset[IdentityKind]] = frozenset(
+    identity_kind_for(provider) for provider in CABINET_ONLY_PROVIDERS
+)
+
+
+def can_edit_identity(user: UserDto, kind: IdentityKind) -> bool:
+    return not user.is_privileged or kind in STAFF_EDITABLE_KINDS
+
+
 @dataclass(frozen=True, kw_only=True)
 class IdentityClaimDto:
     # a sign-in just proven by the customer; only the field matching `kind` is set
@@ -37,6 +48,8 @@ class IdentityDto:
     kind: IdentityKind
     linked: bool
     label: Optional[str]
+    # staff: Telegram and email are the dashboard's
+    editable: bool = True
 
 
 @dataclass(frozen=True, kw_only=True)

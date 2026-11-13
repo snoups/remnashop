@@ -205,7 +205,12 @@ async def test_foreign_email_requires_merge(
     assert labels[IdentityKind.EMAIL] == "other@gmail.com"
     assert len(await _merge_keys(redis)) == 1
     body = LinkResultResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
-    assert body["other"]["identities"][0] == {"kind": "TELEGRAM", "linked": True, "label": "@twin"}
+    assert body["other"]["identities"][0] == {
+        "kind": "TELEGRAM",
+        "linked": True,
+        "label": "@twin",
+        "editable": True,
+    }
 
 
 async def test_foreign_staff_refused(
@@ -218,6 +223,58 @@ async def test_foreign_staff_refused(
 
     with pytest.raises(ConflictError) as error:
         await linker.link(user, _email("boss@gmail.com"), "127.0.0.1")
+
+    assert error.value.code == ErrorCode.MERGE_ACCOUNT_PRIVILEGED
+    assert await _merge_keys(redis) == []
+
+
+async def test_staff_links_a_free_cabinet_provider_without_adopting_its_email(
+    linker: IdentityLinker,
+    user_repository: UserRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="boss", login="boss", role=Role.ADMIN, telegram_id=5100)
+    )
+    profile = OAuthProfile("g-staff", "boss", email="boss@gmail.com", email_verified=True)
+
+    result = await linker.link(
+        staff, IdentityClaimDto(kind=IdentityKind.GOOGLE, oauth=profile), "127.0.0.1"
+    )
+
+    assert result.status == "linked"
+    assert await oauth_identity_repository.find_by_provider_external_id(
+        OAuthProvider.GOOGLE, "g-staff"
+    )
+    fresh = await user_repository.find_by_id(staff.id)
+    assert fresh is not None and fresh.email is None
+
+
+async def test_staff_never_merges_into_a_foreign_identity(
+    linker: IdentityLinker,
+    user_repository: UserRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+    redis: Redis,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="boss", login="boss", role=Role.ADMIN, telegram_id=5101)
+    )
+    customer = await user_repository.create(CreateUserDto(name="client", telegram_id=5102))
+    await oauth_identity_repository.create(
+        CreateOAuthIdentityDto(
+            user_id=customer.id,
+            provider=OAuthProvider.GOOGLE,
+            external_id="g-taken",
+            external_login=None,
+        )
+    )
+
+    with pytest.raises(ConflictError) as error:
+        await linker.link(
+            staff,
+            IdentityClaimDto(kind=IdentityKind.GOOGLE, oauth=OAuthProfile("g-taken", "client")),
+            "127.0.0.1",
+        )
 
     assert error.value.code == ErrorCode.MERGE_ACCOUNT_PRIVILEGED
     assert await _merge_keys(redis) == []

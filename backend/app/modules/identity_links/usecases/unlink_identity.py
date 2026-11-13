@@ -3,9 +3,9 @@ from loguru import logger
 from app.core.db.uow import UnitOfWork
 from app.core.enums import OAuthProvider
 from app.core.error_codes import ErrorCode
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
 from app.core.ports import EventPublisher
-from app.modules.identity_links.dto import IdentityKind
+from app.modules.identity_links.dto import IdentityKind, can_edit_identity
 from app.modules.identity_links.events import SignInMethodUnlinkedEvent
 from app.modules.oauth import OAuthIdentityRepository
 from app.modules.users import UserDto, UserRepository
@@ -25,6 +25,11 @@ class UnlinkIdentityUseCase:
         self._uow = uow
 
     async def execute(self, user: UserDto, kind: IdentityKind, client_ip: str) -> None:
+        if not can_edit_identity(user, kind):
+            raise PermissionDeniedError(
+                "Staff change this sign-in method in the dashboard",
+                code=ErrorCode.PERMISSION_DENIED,
+            )
         async with self._uow:
             # the row lock serializes concurrent unlinks, so one method always survives
             fresh = await self._user_repository.find_live_for_update(user.id)

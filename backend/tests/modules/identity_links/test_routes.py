@@ -62,8 +62,8 @@ async def test_list_identities(
     assert response.status_code == 200
     assert response.json() == {
         "items": [
-            {"kind": "TELEGRAM", "linked": True, "label": "@name"},
-            {"kind": "EMAIL", "linked": False, "label": None},
+            {"kind": "TELEGRAM", "linked": True, "label": "@name", "editable": True},
+            {"kind": "EMAIL", "linked": False, "label": None, "editable": True},
         ],
         "total": 2,
     }
@@ -73,7 +73,7 @@ async def test_list_identities(
             UpdateCabinetAuthSettingsDto(google_enabled=True)
         )
     items = (await client.get(IDENTITIES, headers=headers)).json()["items"]
-    assert {"kind": "GOOGLE", "linked": False, "label": None} in items
+    assert {"kind": "GOOGLE", "linked": False, "label": None, "editable": True} in items
     assert all(item["kind"] != "YANDEX" for item in items)
 
 
@@ -94,7 +94,7 @@ async def test_linked_provider_listed_while_disabled(
 
     items = (await client.get(IDENTITIES, headers=headers)).json()["items"]
 
-    assert {"kind": "YANDEX", "linked": True, "label": "y-9"} in items
+    assert {"kind": "YANDEX", "linked": True, "label": "y-9", "editable": True} in items
 
 
 async def test_unlink_last_method_conflict(
@@ -242,18 +242,17 @@ async def test_merge_after_identity_moved(
 @pytest.mark.parametrize(
     ("method", "url", "body"),
     [
-        ("GET", IDENTITIES, None),
         ("DELETE", f"{IDENTITIES}/email", None),
+        ("DELETE", f"{IDENTITIES}/telegram", None),
         ("POST", MERGE, {"merge_token": "x"}),
         ("POST", f"{IDENTITIES}/email/code", {"email": "a@gmail.com"}),
         ("POST", f"{IDENTITIES}/email/verify", {"email": "a@gmail.com", "code": "123456"}),
         ("POST", f"{IDENTITIES}/telegram/deeplink", None),
         ("POST", f"{IDENTITIES}/telegram/signin", {"token": "x"}),
-        ("POST", f"{IDENTITIES}/oauth/google/authorize", None),
-        ("POST", f"{IDENTITIES}/oauth/google/callback", {"code": "c", "state": "s"}),
+        ("POST", f"{IDENTITIES}/oauth/telegram/authorize", None),
     ],
 )
-async def test_staff_cabinet_session_forbidden(
+async def test_staff_cabinet_session_forbidden_outside_cabinet_only_providers(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
     session_repository: SessionRepository,
@@ -293,3 +292,53 @@ async def test_without_session(client: httpx.AsyncClient) -> None:
     assert (await client.get(IDENTITIES)).status_code == 401
     assert (await client.delete(f"{IDENTITIES}/email")).status_code == 401
     assert (await client.post(MERGE, json={"merge_token": "x"})).status_code == 401
+
+
+async def test_staff_lists_identities_with_only_cabinet_providers_editable(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    async with uow:
+        await settings_repository.update_cabinet_auth_settings(
+            UpdateCabinetAuthSettingsDto(google_enabled=True)
+        )
+    staff = await user_repository.create(
+        CreateUserDto(name="boss", login="boss", role=Role.ADMIN, telegram_id=6201)
+    )
+    headers = await bearer(staff.id, session_repository, config)
+
+    response = await client.get(IDENTITIES, headers=headers)
+
+    assert response.status_code == 200
+    editable = {item["kind"]: item["editable"] for item in response.json()["items"]}
+    assert editable == {"TELEGRAM": False, "EMAIL": False, "GOOGLE": True}
+
+
+async def test_staff_unlinks_a_cabinet_only_provider(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    oauth_identity_repository: OAuthIdentityRepository,
+    config: AppConfig,
+) -> None:
+    staff = await user_repository.create(
+        CreateUserDto(name="boss", login="boss", role=Role.ADMIN, telegram_id=6202)
+    )
+    await oauth_identity_repository.create(
+        CreateOAuthIdentityDto(
+            user_id=staff.id,
+            provider=OAuthProvider.YANDEX,
+            external_id="y-staff",
+            external_login=None,
+        )
+    )
+    headers = await bearer(staff.id, session_repository, config)
+
+    response = await client.delete(f"{IDENTITIES}/yandex", headers=headers)
+
+    assert response.status_code == 204
+    assert await oauth_identity_repository.list_by_user(staff.id) == []

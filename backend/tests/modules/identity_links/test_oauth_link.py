@@ -189,7 +189,9 @@ async def test_link_google_foreign_identity_merge_required(
     body = response.json()
     assert body["status"] == "merge_required"
     assert body["merge_token"]
-    assert {"kind": "GOOGLE", "linked": True, "label": "other"} in body["other"]["identities"]
+    assert {"kind": "GOOGLE", "linked": True, "label": "other", "editable": True} in body["other"][
+        "identities"
+    ]
 
 
 async def test_login_state_rejected_by_link(
