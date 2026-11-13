@@ -138,7 +138,7 @@ export function ReferralsListPage() {
             onChange={setSearchInput}
           />
         </div>
-        <div className="min-w-40 flex-1 md:w-44 md:min-w-0 md:flex-none">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-initial">
           <SelectDropdown
             id="referrals-level"
             value={level}
@@ -157,7 +157,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="min-w-40 flex-1 md:w-44 md:min-w-0 md:flex-none">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-initial">
           <SelectDropdown
             id="referrals-reward-status"
             value={rewardStatus}
@@ -173,7 +173,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="min-w-40 flex-1 md:w-44 md:min-w-0 md:flex-none">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-initial">
           <SelectDropdown
             id="referrals-reward-type"
             value={rewardType}
@@ -192,7 +192,7 @@ export function ReferralsListPage() {
             ]}
           />
         </div>
-        <div className="min-w-40 flex-1 md:w-44 md:min-w-0 md:flex-none">
+        <div className="min-w-40 flex-1 md:w-40 md:min-w-0 md:flex-initial">
           <SelectDropdown
             id="referrals-period"
             value={String(period)}
