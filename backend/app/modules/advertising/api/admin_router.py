@@ -13,6 +13,7 @@ from app.core.enums import AdLinkChannel
 from app.core.utils.time import range_end_utc, range_start_utc
 from app.modules.advertising.api.schemas import (
     AdLinkPageResponse,
+    AdLinkPayoutResponse,
     AdLinkResponse,
     AdLinkShareUrlsResponse,
     AdLinkStatsResponse,
@@ -26,6 +27,7 @@ from app.modules.advertising.api.schemas import (
 )
 from app.modules.advertising.dto import (
     CreateAdLinkDto,
+    GetAdLinkPayoutDto,
     GetAdLinkStatsDto,
     GetAdvertisingSummaryDto,
     ListAdLinkAttributedUsersDto,
@@ -37,6 +39,7 @@ from app.modules.advertising.usecases import (
     CreateAdLinkUseCase,
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
+    GetAdLinkPayoutUseCase,
     GetAdLinkShareUrlsUseCase,
     GetAdLinkStatsUseCase,
     GetAdLinkUseCase,
@@ -88,6 +91,7 @@ async def create_ad_link(
             code=payload.code,
             cost=payload.cost,
             cost_currency=payload.cost_currency,
+            revenue_share_percent=payload.revenue_share_percent,
             allow_bot=payload.allow_bot,
             allow_webcabinet=payload.allow_webcabinet,
             note=payload.note,
@@ -113,6 +117,7 @@ async def update_ad_link(
             name=payload.name,
             cost=payload.cost,
             cost_currency=payload.cost_currency,
+            revenue_share_percent=payload.revenue_share_percent,
             is_active=payload.is_active,
             allow_bot=payload.allow_bot,
             allow_webcabinet=payload.allow_webcabinet,
@@ -167,6 +172,30 @@ async def get_ad_link_stats(
         ),
     )
     return AdLinkStatsResponse.model_validate(stats, from_attributes=True)
+
+
+@router.get(
+    "/links/{ad_link_id:int}/payout",
+    response_model=AdLinkPayoutResponse,
+    responses=error_responses(404),
+)
+@inject
+async def get_ad_link_payout(
+    ad_link_id: int,
+    use_case: FromDishka[GetAdLinkPayoutUseCase],
+    paid_from: datetime = Query(),
+    paid_to: datetime = Query(),
+    actor: Actor = Depends(require_admin),
+) -> AdLinkPayoutResponse:
+    payout = await use_case(
+        actor,
+        GetAdLinkPayoutDto(
+            ad_link_id=ad_link_id,
+            paid_from=range_start_utc(paid_from),
+            paid_to=range_end_utc(paid_to),
+        ),
+    )
+    return AdLinkPayoutResponse.model_validate(payout, from_attributes=True)
 
 
 @router.get(

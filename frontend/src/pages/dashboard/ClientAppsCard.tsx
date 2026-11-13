@@ -50,7 +50,7 @@ export function ClientAppsCard({ refreshKey }: { refreshKey: number }) {
   return <ClientAppsSection state={state} />;
 }
 
-export function ClientAppsSection({ state }: { state: AsyncState<ClientApps> }) {
+function ClientAppsSection({ state }: { state: AsyncState<ClientApps> }) {
   const { t } = useTranslation();
   const data = state.kind === "ready" ? state.data : null;
 

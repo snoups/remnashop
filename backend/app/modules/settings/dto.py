@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import auto
-from typing import Optional
+from typing import Final, Optional
 
 from pydantic import Field, SecretStr
 
@@ -15,6 +15,10 @@ from app.core.enums import (
     SmtpSecurity,
     UpperStrEnum,
 )
+from app.core.utils.time import datetime_now
+
+# Telegram keeps the last delivery error after the webhook recovers
+_BOT_ERROR_WINDOW: Final[timedelta] = timedelta(hours=1)
 
 
 class BotSettingsDto(BaseDto, TimestampMixin):
@@ -45,8 +49,15 @@ class BotStatusDto:
     last_error_at: Optional[datetime] = None
 
     @property
+    def has_recent_error(self) -> bool:
+        if self.error is None:
+            return False
+        # no date means the getWebhookInfo call itself failed
+        return self.last_error_at is None or self.last_error_at > datetime_now() - _BOT_ERROR_WINDOW
+
+    @property
     def is_running(self) -> bool:
-        return self.webhook_url is not None and self.error is None
+        return self.webhook_url is not None and not self.has_recent_error
 
 
 @dataclass(frozen=True, kw_only=True)

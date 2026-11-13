@@ -54,9 +54,11 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
             revenue = convert_for_report(
                 revenue_anchor, rate_table.anchor, report_currency, rate_table
             )
-            cost = convert_for_report(
+            fixed_cost = convert_for_report(
                 ad_link.cost, ad_link.cost_currency, report_currency, rate_table
             )
+            revenue_share = ad_link.revenue_share(revenue)
+            cost = fixed_cost + revenue_share
 
             cpa = round_cents(cost / len(paid_user_ids)) if paid_user_ids else None
             roi = (revenue - cost) / cost if cost > 0 else None
@@ -77,6 +79,9 @@ class GetAdLinkStatsUseCase(UseCase[GetAdLinkStatsDto, AdLinkStatsDto]):
                 conversion_rate=conversion_rate,
                 revenue=revenue,
                 cost=cost,
+                fixed_cost=fixed_cost,
+                revenue_share_percent=ad_link.revenue_share_percent,
+                revenue_share=revenue_share,
                 report_currency=report_currency,
                 cpa=cpa,
                 roi=roi,

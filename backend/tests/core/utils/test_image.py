@@ -40,6 +40,13 @@ def test_a_plain_utf8_svg_is_read() -> None:
     assert read_svg_size(_SVG.encode()) == (10.0, 20.0)
 
 
+def test_svg_width_and_height_take_precedence_over_view_box() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 15 12"></svg>'
+    )
+    assert read_svg_size(svg.encode()) == (64.0, 64.0)
+
+
 @pytest.mark.parametrize("encoding", ["utf-16", "utf-16-le", "utf-16-be"])
 def test_an_svg_in_utf16_is_refused(encoding: str) -> None:
     # the DOCTYPE check reads bytes: in UTF-16 it would miss the entities

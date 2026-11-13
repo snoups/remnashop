@@ -1,3 +1,4 @@
+from datetime import timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
@@ -20,6 +21,7 @@ from app.core.exceptions import (
 )
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
+from app.core.utils.time import datetime_now
 from app.modules.oauth.dto import CreateOAuthIdentityDto
 from app.modules.oauth.repository import OAuthIdentityRepository
 from app.modules.settings import command_translations
@@ -245,6 +247,17 @@ async def test_bot_status_is_not_running_while_telegram_reports_an_error(
     assert status.is_configured is True
     assert status.is_running is False
     assert status.error == "Connection refused"
+
+
+def test_bot_status_ignores_an_error_telegram_kept_after_recovering() -> None:
+    status = BotStatusDto(
+        is_configured=True,
+        webhook_url="https://bot.example.com/webhook",
+        error="Wrong response from the webhook: 502 Bad Gateway",
+        last_error_at=datetime_now() - timedelta(hours=2),
+    )
+
+    assert status.is_running is True
 
 
 async def test_regular_user_cannot_view_bot_settings(

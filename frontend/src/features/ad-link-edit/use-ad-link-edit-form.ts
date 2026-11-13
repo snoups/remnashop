@@ -17,6 +17,7 @@ export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => v
   const [name, setName] = useState(adLink.name);
   const [cost, setCost] = useState(adLink.cost);
   const [currency, setCurrency] = useState(adLink.cost_currency);
+  const [revenueSharePercent, setRevenueSharePercent] = useState(adLink.revenue_share_percent);
   const [note, setNote] = useState(adLink.note ?? "");
   const [channels, setChannels] = useState<AdLinkChannels>({
     allow_bot: adLink.allow_bot,
@@ -30,6 +31,7 @@ export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => v
         name: name.trim(),
         cost,
         cost_currency: currency,
+        revenue_share_percent: revenueSharePercent,
         ...channels,
         // "" clears it; null would leave the old note
         note: note.trim(),
@@ -50,6 +52,8 @@ export function useAdLinkEditForm(adLink: AdLink, onSaved: (adLink: AdLink) => v
     setCost,
     currency,
     setCurrency,
+    revenueSharePercent,
+    setRevenueSharePercent,
     note,
     setNote,
     channels,

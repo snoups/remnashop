@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, Numeric, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import ZERO_AMOUNT
@@ -15,12 +15,22 @@ if TYPE_CHECKING:
 
 class AdLink(BaseSql, TimestampMixin):
     __tablename__ = "ad_links"
+    __table_args__ = (
+        CheckConstraint(
+            "revenue_share_percent >= 0 AND revenue_share_percent <= 100",
+            name="revenue_share_percent_range",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=ZERO_AMOUNT, server_default="0")
     cost_currency: Mapped[Currency] = mapped_column(default=Currency.USD, server_default="USD")
+    # share of attributed users' payments added to the cost
+    revenue_share_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=ZERO_AMOUNT, server_default="0"
+    )
     is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
     allow_bot: Mapped[bool] = mapped_column(default=True, server_default="true")
     allow_webcabinet: Mapped[bool] = mapped_column(default=True, server_default="true")

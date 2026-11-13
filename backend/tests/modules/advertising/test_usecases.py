@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db.models.ad_link_attribution import AdLinkAttribution
+from app.core.db.models.transaction import Transaction
 from app.core.db.uow import UnitOfWork
 from app.core.enums import (
     AdLinkChannel,
@@ -23,6 +24,7 @@ from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedEr
 from app.core.utils.time import datetime_now
 from app.modules.advertising.dto import (
     CreateAdLinkDto,
+    GetAdLinkPayoutDto,
     GetAdLinkStatsDto,
     GetAdvertisingSummaryDto,
     ListAdLinkAttributedUsersDto,
@@ -34,6 +36,7 @@ from app.modules.advertising.usecases import (
     CreateAdLinkUseCase,
     DeleteAdLinkUseCase,
     GenerateAdLinkCodeUseCase,
+    GetAdLinkPayoutUseCase,
     GetAdLinkStatsUseCase,
     GetAdvertisingSummaryUseCase,
     ListAdLinkAttributedUsersUseCase,
@@ -571,3 +574,95 @@ async def test_list_ad_link_attributed_users_hides_staff_without_admins_manage(
 
     assert ([u.user_id for u in hidden], hidden_total) == ([customer.id], 1)
     assert shown_total == 2 and {u.user_id for u in shown} == {customer.id, staff.id}
+
+
+async def test_revenue_share_is_added_to_the_cost(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    plan_id: int,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    ad_link = await create(
+        OWNER,
+        CreateAdLinkDto(
+            name="Share",
+            code="share-cost",
+            cost=Decimal("100"),
+            revenue_share_percent=Decimal("10"),
+        ),
+    )
+    payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=945_001))
+    await ad_link_repository.create_attribution(
+        ad_link_id=ad_link.id, user_id=payer.id, channel=AdLinkChannel.BOT
+    )
+    async with uow:
+        order = await transaction_repository.create(
+            _paid_order_dto(user_id=payer.id, plan_id=plan_id, idempotency_key="share-cost-1")
+        )
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+
+    stats = await GetAdLinkStatsUseCase(
+        ad_link_repository, transaction_repository, pricing_repository, uow
+    )(OWNER, GetAdLinkStatsDto(ad_link_id=ad_link.id))
+    summary = await GetAdvertisingSummaryUseCase(
+        ad_link_repository, transaction_repository, pricing_repository, uow
+    )(OWNER, GetAdvertisingSummaryDto())
+
+    assert stats.fixed_cost == Decimal("100")
+    assert stats.revenue_share == Decimal("50")
+    assert stats.cost == Decimal("150")
+    assert stats.cpa == Decimal("150")
+    assert summary.cost == Decimal("150")
+    assert {link.ad_link_id: link.cost for link in summary.links}[ad_link.id] == Decimal("150")
+
+
+async def test_get_ad_link_payout_counts_payments_inside_the_window(
+    ad_link_repository: AdLinkRepository,
+    uow: UnitOfWork,
+    transaction_repository: TransactionRepository,
+    pricing_repository: PricingRepository,
+    user_repository: UserRepository,
+    session: AsyncSession,
+    plan_id: int,
+) -> None:
+    create = CreateAdLinkUseCase(ad_link_repository, uow, RecordingEventPublisher())
+    ad_link = await create(
+        OWNER,
+        CreateAdLinkDto(name="Payout", code="payout", revenue_share_percent=Decimal("12.5")),
+    )
+    payer = await user_repository.create(CreateUserDto(name="Payer", telegram_id=946_001))
+    stranger = await user_repository.create(CreateUserDto(name="Stranger", telegram_id=946_002))
+    await ad_link_repository.create_attribution(
+        ad_link_id=ad_link.id, user_id=payer.id, channel=AdLinkChannel.BOT
+    )
+    now = datetime_now()
+    window_from, window_to = now - timedelta(days=30), now - timedelta(days=1)
+    orders = [
+        # (user, status, paid at)
+        (payer, TransactionStatus.PAID, now - timedelta(days=10)),
+        (payer, TransactionStatus.PAID, now - timedelta(days=20)),
+        (payer, TransactionStatus.PAID, now),  # after the window
+        (payer, TransactionStatus.REFUNDED, now - timedelta(days=10)),
+        (stranger, TransactionStatus.PAID, now - timedelta(days=10)),  # not from this link
+    ]
+    for index, (user, status, paid_at) in enumerate(orders):
+        async with uow:
+            order = await transaction_repository.create(
+                _paid_order_dto(user_id=user.id, plan_id=plan_id, idempotency_key=f"payout-{index}")
+            )
+        await transaction_repository.mark_status(order.id, status)
+        await session.execute(
+            update(Transaction).where(Transaction.id == order.id).values(updated_at=paid_at)
+        )
+
+    payout = await GetAdLinkPayoutUseCase(
+        ad_link_repository, transaction_repository, pricing_repository, uow
+    )(OWNER, GetAdLinkPayoutDto(ad_link_id=ad_link.id, paid_from=window_from, paid_to=window_to))
+
+    assert payout.payments_count == 2
+    assert payout.revenue == Decimal("1000")
+    assert payout.revenue_share_percent == Decimal("12.5")
+    assert payout.payout == Decimal("125")

@@ -10,6 +10,7 @@ import {
   generateAdLinkCode,
 } from "@entities/advertising/api";
 import { type AdLinkChannels, ChannelsPicker } from "@entities/advertising/ChannelsPicker";
+import { RevenueSharePercentField } from "@entities/advertising/RevenueSharePercentField";
 import { CURRENCIES } from "@entities/pricing/api";
 import { CURRENCY_ICON } from "@entities/transactions/api";
 import { getErrorMessage } from "@shared/api/http";
@@ -52,6 +53,7 @@ function AdLinkCreateDialogBody({
   const [code, setCode] = useState("");
   const [cost, setCost] = useState("0");
   const [currency, setCurrency] = useState("USD");
+  const [revenueSharePercent, setRevenueSharePercent] = useState("0");
   const [note, setNote] = useState("");
   const [channels, setChannels] = useState<AdLinkChannels>({ allow_bot: true, allow_webcabinet: true });
   const trimmedCode = code.trim();
@@ -79,6 +81,7 @@ function AdLinkCreateDialogBody({
         code: code.trim(),
         cost,
         cost_currency: currency,
+        revenue_share_percent: revenueSharePercent,
         ...channels,
         note: note.trim() || null,
       });
@@ -140,6 +143,14 @@ function AdLinkCreateDialogBody({
                 />
               </Field>
             </div>
+          </div>
+
+          <div className={GLASS_DIALOG_CARD_CLASS}>
+            <RevenueSharePercentField
+              id="adlink-revenue-share"
+              value={revenueSharePercent}
+              onChange={setRevenueSharePercent}
+            />
           </div>
 
           <div className={GLASS_DIALOG_CARD_CLASS}>

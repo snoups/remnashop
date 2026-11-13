@@ -2,7 +2,7 @@ import pytest
 
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
-from app.modules.advertising.usecases import GetAdLinkUseCase
+from app.modules.advertising.usecases import GetAdLinkPayoutUseCase, GetAdLinkUseCase
 from app.modules.banners.usecases import (
     DeleteBannerUseCase,
     GetBannerImageUseCase,
@@ -69,6 +69,7 @@ from app.modules.users.usecases import GetUserUseCase, SetUserDiscountUseCase
     [
         (GetUserUseCase, Permission.USERS_DETAIL_VIEW),
         (GetAdLinkUseCase, Permission.AD_LINKS_DETAIL_VIEW),
+        (GetAdLinkPayoutUseCase, Permission.AD_LINKS_PAYOUT_VIEW),
         (GetEventLogEntryUseCase, Permission.EVENT_LOG_DETAIL_VIEW),
         (GetNotificationSettingsUseCase, Permission.NOTIFICATION_SETTINGS_VIEW),
         (UpdateNotificationSettingsUseCase, Permission.NOTIFICATION_SETTINGS_MANAGE),

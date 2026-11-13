@@ -46,7 +46,6 @@ _UNFULFILLED_WINDOW: Final[timedelta] = timedelta(days=7)
 _STALE_PENDING_AFTER: Final[timedelta] = timedelta(minutes=15)
 # a few abandoned checkouts are normal
 _STALE_PENDING_SPIKE: Final[int] = 5
-_BOT_ERROR_WINDOW: Final[timedelta] = timedelta(hours=1)
 _EXPIRING_WITHIN: Final[timedelta] = timedelta(days=7)
 _EXPIRING_URGENT: Final[timedelta] = timedelta(hours=24)
 # the sweep runs every minute
@@ -65,12 +64,7 @@ _ORDER: Final[tuple[AttentionKind, ...]] = tuple(AttentionKind)
 
 
 def _bot_needs_attention(status: BotStatusDto) -> bool:
-    if not status.webhook_url:
-        return True
-    if not status.error:
-        return False
-    # Telegram keeps last_error_message after recovering; no date means the call itself failed
-    return status.last_error_at is None or status.last_error_at > datetime_now() - _BOT_ERROR_WINDOW
+    return not status.webhook_url or status.has_recent_error
 
 
 class GetAttentionUseCase(UseCase[None, AttentionDto]):
