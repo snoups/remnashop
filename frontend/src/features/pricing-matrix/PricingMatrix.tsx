@@ -327,10 +327,15 @@ function MatrixRow({
   const permissions = usePermissions();
   const isAddon = row.kind === "addon";
   const canSave = permissions.includes("PRICING_MATRIX_MANAGE");
+  // a free trial is free in every currency: pricing it here would turn it into a paid one
   const canEditBase =
-    canSave && permissions.includes(isAddon ? "ADDONS_PRICES_MANAGE" : "PLANS_DURATION_BASE_PRICE_MANAGE");
+    !row.is_free_trial &&
+    canSave &&
+    permissions.includes(isAddon ? "ADDONS_PRICES_MANAGE" : "PLANS_DURATION_BASE_PRICE_MANAGE");
   const canOverride =
-    canSave && permissions.includes(isAddon ? "ADDONS_PRICE_OVERRIDE_MANAGE" : "PLANS_PRICE_OVERRIDE_MANAGE");
+    !row.is_free_trial &&
+    canSave &&
+    permissions.includes(isAddon ? "ADDONS_PRICE_OVERRIDE_MANAGE" : "PLANS_PRICE_OVERRIDE_MANAGE");
 
   const baseDraft = drafts[baseKey(row)];
   const baseValue = typeof baseDraft === "string" ? baseDraft : row.base_price;
@@ -343,7 +348,12 @@ function MatrixRow({
         isLast ? "" : "[&>td]:border-b [&>td>div]:pb-[11px]"
       }`}
     >
-      <Cell className="min-w-40 font-medium text-foreground">{row.days === null ? row.name : t("plans.daysShort", { count: row.days })}</Cell>
+      <Cell className="min-w-40 font-medium text-foreground">
+        {row.days === null ? row.name : t("plans.daysShort", { count: row.days })}
+        {row.is_free_trial && (
+          <span className="block text-xs font-normal text-muted-foreground">{t("pricing.matrix.freeTrial")}</span>
+        )}
+      </Cell>
       <Cell>
         <Input
           type="number"

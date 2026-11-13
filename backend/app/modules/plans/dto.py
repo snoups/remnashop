@@ -249,6 +249,8 @@ class PriceBookRow(BaseDto):
     days: Optional[int]
     base_price: Decimal
     cells: list[PriceBookCell]
+    # a trial plan's duration at 0: nothing to price, every currency is 0
+    is_free_trial: bool = False
 
 
 class PriceBookDto(BaseDto):

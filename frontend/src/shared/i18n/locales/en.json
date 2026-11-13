@@ -2581,6 +2581,7 @@
       "ladderHint": "A duration costs the base duration’s daily price times its days, less its discount.",
       "ladderDiscountLabel": "Discount by duration",
       "ladderDiscountHint": "Negative is a markup: −40 means 40% more.",
+      "freeTrial": "Free trial",
       "pinnedLabel": "Pinned prices",
       "pinned": {
         "KEEP": "Keep",

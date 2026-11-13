@@ -254,6 +254,7 @@ class PriceBookRowResponse(BaseModel):
     days: Optional[int] = None
     base_price: Decimal
     cells: list[PriceBookCellResponse]
+    is_free_trial: bool
 
 
 class PriceBookResponse(BaseModel):

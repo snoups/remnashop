@@ -818,3 +818,76 @@ async def test_non_anchor_preview_leaves_the_anchor_fields_empty(
     assert diff.price_per_day is None
     assert diff.loyalty_thresholds == []
     assert diff.rescaled_transactions == 0
+
+
+async def test_price_book_marks_a_free_trial_and_prices_it_at_zero(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="try",
+            name="Trial",
+            type=PlanType.BOTH,
+            traffic_limit=10,
+            device_limit=1,
+            is_trial=True,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0"))],
+        )
+    )
+    paid, _ = await _seed_catalog(plan_repository, addon_repository)
+
+    book = await GetPriceBookUseCase(plan_repository, addon_repository, pricing_repository, uow)(
+        OWNER
+    )
+
+    trial_row = next(row for row in book.plans if row.plan_id == created.id)
+    assert trial_row.is_free_trial is True
+    assert all(cell.amount == 0 for cell in trial_row.cells)
+    assert next(row for row in book.plans if row.plan_id == paid.id).is_free_trial is False
+
+
+async def test_adjust_base_prices_leaves_a_free_trial_free(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    trial = await plan_repository.create(
+        CreatePlanDto(
+            public_code="try",
+            name="Trial",
+            type=PlanType.BOTH,
+            traffic_limit=10,
+            device_limit=1,
+            is_trial=True,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=trial.id,
+            durations=[SetPlanDurationDto(days=3, order_index=0, base_price=Decimal("0"))],
+        )
+    )
+    paid, _ = await _seed_catalog(plan_repository, addon_repository)
+
+    book = await AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.ALL_PLANS, mode=PriceAdjustMode.SET, price=Decimal("300")
+        ),
+    )
+
+    prices = {row.plan_id: row.base_price for row in book.plans}
+    assert prices[trial.id] == Decimal("0")
+    assert prices[paid.id] == Decimal("300")

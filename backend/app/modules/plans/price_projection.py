@@ -37,8 +37,10 @@ def adjusted_base_prices(
     if adjust.scope in (PriceAdjustScope.ALL_PLANS, PriceAdjustScope.SELECTED):
         duration_ids = set(adjust.plan_duration_ids)
         for plan in plans:
+            free_trial = plan.free_trial_duration()
             for duration in plan.durations:
-                if selected and duration.id not in duration_ids:
+                # a set price or a ladder would turn a free trial into a paid one
+                if duration is free_trial or (selected and duration.id not in duration_ids):
                     continue
                 new = _new_base_price(adjust, duration.base_price, duration.days)
                 result.plan_prices[duration.id] = new

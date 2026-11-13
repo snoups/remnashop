@@ -41,6 +41,7 @@ async def build_price_book(
             name=plan.name,
             days=duration.days,
             base_price=duration.base_price,
+            is_free_trial=duration is plan.free_trial_duration(),
             cells=_build_cells(
                 duration.base_price,
                 {override.currency: override.price for override in duration.overrides},

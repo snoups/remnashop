@@ -39,6 +39,8 @@ export interface PriceBookRow {
   days: number | null;
   base_price: string;
   cells: PriceBookCell[];
+  /** a trial plan's duration at 0: free in every currency, nothing to price */
+  is_free_trial: boolean;
 }
 
 export interface PriceBook {
