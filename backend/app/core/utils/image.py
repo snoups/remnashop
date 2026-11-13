@@ -62,22 +62,22 @@ def _has_script_surface(root: ET.Element) -> bool:
 
 
 def _svg_dimensions(root: ET.Element) -> Optional[tuple[float, float]]:
+    width = _parse_svg_length(root.get("width"))
+    height = _parse_svg_length(root.get("height"))
+    if width is not None and height is not None:
+        return width, height
     view_box = (root.get("viewBox") or "").replace(",", " ").split()
     if len(view_box) == 4:
         try:
             return float(view_box[2]), float(view_box[3])
         except ValueError:
             return None
-    width = _parse_svg_length(root.get("width"))
-    height = _parse_svg_length(root.get("height"))
-    if width is None or height is None:
-        return None
-    return width, height
+    return None
 
 
 # None unless the SVG is plain markup: no DOCTYPE/entities (expansion bombs),
 # no script-capable elements, event handlers or javascript: links. Size comes
-# from viewBox, falling back to width/height.
+# from width/height (the rendered box), falling back to viewBox.
 def read_svg_size(data: bytes) -> Optional[tuple[float, float]]:
     # UTF-8 only: in UTF-16 the DOCTYPE/ENTITY check below would read past the markup;
     # NUL bytes are how UTF-16 without a byte-order mark still decodes as UTF-8
