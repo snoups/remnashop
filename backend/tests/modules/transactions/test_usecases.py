@@ -117,7 +117,7 @@ class _FakeFactory(PaymentGatewayFactory):
     def __init__(self, gateway: _FakeGateway) -> None:
         self._gateway = gateway
 
-    def build(self, gateway_type, settings, return_url=None, customer=None):  # type: ignore[no-untyped-def]
+    def build(self, gateway_type, settings, return_url=None):  # type: ignore[no-untyped-def]
         self.settings = settings
         self.return_url = return_url
         return self._gateway  # type: ignore[return-value]
@@ -842,6 +842,46 @@ async def test_checkout_asks_for_an_email_when_the_gateway_needs_a_receipt(
     assert fake_gateway.create_payment_calls[0].customer_email == "buyer@example.com"
 
 
+async def test_checkout_sends_the_shop_payment_email_over_the_customer_one(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    gateway_repository: GatewayRepository,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    fake_gateway: _FakeGateway,
+    actor: UserDto,
+    plan: PlanDto,
+) -> None:
+    async with uow:
+        await gateway_repository.update_settings(
+            PaymentGatewayType.YOOKASSA, {"shop_id": "1", "api_key": "k", "vat_code": "1"}
+        )
+        await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
+        await settings_repository.update_shop_settings(
+            UpdateShopSettingsDto(
+                payment_email="owner@shop.example", fields_set=frozenset({"payment_email"})
+            )
+        )
+
+    for email in (None, "buyer@example.com"):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                channel=PurchaseChannel.CABINET,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+                customer_email=email,
+            ),
+        )
+
+    assert [call.customer_email for call in fake_gateway.create_payment_calls] == [
+        "owner@shop.example",
+        "owner@shop.example",
+    ]
+
+
 async def test_checkout_rejects_an_unimplemented_gateway(
     create_checkout_use_case: CreateCheckoutUseCase,
     actor: UserDto,
@@ -1009,6 +1049,7 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
+    settings_repository: SettingsRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
@@ -1019,6 +1060,7 @@ async def test_test_payment_persists_a_pending_test_order_hidden_from_the_order_
         gateway_repository,
         transaction_repository,
         pricing_repository,
+        settings_repository,
         uow,
         _FakeFactory(fake_gateway),
         RecordingEventPublisher(),
@@ -1040,6 +1082,7 @@ async def test_test_payment_stands_in_an_email_when_the_gateway_needs_a_receipt(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
+    settings_repository: SettingsRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
@@ -1054,6 +1097,7 @@ async def test_test_payment_stands_in_an_email_when_the_gateway_needs_a_receipt(
         gateway_repository,
         transaction_repository,
         pricing_repository,
+        settings_repository,
         uow,
         _FakeFactory(fake_gateway),
         RecordingEventPublisher(),
@@ -1068,6 +1112,7 @@ async def test_test_payment_rejects_an_unconfigured_gateway(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
     pricing_repository: PricingRepository,
+    settings_repository: SettingsRepository,
     user_repository: UserRepository,
     uow: UnitOfWork,
     fake_gateway: _FakeGateway,
@@ -1077,6 +1122,7 @@ async def test_test_payment_rejects_an_unconfigured_gateway(
         gateway_repository,
         transaction_repository,
         pricing_repository,
+        settings_repository,
         uow,
         _FakeFactory(fake_gateway),
         RecordingEventPublisher(),

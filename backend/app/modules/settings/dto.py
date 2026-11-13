@@ -70,6 +70,7 @@ class ShopSettingsDto(BaseDto, TimestampMixin):
     referral_reset_cooldown_hours: int = 0
     support_telegram: Optional[str] = None
     support_url: Optional[str] = None
+    payment_email: Optional[str] = None
 
     @property
     def support_link(self) -> Optional[str]:
@@ -110,6 +111,7 @@ class UpdateShopSettingsDto:
     referral_reset_cooldown_hours: Optional[int] = None
     support_telegram: Optional[str] = None
     support_url: Optional[str] = None
+    payment_email: Optional[str] = None
     fields_set: frozenset[str] = frozenset()
 
 

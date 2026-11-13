@@ -217,6 +217,8 @@ export interface ShopSettings {
   support_telegram: string | null;
   // an https page; null = not set
   support_url: string | null;
+  // sent to every payment gateway instead of the customer's email; null = ask the customer
+  payment_email: string | null;
 }
 
 // a PATCH: only the fields sent change (the support card saves its two on their own)

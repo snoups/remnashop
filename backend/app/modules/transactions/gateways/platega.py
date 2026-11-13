@@ -42,14 +42,9 @@ class PlategaGateway(PaymentGateway[PlategaSettings]):
             "X-Secret": self.settings.api_key.get_secret_value(),
         }
 
-    def _buyer_email(self, order: TransactionDto) -> str:
-        # Platega identifies the buyer by this value: the same one on every payment
-        customer = self._customer
-        if customer is not None and customer.email:
-            return customer.email
-        if customer is not None and customer.telegram_id is not None:
-            return f"{customer.telegram_id}@telegram.org"
-        return f"{order.user_id}@mail.ru"
+    @classmethod
+    def requires_customer_email(cls, settings: dict[str, str]) -> bool:
+        return True
 
     async def create_payment(self, order: TransactionDto) -> PaymentIntent:
         payment_method = self.settings.payment_method
@@ -63,7 +58,7 @@ class PlategaGateway(PaymentGateway[PlategaSettings]):
             "return": self._return_url,
             "failedUrl": self._return_url,
             # Required for some merchant categories; without it antifraud is off.
-            "metadata": {"userId": str(order.user_id), "user_email": self._buyer_email(order)},
+            "metadata": {"userId": str(order.user_id), "user_email": order.customer_email},
         }
         endpoint = _SINGLE_METHOD_ENDPOINT
         if payment_method:

@@ -7,12 +7,14 @@ import {
   type Gateway,
   type GatewayCatalogEntry,
 } from "@entities/gateways/api";
+import { usePermissions } from "@entities/user/use-current-user";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ErrorState } from "@shared/ui/glass/EmptyState";
 import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { Spinner } from "@shared/ui/Spinner";
 
 import { GatewaySettingsCard } from "./GatewaySettingsCard";
+import { PaymentEmailField } from "./PaymentEmailField";
 
 interface GatewaysData {
   gateways: Gateway[];
@@ -27,9 +29,11 @@ async function loadGatewaysData(signal?: AbortSignal): Promise<GatewaysData> {
 export function GatewaysSettingsList() {
   const { t } = useTranslation();
   const [state, , setData] = useAsyncResource(loadGatewaysData);
+  const canViewShop = usePermissions().includes("SHOP_SETTINGS_VIEW");
 
   return (
     <Section icon={CreditCard} title={t("settings.gateways.title")} description={t("settings.gateways.description")}>
+      {canViewShop && <PaymentEmailField />}
       {state.kind === "loading" && <Spinner size="card" />}
       {state.kind === "error" && (
         <ErrorState text={t("common.loadError")} />

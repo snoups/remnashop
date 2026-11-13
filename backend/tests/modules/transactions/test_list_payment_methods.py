@@ -3,6 +3,8 @@ import pytest
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PaymentGatewayType, TransactionStatus
 from app.modules.gateways.repository import GatewayRepository
+from app.modules.settings.dto import UpdateShopSettingsDto
+from app.modules.settings.repository import SettingsRepository
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import ListPaymentMethodsUseCase
 from app.modules.users import UserRepository
@@ -14,9 +16,12 @@ from tests.modules.transactions.test_repository import _order_dto
 def use_case(
     gateway_repository: GatewayRepository,
     transaction_repository: TransactionRepository,
+    settings_repository: SettingsRepository,
     uow: UnitOfWork,
 ) -> ListPaymentMethodsUseCase:
-    return ListPaymentMethodsUseCase(gateway_repository, transaction_repository, uow)
+    return ListPaymentMethodsUseCase(
+        gateway_repository, transaction_repository, settings_repository, uow
+    )
 
 
 @pytest.fixture
@@ -82,6 +87,23 @@ async def test_flags_a_gateway_that_needs_an_email(
     assert [(m.gateway_type, m.requires_email) for m in methods] == [
         (PaymentGatewayType.YOOKASSA, True)
     ]
+
+
+async def test_shop_payment_email_means_no_email_is_asked(
+    use_case: ListPaymentMethodsUseCase,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    actor: UserDto,
+    receipt_yookassa: None,
+) -> None:
+    async with uow:
+        await settings_repository.update_shop_settings(
+            UpdateShopSettingsDto(
+                payment_email="owner@shop.example", fields_set=frozenset({"payment_email"})
+            )
+        )
+
+    assert [(m.requires_email, m.asks_email) for m in await use_case(actor)] == [(False, False)]
 
 
 async def test_stars_hidden_until_a_paid_purchase(

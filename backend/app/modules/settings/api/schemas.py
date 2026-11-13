@@ -1,7 +1,7 @@
 import re
 from typing import Annotated, Final, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator, model_validator
 
 from app.core.constants import INT64_MAX
 from app.core.enums import AccessMode, CaptchaProvider, SmtpSecurity
@@ -60,6 +60,7 @@ class ShopSettingsResponse(BaseModel):
     referral_reset_cooldown_hours: int
     support_telegram: Optional[str]
     support_url: Optional[str]
+    payment_email: Optional[str]
 
 
 class UpdateShopSettingsRequest(BaseModel):
@@ -85,13 +86,14 @@ class UpdateShopSettingsRequest(BaseModel):
     # null or "" clears either
     support_telegram: Optional[str] = None
     support_url: Optional[str] = Field(default=None, pattern=r"^https://.+", max_length=512)
+    payment_email: Optional[EmailStr] = None
 
     @field_validator("max_active_subscriptions", mode="before")
     @classmethod
     def zero_is_unlimited(cls, value: object) -> object:
         return None if value == 0 else value
 
-    @field_validator("support_telegram", "support_url", mode="before")
+    @field_validator("support_telegram", "support_url", "payment_email", mode="before")
     @classmethod
     def blank_is_unset(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
@@ -108,7 +110,7 @@ class UpdateShopSettingsRequest(BaseModel):
 
     @model_validator(mode="after")
     def non_nullable_fields(self) -> "UpdateShopSettingsRequest":
-        nullable = {"max_active_subscriptions", "support_telegram", "support_url"}
+        nullable = {"max_active_subscriptions", "support_telegram", "support_url", "payment_email"}
         for name in self.model_fields_set - nullable:
             if getattr(self, name) is None:
                 raise ValueError(f"{name} cannot be null")

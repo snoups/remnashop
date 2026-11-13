@@ -228,6 +228,7 @@ class PaymentMethodResponse(BaseModel):
     gateway_type: PaymentGatewayType
     currency: Currency
     requires_email: bool
+    asks_email: bool
 
 
 class PaymentMethodListResponse(BaseModel):
