@@ -25,6 +25,8 @@ _REPORTED_EVENTS: Final[dict[str, TransactionStatus]] = {
     "refund.succeeded": TransactionStatus.REFUNDED,
 }
 _REFUND_EVENT_PREFIX: Final[str] = "refund."
+_PAYMENT_SUBJECT: Final[str] = "service"
+_PAYMENT_MODE: Final[str] = "full_payment"
 
 
 def _build_receipt(
@@ -37,6 +39,8 @@ def _build_receipt(
         "quantity": "1.00",
         "amount": {"value": f"{order.final_price:.2f}", "currency": order.currency.value},
         "vat_code": int(settings.vat_code),
+        "payment_subject": _PAYMENT_SUBJECT,
+        "payment_mode": _PAYMENT_MODE,
     }
     return {"customer": {"email": order.customer_email}, "items": [item]}
 

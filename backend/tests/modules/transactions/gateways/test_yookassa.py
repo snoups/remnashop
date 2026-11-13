@@ -52,6 +52,24 @@ async def test_create_payment_sends_idempotence_key_and_order_ref() -> None:
     assert http.last_json()["metadata"] == {"order_ref": ORDER_REF}
 
 
+async def test_create_payment_receipt_item_carries_subject_and_mode() -> None:
+    http = HttpRecorder(
+        json_response({"id": "yk-1", "confirmation": {"confirmation_url": "https://pay/1"}}),
+    )
+    gateway = YooKassaGateway(
+        settings={**_SETTINGS, "vat_code": "1"},
+        webhook_url=WEBHOOK_URL,
+        return_url=RETURN_URL,
+        http=http.client,
+    )
+
+    await gateway.create_payment(make_order(customer_email="a@b.ru"))
+
+    item = http.last_json()["receipt"]["items"][0]
+    assert item["payment_subject"] == "service"
+    assert item["payment_mode"] == "full_payment"
+
+
 async def test_parse_webhook_flags_only_payment_succeeded() -> None:
     paid = await _gateway().parse_webhook(
         webhook({"event": "payment.succeeded", "object": _payment()})
