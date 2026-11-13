@@ -66,7 +66,7 @@ from app.modules.pricing import PricingRepository
 from app.modules.promocodes.dto import CreatePromocodeDto, UpdatePromocodeDto
 from app.modules.promocodes.repository import PromocodeRepository
 from app.modules.referrals import ReferralRepository
-from app.modules.settings import GetAccessSettingsUseCase
+from app.modules.settings import GetAccessSettingsUseCase, telegram_status
 from app.modules.settings.dto import (
     UpdateAccessSettingsDto,
     UpdateBotSettingsDto,
@@ -91,6 +91,7 @@ from app.modules.users import UserRepository
 from app.modules.users.dto import CreateUserDto, UpdateUserDto, UserDto
 from tests.fakes.dispatch import RecordingDispatch
 from tests.fakes.events import RecordingEventPublisher
+from tests.fakes.telegram_bot import FakeBotSession, use_fake_bot
 from tests.modules.settings.factories import SHOP_SETTINGS_FIELDS
 from tests.modules.subscriptions.factories import make_eligibility, make_plan_snapshot
 
@@ -118,6 +119,7 @@ class _FakeFactory(PaymentGatewayFactory):
 
     def build(self, gateway_type, settings, return_url=None, customer=None):  # type: ignore[no-untyped-def]
         self.settings = settings
+        self.return_url = return_url
         return self._gateway  # type: ignore[return-value]
 
 
@@ -883,6 +885,31 @@ async def test_checkout_hands_stars_the_bot_token(
     factory = create_checkout_use_case._gateway_factory
     assert len(fake_gateway.create_payment_calls) == 1
     assert factory.settings["bot_token"] == "123:abc"  # type: ignore[attr-defined]
+
+
+async def test_a_bot_checkout_returns_the_customer_to_the_bot(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    settings_repository: SettingsRepository,
+    uow: UnitOfWork,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    telegram_status._USERNAME_CACHE.clear()
+    me = {"id": 123, "is_bot": True, "first_name": "bot", "username": "shop_bot"}
+    use_fake_bot(monkeypatch, FakeBotSession({"getMe": me}))
+    async with uow:
+        await settings_repository.update_bot_settings(
+            UpdateBotSettingsDto(token="123:abc", secret_token="hook-secret")
+        )
+
+    await create_checkout_use_case(
+        actor, dataclasses.replace(_checkout_dto(actor, plan), channel=PurchaseChannel.BOT)
+    )
+
+    factory = create_checkout_use_case._gateway_factory
+    assert factory.return_url == "https://t.me/shop_bot"  # type: ignore[attr-defined]
 
 
 def _stars_checkout(plan: PlanDto) -> CreateCheckoutDto:
